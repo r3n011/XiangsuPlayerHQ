@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Keep the standalone local-playback process alive in the background via a
+         mediaPlayback foreground service (WearPlaybackService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-feature android:name="android.hardware.type.watch" />
+
+    <application
+        android:name=".WearApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PixelPlayWear">
+
+        <uses-library
+            android:name="com.google.android.wearable"
+            android:required="true" />
+
+        <!-- standalone=true: Watch can play locally stored songs without the phone -->
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
+        <meta-data
+            android:name="com.google.android.wearable.notificationBridgeMode"
+            android:value="NO_BRIDGING" />
+
+        <activity
+            android:name=".presentation.WearMainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PixelPlayWear">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.wearable.action.MEDIA_CONTROLS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.theveloper.pixelplay.action.OPEN_PLAYER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Hosts standalone local playback as a foreground mediaPlayback service so Wear OS
+             doesn't kill the process while audio is playing in the background. -->
+        <service
+            android:name=".data.WearPlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </service>
+
+        <!-- Receives player state updates from the phone app via Data Layer -->
+        <service
+            android:name=".data.WearDataListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/player_state" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/browse_response" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/playback_result" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_metadata" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_progress" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_request" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_cancel" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/watch_library_query" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/volume_state" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_audio" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_artwork" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>
