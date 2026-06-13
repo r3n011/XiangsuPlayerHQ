@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared login / streaming auth -->
+    <string name="auth_cd_back">Geri</string>
+    <string name="auth_show_password">Şifreyi göster</string>
+    <string name="auth_hide_password">Şifreyi gizle</string>
+    <string name="auth_connecting">Bağlanıyor…</string>
+    <string name="auth_connect">Bağlan</string>
+    <string name="auth_connection_details">Bağlantı detayları</string>
+    <string name="auth_connection_details_subtitle">Sunucu URL\'nizi ve hesap bilgilerinizi girin.</string>
+    <string name="auth_server_url">Sunucu URL\'si</string>
+    <string name="auth_username">Kullanıcı adı</string>
+    <string name="auth_password">Şifre</string>
+    <string name="auth_password_placeholder">Şifrenizi girin</string>
+    <string name="auth_username_placeholder_admin">admin</string>
+    <string name="toast_welcome_user">Hoş geldin, %1$s!</string>
+
+    <!-- Navidrome / Subsonic -->
+    <string name="auth_navidrome_title">Subsonic / Navidrome</string>
+    <string name="auth_navidrome_subtitle">Kendi barındırdığınız müzik sunucusuna bağlanın</string>
+    <string name="auth_navidrome_info_card">Navidrome, Airsonic, Gonic, Ampache ve Subsonic API ile uyumlu diğer sunucuları destekler.</string>
+    <string name="auth_server_url_placeholder_https">https://music.example.com</string>
+    <string name="auth_navidrome_server_url_hint">Sunucunuzun tam https:// kök adresini kullanın.</string>
+    <string name="auth_navidrome_username_hint">Bu, Subsonic veya Navidrome hesap adınızdır.</string>
+    <string name="auth_navidrome_password_hint">Sunucunuz destekliyorsa uygulama şifresi de geçerlidir.</string>
+    <string name="auth_navidrome_пароль_hint">Sunucunuz destekliyorsa uygulama şifresi de geçerlidir.</string>
+    <string name="auth_prefill_https">https:// otomatik doldur</string>
+    <string name="auth_navidrome_footer">Navidrome, Gonic, Airsonic ve diğer Subsonic uyumlu sunucularla çalışır</string>
+    <string name="cd_navidrome_logo">Navidrome</string>
+    <string name="cd_subsonic_logo">Subsonic</string>
+
+    <!-- Jellyfin -->
+    <string name="auth_jellyfin_title">Jellyfin</string>
+    <string name="auth_jellyfin_info_card">Jellyfin sunucularına bağlanır. Yerel ağ erişimi için hem HTTP hem de HTTPS desteklenir.</string>
+    <string name="auth_jellyfin_subtitle">Jellyfin medya sunucunuza bağlanın</string>
+    <string name="auth_jellyfin_connection_subtitle">Jellyfin sunucu URL\'nizi ve hesap bilgilerinizi girin.</string>
+    <string name="auth_jellyfin_server_placeholder">http://192.168.1.100:8096</string>
+    <string name="auth_jellyfin_server_url_hint">Bağlantı noktası (port) dahil Jellyfin sunucunuzun tam URL\'si.</string>
+    <string name="auth_jellyfin_username_hint">Jellyfin hesap kullanıcı adınız.</string>
+    <string name="auth_jellyfin_password_hint">Jellyfin hesap şifreniz.</string>
+    <string name="auth_prefill_http">http:// otomatik doldur</string>
+    <string name="auth_jellyfin_footer">Müzik kitaplığınızı akışla yürütmek için Jellyfin sunucularına bağlanır</string>
+    <string name="cd_jellyfin_logo">Jellyfin</string>
+
+    <!-- Google Drive -->
+    <string name="auth_gdrive_toast_connected">Google Drive bağlandı!</string>
+    <string name="auth_gdrive_title">Google Drive</string>
+
+    <!-- Web login (NetEase / QQ Music) — shared -->
+    <string name="auth_web_exit_confirm_title_netease">NetEase girişinden çıkılsın mı?</string>
+    <string name="auth_web_exit_confirm_title_qq">QQ Music girişinden çıkılsın mı?</string>
+    <string name="auth_web_exit_confirm_body">Daha sonra tekrar dönebilirsiniz. Kapatıldığında mevcut sayfa durumu silinecektir.</string>
+    <string name="auth_exit">Çık</string>
+    <string name="auth_stay">Kal</string>
+    <string name="auth_login_netease_title">NetEase Music Girişi</string>
+    <string name="auth_login_qq_title">QQ Music Girişi</string>
+    <string name="auth_web_cd_web_back">Geri git</string>
+    <string name="auth_web_cd_web_forward">İleri git</string>
+    <string name="auth_web_cd_refresh">Yenile</string>
+    <string name="auth_web_cd_open_home">Ana sayfayı aç</string>
+    <string name="auth_saving">Kaydediliyor…</string>
+    <string name="auth_done">Tamamdır</string>
+    <string name="auth_web_retry">Yeniden dene</string>
+    <string name="auth_dial_plus">+</string>
+    <string name="auth_snackbar_page_timeout">Sayfa yükleme zaman aşımına uğradı. İlerlemenizi kaybetmeden yeniden deneyebilirsiniz.</string>
+    <string name="auth_error_cookies_unreadable">Oturum çerezleri okunamadı.</string>
+    <string name="auth_page_slow">Sayfa çok uzun sürede yükleniyor. Yenilemeyi deneyin veya başka bir ağa bağlanın.</string>
+    <string name="auth_webview_load_failed">WebView yüklemesi başarısız oldu.</string>
+    <string name="auth_http_error_loading_netease">NetEase yüklenirken HTTP %1$d hatası oluştu.</string>
+    <string name="auth_http_error_loading_qq">QQ Music yüklenirken HTTP %1$d hatası oluştu.</string>
+    <string name="auth_error_no_cookies">Çerez bulunamadı. Lütfen önce giriş yapın.</string>
+    <string name="auth_error_netease_login_incomplete">Giriş henüz algılanmadı. Tamam butonuna basmadan önce NetEase girişini tamamlayın.</string>
+    <string name="auth_error_qq_login_incomplete">Giriş henüz algılanmadı. Tamam butonuna basmadan önce QQ Music girişini tamamlayın.</string>
+</resources>

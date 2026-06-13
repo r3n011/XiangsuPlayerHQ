@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- QueueBottomSheet -->
+    <string name="presentation_batch_e_queue_empty">Sıra boş.</string>
+    <string name="presentation_batch_e_cd_queue_actions">Sıra işlemleri</string>
+    <string name="presentation_batch_e_action_clear_queue">Sırayı temizle</string>
+    <string name="presentation_batch_e_action_save_as_playlist">Çalma listesi olarak kaydet</string>
+    <string name="presentation_batch_e_action_locate_current_song">Mevcut şarkıyı bul</string>
+    <string name="presentation_batch_e_queue_named_suffix">%1$s sırası</string>
+    <string name="presentation_batch_e_queue_current">Mevcut sıra</string>
+    <string name="presentation_batch_e_removed">kaldırıldı</string>
+    <string name="presentation_batch_e_clear_queue_dialog_title">Sırayı temizle</string>
+    <string name="presentation_batch_e_clear_queue_dialog_message">Mevcut şarkı hariç sıradaki tüm şarkıları temizlemek istediğinize emin misiniz?</string>
+    <string name="presentation_batch_e_next_up">Sıradaki</string>
+    <string name="presentation_batch_e_queue_subtitle_empty">Sıra şu an için boş.</string>
+    <string name="presentation_batch_e_queue_source_fallback">Sıra</string>
+    <string name="presentation_batch_e_cd_toggle_shuffle">Karıştırmayı aç/kapat</string>
+    <string name="presentation_batch_e_cd_toggle_repeat">Tekrarlamayı aç/kapat</string>
+    <string name="presentation_batch_e_cd_sleep_timer">Uyku zamanlayıcısı</string>
+    <string name="presentation_batch_e_save_as_playlist_sheet_title">Çalma listesi olarak kaydet</string>
+    <string name="presentation_batch_e_deselect_all">Seçimleri kaldır</string>
+    <string name="presentation_batch_e_playlist_name_label">Çalma listesi adı</string>
+    <string name="presentation_batch_e_search_songs_to_include_placeholder">Dahil edilecek şarkıları ara…</string>
+    <string name="presentation_batch_e_save_as_format">Farklı kaydet: %1$s</string>
+    <string name="presentation_batch_e_enter_playlist_name">Bir çalma listesi adı girin</string>
+    <string name="presentation_batch_e_no_songs_match_query">\"%1$s\" ile eşleşen şarkı bulunamadı</string>
+    <string name="presentation_batch_e_cd_dismiss_song">Şarkıyı kapat</string>
+    <string name="presentation_batch_e_cd_remove_from_playlist">Çalma listesinden kaldır</string>
+    <string name="presentation_batch_e_more_options_for_song">%1$s için diğer seçenekler</string>
+
+    <plurals name="presentation_batch_e_queue_tracks_lined_up">
+        <item quantity="one">Sırada 1 parça var.</item>
+        <item quantity="other">Sırada %d parça var.</item>
+    </plurals>
+    <plurals name="presentation_batch_e_n_songs_selected">
+        <item quantity="one">%d şarkı seçildi</item>
+        <item quantity="other">%d şarkı seçildi</item>
+    </plurals>
+
+    <!-- PlaylistContainer -->
+    <string name="presentation_batch_e_no_playlist_created">Hiçbir çalma listesi oluşturulmadı.</string>
+    <string name="presentation_batch_e_new_playlist_hint">Başlamak için \'Yeni Çalma Listesi\' düğmesine dokunun.</string>
+
+    <!-- PlaylistCreationDialogs: create flow -->
+    <string name="presentation_batch_e_create_playlist_title">Çalma listesi oluştur</string>
+    <string name="presentation_batch_e_create_playlist_subtitle">Oluşturma yöntemini seçin.</string>
+    <string name="presentation_batch_e_creation_mode_manual">Manuel</string>
+    <string name="presentation_batch_e_creation_mode_manual_subtitle">Kapak görselini, simgeyi, şekli tasarlayın ve şarkıları kendiniz seçin.</string>
+    <string name="presentation_batch_e_creation_mode_ai">Yapay Zeka ile</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Gelişmiş kontrollerle özel bir çalma listesi oluşturun.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Ayarlarda yapılandırılmış bir Gemini API anahtarı gerektirir.</string>
+    <string name="presentation_batch_e_setup_api_key">API anahtarını ayarla</string>
+
+    <!-- AI playlist lab -->
+    <string name="presentation_batch_e_ai_playlist_lab_title">Yapay Zeka Çalma Listesi Laboratuvarı</string>
+    <string name="presentation_batch_e_ai_reset">Sıfırla</string>
+    <string name="presentation_batch_e_ai_generating">Oluşturuluyor…</string>
+    <string name="presentation_batch_e_ai_generate">Oluştur</string>
+    <string name="presentation_batch_e_ai_section_intent">Amaç</string>
+    <string name="presentation_batch_e_ai_playlist_name_optional">Çalma listesi adı (isteğe bağlı)</string>
+    <string name="presentation_batch_e_ai_feel_label">Bu çalma listesi nasıl bir his uyandırmalı?</string>
+    <string name="presentation_batch_e_ai_feel_placeholder">Örnek: sıcak synth’ler eşliğinde gün batımı sürüşü</string>
+    <string name="presentation_batch_e_ai_section_direction">Yönelim</string>
+    <string name="presentation_batch_e_ai_mood_label">Ruh Hali</string>
+    <string name="presentation_batch_e_ai_activity_label">Aktivite</string>
+    <string name="presentation_batch_e_ai_era_label">Dönem</string>
+    <string name="presentation_batch_e_ai_section_curation">Derleme motoru</string>
+    <string name="presentation_batch_e_ai_energy_label">Enerji</string>
+    <string name="presentation_batch_e_ai_energy_description">Şarkıların yoğunluğunu ve temposunu kontrol eder. 1 = sakin/yavaş, 5 = yüksek enerjili/hızlı.</string>
+    <string name="presentation_batch_e_ai_discovery_label">Keşif</string>
+    <string name="presentation_batch_e_ai_discovery_description">Seçimlerin ne kadar tanıdık olduğunu kontrol eder. 1 = en çok çalınan favorileriniz, 5 = nadiren çalınan gizli kalmış parçalar.</string>
+    <string name="presentation_batch_e_ai_min_songs">Min. şarkı</string>
+    <string name="presentation_batch_e_ai_max_songs">Maks. şarkı</string>
+    <string name="presentation_batch_e_ai_section_filters">Filtreler</string>
+    <string name="presentation_batch_e_ai_prioritize_genres">Türlere öncelik ver (isteğe bağlı)</string>
+    <string name="presentation_batch_e_ai_prioritize_genres_placeholder">örn. synthwave, indie pop</string>
+    <string name="presentation_batch_e_ai_avoid_genres">Türlerden kaçın (isteğe bağlı)</string>
+    <string name="presentation_batch_e_ai_avoid_genres_placeholder">örn. metal, hard trap</string>
+    <string name="presentation_batch_e_ai_preferred_language">Tercih edilen dil (isteğe bağlı)</string>
+    <string name="presentation_batch_e_ai_preferred_language_placeholder">örn. İngilizce, İspanyolca, enstrümantal</string>
+    <string name="presentation_batch_e_ai_prioritize_favorites">Favorilere öncelik ver</string>
+    <string name="presentation_batch_e_ai_avoid_explicit">Müstehcen sözlerden kaçın</string>
+    <string name="presentation_batch_e_ai_section_prompt_preview">Komut önizlemesi</string>
+    <string name="presentation_batch_e_ai_prompt_preview_empty">Tercihlerinizi eklediğinizde nihai komutunuz burada görünecektir.</string>
+    <string name="presentation_batch_e_ai_hero_title">Hassasiyetle derleyin</string>
+    <string name="presentation_batch_e_ai_hero_subtitle">Ruh halini, aktiviteyi, kısıtlamaları ve derinliği belirleyin.</string>
+    <string name="presentation_batch_e_ai_hero_library_note">Yapay zeka yalnızca yerel kitaplığınızdaki şarkıları kullanacaktır.</string>
+    <string name="presentation_batch_e_ai_error_add_instruction">Yapay zeka için en az bir talimat ekleyin.</string>
+    <string name="presentation_batch_e_ai_error_song_range">Geçerli bir şarkı aralığı belirleyin.</string>
+    <string name="presentation_batch_e_ai_level_out_of_five">%1$d/5</string>
+    <string name="presentation_batch_e_ai_custom_chip">Özel…</string>
+    <string name="presentation_batch_e_ai_enter_custom_title">Özel değer girin</string>
+    <string name="presentation_batch_e_ai_enter_custom_label">Özel değerinizi girin</string>
+
+    <!-- AI prompt assembly (sent to model; localized for consistency with UI) -->
+    <string name="presentation_batch_e_ai_era_any">Herhangi bir dönem</string>
+    <string name="presentation_batch_e_ai_prompt_core_request">Ana istek: %1$s.</string>
+    <string name="presentation_batch_e_ai_prompt_mood">Hedef ruh hali: %1$s.</string>
+    <string name="presentation_batch_e_ai_prompt_activity">Aktivite bağlamı: %1$s.</string>
+    <string name="presentation_batch_e_ai_prompt_era">Dönem odağı: %1$s.</string>
+    <string name="presentation_batch_e_ai_prompt_prioritize_genres">Öncelikli türler: %1$s.</string>
+    <string name="presentation_batch_e_ai_prompt_avoid_genres">Kaçınılacak türler: %1$s.</string>
+    <string name="presentation_batch_e_ai_prompt_preferred_language">Tercih edilen dil: %1$s.</string>
+    <string name="presentation_batch_e_ai_prompt_energy">Hedef enerji seviyesi: %1$d/5.</string>
+    <string name="presentation_batch_e_ai_prompt_discovery">Hedef keşif seviyesi: %1$d/5 (1: tanıdık parçalar, 5: gizli kalmış parçalar).</string>
+    <string name="presentation_batch_e_ai_prompt_prioritize_favorites">Mümkün olduğunda dinleyicinin favorilerine daha yakın olan şarkılara öncelik ver.</string>
+    <string name="presentation_batch_e_ai_prompt_avoid_explicit">Alternatifleri mevcut olduğunda müstehcen sözler içeren şarkılardan kaçın.</string>
+    <string name="presentation_batch_e_ai_prompt_smooth_transitions">Geçişleri akıcı tut ve tekrarlayan sanatçı kümelenmelerinden kaçın.</string>
+
+    <string-array name="presentation_batch_e_ai_mood_options">
+        <item>Sakin</item>
+        <item>Enerjik</item>
+        <item>Mutlu</item>
+        <item>Karanlık</item>
+        <item>Romantik</item>
+        <item>Melankolik</item>
+    </string-array>
+    <string-array name="presentation_batch_e_ai_activity_options">
+        <item>Antrenman</item>
+        <item>Odaklanma</item>
+        <item>Yolculuk</item>
+        <item>Parti</item>
+        <item>Ders Çalışma</item>
+        <item>Gece Yarısı</item>
+    </string-array>
+    <string-array name="presentation_batch_e_ai_era_options">
+        <item>@string/presentation_batch_e_ai_era_any</item>
+        <item>70’ler</item>
+        <item>80’ler</item>
+        <item>90’lar</item>
+        <item>2000’ler</item>
+        <item>2010’lar</item>
+        <item>2020’ler</item>
+    </string-array>
+
+    <!-- ReorderPresetsSheet -->
+    <string name="presentation_batch_e_reset_presets_title">Hazır ayarları sıfırla</string>
+    <string name="presentation_batch_e_reset_presets_message">Bu işlem varsayılan hazır ayar sırasını ve görünürlüğünü geri yükleyecektir. Devam edilsin mi?</string>
+    <string name="presentation_batch_e_manage_presets_title">Hazır ayarları yönet</string>
+    <string name="presentation_batch_e_presets_drag_hint">Yeniden sıralamak için sürükleyin • Göstermek veya gizlemek için göz simgesine dokunun</string>
+    <string name="presentation_batch_e_cd_reset_presets_default">Varsayılana sıfırla</string>
+    <string name="presentation_batch_e_cd_visible">Görünür</string>
+    <string name="presentation_batch_e_cd_hidden">Gizli</string>
+
+    <!-- DailyMixMenu -->
+    <string name="presentation_batch_e_daily_mix_how_title">Günlük Miksiniz nasıl oluşturuluyor?</string>
+    <string name="presentation_batch_e_daily_mix_how_body">Günlük Miksiniz favori ve en çok dinlediğiniz şarkılardan oluşturulur. Ayrıca yeni müzikler keşfetmeniz için sevdiğiniz sanatçılardan ve türlerden parçalar ekleriz.</string>
+    <string name="presentation_batch_e_daily_mix_prompt_label">Yapay zekaya bugün ne dinlemek istediğinizi söyleyin</string>
+    <string name="presentation_batch_e_daily_mix_cost_hint">Maliyetleri düşük tutmak için küçük bir örneklem kullanıyoruz</string>
+    <string name="presentation_batch_e_daily_mix_updating">Güncelleniyor…</string>
+    <string name="presentation_batch_e_daily_mix_update">Günlük Miksi Güncelle</string>
+</resources>

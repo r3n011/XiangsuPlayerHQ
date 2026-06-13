@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">像素播放器</string>
+    <string name="not_playing">Sin reproducción</string>
+    <string name="open_on_phone">Abrir en el móvil</string>
+    <string name="connecting">Conectando…</string>
+    <string name="no_phone_connected">No hay móvil conectado</string>
+</resources>

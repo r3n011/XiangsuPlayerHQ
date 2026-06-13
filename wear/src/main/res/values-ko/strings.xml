@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">像素播放器</string>
+    <string name="not_playing">재생 중 아님</string>
+    <string name="open_on_phone">휴대전화에서 열기</string>
+    <string name="connecting">연결 중…</string>
+    <string name="no_phone_connected">연결된 휴대전화 없음</string>
+</resources>
