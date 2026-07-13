@@ -25,7 +25,8 @@ internal data class SheetActionHandlers(
     val onLaunchSaveQueueOverlay: (List<Song>, String, (String, Set<String>) -> Unit) -> Unit,
     val onNavigateToAlbum: (Song) -> Unit,
     val onNavigateToArtist: (Song) -> Unit,
-    val onNavigateToGenre: (Song) -> Unit
+    val onNavigateToGenre: (Song) -> Unit,
+    val onOpenNeteaseArtistHomepage: (Song) -> Unit
 )
 
 @OptIn(UnstableApi::class)
@@ -121,6 +122,27 @@ internal fun rememberSheetActionHandlers(
             }
         }
     }
+    val onOpenNeteaseArtistHomepage = remember(scope, navController, playerViewModel) {
+        { song: Song ->
+            scope.launch {
+                sheetMotionControllerState.value.snapTo(0f)
+            }
+            playerViewModelState.value.collapsePlayerSheet()
+            queueSheetControllerState.value.animate(false)
+            sheetModalOverlayControllerState.value.updateSelectedSongForInfo(null)
+            song.neteaseId?.let { neteaseId ->
+                playerViewModelState.value.fetchNeteaseArtistId(neteaseId) { artistId ->
+                    artistId?.let { id ->
+                        navController.navigateSafelyReplacing(
+                            route = Screen.ArtistHomepage.createRoute(id),
+                            patternToPop = Screen.ArtistHomepage.route
+                        )
+                    }
+                }
+            }
+            Unit
+        }
+    }
 
     return SheetActionHandlers(
         openQueueSheet = openQueueSheet,
@@ -132,6 +154,7 @@ internal fun rememberSheetActionHandlers(
         onLaunchSaveQueueOverlay = onLaunchSaveQueueOverlay,
         onNavigateToAlbum = onNavigateToAlbum,
         onNavigateToArtist = onNavigateToArtist,
-        onNavigateToGenre = onNavigateToGenre
+        onNavigateToGenre = onNavigateToGenre,
+        onOpenNeteaseArtistHomepage = onOpenNeteaseArtistHomepage
     )
 }

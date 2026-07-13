@@ -24,6 +24,7 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 internal data class SheetInteractionState(
     val playerShadowShape: Shape,
+    val playerShadowOnlyShape: Shape,
     val sheetVerticalDragGestureHandler: SheetVerticalDragGestureHandler,
     val canDragSheet: Boolean
 )
@@ -71,6 +72,23 @@ internal fun rememberSheetInteractionState(
         )
     }
 
+    // Shadow-only shape: bottom radius is always 0.dp to avoid shadow leaks
+    // at the bottom-left/bottom-right corners of the mini/collapsed player.
+    val playerShadowOnlyShape = remember(
+        overallSheetTopCornerRadiusProvider,
+        playerContentExpansionFraction
+    ) {
+        PlayerSheetDynamicShape(
+            topRadiusProvider = overallSheetTopCornerRadiusProvider,
+            bottomRadiusProvider = { 0.dp },
+            useSmoothShapeProvider = {
+                useSmoothCornersState.value &&
+                    !isDraggingState.value &&
+                    !playerContentExpansionFraction.isRunning
+            }
+        )
+    }
+
     val collapsedYState = rememberUpdatedState(sheetCollapsedTargetY)
     val expandedYState = rememberUpdatedState(sheetExpandedTargetY)
     val miniHeightState = rememberUpdatedState(miniPlayerContentHeightPx)
@@ -110,6 +128,7 @@ internal fun rememberSheetInteractionState(
 
     return SheetInteractionState(
         playerShadowShape = playerShadowShape,
+        playerShadowOnlyShape = playerShadowOnlyShape,
         sheetVerticalDragGestureHandler = sheetVerticalDragGestureHandler,
         canDragSheet = showPlayerContentArea
     )

@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.theveloper.pixelplay.debug",
+  "applicationId": "com.r3n011.pixelplay.debug",
   "variantName": "debug",
   "elements": [
     {

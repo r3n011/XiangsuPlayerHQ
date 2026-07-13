@@ -82,9 +82,13 @@ abstract class CloudStreamProxy<K : Any>(
 
     fun isReady(): Boolean = actualPort > 0
 
-    fun startIfNeeded() {
-        if (isReady() || startJob?.isActive == true) return
+    fun getCurrentPort(): Int = actualPort
+
+    fun startIfNeeded(): Boolean {
+        if (isReady()) return true
+        if (startJob?.isActive == true) return false
         start()
+        return isReady()
     }
 
     suspend fun awaitReady(timeoutMs: Long = 10_000L): Boolean {
@@ -166,6 +170,10 @@ abstract class CloudStreamProxy<K : Any>(
         return resolveStreamUrl(id)?.also { url ->
             urlCache[id] = CachedUrl(url, System.currentTimeMillis(), cacheExpirationMs)
         }
+    }
+
+    public suspend fun resolveAndCacheStreamUrl(id: K): String? {
+        return getOrFetchStreamUrl(id)
     }
 
     private fun createServer(port: Int): EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration> {

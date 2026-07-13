@@ -57,7 +57,7 @@ class AiWorker @AssistedInject constructor(
 
         val prompt = inputData.getString(INPUT_PROMPT) ?: return@withContext Result.failure()
         val typeStr = inputData.getString(INPUT_TYPE) ?: AiSystemPromptType.GENERAL.name
-        val type = AiSystemPromptType.valueOf(typeStr)
+        val type = runCatching { AiSystemPromptType.valueOf(typeStr) }.getOrDefault(AiSystemPromptType.GENERAL)
         val temp = inputData.getFloat(INPUT_TEMP, 0.7f)
 
         Timber.d("AiWorker starting. Type: $type, Prompt: $prompt")

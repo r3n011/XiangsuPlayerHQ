@@ -9,5 +9,7 @@ enum class SearchFilterType {
     ALBUMS,
     ARTISTS,
     PLAYLISTS,
-    ONLINE
+    ONLINE,
+    KUWO_MUSIC,
+    BILIBILI_MUSIC
 }

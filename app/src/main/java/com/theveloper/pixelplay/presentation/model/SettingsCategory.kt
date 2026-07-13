@@ -9,6 +9,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Science
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.theveloper.pixelplay.R
 
@@ -19,6 +20,18 @@ enum class SettingsCategory(
     val icon: ImageVector? = null,
     val iconRes: Int? = null
 ) {
+    AI_INTEGRATION(
+        id = "ai_integration",
+        titleRes = R.string.settings_category_ai_title,
+        subtitleRes = R.string.settings_category_ai_subtitle,
+        iconRes = R.drawable.gemini_ai
+    ),
+    WEB_REMOTE(
+        id = "web_remote",
+        titleRes = R.string.settings_category_web_remote_title,
+        subtitleRes = R.string.settings_category_web_remote_subtitle,
+        icon = Icons.Rounded.Science
+    ),
     LIBRARY(
         id = "library",
         titleRes = R.string.settings_category_library_title,
@@ -35,7 +48,7 @@ enum class SettingsCategory(
         id = "playback",
         titleRes = R.string.settings_category_playback_title,
         subtitleRes = R.string.settings_category_playback_subtitle,
-        icon = Icons.Rounded.MusicNote // Using MusicNote again or maybe PlayCircle if available
+        icon = Icons.Rounded.MusicNote
     ),
     BEHAVIOR(
         id = "behavior",
@@ -65,7 +78,7 @@ enum class SettingsCategory(
         id = "device_capabilities",
         titleRes = R.string.settings_category_device_capabilities_title,
         subtitleRes = R.string.settings_category_device_capabilities_subtitle,
-        icon = Icons.Rounded.DeveloperBoard // Placeholder, maybe Memory or SettingsInputComponent
+        icon = Icons.Rounded.DeveloperBoard
     ),
     ABOUT(
         id = "about",

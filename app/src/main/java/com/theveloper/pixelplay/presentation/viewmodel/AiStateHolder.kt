@@ -6,10 +6,13 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.DailyMixManager
 import com.theveloper.pixelplay.data.ai.AiMetadataGenerator
 import com.theveloper.pixelplay.data.ai.AiNotificationManager
+import com.theveloper.pixelplay.data.ai.AiPlaylistEvaluator
 import com.theveloper.pixelplay.data.ai.AiPlaylistGenerator
+import com.theveloper.pixelplay.data.ai.PlaylistEvaluation
 import com.theveloper.pixelplay.data.ai.SongMetadata
 import com.theveloper.pixelplay.data.ai.AiSystemPromptType
 import com.theveloper.pixelplay.data.ai.provider.AiProviderException
+import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.model.Song
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,11 +34,13 @@ class AiStateHolder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val aiPlaylistGenerator: AiPlaylistGenerator,
     private val aiMetadataGenerator: AiMetadataGenerator,
+    private val aiPlaylistEvaluator: AiPlaylistEvaluator,
     private val dailyMixManager: DailyMixManager,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
     private val dailyMixStateHolder: DailyMixStateHolder,
     private val notificationManager: AiNotificationManager,
-    private val aiOrchestrator: com.theveloper.pixelplay.data.ai.AiOrchestrator
+    private val aiOrchestrator: com.theveloper.pixelplay.data.ai.AiOrchestrator,
+    private val aiPreferencesRepository: AiPreferencesRepository
 ) {
     // State
     // AI State Management: Observables for tracking background generation progress
@@ -59,6 +64,15 @@ class AiStateHolder @Inject constructor(
 
     private val _aiError = MutableStateFlow<String?>(null)
     val aiError = _aiError.asStateFlow()
+
+    private val _isEvaluatingPlaylist = MutableStateFlow(false)
+    val isEvaluatingPlaylist = _isEvaluatingPlaylist.asStateFlow()
+
+    private val _playlistEvaluation = MutableStateFlow<PlaylistEvaluation?>(null)
+    val playlistEvaluation = _playlistEvaluation.asStateFlow()
+
+    private val _generatedPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
+    val generatedPlaylistSongs = _generatedPlaylistSongs.asStateFlow()
 
     private var _lastPlaylistPrompt: String? = null
     private var _lastMinLength: Int = 5
@@ -136,6 +150,12 @@ class AiStateHolder @Inject constructor(
         _aiError.value = null
     }
 
+    private suspend fun isAutoPlaylistEnabled(): Boolean = aiPreferencesRepository.isAutoPlaylistEnabled.first()
+    private suspend fun isAutoMetadataEnabled(): Boolean = aiPreferencesRepository.isAutoMetadataEnabled.first()
+    private suspend fun isAutoDailyMixEnabled(): Boolean = aiPreferencesRepository.isAutoDailyMixEnabled.first()
+    
+    private suspend fun isAutoPlaylistEvaluationEnabled(): Boolean = aiPreferencesRepository.isAutoPlaylistEvaluationEnabled.first()
+
     /**
      * Entry point for generating an AI-curated playlist based on a user prompt.
      * Orchestrates library scanning, candidate selection, and the AI curation process.
@@ -145,7 +165,8 @@ class AiStateHolder @Inject constructor(
         minLength: Int,
         maxLength: Int,
         saveAsPlaylist: Boolean = false,
-        playlistName: String? = null
+        playlistName: String? = null,
+        force: Boolean = false
     ) {
         _lastPlaylistPrompt = prompt
         _lastMinLength = minLength
@@ -154,6 +175,11 @@ class AiStateHolder @Inject constructor(
         val scope = this.scope ?: return
 
         scope.launch {
+            if (!force && !isAutoPlaylistEnabled()) {
+                toastEmitter?.invoke(context.getString(R.string.ai_auto_disabled))
+                return@launch
+            }
+            
             val allSongs = allSongsProvider?.invoke() ?: emptyList()
             val favoriteIds = favoriteSongIdsProvider?.invoke() ?: emptySet()
             _isGeneratingAiPlaylist.value = true
@@ -190,6 +216,7 @@ class AiStateHolder @Inject constructor(
 
                 result.onSuccess { generatedSongs ->
                     if (generatedSongs.isNotEmpty()) {
+                        _generatedPlaylistSongs.value = generatedSongs
                         if (saveAsPlaylist) {
                             val resolvedPlaylistName = resolveAiPlaylistName(
                                 requestedName = playlistName,
@@ -209,11 +236,9 @@ class AiStateHolder @Inject constructor(
                             kotlinx.coroutines.delay(1200) // AI UI Optimization: Let the success animation breathe
                             dismissAiPlaylistSheet()
                         } else {
-                            // Play immediately logic
                             _aiStatus.value = "Starting playback..."
                             _aiSuccess.value = true
                             notificationManager.showCompletion("Generation Complete", "Starting your personalized session.")
-                            dailyMixStateHolder.setDailyMixSongs(generatedSongs)
                             playSongsCallback?.invoke(generatedSongs, generatedSongs.first(), "AI: $prompt")
                             openPlayerSheetCallback?.invoke()
                             kotlinx.coroutines.delay(800)
@@ -247,11 +272,16 @@ class AiStateHolder @Inject constructor(
      * Refines the existing Daily Mix playlist using an AI prompt.
      * Uses the current mix as a vibe seed and applies AI filters to find similar tracks.
      */
-    fun regenerateDailyMixWithPrompt(prompt: String) {
+    fun regenerateDailyMixWithPrompt(prompt: String, force: Boolean = false) {
         val scope = this.scope ?: return
         val currentDailyMixSongs = dailyMixStateHolder.dailyMixSongs.value
 
         scope.launch {
+            if (!force && !isAutoDailyMixEnabled()) {
+                toastEmitter?.invoke(context.getString(R.string.ai_auto_disabled))
+                return@launch
+            }
+            
             val allSongs = allSongsProvider?.invoke() ?: emptyList()
             val favoriteIds = favoriteSongIdsProvider?.invoke() ?: emptySet()
             if (prompt.isBlank()) {
@@ -312,7 +342,11 @@ class AiStateHolder @Inject constructor(
      * Fetches AI-generated metadata (tags, genre, lyrics) for a specific song.
      * Updates internal success and error states for UI feedback.
      */
-    suspend fun generateAiMetadata(song: Song, fields: List<String>): Result<SongMetadata> {
+    suspend fun generateAiMetadata(song: Song, fields: List<String>, force: Boolean = false): Result<SongMetadata> {
+        if (!force && !isAutoMetadataEnabled()) {
+            return Result.failure(Exception(context.getString(R.string.ai_auto_disabled)))
+        }
+        
         _lastMetadataSong = song
         _lastMetadataFields = fields
         
@@ -340,7 +374,7 @@ class AiStateHolder @Inject constructor(
         }
     }
 
-    suspend fun translateLyrics(lyricsText: String): Result<String> {
+    suspend fun translateLyrics(lyricsText: String, force: Boolean = false): Result<String> {
         return try {
             val targetLanguage = context.resources.configuration.locales[0].displayLanguage
             val prompt = """
@@ -372,6 +406,49 @@ $lyricsText
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    fun evaluatePlaylist(playlistName: String, songs: List<Song>, userPrompt: String = "", force: Boolean = false) {
+        val scope = this.scope ?: return
+        
+        scope.launch {
+            if (!force && !isAutoPlaylistEvaluationEnabled()) {
+                toastEmitter?.invoke(context.getString(R.string.ai_auto_disabled))
+                return@launch
+            }
+            
+            _isEvaluatingPlaylist.value = true
+            _aiError.value = null
+            
+            try {
+                _aiStatus.value = "Evaluating playlist..."
+                val result = aiPlaylistEvaluator.evaluatePlaylist(
+                    playlistName = playlistName,
+                    songs = songs,
+                    userPrompt = userPrompt,
+                    force = force
+                )
+                
+                result.onSuccess { evaluation ->
+                    _playlistEvaluation.value = evaluation
+                    toastEmitter?.invoke("Playlist evaluation complete!")
+                }.onFailure { error ->
+                    Timber.tag("AiPlaylist").e(error, "Playlist evaluation failed")
+                    _aiError.value = resolveAiErrorMessage(error)
+                }
+            } catch (e: Exception) {
+                Timber.tag("AiPlaylist").e(e, "Playlist evaluation threw unhandled exception")
+                _aiError.value = resolveAiErrorMessage(e)
+            } finally {
+                _isEvaluatingPlaylist.value = false
+                _aiStatus.value = null
+            }
+        }
+    }
+
+    fun clearPlaylistEvaluation() {
+        _playlistEvaluation.value = null
+        _aiError.value = null
     }
 
     fun onCleared() {

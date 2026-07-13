@@ -185,7 +185,8 @@ internal fun UnifiedPlayerSongInfoLayer(
     onDismissSongInfo: () -> Unit,
     onNavigateToAlbum: (Song) -> Unit,
     onNavigateToArtist: (Song) -> Unit,
-    onNavigateToGenre: (Song) -> Unit
+    onNavigateToGenre: (Song) -> Unit,
+    onOpenNeteaseArtistHomepage: (Song) -> Unit = {}
 ) {
     selectedSongForInfo?.let { staticSong ->
         val context = LocalContext.current
@@ -199,6 +200,9 @@ internal fun UnifiedPlayerSongInfoLayer(
         }.collectAsStateWithLifecycle(initialValue = staticSong)
 
         val liveSong = liveSongState
+        val isSongFavorite by remember(playerViewModel, staticSong) {
+            playerViewModel.observeSongFavoriteStatus(staticSong)
+        }.collectAsStateWithLifecycle(initialValue = staticSong.isFavorite)
 
         MaterialTheme(
             colorScheme = albumColorScheme,
@@ -207,7 +211,7 @@ internal fun UnifiedPlayerSongInfoLayer(
         ) {
             SongInfoBottomSheet(
                 song = liveSong,
-                isFavorite = liveSong.isFavorite,
+                isFavorite = isSongFavorite,
                 onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(liveSong) },
                 onDismiss = {
                     showPlaylistBottomSheet = false
@@ -237,6 +241,7 @@ internal fun UnifiedPlayerSongInfoLayer(
                 },
                 onNavigateToAlbum = { onNavigateToAlbum(liveSong) },
                 onNavigateToArtist = { onNavigateToArtist(liveSong) },
+                onOpenNeteaseArtistHomepage = { onOpenNeteaseArtistHomepage(liveSong) },
                 onNavigateToGenre = { onNavigateToGenre(liveSong) },
                 onEditSong = { title, artist, album, albumArtist, composer, genre, lyrics, trackNumber, discNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate ->
                     playerViewModel.editSongMetadata(
@@ -306,6 +311,7 @@ internal fun UnifiedPlayerQueueAndSongInfoHost(
     onNavigateToAlbum: (Song) -> Unit,
     onNavigateToArtist: (Song) -> Unit,
     onNavigateToGenre: (Song) -> Unit,
+    onOpenNeteaseArtistHomepage: (Song) -> Unit = {},
     queuePredictiveBackProgress: Animatable<Float, AnimationVector1D>,
     queuePredictiveBackSwipeEdge: State<Int?>
 ) {
@@ -452,7 +458,8 @@ internal fun UnifiedPlayerQueueAndSongInfoHost(
                 onDismissSongInfo = { onSelectedSongForInfoChange(null) },
                 onNavigateToAlbum = onNavigateToAlbum,
                 onNavigateToArtist = onNavigateToArtist,
-                onNavigateToGenre = onNavigateToGenre
+                onNavigateToGenre = onNavigateToGenre,
+                onOpenNeteaseArtistHomepage = onOpenNeteaseArtistHomepage
             )
         }
     }

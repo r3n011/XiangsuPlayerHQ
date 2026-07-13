@@ -104,6 +104,8 @@ import com.theveloper.pixelplay.presentation.viewmodel.LocalMusicStorageSummary
 import com.theveloper.pixelplay.presentation.viewmodel.MemorySummary
 import com.theveloper.pixelplay.presentation.viewmodel.PlaybackCompatibilitySummary
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -197,7 +199,7 @@ fun DeviceCapabilitiesScreen(
                 onGenerateReport = viewModel::generatePerformanceReport,
                 onAdvancedDiagnosticsChange = viewModel::setAdvancedPerformanceDiagnosticsEnabled,
                 onMarkLagNow = viewModel::markLagNow,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current)
             )
         }
 

@@ -35,9 +35,11 @@ import com.theveloper.pixelplay.data.preferences.dataStore
 import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.media.SongMetadataEditor
 import com.theveloper.pixelplay.data.network.deezer.DeezerApiService
+import com.theveloper.pixelplay.data.network.dot.DotApiService
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
 import com.theveloper.pixelplay.data.network.lyrics.LrcLibApiService
 import com.theveloper.pixelplay.data.repository.ArtistImageRepository
+import com.theveloper.pixelplay.data.repository.DotImageRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepositoryImpl
 import com.theveloper.pixelplay.data.repository.MediaStoreSongRepository
@@ -46,6 +48,7 @@ import com.theveloper.pixelplay.data.repository.MusicRepositoryImpl
 import com.theveloper.pixelplay.data.repository.SongRepository
 import com.theveloper.pixelplay.data.repository.TransitionRepository
 import com.theveloper.pixelplay.data.repository.TransitionRepositoryImpl
+import com.theveloper.pixelplay.data.stats.PlaybackStatsRepository
 import com.theveloper.pixelplay.data.repository.FolderTreeBuilder
 import dagger.Module
 import dagger.Provides
@@ -166,10 +169,15 @@ object AppModule {
             PixelPlayDatabase.MIGRATION_38_39,
             PixelPlayDatabase.MIGRATION_39_40,
             PixelPlayDatabase.MIGRATION_40_41,
-            PixelPlayDatabase.MIGRATION_41_42
+            PixelPlayDatabase.MIGRATION_41_42,
+            PixelPlayDatabase.MIGRATION_42_43,
+            PixelPlayDatabase.MIGRATION_43_44
         )
             .addCallback(PixelPlayDatabase.createRuntimeArtifactsCallback())
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            // ⚡ Optimization: Allow destructive migration on downgrade to speed up startup
+            // Users rarely downgrade, and this prevents blocking on migration failures
+            .fallbackToDestructiveMigrationOnDowngrade()
 
         // P2-4: Only allow destructive migration in debug builds.
         // In release, a migration bug will crash the app (revealing the problem)
@@ -385,7 +393,9 @@ object AppModule {
         songRepository: SongRepository,
         favoritesDao: FavoritesDao,
         artistImageRepository: ArtistImageRepository,
-        folderTreeBuilder: FolderTreeBuilder
+        folderTreeBuilder: FolderTreeBuilder,
+        musicBrainzRepository: com.theveloper.pixelplay.data.musicbrainz.MusicBrainzRepository,
+        metadataAutoCompleter: com.theveloper.pixelplay.data.musicbrainz.MetadataAutoCompleter
     ): MusicRepository {
         return MusicRepositoryImpl(
             context = context,
@@ -400,7 +410,9 @@ object AppModule {
             songRepository = songRepository,
             favoritesDao = favoritesDao,
             artistImageRepository = artistImageRepository,
-            folderTreeBuilder = folderTreeBuilder
+            folderTreeBuilder = folderTreeBuilder,
+            musicBrainzRepository = musicBrainzRepository,
+            metadataAutoCompleter = metadataAutoCompleter
         )
 
     }
@@ -594,5 +606,31 @@ object AppModule {
         musicDao: MusicDao
     ): ArtistImageRepository {
         return ArtistImageRepository(deezerApiService, musicDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDotApiService(okHttpClient: OkHttpClient): DotApiService {
+        return DotApiService(okHttpClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDotImageRepository(
+        dotApiService: DotApiService,
+        userPreferencesRepository: UserPreferencesRepository,
+        imageLoader: ImageLoader,
+        playbackStatsRepository: PlaybackStatsRepository,
+        musicRepository: MusicRepository,
+        @ApplicationContext context: Context
+    ): DotImageRepository {
+        return DotImageRepository(
+            dotApiService,
+            userPreferencesRepository,
+            imageLoader,
+            playbackStatsRepository,
+            musicRepository,
+            context
+        )
     }
 }

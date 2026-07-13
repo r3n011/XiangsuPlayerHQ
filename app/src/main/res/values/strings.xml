@@ -45,6 +45,7 @@
     <string name="lyrics_save_failed">Failed to save lyrics</string>
     <string name="no_lyrics_to_save">No lyrics available to save</string>
     <string name="reset_imported_lyrics">Reset imported lyrics</string>
+    <string name="search_lyrics_online">Search lyrics online</string>
     <string name="lyrics_sync_offset">Lyrics sync offset</string>
     <string name="lyrics_sync_offset_format">%+.1fs</string>
     <string name="lyrics_sync_offset_reset">Reset</string>
@@ -134,6 +135,8 @@
     <string name="playlist_export_folder_display">Music/PixelPlayer Exports</string>
     <string name="ai_playlist_gemini_key_required">Please configure your Gemini API key in Settings.</string>
     <string name="error_unknown">Unknown error</string>
+    <string name="failed_to_play_song_url_resolve">Failed to play %1$s — unable to resolve streaming URL</string>
+    <string name="unknown">Unknown</string>
 
     <!-- Watch transfer foreground service -->
     <string name="watch_transfer_sending_n_to_watch">Sending %1$d songs to watch</string>
@@ -160,6 +163,11 @@
     <string name="cast_server_notification_title">Casting to device</string>
     <string name="cast_server_notification_text">Serving media to Cast device</string>
     <string name="cast_server_foreground_error">%1$s: %2$s</string>
+
+    <!-- Web Remote server -->
+    <string name="web_remote_server_channel_name">Web Remote</string>
+    <string name="web_remote_server_notification_title">Web Remote Active</string>
+    <string name="web_remote_server_notification_text">Access PixelPlay from any browser on your network</string>
     <string name="cast_seek_unavailable_for_format">Seeking is temporarily unavailable for this audio format on Cast because it can crash the Cast session.</string>
 
     <!-- Backup / data transfer (ViewModels) -->
@@ -254,6 +262,7 @@
     <string name="player_playback_error">Playback error: %1$s</string>
     <string name="nav_bar_home">Home</string>
     <string name="nav_bar_search">Search</string>
+    <string name="nav_bar_roaming">Roaming</string>
     <string name="nav_bar_library">Library</string>
     <string name="nav_bar_settings">Settings</string>
     <string name="lx_music_title">Cloud Music</string>
@@ -269,4 +278,30 @@
     <string name="lx_import">Import</string>
     <string name="lx_cancel">Cancel</string>
     <string name="lx_ok">OK</string>
-    <string name="lx_info_title">JS engine info</string></resources>
+    <string name="lx_info_title">JS engine info</string>
+
+    <!-- Headphone Preset -->
+    <string name="headphone_preset_title">Headphone Presets</string>
+    <string name="headphone_preset_search_placeholder">Search headphones…</string>
+    <string name="headphone_preset_categories">Categories</string>
+    <string name="headphone_preset_brands">Brands</string>
+    <string name="headphone_preset_all">All</string>
+    <string name="headphone_preset_bind_bluetooth">Bind to Bluetooth</string>
+    <string name="headphone_preset_apply">Apply</string>
+    <string name="headphone_preset_eq_settings">EQ Settings</string>
+    <string name="headphone_preset_preamp">Preamp: %1$.1fdB</string>
+    <string name="headphone_preset_bind_to_device">Bind to Device</string>
+    <string name="headphone_preset_apply_now">Apply Now</string>
+    <string name="headphone_preset_select_bluetooth_device">Select Bluetooth Device</string>
+    <string name="headphone_preset_no_bluetooth_devices">No Bluetooth devices found</string>
+    <string name="headphone_preset_bluetooth_settings">Bluetooth Settings</string>
+    <string name="headphone_preset_bluetooth_bindings">Bluetooth Bindings</string>
+    <string name="headphone_preset_no_bindings">No bindings yet</string>
+    <string name="headphone_preset_binding_preset">Preset ID: %1$d</string>
+    <string name="headphone_preset_unbind">Unbind</string>
+    <string name="headphone_preset_clear">Clear Preset</string>
+    <string name="headphone_preset_currently_active">Currently Active</string>
+    <string name="headphone_preset_no_eq_bands">No EQ bands (preamp only)</string>
+    <string name="headphone_preset_refresh">Refresh Presets</string>
+    <string name="action_cancel">Cancel</string>
+</resources>

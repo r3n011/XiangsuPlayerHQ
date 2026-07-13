@@ -153,6 +153,8 @@ import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
 import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -820,6 +822,7 @@ fun QueueBottomSheet(
                                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     shape = queueListShape
                                 )
+                                .hazeSource(MainActivity.LocalHazeState.current)
                                 .then(
                                     if (isReordering || reorderHandleInUse) {
                                         Modifier

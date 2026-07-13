@@ -1,216 +1,300 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# =============================================================================
+# PixelPlayer ProGuard Rules
+# Version: 2.1
+# Last Updated: 2026-07-11
+# =============================================================================
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# =============================================================================
+# 一、核心语言和框架特性
+# =============================================================================
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
 -keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
 -renamesourcefileattribute SourceFile
-
-# Keep javax.lang.model classes (often needed by annotation processors or code generation libraries)
--keep class javax.lang.model.** { *; }
--keep interface javax.lang.model.** { *; }
-
-# Keep javax.sound.sampled classes (for audio processing libraries like JFLAC)
--keep class javax.sound.sampled.** { *; }
--keep interface javax.sound.sampled.** { *; }
-
-# Specific rules for JavaPoet if the above is not enough
--keep class com.squareup.javapoet.** { *; }
--keep interface com.squareup.javapoet.** { *; }
-
-# Specific rules for AutoValue if it's directly used or a transitive dependency
-# (though usually AutoValue is a compile-time dependency and shouldn't need this)
-# -keep class com.google.auto.value.** { *; }
-# -keep interface com.google.auto.value.** { *; }
-
-# Rules for TagLib
--keep class com.kyant.taglib.** { *; }
-
-# Rules for JAudioTagger (fallback metadata reader)
--keep class org.jaudiotagger.** { *; }
-
-# [NUEVO] Regla general para mantener metadatos de Kotlin, puede ayudar a R8
--keep class kotlin.Metadata { *; }
-
-# ExoPlayer FFmpeg extension
--keep class androidx.media3.decoder.ffmpeg.** { *; }
--keep class androidx.media3.exoplayer.ffmpeg.** { *; }
-
-# ExoPlayer MIDI extension and JSyn synthesizer
--keep class androidx.media3.decoder.midi.** { *; }
--keep class com.jsyn.** { *; }
--keep class com.softsynth.** { *; }
--dontwarn com.jsyn.**
--dontwarn com.softsynth.**
-
-# Mantener clases de datos y sus miembros para evitar que R8 Full elimine campos
--keepclassmembers class com.theveloper.pixelplay.data.model.** { *; }
--keepclassmembers class com.theveloper.pixelplay.domain.model.** { *; }
-
-# 保留 LX（在线音源/评论/搜索）相关的数据模型与 API 类，
-# 这些类的字段被 JSONObject 反射或手动解析使用，
-# release 构建中如果被 R8 重命名/移除，会导致 NullPointerException 或启动即崩。
--keep class com.theveloper.pixelplay.data.lx.** { *; }
--keepclassmembers class com.theveloper.pixelplay.data.lx.** { *; }
--keepnames class com.theveloper.pixelplay.data.lx.** { *; }
-
-# 保留 CommentSheet / FullPlayerContent 等新增 UI 组件中用到的符号，
-# 防止 R8 错误地移除 Composable 中间接引用的方法或 lambda 元信息。
--keep class com.theveloper.pixelplay.presentation.components.CommentSheet { *; }
--keepclassmembers class com.theveloper.pixelplay.presentation.components.CommentSheet { *; }
-
-# JSON.org 工具类 (org.json.JSONObject) 在我们的评论接口和 lx 解析中大量使用，
-# 保留其常用方法签名防止 R8 在"优化"模式下把它们当副作用移除。
--keep class org.json.** { *; }
--keepclassmembers class org.json.** { *; }
--dontwarn org.json.**
-
 -keepattributes Signature, InnerClasses, EnclosingMethod, AnnotationDefault, *Annotation*
 
-# Cast framework classes loaded via manifest/reflective entry points.
--keep class com.theveloper.pixelplay.data.service.cast.CastOptionsProvider { *; }
--keep class * implements com.google.android.gms.cast.framework.OptionsProvider
+-keep class kotlin.Metadata { *; }
+-keep class kotlin.reflect.** { *; }
+-keep class kotlin.jvm.internal.** { *; }
 
-# Gson generic type capture for backup/restore in release builds.
--keep class com.google.gson.reflect.TypeToken { *; }
--keep class * extends com.google.gson.reflect.TypeToken
--keep class com.theveloper.pixelplay.data.preferences.PreferenceBackupEntry { *; }
--keep class com.theveloper.pixelplay.data.backup.model.** { *; }
--keep class com.theveloper.pixelplay.data.backup.module.** { *; }
-# Backup payload entities are part of the persisted .pxpl contract.
--keep class com.theveloper.pixelplay.data.database.FavoritesEntity { *; }
--keep class com.theveloper.pixelplay.data.database.SongEngagementEntity { *; }
--keep class com.theveloper.pixelplay.data.database.LyricsEntity { *; }
--keep class com.theveloper.pixelplay.data.database.SearchHistoryEntity { *; }
--keep class com.theveloper.pixelplay.data.database.TransitionRuleEntity { *; }
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembernames class kotlinx.** {
+    volatile <fields>;
+}
 
-# Netty channel classes are instantiated reflectively and require public no-arg constructors.
-# Without these, release builds can fail with:
-# "IllegalArgumentException: Class NioServerSocketChannel does not have a public non-arg constructor"
+# 保留合成方法（用于反射）
+-keepclassmembers class * {
+    *** $defaultImpls;
+}
+
+# 保留 companion object
+-keepclassmembers class ** {
+    *** Companion;
+}
+
+# 保留枚举的 values 和 valueOf 方法
+-keepclassmembers enum ** {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# 保留 Parcelable Creator
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
+
+# 保留所有实现 Serializable 的类
+-keep class * implements java.io.Serializable { *; }
+
+# 保留所有 @Keep 注解的类和方法
+-keep @androidx.annotation.Keep class * { *; }
+-keepclasseswithmembers class * {
+    @androidx.annotation.Keep <methods>;
+}
+-keepclasseswithmembers class * {
+    @androidx.annotation.Keep <fields>;
+}
+
+# =============================================================================
+# 二、序列化支持
+# =============================================================================
+
+-keepclassmembers @kotlinx.serialization.Serializable class ** {
+    static ** $serializer;
+    *** Companion;
+}
+-keepclasseswithmembers class ** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-dontwarn kotlinx.serialization.**
+
+-keepclassmembers class ** {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# =============================================================================
+# 三、第三方库规则
+# =============================================================================
+
+# AndroidX Core
+-keep class androidx.core.** { *; }
+-keep class androidx.lifecycle.** { *; }
+
+# Compose
+-keep class androidx.compose.** { *; }
+-keep class androidx.compose.runtime.** { *; }
+-keep class androidx.constraintlayout.compose.** { *; }
+
+# Media3
+-keep class androidx.media3.** { *; }
+
+# Network
+-keep class retrofit2.** { *; }
+-keep class okhttp3.** { *; }
+-dontwarn retrofit2.**
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# DI
+-keep class dagger.hilt.** { *; }
+-keep class **_HiltModules* { *; }
+-keep class **_Factory { *; }
+-keepclassmembers class * {
+    @dagger.hilt.android.AndroidEntryPoint <fields>;
+    @javax.inject.Inject <fields>;
+    @javax.inject.Inject <init>(...);
+}
+
+# TDLib
+-keep class org.drinkless.tdlib.** { *; }
+
+# Ktor & Netty
 -keep class io.netty.channel.socket.nio.NioServerSocketChannel { public <init>(); }
 -keep class io.netty.channel.socket.nio.NioSocketChannel { public <init>(); }
 -keep class io.netty.channel.epoll.EpollServerSocketChannel { public <init>(); }
 -keep class io.netty.channel.epoll.EpollSocketChannel { public <init>(); }
 -keep class io.netty.channel.kqueue.KQueueServerSocketChannel { public <init>(); }
 -keep class io.netty.channel.kqueue.KQueueSocketChannel { public <init>(); }
-
-# Ktor server engine classes (CIO and internals) — prevent R8 from stripping
-# service-loaded or reflectively-accessed engine wiring.
 -keep class io.ktor.server.engine.** { *; }
 -keep class io.ktor.server.cio.** { *; }
-
-# Please add these rules to your existing keep rules in order to suppress warnings.
-# This is generated automatically by the Android Gradle plugin.
-
-# [NUEVO] Reglas para solucionar el error de Ktor y R8
--dontwarn java.lang.management.**
--dontwarn reactor.blockhound.**
-
--dontwarn java.awt.Graphics2D
--dontwarn java.awt.Image
--dontwarn java.awt.geom.AffineTransform
--dontwarn java.awt.image.BufferedImage
--dontwarn java.awt.image.ImageObserver
--dontwarn java.awt.image.RenderedImage
--dontwarn javax.imageio.ImageIO
--dontwarn javax.imageio.ImageWriter
--dontwarn javax.imageio.stream.ImageInputStream
--dontwarn javax.imageio.stream.ImageOutputStream
--dontwarn javax.lang.model.SourceVersion
--dontwarn javax.lang.model.element.Element
--dontwarn javax.lang.model.element.ElementKind
--dontwarn javax.lang.model.type.TypeMirror
--dontwarn javax.lang.model.type.TypeVisitor
--dontwarn javax.lang.model.util.SimpleTypeVisitor8
--dontwarn javax.sound.sampled.AudioFileFormat$Type
--dontwarn javax.sound.sampled.AudioFileFormat
--dontwarn javax.sound.sampled.AudioFormat$Encoding
--dontwarn javax.sound.sampled.AudioFormat
--dontwarn javax.sound.sampled.AudioInputStream
--dontwarn javax.sound.sampled.UnsupportedAudioFileException
--dontwarn javax.sound.sampled.spi.AudioFileReader
--dontwarn javax.sound.sampled.spi.FormatConversionProvider
--dontwarn javax.swing.filechooser.FileFilter
-
--dontwarn io.netty.internal.tcnative.AsyncSSLPrivateKeyMethod
--dontwarn io.netty.internal.tcnative.AsyncTask
--dontwarn io.netty.internal.tcnative.Buffer
--dontwarn io.netty.internal.tcnative.CertificateCallback
--dontwarn io.netty.internal.tcnative.CertificateCompressionAlgo
--dontwarn io.netty.internal.tcnative.CertificateVerifier
--dontwarn io.netty.internal.tcnative.Library
--dontwarn io.netty.internal.tcnative.SSL
--dontwarn io.netty.internal.tcnative.SSLContext
--dontwarn io.netty.internal.tcnative.SSLPrivateKeyMethod
--dontwarn io.netty.internal.tcnative.SSLSessionCache
--dontwarn io.netty.internal.tcnative.SessionTicketKey
--dontwarn io.netty.internal.tcnative.SniHostNameMatcher
--dontwarn org.apache.log4j.Level
--dontwarn org.apache.log4j.Logger
--dontwarn org.apache.log4j.Priority
--dontwarn org.apache.logging.log4j.Level
--dontwarn org.apache.logging.log4j.LogManager
--dontwarn org.apache.logging.log4j.Logger
--dontwarn org.apache.logging.log4j.message.MessageFactory
--dontwarn org.apache.logging.log4j.spi.ExtendedLogger
--dontwarn org.apache.logging.log4j.spi.ExtendedLoggerWrapper
--dontwarn org.eclipse.jetty.npn.NextProtoNego$ClientProvider
--dontwarn org.eclipse.jetty.npn.NextProtoNego$Provider
--dontwarn org.eclipse.jetty.npn.NextProtoNego$ServerProvider
--dontwarn org.eclipse.jetty.npn.NextProtoNego$ServerProvider
--dontwarn org.eclipse.jetty.npn.NextProtoNego
-
-# TDLib (Telegram Database Library) rules
--keep class org.drinkless.tdlib.** { *; }
--keep interface org.drinkless.tdlib.** { *; }
-
-# Ktor & Netty Rules (Crucial for StreamProxy)
--keep class org.slf4j.** { *; }
-
-# Ktor Specific
 -dontwarn io.ktor.**
--dontwarn kotlinx.coroutines.**
 -dontwarn io.netty.**
 
-# Ensure internal server can start
+# TagLib / JAudioTagger
+-keep class com.kyant.taglib.** { *; }
+-dontwarn com.kyant.taglib.**
+-keep class org.jaudiotagger.** { *; }
+-dontwarn org.jaudiotagger.**
+
+# ExoPlayer FFmpeg/MIDI
+-keep class androidx.media3.decoder.ffmpeg.** { *; }
+-keep class androidx.media3.exoplayer.ffmpeg.** { *; }
+-keep class androidx.media3.decoder.midi.** { *; }
+-keep class com.jsyn.** { *; }
+-keep class com.softsynth.** { *; }
+-dontwarn com.jsyn.**
+-dontwarn com.softsynth.**
+
+# Kuromoji / Pinyin4J
+-keep class com.atilika.kuromoji.** { *; }
+-dontwarn com.atilika.kuromoji.**
+-keep class net.sourceforge.pinyin4j.** { *; }
+-dontwarn net.sourceforge.pinyin4j.**
+
+# javax.* APIs
+-keep class javax.lang.model.** { *; }
+-keep class javax.sound.sampled.** { *; }
+-keep class com.squareup.javapoet.** { *; }
+
+# JSON.org
+-keep class org.json.** { *; }
+-dontwarn org.json.**
+
+# SLF4J
+-keep class org.slf4j.** { *; }
+
+# =============================================================================
+# 四、应用核心模块
+# =============================================================================
+
+# Database
+-keep class com.theveloper.pixelplay.data.database.** { *; }
+-keep class androidx.room.** { *; }
+
+# Backup
+-keep class com.theveloper.pixelplay.data.backup.** { *; }
+
+# AI
+-keep class com.theveloper.pixelplay.data.ai.** { *; }
+
+# Lyrics
+-keep class com.theveloper.pixelplay.data.repository.LyricsRepositoryImpl$LyricsData { *; }
+
+# Preferences
+-keep class com.theveloper.pixelplay.data.preferences.PreferenceBackupEntry { *; }
+
+# Telegram
 -keep class com.theveloper.pixelplay.data.telegram.TelegramStreamProxy { *; }
 
-# Keep Kotlin reflection if needed by Ktor/Serialization in Release
--keep class kotlin.reflect.** { *; }
-
-# Kuromoji
--keep class com.atilika.kuromoji.** { *; }
--keepnames class com.atilika.kuromoji.** { *; }
--dontwarn com.atilika.kuromoji.**
-
-# Pinyin4J
--keep class net.sourceforge.pinyin4j.** { *; }
--keepclassmembers class net.sourceforge.pinyin4j.** { *; }
--dontwarn net.sourceforge.pinyin4j.**
+# Cast
+-keep class com.theveloper.pixelplay.data.service.cast.CastOptionsProvider { *; }
+-keep class * implements com.google.android.gms.cast.framework.OptionsProvider
 
 # Glance Widget
 -keep class * extends androidx.glance.appwidget.action.ActionCallback { <init>(); }
 
 # =============================================================================
-# TIMBER LOGGING OPTIMIZATION FOR RELEASE BUILDS
+# 五、Android组件
 # =============================================================================
-# Strip VERBOSE and DEBUG log calls entirely from release builds.
-# This removes the method calls at bytecode level, eliminating any overhead
-# from string concatenation or log message building.
+
+-keep class com.theveloper.pixelplay.PixelPlayApplication { *; }
+-keep class com.theveloper.pixelplay.MainActivity { *; }
+-keep class com.theveloper.pixelplay.SplashActivity { *; }
+
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
+
+-keepclassmembers enum ** {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# =============================================================================
+# 六、关键库保护规则
+# =============================================================================
+
+# QuickJS JS引擎
+-keep class com.whitestein.jq.** { *; }
+-dontwarn com.whitestein.jq.**
+-keep class org.quickjs.** { *; }
+-dontwarn org.quickjs.**
+
+# Room 数据库
+-keep class androidx.room.** { *; }
+-keep class com.theveloper.pixelplay.data.database.** { *; }
+-keep class com.theveloper.pixelplay.data.database.entities.** { *; }
+-keep class com.theveloper.pixelplay.data.database.daos.** { *; }
+-keep class com.theveloper.pixelplay.data.database.migrations.** { *; }
+-keepclassmembers class com.theveloper.pixelplay.data.database.** {
+    @androidx.room.Query <methods>;
+    @androidx.room.Insert <methods>;
+    @androidx.room.Update <methods>;
+    @androidx.room.Delete <methods>;
+}
+
+# Hilt 注入
+-keep class dagger.hilt.android.lifecycle.ViewModelInject { *; }
+-keep class dagger.hilt.android.AndroidEntryPoint { *; }
+-keep class **_HiltModules { *; }
+-keep class **_Factory { *; }
+-keep class **_MembersInjector { *; }
+-keepclassmembers class * {
+    @dagger.hilt.android.AndroidEntryPoint <init>();
+    @dagger.hilt.android.AndroidEntryPoint class <inner-classes>;
+    @javax.inject.Inject <fields>;
+    @javax.inject.Inject <init>(...);
+    @javax.inject.Singleton <fields>;
+}
+
+# Compose 关键类
+-keep class androidx.compose.runtime.** { *; }
+-keep class androidx.compose.ui.** { *; }
+-keep class androidx.compose.foundation.** { *; }
+-keep class androidx.compose.material3.** { *; }
+-keep class androidx.compose.animation.** { *; }
+-keep class androidx.constraintlayout.compose.** { *; }
+-keep class androidx.compose.ui.graphics.** { *; }
+-keep class androidx.compose.ui.text.** { *; }
+
+# Compose 注解保护
+-keepclassmembers class * {
+    @androidx.compose.runtime.Composable <methods>;
+    @androidx.compose.runtime.Stable <methods>;
+    @androidx.compose.runtime.Immutable <methods>;
+    @androidx.compose.runtime.ReadOnlyComposable <methods>;
+}
+
+# Media3
+-keep class androidx.media3.** { *; }
+
+# WorkManager
+-keep class androidx.work.** { *; }
+-keep class com.theveloper.pixelplay.data.service.workers.** { *; }
+-keep class * extends androidx.work.ListenableWorker { *; }
+
+# Glance Widget
+-keep class androidx.glance.** { *; }
+-keep class com.theveloper.pixelplay.presentation.widgets.** { *; }
+-keep class * extends androidx.glance.appwidget.GlanceAppWidget { *; }
+-keep class * extends androidx.glance.appwidget.action.ActionCallback { <init>(); }
+
+# 数据模型
+-keep class com.theveloper.pixelplay.data.model.** { *; }
+
+# 搜索 API
+-keep class com.theveloper.pixelplay.data.lx.** { *; }
+-keep class com.theveloper.pixelplay.data.qq.** { *; }
+-keep class com.theveloper.pixelplay.data.bilibili.** { *; }
+
+# 网络
+-keep class retrofit2.** { *; }
+-keep class okhttp3.** { *; }
+-keep class com.google.gson.** { *; }
+
+# 安全加密
+-keep class androidx.security.crypto.** { *; }
+
+# 协程
+-keep class kotlinx.coroutines.** { *; }
+
+# =============================================================================
+# 七、日志优化
+# =============================================================================
 
 -assumenosideeffects class timber.log.Timber {
     public static void v(...);
@@ -218,16 +302,32 @@
     public static void i(...);
 }
 
-# Also strip Timber.Tree methods used by custom trees (belt and suspenders)
 -assumenosideeffects class timber.log.Timber$Tree {
     public void v(...);
     public void d(...);
     public void i(...);
 }
 
-# Strip Android Log.v and Log.d calls as well
 -assumenosideeffects class android.util.Log {
     public static int v(...);
     public static int d(...);
     public static int i(...);
 }
+
+# =============================================================================
+# 七、抑制警告
+# =============================================================================
+
+-dontwarn java.lang.management.**
+-dontwarn reactor.blockhound.**
+-dontwarn kotlinx.coroutines.**
+
+-dontwarn java.awt.**
+-dontwarn javax.imageio.**
+-dontwarn javax.sound.sampled.**
+-dontwarn javax.swing.**
+
+-dontwarn io.netty.internal.tcnative.**
+-dontwarn org.apache.log4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn org.eclipse.jetty.npn.**

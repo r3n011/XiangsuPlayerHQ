@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.data.preferences
 
 import android.content.Context
+import android.os.Environment
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
@@ -14,6 +15,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.media3.common.Player
 import com.theveloper.pixelplay.data.equalizer.EqualizerPreset
+import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.model.FolderSource
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -66,6 +68,12 @@ enum class AlbumArtQuality(val maxSize: Int, val label: String) {
     MEDIUM(512, "Medium (512px) - Balanced"),
     HIGH(800, "High (800px) - Best quality"),
     ORIGINAL(0, "Original - Maximum quality")
+}
+
+enum class MusicQuality(val lxValue: String, val neteaseLevel: String, val labelResId: Int) {
+    FLAC("flac", "lossless", R.string.music_quality_flac),
+    HIGH("320k", "exhigh", R.string.music_quality_high),
+    STANDARD("128k", "standard", R.string.music_quality_standard)
 }
 
 data class AdvancedPerformanceDiagnosticsSettings(
@@ -140,6 +148,7 @@ class UserPreferencesRepository @Inject constructor(
         val KEEP_PLAYING_IN_BACKGROUND = booleanPreferencesKey("keep_playing_in_background")
         val IS_CROSSFADE_ENABLED = booleanPreferencesKey("is_crossfade_enabled")
         val HI_FI_MODE_ENABLED = booleanPreferencesKey("hi_fi_mode_enabled")
+        val MUSIC_QUALITY = stringPreferencesKey("music_quality")
         val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
         val CUSTOM_GENRES = stringSetPreferencesKey("custom_genres")
         val CUSTOM_GENRE_ICONS = stringPreferencesKey("custom_genre_icons")
@@ -207,6 +216,8 @@ class UserPreferencesRepository @Inject constructor(
         val LYRICS_SYNC_OFFSETS = stringPreferencesKey("lyrics_sync_offsets_json")
         val LYRICS_SOURCE_PREFERENCE = stringPreferencesKey("lyrics_source_preference")
         val AUTO_SCAN_LRC_FILES = booleanPreferencesKey("auto_scan_lrc_files")
+        val LYRICS_FONT_SIZE = stringPreferencesKey("lyrics_font_size")
+        val LYRICS_FONT_FAMILY = stringPreferencesKey("lyrics_font_family")
 
         // Developer options
         val ALBUM_ART_QUALITY = stringPreferencesKey("album_art_quality")
@@ -224,7 +235,11 @@ class UserPreferencesRepository @Inject constructor(
         val USE_ANIMATED_LYRICS = booleanPreferencesKey("use_animated_lyrics")
         val ANIMATED_LYRICS_BLUR_ENABLED = booleanPreferencesKey("animated_lyrics_blur_enabled")
         val ANIMATED_LYRICS_BLUR_STRENGTH = androidx.datastore.preferences.core.floatPreferencesKey("animated_lyrics_blur_strength")
+
+        // Bluetooth lyrics (把歌词推送到已连接的蓝牙 A2DP 设备屏幕上)
+        val BLUETOOTH_LYRICS_ENABLED = booleanPreferencesKey("bluetooth_lyrics_enabled")
         val DISABLE_BLUR_ALL_OVER = booleanPreferencesKey("disable_blur_all_over")
+        val NAV_BAR_BLUR_ENABLED = booleanPreferencesKey("nav_bar_blur_enabled")
         // View preferences
         val IS_GENRE_GRID_VIEW = booleanPreferencesKey("is_genre_grid_view")
         val IS_ALBUMS_LIST_VIEW = booleanPreferencesKey("is_albums_list_view")
@@ -241,10 +256,27 @@ class UserPreferencesRepository @Inject constructor(
         val MIN_SONG_DURATION = intPreferencesKey("min_song_duration_ms")
         val MIN_TRACKS_PER_ALBUM = intPreferencesKey("min_tracks_per_album")
 
+        // Song filter (fuck something)
+        val SONG_FILTER_KEYWORDS_JSON = stringPreferencesKey("song_filter_keywords_json")
+        val SONG_FILTER_ENABLED = booleanPreferencesKey("song_filter_enabled")
+
         // ReplayGain
         val REPLAYGAIN_ENABLED = booleanPreferencesKey("replaygain_enabled")
         val REPLAYGAIN_USE_ALBUM_GAIN = booleanPreferencesKey("replaygain_use_album_gain")
         val SHOW_SCROLLBAR = booleanPreferencesKey("show_scrollbar")
+        val SHOW_LYRICS_TRACK_INFO = booleanPreferencesKey("show_lyrics_track_info")
+
+        // Dot device
+        val DOT_API_KEY = stringPreferencesKey("dot_api_key")
+        val DOT_DEVICE_ID = stringPreferencesKey("dot_device_id")
+        val DOT_AUTO_PUSH_ENABLED = booleanPreferencesKey("dot_auto_push_enabled")
+        val DOT_DISPLAY_MODE = stringPreferencesKey("dot_display_mode")
+
+        // Car mode
+        val CAR_MODE_ENABLED = booleanPreferencesKey("car_mode_enabled")
+        
+        // Download settings
+        val DOWNLOAD_PATH = stringPreferencesKey("download_path")
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────
@@ -346,6 +378,19 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setHiFiModeEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.HI_FI_MODE_ENABLED] = enabled }
+    }
+
+    val musicQualityFlow: Flow<MusicQuality> =
+        pref {
+            try {
+                MusicQuality.valueOf(it[PreferencesKeys.MUSIC_QUALITY] ?: MusicQuality.HIGH.name)
+            } catch (_: Exception) {
+                MusicQuality.HIGH
+            }
+        }
+
+    suspend fun setMusicQuality(quality: MusicQuality) {
+        dataStore.edit { it[PreferencesKeys.MUSIC_QUALITY] = quality.name }
     }
 
     val keepPlayingInBackgroundFlow: Flow<Boolean> =
@@ -756,6 +801,17 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         }
     }
 
+    val showLyricsTrackInfoFlow: Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.SHOW_LYRICS_TRACK_INFO] ?: true
+        }
+
+    suspend fun setShowLyricsTrackInfo(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_LYRICS_TRACK_INFO] = enabled
+        }
+    }
+
     // ─── Sort options ─────────────────────────────────────────────────────────
 
     val songsSortOptionFlow: Flow<String> =
@@ -1074,6 +1130,20 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.LYRICS_SOURCE_PREFERENCE] = preference.name }
     }
 
+    val lyricsFontSizeFlow: Flow<String> =
+        pref { it[PreferencesKeys.LYRICS_FONT_SIZE] ?: "DEFAULT" }
+
+    suspend fun setLyricsFontSize(size: String) {
+        dataStore.edit { it[PreferencesKeys.LYRICS_FONT_SIZE] = size }
+    }
+
+    val lyricsFontFamilyFlow: Flow<String> =
+        pref { it[PreferencesKeys.LYRICS_FONT_FAMILY] ?: "DEFAULT" }
+
+    suspend fun setLyricsFontFamily(family: String) {
+        dataStore.edit { it[PreferencesKeys.LYRICS_FONT_FAMILY] = family }
+    }
+
     val autoScanLrcFilesFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.AUTO_SCAN_LRC_FILES] ?: false }
 
@@ -1116,6 +1186,13 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] = strength }
     }
 
+    val bluetoothLyricsEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.BLUETOOTH_LYRICS_ENABLED] ?: false }
+
+    suspend fun setBluetoothLyricsEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.BLUETOOTH_LYRICS_ENABLED] = enabled }
+    }
+
     // ─── Custom genres ────────────────────────────────────────────────────────
 
     val customGenresFlow: Flow<Set<String>> =
@@ -1146,6 +1223,18 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
     suspend fun setDisableBlurAllOver(disabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.DISABLE_BLUR_ALL_OVER] = disabled
+        }
+    }
+
+    // ─── NavBar Blur ──────────────────────────────────────────────────────────────
+    val navBarBlurEnabledFlow: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.NAV_BAR_BLUR_ENABLED] ?: true
+        }
+
+    suspend fun setNavBarBlurEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.NAV_BAR_BLUR_ENABLED] = enabled
         }
     }
 
@@ -1341,6 +1430,178 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
                 }
             }
         }
+    }
+
+    // ─── Song Filter (Fuck Something) ─────────────────────────────────────────
+
+    enum class SongFilterMatchMode {
+        ARTIST,     // 只匹配歌手
+        TITLE,      // 只匹配歌名
+        BOTH,       // 同时匹配歌手和歌名
+        ANY;        // 任一匹配（歌手或歌名）
+
+        companion object {
+            fun fromName(name: String?): SongFilterMatchMode =
+                entries.find { it.name == name } ?: ANY
+        }
+    }
+
+    data class SongFilterKeyword(
+        val keyword: String,
+        val matchMode: SongFilterMatchMode = SongFilterMatchMode.ANY,
+        val enabled: Boolean = true
+    )
+
+    val songFilterEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.SONG_FILTER_ENABLED] ?: false }
+
+    suspend fun setSongFilterEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.SONG_FILTER_ENABLED] = enabled }
+    }
+
+    @kotlinx.serialization.Serializable
+    private data class SongFilterKeywordDto(
+        val keyword: String,
+        val matchMode: String,
+        val enabled: Boolean
+    ) {
+        fun toModel() = SongFilterKeyword(keyword, SongFilterMatchMode.fromName(matchMode), enabled)
+    }
+
+    private val songFilterKeywordsJsonFlow: Flow<String> =
+        pref { it[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] ?: "[]" }
+
+    val songFilterKeywordsFlow: Flow<List<SongFilterKeyword>> =
+        songFilterKeywordsJsonFlow.map { jsonStr ->
+            try {
+                json.decodeFromString<List<SongFilterKeywordDto>>(jsonStr).map { it.toModel() }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+    suspend fun getSongFilterKeywords(): List<SongFilterKeyword> =
+        songFilterKeywordsFlow.first()
+
+    suspend fun addSongFilterKeyword(keyword: String, matchMode: SongFilterMatchMode) {
+        dataStore.edit { prefs ->
+            val current = try {
+                val jsonStr = prefs[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] ?: "[]"
+                json.decodeFromString<List<SongFilterKeywordDto>>(jsonStr)
+            } catch (e: Exception) {
+                emptyList()
+            }
+
+            val newKeyword = SongFilterKeywordDto(keyword, matchMode.name, true)
+            val updated = current + newKeyword
+            prefs[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] = json.encodeToString(updated)
+        }
+    }
+
+    suspend fun updateSongFilterKeyword(keyword: String, matchMode: SongFilterMatchMode, enabled: Boolean) {
+        dataStore.edit { prefs ->
+            val current = try {
+                val jsonStr = prefs[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] ?: "[]"
+                json.decodeFromString<List<SongFilterKeywordDto>>(jsonStr)
+            } catch (e: Exception) {
+                emptyList()
+            }
+
+            val updated = current.map {
+                if (it.keyword == keyword) it.copy(matchMode = matchMode.name, enabled = enabled)
+                else it
+            }
+            prefs[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] = json.encodeToString(updated)
+        }
+    }
+
+    suspend fun removeSongFilterKeyword(keyword: String) {
+        dataStore.edit { prefs ->
+            val current = try {
+                val jsonStr = prefs[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] ?: "[]"
+                json.decodeFromString<List<SongFilterKeywordDto>>(jsonStr)
+            } catch (e: Exception) {
+                emptyList()
+            }
+
+            val updated = current.filterNot { it.keyword == keyword }
+            prefs[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] = json.encodeToString(updated)
+        }
+    }
+
+    suspend fun clearSongFilterKeywords() {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.SONG_FILTER_KEYWORDS_JSON] = "[]"
+        }
+    }
+
+    // ─── Dot Device ────────────────────────────────────────────────────────────
+
+    val dotApiKeyFlow: Flow<String> =
+        pref { it[PreferencesKeys.DOT_API_KEY] ?: "" }
+
+    suspend fun setDotApiKey(apiKey: String) {
+        dataStore.edit { it[PreferencesKeys.DOT_API_KEY] = apiKey }
+    }
+
+    suspend fun getDotApiKey(): String = dotApiKeyFlow.first()
+
+    val dotDeviceIdFlow: Flow<String> =
+        pref { it[PreferencesKeys.DOT_DEVICE_ID] ?: "" }
+
+    suspend fun setDotDeviceId(deviceId: String) {
+        dataStore.edit { it[PreferencesKeys.DOT_DEVICE_ID] = deviceId }
+    }
+
+    suspend fun getDotDeviceId(): String = dotDeviceIdFlow.first()
+
+    val dotAutoPushEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.DOT_AUTO_PUSH_ENABLED] ?: false }
+
+    suspend fun setDotAutoPushEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.DOT_AUTO_PUSH_ENABLED] = enabled }
+    }
+
+    val dotDisplayModeFlow: Flow<String> =
+        pref { it[PreferencesKeys.DOT_DISPLAY_MODE] ?: "NOW_PLAYING" }
+
+    suspend fun setDotDisplayMode(mode: String) {
+        dataStore.edit { it[PreferencesKeys.DOT_DISPLAY_MODE] = mode }
+    }
+
+    suspend fun hasDotCredentials(): Boolean {
+        return getDotApiKey().isNotBlank() && getDotDeviceId().isNotBlank()
+    }
+
+    suspend fun clearDotCredentials() {
+        dataStore.edit {
+            it.remove(PreferencesKeys.DOT_API_KEY)
+            it.remove(PreferencesKeys.DOT_DEVICE_ID)
+            it.remove(PreferencesKeys.DOT_AUTO_PUSH_ENABLED)
+            it.remove(PreferencesKeys.DOT_DISPLAY_MODE)
+        }
+    }
+
+    // ─── Car Mode ────────────────────────────────────────────────────────────
+
+    val carModeEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.CAR_MODE_ENABLED] ?: false }
+
+    suspend fun setCarModeEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.CAR_MODE_ENABLED] = enabled }
+    }
+
+    // ─── Download Settings ────────────────────────────────────────────────────
+
+    val downloadPathFlow: Flow<String> =
+        pref { it[PreferencesKeys.DOWNLOAD_PATH] ?: Environment.DIRECTORY_MUSIC }
+
+    suspend fun setDownloadPath(path: String) {
+        dataStore.edit { it[PreferencesKeys.DOWNLOAD_PATH] = path }
+    }
+
+    suspend fun getDownloadPath(): String {
+        return downloadPathFlow.first()
     }
 
     // ─── Companion ────────────────────────────────────────────────────────────

@@ -70,7 +70,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LxMusicScreen(
-    onOpenPlayer: (url: String, title: String, artist: String, cover: String) -> Unit,
+    onOpenPlayer: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit,
     viewModel: LxMusicViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -314,7 +314,7 @@ private fun SongList(
     onPlay: (LxSongInfo) -> Unit
 ) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        items(songs) { song ->
+        items(songs, key = { it.id }) { song ->
             SongRow(song, onPlay)
         }
     }

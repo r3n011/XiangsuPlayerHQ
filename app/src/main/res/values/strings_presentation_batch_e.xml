@@ -91,6 +91,88 @@
     <string name="presentation_batch_e_ai_custom_chip">Custom…</string>
     <string name="presentation_batch_e_ai_enter_custom_title">Enter custom value</string>
     <string name="presentation_batch_e_ai_enter_custom_label">Enter your custom value</string>
+    <string name="presentation_batch_e_ai_evaluate_playlist">AI Evaluate Playlist</string>
+    <string name="presentation_batch_e_ai_recommendation_success">AI recommendation generated!</string>
+    <string name="presentation_batch_e_ai_view_all_mix">View All AI Mix</string>
+    
+    <!-- AI recommendation descriptions -->
+    <string name="presentation_batch_e_ai_desc_1">Based on your recent listening, I think you\'ll love these picks!</string>
+    <string name="presentation_batch_e_ai_desc_2">Curated just for you - discover new music that fits your vibe.</string>
+    <string name="presentation_batch_e_ai_desc_3">Your taste is amazing! Here are some tracks you shouldn\'t miss.</string>
+    <string name="presentation_batch_e_ai_desc_4">Perfect for this moment - let the music guide your mood.</string>
+    <string name="presentation_batch_e_ai_desc_5">Mixing your favorites with fresh finds - enjoy your personalized playlist!</string>
+
+    <!-- AI recommendation time of day strings -->
+    <string name="presentation_batch_e_ai_morning_title">AI Morning Boost</string>
+    <string name="presentation_batch_e_ai_morning_subtitle">Start your day with energy</string>
+    <string name="presentation_batch_e_ai_tag_morning">Morning</string>
+    
+    <string name="presentation_batch_e_ai_midday_title">AI Midday Flow</string>
+    <string name="presentation_batch_e_ai_midday_subtitle">Keep the momentum going</string>
+    <string name="presentation_batch_e_ai_tag_work">Work</string>
+    
+    <string name="presentation_batch_e_ai_lunch_title">AI Lunch Break</string>
+    <string name="presentation_batch_e_ai_lunch_subtitle">Relax and recharge</string>
+    <string name="presentation_batch_e_ai_tag_relax">Relax</string>
+    
+    <string name="presentation_batch_e_ai_afternoon_title">AI Afternoon Drive</string>
+    <string name="presentation_batch_e_ai_afternoon_subtitle">Keep productive</string>
+    <string name="presentation_batch_e_ai_tag_focus">Focus</string>
+    
+    <string name="presentation_batch_e_ai_evening_title">AI Evening Wind Down</string>
+    <string name="presentation_batch_e_ai_evening_subtitle">Unwind after a long day</string>
+    <string name="presentation_batch_e_ai_tag_chill">Chill</string>
+    
+    <string name="presentation_batch_e_ai_night_title">AI Night Vibes</string>
+    <string name="presentation_batch_e_ai_night_subtitle">Perfect for late nights</string>
+    <string name="presentation_batch_e_ai_tag_night">Night</string>
+    
+    <string name="presentation_batch_e_ai_late_night_title">AI Late Night</string>
+    <string name="presentation_batch_e_ai_late_night_subtitle">Deep and mellow</string>
+    <string name="presentation_batch_e_ai_tag_sleep">Sleep</string>
+    
+    <!-- AI recommendation holiday strings -->
+    <string name="presentation_batch_e_ai_holiday_new_year">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_tag">New Year</string>
+    
+    <string name="presentation_batch_e_ai_holiday_valentine">Valentine\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_valentine_tag">Love</string>
+    
+    <string name="presentation_batch_e_ai_holiday_womens">Women\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_womens_tag">Celebrate</string>
+    
+    <string name="presentation_batch_e_ai_holiday_st_patrick">St. Patrick\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irish</string>
+    
+    <string name="presentation_batch_e_ai_holiday_april_fools">April Fools</string>
+    <string name="presentation_batch_e_ai_holiday_april_fools_tag">Fun</string>
+    
+    <string name="presentation_batch_e_ai_holiday_labor">Labor Day</string>
+    <string name="presentation_batch_e_ai_holiday_labor_tag">Work</string>
+    
+    <string name="presentation_batch_e_ai_holiday_mothers">Mother\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_mothers_tag">Family</string>
+    
+    <string name="presentation_batch_e_ai_holiday_fathers">Father\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_fathers_tag">Family</string>
+    
+    <string name="presentation_batch_e_ai_holiday_independence">Independence Day</string>
+    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotic</string>
+    
+    <string name="presentation_batch_e_ai_holiday_halloween">Halloween</string>
+    <string name="presentation_batch_e_ai_holiday_halloween_tag">Spooky</string>
+    
+    <string name="presentation_batch_e_ai_holiday_veterans">Veterans Day</string>
+    <string name="presentation_batch_e_ai_holiday_veterans_tag">Tribute</string>
+    
+    <string name="presentation_batch_e_ai_holiday_thanksgiving">Thanksgiving</string>
+    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Gratitude</string>
+    
+    <string name="presentation_batch_e_ai_holiday_christmas">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas_tag">Christmas</string>
+    
+    <string name="presentation_batch_e_ai_holiday_new_year_eve">New Year\'s Eve</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Party</string>
 
     <!-- AI prompt assembly (sent to model; localized for consistency with UI) -->
     <string name="presentation_batch_e_ai_era_any">Any era</string>

@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -74,7 +76,6 @@ import androidx.navigation.NavController
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.AiPlaylistSheet
-import com.theveloper.pixelplay.presentation.components.DailyMixMenu
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.SmartImage
@@ -130,18 +131,6 @@ fun DailyMixScreen(
     val lazyListState = rememberLazyListState()
 
     var showSongInfoSheet by remember { mutableStateOf(false) }
-    var showDailyMixMenu by remember { mutableStateOf(false) }
-
-    if (showDailyMixMenu) {
-        DailyMixMenu(
-            onDismiss = { showDailyMixMenu = false },
-            onApplyPrompt = { prompt ->
-                playerViewModel.regenerateDailyMixWithPrompt(prompt)
-                showDailyMixMenu = false
-            },
-            isLoading = isGeneratingAiPlaylist
-        )
-    }
 
     if (showAiSheet) {
         // AI Integration: Premium Material 3 Expressive sheet for interactive playlist curation
@@ -208,6 +197,14 @@ fun DailyMixScreen(
             },
             onNavigateToArtistById = { artistId ->
                 navController.navigateSafely(Screen.ArtistDetail.createRoute(artistId))
+                showSongInfoSheet = false
+            },
+            onOpenNeteaseArtistHomepage = {
+                playerViewModel.fetchNeteaseArtistId(song.neteaseId ?: 0L) { artistId ->
+                    artistId?.let {
+                        navController.navigateSafely(Screen.ArtistHomepage.createRoute(it))
+                    }
+                }
                 showSongInfoSheet = false
             },
             onNavigateToGenre = {
@@ -279,8 +276,7 @@ fun DailyMixScreen(
                 item(key = "daily_mix_header") {
                     ExpressiveDailyMixHeader(
                         songs = dailyMixSongs,
-                        scrollState = lazyListState,
-                        onShowMenu = { playerViewModel.showAiPlaylistSheet() }
+                        scrollState = lazyListState
                     )
                 }
 
@@ -437,8 +433,7 @@ fun DailyMixScreen(
 @Composable
 private fun ExpressiveDailyMixHeader(
     songs: List<Song>,
-    scrollState: LazyListState,
-    onShowMenu: () -> Unit
+    scrollState: LazyListState
 ) {
     val dailyMixHeaderTitle = stringResource(R.string.presentation_batch_b_daily_mix_title)
     Trace.beginSection("ExpressiveDailyMixHeader.Composition")
@@ -550,7 +545,6 @@ private fun ExpressiveDailyMixHeader(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 22.dp),
-            horizontalArrangement = Arrangement.Absolute.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
@@ -577,21 +571,6 @@ private fun ExpressiveDailyMixHeader(
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-            }
-            LargeExtendedFloatingActionButton(
-                modifier = Modifier,
-                onClick = onShowMenu,
-                shape = RoundedStarShape(
-                    sides = 8,
-                    curve = 0.05,
-                    rotation = 0f
-                )
-            ) {
-                Icon(
-                    modifier = Modifier.size(20.dp),
-                    painter = painterResource(R.drawable.gemini_ai),
-                    contentDescription = stringResource(R.string.cd_use_gemini_ai)
                 )
             }
         }

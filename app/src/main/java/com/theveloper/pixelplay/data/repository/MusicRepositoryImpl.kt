@@ -99,7 +99,9 @@ class MusicRepositoryImpl @Inject constructor(
     private val songRepository: SongRepository,
     private val favoritesDao: FavoritesDao,
     private val artistImageRepository: ArtistImageRepository,
-    private val folderTreeBuilder: FolderTreeBuilder
+    private val folderTreeBuilder: FolderTreeBuilder,
+    private val musicBrainzRepository: com.theveloper.pixelplay.data.musicbrainz.MusicBrainzRepository,
+    private val metadataAutoCompleter: com.theveloper.pixelplay.data.musicbrainz.MetadataAutoCompleter
 ) : MusicRepository {
 
     companion object {
@@ -641,6 +643,8 @@ class MusicRepositoryImpl @Inject constructor(
                 SearchFilterType.ARTISTS -> searchArtists(query).map { artists -> artists.map { SearchResultItem.ArtistItem(it) } }
                 SearchFilterType.PLAYLISTS -> playlistsFlow.map { playlists -> playlists.map { SearchResultItem.PlaylistItem(it) } }
                 SearchFilterType.ONLINE -> flowOf(emptyList())
+                SearchFilterType.KUWO_MUSIC -> flowOf(emptyList())
+                SearchFilterType.BILIBILI_MUSIC -> flowOf(emptyList())
             }
         }.flowOn(Dispatchers.Default)
     }
@@ -867,16 +871,18 @@ class MusicRepositoryImpl @Inject constructor(
             put("album", song.albumName)
             put("pic", song.pic)
             put("duration", song.duration)
+            if (song.source.isNotBlank()) {
+                put("source", song.source)
+            }
         }.toString()
         return "cloud://lx/" + java.net.URLEncoder.encode(json, "UTF-8")
     }
 
     override suspend fun saveCloudSong(songInfo: com.theveloper.pixelplay.data.lx.LxSongInfo): Long = withContext(Dispatchers.IO) {
-        // Step 1: 检查是否已存在同名同歌手的云端歌曲, 避免重复记录
-        val existingId = musicDao.getCloudSongByTitleArtist(songInfo.name, songInfo.singer.ifBlank { "Unknown Artist" })
+        // Step 1: 使用稳定的 hash 值作为歌曲 ID，确保与 LxMusicViewModel.getStableSongId() 一致
         val artistId = stablePositiveHash("lx_artist_" + songInfo.singer.ifBlank { "Unknown" })
         val albumId = stablePositiveHash("lx_album_" + songInfo.albumName.ifBlank { songInfo.name })
-        val songId = existingId ?: stablePositiveHash("lx_song_" + songInfo.id + "|" + songInfo.name + "|" + songInfo.singer)
+        val songId = stablePositiveHash("lx_song_" + songInfo.id + "|" + songInfo.name + "|" + songInfo.singer)
 
         val now = System.currentTimeMillis()
 
@@ -901,9 +907,17 @@ class MusicRepositoryImpl @Inject constructor(
         )
         musicDao.insertAlbums(listOf(albumEntity))
 
-        // Song - use real song ID in content URI so that resolveCloudLxUriAsync
-        // can properly resolve the playback URL via lxJsEngine.getPlayUrl()
-        val contentUri = buildCloudContentUri(songInfo)
+        // Song: 如果 ID 是纯数字且 source 为 "wy"（网易云），
+        // 使用 netease://{id} 格式走 neteaseStreamProxy 官方 API 获取播放 URL。
+        // 否则使用 cloud://lx/{json} 走 lxJsEngine 解析。
+        val neteaseId = songInfo.id.toLongOrNull()
+        val isNeteaseSong = neteaseId != null && neteaseId > 0 &&
+                (songInfo.source == "" || songInfo.source == "wy")
+        val contentUri = if (isNeteaseSong) {
+            "netease://$neteaseId"
+        } else {
+            buildCloudContentUri(songInfo)
+        }
         val songEntity = com.theveloper.pixelplay.data.database.SongEntity(
             id = songId,
             title = songInfo.name,
@@ -919,7 +933,8 @@ class MusicRepositoryImpl @Inject constructor(
             filePath = contentUri,
             parentDirectoryPath = "cloud",
             dateAdded = now,
-            sourceType = com.theveloper.pixelplay.data.database.SourceType.CLOUD_LX
+            sourceType = if (isNeteaseSong) com.theveloper.pixelplay.data.database.SourceType.NETEASE
+            else com.theveloper.pixelplay.data.database.SourceType.CLOUD_LX
         )
         musicDao.insertSongs(listOf(songEntity))
 
@@ -945,7 +960,40 @@ class MusicRepositoryImpl @Inject constructor(
         return "cloud://lx/" + java.net.URLEncoder.encode(json, "UTF-8")
     }
 
-    override suspend fun saveCloudSongBasic(title: String, artist: String, album: String?, albumArt: String?, duration: Long): Long = withContext(Dispatchers.IO) {
+    /**
+     * 从 HTTP URL 中提取网易云歌曲 ID。识别以下模式：
+     * - music.163.com/song/media/outer/url?id=12345
+     * - music.163.com/song?id=12345
+     * - any URL with ?id=12345& (netease domain check)
+     */
+    private fun extractNeteaseIdFromUrl(url: String): Long? {
+        val lowerUrl = url.lowercase()
+        // 仅限网易云域名的 URL 才尝试提取
+        val isNeteaseDomain = "music.163.com" in lowerUrl ||
+            "music.126.net" in lowerUrl ||
+            "163.com" in lowerUrl
+        if (!isNeteaseDomain) return null
+
+        // 尝试解析 URL 的 query 参数
+        val uri = android.net.Uri.parse(url)
+        // ?id=
+        uri.getQueryParameter("id")?.toLongOrNull()?.let { if (it > 0) return it }
+        // 路径中的数字（/song/12345/...）
+        uri.pathSegments?.forEach { segment ->
+            segment.toLongOrNull()?.let { if (it > 0) return it }
+        }
+        return null
+    }
+
+    override suspend fun saveCloudSongBasic(
+        title: String,
+        artist: String,
+        album: String?,
+        albumArt: String?,
+        duration: Long,
+        directPlayUrl: String?,
+        neteaseIdRaw: Long?
+    ): Long = withContext(Dispatchers.IO) {
         val cleanTitle = title.ifBlank { "Unknown Title" }
         val cleanArtist = artist.ifBlank { "Unknown Artist" }
         val cleanAlbum = album?.ifBlank { cleanTitle } ?: cleanTitle
@@ -984,7 +1032,23 @@ class MusicRepositoryImpl @Inject constructor(
         )
 
         // Song
-        val contentUri = buildCloudContentUriBasic(cleanTitle, cleanArtist, cleanAlbum)
+        // 优先级（确保存储的 URI 总是可动态解析，而非会过期的 HTTP URL）：
+        // 1. 有 neteaseIdRaw → 用 netease://{neteaseIdRaw}（通过 neteaseStreamProxy 动态解析）
+        // 2. directPlayUrl 含网易云模式（music.163.com / ?id=）→ 提取 id → netease://{id}
+        // 3. 其它情况 → cloud://lx/basic_...（通过 lxJsEngine 按歌名/歌手重新获取）
+        val contentUri = when {
+            neteaseIdRaw != null -> {
+                "netease://$neteaseIdRaw"
+            }
+            !directPlayUrl.isNullOrBlank() -> {
+                val extracted = extractNeteaseIdFromUrl(directPlayUrl)
+                if (extracted != null) "netease://$extracted"
+                else buildCloudContentUriBasic(cleanTitle, cleanArtist, cleanAlbum)
+            }
+            else -> {
+                buildCloudContentUriBasic(cleanTitle, cleanArtist, cleanAlbum)
+            }
+        }
         val songEntity = com.theveloper.pixelplay.data.database.SongEntity(
             id = songId,
             title = cleanTitle,
@@ -1149,6 +1213,10 @@ class MusicRepositoryImpl @Inject constructor(
 
     override suspend fun resetAllLyrics() {
         lyricsRepository.resetAllLyrics()
+    }
+
+    override fun clearLyricsCacheForCloudSongs() {
+        lyricsRepository.clearLyricsCacheForCloudSongs()
     }
 
     override fun getMusicFolders(storageFilter: StorageFilter): Flow<List<MusicFolder>> {
@@ -1371,5 +1439,31 @@ class MusicRepositoryImpl @Inject constructor(
             androidx.work.ExistingWorkPolicy.KEEP,
             com.theveloper.pixelplay.data.worker.SyncWorker.incrementalSyncWork()
         )
+    }
+
+    override suspend fun completeMetadataForSong(song: Song) {
+        withContext(Dispatchers.IO) {
+            metadataAutoCompleter.completeMetadataIfNeeded(song)
+        }
+    }
+
+    override suspend fun completeMetadataForAllLocalSongs() {
+        withContext(Dispatchers.IO) {
+            val localSongs = getAllSongsOnce().filter { song ->
+                !song.contentUriString.startsWith("telegram://") &&
+                        !song.contentUriString.startsWith("netease://") &&
+                        !song.contentUriString.startsWith("gdrive://") &&
+                        !song.contentUriString.startsWith("qqmusic://") &&
+                        !song.contentUriString.startsWith("navidrome://") &&
+                        !song.contentUriString.startsWith("jellyfin://") &&
+                        !song.contentUriString.startsWith("cloud://")
+            }
+
+            localSongs.forEach { song ->
+                if (song.title.isBlank() || song.artist.isBlank() || song.album.isBlank() || song.albumArtUriString.isNullOrBlank()) {
+                    metadataAutoCompleter.completeMetadataIfNeeded(song)
+                }
+            }
+        }
     }
 }

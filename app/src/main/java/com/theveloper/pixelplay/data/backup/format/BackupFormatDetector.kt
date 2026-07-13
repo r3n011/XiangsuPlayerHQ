@@ -9,6 +9,7 @@ class BackupFormatDetector {
         PXPL_V2_GZIP,
         LEGACY_GZIP,
         LEGACY_RAW,
+        EXTERNAL_PXPDAT,
         UNKNOWN
     }
 
@@ -42,6 +43,12 @@ class BackupFormatDetector {
 
         // Check for raw JSON (starts with '{')
         if (header[0] == '{'.code.toByte()) {
+            if (header.size >= 12) {
+                val str = header.decodeToString().lowercase()
+                if (str.contains("createdat") && str.contains("data") && str.contains("playhistory")) {
+                    return Format.EXTERNAL_PXPDAT
+                }
+            }
             return Format.LEGACY_RAW
         }
 

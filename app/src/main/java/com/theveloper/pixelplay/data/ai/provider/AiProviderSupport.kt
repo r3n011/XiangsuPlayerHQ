@@ -79,23 +79,8 @@ internal object AiProviderSupport {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun buildProviderChain(primary: AiProvider): List<AiProvider> {
-        val preferredFallbacks = listOf(
-            AiProvider.GROQ,
-            AiProvider.GEMINI,
-            AiProvider.DEEPSEEK,
-            AiProvider.MISTRAL,
-            AiProvider.OPENAI,
-            AiProvider.OPENROUTER,
-            AiProvider.NVIDIA,
-            AiProvider.KIMI,
-            AiProvider.GLM
-        )
-
-        return buildList {
-            add(primary)
-            addAll(preferredFallbacks.filter { it != primary })
-            addAll(AiProvider.entries.filter { it != primary && it !in preferredFallbacks })
-        }.distinct()
+        // 仅使用 MiMo，无回退链
+        return listOf(AiProvider.MIMO)
     }
 
     fun selectRecoveryModel(

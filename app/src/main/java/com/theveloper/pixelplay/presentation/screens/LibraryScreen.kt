@@ -36,6 +36,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.zIndex
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -173,6 +175,7 @@ import com.theveloper.pixelplay.data.worker.SyncProgress
 import com.theveloper.pixelplay.presentation.screens.search.components.GenreTypography
 import com.theveloper.pixelplay.presentation.components.SyncProgressBar
 import com.theveloper.pixelplay.presentation.viewmodel.LibraryViewModel
+import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardViewModel
 import com.theveloper.pixelplay.utils.formatSongCount
 import androidx.paging.compose.collectAsLazyPagingItems
 import android.content.Intent
@@ -437,16 +440,26 @@ fun LibraryScreen(
     playerViewModel: PlayerViewModel = hiltViewModel(),
     playlistViewModel: PlaylistViewModel = hiltViewModel(),
     libraryViewModel: LibraryViewModel = hiltViewModel(),
-    songInfoBottomSheetViewModel: SongInfoBottomSheetViewModel = hiltViewModel()
+    songInfoBottomSheetViewModel: SongInfoBottomSheetViewModel = hiltViewModel(),
+    neteaseDashboardViewModel: NeteaseDashboardViewModel = hiltViewModel()
 ) {
     // La recolección de estados de alto nivel se mantiene mínima.
     val context = LocalContext.current // Added context
     val haptic = LocalHapticFeedback.current
     val lastTabIndex by playerViewModel.lastLibraryTabIndexFlow.collectAsStateWithLifecycle()
     val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle() // Reintroducir favoriteIds aquí
+    val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope() // Mantener si se usa para acciones de UI
     val syncManager = playerViewModel.syncManager
     var isRefreshing by remember { mutableStateOf(false) }
+
+    // 网易云自动同步：登录状态下自动同步播放列表
+    val isNeteaseLoggedIn by neteaseDashboardViewModel.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
+    LaunchedEffect(isNeteaseLoggedIn) {
+        if (isNeteaseLoggedIn) {
+            neteaseDashboardViewModel.syncPlaylists()
+        }
+    }
     // The pull-to-refresh spinner is reserved for user gestures. Automatic sync
     // and long-running refresh work move through the slim linear indicator under
     // LibraryActionRow so the list stays put.
@@ -521,6 +534,15 @@ fun LibraryScreen(
     val selectedSongs by multiSelectionState.selectedSongs.collectAsStateWithLifecycle()
     val isSelectionMode by multiSelectionState.isSelectionMode.collectAsStateWithLifecycle()
     val selectedSongIds by multiSelectionState.selectedSongIds.collectAsStateWithLifecycle()
+
+    // ⚡ Optimization: Consolidate stablePlayerState collection at top level
+    // This replaces multiple duplicate collections scattered throughout the screen
+    val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+    val hasCurrentSong = remember(stablePlayerState) {
+        stablePlayerState.currentSong != null && stablePlayerState.currentSong != Song.emptySong()
+    }
+    val isShuffleEnabled = remember(stablePlayerState) { stablePlayerState.isShuffleEnabled }
+    val currentSong = remember(stablePlayerState) { stablePlayerState.currentSong }
     var showMultiSelectionSheet by remember { mutableStateOf(false) }
     var selectedAlbums by remember { mutableStateOf<List<Album>>(emptyList()) }
     val selectedAlbumIds = remember(selectedAlbums) { selectedAlbums.map { it.id }.toSet() }
@@ -1061,7 +1083,6 @@ fun LibraryScreen(
                             distinctByKey.ifEmpty { listOf(currentTabId.defaultSort) }
                         }
 
-                        val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
                         val visiblePlaylists = remember(
                             playlistUiState.playlists,
                             playlistUiState.showTelegramCloudPlaylists,
@@ -1110,16 +1131,8 @@ fun LibraryScreen(
                             }
                         }
                         val isLibraryLoading by libraryViewModel.isLoadingLibrary.collectAsStateWithLifecycle()
-                        val hasCurrentSong by remember(playerViewModel) {
-                            playerViewModel.stablePlayerState
-                                .map { state -> state.currentSong != null && state.currentSong != Song.emptySong() }
-                                .distinctUntilChanged()
-                        }.collectAsStateWithLifecycle(initialValue = false)
-                        val isShuffleEnabled by remember(playerViewModel) {
-                            playerViewModel.stablePlayerState
-                                .map { it.isShuffleEnabled }
-                                .distinctUntilChanged()
-                        }.collectAsStateWithLifecycle(initialValue = false)
+                        // ⚡ Reuse top-level stablePlayerState collection
+                        // val hasCurrentSong and val isShuffleEnabled are already collected at top level
 
                         LaunchedEffect(
                             playlistUiState.showTelegramCloudPlaylists,
@@ -1498,7 +1511,7 @@ fun LibraryScreen(
                         }
 
                         // Box wrapper to allow floating SelectionCountPill overlay
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current)) {
                             HorizontalPager(
                                 state = pagerState,
                                 modifier = Modifier
@@ -1682,7 +1695,9 @@ fun LibraryScreen(
                                             onRequestCrossFolderLocate = { folderPath ->
                                                 pendingFoldersLocatePath = folderPath
                                                 playerViewModel.navigateToFolder(folderPath)
-                                            }
+                                            },
+                                            hasCurrentSong = hasCurrentSong,
+                                            currentSong = currentSong
                                         )
                                     }
 
@@ -1852,10 +1867,7 @@ fun LibraryScreen(
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
-        val isFavorite = remember(currentSong?.id, favoriteIds) { derivedStateOf { currentSong?.let {
-            favoriteIds.contains(
-                it.id)
-        } } }.value ?: false
+        val isFavorite = currentSong?.let { favoriteIds.contains(it.id) } ?: false
 
         if (currentSong != null) {
             SongInfoBottomSheet(
@@ -1939,8 +1951,6 @@ fun LibraryScreen(
     }
 
     if (showPlaylistBottomSheet) {
-        val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
-
         PlaylistBottomSheet(
             playlistUiState = playlistUiState,
             songs = playlistSheetSongs,
@@ -2867,7 +2877,9 @@ fun LibraryFoldersTab(
     onRegisterLocateCurrentSongAction: ((() -> Unit)?) -> Unit = {},
     pendingLocatePath: String? = null,
     onClearPendingLocate: () -> Unit = {},
-    onRequestCrossFolderLocate: (String) -> Unit = {}
+    onRequestCrossFolderLocate: (String) -> Unit = {},
+    hasCurrentSong: Boolean = false,
+    currentSong: Song? = null
 ) {
     // List state moved inside AnimatedContent to prevent state sharing issues during transitions
 
@@ -2917,11 +2929,8 @@ fun LibraryFoldersTab(
         val songsToShow = remember(activeFolder, currentSortOption) {
             sortSongsForFolderView(activeFolder?.songs ?: emptyList(), currentSortOption)
         }.toImmutableList()
-        val currentSong by remember(playerViewModel) {
-            playerViewModel.stablePlayerState
-                .map { it.currentSong }
-                .distinctUntilChanged()
-        }.collectAsStateWithLifecycle(initialValue = null)
+        // ⚡ Reuse top-level stablePlayerState collection
+        // val currentSong and val hasCurrentSong are already collected at top level
 
         val currentSongId = currentSong?.id
         val currentSongIndexInSongs = remember(songsToShow, currentSongId) {
@@ -2930,16 +2939,14 @@ fun LibraryFoldersTab(
         val currentSongListIndex = remember(itemsToShow.size, currentSongIndexInSongs) {
             if (currentSongIndexInSongs < 0) -1 else itemsToShow.size + currentSongIndexInSongs
         }
-        val hasCurrentSong by remember(playerViewModel) {
-            playerViewModel.stablePlayerState
-                .map { it.currentSong != null && it.currentSong != Song.emptySong() }
-                .distinctUntilChanged()
-        }.collectAsStateWithLifecycle(initialValue = false)
         val songInCurrentFolder = currentSongIndexInSongs >= 0
         val currentSongParentPath: String? = remember(currentSong?.path) {
-            currentSong?.path
-                ?.takeIf { it.startsWith("/") }
-                ?.let { File(it).parentFile?.absolutePath }
+            val path = currentSong?.path
+            if (path != null && path.startsWith("/")) {
+                java.io.File(path).parentFile?.absolutePath
+            } else {
+                null
+            }
         }
         val canCrossFolderLocate = remember(
             playlistMode,
@@ -3069,7 +3076,7 @@ fun LibraryFoldersTab(
                             )
                         }
                     ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current)) {
                             val showScrollbar = LocalShowScrollbar.current && (listState.canScrollForward || listState.canScrollBackward)
                             LazyColumn(
                                 modifier = Modifier

@@ -21,25 +21,13 @@ object AlbumArtCacheManager {
     
     private const val TAG = "AlbumArtCacheManager"
     
-    /**
-     * Maximum cache size in bytes (200MB default)
-     */
-    const val DEFAULT_MAX_CACHE_SIZE_BYTES = 200L * 1024 * 1024
+    const val DEFAULT_MAX_CACHE_SIZE_BYTES = 150L * 1024 * 1024
     
-    /**
-     * Prefix for album art cache files
-     */
     private const val CACHE_PREFIX = "song_art_"
     
-    /**
-     * Suffix for "no art" marker files
-     */
     private const val NO_ART_SUFFIX = "_no.jpg"
     
-    /**
-     * Percentage of cache to clean when limit is exceeded (25%)
-     */
-    private const val CLEANUP_PERCENTAGE = 0.25
+    private const val CLEANUP_PERCENTAGE = 0.30
     
     /**
      * Mutex to prevent concurrent cleanup operations

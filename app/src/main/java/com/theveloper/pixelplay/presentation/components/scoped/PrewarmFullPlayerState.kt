@@ -15,9 +15,6 @@ import kotlinx.coroutines.delay
 internal fun rememberPrewarmFullPlayer(currentSongId: String?): Boolean {
     val context = LocalContext.current
 
-    // OPT #5: Skip prewarm entirely on low-RAM devices. Having two FullPlayerContent
-    // instances in the composition tree simultaneously (even with alpha=0) doubles
-    // the recomposition cost. On low-end hardware this is not worth the UX benefit.
     val isLowRamDevice = remember(context) {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         activityManager.isLowRamDevice
@@ -34,7 +31,7 @@ internal fun rememberPrewarmFullPlayer(currentSongId: String?): Boolean {
     }
     LaunchedEffect(currentSongId, prewarmFullPlayer) {
         if (prewarmFullPlayer) {
-            delay(32)
+            delay(250)
             prewarmFullPlayer = false
         }
     }

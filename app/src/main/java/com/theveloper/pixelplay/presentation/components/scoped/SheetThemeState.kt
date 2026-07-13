@@ -1,9 +1,8 @@
 package com.theveloper.pixelplay.presentation.components.scoped
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
@@ -19,6 +18,7 @@ import androidx.compose.ui.util.lerp
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
+import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 
 /**
  * Theme state for the player sheet.
@@ -28,6 +28,20 @@ import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
  * reading directly from the [Animatable] expansion fraction during the draw phase.
  * This eliminates per-frame recomposition that the old [Transition]-based approach caused.
  */
+internal fun resolvePlayerSheetTargetScheme(
+    isAlbumArtTheme: Boolean,
+    hasAlbumArt: Boolean,
+    currentSongActiveScheme: ColorScheme?,
+    lastAlbumScheme: ColorScheme?,
+    systemColorScheme: ColorScheme
+): ColorScheme {
+    return if (!isAlbumArtTheme || !hasAlbumArt) {
+        systemColorScheme
+    } else {
+        currentSongActiveScheme ?: lastAlbumScheme ?: systemColorScheme
+    }
+}
+
 internal data class SheetThemeState(
     val albumColorScheme: ColorScheme,
     val miniPlayerScheme: ColorScheme,
@@ -37,21 +51,14 @@ internal data class SheetThemeState(
     val playerAreaBackground: Color
 )
 
-internal fun resolvePlayerSheetTargetScheme(
-    isAlbumArtTheme: Boolean,
-    hasAlbumArt: Boolean,
-    currentSongActiveScheme: ColorScheme?,
-    lastAlbumScheme: ColorScheme?,
-    systemColorScheme: ColorScheme
-): ColorScheme {
-    return when {
-        !isAlbumArtTheme || !hasAlbumArt -> systemColorScheme
-        currentSongActiveScheme != null -> currentSongActiveScheme
-        lastAlbumScheme != null -> lastAlbumScheme
-        else -> systemColorScheme
-    }
-}
-
+/**
+ * ⚡ 简化版播放器主题状态。
+ *   核心思路：
+ *   1. activePlayerSchemePair 是 ThemeStateHolder 维护的当前有效颜色方案（原子更新）
+ *   2. 直接使用 activePlayerScheme 作为 miniPlayerScheme / albumColorScheme
+ *   3. 如果颜色方案为空，回落到系统色
+ *   4. 在切歌时，ThemeStateHolder 需要保证 activePlayerSchemePair 从不为空（保持旧值）
+ */
 @Composable
 internal fun rememberSheetThemeState(
     activePlayerSchemePair: ColorSchemePair?,
@@ -60,21 +67,26 @@ internal fun rememberSheetThemeState(
     currentSong: Song?,
     themedAlbumArtUri: String?,
     preparingSongId: String?,
-    systemColorScheme: ColorScheme
+    systemColorScheme: ColorScheme,
+    currentSheetState: PlayerSheetState,
+    playerContentExpansionFraction: Animatable<Float, AnimationVector1D>
 ): SheetThemeState {
     val isAlbumArtTheme = playerThemePreference == ThemePreference.ALBUM_ART
     val hasAlbumArt = !currentSong?.albumArtUriString.isNullOrBlank()
 
+    // ⚡ 从 activePlayerSchemePair 派生颜色方案（根据亮色/暗色主题）
     val activePlayerScheme = remember(activePlayerSchemePair, isDarkTheme) {
         activePlayerSchemePair?.let { if (isDarkTheme) it.dark else it.light }
     }
+
+    // ⚡ currentSongActiveScheme: 只有当 activePlayerScheme 和 currentSong 的 albumArtUri 匹配时才非 null
+    //   用于：当 URI 不匹配时（切歌过渡期间），保持旧颜色方案
     val currentSongActiveScheme = remember(
         activePlayerScheme,
         currentSong?.albumArtUriString,
         themedAlbumArtUri
     ) {
-        if (
-            activePlayerScheme != null &&
+        if (activePlayerScheme != null &&
             hasAlbumArt &&
             currentSong.albumArtUriString == themedAlbumArtUri
         ) {
@@ -84,21 +96,13 @@ internal fun rememberSheetThemeState(
         }
     }
 
+    // ⚡ lastAlbumScheme: 始终持有最近一次有效的歌曲颜色方案（不依赖 currentSongActiveScheme）
+    //   当 activePlayerScheme 变化时，我们检查它是否是"有效的"（URI匹配）。
+    //   如果有效，更新 lastAlbumScheme。否则保持旧值。
     var lastAlbumScheme by remember { mutableStateOf<ColorScheme?>(null) }
-    var lastAlbumSchemeSongId by remember { mutableStateOf<String?>(null) }
-    // When song changes, keep lastAlbumScheme as cross-song fallback
-    // to prevent flicker to system color while new color loads.
-    // Only update the tracked song ID so the new scheme replaces it once ready.
-    LaunchedEffect(currentSong?.id) {
-        if (currentSong?.id != lastAlbumSchemeSongId) {
-            lastAlbumSchemeSongId = currentSong?.id
-        }
-    }
-    LaunchedEffect(currentSongActiveScheme, currentSong?.id) {
-        val currentSongId = currentSong?.id
-        if (currentSongId != null && currentSongActiveScheme != null) {
+    LaunchedEffect(currentSongActiveScheme) {
+        if (currentSongActiveScheme != null) {
             lastAlbumScheme = currentSongActiveScheme
-            lastAlbumSchemeSongId = currentSongId
         }
     }
 
@@ -106,43 +110,103 @@ internal fun rememberSheetThemeState(
         preparingSongId != null && preparingSongId == currentSong?.id
     }
 
-    // Capture nullable var for smart-cast
-    val lastAlbumSchemeSnapshot = lastAlbumScheme
+    // ⚡ 最终颜色方案的选择逻辑：
+    //   - 如果不是 ALBUM_ART 主题 / 歌曲无封面 → 系统色
+    //   - 如果 currentSongActiveScheme 非 null → 用它
+    //   - 否则（切歌过渡期间）→ 用 lastAlbumScheme
+    //   - 最后回落系统色
+    val targetAlbumColorScheme = if (!isAlbumArtTheme || !hasAlbumArt) {
+        systemColorScheme
+    } else {
+        currentSongActiveScheme ?: lastAlbumScheme ?: systemColorScheme
+    }
 
-    // Cross-song fallback is only valid while a new track with usable album art is still loading.
-    // Tracks without art must resolve directly to the system scheme, otherwise previous colors stick.
-    val rawAlbumColorScheme = resolvePlayerSheetTargetScheme(
-        isAlbumArtTheme = isAlbumArtTheme,
-        hasAlbumArt = hasAlbumArt,
-        currentSongActiveScheme = currentSongActiveScheme,
-        lastAlbumScheme = lastAlbumSchemeSnapshot,
-        systemColorScheme = systemColorScheme
-    )
+    var animFromScheme by remember { mutableStateOf<ColorScheme?>(null) }
+    var animToScheme by remember { mutableStateOf<ColorScheme?>(null) }
+    val colorProgress = remember { Animatable(1f) }
+    var pendingTargetScheme by remember { mutableStateOf<ColorScheme?>(null) }
 
-    val rawMiniPlayerScheme = resolvePlayerSheetTargetScheme(
-        isAlbumArtTheme = isAlbumArtTheme,
-        hasAlbumArt = hasAlbumArt,
-        currentSongActiveScheme = currentSongActiveScheme,
-        lastAlbumScheme = lastAlbumSchemeSnapshot,
-        systemColorScheme = systemColorScheme
-    )
+    LaunchedEffect(targetAlbumColorScheme, currentSheetState, playerContentExpansionFraction) {
+        val isExpanding = currentSheetState == PlayerSheetState.EXPANDED && 
+            playerContentExpansionFraction.value < 0.99f
+        
+        if (isExpanding) {
+            pendingTargetScheme = targetAlbumColorScheme
+            return@LaunchedEffect
+        }
+        
+        pendingTargetScheme = null
+        val currentAnimated = animToScheme ?: targetAlbumColorScheme
+        if (currentAnimated != targetAlbumColorScheme) {
+            animFromScheme = currentAnimated
+            animToScheme = targetAlbumColorScheme
+            colorProgress.snapTo(0f)
+            colorProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 300,
+                    easing = FastOutSlowInEasing
+                )
+            )
+        } else if (animToScheme == null) {
+            animToScheme = targetAlbumColorScheme
+            animFromScheme = targetAlbumColorScheme
+        }
+    }
+    
+    LaunchedEffect(currentSheetState, playerContentExpansionFraction) {
+        val isFullyExpanded = currentSheetState == PlayerSheetState.EXPANDED && 
+            playerContentExpansionFraction.value >= 0.99f
+        
+        if (isFullyExpanded && pendingTargetScheme != null) {
+            val pending = pendingTargetScheme!!
+            pendingTargetScheme = null
+            val currentAnimated = animToScheme ?: pending
+            if (currentAnimated != pending) {
+                animFromScheme = currentAnimated
+                animToScheme = pending
+                colorProgress.snapTo(0f)
+                colorProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 300,
+                        easing = FastOutSlowInEasing
+                    )
+                )
+            }
+        }
+    }
 
-    // --- Batch Color Animation ---
-    // Instead of 34×2 = 68 independent animateColorAsState (one Spring coroutine each),
-    // we use a single Animatable<Float> progress [0,1] that interpolates between the
-    // previous and the new target ColorScheme manually. This reduces per-frame State reads
-    // from 68 → 0 (the lerp runs during the Animatable tick, not during recomposition).
-    val albumColorScheme = rememberBatchAnimatedColorScheme(rawAlbumColorScheme)
-    val miniPlayerScheme = rememberBatchAnimatedColorScheme(rawMiniPlayerScheme)
+    // 使用 derivedStateOf 缓存 lerp 结果，量化进度到 5% 步进，减少 ColorScheme 创建频率
+    val animatedScheme by remember(animFromScheme, animToScheme) {
+        derivedStateOf {
+            val from = animFromScheme
+            val to = animToScheme
+            val progress = colorProgress.value
+            if (from != null && to != null && progress < 1f) {
+                val quantizedProgress = (progress * 20f).toInt() / 20f
+                lerpColorScheme(from, to, quantizedProgress)
+            } else {
+                to ?: targetAlbumColorScheme
+            }
+        }
+    }
 
-    val miniAppearProgress = remember { Animatable(0f) }
+    val albumColorScheme = animatedScheme
+    val miniPlayerScheme = animatedScheme
+
+    // 播放器的"出现"动画 - 只有当 currentSong 首次出现时才需要动画
+    val miniAppearProgress = remember(currentSong) {
+        Animatable(if (currentSong != null) 1f else 0f)
+    }
     LaunchedEffect(currentSong?.id) {
-        if (currentSong == null) {
-            miniAppearProgress.snapTo(0f)
-        } else if (miniAppearProgress.value < 1f) {
+        if (currentSong != null && miniAppearProgress.value < 1f) {
             miniAppearProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                animationSpec = tween(
+                    durationMillis = 260,
+                    easing = FastOutSlowInEasing
+                )
             )
         }
     }
@@ -150,15 +214,6 @@ internal fun rememberSheetThemeState(
     val miniReadyAlpha = miniAppearProgress.value
     val miniAppearScale = lerp(0.985f, 1f, miniAppearProgress.value)
     val playerAreaBackground = miniPlayerScheme.primaryContainer
-
-    // NOTE: miniAlpha and effectivePlayerAreaElevation are no longer computed here.
-    // They were driven by the expansion fraction via the Transition API, which
-    // read `playerContentExpansionFraction.value` during composition — causing
-    // per-frame recomposition of UnifiedPlayerSheetV2 during every gesture.
-    //
-    // These values are now computed inline at their consumption sites:
-    //   - miniAlpha → inside graphicsLayer in UnifiedPlayerMiniAndFullLayers
-    //   - elevation → inside derivedStateOf for visualCardShadowElevation
 
     return SheetThemeState(
         albumColorScheme = albumColorScheme,
@@ -171,40 +226,11 @@ internal fun rememberSheetThemeState(
 }
 
 /**
- * Animates a [ColorScheme] transition using a single [Animatable]<Float> progress value
- * instead of 34 independent [animateColorAsState] calls.
- *
- * When [target] changes, a spring from 0→1 is run once, and the interpolated scheme is
- * derived from it. This reduces the number of running Springs from 34 → 1 and eliminates
- * the 34 concurrent [State] reads that were triggering recomposition on every animation frame.
+ * DEPRECATED: Causes widespread recomposition by returning a new ColorScheme object on every frame.
+ * Now we return the target scheme directly and animate colors at the component level.
  */
 @Composable
-private fun rememberBatchAnimatedColorScheme(target: ColorScheme): ColorScheme {
-    val progress = remember { Animatable(1f) }
-    var fromScheme by remember { mutableStateOf(target) }
-    var toScheme by remember { mutableStateOf(target) }
-
-    LaunchedEffect(target) {
-        if (toScheme == target) return@LaunchedEffect
-        // Snapshot current interpolated state as the new "from"
-        fromScheme = lerpColorScheme(fromScheme, toScheme, progress.value)
-        toScheme = target
-        progress.snapTo(0f)
-        progress.animateTo(
-            targetValue = 1f,
-            // Snappier than the old StiffnessLow so the palette resolves in step with the
-            // (now faster) carousel skip animation instead of trailing behind it.
-            animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-        )
-    }
-
-    // derivedStateOf ensures we only recompose consumers when progress.value actually changes,
-    // not on every State read elsewhere in the composition.
-    val interpolated by remember {
-        derivedStateOf { lerpColorScheme(fromScheme, toScheme, progress.value) }
-    }
-    return interpolated
-}
+private fun rememberBatchAnimatedColorScheme(target: ColorScheme): ColorScheme = target
 
 /**
  * Manually interpolates every field of two [ColorScheme]s by [t] ∈ [0, 1].

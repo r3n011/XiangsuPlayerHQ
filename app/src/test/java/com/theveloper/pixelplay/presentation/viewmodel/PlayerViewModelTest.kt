@@ -281,7 +281,12 @@ class PlayerViewModelTest {
             mockMultiSelectionStateHolder,
             mockPlaylistSelectionStateHolder,
             sessionToken,
-            mockMediaControllerFactory
+            mockMediaControllerFactory,
+            mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            mockk<com.theveloper.pixelplay.data.lx.LxJsEngine>(relaxed = true),
+            mockk<com.theveloper.pixelplay.data.netease.NeteaseRepository>(relaxed = true),
+            mockk<com.theveloper.pixelplay.data.netease.PersonalFmApi>(relaxed = true),
+            mockk<com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager>(relaxed = true)
         )
     }
 

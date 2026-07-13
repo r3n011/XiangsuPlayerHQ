@@ -36,8 +36,11 @@ import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.presentation.screens.AlbumDetailScreen
 import com.theveloper.pixelplay.presentation.screens.AccountsScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistDetailScreen
+import com.theveloper.pixelplay.presentation.screens.ArtistHomepageScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DailyMixScreen
+import com.theveloper.pixelplay.presentation.screens.AiMixScreen
+import com.theveloper.pixelplay.presentation.screens.DotDeviceSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.EditTransitionScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.GenreDetailScreen
@@ -51,6 +54,7 @@ import com.theveloper.pixelplay.presentation.screens.StatsScreen
 import com.theveloper.pixelplay.presentation.screens.SettingsCategoryScreen
 import com.theveloper.pixelplay.presentation.screens.EqualizerScreen
 import com.theveloper.pixelplay.presentation.screens.LxMusicScreen
+import com.theveloper.pixelplay.presentation.screens.HeadphonePresetScreen
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
 import kotlinx.coroutines.flow.first
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
@@ -153,6 +157,20 @@ fun AppNavigation(
                 }
             }
             composable(
+                Screen.HeadphonePreset.route,
+                enterTransition = { enterTransition() },
+                exitTransition = { exitTransition() },
+                popEnterTransition = { popEnterTransition() },
+                popExitTransition = { popExitTransition() },
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    HeadphonePresetScreen(
+                        navController = navController,
+                        viewModel = hiltViewModel()
+                    )
+                }
+            }
+            composable(
                 Screen.Stats.route,
                 enterTransition = { enterTransition() },
                 exitTransition = { exitTransition() },
@@ -204,6 +222,22 @@ fun AppNavigation(
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DailyMixScreen(
+                        mainViewModel = hiltViewModel(),
+                        playlistViewModel = hiltViewModel(),
+                        playerViewModel = playerViewModel,
+                        navController = navController,
+                    )
+                }
+            }
+            composable(
+                Screen.AiMixScreen.route,
+                enterTransition = { enterTransition() },
+                exitTransition = { exitTransition() },
+                popEnterTransition = { popEnterTransition() },
+                popExitTransition = { popExitTransition() },
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    AiMixScreen(
                         mainViewModel = hiltViewModel(),
                         playlistViewModel = hiltViewModel(),
                         playerViewModel = playerViewModel,
@@ -269,6 +303,28 @@ fun AppNavigation(
                             playerViewModel = playerViewModel,
                             playlistViewModel = hiltViewModel(),
                             artistId = artistId
+                        )
+                    }
+                }
+            }
+            // 网易云歌手主页
+            composable(
+                route = Screen.ArtistHomepage.route,
+                arguments = listOf(navArgument("artistId") { type = NavType.LongType }),
+                enterTransition = { enterTransition() },
+                exitTransition = { exitTransition() },
+                popEnterTransition = { popEnterTransition() },
+                popExitTransition = { popExitTransition() },
+            ) { backStackEntry ->
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    val artistId = backStackEntry.arguments?.getLong("artistId") ?: 0L
+                    if (artistId > 0L) {
+                        ArtistHomepageScreen(
+                            artistId = artistId,
+                            artistName = null,
+                            artistAvatar = null,
+                            navController = navController,
+                            playerViewModel = playerViewModel
                         )
                     }
                 }
@@ -483,6 +539,19 @@ fun AppNavigation(
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     JellyfinDashboardScreen(
                         onBack = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.DotDeviceSettings.route,
+                enterTransition = { enterTransition() },
+                exitTransition = { exitTransition() },
+                popEnterTransition = { popEnterTransition() },
+                popExitTransition = { popExitTransition() },
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    DotDeviceSettingsScreen(
+                        onBackClick = { navController.popBackStack() }
                     )
                 }
             }

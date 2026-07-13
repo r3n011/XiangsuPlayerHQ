@@ -16,6 +16,7 @@ import com.theveloper.pixelplay.utils.LyricsImportValidationResult
 import com.theveloper.pixelplay.utils.LyricsUtils
 import com.theveloper.pixelplay.utils.ValidatedLyricsImport
 import java.io.File
+import java.util.concurrent.TimeoutException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
@@ -38,6 +39,7 @@ import kotlinx.coroutines.withContext
 interface LyricsLoadCallback {
     fun onLoadingStarted(songId: String)
     fun onLyricsLoaded(songId: String, lyrics: Lyrics?)
+    fun onLyricsLoadFinished(songId: String, lyrics: Lyrics?)
 }
 
 /**
@@ -68,6 +70,11 @@ class LyricsStateHolder @Inject constructor(
     private var scope: CoroutineScope? = null
     private var loadingJob: Job? = null
     private var loadCallback: LyricsLoadCallback? = null
+
+    // ⚡ 当前正在加载歌词的目标歌曲 ID。用于防止歌曲快速切换时，
+    // 已取消的请求仍返回歌词覆盖了正确歌曲的歌词状态。
+    @Volatile
+    private var currentTargetSongId: String? = null
 
     // Sync offset per song in milliseconds
     private val _currentSongSyncOffset = MutableStateFlow(0)
@@ -115,39 +122,157 @@ class LyricsStateHolder @Inject constructor(
     }
 
     /**
-     * Load lyrics for a song.
+     * Load lyrics for a song. Uses [LyricsLoadCallback.onLyricsLoadFinished] so
+     * that a failed fetch never overwrites already-loaded lyrics.
+     * If lyrics fail to load for a non-Netease song, automatically triggers a remote search.
      * @param song The song to load lyrics for
      * @param sourcePreference The preferred source for lyrics
      */
     fun loadLyricsForSong(song: Song, sourcePreference: LyricsSourcePreference) {
         loadingJob?.cancel()
         val targetSongId = song.id
+        currentTargetSongId = targetSongId
+
+        if (scope == null) {
+            android.util.Log.w("LyricsStateHolder", "scope is null, cannot load lyrics for: ${song.title}")
+            return
+        }
 
         loadingJob = scope?.launch {
-            loadCallback?.onLoadingStarted(targetSongId)
+            var fetchedLyrics: Lyrics? = null
+            try {
+                loadCallback?.onLoadingStarted(targetSongId)
 
-            val fetchedLyrics = try {
-                withContext(Dispatchers.IO) {
-                    musicRepository.getLyrics(
-                        song = song,
-                        sourcePreference = sourcePreference
-                    )
+                kotlinx.coroutines.withTimeout(20000L) {
+                    fetchedLyrics = try {
+                        withContext(Dispatchers.IO) {
+                            musicRepository.getLyrics(
+                                song = song,
+                                sourcePreference = sourcePreference,
+                                forceRefresh = false
+                            )
+                        }
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (_: Exception) {
-                null
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                android.util.Log.w("LyricsStateHolder", "歌词加载超时: ${song.title}")
+                fetchedLyrics = null
+            } catch (_: Throwable) {
+                fetchedLyrics = null
+            } finally {
+                if (currentTargetSongId == targetSongId) {
+                    loadCallback?.onLyricsLoadFinished(targetSongId, fetchedLyrics)
+                    
+                    if (fetchedLyrics == null) {
+                        if (isNeteaseSong(song)) {
+                            android.util.Log.d("LyricsStateHolder", "网易云歌曲歌词加载失败，保留加载状态等待重试: ${song.title}")
+                        } else {
+                            android.util.Log.d("LyricsStateHolder", "非网易云歌曲歌词加载失败，自动触发搜索: ${song.title}")
+                            triggerAutoLyricsSearch(song, sourcePreference)
+                        }
+                    }
+                }
             }
-
-            loadCallback?.onLyricsLoaded(targetSongId, fetchedLyrics)
         }
+    }
+    
+    /**
+     * 判断是否为网易云歌曲
+     */
+    private fun isNeteaseSong(song: Song): Boolean =
+        song.neteaseId != null ||
+        song.contentUriString.startsWith("netease://", ignoreCase = true) ||
+        song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
+    
+    /**
+     * 自动触发歌词搜索，用于非网易云歌曲歌词加载失败时
+     */
+    private fun triggerAutoLyricsSearch(song: Song, sourcePreference: LyricsSourcePreference) {
+        if (scope == null) {
+            android.util.Log.w("LyricsStateHolder", "scope is null, cannot trigger auto lyrics search for: ${song.title}")
+            return
+        }
+        
+        scope?.launch {
+            _searchUiState.value = LyricsSearchUiState.Loading
+            
+            try {
+                kotlinx.coroutines.withTimeout(20000L) {
+                    val localLyrics = readLocalLyrics(song)
+                    if (localLyrics != null) {
+                        val parsed = LyricsUtils.parseLyrics(localLyrics)
+                        if (hasValidLyrics(parsed)) {
+                            val finalLyrics = parsed.copy(areFromRemote = false)
+                            _searchUiState.value = LyricsSearchUiState.Success(finalLyrics)
+                            loadCallback?.onLyricsLoaded(song.id, finalLyrics)
+                            return@withTimeout
+                        }
+                    }
+                    
+                    musicRepository.getLyricsFromRemote(song)
+                        .onSuccess { (lyrics, rawLyrics) ->
+                            _searchUiState.value = LyricsSearchUiState.Success(lyrics)
+                            loadCallback?.onLyricsLoaded(song.id, lyrics)
+                            val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, rawLyrics)
+                            val updatedSong = song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri)
+                            _songUpdates.emit(updatedSong to lyrics)
+                        }
+                        .onFailure { error ->
+                            if (error is NoLyricsFoundException) {
+                                musicRepository.searchRemoteLyrics(song)
+                                    .onSuccess { (query, results) ->
+                                        _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
+                                    }
+                                    .onFailure { searchError -> 
+                                        handleError(searchError)
+                                        _searchUiState.value = LyricsSearchUiState.Idle
+                                    }
+                            } else {
+                                handleError(error)
+                                _searchUiState.value = LyricsSearchUiState.Idle
+                            }
+                        }
+                }
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                handleError(TimeoutException("Lyrics search timeout"))
+                _searchUiState.value = LyricsSearchUiState.Idle
+            } catch (e: Exception) {
+                handleError(e)
+                _searchUiState.value = LyricsSearchUiState.Idle
+            }
+        }
+    }
+    
+    /**
+     * 读取本地歌词（嵌入式或本地文件）
+     */
+    private suspend fun readLocalLyrics(song: Song): String? {
+        // 检查嵌入式歌词
+        val embeddedLyrics = readEmbeddedLyricsFromFile(song)
+        if (!embeddedLyrics.isNullOrBlank()) {
+            val parsed = LyricsUtils.parseLyrics(embeddedLyrics)
+            if (hasValidLyrics(parsed)) return embeddedLyrics
+        }
+        
+        // 检查本地 .lrc 文件
+        val localLyricsFile = readLocalLyricsFile(song)
+        if (!localLyricsFile.isNullOrBlank()) {
+            val parsed = LyricsUtils.parseLyrics(localLyricsFile)
+            if (hasValidLyrics(parsed)) return localLyricsFile
+        }
+        
+        return null
     }
 
     /**
      * Cancel any ongoing lyrics loading.
      */
     fun cancelLoading() {
+        val targetSongId = currentTargetSongId
         loadingJob?.cancel()
+        targetSongId?.let { loadCallback?.onLyricsLoadFinished(it, null) }
     }
 
     /**
@@ -195,86 +320,87 @@ class LyricsStateHolder @Inject constructor(
         loadingJob = scope?.launch {
             _searchUiState.value = LyricsSearchUiState.Loading
 
-            if (!forcePickResults) {
-                val storedLyrics = withContext(Dispatchers.IO) {
-                    musicRepository.getStoredLyrics(song)
-                }
-                if (storedLyrics != null) {
-                    val (lyrics, rawLyrics) = storedLyrics
-                    _searchUiState.value = LyricsSearchUiState.Success(lyrics)
-                    _songUpdates.emit(song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri = null) to lyrics)
-                    _messageEvents.emit(contextHelper(R.string.lyrics_already_available))
-                    return@launch
-                }
-            }
-
-            // Build ordered list of local source checks based on user preference.
-            // API_FIRST: skip local sources, go straight to remote.
-            // EMBEDDED_FIRST: check embedded, then local .lrc, then remote.
-            // LOCAL_FIRST: check local .lrc, then embedded, then remote.
-            val localSourceChecks: List<suspend () -> Pair<String, Int>?> = when (sourcePreference) {
-                LyricsSourcePreference.API_FIRST -> emptyList()
-                LyricsSourcePreference.EMBEDDED_FIRST -> listOf(
-                    { readEmbeddedLyricsFromFile(song)?.let { it to R.string.lyrics_embedded_already_available } },
-                    { readLocalLyricsFile(song)?.let { it to R.string.local_lrc_already_available } }
-                )
-                LyricsSourcePreference.LOCAL_FIRST -> listOf(
-                    { readLocalLyricsFile(song)?.let { it to R.string.local_lrc_already_available } },
-                    { readEmbeddedLyricsFromFile(song)?.let { it to R.string.lyrics_embedded_already_available } }
-                )
-            }
-
-            // Try local sources in priority order.
-            for (sourceCheck in localSourceChecks) {
-                val result = withContext(Dispatchers.IO) { sourceCheck() }
-                if (result != null) {
-                    val (rawLyrics, messageResId) = result
-                    val parsed = LyricsUtils.parseLyrics(rawLyrics)
-                    if (hasValidLyrics(parsed)) {
-                        val lyrics = parsed.copy(areFromRemote = false)
-                        _searchUiState.value = LyricsSearchUiState.Success(lyrics)
-
-                        val songId = song.id.toLongOrNull()
-                        if (songId != null) {
-                            musicRepository.updateLyrics(songId, rawLyrics)
+            try {
+                kotlinx.coroutines.withTimeout(20000L) {
+                    if (!forcePickResults) {
+                        val storedLyrics = withContext(Dispatchers.IO) {
+                            musicRepository.getStoredLyrics(song)
                         }
+                        if (storedLyrics != null) {
+                            val (lyrics, rawLyrics) = storedLyrics
+                            _searchUiState.value = LyricsSearchUiState.Success(lyrics)
+                            _songUpdates.emit(song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri = null) to lyrics)
+                            _messageEvents.emit(contextHelper(R.string.lyrics_already_available))
+                            return@withTimeout
+                        }
+                    }
 
-                        _songUpdates.emit(song.copy(lyrics = rawLyrics) to lyrics)
-                        _messageEvents.emit(contextHelper(messageResId))
-                        return@launch
+                    val localSourceChecks: List<suspend () -> Pair<String, Int>?> = when (sourcePreference) {
+                        LyricsSourcePreference.API_FIRST -> emptyList()
+                        LyricsSourcePreference.EMBEDDED_FIRST -> listOf(
+                            { readEmbeddedLyricsFromFile(song)?.let { it to R.string.lyrics_embedded_already_available } },
+                            { readLocalLyricsFile(song)?.let { it to R.string.local_lrc_already_available } }
+                        )
+                        LyricsSourcePreference.LOCAL_FIRST -> listOf(
+                            { readLocalLyricsFile(song)?.let { it to R.string.local_lrc_already_available } },
+                            { readEmbeddedLyricsFromFile(song)?.let { it to R.string.lyrics_embedded_already_available } }
+                        )
                     }
-                }
-            }
 
-            // Fall through to remote fetch.
-            if (forcePickResults) {
-                musicRepository.searchRemoteLyrics(song)
-                    .onSuccess { (query, results) ->
-                        _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
-                    }
-                    .onFailure { error ->
-                        handleError(error)
-                    }
-            } else {
-                musicRepository.getLyricsFromRemote(song)
-                    .onSuccess { (lyrics, rawLyrics) ->
-                        _searchUiState.value = LyricsSearchUiState.Success(lyrics)
-                        val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, rawLyrics)
-                        val updatedSong = song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri)
-                        _songUpdates.emit(updatedSong to lyrics)
-                    }
-                    .onFailure { error ->
-                        if (error is NoLyricsFoundException) {
-                            // Fallback to search
-                            musicRepository.searchRemoteLyrics(song)
-                                .onSuccess { (query, results) ->
-                                    _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
+                    for (sourceCheck in localSourceChecks) {
+                        val result = withContext(Dispatchers.IO) { sourceCheck() }
+                        if (result != null) {
+                            val (rawLyrics, messageResId) = result
+                            val parsed = LyricsUtils.parseLyrics(rawLyrics)
+                            if (hasValidLyrics(parsed)) {
+                                val lyrics = parsed.copy(areFromRemote = false)
+                                _searchUiState.value = LyricsSearchUiState.Success(lyrics)
+
+                                val songId = song.id.toLongOrNull()
+                                if (songId != null) {
+                                    musicRepository.updateLyrics(songId, rawLyrics)
                                 }
-                                .onFailure { searchError -> handleError(searchError) }
-                        } else {
-                            handleError(error)
+
+                                _songUpdates.emit(song.copy(lyrics = rawLyrics) to lyrics)
+                                _messageEvents.emit(contextHelper(messageResId))
+                                return@withTimeout
+                            }
                         }
                     }
+
+                    if (forcePickResults) {
+                        musicRepository.searchRemoteLyrics(song)
+                            .onSuccess { (query, results) ->
+                                _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
+                            }
+                            .onFailure { error ->
+                                handleError(error)
+                            }
+                    } else {
+                        musicRepository.getLyricsFromRemote(song)
+                            .onSuccess { (lyrics, rawLyrics) ->
+                                _searchUiState.value = LyricsSearchUiState.Success(lyrics)
+                                val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, rawLyrics)
+                                val updatedSong = song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri)
+                                _songUpdates.emit(updatedSong to lyrics)
+                            }
+                            .onFailure { error ->
+                                if (error is NoLyricsFoundException) {
+                                    musicRepository.searchRemoteLyrics(song)
+                                        .onSuccess { (query, results) ->
+                                            _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
+                                        }
+                                        .onFailure { searchError -> handleError(searchError) }
+                                } else {
+                                    handleError(error)
+                                }
+                            }
+                    }
+                }
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                handleError(TimeoutException("Lyrics fetch timeout"))
+            } catch (e: Exception) {
+                handleError(e)
             }
         }
     }

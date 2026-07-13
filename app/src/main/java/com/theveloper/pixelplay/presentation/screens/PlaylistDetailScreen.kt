@@ -34,6 +34,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -685,6 +687,7 @@ fun PlaylistDetailScreen(
                             state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .hazeSource(MainActivity.LocalHazeState.current)
                                 .clip(
                                     AbsoluteSmoothCornerShape(
                                         cornerRadiusTR = 32.dp,
@@ -885,6 +888,20 @@ fun PlaylistDetailScreen(
                         m3uExportLauncher.launch("$sanitizedName.m3u")
                     }
                 )
+                PlaylistActionItem(
+                    icon = painterResource(R.drawable.generate_playlist_ai),
+                    label = stringResource(R.string.presentation_batch_e_ai_evaluate_playlist),
+                    onClick = {
+                        showPlaylistOptionsSheet = false
+                        currentPlaylist?.let { playlist ->
+                            playerViewModel.evaluatePlaylist(
+                                playlistName = playlist.name,
+                                songs = songsInPlaylist,
+                                force = true
+                            )
+                        }
+                    }
+                )
             }
         }
     }
@@ -956,15 +973,7 @@ fun PlaylistDetailScreen(
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
-        val isFavorite = remember(currentSong?.id, favoriteIds) {
-            derivedStateOf {
-                currentSong?.let {
-                    favoriteIds.contains(
-                        it.id
-                    )
-                }
-            }
-        }.value ?: false
+        val isFavorite = currentSong?.let { favoriteIds.contains(it.id) } ?: false
 
         if (currentSong != null) {
             SongInfoBottomSheet(

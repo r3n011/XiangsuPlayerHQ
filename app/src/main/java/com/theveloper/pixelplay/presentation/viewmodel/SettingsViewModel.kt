@@ -2,10 +2,12 @@ package com.theveloper.pixelplay.presentation.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.backup.BackupManager
 import com.theveloper.pixelplay.data.backup.model.BackupSection
+import com.theveloper.pixelplay.data.backup.model.BackupFormat
 import com.theveloper.pixelplay.data.backup.model.BackupOperationType
 import com.theveloper.pixelplay.data.backup.model.BackupTransferProgressUpdate
 import com.theveloper.pixelplay.data.backup.model.BackupHistoryEntry
@@ -21,6 +23,7 @@ import com.theveloper.pixelplay.data.database.AiUsageDao
 import com.theveloper.pixelplay.data.database.AiUsageEntity
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
+import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.data.preferences.AlbumArtColorAccuracy
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.AppLanguage
@@ -73,11 +76,16 @@ data class SettingsUiState(
     val isCrossfadeEnabled: Boolean = false,
     val hiFiModeEnabled: Boolean = false,
     val hiFiModeDeviceSupported: Boolean = true,
+    val usbExclusiveModeEnabled: Boolean = false,
+    val currentUsbDeviceName: String? = null,
+    val musicQuality: MusicQuality = MusicQuality.HIGH,
     val crossfadeDuration: Int = 2000,
     val persistentShuffleEnabled: Boolean = false,
     val folderBackGestureNavigation: Boolean = true,
     val lyricsSourcePreference: LyricsSourcePreference = LyricsSourcePreference.EMBEDDED_FIRST,
     val autoScanLrcFiles: Boolean = false,
+    val bluetoothLyricsEnabled: Boolean = false,
+    val lyricsFontSize: String = "DEFAULT",
     val blockedDirectories: Set<String> = emptySet(),
     val availableModels: List<GeminiModel> = emptyList(),
     val isLoadingModels: Boolean = false,
@@ -97,6 +105,7 @@ data class SettingsUiState(
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 2.5f,
     val disableBlurAllOver: Boolean = false,
+    val navBarBlurEnabled: Boolean = true,
     val backupInfoDismissed: Boolean = false,
     val isDataTransferInProgress: Boolean = false,
     val restorePlan: RestorePlan? = null,
@@ -110,7 +119,12 @@ data class SettingsUiState(
     val replayGainEnabled: Boolean = false,
     val replayGainUseAlbumGain: Boolean = false,
     val isSafeTokenLimitEnabled: Boolean = true,
-    val showScrollbar: Boolean = true
+    val showScrollbar: Boolean = true,
+    val songFilterEnabled: Boolean = false,
+    val songFilterKeywords: List<UserPreferencesRepository.SongFilterKeyword> = emptyList(),
+    val showLyricsTrackInfo: Boolean = true,
+    val carModeEnabled: Boolean = false,
+    val downloadPath: String = Environment.DIRECTORY_MUSIC,
 )
 
 data class FailedSongInfo(
@@ -158,11 +172,16 @@ private sealed interface SettingsUiUpdate {
         val showQueueHistory: Boolean,
         val isCrossfadeEnabled: Boolean,
         val hiFiModeEnabled: Boolean,
+        val usbExclusiveModeEnabled: Boolean,
+        val currentUsbDeviceName: String?,
+        val musicQuality: MusicQuality,
         val crossfadeDuration: Int,
         val persistentShuffleEnabled: Boolean,
         val folderBackGestureNavigation: Boolean,
         val lyricsSourcePreference: LyricsSourcePreference,
         val autoScanLrcFiles: Boolean,
+        val bluetoothLyricsEnabled: Boolean,
+        val lyricsFontSize: String,
         val blockedDirectories: Set<String>,
         val hapticsEnabled: Boolean,
         val immersiveLyricsEnabled: Boolean,
@@ -170,7 +189,9 @@ private sealed interface SettingsUiUpdate {
         val animatedLyricsBlurEnabled: Boolean,
         val animatedLyricsBlurStrength: Float,
         val disableBlurAllOver: Boolean,
-        val showScrollbar: Boolean
+        val navBarBlurEnabled: Boolean,
+        val showScrollbar: Boolean,
+        val showLyricsTrackInfo: Boolean
     ) : SettingsUiUpdate
 }
 
@@ -183,12 +204,12 @@ class SettingsViewModel @Inject constructor(
     private val colorSchemeProcessor: ColorSchemeProcessor,
     private val syncManager: SyncManager,
     private val aiClientFactory: AiClientFactory,
-    private val geminiModelService: com.theveloper.pixelplay.data.ai.GeminiModelService,
     private val aiUsageDao: AiUsageDao,
     private val lyricsRepository: LyricsRepository,
     private val musicRepository: MusicRepository,
     private val backupManager: BackupManager,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -196,7 +217,7 @@ class SettingsViewModel @Inject constructor(
 
     // AI Provider State
     val aiProvider: StateFlow<String> = aiPreferencesRepository.aiProvider
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "GEMINI")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "MIMO")
 
     // Generic AI settings reactive to the selected provider
     val currentAiApiKey: StateFlow<String> = aiProvider
@@ -211,69 +232,16 @@ class SettingsViewModel @Inject constructor(
         .flatMapLatest { provider -> aiPreferencesRepository.getSystemPrompt(AiProvider.fromString(provider)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_SYSTEM_PROMPT)
 
+    val safeTokenMode: StateFlow<Boolean> = aiPreferencesRepository.isSafeTokenLimitEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     // Specific Provider StateFlows for UI Compatibility
-    val geminiApiKey: StateFlow<String> = aiPreferencesRepository.geminiApiKey
+    val mimoApiKey: StateFlow<String> = aiPreferencesRepository.mimoApiKey
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val geminiModel: StateFlow<String> = aiPreferencesRepository.geminiModel
+    val mimoModel: StateFlow<String> = aiPreferencesRepository.mimoModel
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val geminiSystemPrompt: StateFlow<String> = aiPreferencesRepository.geminiSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_SYSTEM_PROMPT)
-
-    val deepseekApiKey: StateFlow<String> = aiPreferencesRepository.deepseekApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val deepseekModel: StateFlow<String> = aiPreferencesRepository.deepseekModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val deepseekSystemPrompt: StateFlow<String> = aiPreferencesRepository.deepseekSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_DEEPSEEK_SYSTEM_PROMPT)
-
-    val groqApiKey: StateFlow<String> = aiPreferencesRepository.groqApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val groqModel: StateFlow<String> = aiPreferencesRepository.groqModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val groqSystemPrompt: StateFlow<String> = aiPreferencesRepository.groqSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_GROQ_SYSTEM_PROMPT)
-
-    val mistralApiKey: StateFlow<String> = aiPreferencesRepository.mistralApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val mistralModel: StateFlow<String> = aiPreferencesRepository.mistralModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val mistralSystemPrompt: StateFlow<String> = aiPreferencesRepository.mistralSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_MISTRAL_SYSTEM_PROMPT)
-
-    val nvidiaApiKey: StateFlow<String> = aiPreferencesRepository.nvidiaApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val nvidiaModel: StateFlow<String> = aiPreferencesRepository.nvidiaModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val nvidiaSystemPrompt: StateFlow<String> = aiPreferencesRepository.nvidiaSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_NVIDIA_SYSTEM_PROMPT)
-
-    val kimiApiKey: StateFlow<String> = aiPreferencesRepository.kimiApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val kimiModel: StateFlow<String> = aiPreferencesRepository.kimiModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val kimiSystemPrompt: StateFlow<String> = aiPreferencesRepository.kimiSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_KIMI_SYSTEM_PROMPT)
-
-    val glmApiKey: StateFlow<String> = aiPreferencesRepository.glmApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val glmModel: StateFlow<String> = aiPreferencesRepository.glmModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val glmSystemPrompt: StateFlow<String> = aiPreferencesRepository.glmSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_GLM_SYSTEM_PROMPT)
-
-    val openaiApiKey: StateFlow<String> = aiPreferencesRepository.openaiApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val openaiModel: StateFlow<String> = aiPreferencesRepository.openaiModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val openaiSystemPrompt: StateFlow<String> = aiPreferencesRepository.openaiSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_OPENAI_SYSTEM_PROMPT)
-
-    val openrouterApiKey: StateFlow<String> = aiPreferencesRepository.openrouterApiKey
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val openrouterModel: StateFlow<String> = aiPreferencesRepository.openrouterModel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val openrouterSystemPrompt: StateFlow<String> = aiPreferencesRepository.openrouterSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_OPENROUTER_SYSTEM_PROMPT)
+    val mimoSystemPrompt: StateFlow<String> = aiPreferencesRepository.mimoSystemPrompt
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_MIMO_SYSTEM_PROMPT)
 
     fun onAiApiKeyChange(apiKey: String) {
         viewModelScope.launch {
@@ -286,67 +254,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     // Specific on-change methods for UI binding
-    fun onGeminiApiKeyChange(apiKey: String) {
+    fun onMimoApiKeyChange(apiKey: String) {
         viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.GEMINI, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "GEMINI")
-            else clearModelsState("GEMINI")
-        }
-    }
-    fun onDeepseekApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.DEEPSEEK, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "DEEPSEEK")
-            else clearModelsState("DEEPSEEK")
-        }
-    }
-    fun onGroqApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.GROQ, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "GROQ")
-            else clearModelsState("GROQ")
-        }
-    }
-    fun onMistralApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.MISTRAL, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "MISTRAL")
-            else clearModelsState("MISTRAL")
-        }
-    }
-    fun onNvidiaApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.NVIDIA, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "NVIDIA")
-            else clearModelsState("NVIDIA")
-        }
-    }
-    fun onKimiApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.KIMI, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "KIMI")
-            else clearModelsState("KIMI")
-        }
-    }
-    fun onGlmApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.GLM, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "GLM")
-            else clearModelsState("GLM")
-        }
-    }
-    fun onOpenAiApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.OPENAI, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "OPENAI")
-            else clearModelsState("OPENAI")
-        }
-    }
-    fun onOpenrouterApiKeyChange(apiKey: String) {
-        viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.OPENROUTER, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "OPENROUTER")
-            else clearModelsState("OPENROUTER")
+            aiPreferencesRepository.setApiKey(AiProvider.MIMO, apiKey)
+            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "MIMO")
+            else clearModelsState("MIMO")
         }
     }
 
@@ -357,15 +269,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onGeminiModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.GEMINI, model) }
-    fun onDeepseekModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.DEEPSEEK, model) }
-    fun onGroqModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.GROQ, model) }
-    fun onMistralModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.MISTRAL, model) }
-    fun onNvidiaModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.NVIDIA, model) }
-    fun onKimiModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.KIMI, model) }
-    fun onGlmModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.GLM, model) }
-    fun onOpenAiModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.OPENAI, model) }
-    fun onOpenrouterModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.OPENROUTER, model) }
+    fun onMimoModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.MIMO, model) }
 
     fun onAiSystemPromptChange(prompt: String) {
         viewModelScope.launch {
@@ -374,15 +278,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onGeminiSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.GEMINI, prompt) }
-    fun onDeepseekSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.DEEPSEEK, prompt) }
-    fun onGroqSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.GROQ, prompt) }
-    fun onMistralSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.MISTRAL, prompt) }
-    fun onNvidiaSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.NVIDIA, prompt) }
-    fun onKimiSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.KIMI, prompt) }
-    fun onGlmSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.GLM, prompt) }
-    fun onOpenAiSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.OPENAI, prompt) }
-    fun onOpenrouterSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.OPENROUTER, prompt) }
+    fun onMimoSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.MIMO, prompt) }
 
     fun resetAiSystemPrompt() {
         viewModelScope.launch {
@@ -391,15 +287,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun resetGeminiSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.GEMINI) }
-    fun resetDeepseekSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.DEEPSEEK) }
-    fun resetGroqSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.GROQ) }
-    fun resetMistralSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.MISTRAL) }
-    fun resetNvidiaSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.NVIDIA) }
-    fun resetKimiSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.KIMI) }
-    fun resetGlmSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.GLM) }
-    fun resetOpenAiSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.OPENAI) }
-    fun resetOpenrouterSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.OPENROUTER) }
+    fun resetMimoSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.MIMO) }
 
     fun clearAiUsageData() {
         viewModelScope.launch {
@@ -551,11 +439,16 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.showQueueHistoryFlow,
                 userPreferencesRepository.isCrossfadeEnabledFlow,
                 userPreferencesRepository.hiFiModeEnabledFlow,
+                audioEngineSettings.usbExclusiveModeEnabled,
+                audioEngineSettings.currentUsbDeviceName,
+                userPreferencesRepository.musicQualityFlow,
                 userPreferencesRepository.crossfadeDurationFlow,
                 userPreferencesRepository.persistentShuffleEnabledFlow,
                 userPreferencesRepository.folderBackGestureNavigationFlow,
                 userPreferencesRepository.lyricsSourcePreferenceFlow,
                 userPreferencesRepository.autoScanLrcFilesFlow,
+                userPreferencesRepository.bluetoothLyricsEnabledFlow,
+                userPreferencesRepository.lyricsFontSizeFlow,
                 userPreferencesRepository.blockedDirectoriesFlow,
                 userPreferencesRepository.hapticsEnabledFlow,
                 userPreferencesRepository.immersiveLyricsEnabledFlow,
@@ -563,7 +456,9 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.animatedLyricsBlurEnabledFlow,
                 userPreferencesRepository.animatedLyricsBlurStrengthFlow,
                 userPreferencesRepository.disableBlurAllOverFlow,
-                userPreferencesRepository.showScrollbarFlow
+                userPreferencesRepository.navBarBlurEnabledFlow,
+                userPreferencesRepository.showScrollbarFlow,
+                userPreferencesRepository.showLyricsTrackInfoFlow
             ) { values ->
                 SettingsUiUpdate.Group2(
                     keepPlayingInBackground = values[0] as Boolean,
@@ -572,19 +467,26 @@ class SettingsViewModel @Inject constructor(
                     showQueueHistory = values[3] as Boolean,
                     isCrossfadeEnabled = values[4] as Boolean,
                     hiFiModeEnabled = values[5] as Boolean,
-                    crossfadeDuration = values[6] as Int,
-                    persistentShuffleEnabled = values[7] as Boolean,
-                    folderBackGestureNavigation = values[8] as Boolean,
-                    lyricsSourcePreference = values[9] as LyricsSourcePreference,
-                    autoScanLrcFiles = values[10] as Boolean,
-                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[11] as Set<String>),
-                    hapticsEnabled = values[12] as Boolean,
-                    immersiveLyricsEnabled = values[13] as Boolean,
-                    immersiveLyricsTimeout = values[14] as Long,
-                    animatedLyricsBlurEnabled = values[15] as Boolean,
-                    animatedLyricsBlurStrength = values[16] as Float,
-                    disableBlurAllOver = values[17] as Boolean,
-                    showScrollbar = values[18] as Boolean
+                    usbExclusiveModeEnabled = values[6] as Boolean,
+                    currentUsbDeviceName = values[7] as String?,
+                    musicQuality = values[8] as MusicQuality,
+                    crossfadeDuration = values[9] as Int,
+                    persistentShuffleEnabled = values[10] as Boolean,
+                    folderBackGestureNavigation = values[11] as Boolean,
+                    lyricsSourcePreference = values[12] as LyricsSourcePreference,
+                    autoScanLrcFiles = values[13] as Boolean,
+                    bluetoothLyricsEnabled = values[14] as Boolean,
+                    lyricsFontSize = values[15] as String,
+                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[16] as Set<String>),
+                    hapticsEnabled = values[17] as Boolean,
+                    immersiveLyricsEnabled = values[18] as Boolean,
+                    immersiveLyricsTimeout = values[19] as Long,
+                    animatedLyricsBlurEnabled = values[20] as Boolean,
+                    animatedLyricsBlurStrength = values[21] as Float,
+                    disableBlurAllOver = values[22] as Boolean,
+                    navBarBlurEnabled = values[23] as Boolean,
+                    showScrollbar = values[24] as Boolean,
+                    showLyricsTrackInfo = values[25] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -595,11 +497,16 @@ class SettingsViewModel @Inject constructor(
                         showQueueHistory = update.showQueueHistory,
                         isCrossfadeEnabled = update.isCrossfadeEnabled,
                         hiFiModeEnabled = update.hiFiModeEnabled,
+                        usbExclusiveModeEnabled = update.usbExclusiveModeEnabled,
+                        currentUsbDeviceName = update.currentUsbDeviceName,
+                        musicQuality = update.musicQuality,
                         crossfadeDuration = update.crossfadeDuration,
                         persistentShuffleEnabled = update.persistentShuffleEnabled,
                         folderBackGestureNavigation = update.folderBackGestureNavigation,
                         lyricsSourcePreference = update.lyricsSourcePreference,
                         autoScanLrcFiles = update.autoScanLrcFiles,
+                        bluetoothLyricsEnabled = update.bluetoothLyricsEnabled,
+                        lyricsFontSize = update.lyricsFontSize,
                         blockedDirectories = update.blockedDirectories,
                         hapticsEnabled = update.hapticsEnabled,
                         immersiveLyricsEnabled = update.immersiveLyricsEnabled,
@@ -607,7 +514,9 @@ class SettingsViewModel @Inject constructor(
                         animatedLyricsBlurEnabled = update.animatedLyricsBlurEnabled,
                         animatedLyricsBlurStrength = update.animatedLyricsBlurStrength,
                         disableBlurAllOver = update.disableBlurAllOver,
-                        showScrollbar = update.showScrollbar
+                        navBarBlurEnabled = update.navBarBlurEnabled,
+                        showScrollbar = update.showScrollbar,
+                        showLyricsTrackInfo = update.showLyricsTrackInfo
                     )
                 }
             }
@@ -691,6 +600,37 @@ class SettingsViewModel @Inject constructor(
             aiPreferencesRepository.isSafeTokenLimitEnabled.collect { enabled ->
                 _uiState.update { it.copy(isSafeTokenLimitEnabled = enabled) }
             }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.songFilterEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(songFilterEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.songFilterKeywordsFlow.collect { keywords ->
+                _uiState.update { it.copy(songFilterKeywords = keywords) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.carModeEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(carModeEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.downloadPathFlow.collect { path ->
+                _uiState.update { it.copy(downloadPath = path) }
+            }
+        }
+
+    }
+
+    fun setDownloadPath(path: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setDownloadPath(path)
         }
     }
 
@@ -848,6 +788,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setShowLyricsTrackInfo(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setShowLyricsTrackInfo(enabled)
+        }
+    }
+
     fun setLaunchTab(tab: String) {
         viewModelScope.launch {
             userPreferencesRepository.setLaunchTab(tab)
@@ -875,6 +821,16 @@ class SettingsViewModel @Inject constructor(
     fun setHiFiModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setHiFiModeEnabled(enabled)
+        }
+    }
+
+    fun setUsbExclusiveModeEnabled(enabled: Boolean) {
+        audioEngineSettings.setUsbExclusiveModeEnabled(enabled)
+    }
+
+    fun setMusicQuality(quality: MusicQuality) {
+        viewModelScope.launch {
+            userPreferencesRepository.setMusicQuality(quality)
         }
     }
 
@@ -917,6 +873,12 @@ class SettingsViewModel @Inject constructor(
     fun setAutoScanLrcFiles(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setAutoScanLrcFiles(enabled)
+        }
+    }
+
+    fun setBluetoothLyricsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setBluetoothLyricsEnabled(enabled)
         }
     }
 
@@ -1013,6 +975,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setNavBarBlurEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setNavBarBlurEnabled(enabled)
+        }
+    }
+
     fun refreshLibrary() {
         viewModelScope.launch {
             if (isSyncing.value) return@launch
@@ -1026,7 +994,163 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    val isAutoPlaylistEnabled: StateFlow<Boolean> = aiPreferencesRepository.isAutoPlaylistEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val isAutoMetadataEnabled: StateFlow<Boolean> = aiPreferencesRepository.isAutoMetadataEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val isAutoDailyMixEnabled: StateFlow<Boolean> = aiPreferencesRepository.isAutoDailyMixEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val isAutoPlaylistEvaluationEnabled: StateFlow<Boolean> = aiPreferencesRepository.isAutoPlaylistEvaluationEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isAiRecommendationCardEnabled: StateFlow<Boolean> = aiPreferencesRepository.isAiRecommendationCardEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val isAiRecommendationManualOnly: StateFlow<Boolean> = aiPreferencesRepository.isAiRecommendationManualOnly
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val isWebRemoteEnabled: StateFlow<Boolean> = aiPreferencesRepository.isWebRemoteEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isWebRemoteSyncMode: StateFlow<Boolean> = aiPreferencesRepository.isWebRemoteSyncMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val isWebRemoteAudioOnDevice: StateFlow<Boolean> = aiPreferencesRepository.isWebRemoteAudioOnDevice
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val webRemotePort: StateFlow<Int> = aiPreferencesRepository.webRemotePort
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 8081)
+
+    val webRemoteThemeColor: StateFlow<String> = aiPreferencesRepository.webRemoteThemeColor
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "#6750A4")
+
+    private val _webRemoteServerAddress = MutableStateFlow<String?>(null)
+    val webRemoteServerAddress: StateFlow<String?> = _webRemoteServerAddress.asStateFlow()
+
+    private val _webRemotePin = MutableStateFlow<String?>(null)
+    val webRemotePin: StateFlow<String?> = _webRemotePin.asStateFlow()
+
+    private val _isWebRemoteServerRunning = MutableStateFlow(false)
+    val isWebRemoteServerRunning: StateFlow<Boolean> = _isWebRemoteServerRunning.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            while (true) {
+                _webRemoteServerAddress.value = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.serverAddress
+                _webRemotePin.value = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.currentPin
+                _isWebRemoteServerRunning.value = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.isServerRunning
+                delay(1000)
+            }
+        }
+
+        viewModelScope.launch {
+            val enabled = aiPreferencesRepository.isWebRemoteEnabled.first()
+            if (enabled && !com.theveloper.pixelplay.data.service.http.WebRemoteServerService.isServerRunning) {
+                startWebRemoteServer()
+            }
+        }
+    }
+
+    fun setAutoPlaylistEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setAutoPlaylistEnabled(enabled)
+        }
+    }
+
+    fun setAutoMetadataEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setAutoMetadataEnabled(enabled)
+        }
+    }
+
+    fun setAutoDailyMixEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setAutoDailyMixEnabled(enabled)
+        }
+    }
+
+    fun setAutoPlaylistEvaluationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setAutoPlaylistEvaluationEnabled(enabled)
+        }
+    }
+
+    fun setAiRecommendationCardEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setAiRecommendationCardEnabled(enabled)
+        }
+    }
+
+    fun setAiRecommendationManualOnly(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setAiRecommendationManualOnly(enabled)
+        }
+    }
+
+    fun setWebRemoteEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setWebRemoteEnabled(enabled)
+            if (enabled) {
+                startWebRemoteServer()
+            } else {
+                stopWebRemoteServer()
+            }
+        }
+    }
+
+    fun setWebRemoteSyncMode(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setWebRemoteSyncMode(enabled)
+        }
+    }
+
+    fun setWebRemoteAudioOnDevice(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setWebRemoteAudioOnDevice(enabled)
+        }
+    }
+
+    fun setWebRemotePort(port: Int) {
+        viewModelScope.launch {
+            val wasRunning = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.isServerRunning
+            aiPreferencesRepository.setWebRemotePort(port)
+            if (wasRunning) {
+                stopWebRemoteServer()
+                kotlinx.coroutines.delay(500)
+                startWebRemoteServer()
+            }
+        }
+    }
+
+    fun setWebRemoteThemeColor(color: String) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setWebRemoteThemeColor(color)
+            // Update running server's theme color
+            if (com.theveloper.pixelplay.data.service.http.WebRemoteServerService.isServerRunning) {
+                val intent = android.content.Intent(context, com.theveloper.pixelplay.data.service.http.WebRemoteServerService::class.java)
+                intent.action = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.ACTION_UPDATE_THEME
+                intent.putExtra("themeColor", color)
+                context.startForegroundService(intent)
+            }
+        }
+    }
+
+    fun startWebRemoteServer() {
+        val intent = android.content.Intent(context, com.theveloper.pixelplay.data.service.http.WebRemoteServerService::class.java)
+        intent.action = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.ACTION_START_SERVER
+        intent.putExtra("audioOnDevice", isWebRemoteAudioOnDevice.value)
+        intent.putExtra("themeColor", webRemoteThemeColor.value)
+        context.startForegroundService(intent)
+    }
+
+    fun stopWebRemoteServer() {
+        val intent = android.content.Intent(context, com.theveloper.pixelplay.data.service.http.WebRemoteServerService::class.java)
+        intent.action = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.ACTION_STOP_SERVER
+        context.stopService(intent)
+    }
 
     /**
      * Performs a full library rescan - rescans all files from scratch.
@@ -1115,6 +1239,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun onSafeTokenModeChange(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setSafeTokenLimitEnabled(enabled)
+        }
+    }
+
     fun loadModelsForCurrentProvider() {
         viewModelScope.launch {
             if (_uiState.value.isLoadingModels) return@launch
@@ -1146,16 +1276,12 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingModels = true, modelsFetchError = null) }
             try {
                 val provider = AiProvider.fromString(providerName)
-                val models = if (provider == AiProvider.GEMINI) {
-                    geminiModelService.fetchAvailableModels(apiKey).getOrThrow()
-                } else {
-                    val aiClient = aiClientFactory.createClient(provider, apiKey)
-                    aiClient.getAvailableModels(apiKey)
-                        .map { it.trim() }
-                        .filter { it.isNotBlank() }
-                        .distinct()
-                        .map { com.theveloper.pixelplay.data.ai.GeminiModel(it, formatModelDisplayName(it)) }
-                }
+                val aiClient = aiClientFactory.createClient(provider, apiKey)
+                val models = aiClient.getAvailableModels(apiKey)
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .map { com.theveloper.pixelplay.data.ai.GeminiModel(it, formatModelDisplayName(it)) }
                 
                 _uiState.update { 
                     it.copy(
@@ -1260,7 +1386,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun exportAppData(uri: Uri, sections: Set<BackupSection>) {
+    fun exportAppData(uri: Uri, sections: Set<BackupSection>, format: BackupFormat = BackupFormat.PXPL) {
         if (sections.isEmpty() || _uiState.value.isDataTransferInProgress) return
         viewModelScope.launch {
             _uiState.update { it.copy(isDataTransferInProgress = true) }
@@ -1271,7 +1397,7 @@ class SettingsViewModel @Inject constructor(
                 title = context.getString(R.string.backup_progress_preparing_backup),
                 detail = context.getString(R.string.backup_progress_starting_backup_task),
             )
-            val result = backupManager.export(uri, sections) { progress ->
+            val result = backupManager.export(uri, sections, format) { progress ->
                 _dataTransferProgress.value = progress
             }
             result.fold(
@@ -1367,6 +1493,42 @@ class SettingsViewModel @Inject constructor(
     fun removeBackupHistoryEntry(entry: BackupHistoryEntry) {
         viewModelScope.launch {
             backupManager.removeBackupHistoryEntry(entry.uri)
+        }
+    }
+
+    fun setSongFilterEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSongFilterEnabled(enabled)
+        }
+    }
+
+    fun addSongFilterKeyword(keyword: String, matchMode: UserPreferencesRepository.SongFilterMatchMode) {
+        viewModelScope.launch {
+            userPreferencesRepository.addSongFilterKeyword(keyword, matchMode)
+        }
+    }
+
+    fun updateSongFilterKeyword(keyword: String, matchMode: UserPreferencesRepository.SongFilterMatchMode, enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSongFilterKeyword(keyword, matchMode, enabled)
+        }
+    }
+
+    fun removeSongFilterKeyword(keyword: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.removeSongFilterKeyword(keyword)
+        }
+    }
+
+    fun clearSongFilterKeywords() {
+        viewModelScope.launch {
+            userPreferencesRepository.clearSongFilterKeywords()
+        }
+    }
+
+    fun setCarModeEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setCarModeEnabled(enabled)
         }
     }
 

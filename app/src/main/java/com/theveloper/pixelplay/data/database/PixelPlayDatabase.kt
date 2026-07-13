@@ -34,9 +34,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JellyfinSongEntity::class,
         JellyfinPlaylistEntity::class,
         AiCacheEntity::class,
-        AiUsageEntity::class
+        AiUsageEntity::class,
+        HeadphonePresetEntity::class,
+        HeadphoneEqBandEntity::class,
+        BluetoothPresetBindingEntity::class
     ],
-    version = 42,
+    version = 44,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -56,6 +59,8 @@ abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun jellyfinDao(): JellyfinDao
     abstract fun aiCacheDao(): AiCacheDao
     abstract fun aiUsageDao(): AiUsageDao
+    abstract fun headphonePresetDao(): HeadphonePresetDao
+    abstract fun bluetoothPresetBindingDao(): BluetoothPresetBindingDao
 
     companion object {
         // Gap-bridging no-op migrations for missing version ranges.
@@ -744,6 +749,116 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_navidrome_songs_navidrome_id ON navidrome_songs(navidrome_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_navidrome_songs_playlist_id ON navidrome_songs(playlist_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_navidrome_songs_playlist_id_date_added ON navidrome_songs(playlist_id, date_added)")
+            }
+        }
+
+        val MIGRATION_42_43 = object : Migration(42, 43) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS headphone_presets (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        brand TEXT,
+                        category TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        preamp REAL NOT NULL,
+                        band_count INTEGER NOT NULL,
+                        display_priority INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_presets_name ON headphone_presets(name)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_presets_category ON headphone_presets(category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_presets_brand ON headphone_presets(brand)")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS headphone_eq_bands (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        preset_id INTEGER NOT NULL,
+                        filter_order INTEGER NOT NULL,
+                        filter_type TEXT NOT NULL,
+                        frequency REAL NOT NULL,
+                        q REAL NOT NULL,
+                        gain REAL NOT NULL,
+                        FOREIGN KEY (preset_id) REFERENCES headphone_presets(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS bluetooth_preset_bindings (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        device_name TEXT NOT NULL,
+                        device_address TEXT,
+                        preset_id INTEGER NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (preset_id) REFERENCES headphone_presets(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_eq_bands_preset_id ON headphone_eq_bands(preset_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_address ON bluetooth_preset_bindings(device_address)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_name ON bluetooth_preset_bindings(device_name)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_preset_id ON bluetooth_preset_bindings(preset_id)")
+            }
+        }
+
+        val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS headphone_presets_temp")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS headphone_presets_temp (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        brand TEXT,
+                        category TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        preamp REAL NOT NULL,
+                        band_count INTEGER NOT NULL,
+                        display_priority INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT OR IGNORE INTO headphone_presets_temp (id, name, brand, category, source, preamp, band_count, display_priority) SELECT id, name, brand, category, source, preamp, band_count, COALESCE(display_priority, 0) FROM headphone_presets")
+                db.execSQL("DROP TABLE IF EXISTS headphone_presets")
+                db.execSQL("ALTER TABLE headphone_presets_temp RENAME TO headphone_presets")
+
+                db.execSQL("DROP TABLE IF EXISTS headphone_eq_bands_temp")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS headphone_eq_bands_temp (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        preset_id INTEGER NOT NULL,
+                        filter_order INTEGER NOT NULL,
+                        filter_type TEXT NOT NULL,
+                        frequency REAL NOT NULL,
+                        q REAL NOT NULL,
+                        gain REAL NOT NULL,
+                        FOREIGN KEY (preset_id) REFERENCES headphone_presets(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT OR IGNORE INTO headphone_eq_bands_temp (id, preset_id, filter_order, filter_type, frequency, q, gain) SELECT id, preset_id, filter_order, filter_type, frequency, q, gain FROM headphone_eq_bands")
+                db.execSQL("DROP TABLE IF EXISTS headphone_eq_bands")
+                db.execSQL("ALTER TABLE headphone_eq_bands_temp RENAME TO headphone_eq_bands")
+
+                db.execSQL("DROP TABLE IF EXISTS bluetooth_preset_bindings_temp")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS bluetooth_preset_bindings_temp (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        device_name TEXT NOT NULL,
+                        device_address TEXT,
+                        preset_id INTEGER NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (preset_id) REFERENCES headphone_presets(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT OR IGNORE INTO bluetooth_preset_bindings_temp (id, device_name, device_address, preset_id, created_at) SELECT id, device_name, device_address, preset_id, created_at FROM bluetooth_preset_bindings")
+                db.execSQL("DROP TABLE IF EXISTS bluetooth_preset_bindings")
+                db.execSQL("ALTER TABLE bluetooth_preset_bindings_temp RENAME TO bluetooth_preset_bindings")
+
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_presets_name ON headphone_presets(name)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_presets_category ON headphone_presets(category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_presets_brand ON headphone_presets(brand)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_headphone_eq_bands_preset_id ON headphone_eq_bands(preset_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_address ON bluetooth_preset_bindings(device_address)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_name ON bluetooth_preset_bindings(device_name)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_preset_id ON bluetooth_preset_bindings(preset_id)")
             }
         }
 

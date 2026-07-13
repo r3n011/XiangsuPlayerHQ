@@ -31,9 +31,10 @@ internal fun rememberFullPlayerCompositionPolicy(
     currentSongId: String?,
     currentSheetState: PlayerSheetState,
     expansionFraction: Animatable<Float, AnimationVector1D>,
-    collapsedWarmDelayMs: Long = 650L
+    collapsedWarmDelayMs: Long = 300L,
+    expandAnimationSettleDelayMs: Long = 200L
 ): FullPlayerCompositionPolicy {
-    var keepFullPlayerComposed by remember(currentSongId) { mutableStateOf(false) }
+    var keepFullPlayerComposed by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentSongId, currentSheetState) {
         if (currentSongId == null) {
@@ -42,25 +43,17 @@ internal fun rememberFullPlayerCompositionPolicy(
         }
 
         if (currentSheetState == PlayerSheetState.EXPANDED) {
-            // ⚡ 关键优化：展开状态时，等待动画完全结束后再开始渲染内容
-            // 动画期间（0% → 100%）：只渲染背景/容器，避免内容加载导致卡顿
-            // expansionFraction 从 0f → 1f 动画完成后，再设置 keepFullPlayerComposed = true
-            snapshotFlow { expansionFraction.value >= 0.99f }
-                .first { it }
+            if (keepFullPlayerComposed) {
+                return@LaunchedEffect
+            }
+            delay(expandAnimationSettleDelayMs)
             keepFullPlayerComposed = true
         } else {
-            // Warm the hidden full-player tree after the collapsed state settles.
-            // This moves the expensive first composition out of the expand animation.
             delay(collapsedWarmDelayMs)
             keepFullPlayerComposed = true
         }
     }
 
-    // ⚡ 只在 keepFullPlayerComposed = true 时渲染完整播放器内容
-    // keepFullPlayerComposed 的设置时机：
-    //   1. 展开动画完全结束后（expansionFraction >= 0.99f）
-    //   2. 折叠状态稳定后（650ms 延迟，预热）
-    // 这样确保动画期间只渲染背景，完全避免内容加载和动画的主线程资源竞争
     val shouldRenderFullPlayer by remember(currentSongId) {
         derivedStateOf {
             currentSongId != null && keepFullPlayerComposed

@@ -20,6 +20,64 @@ class BackupWriter @Inject constructor(
     @ApplicationContext private val context: Context,
     @BackupGson private val gson: Gson
 ) {
+    suspend fun writeExternalFormat(
+        uri: Uri,
+        manifest: BackupManifest,
+        modulePayloads: Map<String, String>
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val playbackHistoryJson = modulePayloads["playback_history"]
+            if (playbackHistoryJson != null) {
+                val historyEntries = gson.fromJson(playbackHistoryJson,
+                    com.google.gson.reflect.TypeToken.getParameterized(
+                        List::class.java,
+                        com.theveloper.pixelplay.data.backup.model.PlaybackHistoryBackupEntry::class.java
+                    ).type
+                ) as List<com.theveloper.pixelplay.data.backup.model.PlaybackHistoryBackupEntry>
+
+                val externalEntries = historyEntries.map { entry ->
+                    ExternalPlayHistoryEntry(
+                        id = java.util.UUID.randomUUID().toString(),
+                        playedDuration = entry.durationMs / 1000.0,
+                        completed = entry.durationMs > 0,
+                        artistName = "",
+                        songTitle = "",
+                        sourceType = detectSourceType(entry.songId),
+                        albumName = "",
+                        playedAt = java.time.Instant.ofEpochMilli(entry.timestamp).toString(),
+                        duration = 0,
+                        songId = entry.songId
+                    )
+                }
+
+                val externalBackup = ExternalBackup(
+                    createdAt = java.time.Instant.ofEpochMilli(manifest.createdAt).toString(),
+                    version = "1.0",
+                    appVersion = manifest.appVersion,
+                    deviceInfo = ExternalDeviceInfo(
+                        model = manifest.deviceInfo.model,
+                        systemVersion = manifest.deviceInfo.androidVersion.toString()
+                    ),
+                    data = ExternalBackupData(
+                        playHistory = externalEntries
+                    )
+                )
+
+                val json = gson.toJson(externalBackup)
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write(json.toByteArray(Charsets.UTF_8))
+                } ?: throw IllegalStateException("Unable to open output stream for backup")
+            }
+        }
+    }
+
+    private fun detectSourceType(songId: String): String {
+        return when {
+            songId.startsWith("netease_") || songId.startsWith("wy_") -> "netease"
+            songId.startsWith("qqmusic_") || songId.startsWith("qq_") -> "qqmusic"
+            else -> "local"
+        }
+    }
     suspend fun write(
         uri: Uri,
         manifest: BackupManifest,

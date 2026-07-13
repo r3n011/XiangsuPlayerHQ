@@ -164,6 +164,10 @@ class MusicService : MediaLibraryService() {
     @Inject
     lateinit var listeningStatsTracker: ListeningStatsTracker
     @Inject
+    lateinit var bluetoothLyricsManager: com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager
+    @Inject
+    lateinit var audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings
+    @Inject
     @AppScope
     lateinit var appScope: CoroutineScope
 
@@ -428,6 +432,13 @@ class MusicService : MediaLibraryService() {
             }
         }
         registerHeadsetReconnectMonitor()
+        handleUsbDeviceChange()
+
+        serviceScope.launch {
+            audioEngineSettings.usbExclusiveModeEnabled.collect { enabled ->
+                handleUsbDeviceChange()
+            }
+        }
 
         serviceScope.launch {
             musicRepository.telegramRepository.downloadCompleted.collect {
@@ -480,6 +491,12 @@ class MusicService : MediaLibraryService() {
         serviceScope.launch {
             userPreferencesRepository.hiFiModeEnabledFlow.collect { enabled ->
                 engine.setHiFiMode(enabled)
+            }
+        }
+
+        serviceScope.launch {
+            userPreferencesRepository.musicQualityFlow.collect { quality ->
+                engine.setMusicQuality(quality)
             }
         }
 
@@ -863,6 +880,19 @@ class MusicService : MediaLibraryService() {
             .setSessionActivity(getOpenAppPendingIntent())
             .setBitmapLoader(CoilBitmapLoader(this, serviceScope))
             .build()
+
+        // 蓝牙歌词：绑定 MediaSession 并读取用户偏好
+        bluetoothLyricsManager.attachMediaSession(mediaSession)
+        serviceScope.launch {
+            userPreferencesRepository.bluetoothLyricsEnabledFlow.collect { enabled ->
+                bluetoothLyricsManager.setFeatureEnabled(enabled)
+            }
+        }
+        try {
+            bluetoothLyricsManager.start()
+        } catch (_: SecurityException) {
+            // 没有 BLUETOOTH_CONNECT 权限时忽略
+        }
 
         val localOnlyProvider = LocalOnlyMediaNotificationProvider(this).also {
             it.setSmallIcon(R.drawable.monochrome_player)
@@ -1250,6 +1280,8 @@ class MusicService : MediaLibraryService() {
             widgetUpdateManager.requestFullUpdate(true)
             mediaSession?.let { refreshMediaSessionUi(it) }
             schedulePlaybackSnapshotPersist()
+            // 蓝牙歌词：更新播放状态
+            bluetoothLyricsManager.updatePlaybackState(player.currentPosition, isPlaying)
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -1293,6 +1325,9 @@ class MusicService : MediaLibraryService() {
             }
             mediaSession?.let { refreshMediaSessionUi(it) }
             schedulePlaybackSnapshotPersist(immediate = playbackState == Player.STATE_IDLE)
+            // 蓝牙歌词：播放状态变化时刷新
+            val p = mediaSession?.player ?: engine.masterPlayer
+            bluetoothLyricsManager.updatePlaybackState(p.currentPosition, p.isPlaying)
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
@@ -1390,6 +1425,41 @@ class MusicService : MediaLibraryService() {
             widgetUpdateManager.requestFullUpdate(false)
             mediaSession?.let { refreshMediaSessionUi(it) }
             schedulePlaybackSnapshotPersist()
+
+            // 蓝牙歌词：更新当前 MediaItem，并异步加载歌词。
+            //
+            // ⚠️ 设计规则：
+            //   1. 这里只做"读取歌词 / 设置歌词"，不做 player.replaceMediaItem；
+            //      replaceMediaItem 由 pushNowInternal 在主线程执行。
+            //   2. 对 `reason == MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED`
+            //      的事件跳过歌词更新 —— 这种 reason 通常就是我们自己在
+            //      pushNowInternal 里调 replaceMediaItem 触发的，如果再做
+            //      setLyrics 就会形成"切歌 → replace → 切歌 → replace..."的循环。
+            bluetoothLyricsManager.setCurrentMediaItem(mediaItem)
+            val isPlaylistChange = reason ==
+                    androidx.media3.common.Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+            val songId = mediaItem?.mediaId
+            if (!isPlaylistChange && !songId.isNullOrBlank()) {
+                // 在主线程读取一次播放位置/播放状态（Media3 要求）
+                val mainPlayer = mediaSession?.player ?: engine.masterPlayer
+                val posMs = mainPlayer.currentPosition
+                val playing = mainPlayer.isPlaying
+
+                serviceScope.launch(Dispatchers.IO) {
+                    val song = runCatching { musicRepository.getSong(songId).first() }.getOrNull()
+                        ?: return@launch
+                    val lyrics = runCatching { musicRepository.getLyrics(song) }.getOrNull()
+                    bluetoothLyricsManager.setLyrics(lyrics)
+                    bluetoothLyricsManager.updatePlaybackState(posMs, playing)
+                    bluetoothLyricsManager.pushNow()
+                }
+            } else {
+                // PLAYLIST_CHANGED 或 songId 为空：不清空 lyrics，
+                // 避免把已有的同步歌词丢掉；仅在 songId 为空时清空。
+                if (songId.isNullOrBlank()) {
+                    bluetoothLyricsManager.setLyrics(null)
+                }
+            }
         }
 
         override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
@@ -1466,6 +1536,7 @@ class MusicService : MediaLibraryService() {
         unregisterHeadsetReconnectMonitor()
         wearStatePublisher.clearState()
         replayGainProcessor.cancel()
+        bluetoothLyricsManager.stop()
 
         engine.removePlayerSwapListener(playerSwapListener)
         engine.removeTransitionDisplayPlayerListener(transitionDisplayPlayerListener)
@@ -1511,11 +1582,32 @@ class MusicService : MediaLibraryService() {
             override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
                 if (!addedDevices.any(::isReconnectableHeadsetOutput)) return
                 maybeResumeAfterHeadsetReconnect()
+                handleUsbDeviceChange()
+            }
+
+            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+                handleUsbDeviceChange()
             }
         }
 
         audioManager.registerAudioDeviceCallback(callback, null)
         headsetReconnectCallback = callback
+    }
+
+    private fun handleUsbDeviceChange() {
+        val usbDevice = findUsbAudioDevice()
+        audioEngineSettings.setCurrentUsbDeviceName(if (usbDevice != null) "USB Device" else null)
+        if (audioEngineSettings.usbExclusiveModeEnabled.value && usbDevice != null) {
+            engine.setPreferredAudioDevice(usbDevice)
+            Timber.tag(TAG).d("USB exclusive mode: routing to USB device")
+        } else if (!audioEngineSettings.usbExclusiveModeEnabled.value) {
+            engine.setPreferredAudioDevice(null)
+        }
+    }
+
+    private fun findUsbAudioDevice(): AudioDeviceInfo? {
+        return audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            .firstOrNull { it.type == AudioDeviceInfo.TYPE_USB_HEADSET || it.type == AudioDeviceInfo.TYPE_USB_DEVICE }
     }
 
     private fun unregisterHeadsetReconnectMonitor() {
@@ -1775,12 +1867,28 @@ class MusicService : MediaLibraryService() {
         MediaItemBuilder.externalControllerArtworkUri(this, snapshotItem.artworkUri)
             ?.let { metadataBuilder.setArtworkUri(it) }
 
+        val resolvedUri = when {
+            snapshotItem.mediaId.startsWith("netease_") -> {
+                val neteaseId = snapshotItem.mediaId.removePrefix("netease_").toLongOrNull()
+                if (neteaseId != null) "netease://$neteaseId" else snapshotItem.uri
+            }
+            snapshotItem.mediaId.startsWith("roaming_") -> {
+                val neteaseId = snapshotItem.mediaId.removePrefix("roaming_").toLongOrNull()
+                if (neteaseId != null) "netease://$neteaseId" else snapshotItem.uri
+            }
+            snapshotItem.uri.startsWith("http") && snapshotItem.mediaId.contains("qqmusic") -> {
+                val idPart = snapshotItem.mediaId.substringAfter("_")
+                if (idPart.isNotBlank()) "qqmusic://$idPart" else snapshotItem.uri
+            }
+            else -> snapshotItem.uri
+        }
+
         val extras = Bundle().apply {
             putBoolean(
                 MediaItemBuilder.EXTERNAL_EXTRA_FLAG,
                 snapshotItem.mediaId.startsWith("external:")
             )
-            putString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI, snapshotItem.uri)
+            putString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI, resolvedUri)
             snapshotItem.albumTitle?.takeIf { it.isNotBlank() }?.let {
                 putString(MediaItemBuilder.EXTERNAL_EXTRA_ALBUM, it)
             }
@@ -1795,7 +1903,7 @@ class MusicService : MediaLibraryService() {
 
         return MediaItem.Builder()
             .setMediaId(snapshotItem.mediaId)
-            .setUri(MediaItemBuilder.playbackUri(snapshotItem.uri))
+            .setUri(MediaItemBuilder.playbackUri(resolvedUri))
             .setMediaMetadata(metadataBuilder.build())
             .build()
     }

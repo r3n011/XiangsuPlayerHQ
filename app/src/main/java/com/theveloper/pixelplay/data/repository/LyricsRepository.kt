@@ -60,6 +60,12 @@ interface LyricsRepository {
     fun clearCache()
 
     /**
+     * Clears in-memory cache for cloud/netease songs specifically.
+     * Used when song changes to prevent cross-song lyric contamination.
+     */
+    fun clearLyricsCacheForCloudSongs()
+
+    /**
      * Scans local .lrc files for the provided songs and updates the database if found.
      * 
      * @param songs List of songs to scan for

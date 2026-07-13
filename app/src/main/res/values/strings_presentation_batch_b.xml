@@ -44,6 +44,10 @@
     <!-- DailyMixScreen -->
     <string name="presentation_batch_b_daily_mix_title">Daily Mix</string>
 
+    <!-- AiMixScreen -->
+    <string name="presentation_batch_b_ai_mix_title">AI Mix</string>
+    <string name="presentation_batch_b_ai_mix_empty">Generating your AI playlist...</string>
+
     <!-- QuickFillScreen -->
     <string name="presentation_batch_b_quick_fill_select_songs">Select Songs</string>
     <string name="presentation_batch_b_quick_fill_choose_genre">Choose Genre</string>

@@ -4,9 +4,12 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.net.Uri
 import android.os.Trace
+import android.os.SystemClock
 import android.media.MediaMetadataRetriever
 import android.util.Log
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import androidx.compose.animation.core.Animatable
 import androidx.core.content.ContextCompat
 import com.theveloper.pixelplay.data.model.LibraryTabId
@@ -22,12 +25,20 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import android.content.Context
 import android.content.Intent
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.media3.common.Timeline
+import com.theveloper.pixelplay.data.netease.NeteaseRepository
+import com.theveloper.pixelplay.data.netease.PersonalFmApi
+import com.theveloper.pixelplay.data.lx.LxSongInfo
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
@@ -108,6 +119,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -261,8 +273,45 @@ class PlayerViewModel @Inject constructor(
     val playlistSelectionStateHolder: PlaylistSelectionStateHolder,
     private val sessionToken: SessionToken,
     private val mediaControllerFactory: com.theveloper.pixelplay.data.media.MediaControllerFactory,
-    val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi
+    val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi,
+    private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
+    private val neteaseRepository: com.theveloper.pixelplay.data.netease.NeteaseRepository,
+    val personalFmApi: com.theveloper.pixelplay.data.netease.PersonalFmApi,
+    private val bluetoothLyricsManager: com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager,
+    private val dotImageRepositoryProvider: Lazy<com.theveloper.pixelplay.data.repository.DotImageRepository>,
+    private val neteaseDownloadService: com.theveloper.pixelplay.data.service.http.NeteaseDownloadService,
+    private val musicDownloadServiceProvider: Lazy<com.theveloper.pixelplay.data.service.http.MusicDownloadService>,
 ) : ViewModel() {
+
+    // ─── 网易云账户相关 ────────────────────────────────────────────────────
+    val neteaseCookie: String
+        get() = neteaseRepository.getCookieString()
+    val neteaseUserId: Long
+        get() = neteaseRepository.userId
+    val isNeteaseLoggedIn: Boolean
+        get() = neteaseRepository.isLoggedIn
+
+    // ─── 下载进度相关 ────────────────────────────────────────────────────
+    val downloads: StateFlow<List<com.theveloper.pixelplay.data.service.http.MusicDownloadService.DownloadInfo>>
+        get() = musicDownloadServiceProvider.get().downloads
+
+    fun getDownloadInfo(songId: String): com.theveloper.pixelplay.data.service.http.MusicDownloadService.DownloadInfo? {
+        return musicDownloadServiceProvider.get().getDownloadInfo(songId)
+    }
+
+    fun isOnlineSong(song: Song): Boolean {
+        return musicDownloadServiceProvider.get().isOnlineSong(song)
+    }
+
+    // ─── 漫游模式 VIP 歌曲检测 ──────────────────────────────────────────────
+    // 已被检测为 VIP 试听并尝试过 lx 引擎替换的歌曲 ID 集合，避免重复处理
+    private val roamingVipSongHandledIds = mutableSetOf<String>()
+    // 正在进行 lx URL 获取的歌曲 ID（避免同一首歌被多次并发请求）
+    private val roamingVipSongInProgressIds = mutableSetOf<String>()
+    // VIP 歌曲后台预加载任务：songId -> Job
+    private val vipPreloadJobs = mutableMapOf<String, Job>()
+    // VIP 歌曲预加载结果缓存：songId -> fullUrl（已经获取到但还没替换的完整 URL）
+    private val vipPendingFullUrls = mutableMapOf<String, String>()
 
     private val _playerUiState = MutableStateFlow(PlayerUiState())
     val playerUiState: StateFlow<PlayerUiState> = _playerUiState.asStateFlow()
@@ -285,6 +334,13 @@ class PlayerViewModel @Inject constructor(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val showNoInternetDialog: SharedFlow<Unit> = _showNoInternetDialog.asSharedFlow()
+
+    // ─── 漫游模式状态 ───────────────────────────────────────────────────
+    private val _isRoamingMode = MutableStateFlow(false)
+    val isRoamingMode: StateFlow<Boolean> = _isRoamingMode.asStateFlow()
+
+    private val _isRoamingLoading = MutableStateFlow(false)
+    val isRoamingLoading: StateFlow<Boolean> = _isRoamingLoading.asStateFlow()
 
     val stablePlayerState: StateFlow<StablePlayerState> = playbackStateHolder.stablePlayerState
     val albumArtPaletteStyle: StateFlow<AlbumArtPaletteStyle> = themePreferencesRepository
@@ -317,6 +373,18 @@ class PlayerViewModel @Inject constructor(
             playbackStateHolder.updateStablePlayerState { state ->
                 if (state.currentSong?.id != songId) state
                 else state.copy(isLoadingLyrics = false, lyrics = lyrics)
+            }
+        }
+
+        // ⚡ 关键修复：加载结束但未获取到歌词时，不清除已存在的歌词
+        // 这防止了以下竞态：歌曲A成功获取歌词 → 同歌曲被重新加载（如 hydration）→
+        // 第二次获取失败 → onLyricsLoaded(null) 覆盖了好的歌词
+        override fun onLyricsLoadFinished(songId: String, lyrics: Lyrics?) {
+            playbackStateHolder.updateStablePlayerState { state ->
+                if (state.currentSong?.id != songId) state
+                else if (lyrics != null) state.copy(isLoadingLyrics = false, lyrics = lyrics)
+                else if (state.lyrics != null) state.copy(isLoadingLyrics = false)
+                else state.copy(isLoadingLyrics = false, lyrics = null)
             }
         }
     }
@@ -381,6 +449,19 @@ class PlayerViewModel @Inject constructor(
         val telegramRepository = musicRepository.telegramRepository
 
         viewModelScope.launch {
+            // 恢复漫游模式状态：如果当前播放的是漫游歌曲，标记为漫游模式
+            launch {
+                stablePlayerState
+                    .map { it.currentSong?.id }
+                    .distinctUntilChanged()
+                    .collect { currentSongId ->
+                        val isRoamingSong = currentSongId?.startsWith("roaming_") == true
+                        if (isRoamingSong) {
+                            _isRoamingMode.compareAndSet(expect = false, update = true)
+                        }
+                    }
+            }
+
             launch {
                 telegramCacheManager.embeddedArtUpdated.collect { updatedArtUri ->
                     refreshArtwork(updatedArtUri)
@@ -485,9 +566,12 @@ class PlayerViewModel @Inject constructor(
     // AI Ecosystem: States delegated to AiStateHolder for centralized management
     val showAiPlaylistSheet: StateFlow<Boolean> = aiStateHolder.showAiPlaylistSheet
     val isGeneratingAiPlaylist: StateFlow<Boolean> = aiStateHolder.isGeneratingAiPlaylist
+    val isEvaluatingPlaylist: StateFlow<Boolean> = aiStateHolder.isEvaluatingPlaylist
+    val playlistEvaluation: StateFlow<com.theveloper.pixelplay.data.ai.PlaylistEvaluation?> = aiStateHolder.playlistEvaluation
     val aiSuccess: StateFlow<Boolean> = aiStateHolder.aiSuccess
     val aiStatus: StateFlow<String?> = aiStateHolder.aiStatus
     val aiError: StateFlow<String?> = aiStateHolder.aiError
+    val generatedPlaylistSongs: StateFlow<List<Song>> = aiStateHolder.generatedPlaylistSongs
 
     // AI Metadata Generation States
     val isGeneratingAiMetadata: StateFlow<Boolean> = aiStateHolder.isGeneratingMetadata
@@ -497,6 +581,8 @@ class PlayerViewModel @Inject constructor(
     val selectedSongForInfo: StateFlow<Song?> = _selectedSongForInfo.asStateFlow()
 
     // Theme & Colors - delegated to ThemeStateHolder
+    // ⚡ 单一的、原子的主题状态容器：activeColorSchemePair, colorSchemePair, albumArtUri 始终一致
+    val albumArtThemeState: StateFlow<AlbumArtThemeState> = themeStateHolder.albumArtThemeState
     val currentAlbumArtColorSchemePair: StateFlow<ColorSchemePair?> = themeStateHolder.currentAlbumArtColorSchemePair
     val activePlayerColorSchemePair: StateFlow<ColorSchemePair?> = themeStateHolder.activePlayerColorSchemePair
     val currentThemedAlbumArtUri: StateFlow<String?> = themeStateHolder.currentAlbumArtUri
@@ -538,44 +624,16 @@ class PlayerViewModel @Inject constructor(
             initialValue = CarouselStyle.NO_PEEK
         )
 
-    val hasActiveAiProviderApiKey: StateFlow<Boolean> = combine(
-        aiPreferencesRepository.aiProvider,
-        aiPreferencesRepository.geminiApiKey,
-        aiPreferencesRepository.deepseekApiKey,
-        aiPreferencesRepository.groqApiKey,
-        aiPreferencesRepository.mistralApiKey,
-        aiPreferencesRepository.nvidiaApiKey,
-        aiPreferencesRepository.kimiApiKey,
-        aiPreferencesRepository.glmApiKey,
-        aiPreferencesRepository.openaiApiKey
-    ) { values ->
-        val provider = values[0]
-        val gemini = values[1]
-        val deepseek = values[2]
-        val groq = values[3]
-        val mistral = values[4]
-        val nvidia = values[5]
-        val kimi = values[6]
-        val glm = values[7]
-        val openai = values[8]
-        when (provider) {
-            "DEEPSEEK" -> deepseek.isNotBlank()
-            "GROQ" -> groq.isNotBlank()
-            "MISTRAL" -> mistral.isNotBlank()
-            "NVIDIA" -> nvidia.isNotBlank()
-            "KIMI" -> kimi.isNotBlank()
-            "GLM" -> glm.isNotBlank()
-            "OPENAI" -> openai.isNotBlank()
-            else -> gemini.isNotBlank()
-        }
-    }.distinctUntilChanged()
+    val hasActiveAiProviderApiKey: StateFlow<Boolean> = aiPreferencesRepository.mimoApiKey
+        .map { it.isNotBlank() }
+        .distinctUntilChanged()
         .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = false
     )
 
-    val hasGeminiApiKey: StateFlow<Boolean> = aiPreferencesRepository.geminiApiKey
+    val hasGeminiApiKey: StateFlow<Boolean> = aiPreferencesRepository.mimoApiKey
         .map { it.isNotBlank() }
         .stateIn(
             scope = viewModelScope,
@@ -615,6 +673,34 @@ class PlayerViewModel @Inject constructor(
             initialValue = true
         )
 
+    // Lyrics font size preference
+    val lyricsFontSize: StateFlow<String> = userPreferencesRepository.lyricsFontSizeFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "DEFAULT"
+        )
+
+    fun setLyricsFontSize(size: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLyricsFontSize(size)
+        }
+    }
+
+    // Lyrics font family preference
+    val lyricsFontFamily: StateFlow<String> = userPreferencesRepository.lyricsFontFamilyFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "DEFAULT"
+        )
+
+    fun setLyricsFontFamily(family: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLyricsFontFamily(family)
+        }
+    }
+
     // Lyrics sync offset - now managed by LyricsStateHolder
     val currentSongLyricsSyncOffset: StateFlow<Int> = lyricsStateHolder.currentSongSyncOffset
 
@@ -633,6 +719,13 @@ class PlayerViewModel @Inject constructor(
             initialValue = false
         )
 
+    val showLyricsTrackInfo: StateFlow<Boolean> = userPreferencesRepository.showLyricsTrackInfoFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
     val immersiveLyricsTimeout: StateFlow<Long> = userPreferencesRepository.immersiveLyricsTimeoutFlow
         .stateIn(
             scope = viewModelScope,
@@ -645,6 +738,30 @@ class PlayerViewModel @Inject constructor(
 
     fun setImmersiveTemporarilyDisabled(disabled: Boolean) {
         _isImmersiveTemporarilyDisabled.value = disabled
+    }
+
+    // ─── 蓝牙歌词（Bluetooth Lyrics） ──────────────────────────────────────
+    val bluetoothLyricsEnabled: StateFlow<Boolean> =
+        userPreferencesRepository.bluetoothLyricsEnabledFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    val hasBluetoothOutput: StateFlow<Boolean> = bluetoothLyricsManager.hasBluetoothOutput
+
+    val currentBluetoothLyricLine: StateFlow<String?> = bluetoothLyricsManager.currentLine
+
+    fun setBluetoothLyricsEnabled(enabled: Boolean) {
+        bluetoothLyricsManager.setFeatureEnabled(enabled)
+        viewModelScope.launch {
+            userPreferencesRepository.setBluetoothLyricsEnabled(enabled)
+        }
+    }
+
+    fun toggleBluetoothLyrics() {
+        setBluetoothLyricsEnabled(!bluetoothLyricsEnabled.value)
     }
 
     val albumArtQuality: StateFlow<AlbumArtQuality> = userPreferencesRepository.albumArtQualityFlow
@@ -666,6 +783,13 @@ class PlayerViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
+        )
+
+    val navBarBlurEnabled: StateFlow<Boolean> = userPreferencesRepository.navBarBlurEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
         )
 
 
@@ -703,6 +827,9 @@ class PlayerViewModel @Inject constructor(
     val albumNavigationRequests = _albumNavigationRequests.asSharedFlow()
     private val _artistNavigationRequests = MutableSharedFlow<Long>(extraBufferCapacity = 1)
     val artistNavigationRequests = _artistNavigationRequests.asSharedFlow()
+
+    private val _neteaseArtistNavigationRequests = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    val neteaseArtistNavigationRequests = _neteaseArtistNavigationRequests.asSharedFlow()
     private val _searchNavDoubleTapEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val searchNavDoubleTapEvents = _searchNavDoubleTapEvents.asSharedFlow()
     
@@ -974,6 +1101,12 @@ class PlayerViewModel @Inject constructor(
     private val _trackVolume = MutableStateFlow(1.0f)
     val trackVolume: StateFlow<Float> = _trackVolume.asStateFlow()
 
+    // 学习钟（Focus Timer）状态 —— 由 ViewModel 持有，确保切歌时不丢失
+    val focusTimerState = com.theveloper.pixelplay.presentation.focusmode.FocusTimerState()
+    private val _isInFocusMode = MutableStateFlow(false)
+    val isInFocusMode: StateFlow<Boolean> = _isInFocusMode.asStateFlow()
+    fun setFocusMode(enabled: Boolean) { _isInFocusMode.value = enabled }
+
 
     @Inject
     lateinit var mediaMapper: com.theveloper.pixelplay.data.media.MediaMapper
@@ -1014,21 +1147,9 @@ class PlayerViewModel @Inject constructor(
             )
         }
 
-        stablePlayerState
-            .map { it.currentSong?.albumArtUriString?.takeIf { uri -> uri.isNotBlank() } }
-            .distinctUntilChanged()
-            // mapLatest cancels in-flight extraction for songs that are skipped over during a
-            // rapid next/previous burst, so only the latest song's palette is computed. Combined
-            // with the neighbor preloading below, the latest song is usually already a cache hit,
-            // so the color resolves immediately instead of after a backlog of intermediate songs.
-            .mapLatest { artworkUri ->
-                themeStateHolder.extractAndGenerateColorScheme(
-                    albumArtUriAsUri = artworkUri?.toUri(),
-                    currentSongUriString = artworkUri,
-                    isPreload = false
-                )
-            }
-            .launchIn(viewModelScope)
+        // ⚡ 颜色提取由 syncDisplayedMediaItemIfChanged 等显式路径负责（onMediaItemTransition 等）。
+        //   移除了 stablePlayerState 的 mapLatest 观察者，避免与显式路径形成竞态条件导致背景颜色闪烁。
+        //   快速切歌时的颜色提取和去重由 ThemeStateHolder 的 updateAlbumArtThemeState 负责。
 
         // Preload neighbor album-art palettes so a skip lands on an already-cached color scheme
         // (instant memory-cache hit) and the color animation starts in step with the carousel
@@ -1059,12 +1180,34 @@ class PlayerViewModel @Inject constructor(
             }
             .launchIn(viewModelScope)
 
+        // ── 漫游模式：歌曲切换时自动追加 1 首歌曲
+        // 每播放完一首歌曲（或手动切歌），触发加载 1 首新歌到队列末尾
+        // 这样播放列表会保持稳定增长，用户不会遇到"歌荒"
+        stablePlayerState
+            .map { it.currentMediaItemIndex }
+            .distinctUntilChanged()
+            .onEach { index ->
+                // 跳过初始值（-1 表示没有歌曲）
+                if (index < 0) return@onEach
+                // 仅在漫游模式下触发
+                if (!_isRoamingMode.value) return@onEach
+                // 延迟 300ms（跳过快速连切）
+                kotlinx.coroutines.delay(300)
+                // 再次确认当前仍然是漫游模式（防止期间被切换）
+                if (!_isRoamingMode.value) return@onEach
+                Timber.d("RoamingQueue: song changed to index=$index, appending 1 more song")
+                loadMoreRoamingSongs(1)
+            }
+            .launchIn(viewModelScope)
+
         viewModelScope.launch {
             lyricsStateHolder.songUpdates.collect { update: Pair<com.theveloper.pixelplay.data.model.Song, com.theveloper.pixelplay.data.model.Lyrics?> ->
                 val song = update.first
                 val lyrics = update.second
+                Log.w("PixelPlay_Debug", "[lyricsStateHolder.songUpdates] 收到歌词更新: song=${song.title.take(15)}, lyrics=${lyrics != null}")
                 // Check if this update is relevant to the currently playing song OR the selected song
                 if (playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id) {
+                    Log.w("PixelPlay_Debug", "  → ✅ 歌曲匹配，更新 state")
                     // MERGE FIX: if song comes back empty (e.g. from reset), preserve current metadata
                     val currentSong = playbackStateHolder.stablePlayerState.value.currentSong
                     val safeSong = if (song.title.isEmpty() && currentSong != null) {
@@ -1094,6 +1237,7 @@ class PlayerViewModel @Inject constructor(
                 .map { it.currentSong?.id }
                 .distinctUntilChanged()
                 .flatMapLatest { songId ->
+                    Log.w("PixelPlay_Debug", "[RepositoryHydration] songId 变化: ${songId?.take(8)}, 开始从 repository 拉取")
                     if (songId.isNullOrBlank()) flowOf(null)
                     else musicRepository.getSong(songId)
                 }
@@ -1101,11 +1245,18 @@ class PlayerViewModel @Inject constructor(
                     val currentState = playbackStateHolder.stablePlayerState.value
                     val currentSong = currentState.currentSong ?: return@collect
                     if (repositorySong == null || repositorySong.id != currentSong.id) {
+                        Log.w("PixelPlay_Debug", "  → ⏭️  repositorySong 不匹配当前歌曲，跳过")
                         return@collect
                     }
 
                     val hydratedSong = currentSong.withRepositoryHydration(repositorySong)
-                    val persistedLyrics = parsePersistedLyrics(hydratedSong.lyrics)
+                    // ⚡ 网易云歌曲：不信任数据库中缓存的歌词，因为可能是另一首歌的
+                    // （相同的 hash song.id 可能缓存了不同 netease ID 的歌词）
+                    val neteaseOrCloud =
+                        hydratedSong.neteaseId != null ||
+                            hydratedSong.contentUriString.startsWith("netease://", ignoreCase = true) ||
+                            hydratedSong.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
+                    val persistedLyrics = if (neteaseOrCloud) null else parsePersistedLyrics(hydratedSong.lyrics)
                     val shouldApplyPersistedLyrics = currentState.lyrics == null && persistedLyrics != null
                     val shouldRefreshSong = hydratedSong != currentSong
                     val shouldReloadLyrics =
@@ -1113,11 +1264,17 @@ class PlayerViewModel @Inject constructor(
                             currentState.lyrics == null &&
                             hydratedSong.improvesLyricsLookupComparedTo(currentSong)
 
+                    Log.w("PixelPlay_Debug", "  → [RepositoryHydration] 分析: " +
+                        "shouldRefreshSong=$shouldRefreshSong, " +
+                        "shouldApplyPersistedLyrics=$shouldApplyPersistedLyrics, " +
+                        "shouldReloadLyrics=$shouldReloadLyrics")
+
                     if (shouldApplyPersistedLyrics || shouldReloadLyrics) {
                         lyricsStateHolder.cancelLoading()
                     }
 
                     if (shouldRefreshSong || shouldApplyPersistedLyrics) {
+                        Log.w("PixelPlay_Debug", "  → ✅ 调用 updateSongInStates (⚠️ 可能导致第二次重组)")
                         updateSongInStates(
                             updatedSong = hydratedSong,
                             newLyrics = if (shouldApplyPersistedLyrics) persistedLyrics else null,
@@ -1133,6 +1290,54 @@ class PlayerViewModel @Inject constructor(
                         lyricsStateHolder.loadLyricsForSong(hydratedSong, lyricsSourcePreference.value)
                     }
                 }
+        }
+
+        // ⚡ 库加载后重新解析当前曲目（续播修复）
+        //   - 冷启动时 MediaController 先于库数据就绪，此时 resolveSongFromMediaItem
+        //     只能依赖 mediaMapper 的 fallback
+        //   - 当 libraryStateHolder.allSongsById 从空 → 非空时，说明库已加载，
+        //     此时用完整库数据重新解析当前曲目
+        viewModelScope.launch {
+            var libraryWasEmpty = libraryStateHolder.allSongsById.value.isEmpty()
+            libraryStateHolder.allSongsById.collect { songsById ->
+                val isNowEmpty = songsById.isEmpty()
+                if (libraryWasEmpty && !isNowEmpty) {
+                    // 库刚刚从空加载完毕 → 重新解析当前播放的曲目
+                    val currentMediaItem = mediaController?.currentMediaItem
+                    if (currentMediaItem != null) {
+                        val reResolvedSong = resolveSongFromMediaItem(currentMediaItem)
+                        if (reResolvedSong != null) {
+                            val currentState = playbackStateHolder.stablePlayerState.value
+                            val existingSong = currentState.currentSong
+                            // 只有当新解析出的 song 与当前 state 中的 song 不同时，
+                            // 才更新（避免不必要的重组）
+                            val shouldUpdate = existingSong == null ||
+                                existingSong.id != reResolvedSong.id ||
+                                existingSong.contentUriString != reResolvedSong.contentUriString ||
+                                existingSong.albumArtUriString != reResolvedSong.albumArtUriString
+                            if (shouldUpdate) {
+                                playbackStateHolder.updateStablePlayerState {
+                                    it.copy(
+                                        currentSong = reResolvedSong,
+                                        totalDuration = if (reResolvedSong.duration > 0L) reResolvedSong.duration else it.totalDuration,
+                                        lyrics = null,
+                                        isLoadingLyrics = false
+                                    )
+                                }
+                                viewModelScope.launch {
+                                    reResolvedSong.albumArtUriString?.let { uriString ->
+                                        themeStateHolder.extractAndGenerateColorScheme(
+                                            albumArtUriAsUri = uriString.toUri(),
+                                            currentSongUriString = uriString
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                libraryWasEmpty = isNowEmpty
+            }
         }
     }
 
@@ -1372,17 +1577,32 @@ class PlayerViewModel @Inject constructor(
                 old?.id == new?.id &&
                     old?.contentUriString == new?.contentUriString &&
                     old?.path == new?.path
-            }
-            .flatMapLatest { song ->
-                kotlinx.coroutines.flow.flow {
-                    emit(resolveFavoriteSongId(song))
-                }
             },
         favoriteSongIds
-    ) { favoriteSongId, ids ->
-        favoriteSongId?.let { ids.contains(it) } ?: false
+    ) { song, ids ->
+        song to ids
+    }.flatMapLatest { (song, ids) ->
+        kotlinx.coroutines.flow.flow {
+            // 每次 currentSong 或 favoriteSongIds 变化时，都重新查询数据库 ID
+            // 这样在漫游模式下，用户点击红心后歌曲被持久化，favoriteSongIds 变化，
+            // 会重新进入此 block，正确检测收藏状态
+            val favoriteSongId = resolveFavoriteSongId(song)
+            emit(favoriteSongId?.let { ids.contains(it) } ?: false)
+        }
     }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun observeSongFavoriteStatus(song: Song?): Flow<Boolean> {
+        if (song == null) return flowOf(false)
+        return flow {
+            emit(resolveFavoriteSongId(song))
+        }.flatMapLatest { favoriteId ->
+            favoriteSongIds.map { ids ->
+                favoriteId?.let { ids.contains(it) } ?: false
+            }
+        }.distinctUntilChanged()
+            .flowOn(Dispatchers.IO)
+    }
 
     // ---------------------------------------------------------------------------
     // FullPlayerSlice — consolidates 11 independent flows into ONE subscription.
@@ -1393,6 +1613,7 @@ class PlayerViewModel @Inject constructor(
     data class FullPlayerSlice(
         val currentSongArtists: List<Artist> = emptyList(),
         val lyricsSyncOffset: Int = 0,
+        val lyricsFontSize: String = "DEFAULT",
         val albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM,
         val audioMetadata: PlaybackAudioMetadata = PlaybackAudioMetadata(),
         val showPlayerFileInfo: Boolean = true,
@@ -1402,19 +1623,26 @@ class PlayerViewModel @Inject constructor(
         val isRemotePlaybackActive: Boolean = false,
         val selectedRouteName: String? = null,
         val isBluetoothEnabled: Boolean = false,
-        val bluetoothName: String? = null
+        val bluetoothName: String? = null,
+        val showLyricsTrackInfo: Boolean = true
     )
 
-    // Intermediate combine #1: 5 settings flows
+    private data class LyricsConfigSlice(val syncOffset: Int, val fontSize: String)
+
+    private val lyricsConfigSlice = combine(currentSongLyricsSyncOffset, lyricsFontSize) { syncOffset, fontSize ->
+        LyricsConfigSlice(syncOffset, fontSize)
+    }
+
+    // Intermediate combine #1: settings flows
     private val fullPlayerSlicePart1 = combine(
         currentSongArtists,
-        currentSongLyricsSyncOffset,
+        lyricsConfigSlice,
         albumArtQuality,
         playbackAudioMetadata,
         showPlayerFileInfo
-    ) { artists: List<Artist>, syncOffset: Int, artQuality: AlbumArtQuality,
+    ) { artists: List<Artist>, lyrics: LyricsConfigSlice, artQuality: AlbumArtQuality,
         audioMeta: PlaybackAudioMetadata, showFileInfo: Boolean ->
-        FullPlayerSlicePart1(artists, syncOffset, artQuality, audioMeta, showFileInfo)
+        FullPlayerSlicePart1(artists, lyrics.syncOffset, lyrics.fontSize, artQuality, audioMeta, showFileInfo)
     }
 
     private data class BluetoothSlice(val enabled: Boolean, val name: String?)
@@ -1429,16 +1657,18 @@ class PlayerViewModel @Inject constructor(
         immersiveLyricsTimeout,
         isImmersiveTemporarilyDisabled,
         isRemotePlaybackActive,
-        combine(selectedRouteName, bluetoothSlice) { route, bt -> route to bt }
+        combine(selectedRouteName, bluetoothSlice, showLyricsTrackInfo) { route, bt, showTrackInfo ->
+            Triple(route, bt, showTrackInfo)
+        }
     ) { immersive: Boolean, immersiveTimeout: Long, immersiveDisabled: Boolean,
-        remotePb: Boolean, routeAndBt: Pair<String?, BluetoothSlice> ->
-        val (routeName, bt) = routeAndBt
-        FullPlayerSlicePart2(immersive, immersiveTimeout, immersiveDisabled, remotePb, routeName, bt.enabled, bt.name)
+        remotePb: Boolean, routeBtTrackInfo ->
+        FullPlayerSlicePart2(immersive, immersiveTimeout, immersiveDisabled, remotePb, routeBtTrackInfo.first, routeBtTrackInfo.second.enabled, routeBtTrackInfo.second.name, routeBtTrackInfo.third)
     }
 
     private data class FullPlayerSlicePart1(
         val currentSongArtists: List<Artist>,
         val lyricsSyncOffset: Int,
+        val lyricsFontSize: String,
         val albumArtQuality: AlbumArtQuality,
         val audioMetadata: PlaybackAudioMetadata,
         val showPlayerFileInfo: Boolean
@@ -1451,7 +1681,8 @@ class PlayerViewModel @Inject constructor(
         val isRemotePlaybackActive: Boolean,
         val selectedRouteName: String?,
         val isBluetoothEnabled: Boolean,
-        val bluetoothName: String?
+        val bluetoothName: String?,
+        val showLyricsTrackInfo: Boolean
     )
 
     val fullPlayerSlice: StateFlow<FullPlayerSlice> = combine(
@@ -1461,6 +1692,7 @@ class PlayerViewModel @Inject constructor(
         FullPlayerSlice(
             currentSongArtists = p1.currentSongArtists,
             lyricsSyncOffset = p1.lyricsSyncOffset,
+            lyricsFontSize = p1.lyricsFontSize,
             albumArtQuality = p1.albumArtQuality,
             audioMetadata = p1.audioMetadata,
             showPlayerFileInfo = p1.showPlayerFileInfo,
@@ -1470,7 +1702,8 @@ class PlayerViewModel @Inject constructor(
             isRemotePlaybackActive = p2.isRemotePlaybackActive,
             selectedRouteName = p2.selectedRouteName,
             isBluetoothEnabled = p2.isBluetoothEnabled,
-            bluetoothName = p2.bluetoothName
+            bluetoothName = p2.bluetoothName,
+            showLyricsTrackInfo = p2.showLyricsTrackInfo
         )
     }
         .distinctUntilChanged()
@@ -1727,6 +1960,7 @@ class PlayerViewModel @Inject constructor(
 
     init {
         Log.i("PlayerViewModel", "init started.")
+        Log.w("PixelPlay_Debug", "=== PlayerViewModel INIT STARTED ===")
 
         // Cast initialization if already connected
         val currentSession = sessionManager?.currentCastSession
@@ -1912,12 +2146,14 @@ class PlayerViewModel @Inject constructor(
         mediaControllerFuture.addListener({
             try {
                 mediaController = mediaControllerFuture.get()
+                Log.w("PixelPlay_Debug", "=== MediaController CONNECTED, calling setupMediaControllerListeners ===")
                 // Pass controller to PlaybackStateHolder
                 playbackStateHolder.setMediaController(mediaController)
                 _isMediaControllerReady.value = true
 
 
                 setupMediaControllerListeners()
+                Log.w("PixelPlay_Debug", "=== setupMediaControllerListeners DONE ===")
                 flushPendingRepeatMode()
                 syncShuffleStateWithSession(playbackStateHolder.stablePlayerState.value.isShuffleEnabled)
                 // Execute any pending action that was queued while the controller was connecting
@@ -1926,6 +2162,7 @@ class PlayerViewModel @Inject constructor(
             } catch (e: Exception) {
                 _playerUiState.update { it.copy(isLoadingInitialSongs = false, isLoadingLibraryCategories = false) }
                 Log.e("PlayerViewModel", "Error setting up MediaController", e)
+                Log.w("PixelPlay_Debug", "=== MediaController FAILED: ${e.message} ===")
             }
         }, ContextCompat.getMainExecutor(context))
 
@@ -2134,6 +2371,215 @@ class PlayerViewModel @Inject constructor(
             getUiState = { _playerUiState.value },
             onHideDismissUndoBar = { hideDismissUndoBar() }
         )
+
+        // ─── 漫游模式 VIP 歌曲：先跳过，后台取链接，等合适时机再插入 ──────
+        // 原始逻辑（保留 30 秒试听然后切换）会造成：VIP歌曲→30秒→下一曲→又跳回VIP歌曲，
+        // 播放节奏被来回打断。新逻辑：
+        //   1) 当检测到当前歌曲是 VIP 试听（时长 ~30 秒），立即 skipToNext 跳过去；
+        //   2) 后台继续用 lx 引擎取完整播放链接；
+        //   3) 取到后，把它插入到 "当前歌曲之后 / 下一首" 的位置，
+        //      并在当前歌曲播放完成后无缝续播它；
+        //   4) 若 lx 引擎也拿不到，则永久放弃该歌曲。
+        //
+        // 为了避免重复处理：roamingVipSongHandledIds 记一次，
+        // 已加入等待队列的：vipPendingFullUrls 记 songId -> fullUrl。
+        viewModelScope.launch {
+            stablePlayerState
+                .distinctUntilChanged { old, new ->
+                    old.currentSong?.id == new.currentSong?.id &&
+                        old.totalDuration == new.totalDuration
+                }
+                .collect { state ->
+                    val song = state.currentSong ?: return@collect
+                    val mediaId = song.id
+                    if (!mediaId.startsWith("roaming_")) return@collect
+                    if (song.neteaseId == null) return@collect
+
+                    val reportedDuration = state.totalDuration
+                    if (reportedDuration <= 0L) return@collect
+                    val hintDuration = song.duration.coerceAtLeast(0L)
+                    val isVipPreview = reportedDuration in 20000L..40000L &&
+                        hintDuration > reportedDuration * 2
+
+                    if (!isVipPreview) return@collect
+
+                    synchronized(roamingVipSongHandledIds) {
+                        if (mediaId in roamingVipSongHandledIds) return@collect
+                        if (mediaId in roamingVipSongInProgressIds) return@collect
+                        roamingVipSongInProgressIds.add(mediaId)
+                    }
+
+                    Timber.d(
+                        "RoamingVIP: detected 30s preview for '$mediaId' " +
+                            "(reported=${reportedDuration}ms, hint=${hintDuration}ms), skipping"
+                    )
+
+                    // ① 在主线程读取当前 player 状态（只读），并立刻在主线程触发 skipToNext
+                    val controller = mediaController ?: dualPlayerEngine.masterPlayer
+                    val vipIndex = controller.currentMediaItemIndex
+                    val totalCount = controller.mediaItemCount
+                    val onlyOne = totalCount <= 1
+                    // ⚠️ Media3 要求所有 player 调用在主线程，这里用 Handler.post 确保；
+                    //    同时 launch { ... } 也是为了把"跳过"和"后台取链接"解耦，
+                    //    避免因为 seekToNext 自身的异步特性阻塞当前协程。
+                    val mainHandler = Handler(Looper.getMainLooper())
+                    if (!onlyOne) {
+                        mainHandler.post {
+                            runCatching {
+                                val c = mediaController ?: dualPlayerEngine.masterPlayer
+                                if (c.currentMediaItemIndex == vipIndex) {
+                                    c.seekToNextMediaItem()
+                                }
+                            }
+                        }
+                    }
+
+                    // ② 后台异步获取完整播放链接（IO 线程，不碰 player）
+                    val lxUrl: String? = try {
+                        withContext(Dispatchers.IO) {
+                            val songIdStr = song.neteaseId.toString()
+                            val songTitle = song.title
+                            val songArtist = song.displayArtist
+                            val songAlbum = song.album
+                            val songCover = song.albumArtUriString
+                            val songInfo = mapOf<String, Any?>(
+                                "id" to songIdStr,
+                                "vid" to songIdStr,
+                                "songmid" to songIdStr,
+                                "hash" to songIdStr,
+                                "name" to songTitle,
+                                "singer" to songArtist,
+                                "artists" to songArtist,
+                                "album" to songAlbum,
+                                "albumName" to songAlbum,
+                                "duration" to hintDuration,
+                                "pic" to songCover,
+                                "cover" to songCover
+                            )
+                            lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                        }
+                    } catch (t: Throwable) {
+                        Timber.w(t, "RoamingVIP: lxJsEngine.getPlayUrl failed for '$mediaId'")
+                        null
+                    }
+
+                    synchronized(roamingVipSongHandledIds) {
+                        roamingVipSongInProgressIds.remove(mediaId)
+                        roamingVipSongHandledIds.add(mediaId)
+                    }
+
+                    if (lxUrl.isNullOrBlank()) {
+                        Timber.w("RoamingVIP: lxJsEngine returned null for '$mediaId', giving up")
+                        return@collect
+                    }
+
+                    Timber.d("RoamingVIP: resolved full URL for '$mediaId' -> ${lxUrl.take(60)}…")
+
+                    // ③ 构造完整播放链接的 Song / MediaItem（纯数据，线程安全）
+                    val updatedSong = song.copy(path = lxUrl, contentUriString = lxUrl)
+                    val newMediaItem =
+                        com.theveloper.pixelplay.utils.MediaItemBuilder.build(updatedSong)
+
+                    // ④ 在主线程做队列修改（插入/替换），确保 player 调用都在主线程
+                    mainHandler.post {
+                        runCatching {
+                            val c = mediaController ?: dualPlayerEngine.masterPlayer
+                            val currentIdx = c.currentMediaItemIndex
+                            val mediaItemCountNow = c.mediaItemCount
+
+                            // 边界：VIP 歌曲是队列中唯一一首 → 原地替换并重播
+                            if (onlyOne) {
+                                val replaced = vipIndex.coerceAtLeast(0)
+                                    .coerceAtMost(mediaItemCountNow - 1)
+                                if (replaced in 0 until mediaItemCountNow) {
+                                    c.replaceMediaItem(replaced, newMediaItem)
+                                } else {
+                                    c.addMediaItem(0, newMediaItem)
+                                }
+                                c.seekTo(0, 0L)
+                                c.prepare()
+                                c.play()
+
+                                Timber.d(
+                                    "RoamingVIP: replaced the only queue item '$mediaId' " +
+                                        "at index=0 and resumed playback from 0"
+                                )
+
+                                viewModelScope.launch(Dispatchers.Main) {
+                                    playbackStateHolder.updateStablePlayerState { s ->
+                                        if (s.currentSong?.id == mediaId) {
+                                            s.copy(currentSong = updatedSong)
+                                        } else s
+                                    }
+                                    val queueSnapshot0 = _playerUiState.value.currentPlaybackQueue
+                                    if (queueSnapshot0.isNotEmpty()) {
+                                        val updatedQueue0 = queueSnapshot0.map { q ->
+                                            if (q.id == mediaId) updatedSong else q
+                                        }
+                                        _playerUiState.update {
+                                            it.copy(currentPlaybackQueue = updatedQueue0.toPlaybackQueue())
+                                        }
+                                    }
+                                }
+                                return@runCatching
+                            }
+
+                            // 常规：vipSong 之前已被跳过 → 插到"当前正在播放的这首之后"
+                            val insertionIndex =
+                                if (vipIndex in 0 until mediaItemCountNow && currentIdx >= vipIndex) {
+                                    (currentIdx + 1).coerceAtLeast(vipIndex)
+                                } else {
+                                    vipIndex.coerceAtLeast(0).coerceAtMost(mediaItemCountNow)
+                                }
+
+                            if (vipIndex in 0 until mediaItemCountNow &&
+                                c.getMediaItemAt(vipIndex).mediaId == mediaId
+                            ) {
+                                c.removeMediaItem(vipIndex)
+                            }
+
+                            val countAfterRemove = c.mediaItemCount
+                            val realInsertIndex = insertionIndex
+                                .coerceAtMost(countAfterRemove)
+                                .coerceAtLeast(0)
+                            c.addMediaItem(realInsertIndex, newMediaItem)
+
+                            Timber.d(
+                                "RoamingVIP: queued '$mediaId' at index=$realInsertIndex " +
+                                    "(original=$vipIndex, current=$currentIdx, total=${c.mediaItemCount})"
+                            )
+
+                            // 同步 UI 状态
+                            viewModelScope.launch(Dispatchers.Main) {
+                                val queueSnapshot = _playerUiState.value.currentPlaybackQueue
+                                if (queueSnapshot.isNotEmpty()) {
+                                    val updatedQueue = queueSnapshot.toMutableList()
+                                    val removeAt = updatedQueue.indexOfFirst { it.id == mediaId }
+                                    if (removeAt in updatedQueue.indices) updatedQueue.removeAt(removeAt)
+                                    val insertAt = realInsertIndex.coerceAtMost(updatedQueue.size)
+                                    updatedQueue.add(insertAt, updatedSong)
+                                    _playerUiState.update {
+                                        it.copy(currentPlaybackQueue = updatedQueue.toPlaybackQueue())
+                                    }
+                                }
+                            }
+
+                            if (c.playbackState == Player.STATE_IDLE ||
+                                c.playbackState == Player.STATE_ENDED
+                            ) {
+                                val targetIdx =
+                                    realInsertIndex.coerceAtMost(c.mediaItemCount - 1)
+                                c.seekToDefaultPosition(targetIdx)
+                                c.prepare()
+                                c.play()
+                            }
+                        }.onFailure { t ->
+                            Timber.w(t, "RoamingVIP: insert full-url failed for '$mediaId'")
+                        }
+                    }
+                }
+        }
 
         Trace.endSection() // End PlayerViewModel.init
     }
@@ -2524,9 +2970,9 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun triggerArtistNavigationFromPlayer(artistId: Long) {
-        if (artistId == 0L) {
-            Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer ignored invalid artistId=$artistId")
+    fun triggerArtistNavigationFromPlayer(artistId: Long, songNeteaseId: Long? = null) {
+        if (artistId == 0L && songNeteaseId == null) {
+            Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer ignored invalid artistId=$artistId songNeteaseId=$songNeteaseId")
             return
         }
 
@@ -2538,9 +2984,36 @@ class PlayerViewModel @Inject constructor(
 
         artistNavigationJob?.cancel()
         artistNavigationJob = viewModelScope.launch {
-            var resolvedId = artistId
             val currentSong = playbackStateHolder.stablePlayerState.value.currentSong
-            
+
+            if (songNeteaseId != null && songNeteaseId > 0L) {
+                val artistIdFromNetease = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        val result = personalFmApi.fetchNeteaseArtistId(songNeteaseId, neteaseCookie)
+                        result.getOrNull()
+                    } catch (t: Throwable) {
+                        Timber.e(t, "ArtistDebug: fetchNeteaseArtistId failed for songId=$songNeteaseId")
+                        null
+                    }
+                }
+                if (artistIdFromNetease != null && artistIdFromNetease > 0L) {
+                    Log.d(
+                        "ArtistDebug",
+                        "triggerArtistNavigationFromPlayer: netease artistId=$artistIdFromNetease, songId=${currentSong?.id}, title=${currentSong?.title}"
+                    )
+                    collapsePlayerSheet()
+                    withTimeoutOrNull(900) {
+                        awaitSheetState(PlayerSheetState.COLLAPSED)
+                        awaitPlayerCollapse()
+                    }
+                    _neteaseArtistNavigationRequests.emit(artistIdFromNetease)
+                    return@launch
+                } else {
+                    Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer: fetchNeteaseArtistId returned no id, falling back to local")
+                }
+            }
+
+            var resolvedId = artistId
             if (resolvedId == -1L && currentSong != null) {
                 val idFromName = musicRepository.getArtistIdByName(currentSong.artist)
                 if (idFromName != null) {
@@ -2564,7 +3037,7 @@ class PlayerViewModel @Inject constructor(
                 awaitPlayerCollapse()
             }
 
-            _artistNavigationRequests.emit(artistId)
+            _artistNavigationRequests.emit(resolvedId)
         }
     }
 
@@ -2589,21 +3062,55 @@ class PlayerViewModel @Inject constructor(
                 ?: _playerUiState.value.currentPlaybackQueue.find { it.id == mediaItem.mediaId }
                 ?: mediaMapper.resolveSongFromMediaItem(mediaItem)
 
-        return resolvedSong?.let { normalizeArtworkForResolvedSong(it, mediaItem) }
+        return resolvedSong?.let { normalizeArtworkAndMergeNeteaseInfo(it, mediaItem) }
     }
 
-    private fun normalizeArtworkForResolvedSong(song: Song, mediaItem: MediaItem): Song {
+    /**
+     * Merges netease-specific info from MediaItem extras into the resolved song.
+     * The MediaItem may carry EXTERNAL_EXTRA_NETEASE_ID and EXTERNAL_EXTRA_CONTENT_URI
+     * set by MediaItemBuilder, but library lookups can return songs that lost this info
+     * (e.g., stored with a non-"netease://" contentUri). Preserving this info ensures
+     * lyrics can be fetched through the correct API.
+     */
+    private fun normalizeArtworkAndMergeNeteaseInfo(song: Song, mediaItem: MediaItem): Song {
+        val extras = mediaItem.mediaMetadata.extras
+        val mediaItemNeteaseId = extras
+            ?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_NETEASE_ID, -1L)
+            ?.takeIf { it > 0L }
+        val mediaItemContentUri = extras
+            ?.getString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI)
+            ?.takeIf { it.isNotBlank() }
+
+        // Prefer netease:// contentUri and neteaseId from MediaItem extras when the
+        // resolved song doesn't already have them (e.g., came from a library lookup
+        // with a different stored contentUri).
+        val mergedNeteaseId = song.neteaseId
+            ?: mediaItemNeteaseId
+        val mergedContentUri = if (mediaItemContentUri != null &&
+            mediaItemContentUri.startsWith("netease://", ignoreCase = true) &&
+            !song.contentUriString.startsWith("netease://", ignoreCase = true)) {
+            mediaItemContentUri
+        } else {
+            song.contentUriString
+        }
+
+        val partlyMerged = if (mergedNeteaseId != song.neteaseId ||
+            mergedContentUri != song.contentUriString) {
+            song.copy(neteaseId = mergedNeteaseId, contentUriString = mergedContentUri)
+        } else song
+
+        // Then apply artwork normalization (which also uses MediaItem.extras).
         val metadataArtwork =
             mediaItem.mediaMetadata.artworkUri?.toString()?.takeIf { it.isNotBlank() }
-                ?: mediaItem.mediaMetadata.extras
-                    ?.getString(MediaItemBuilder.EXTERNAL_EXTRA_ALBUM_ART)
+                ?: extras?.getString(MediaItemBuilder.EXTERNAL_EXTRA_ALBUM_ART)
                     ?.takeIf { it.isNotBlank() }
 
         return when {
-            metadataArtwork == null && song.albumArtUriString != null -> song.copy(albumArtUriString = null)
-            metadataArtwork != null && song.albumArtUriString != metadataArtwork ->
-                song.copy(albumArtUriString = metadataArtwork)
-            else -> song
+            metadataArtwork == null && partlyMerged.albumArtUriString != null ->
+                partlyMerged.copy(albumArtUriString = null)
+            metadataArtwork != null && partlyMerged.albumArtUriString != metadataArtwork ->
+                partlyMerged.copy(albumArtUriString = metadataArtwork)
+            else -> partlyMerged
         }
     }
 
@@ -2849,7 +3356,7 @@ class PlayerViewModel @Inject constructor(
         return playbackStateHolder.currentPosition.value
     }
 
-    private fun syncDisplayedMediaItemIfChanged(player: Player) {
+    private fun syncDisplayedMediaItemIfChanged(player: Player, fromTransition: Boolean = false) {
         if (isRemoteSessionControllingPlayback()) return
 
         val mediaItem = player.currentMediaItem ?: return
@@ -2860,7 +3367,41 @@ class PlayerViewModel @Inject constructor(
         } else {
             player.currentMediaItemIndex
         }
-        if (currentSongId == mediaItem.mediaId && currentIndex == expectedIndex) return
+        val caller = Exception().stackTrace.getOrNull(2)?.methodName ?: "unknown"
+
+        // ⚡ 核心修复：切歌后 500ms 内，只有 onMediaItemTransition 触发的调用
+        //   才允许更新 currentSong，其他监听器在此期间可能读到不一致的
+        //   player.currentMediaItem，会导致 currentSong 在新旧之间回跳
+        val nowMs = SystemClock.elapsedRealtime()
+        val elapsedSinceTransition = nowMs - lastSongTransitionAtMs
+        val isInTransitionLockout = lastSongTransitionAtMs > 0 && elapsedSinceTransition < songTransitionLockMs
+        if (isInTransitionLockout && !fromTransition) {
+            Log.w("PixelPlay_Debug", "[syncDisplayedMediaItemIfChanged] 被 $caller 调用: " +
+                "⏭️  切歌锁定期内(${elapsedSinceTransition}ms)，忽略非 transition 调用，避免 currentSong 回跳")
+            return
+        }
+
+        Log.w("PixelPlay_Debug", "[syncDisplayedMediaItemIfChanged] 被 $caller(从${if (fromTransition) "Transition" else "Other"} 调用: " +
+            "currentSongId=${currentSongId?.take(8)}, mediaItem.mediaId=${mediaItem.mediaId.take(8)}, " +
+            "currentIndex=$currentIndex, expectedIndex=$expectedIndex")
+        // ⚡ 关键优化：如果 song id 和 index 都没变，直接 return，避免
+        // 多次回调（onPlaybackStateChanged × onMediaMetadataChanged × onTimelineChanged）
+        // 都来尝试更新 state —— 每次 update 即使值相同也会产生新对象导致 UI 重组
+        if (currentSongId == mediaItem.mediaId && currentIndex == expectedIndex) {
+            Log.w("PixelPlay_Debug", "  → ⏭️  songId 和 index 都没变，跳过 (避免重复重组)")
+            return
+        }
+
+        val song = resolveSongFromMediaItem(mediaItem)
+
+        // ⚡ 防闪烁：当 song 为 null 时不解更新 currentSong，
+        // 避免 metadata 还没准备好时 UI 短暂消失
+        if (song == null) {
+            Log.w("PixelPlay_Debug", "  → ⏭️  song == null (metadata 未就绪)，跳过")
+            return
+        }
+
+        Log.w("PixelPlay_Debug", "  → ✅ 准备更新 state: 新歌曲=${song.title.take(20)}, 旧=${playbackStateHolder.stablePlayerState.value.currentSong?.title?.take(20) ?: "null"}")
 
         playbackStateHolder.onPlaybackOccurrenceTransition(mediaItem.mediaId)
         preparePlaybackAudioMetadataForMedia(mediaItem.mediaId)
@@ -2868,38 +3409,93 @@ class PlayerViewModel @Inject constructor(
         lyricsStateHolder.cancelLoading()
         resetLyricsSearchState()
 
-        val song = resolveSongFromMediaItem(mediaItem)
         val currentPosition = player.currentPosition.coerceAtLeast(0L)
-        val resolvedDuration = if (song != null) {
-            playbackStateHolder.resolveDurationForPlaybackState(
-                reportedDurationMs = player.duration,
-                songDurationHintMs = song.duration.coerceAtLeast(0L),
-                currentPositionMs = currentPosition
-            )
-        } else {
-            0L
-        }
+        val resolvedDuration = playbackStateHolder.resolveDurationForPlaybackState(
+            reportedDurationMs = player.duration,
+            songDurationHintMs = song.duration.coerceAtLeast(0L),
+            currentPositionMs = currentPosition
+        )
 
-        playbackStateHolder.updateStablePlayerState {
-            it.copy(
+        // ⚡ 记录旧的 songUri，用于判断是否需要重新提取颜色
+        val oldSongUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
+
+        // ⚡ 使用 updateStablePlayerStateIfChanged：只有值真的变化才产生新 state，
+        // 避免不必要的 UI 重组导致的闪烁
+        playbackStateHolder.updateStablePlayerStateIfChanged { previous ->
+            val songChanged = previous.currentSong?.id != song.id
+            // 保留前一帧的 isPlaying / playWhenReady，避免 player 过渡期间
+            // 短暂变 false 导致播放按钮和 sheet 闪一下。真正的播放状态
+            // 由 setupPlaybackListeners 的 onIsPlayingChanged 负责更新。
+            val safeIsPlaying = if (songChanged) previous.isPlaying else player.isPlaying
+            val safePlayWhenReady = if (songChanged) previous.playWhenReady else player.playWhenReady
+            previous.copy(
                 currentSong = song,
                 currentMediaItemIndex = expectedIndex,
                 totalDuration = resolvedDuration,
+                // 关键修复：歌曲变化时必须清空 lyrics，避免打开另一首歌时显示
+                // 上一首歌的歌词。旧歌词的闪烁风险远小于显示错误歌词的问题。
+                // loadLyricsForCurrentSong 随后会异步加载新歌词。
                 lyrics = null,
-                isLoadingLyrics = song != null,
-                isPlaying = player.isPlaying,
-                playWhenReady = player.playWhenReady
+                isLoadingLyrics = true,
+                isPlaying = safeIsPlaying,
+                playWhenReady = safePlayWhenReady
             )
         }
         syncPlaybackPositionFromPlayer(mediaItem.mediaId, currentPosition)
 
-        song?.let { currentSongValue ->
+        // ⚡ 只有当 albumArtUri 真的变化了才提取颜色，避免多次回调导致
+        // 颜色被重复提取 → 动画重新启动 → 颜色跳变
+        val newSongUri = song.albumArtUriString
+        Log.w("PixelPlay_Debug", "  → 🎨 颜色提取检查: oldSongUri=${oldSongUri?.take(20) ?: "null"}, newSongUri=${newSongUri?.take(20) ?: "null"}")
+        if (oldSongUri != newSongUri) {
+            Log.w("PixelPlay_Debug", "  → 🎨 ✅ albumArtUri 变化，提取颜色 + 加载歌词")
             viewModelScope.launch {
-                val uri = currentSongValue.albumArtUriString?.toUri()
-                val currentUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
-                themeStateHolder.extractAndGenerateColorScheme(uri, currentUri)
+                val uri = newSongUri?.toUri()
+                // ⚡ 关键修复：第二个参数必须是 newSongUri（当前歌曲 uri），不是 oldSongUri
+                // extractAndGenerateColorScheme 内部会用它验证 "currentSongUriString == uriString"
+                // 只有匹配才会设置 _currentAlbumArtColorSchemePair
+                themeStateHolder.extractAndGenerateColorScheme(uri, newSongUri)
             }
-            loadLyricsForCurrentSong()
+        } else {
+            Log.w("PixelPlay_Debug", "  → 🎨 ⏭️  albumArtUri 没变，不解提取颜色 (避免颜色跳变)")
+        }
+        // ⚡ 无论 albumArtUri 是否变化都必须加载歌词，否则同一专辑的歌曲切歌后
+        // isLoadingLyrics=true 但永远不会触发实际加载，导致歌词永远卡在加载状态
+        Log.w("PixelPlay_Debug", "  → 📝 调用 loadLyricsForCurrentSong (切歌必加载)")
+        loadLyricsForCurrentSong()
+
+        viewModelScope.launch {
+            pushAlbumArtToDotDevice(song)
+        }
+    }
+
+    private suspend fun pushAlbumArtToDotDevice(song: Song) {
+        try {
+            val dotImageRepository = dotImageRepositoryProvider.get()
+            if (!dotImageRepository.isDotConfigured()) return
+            if (!dotImageRepository.isAutoPushEnabled()) return
+
+            dotImageRepository.updateCredentials()
+            
+            val displayMode = dotImageRepository.getDisplayMode()
+            val result = when (displayMode) {
+                com.theveloper.pixelplay.data.dot.DotDisplayMode.NOW_PLAYING -> {
+                    val progressPercent = if (song.duration > 0) {
+                        (playbackStateHolder.currentPosition.value.toFloat() / song.duration.toFloat()).coerceIn(0f, 1f)
+                    } else 0f
+                    val isPlaying = playbackStateHolder.stablePlayerState.value.isPlaying
+                    dotImageRepository.pushNowPlayingToDot(song, progressPercent, isPlaying)
+                }
+                else -> dotImageRepository.pushStatsToDot(displayMode)
+            }
+            
+            if (result.isSuccess) {
+                Timber.d("DotImage: Data pushed successfully for mode: $displayMode")
+            } else {
+                Timber.w("DotImage: Failed to push data: ${result.exceptionOrNull()?.message}")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "DotImage: Error pushing data")
         }
     }
 
@@ -2915,13 +3511,23 @@ class PlayerViewModel @Inject constructor(
      */
     private fun setupMediaControllerListeners() {
         Trace.beginSection("PlayerViewModel.setupMediaControllerListeners")
-        val playerCtrl = mediaController ?: return Trace.endSection()
+        Log.w("PixelPlay_Debug", "=== setupMediaControllerListeners STARTED ===")
+        val playerCtrl = mediaController ?: return Trace.endSection().also {
+            Log.w("PixelPlay_Debug", "=== playerCtrl is NULL, returning early ===")
+        }
+        Log.w("PixelPlay_Debug", "  - applyInitialControllerState")
         applyInitialControllerState(playerCtrl)
+        Log.w("PixelPlay_Debug", "  - clearMediaControllerPlaybackListeners")
         clearMediaControllerPlaybackListeners(playerCtrl)
+        Log.w("PixelPlay_Debug", "  - setupVolumeListeners")
         setupVolumeListeners(playerCtrl)
+        Log.w("PixelPlay_Debug", "  - setupPlaybackListeners")
         setupPlaybackListeners(playerCtrl)
+        Log.w("PixelPlay_Debug", "  - setupTransitionListeners")
         setupTransitionListeners(playerCtrl)
+        Log.w("PixelPlay_Debug", "  - setupMetadataListeners")
         setupMetadataListeners(playerCtrl)
+        Log.w("PixelPlay_Debug", "=== setupMediaControllerListeners FINISHED ===")
         Trace.endSection()
     }
 
@@ -2955,6 +3561,32 @@ class PlayerViewModel @Inject constructor(
 
         updateCurrentPlaybackQueueFromPlayer(playerCtrl)
 
+        // ─── 漫游模式恢复（App 重启后检测） ────────────────────────
+        // 直接检查 MediaController 的 MediaItem，不依赖异步的队列更新
+        val mediaItemCount = try {
+            playerCtrl.currentTimeline.windowCount
+        } catch (_: Exception) { 0 }
+        var hasRoamingItems = false
+        var firstRoamingMediaId: String? = null
+        if (mediaItemCount > 0) {
+            try {
+                val timeline = playerCtrl.currentTimeline
+                val window = Timeline.Window()
+                for (i in 0 until minOf(mediaItemCount, 5)) {
+                    val mediaId = timeline.getWindow(i, window).mediaItem.mediaId
+                    if (mediaId.startsWith("roaming_")) {
+                        hasRoamingItems = true
+                        firstRoamingMediaId = mediaId
+                        break
+                    }
+                }
+            } catch (_: Exception) { }
+        }
+        if (hasRoamingItems) {
+            Timber.d("RoamingRestore: detected roaming songs in MediaSession (first=$firstRoamingMediaId), _isRoamingMode=true")
+            _isRoamingMode.value = true
+        }
+
         playerCtrl.currentMediaItem?.let { mediaItem ->
             playbackStateHolder.ensureCurrentPlaybackOccurrence(mediaItem.mediaId)
             val song = resolveSongFromMediaItem(mediaItem)
@@ -2969,31 +3601,165 @@ class PlayerViewModel @Inject constructor(
                 playbackStateHolder.updateStablePlayerState {
                     it.copy(
                         currentSong = song,
-                        totalDuration = resolvedDuration
+                        totalDuration = resolvedDuration,
+                        lyrics = null,
+                        isLoadingLyrics = false
                     )
                 }
                 syncPlaybackPositionFromPlayer(mediaItem.mediaId, initialPosition)
                 viewModelScope.launch {
                     val uri = song.albumArtUriString?.toUri()
-                    val currentUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
-                    themeStateHolder.extractAndGenerateColorScheme(uri, currentUri)
+                    // ⚡ 直接传 song.albumArtUriString 作为第二个参数，避免读取 state 的竞态条件
+                    themeStateHolder.extractAndGenerateColorScheme(uri, song.albumArtUriString)
                 }
                 loadLyricsForCurrentSong()
                 if (playerCtrl.isPlaying) {
                     _isSheetVisible.value = true
                     startProgressUpdates()
                 }
+
+                // 漫游歌曲：检测 URL 是否过期（网络播放失败的典型场景），
+                // 如果是 HTTP 源且 neteaseId 存在，尝试刷新 URL
+                if (song.id.startsWith("roaming_") && song.neteaseId != null) {
+                    viewModelScope.launch { refreshRoamingSongUrl(song) }
+                }
             } else {
+                // ⚡ 核心修复：即使 resolveSongFromMediaItem 返回 null，也不要立即清空
+                //    currentSong。我们保留播放状态（isPlaying / playWhenReady / position）
+                //    并通过 MediaItem 的 mediaMetadata 提取一个最小可用的 Song 对象，
+                //    等待库数据或异步解析完成后由 re-resolve 观察者补充完整信息。
+                val fallbackTitle = mediaItem.mediaMetadata.title?.toString()
+                    ?.takeIf { it.isNotBlank() }
+                    ?: context.getString(R.string.unknown_song_title)
+                val fallbackArtist = mediaItem.mediaMetadata.artist?.toString()
+                    ?.takeIf { it.isNotBlank() }
+                    ?: context.getString(R.string.unknown_artist)
+                val fallbackSong = Song(
+                    id = mediaItem.mediaId,
+                    title = fallbackTitle,
+                    artist = fallbackArtist,
+                    artistId = -1L,
+                    album = mediaItem.mediaMetadata.albumTitle?.toString()
+                        ?.takeIf { it.isNotBlank() }
+                        ?: context.getString(R.string.unknown_album),
+                    albumId = -1L,
+                    path = "",
+                    contentUriString = "unknown://${mediaItem.mediaId}",
+                    albumArtUriString = mediaItem.mediaMetadata.artworkUri?.toString(),
+                    duration = if (playerCtrl.duration > 0L) playerCtrl.duration else 0L,
+                    dateAdded = System.currentTimeMillis(),
+                    mimeType = null,
+                    bitrate = null,
+                    sampleRate = null,
+                    neteaseId = null
+                )
+                val initialPosition = playerCtrl.currentPosition.coerceAtLeast(0L)
                 playbackStateHolder.updateStablePlayerState {
                     it.copy(
-                        currentSong = null,
-                        isPlaying = false,
-                        playWhenReady = false
+                        currentSong = fallbackSong,
+                        totalDuration = if (playerCtrl.duration > 0L) playerCtrl.duration else 0L,
+                        isPlaying = playerCtrl.isPlaying,
+                        playWhenReady = playerCtrl.playWhenReady,
+                        lyrics = null,
+                        isLoadingLyrics = false
                     )
                 }
-                playbackStateHolder.clearCurrentPositionHints()
-                playbackStateHolder.setCurrentPosition(0L)
-                resetPlaybackAudioMetadata()
+                syncPlaybackPositionFromPlayer(mediaItem.mediaId, initialPosition)
+                val artwork = mediaItem.mediaMetadata.artworkUri?.toString()
+                if (artwork != null) {
+                    viewModelScope.launch {
+                        themeStateHolder.extractAndGenerateColorScheme(artwork.toUri(), artwork)
+                    }
+                }
+                if (playerCtrl.isPlaying) {
+                    _isSheetVisible.value = true
+                    startProgressUpdates()
+                }
+            }
+        }
+    }
+
+    // ─── 漫游歌曲 URL 刷新 ────────────────────────────────────────
+    // 尝试为漫游歌曲获取最新的播放 URL。成功后替换播放队列中对应
+    // MediaItem，并更新 UI state 中的 Song 对象。失败时静默忽略
+    // （当前 URL 可能仍然有效，或等到播放时再由错误处理逻辑介入）。
+    private suspend fun refreshRoamingSongUrl(song: Song) {
+        val neteaseId = song.neteaseId ?: return
+        val currentIndex = mediaController?.currentMediaItemIndex
+            ?: playbackStateHolder.stablePlayerState.value.currentMediaItemIndex
+        if (currentIndex < 0) return
+
+        val newUrl = try {
+            neteaseRepository.getSongUrl(neteaseId).getOrNull()
+                ?: run {
+                    try {
+                        lxJsEngine.ready()
+                        val songIdStr = neteaseId.toString()
+                        val songTitle = song.title
+                        val songArtist = song.displayArtist
+                        val songAlbum = song.album
+                        val songCover = song.albumArtUriString
+                        val songInfo = mapOf<String, Any?>(
+                            "id" to songIdStr,
+                            "vid" to songIdStr,
+                            "songmid" to songIdStr,
+                            "hash" to songIdStr,
+                            "name" to songTitle,
+                            "singer" to songArtist,
+                            "artists" to songArtist,
+                            "album" to songAlbum,
+                            "albumName" to songAlbum,
+                            "duration" to song.duration,
+                            "pic" to songCover,
+                            "cover" to songCover
+                        )
+                        lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                    } catch (t: Throwable) {
+                        Timber.w(t, "RoamingRestore: lxJsEngine failed for song=${song.title}")
+                        null
+                    }
+                }
+        } catch (t: Throwable) {
+            Timber.w(t, "RoamingRestore: refresh url failed for song=${song.title}")
+            null
+        }
+
+        if (newUrl.isNullOrBlank()) {
+            Timber.w("RoamingRestore: could not refresh url for song=${song.title}, keeping existing one")
+            return
+        }
+
+        // 更新播放队列中的 Song
+        val updatedSong = song.copy(path = newUrl, contentUriString = newUrl)
+        val newMediaItem = MediaItemBuilder.build(updatedSong)
+
+        // 1) 更新 MediaController 的 MediaItem
+        val currentPlayer = mediaController ?: dualPlayerEngine.masterPlayer
+        if (currentIndex < currentPlayer.mediaItemCount) {
+            try {
+                currentPlayer.replaceMediaItem(currentIndex, newMediaItem)
+                Timber.d("RoamingRestore: replaced MediaItem at index=$currentIndex for song=${song.title}")
+            } catch (t: Throwable) {
+                Timber.w(t, "RoamingRestore: replaceMediaItem failed")
+            }
+        }
+
+        // 2) 更新 UI state 中的 Song
+        if (playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id) {
+            playbackStateHolder.updateStablePlayerState { state ->
+                state.copy(currentSong = updatedSong)
+            }
+        }
+
+        // 3) 更新 _playerUiState.currentPlaybackQueue 中的 Song
+        val currentQueueSnapshot = _playerUiState.value.currentPlaybackQueue
+        if (currentQueueSnapshot.isNotEmpty()) {
+            val updatedQueue = currentQueueSnapshot.map { q ->
+                if (q.id == song.id) updatedSong else q
+            }
+            _playerUiState.update {
+                it.copy(currentPlaybackQueue = updatedQueue.toPlaybackQueue())
             }
         }
     }
@@ -3007,12 +3773,77 @@ class PlayerViewModel @Inject constructor(
         })
     }
 
+    // ⚡ 核心防闪烁机制：切歌后 500ms 内锁定 isPlaying/playWhenReady
+    // Media3 在 seekToNext 时会短暂把 isPlaying 变成 false，然后又变成 true
+    // 这几百毫秒的抖动就是"按钮消失再出现"的根本原因
+    @Volatile
+    private var lastSongTransitionAtMs = 0L
+    private val songTransitionLockMs = 500L
+
+    // ⚡ 防闪烁：isPlaying/playWhenReady 延迟更新 job
+    private var isPlayingDebounceJob: Job? = null
+    private var playWhenReadyDebounceJob: Job? = null
+
     /** Play/pause, playWhenReady and playback-state lifecycle. */
     private fun setupPlaybackListeners(playerCtrl: MediaController) {
         registerMediaControllerListener(playerCtrl, object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isRemoteSessionControllingPlayback()) return
-                playbackStateHolder.updateStablePlayerState {
+                val currentState = playbackStateHolder.stablePlayerState.value
+                Log.w("PixelPlay_Debug", "[onIsPlayingChanged] isPlaying=$isPlaying, currentState.isPlaying=${currentState.isPlaying}")
+
+                // ⚡ 核心防闪烁：切歌后 500ms 内，忽略 isPlaying 的一切变化
+                val now = SystemClock.elapsedRealtime()
+                val elapsedMs = now - lastSongTransitionAtMs
+                if (lastSongTransitionAtMs > 0 && elapsedMs < songTransitionLockMs) {
+                    Log.w("PixelPlay_Debug", "  → ⏭️  切歌锁定期内(${elapsedMs}ms < ${songTransitionLockMs}ms)，忽略 isPlaying=$isPlaying 变化，强制保持 true")
+                    // 确保 isPlaying 和 playWhenReady 始终为 true
+                    playbackStateHolder.updateStablePlayerStateIfChanged {
+                        if (it.isPlaying && it.playWhenReady) it
+                        else it.copy(isPlaying = true, playWhenReady = true)
+                    }
+                    startProgressUpdates()
+                    return
+                }
+
+                // ⚡ 防闪烁：isPlaying 从 true → false 时延迟 300ms 再更新
+                // 如果期间恢复为 true（切歌过渡），则完全跳过更新，避免按钮闪
+                if (!isPlaying && currentState.isPlaying) {
+                    Log.w("PixelPlay_Debug", "  → isPlaying true→false: 延迟 300ms 去抖")
+                    isPlayingDebounceJob?.cancel()
+                    isPlayingDebounceJob = viewModelScope.launch {
+                        delay(300)
+                        // 300ms 后仍为 false，才真正更新 UI
+                        if (!playerCtrl.isPlaying) {
+                            Log.w("PixelPlay_Debug", "  → 300ms 后 isPlaying 仍为 false: 更新 state")
+                            playbackStateHolder.updateStablePlayerStateIfChanged {
+                                it.copy(
+                                    isPlaying = false,
+                                    playWhenReady = playerCtrl.playWhenReady
+                                )
+                            }
+                            val shouldKeepSampling = playerCtrl.playWhenReady &&
+                                playerCtrl.playbackState != Player.STATE_IDLE &&
+                                playerCtrl.playbackState != Player.STATE_ENDED
+                            if (shouldKeepSampling) {
+                                _isSheetVisible.value = true
+                                startProgressUpdates()
+                            } else {
+                                stopProgressUpdates()
+                                val pausedPosition = playerCtrl.currentPosition.coerceAtLeast(0L)
+                                syncPlaybackPositionFromPlayer(playerCtrl.currentMediaItem?.mediaId, pausedPosition)
+                            }
+                        } else {
+                            Log.w("PixelPlay_Debug", "  → 300ms 后 isPlaying 恢复为 true: 跳过 (避免闪烁)")
+                        }
+                    }
+                    return  // 立即返回，不直接更新
+                }
+
+                // isPlaying 从 false → true 或其他情况：立即更新
+                isPlayingDebounceJob?.cancel()
+                Log.w("PixelPlay_Debug", "  → isPlaying false→true 或其他: 立即更新")
+                playbackStateHolder.updateStablePlayerStateIfChanged {
                     it.copy(
                         isPlaying = isPlaying,
                         playWhenReady = playerCtrl.playWhenReady
@@ -3036,7 +3867,39 @@ class PlayerViewModel @Inject constructor(
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (isRemoteSessionControllingPlayback()) return
-                playbackStateHolder.updateStablePlayerState { it.copy(playWhenReady = playWhenReady) }
+                val currentState = playbackStateHolder.stablePlayerState.value
+                Log.w("PixelPlay_Debug", "[onPlayWhenReadyChanged] playWhenReady=$playWhenReady, reason=$reason, current=${currentState.playWhenReady}")
+
+                // ⚡ 切歌锁定期检查：忽略 playWhenReady 的变化
+                val now = SystemClock.elapsedRealtime()
+                val elapsedMs = now - lastSongTransitionAtMs
+                if (lastSongTransitionAtMs > 0 && elapsedMs < songTransitionLockMs) {
+                    Log.w("PixelPlay_Debug", "  → ⏭️  切歌锁定期内(${elapsedMs}ms < ${songTransitionLockMs}ms)，忽略 playWhenReady=$playWhenReady 变化，强制保持 true")
+                    playbackStateHolder.updateStablePlayerStateIfChanged {
+                        if (it.playWhenReady) it
+                        else it.copy(playWhenReady = true)
+                    }
+                    return
+                }
+
+                // ⚡ 防闪烁：playWhenReady 从 true → false 时延迟 300ms 再更新
+                if (!playWhenReady && currentState.playWhenReady) {
+                    Log.w("PixelPlay_Debug", "  → playWhenReady true→false: 延迟 300ms 去抖")
+                    playWhenReadyDebounceJob?.cancel()
+                    playWhenReadyDebounceJob = viewModelScope.launch {
+                        delay(300)
+                        if (!playerCtrl.playWhenReady) {
+                            Log.w("PixelPlay_Debug", "  → 300ms 后 playWhenReady 仍为 false: 更新 state")
+                            playbackStateHolder.updateStablePlayerStateIfChanged { it.copy(playWhenReady = false) }
+                        }
+                    }
+                    return  // 立即返回，不直接更新
+                }
+
+                // playWhenReady 从 false → true：立即更新
+                playWhenReadyDebounceJob?.cancel()
+                Log.w("PixelPlay_Debug", "  → playWhenReady false→true 或其他: 立即更新")
+                playbackStateHolder.updateStablePlayerStateIfChanged { it.copy(playWhenReady = playWhenReady) }
                 if (
                     playWhenReady &&
                     playerCtrl.playbackState != Player.STATE_IDLE &&
@@ -3048,26 +3911,38 @@ class PlayerViewModel @Inject constructor(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (isRemoteSessionControllingPlayback()) return
+                val stateName = when (playbackState) {
+                    Player.STATE_IDLE -> "IDLE"
+                    Player.STATE_BUFFERING -> "BUFFERING"
+                    Player.STATE_READY -> "READY"
+                    Player.STATE_ENDED -> "ENDED"
+                    else -> "UNKNOWN($playbackState)"
+                }
+                Log.w("PixelPlay_Debug", "[onPlaybackStateChanged] state=$stateName")
                 refreshPlaybackAudioMetadata(playerCtrl)
+                // ⚡ syncDisplayedMediaItemIfChanged 内部有 currentSongId == mediaItem.mediaId 检查
+                // 如果 song 没变就直接 return，所以可以安全地在每个状态变化时调用
                 syncDisplayedMediaItemIfChanged(playerCtrl)
 
                 // Debounce buffering state to avoid flickering
                 bufferingDebounceJob?.cancel()
                 if (playbackState == Player.STATE_BUFFERING) {
+                    Log.w("PixelPlay_Debug", "  → BUFFERING: 延迟 500ms 显示 buffering")
                     bufferingDebounceJob = viewModelScope.launch {
                         delay(500) // Wait 500ms before showing buffering indicator
-                        playbackStateHolder.updateStablePlayerState { state ->
-                            state.copy(isBuffering = true)
+                        playbackStateHolder.updateStablePlayerStateIfChanged {
+                            it.copy(isBuffering = true)
                         }
                     }
                 } else {
                     // Immediately hide buffering when not buffering
-                    playbackStateHolder.updateStablePlayerState { state ->
-                        state.copy(isBuffering = false)
+                    playbackStateHolder.updateStablePlayerStateIfChanged {
+                        it.copy(isBuffering = false)
                     }
                 }
 
                 if (playbackState == Player.STATE_READY) {
+                    Log.w("PixelPlay_Debug", "  → READY: 更新 totalDuration + 启动进度更新")
                     clearPreparingSongIfMatching(playerCtrl.currentMediaItem?.mediaId)
                     val readyPosition = playerCtrl.currentPosition.coerceAtLeast(0L)
                     val songDurationHint = playbackStateHolder.stablePlayerState.value.currentSong?.duration ?: 0L
@@ -3077,14 +3952,19 @@ class PlayerViewModel @Inject constructor(
                         currentPositionMs = readyPosition
                     )
                     syncPlaybackPositionFromPlayer(playerCtrl.currentMediaItem?.mediaId, readyPosition)
-                    playbackStateHolder.updateStablePlayerState { it.copy(totalDuration = resolvedDuration) }
+                    // ⚡ 使用 updateStablePlayerStateIfChanged：如果 totalDuration 和当前值相同
+                    // 就不解更新，避免产生新 state 对象导致 UI 重组
+                    playbackStateHolder.updateStablePlayerStateIfChanged {
+                        it.copy(totalDuration = resolvedDuration)
+                    }
                     startProgressUpdates()
                 }
                 if (playbackState == Player.STATE_IDLE && playerCtrl.mediaItemCount == 0) {
+                    Log.w("PixelPlay_Debug", "  → IDLE+empty: 清空 state")
                     clearPreparingSongIfMatching()
                     if (!isCastConnecting.value && !isRemotePlaybackActive.value) {
                         lyricsStateHolder.cancelLoading()
-                        playbackStateHolder.updateStablePlayerState {
+                        playbackStateHolder.updateStablePlayerStateIfChanged {
                             it.copy(
                                 currentSong = null,
                                 isPlaying = false,
@@ -3100,6 +3980,91 @@ class PlayerViewModel @Inject constructor(
                     }
                 }
             }
+
+            // 漫游歌曲 URL 过期/播放失败：自动刷新 URL 并重试
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                val currentSongId = playerCtrl.currentMediaItem?.mediaId ?: return
+                if (!currentSongId.startsWith("roaming_")) return
+
+                val currentSongObj = playbackStateHolder.stablePlayerState.value.currentSong ?: return
+                if (currentSongObj.neteaseId == null) return
+
+                val currentIndex = playerCtrl.currentMediaItemIndex
+                val currentPos = playerCtrl.currentPosition.coerceAtLeast(0L)
+
+                Timber.w("RoamingError: playback failed for song=${currentSongObj.title}, attempting URL refresh")
+                viewModelScope.launch {
+                    val neteaseId = currentSongObj.neteaseId
+                    val newUrl = try {
+                        neteaseRepository.getSongUrl(neteaseId).getOrNull()
+                            ?: run {
+                                try {
+                                    lxJsEngine.ready()
+                                    val songIdStr = neteaseId.toString()
+                                    val songTitle = currentSongObj.title
+                                    val songArtist = currentSongObj.displayArtist
+                                    val songAlbum = currentSongObj.album
+                                    val songCover = currentSongObj.albumArtUriString
+                                    val songInfo = mapOf<String, Any?>(
+                                        "id" to songIdStr,
+                                        "vid" to songIdStr,
+                                        "songmid" to songIdStr,
+                                        "hash" to songIdStr,
+                                        "name" to songTitle,
+                                        "singer" to songArtist,
+                                        "artists" to songArtist,
+                                        "album" to songAlbum,
+                                        "albumName" to songAlbum,
+                                        "duration" to currentSongObj.duration,
+                                        "pic" to songCover,
+                                        "cover" to songCover
+                                    )
+                                    lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                                } catch (_: Throwable) { null }
+                            }
+                    } catch (_: Throwable) { null }
+
+                    if (newUrl.isNullOrBlank()) {
+                        Timber.w("RoamingError: URL refresh failed, giving up")
+                        return@launch
+                    }
+
+                    val updatedSong = currentSongObj.copy(path = newUrl, contentUriString = newUrl)
+                    val newMediaItem = MediaItemBuilder.build(updatedSong)
+
+                    // 1) 更新 MediaItem + 从当前位置重试
+                    if (currentIndex >= 0 && currentIndex < playerCtrl.mediaItemCount) {
+                        try {
+                            playerCtrl.replaceMediaItem(currentIndex, newMediaItem)
+                            playerCtrl.prepare()
+                            if (currentPos > 0) {
+                                playerCtrl.seekTo(currentIndex, currentPos)
+                            }
+                            playerCtrl.play()
+                            Timber.d("RoamingError: URL refreshed for song=${currentSongObj.title}, retry at pos=$currentPos")
+                        } catch (t: Throwable) {
+                            Timber.w(t, "RoamingError: retry failed")
+                        }
+                    }
+
+                    // 2) 更新 UI state
+                    playbackStateHolder.updateStablePlayerState { state ->
+                        if (state.currentSong?.id == currentSongId) {
+                            state.copy(currentSong = updatedSong)
+                        } else state
+                    }
+                    val queueSnapshot = _playerUiState.value.currentPlaybackQueue
+                    if (queueSnapshot.isNotEmpty()) {
+                        val updatedQueue = queueSnapshot.map { q ->
+                            if (q.id == currentSongId) updatedSong else q
+                        }
+                        _playerUiState.update {
+                            it.copy(currentPlaybackQueue = updatedQueue.toPlaybackQueue())
+                        }
+                    }
+                }
+            }
         })
     }
 
@@ -3108,41 +4073,122 @@ class PlayerViewModel @Inject constructor(
         registerMediaControllerListener(playerCtrl, object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 if (isRemoteSessionControllingPlayback()) return
+                val reasonName = when (reason) {
+                    Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
+                    Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
+                    Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
+                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO"
+                    else -> "UNKNOWN($reason)"
+                }
+                Log.w("PixelPlay_Debug", "[onMediaItemTransition] mediaItem=${mediaItem?.mediaId?.take(8)}, reason=$reasonName")
+
+                // ⚡ 漫游模式下的重复歌曲检测：如果是自动切歌（AUTO），且新歌曲与刚播放的歌曲相同，则跳过
+                if (_isRoamingMode.value && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && mediaItem != null) {
+                    val currentQueue = _playerUiState.value.currentPlaybackQueue
+                    val justPlayedSong = stablePlayerState.value.currentSong
+                    if (justPlayedSong != null && currentQueue.isNotEmpty()) {
+                        val newSong = currentQueue.find { it.id == mediaItem.mediaId }
+                            ?: resolveSongFromMediaItem(mediaItem)
+                        if (newSong != null) {
+                            val justPlayedKey = "${justPlayedSong.title.trim().lowercase()}|${justPlayedSong.displayArtist.trim().lowercase()}"
+                            val newKey = "${newSong.title.trim().lowercase()}|${newSong.displayArtist.trim().lowercase()}"
+                            if (justPlayedKey == newKey && justPlayedKey.isNotBlank()) {
+                                Timber.d("onMediaItemTransition: Auto-skip duplicate song '${newSong.title}' by '${newSong.displayArtist}' in roaming mode")
+                                // 找到接下来第一首不同的歌曲
+                                val player = dualPlayerEngine.masterPlayer
+                                val currentIdx = player.currentMediaItemIndex
+                                var targetIdx = currentIdx + 1
+                                var found = false
+                                val maxSkip = 3
+                                var skipped = 0
+                                while (skipped < maxSkip && targetIdx < player.mediaItemCount) {
+                                    val nextMedia = player.getMediaItemAt(targetIdx)
+                                    val nextSong = currentQueue.find { it.id == nextMedia.mediaId }
+                                    if (nextSong != null) {
+                                        val nextKey = "${nextSong.title.trim().lowercase()}|${nextSong.displayArtist.trim().lowercase()}"
+                                        if (nextKey != justPlayedKey) {
+                                            found = true
+                                            break
+                                        } else {
+                                            targetIdx++
+                                            skipped++
+                                        }
+                                    } else {
+                                        break
+                                    }
+                                }
+                                if (found && targetIdx < player.mediaItemCount) {
+                                    // 直接跳到目标位置
+                                    player.seekToDefaultPosition(targetIdx)
+                                    if (!player.isPlaying) player.play()
+                                    return // 跳过后续正常处理
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ⚡ Song Filter (Fuck Something): 如果是自动切歌，检查是否需要跳过匹配的歌曲
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && mediaItem != null) {
+                    viewModelScope.launch {
+                        val isFilterEnabled = userPreferencesRepository.songFilterEnabledFlow.first()
+                        if (isFilterEnabled) {
+                            val filterKeywords = userPreferencesRepository.getSongFilterKeywords()
+                            val enabledKeywords = filterKeywords.filter { it.enabled }
+                            if (enabledKeywords.isNotEmpty()) {
+                                val currentQueue = _playerUiState.value.currentPlaybackQueue
+                                val newSong = currentQueue.find { it.id == mediaItem.mediaId }
+                                    ?: resolveSongFromMediaItem(mediaItem)
+                                if (newSong != null) {
+                                    val shouldSkip = enabledKeywords.any { filterKeyword ->
+                                        val lowerKeyword = filterKeyword.keyword.trim().lowercase()
+                                        val lowerArtist = newSong.displayArtist.trim().lowercase()
+                                        val lowerTitle = newSong.title.trim().lowercase()
+
+                                        when (filterKeyword.matchMode) {
+                                            UserPreferencesRepository.SongFilterMatchMode.ARTIST -> lowerArtist.contains(lowerKeyword)
+                                            UserPreferencesRepository.SongFilterMatchMode.TITLE -> lowerTitle.contains(lowerKeyword)
+                                            UserPreferencesRepository.SongFilterMatchMode.BOTH -> lowerArtist.contains(lowerKeyword) && lowerTitle.contains(lowerKeyword)
+                                            UserPreferencesRepository.SongFilterMatchMode.ANY -> lowerArtist.contains(lowerKeyword) || lowerTitle.contains(lowerKeyword)
+                                        }
+                                    }
+                                    if (shouldSkip) {
+                                        Timber.d("onMediaItemTransition: Auto-skip filtered song '${newSong.title}' by '${newSong.displayArtist}'")
+                                        nextSong()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ⚡ 核心防闪烁：标记切歌时间点 - 之后 500ms 内忽略 isPlaying/playWhenReady 的变化
+                // 这是防止按钮消失再出现的关键！
+                lastSongTransitionAtMs = SystemClock.elapsedRealtime()
+                Log.w("PixelPlay_Debug", "  → 🔒 切歌锁定期开启 ($lastSongTransitionAtMs)，接下来 ${songTransitionLockMs}ms 内 isPlaying/playWhenReady 将被锁定为 true")
+
                 playbackStateHolder.onPlaybackOccurrenceTransition(mediaItem?.mediaId)
                 preparePlaybackAudioMetadataForMedia(mediaItem?.mediaId)
                 transitionSchedulerJob?.cancel()
                 lyricsStateHolder.cancelLoading()
-                transitionSchedulerJob = viewModelScope.launch {
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                        val activeEotSongId = EotStateHolder.eotTargetSongId.value
-                        val previousSongId = playerCtrl.run { if (previousMediaItemIndex != C.INDEX_UNSET) getMediaItemAt(previousMediaItemIndex).mediaId else null }
 
-                        if (isEndOfTrackTimerActive.value && activeEotSongId != null && previousSongId != null && previousSongId == activeEotSongId) {
-                            playerCtrl.seekTo(0L)
-                            playerCtrl.pause()
-
-                            val finishedSongTitle = libraryStateHolder.allSongsById.value[previousSongId]?.title
-                                ?: context.getString(R.string.player_default_track_title)
-
-                            viewModelScope.launch {
-                                _toastEvents.emit(
-                                    context.getString(R.string.player_playback_stopped_eot, finishedSongTitle),
-                                )
-                            }
-                            cancelSleepTimer(suppressDefaultToast = true)
-                        }
-                    }
-
-                    mediaItem?.let { transitionedItem ->
-                        val song = resolveSongFromMediaItem(transitionedItem)
-
-                        // Offline check for Telegram songs
-                        if (song?.contentUriString?.startsWith("telegram:") == true) {
-                            ensureTelegramPlaybackObserversStarted()
-                            val isOnline = connectivityStateHolder.isOnline.value
-                            if (!isOnline) {
-                                val fileId = song.telegramFileId
-                                if (fileId != null) {
+                // ⚡ 关键修复：对于 mediaItem != null 的切歌，立即调用
+                // syncDisplayedMediaItemIfChanged 来更新 state（同步执行，不协程）。
+                // 这样做的好处：
+                // 1. 避免了和 onPlaybackStateChanged 中 syncDisplayedMediaItemIfChanged 的竞争
+                // 2. theme 提取和歌词加载只做一次（在 syncDisplayedMediaItemIfChanged 内）
+                // 3. 同步执行保证 state 立即更新，避免协程调度造成的延迟闪烁
+                if (mediaItem != null) {
+                    // Telegram offline check - async part (isFileCached is suspend)
+                    val songForTelegramCheck = resolveSongFromMediaItem(mediaItem)
+                    if (songForTelegramCheck?.contentUriString?.startsWith("telegram:") == true) {
+                        ensureTelegramPlaybackObserversStarted()
+                        val isOnline = connectivityStateHolder.isOnline.value
+                        if (!isOnline) {
+                            val fileId = songForTelegramCheck.telegramFileId
+                            if (fileId != null) {
+                                // ⚡ isFileCached 是 suspend function，必须在协程中调用
+                                viewModelScope.launch {
                                     val isCached = musicRepository.telegramRepository.isFileCached(fileId)
                                     if (!isCached) {
                                         playerCtrl.pause()
@@ -3151,48 +4197,24 @@ class PlayerViewModel @Inject constructor(
                                 }
                             }
                         }
-
-                        val resolvedDuration = if (song != null) {
-                            playbackStateHolder.resolveDurationForPlaybackState(
-                                reportedDurationMs = playerCtrl.duration,
-                                songDurationHintMs = song.duration.coerceAtLeast(0L),
-                                currentPositionMs = playerCtrl.currentPosition.coerceAtLeast(0L)
-                            )
-                        } else {
-                            0L
+                    }
+                    // ⚡ 同步更新 state：让 syncDisplayedMediaItemIfChanged 成为唯一的
+                    // 切歌更新路径，避免和其他监听器竞争导致重复更新
+                    syncDisplayedMediaItemIfChanged(playerCtrl, fromTransition = true)
+                } else {
+                    Log.w("PixelPlay_Debug", "  → mediaItem == null: 延迟 250ms 检查是否清理")
+                    // mediaItem == null：延迟 250ms 再检查，如果已有新歌曲就不解清理
+                    transitionSchedulerJob = viewModelScope.launch {
+                        val clearDelayMs = 250L
+                        delay(clearDelayMs)
+                        if (playerCtrl.currentMediaItem != null) {
+                            Log.w("PixelPlay_Debug", "  → 250ms 后已有新歌曲，不解清理 (避免闪烁)")
+                            return@launch
                         }
-                        resetLyricsSearchState()
-                        playbackStateHolder.updateStablePlayerState {
-                            it.copy(
-                                currentSong = song,
-                                currentMediaItemIndex = if (dualPlayerEngine.isUsingWindowedQueue()) {
-                                    dualPlayerEngine.getCurrentAbsoluteIndex()
-                                } else {
-                                    playerCtrl.currentMediaItemIndex
-                                },
-                                totalDuration = resolvedDuration,
-                                lyrics = null,
-                                isLoadingLyrics = song != null,
-                                playWhenReady = playerCtrl.playWhenReady
-                            )
-                        }
-                        val transitionPosition = syncPlaybackPositionFromPlayer(
-                            transitionedItem.mediaId,
-                            playerCtrl.currentPosition.coerceAtLeast(0L)
-                        )
-
-                        song?.let { currentSongValue ->
-                            launch {
-                                val uri = currentSongValue.albumArtUriString?.toUri()
-                                val currentUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
-                                themeStateHolder.extractAndGenerateColorScheme(uri, currentUri)
-                            }
-                            loadLyricsForCurrentSong()
-                        }
-                    } ?: run {
+                        Log.w("PixelPlay_Debug", "  → 250ms 后仍无歌曲，清空 state")
                         if (!isCastConnecting.value && !isRemotePlaybackActive.value) {
                             lyricsStateHolder.cancelLoading()
-                            playbackStateHolder.updateStablePlayerState {
+                            playbackStateHolder.updateStablePlayerStateIfChanged {
                                 it.copy(
                                     currentSong = null,
                                     isPlaying = false,
@@ -3204,6 +4226,29 @@ class PlayerViewModel @Inject constructor(
                             }
                             playbackStateHolder.clearCurrentPositionHints()
                             resetPlaybackAudioMetadata()
+                        }
+                    }
+                }
+
+                // ⚡ EOT（End of Track）逻辑：在协程中执行，不影响主 state 更新路径
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                    viewModelScope.launch {
+                        val activeEotSongId = EotStateHolder.eotTargetSongId.value
+                        val previousSongId = playerCtrl.run {
+                            if (previousMediaItemIndex != C.INDEX_UNSET) getMediaItemAt(previousMediaItemIndex).mediaId else null
+                        }
+
+                        if (isEndOfTrackTimerActive.value && activeEotSongId != null && previousSongId != null && previousSongId == activeEotSongId) {
+                            playerCtrl.seekTo(0L)
+                            playerCtrl.pause()
+
+                            val finishedSongTitle = libraryStateHolder.allSongsById.value[previousSongId]?.title
+                                ?: context.getString(R.string.player_default_track_title)
+
+                            _toastEvents.emit(
+                                context.getString(R.string.player_playback_stopped_eot, finishedSongTitle),
+                            )
+                            cancelSleepTimer(suppressDefaultToast = true)
                         }
                     }
                 }
@@ -3259,6 +4304,7 @@ class PlayerViewModel @Inject constructor(
 
     // rebuildPlayerQueue functionality moved to PlaybackStateHolder (simplified)
     fun playSongs(songsToPlay: List<Song>, startSong: Song, queueName: String = "None", playlistId: String? = null) {
+        _isRoamingMode.value = false
         cancelPendingFullQueuePlayback()
         val requestToken = beginDirectPlaybackRequest()
         directPlaybackJob = viewModelScope.launch {
@@ -3435,22 +4481,8 @@ class PlayerViewModel @Inject constructor(
         } else {
             setPreparingSong(null)
         }
-        viewModelScope.launch(Dispatchers.IO) {
-            val albumArtUri = song.albumArtUriString
-            if (albumArtUri.isNullOrBlank()) {
-                themeStateHolder.extractAndGenerateColorScheme(
-                    albumArtUriAsUri = null,
-                    currentSongUriString = null,
-                    isPreload = false
-                )
-            } else {
-                themeStateHolder.extractAndGenerateColorScheme(
-                    albumArtUriAsUri = albumArtUri.toUri(),
-                    currentSongUriString = albumArtUri,
-                    isPreload = false
-                )
-            }
-        }
+        // ⚡ 颜色提取由 syncDisplayedMediaItemIfChanged / loadAndPlaySong 等显式路径负责，
+        //   不在此重复调用 extractAndGenerateColorScheme，避免竞态条件导致背景色闪烁。
     }
 
     private fun isLocalPlaybackSong(song: Song): Boolean {
@@ -3568,7 +4600,9 @@ class PlayerViewModel @Inject constructor(
                     currentMediaItemIndex = 0,
                     isPlaying = true,
                     playWhenReady = true,
-                    totalDuration = effectiveStartSong.duration.coerceAtLeast(0L)
+                    totalDuration = effectiveStartSong.duration.coerceAtLeast(0L),
+                    lyrics = null,
+                    isLoadingLyrics = false
                 )
             }
         } else {
@@ -3585,7 +4619,9 @@ class PlayerViewModel @Inject constructor(
                     currentMediaItemIndex = 0,
                     isPlaying = true,
                     playWhenReady = true,
-                    totalDuration = effectiveStartSong.duration.coerceAtLeast(0L)
+                    totalDuration = effectiveStartSong.duration.coerceAtLeast(0L),
+                    lyrics = null,
+                    isLoadingLyrics = false
                 )
             }
             _isSheetVisible.value = true
@@ -3653,11 +4689,20 @@ class PlayerViewModel @Inject constructor(
         }
 
         val resolvedUri = dualPlayerEngine.resolveCloudUri(originalUri)
-        return if (resolvedUri == originalUri) {
-            mediaItem
-        } else {
-            mediaItem.buildUpon().setUri(resolvedUri).build()
+        val resolvedStr = resolvedUri.toString().trim()
+
+        if (resolvedUri == originalUri || resolvedStr.isBlank()) {
+            Timber.w(
+                "buildResolvedPlaybackMediaItem: Failed to resolve $scheme URI for song '${song.title}' " +
+                    "(neteaseId=${song.neteaseId}, id=${song.id}). The audio proxy may not be ready."
+            )
+            _toastEvents.emit(
+                context.getString(R.string.failed_to_play_song_url_resolve, song.title ?: context.getString(R.string.unknown))
+            )
+            return mediaItem
         }
+
+        return mediaItem.buildUpon().setUri(resolvedUri).build()
     }
 
 
@@ -3668,7 +4713,9 @@ class PlayerViewModel @Inject constructor(
             it.copy(
                 currentSong = song,
                 isPlaying = true,
-                playWhenReady = true
+                playWhenReady = true,
+                lyrics = null,
+                isLoadingLyrics = false
             )
         }
         _isSheetVisible.value = true
@@ -3732,6 +4779,32 @@ class PlayerViewModel @Inject constructor(
         musicRepository.setFavoriteStatus(songId, isFavorite)
     }
 
+    /**
+     * 同步网易云红心状态（仅当用户已登录且歌曲有 neteaseId 时生效）
+     */
+    private suspend fun syncNeteaseLike(song: Song, isFavorite: Boolean) {
+        val neteaseId = song.neteaseId ?: return
+        if (!neteaseRepository.isLoggedIn) {
+            _toastEvents.emit("请先在设置中登录网易云账户以同步红心")
+            return
+        }
+        val cookie = neteaseRepository.getCookieString()
+        if (cookie.isBlank()) {
+            _toastEvents.emit("Cookie 获取失败，请重新登录")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = personalFmApi.likeSong(
+                neteaseSongId = neteaseId,
+                like = isFavorite,
+                cookie = cookie
+            )
+            result.onFailure { err ->
+                Timber.e(err, "syncNeteaseLike: failed for song=$neteaseId isFavorite=$isFavorite")
+            }
+        }
+    }
+
     fun toggleFavorite() {
         val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return
         viewModelScope.launch {
@@ -3745,7 +4818,11 @@ class PlayerViewModel @Inject constructor(
             if (favoriteSongId == null) return@launch
 
             val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
-            setFavoriteStatusEverywhere(favoriteSongId, !currentlyFavorite)
+            val targetFavoriteState = !currentlyFavorite
+            setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
+
+            // ── 同步网易云红心 ──────
+            syncNeteaseLike(currentSong, targetFavoriteState)
         }
     }
 
@@ -3762,6 +4839,20 @@ class PlayerViewModel @Inject constructor(
             val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
             val targetFavoriteState = if (removing) false else !currentlyFavorite
             setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
+
+            // ── 同步网易云红心 ──────
+            syncNeteaseLike(song, targetFavoriteState)
+        }
+    }
+
+    fun downloadSong(song: Song) {
+        viewModelScope.launch {
+            val result = musicDownloadServiceProvider.get().downloadSong(song)
+            if (result != null) {
+                android.widget.Toast.makeText(context, "下载完成: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                android.widget.Toast.makeText(context, "下载失败: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -3849,13 +4940,25 @@ class PlayerViewModel @Inject constructor(
         // Already persisted?
         musicRepository.getCloudSongIdByTitleArtist(title, artist)?.let { return it }
 
+        // 提取可直接播放的 http(s) URL 作为 directPlayUrl
+        val directPlayUrl = if (
+            song.contentUriString.startsWith("http://", ignoreCase = true) ||
+            song.contentUriString.startsWith("https://", ignoreCase = true)
+        ) {
+            song.contentUriString
+        } else {
+            null
+        }
+
         // Not yet saved — create the minimal record
         val songId = musicRepository.saveCloudSongBasic(
             title = title,
             artist = artist,
             album = if (song.album.isNotBlank()) song.album else title,
             albumArt = song.albumArtUriString,
-            duration = song.duration
+            duration = song.duration,
+            directPlayUrl = directPlayUrl,
+            neteaseIdRaw = song.neteaseId
         )
         return songId.toString()
     }
@@ -4386,77 +5489,928 @@ class PlayerViewModel @Inject constructor(
     }
 
 
-    fun playUrl(url: String, title: String, artist: String = "", cover: String = "") {
+    fun playUrl(url: String, title: String, artist: String = "", cover: String = "", songId: String? = null) {
+        _isRoamingMode.value = false
         android.util.Log.d("LxPlayUrl", "=== playUrl called ===")
         android.util.Log.d("LxPlayUrl", "URL: $url")
         android.util.Log.d("LxPlayUrl", "Title: $title, Artist: $artist, Cover: $cover")
         android.util.Log.d("LxPlayUrl", "URL length: ${url.length}")
-        // Check URL for invisible/control characters
-        val urlBytes = url.toByteArray(Charsets.UTF_8)
-        val hexBuilder = StringBuilder()
-        for (i in 0 until minOf(urlBytes.size, 50)) {
-            hexBuilder.append(String.format("%02x ", urlBytes[i]))
-        }
-        android.util.Log.d("LxPlayUrl", "URL first 50 bytes hex: $hexBuilder")
-        // Sanitize URL - remove control chars, whitespace, quotes, escape chars
+
         val sanitizedUrl = url.trim()
             .replace("[\\x00-\\x1F\\x7F]".toRegex(), "")
-            .replace("\\\\\"", "\"")
-            .replace("\\\\\\\\", "\\")
-            .let { if (it.startsWith('"') && it.endsWith('"') && it.length >= 2) it.substring(1, it.length - 1) else it }
-            .let { if (it.startsWith('\'') && it.endsWith('\'') && it.length >= 2) it.substring(1, it.length - 1) else it }
         android.util.Log.d("LxPlayUrl", "Sanitized URL: $sanitizedUrl")
-        android.util.Log.d("LxPlayUrl", "Sanitized URL length: ${sanitizedUrl.length}")
-        // Validate URI
+
         try {
             val parsedUri = android.net.Uri.parse(sanitizedUrl)
-            android.util.Log.d("LxPlayUrl", "Parsed URI scheme: ${parsedUri.scheme}, host: ${parsedUri.host}")
-            android.util.Log.d("LxPlayUrl", "Parsed URI path: ${parsedUri.path}")
             if (parsedUri.scheme == null || parsedUri.host == null) {
                 android.util.Log.e("LxPlayUrl", "Invalid URL - no scheme or host!")
+                viewModelScope.launch { _toastEvents.emit("无效的播放链接") }
                 return
             }
         } catch (e: Exception) {
             android.util.Log.e("LxPlayUrl", "Uri.parse failed: ${e.message}", e)
+            viewModelScope.launch { _toastEvents.emit("无法解析播放链接") }
             return
         }
-        val id = "cloud://${System.currentTimeMillis()}"
-        val metadata = MediaMetadata.Builder()
-            .setTitle(title.ifBlank { "Cloud Track" })
-            .setArtist(artist.ifBlank { null })
-            .apply {
-                val coverUri = cover.trim()
-                if (coverUri.isNotBlank() && (coverUri.startsWith("http://") || coverUri.startsWith("https://") || coverUri.startsWith("content://"))) {
-                    android.util.Log.d("LxPlayUrl", "Setting artworkUri: $coverUri")
-                    setArtworkUri(android.net.Uri.parse(coverUri))
+
+        val id = songId.takeIf { !it.isNullOrBlank() } ?: "cloud://${System.currentTimeMillis()}"
+
+        val isQQMusicSong = id.startsWith("qq_")
+        val sourceName = if (isQQMusicSong) "QQ音乐" else "Cloud Play"
+
+        viewModelScope.launch {
+            try {
+                val storedSong = id.toLongOrNull()?.let { musicRepository.getSong(it.toString()).first() }
+
+                var tempSong: com.theveloper.pixelplay.data.model.Song
+                if (storedSong != null) {
+                    tempSong = storedSong
+                } else {
+                    val parsedNeteaseId = id.toLongOrNull()
+                    val contentUri = if (parsedNeteaseId != null && parsedNeteaseId > 0) {
+                        "netease://$parsedNeteaseId"
+                    } else {
+                        sanitizedUrl
+                    }
+                    tempSong = com.theveloper.pixelplay.data.model.Song(
+                        id = id,
+                        title = title.ifBlank { "Cloud Track" },
+                        artist = artist.ifBlank { "Unknown Artist" },
+                        artistId = 0L,
+                        album = "",
+                        albumId = 0L,
+                        path = "",
+                        contentUriString = contentUri,
+                        albumArtUriString = cover.takeIf { it.isNotBlank() },
+                        duration = 0L,
+                        mimeType = null,
+                        bitrate = null,
+                        sampleRate = null,
+                        neteaseId = parsedNeteaseId?.takeIf { it > 0 }
+                    )
                 }
+
+                android.util.Log.d("LxPlayUrl", "Using stored song: ${storedSong != null}, neteaseId: ${tempSong.neteaseId}, contentUri: ${tempSong.contentUriString}")
+
+                cancelPendingFullQueuePlayback()
+
+                beginPreparingSong(tempSong)
+
+                _playerUiState.update {
+                    it.copy(
+                        currentPlaybackQueue = listOf(tempSong).toPlaybackQueue(),
+                        currentQueueSourceName = sourceName
+                    )
+                }
+
+                playbackStateHolder.updateStablePlayerState {
+                    it.copy(
+                        currentSong = tempSong,
+                        currentMediaItemIndex = 0,
+                        isPlaying = true,
+                        playWhenReady = true,
+                        totalDuration = 0L,
+                        lyrics = null,
+                        isLoadingLyrics = true
+                    )
+                }
+
+                loadLyricsForCurrentSong()
+
+                _isSheetVisible.value = true
+
+                val mediaMetadata = MediaMetadata.Builder()
+                    .setTitle(tempSong.title)
+                    .setArtist(tempSong.artist)
+                    .apply {
+                        tempSong.albumArtUriString?.let { artUri ->
+                            val trimmed = artUri.trim()
+                            if (trimmed.isNotBlank() &&
+                                (trimmed.startsWith("http://") ||
+                                        trimmed.startsWith("https://") ||
+                                        trimmed.startsWith("content://"))
+                            ) {
+                                setArtworkUri(android.net.Uri.parse(trimmed))
+                            }
+                        }
+                    }
+                    .build()
+
+                val mediaItem = MediaItem.Builder()
+                    .setMediaId(id)
+                    .setUri(sanitizedUrl)
+                    .setMediaMetadata(mediaMetadata)
+                    .build()
+
+                val playAction = {
+                    dualPlayerEngine.cancelNext()
+                    val enginePlayer = dualPlayerEngine.masterPlayer
+
+                    enginePlayer.setMediaItem(mediaItem, 0L)
+                    enginePlayer.prepare()
+                    enginePlayer.play()
+                    _playerUiState.update { it.copy(isLoadingInitialSongs = false) }
+                }
+
+                if (mediaController == null) {
+                    Timber.w("MediaController not available. Queuing playback action.")
+                    pendingPlaybackAction = playAction
+                } else {
+                    playAction()
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "playUrl failed")
+                _toastEvents.emit("播放失败: ${t.message ?: t.javaClass.simpleName}")
             }
-            .build()
-        val item = MediaItem.Builder()
-            .setMediaId(id)
-            .setUri(sanitizedUrl)
-            .setMediaMetadata(metadata)
-            .build()
-        val controller = playbackStateHolder.mediaController
-        android.util.Log.d("LxPlayUrl", "controller is null: ${controller == null}")
-        if (controller == null) {
-            android.util.Log.w("LxPlayUrl", "MediaController is null, cannot play")
-            return
         }
-        android.util.Log.d("LxPlayUrl", "Calling setMediaItems with 1 item")
-        controller.setMediaItems(listOf(item), 0, 0L)
-        android.util.Log.d("LxPlayUrl", "Calling prepare()")
-        controller.prepare()
-        android.util.Log.d("LxPlayUrl", "Calling play()")
-        controller.play()
-        android.util.Log.d("LxPlayUrl", "=== playUrl done ===")
     }
     fun seekTo(position: Long) {
         playbackStateHolder.seekTo(position)
     }
 
+    // ─── 漫游模式方法 ───────────────────────────────────────────────────
+    companion object {
+        // 初始加载：1 首正在播放 + 4 首预加载 = 5 首
+        private const val ROAMING_PRELOAD_COUNT = 5
+        // 备用批量加载：剩余歌曲少于此数时触发（主要用于快速切歌场景）
+        private const val ROAMING_REFRESH_THRESHOLD = 2
+    }
+
+    /**
+     * 启动私人漫游模式
+     * 获取推荐 → 批量获取详情和URL → 构造Song对象 → 用队列播放 → 打开全屏播放器
+     */
+    fun startRoamingMode() {
+        viewModelScope.launch {
+            if (!neteaseRepository.isLoggedIn) {
+                _toastEvents.emit("请先在设置中登录网易云账户")
+                return@launch
+            }
+
+            if (_isRoamingLoading.value) return@launch
+
+            _isRoamingLoading.value = true
+            _isRoamingMode.value = true
+
+            // 先打开播放器显示加载状态，提供即时视觉反馈
+            val loadingSong = Song(
+                id = "roaming_loading",
+                title = "正在加载推荐歌曲...",
+                artist = "漫游模式",
+                artistId = 0L,
+                artists = emptyList(),
+                album = "",
+                albumId = 0L,
+                path = "",
+                contentUriString = "",
+                albumArtUriString = null,
+                duration = 0L,
+                genre = null,
+                lyrics = null,
+                isFavorite = false,
+                trackNumber = 0,
+                discNumber = null,
+                year = 0,
+                dateAdded = System.currentTimeMillis(),
+                dateModified = 0L,
+                mimeType = "audio/mpeg",
+                bitrate = null,
+                sampleRate = null,
+                telegramFileId = null,
+                telegramChatId = null,
+                neteaseId = null,
+                gdriveFileId = null,
+                qqMusicMid = null,
+                navidromeId = null,
+                jellyfinId = null
+            )
+            // 设置 currentSong = loadingSong，确保 isPreparingPlayback = true
+            playbackStateHolder.updateStablePlayerState {
+                it.copy(
+                    currentSong = loadingSong,
+                    lyrics = null,
+                    isLoadingLyrics = false
+                )
+            }
+            beginPreparingSong(loadingSong)
+            cancelPendingFullQueuePlayback()
+            dualPlayerEngine.cancelNext()
+
+            _isSheetVisible.value = true
+            _sheetState.value = PlayerSheetState.EXPANDED
+
+            try {
+                val cookie = neteaseRepository.getCookieString()
+                if (cookie.isBlank()) {
+                    _toastEvents.emit("Cookie 获取失败，请重新登录")
+                    return@launch
+                }
+
+                // 1. 获取私人 FM 推荐（一次性取较多，提高命中有 URL 歌曲的概率）
+                val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie).getOrElse { err ->
+                    Timber.e(err, "startRoamingMode: fetchPersonalFmRecommendations failed")
+                    _toastEvents.emit("获取推荐失败：${err.message}")
+                    return@launch
+                }
+
+                if (songIds.isEmpty()) {
+                    _toastEvents.emit("暂无推荐歌曲")
+                    return@launch
+                }
+
+                Timber.d("startRoamingMode: Got ${songIds.size} recommendations")
+
+                // 取更多歌曲详情（VIP 歌曲只有试听地址，免费歌曲有完整地址）
+                // 抓取更多以确保至少有 ROAMING_PRELOAD_COUNT 首有可用 URL
+                val targetIds = songIds.take(ROAMING_PRELOAD_COUNT * 4)
+
+                // 2. 批量获取歌曲详情（带 cookie，确保用户身份识别）
+                val details = personalFmApi.fetchSongDetails(targetIds, cookie).getOrElse { err ->
+                    Timber.e(err, "startRoamingMode: fetchSongDetails failed")
+                    _toastEvents.emit("获取歌曲详情失败：${err.message}")
+                    return@launch
+                }
+
+                if (details.isEmpty()) {
+                    _toastEvents.emit("获取歌曲信息失败")
+                    return@launch
+                }
+
+                Timber.d("startRoamingMode: Got ${details.size} details, VIP=${details.count { it.isVip }}")
+
+                // 3. 先对**所有歌曲**统一尝试 neteaseRepository.getSongUrl
+                //    （不区分 VIP/免费，VIP 歌曲也可能获取到 30s 试听或有效 URL）
+                val songUrlMap = mutableMapOf<Long, String>()
+                val neteaseResults = kotlinx.coroutines.coroutineScope {
+                    details.map { detail ->
+                        async(Dispatchers.IO) {
+                            val url = neteaseRepository.getSongUrl(detail.id).getOrNull()
+                            detail.id to url
+                        }
+                    }.awaitAll()
+                }
+                for ((id, url) in neteaseResults) {
+                    if (url != null && url.isNotBlank()) {
+                        songUrlMap[id] = url
+                    }
+                }
+
+                Timber.d("startRoamingMode: Netease resolved ${songUrlMap.size}/${details.size} songs")
+
+                // 4. 对 neteaseRepository 失败的歌曲，尝试 lxJsEngine（如果可用）
+                val unresolvedDetails = details.filter { it.id !in songUrlMap }
+                if (unresolvedDetails.isNotEmpty()) {
+                    val lxReady = try {
+                        lxJsEngine.ready()
+                    } catch (t: Throwable) {
+                        Timber.w(t, "startRoamingMode: lxJsEngine.ready() failed")
+                        false
+                    }
+
+                    if (lxReady) {
+                        Timber.d("startRoamingMode: Trying lxJsEngine for ${unresolvedDetails.size} unresolved songs")
+                        val lxResults = kotlinx.coroutines.coroutineScope {
+                            unresolvedDetails.map { detail ->
+                                async(Dispatchers.IO) {
+                                    val songIdStr = detail.id.toString()
+                                    val songTitle = detail.name
+                                    val songArtist = detail.artistString
+                                    val songAlbum = detail.albumName
+                                    val songCover = detail.albumPic
+                                    val songInfo = mapOf<String, Any?>(
+                                        "id" to songIdStr,
+                                        "vid" to songIdStr,
+                                        "songmid" to songIdStr,
+                                        "hash" to songIdStr,
+                                        "name" to songTitle,
+                                        "singer" to songArtist,
+                                        "artists" to songArtist,
+                                        "album" to songAlbum,
+                                        "albumName" to songAlbum,
+                                        "duration" to detail.duration,
+                                        "pic" to songCover,
+                                        "cover" to songCover
+                                    )
+                                    val url = try {
+                                        lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                                    } catch (t: Throwable) {
+                                        Timber.w(t, "startRoamingMode: lxJsEngine.getPlayUrl failed for song=${detail.id}")
+                                        null
+                                    }
+                                    detail.id to url
+                                }
+                            }.awaitAll()
+                        }
+                        for ((id, url) in lxResults) {
+                            if (url != null && url.isNotBlank()) {
+                                songUrlMap[id] = url
+                            }
+                        }
+                        Timber.d("startRoamingMode: lxJsEngine resolved additional ${lxResults.count { (_, u) -> !u.isNullOrBlank() }} songs")
+                    } else {
+                        Timber.w("startRoamingMode: lxJsEngine not ready, ${unresolvedDetails.size} songs may be VIP-only")
+                    }
+                }
+
+                // 5. 过滤出有 URL 的歌曲，按原始推荐顺序播放
+                val orderedDetails = details.filter { it.id in songUrlMap }
+                if (orderedDetails.isEmpty()) {
+                    Timber.e("startRoamingMode: All ${details.size} songs failed to resolve URL (VIP=${details.count { it.isVip }}, lxReady=${lxJsEngine.isReady()})")
+                    _toastEvents.emit("无法获取歌曲播放地址（可能需要VIP音源或落雪JS脚本）")
+                    return@launch
+                }
+
+                Timber.d("startRoamingMode: Successfully resolved ${orderedDetails.size}/${details.size} songs (VIP=${details.count { it.isVip }})")
+
+                // ⚡ 修复：增加"标题+歌手"去重，防止同一首歌（不同专辑/不同版本）重复出现
+                // 同时检查：相邻歌曲不能完全相同
+                val seenKeys = mutableSetOf<String>()
+                val deduplicatedDetails = orderedDetails.filter { detail ->
+                    val key = "${detail.name.trim().lowercase()}|${detail.artistString.trim().lowercase()}"
+                    if (key in seenKeys) {
+                        Timber.d("startRoamingMode: Deduplicated - skipping '${detail.name}' by '${detail.artistString}'")
+                        false
+                    } else {
+                        seenKeys.add(key)
+                        true
+                    }
+                }
+
+                // 6. 构造 Song 对象列表（取前 ROAMING_PRELOAD_COUNT 首）
+                val finalDetails = deduplicatedDetails.take(ROAMING_PRELOAD_COUNT)
+                val songsToPlay = finalDetails.mapIndexed { index, detail ->
+                    val url = songUrlMap[detail.id] ?: ""
+                    Song(
+                        id = "roaming_${detail.id}",
+                        title = detail.name,
+                        artist = detail.artistString,
+                        artistId = 0L,
+                        artists = emptyList(),
+                        album = detail.albumName,
+                        albumId = 0L,
+                        path = url,
+                        contentUriString = url,
+                        albumArtUriString = detail.albumPic.takeIf { it.isNotBlank() },
+                        duration = detail.duration,
+                        genre = null,
+                        lyrics = null,
+                        isFavorite = false,
+                        trackNumber = 0,
+                        discNumber = null,
+                        year = 0,
+                        dateAdded = System.currentTimeMillis(),
+                        dateModified = 0L,
+                        mimeType = "audio/mpeg",
+                        bitrate = null,
+                        sampleRate = null,
+                        telegramFileId = null,
+                        telegramChatId = null,
+                        neteaseId = detail.id,
+                        gdriveFileId = null,
+                        qqMusicMid = null,
+                        navidromeId = null,
+                        jellyfinId = null
+                    ) to detail.isVip  // 同时记录是否是 VIP 歌曲
+                }
+
+                // 分离歌曲列表和 VIP 标记
+                val songList = songsToPlay.map { it.first }
+                val vipInfo = songsToPlay.map { (song, isVip) -> song.id to isVip }.toMap()
+
+                // 7. 对 VIP 歌曲启动后台预加载完整音源（不阻塞播放启动）
+                val vipCount = vipInfo.count { it.value }
+                if (vipCount > 0) {
+                    Timber.d("startRoamingMode: Starting background preload for $vipCount VIP songs")
+                    songList.forEachIndexed { index, song ->
+                        if (vipInfo[song.id] == true) {
+                            preloadVipSongFullUrl(
+                                songId = song.id,
+                                neteaseId = song.neteaseId ?: return@forEachIndexed,
+                                title = song.title,
+                                artist = song.displayArtist,
+                                album = song.album,
+                                hintDuration = song.duration,
+                                albumPic = song.albumArtUriString,
+                                indexInQueue = index
+                            )
+                        }
+                    }
+                }
+
+                val startSong = songList.first()
+
+                // 7. 先为第一首歌准备颜色方案（避免闪烁）
+                beginPreparingSong(startSong)
+
+                // 8. 用标准 MediaItemBuilder 构建完整队列，一次性设置到 masterPlayer
+                val mediaItems = songList.map { song ->
+                    com.theveloper.pixelplay.utils.MediaItemBuilder.build(song)
+                }
+
+                val playAction = {
+                    val enginePlayer = dualPlayerEngine.masterPlayer
+                    enginePlayer.setMediaItems(mediaItems, 0, 0L)
+                    enginePlayer.prepare()
+                    enginePlayer.play()
+                }
+
+                // 如果 mediaController 已就绪，通过它播放（确保状态同步）
+                if (mediaController == null) {
+                    pendingPlaybackAction = playAction
+                } else {
+                    playAction()
+                }
+
+                // 9. 更新所有状态持有者
+                _playerUiState.update {
+                    it.copy(
+                        currentPlaybackQueue = songList.toPlaybackQueue(),
+                        currentQueueSourceName = "漫游模式",
+                        isLoadingInitialSongs = false
+                    )
+                }
+                playbackStateHolder.updateStablePlayerState {
+                    it.copy(
+                        currentSong = startSong,
+                        currentMediaItemIndex = 0,
+                        isPlaying = true,
+                        playWhenReady = true,
+                        totalDuration = startSong.duration.coerceAtLeast(0L),
+                        lyrics = null,
+                        isLoadingLyrics = false
+                    )
+                }
+
+            } catch (t: Throwable) {
+                Timber.e(t, "startRoamingMode failed")
+                _toastEvents.emit("启动漫游失败：${t.message}")
+            } finally {
+                _isRoamingLoading.value = false
+            }
+        }
+    }
+
+    // ─── VIP 歌曲后台预加载与无缝切换 ─────────────────────────────────────────────
+    /**
+     * 为 VIP 歌曲启动后台预加载完整音源（落雪 lxJsEngine）。
+     * 获取成功后，如果正在播放这首歌，立即替换 MediaItem 并从当前位置继续播放；
+     * 如果还没播放到这首歌，缓存起来等待播放时使用。
+     */
+    private fun preloadVipSongFullUrl(
+        songId: String,
+        neteaseId: Long,
+        title: String,
+        artist: String,
+        album: String,
+        hintDuration: Long,
+        albumPic: String?,
+        indexInQueue: Int
+    ) {
+        // 避免重复启动
+        synchronized(vipPreloadJobs) {
+            if (songId in vipPreloadJobs) return
+        }
+
+        val job = viewModelScope.launch {
+            try {
+                Timber.d("RoamingVIP: preloading full URL for song '$songId' (queueIndex=$indexInQueue)")
+
+                // 先检查 lxJsEngine 是否可用
+                val lxReady = try {
+                    lxJsEngine.ready()
+                } catch (t: Throwable) {
+                    Timber.w(t, "RoamingVIP: lxJsEngine.ready() failed for '$songId'")
+                    return@launch
+                }
+
+                if (!lxReady) {
+                    Timber.w("RoamingVIP: lxJsEngine not ready for '$songId'")
+                    return@launch
+                }
+
+                // 调用 lxJsEngine 获取完整 URL（可能是耗时操作）
+                val songIdStr = neteaseId.toString()
+                val songInfo = mapOf<String, Any?>(
+                    "id" to songIdStr,
+                    "vid" to songIdStr,
+                    "songmid" to songIdStr,
+                    "hash" to songIdStr,
+                    "name" to title,
+                    "singer" to artist,
+                    "artists" to artist,
+                    "album" to album,
+                    "albumName" to album,
+                    "duration" to hintDuration,
+                    "pic" to albumPic,
+                    "cover" to albumPic
+                )
+
+                val fullUrl: String? = try {
+                    lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                } catch (t: Throwable) {
+                    Timber.w(t, "RoamingVIP: lxJsEngine.getPlayUrl failed for '$songId'")
+                    null
+                }
+
+                if (fullUrl.isNullOrBlank()) {
+                    Timber.w("RoamingVIP: lxJsEngine returned null for '$songId'")
+                    return@launch
+                }
+
+                Timber.d("RoamingVIP: preloaded full URL for '$songId' -> ${fullUrl.take(60)}…")
+
+                // 缓存获取到的完整 URL
+                synchronized(vipPendingFullUrls) {
+                    vipPendingFullUrls[songId] = fullUrl
+                }
+
+                // 检查当前是否正在播放这首歌，如果是，立即切换
+                val currentSongId = playbackStateHolder.stablePlayerState.value.currentSong?.id
+                if (currentSongId == songId) {
+                    Timber.d("RoamingVIP: song '$songId' is currently playing, switching to full URL now")
+                    switchToFullUrl(songId, fullUrl, indexInQueue)
+                } else {
+                    Timber.d("RoamingVIP: cached full URL for '$songId', will apply when song starts playing")
+                }
+
+            } finally {
+                synchronized(vipPreloadJobs) {
+                    vipPreloadJobs.remove(songId)
+                }
+            }
+        }
+
+        synchronized(vipPreloadJobs) {
+            vipPreloadJobs[songId] = job
+        }
+    }
+
+    /**
+     * 将当前播放的歌曲从 netease 30s 试听切换到完整 URL，保持播放位置。
+     */
+    private fun switchToFullUrl(songId: String, fullUrl: String, indexInQueue: Int) {
+        val controller = mediaController ?: dualPlayerEngine.masterPlayer
+        val currentIndex = controller.currentMediaItemIndex
+
+        // 验证索引是否匹配（队列可能已变化）
+        val targetIndex = if (indexInQueue >= 0 && indexInQueue < controller.mediaItemCount) indexInQueue else currentIndex
+
+        // 只在当前播放这首歌时才切换
+        if (currentIndex != targetIndex) {
+            Timber.w("RoamingVIP: index mismatch for '$songId' (current=$currentIndex, target=$targetIndex), skip switch")
+            return
+        }
+
+        val currentPos = controller.currentPosition.coerceAtLeast(0L)
+        val wasPlaying = controller.isPlaying
+
+        Timber.d("RoamingVIP: switching '$songId' at pos=${currentPos}ms, wasPlaying=$wasPlaying")
+
+        // 构造新 Song 和 MediaItem
+        val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return
+        val updatedSong = currentSong.copy(path = fullUrl, contentUriString = fullUrl)
+        val newMediaItem = com.theveloper.pixelplay.utils.MediaItemBuilder.build(updatedSong)
+
+        runCatching {
+            controller.replaceMediaItem(targetIndex, newMediaItem)
+            controller.seekTo(targetIndex, currentPos)
+            if (wasPlaying) controller.play()
+        }.onFailure { t ->
+            Timber.w(t, "RoamingVIP: switchToFullUrl failed for '$songId'")
+        }.onSuccess {
+            Timber.d("RoamingVIP: switched to full URL for '$songId'")
+
+            // 同步更新 UI 状态
+            playbackStateHolder.updateStablePlayerState { s ->
+                if (s.currentSong?.id == songId) s.copy(currentSong = updatedSong) else s
+            }
+            val queueSnapshot = _playerUiState.value.currentPlaybackQueue
+            if (queueSnapshot.isNotEmpty()) {
+                val updatedQueue = queueSnapshot.mapIndexed { idx, q ->
+                    if (idx == targetIndex && q.id == songId) updatedSong else q
+                }
+                _playerUiState.update { it.copy(currentPlaybackQueue = updatedQueue.toPlaybackQueue()) }
+            }
+
+            // 标记为已处理，避免现有 RoamingVIP 监听逻辑再次处理
+            synchronized(roamingVipSongHandledIds) {
+                roamingVipSongHandledIds.add(songId)
+            }
+        }
+    }
+
+    /**
+     * 当歌曲开始播放时，检查是否有预加载好的完整 URL，如果有则立即应用。
+     * 这个函数在 currentSong 变化时被调用。
+     */
+    private fun applyPendingVipFullUrlIfAvailable(songId: String, indexInQueue: Int) {
+        val cachedUrl = synchronized(vipPendingFullUrls) {
+            vipPendingFullUrls.remove(songId)
+        } ?: return
+
+        Timber.d("RoamingVIP: found pending full URL for '$songId', applying immediately")
+        switchToFullUrl(songId, cachedUrl, indexInQueue)
+    }
+
+    /**
+     * 加载更多漫游歌曲追加到队列（后台加载，不影响当前播放）
+     * @param count 尝试加载的歌曲数量（最终成功的数量可能更少，取决于 URL 解析）
+     */
+    private fun loadMoreRoamingSongs(count: Int = ROAMING_PRELOAD_COUNT) {
+        viewModelScope.launch {
+            if (_isRoamingLoading.value) return@launch
+
+            if (count <= 0) return@launch
+
+            _isRoamingLoading.value = true
+            try {
+                val cookie = neteaseRepository.getCookieString()
+                if (cookie.isBlank()) return@launch
+
+                val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie).getOrNull()
+                    ?: return@launch
+
+                if (songIds.isEmpty()) return@launch
+
+                // 获取当前播放队列中已有的 songId 和"标题+歌手"，避免重复
+                val existingQueue = _playerUiState.value.currentPlaybackQueue
+                val existingNeteaseIds = existingQueue
+                    .mapNotNull { it.neteaseId }
+                    .toSet()
+                val existingTitleArtistKeys = existingQueue.map { song ->
+                    "${song.title.trim().lowercase()}|${song.displayArtist.trim().lowercase()}"
+                }.toSet()
+
+                // 根据 count 动态计算抓取倍数：加载 1 首时多取一些提高命中率
+                val fetchMultiplier = if (count >= ROAMING_PRELOAD_COUNT) 4 else 8
+                val newIds = songIds.filter { it !in existingNeteaseIds }.take(count * fetchMultiplier)
+                if (newIds.isEmpty()) return@launch
+
+                // 批量获取详情（带 cookie，确保用户身份识别）
+                val details = personalFmApi.fetchSongDetails(newIds, cookie).getOrNull() ?: return@launch
+                if (details.isEmpty()) return@launch
+
+                Timber.d("loadMoreRoamingSongs: Got ${details.size} new details, VIP=${details.count { it.isVip }}")
+
+                // ⚡ 额外去重：对本次新加载的歌曲也进行"标题+歌手"去重
+                val seenKeysInBatch = mutableSetOf<String>()
+                val uniqueDetails = details.filter { detail ->
+                    val key = "${detail.name.trim().lowercase()}|${detail.artistString.trim().lowercase()}"
+                    if (key in existingTitleArtistKeys || key in seenKeysInBatch) {
+                        Timber.d("loadMoreRoamingSongs: Deduplicated - skipping '${detail.name}' by '${detail.artistString}'")
+                        false
+                    } else {
+                        seenKeysInBatch.add(key)
+                        true
+                    }
+                }
+
+                // 1. 先对**所有歌曲**统一尝试 neteaseRepository.getSongUrl
+                val songUrlMap = mutableMapOf<Long, String>()
+                val neteaseResults = kotlinx.coroutines.coroutineScope {
+                    uniqueDetails.map { detail ->
+                        async(Dispatchers.IO) {
+                            val url = neteaseRepository.getSongUrl(detail.id).getOrNull()
+                            detail.id to url
+                        }
+                    }.awaitAll()
+                }
+                for ((id, url) in neteaseResults) {
+                    if (url != null && url.isNotBlank()) {
+                        songUrlMap[id] = url
+                    }
+                }
+
+                Timber.d("loadMoreRoamingSongs: Netease resolved ${songUrlMap.size}/${uniqueDetails.size} songs")
+
+                // 2. 对 neteaseRepository 失败的歌曲，尝试 lxJsEngine（如果可用）
+                val unresolvedDetails = uniqueDetails.filter { it.id !in songUrlMap }
+                if (unresolvedDetails.isNotEmpty()) {
+                    val lxReady = try {
+                        lxJsEngine.ready()
+                    } catch (t: Throwable) {
+                        Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.ready() failed")
+                        false
+                    }
+
+                    if (lxReady) {
+                        Timber.d("loadMoreRoamingSongs: Trying lxJsEngine for ${unresolvedDetails.size} unresolved songs")
+                        val lxResults = kotlinx.coroutines.coroutineScope {
+                            unresolvedDetails.map { detail ->
+                                async(Dispatchers.IO) {
+                                    val songIdStr = detail.id.toString()
+                                    val songTitle = detail.name
+                                    val songArtist = detail.artistString
+                                    val songAlbum = detail.albumName
+                                    val songCover = detail.albumPic
+                                    val songInfo = mapOf<String, Any?>(
+                                        "id" to songIdStr,
+                                        "vid" to songIdStr,
+                                        "songmid" to songIdStr,
+                                        "hash" to songIdStr,
+                                        "name" to songTitle,
+                                        "singer" to songArtist,
+                                        "artists" to songArtist,
+                                        "album" to songAlbum,
+                                        "albumName" to songAlbum,
+                                        "duration" to detail.duration,
+                                        "pic" to songCover,
+                                        "cover" to songCover
+                                    )
+                                    val url = try {
+                                        lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                                    } catch (t: Throwable) {
+                                        Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.getPlayUrl failed for song=${detail.id}")
+                                        null
+                                    }
+                                    detail.id to url
+                                }
+                            }.awaitAll()
+                        }
+                        for ((id, url) in lxResults) {
+                            if (url != null && url.isNotBlank()) {
+                                songUrlMap[id] = url
+                            }
+                        }
+                    } else {
+                        Timber.w("loadMoreRoamingSongs: lxJsEngine not ready, ${unresolvedDetails.size} songs may be VIP-only")
+                    }
+                }
+
+                // 3. 过滤出有 URL 的歌曲，按原始推荐顺序，取前 count 首
+                val orderedDetails = uniqueDetails.filter { it.id in songUrlMap }.take(count)
+                if (orderedDetails.isEmpty()) {
+                    Timber.w("loadMoreRoamingSongs: All ${uniqueDetails.size} songs failed to resolve URL")
+                    return@launch
+                }
+
+                Timber.d("loadMoreRoamingSongs: Successfully resolved ${orderedDetails.size}/${uniqueDetails.size} songs (requested count=$count)")
+
+                // 构造 Song 对象并追加到队列
+                val existingQueueSize = _playerUiState.value.currentPlaybackQueue.size
+                val newSongsWithVip = orderedDetails.mapIndexed { localIndex, detail ->
+                    val url = songUrlMap[detail.id] ?: ""
+                    val song = Song(
+                        id = "roaming_${detail.id}",
+                        title = detail.name,
+                        artist = detail.artistString,
+                        artistId = 0L,
+                        artists = emptyList(),
+                        album = detail.albumName,
+                        albumId = 0L,
+                        path = url,
+                        contentUriString = url,
+                        albumArtUriString = detail.albumPic.takeIf { it.isNotBlank() },
+                        duration = detail.duration,
+                        genre = null,
+                        lyrics = null,
+                        isFavorite = false,
+                        trackNumber = 0,
+                        discNumber = null,
+                        year = 0,
+                        dateAdded = System.currentTimeMillis(),
+                        dateModified = 0L,
+                        mimeType = "audio/mpeg",
+                        bitrate = null,
+                        sampleRate = null,
+                        telegramFileId = null,
+                        telegramChatId = null,
+                        neteaseId = detail.id,
+                        gdriveFileId = null,
+                        qqMusicMid = null,
+                        navidromeId = null,
+                        jellyfinId = null
+                    )
+                    Triple(song, detail.isVip, existingQueueSize + localIndex)  // song, isVip, absoluteIndex
+                }
+
+                val newSongs = newSongsWithVip.map { it.first }
+
+                // 对 VIP 歌曲启动后台预加载
+                val vipSongs = newSongsWithVip.filter { it.second }
+                if (vipSongs.isNotEmpty()) {
+                    Timber.d("loadMoreRoamingSongs: Starting background preload for ${vipSongs.size} VIP songs")
+                    vipSongs.forEach { (song, _, absIndex) ->
+                        preloadVipSongFullUrl(
+                            songId = song.id,
+                            neteaseId = song.neteaseId ?: return@forEach,
+                            title = song.title,
+                            artist = song.displayArtist,
+                            album = song.album,
+                            hintDuration = song.duration,
+                            albumPic = song.albumArtUriString,
+                            indexInQueue = absIndex
+                        )
+                    }
+                }
+
+                // 后台为新歌曲预加载颜色方案（缓存到 ColorSchemeProcessor，不更新当前UI）
+                launch(Dispatchers.IO) {
+                    for (song in newSongs) {
+                        val albumArtUri = song.albumArtUriString
+                        if (!albumArtUri.isNullOrBlank()) {
+                            val uri = runCatching { android.net.Uri.parse(albumArtUri) }.getOrNull()
+                            if (uri != null) {
+                                themeStateHolder.extractAndGenerateColorScheme(
+                                    albumArtUriAsUri = uri,
+                                    currentSongUriString = null,
+                                    isPreload = true
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 用标准 MediaItemBuilder 构造 MediaItem 列表并批量追加到 enginePlayer
+                val newMediaItems = newSongs.map { song ->
+                    com.theveloper.pixelplay.utils.MediaItemBuilder.build(song)
+                }
+
+                // 追加到播放队列（UI状态）
+                val combinedQueue = existingQueue + newSongs
+                _playerUiState.update {
+                    it.copy(currentPlaybackQueue = combinedQueue.toPlaybackQueue())
+                }
+
+                // 批量追加到 enginePlayer 的播放队列
+                val enginePlayer = dualPlayerEngine.masterPlayer
+                enginePlayer.addMediaItems(newMediaItems)
+
+            } catch (t: Throwable) {
+                Timber.e(t, "loadMoreRoamingSongs failed")
+            } finally {
+                _isRoamingLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 退出漫游模式
+     */
+    fun stopRoamingMode() {
+        _isRoamingMode.value = false
+    }
+
+    /**
+     * 下一曲：漫游模式下先尝试从队列切歌，队列快耗尽时后台加载更多
+     * ⚡ 关键优化：漫游模式下如果下一首与当前歌曲相同，则自动跳过
+     */
     fun nextSong() {
-        playbackStateHolder.nextSong()
+        if (_isRoamingMode.value) {
+            val currentQueue = _playerUiState.value.currentPlaybackQueue
+            val currentSongId = stablePlayerState.value.currentSong?.id
+            val currentIndex = currentQueue.indexOfFirst { it.id == currentSongId }
+            val remaining = if (currentIndex >= 0) currentQueue.size - currentIndex - 1 else currentQueue.size
+
+            // 如果队列快耗尽了，触发后台加载更多
+            if (remaining <= ROAMING_REFRESH_THRESHOLD) {
+                loadMoreRoamingSongs()
+            }
+
+            // ⚡ 关键修复：检查下一首是否与当前歌曲相同（标题+歌手），相同则自动跳过
+            if (currentIndex >= 0 && currentIndex + 1 < currentQueue.size) {
+                val currentSong = currentQueue[currentIndex]
+                val currentKey = "${currentSong.title.trim().lowercase()}|${currentSong.displayArtist.trim().lowercase()}"
+
+                // 检查最多后面 3 首，找到第一首不同的歌曲
+                val player = dualPlayerEngine.masterPlayer
+                val playerIndex = player.currentMediaItemIndex
+                var nextIndexToPlay = playerIndex + 1
+                var skipCount = 0
+                val maxSkip = 3
+                while (skipCount < maxSkip && nextIndexToPlay < player.mediaItemCount) {
+                    val nextMediaItem = player.getMediaItemAt(nextIndexToPlay)
+                    val nextSong = currentQueue.find { it.id == nextMediaItem.mediaId }
+                    if (nextSong != null) {
+                        val nextKey = "${nextSong.title.trim().lowercase()}|${nextSong.displayArtist.trim().lowercase()}"
+                        if (nextKey != currentKey) {
+                            break // 找到不同的歌曲
+                        } else {
+                            Timber.d("nextSong: Skipping duplicate song '${nextSong.title}' by '${nextSong.displayArtist}'")
+                            nextIndexToPlay++
+                            skipCount++
+                        }
+                    } else {
+                        break
+                    }
+                }
+
+                // 如果需要跳过，则直接跳到找到的位置
+                if (skipCount > 0 && nextIndexToPlay < player.mediaItemCount) {
+                    player.seekToDefaultPosition(nextIndexToPlay)
+                    if (!player.isPlaying) player.play()
+                    return
+                }
+            }
+
+            // 直接用 playbackStateHolder 切歌（队列内切歌，无缝）
+            playbackStateHolder.nextSong()
+        } else {
+            playbackStateHolder.nextSong()
+        }
     }
 
     fun previousSong() {
@@ -4607,14 +6561,16 @@ class PlayerViewModel @Inject constructor(
         minLength: Int,
         maxLength: Int,
         saveAsPlaylist: Boolean = false,
-        playlistName: String? = null
+        playlistName: String? = null,
+        force: Boolean = false
     ) {
         aiStateHolder.generateAiPlaylist(
             prompt = prompt,
             minLength = minLength,
             maxLength = maxLength,
             saveAsPlaylist = saveAsPlaylist,
-            playlistName = playlistName
+            playlistName = playlistName,
+            force = force
         )
     }
 
@@ -4628,6 +6584,14 @@ class PlayerViewModel @Inject constructor(
 
     fun retryLastMetadataGeneration() {
         aiStateHolder.retryLastMetadataGeneration()
+    }
+
+    fun evaluatePlaylist(playlistName: String, songs: List<Song>, userPrompt: String = "", force: Boolean = false) {
+        aiStateHolder.evaluatePlaylist(playlistName, songs, userPrompt, force)
+    }
+
+    fun clearPlaylistEvaluation() {
+        aiStateHolder.clearPlaylistEvaluation()
     }
 
     fun clearQueueExceptCurrent() {
@@ -4836,6 +6800,22 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 异步获取网易云歌曲的主歌手 ID
+     * @param neteaseSongId 网易云歌曲 ID
+     * @param onResult 回调：返回成功获取的歌手 ID 或 null（失败时）
+     */
+    fun fetchNeteaseArtistId(neteaseSongId: Long, onResult: (Long?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = personalFmApi.fetchNeteaseArtistId(neteaseSongId, neteaseCookie)
+            result.onSuccess { artistId ->
+                onResult(artistId)
+            }.onFailure {
+                onResult(null)
+            }
+        }
+    }
+
     private fun loadLyricsForCurrentSong() {
         val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return
         // Delegate to LyricsStateHolder
@@ -4918,8 +6898,14 @@ class PlayerViewModel @Inject constructor(
             _playerUiState.update { it.copy(currentPlaybackQueue = updatedQueue) }
         }
 
-        // Then, update the stable state
-        playbackStateHolder.updateStablePlayerState { state ->
+        // Then, update the stable state (防抖动: 只有真正变化才更新)
+        val currentStateBefore = playbackStateHolder.stablePlayerState.value
+        val currentSongId = currentStateBefore.currentSong?.id
+        Log.w("PixelPlay_Debug", "[updateSongInStates] song=${updatedSong.title.take(15)}, " +
+            "currentSongId=$currentSongId, songMatch=${currentSongId == updatedSong.id}, " +
+            "newLyrics=${newLyrics != null}, isLoadingLyrics=$isLoadingLyrics")
+
+        playbackStateHolder.updateStablePlayerStateIfChanged { state ->
             // Only update lyrics if they are explicitly passed
             val finalLyrics = newLyrics ?: state.lyrics
             state.copy(
@@ -5004,6 +6990,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun playSong(song: Song) {
+        _isRoamingMode.value = false
         viewModelScope.launch {
             val controller = mediaController ?: return@launch
             val mediaItem = buildResolvedPlaybackMediaItem(song)
@@ -5090,11 +7077,30 @@ internal fun Song.withRepositoryHydration(repositorySong: Song): Song {
         else -> repositorySong.albumArtUriString
     }
 
+    val thisIsNetease = neteaseId != null ||
+        contentUriString.startsWith("netease://", ignoreCase = true)
+    val repoIsNetease = repositorySong.neteaseId != null ||
+        repositorySong.contentUriString.startsWith("netease://", ignoreCase = true)
+
+    // ⚡ 网易云歌曲：如果原歌曲（从 MediaItem 解析）有 netease 信息但 repository 版本没有，
+    // 保留原歌曲的 neteaseId 和 contentUriString，确保歌词能通过正确的 API 获取
+    val finalContentUri = if (thisIsNetease && !repoIsNetease) {
+        contentUriString
+    } else {
+        repositorySong.contentUriString.ifBlank { contentUriString }
+    }
+    val finalNeteaseId = if (thisIsNetease && repositorySong.neteaseId == null) {
+        neteaseId
+    } else {
+        repositorySong.neteaseId
+    }
+
     return repositorySong.copy(
-        contentUriString = repositorySong.contentUriString.ifBlank { contentUriString },
+        contentUriString = finalContentUri,
         albumArtUriString = hydratedArtworkUri,
         duration = repositorySong.duration.takeIf { it > 0L } ?: duration,
-        lyrics = repositorySong.lyrics ?: lyrics
+        lyrics = repositorySong.lyrics ?: lyrics,
+        neteaseId = finalNeteaseId
     )
 }
 

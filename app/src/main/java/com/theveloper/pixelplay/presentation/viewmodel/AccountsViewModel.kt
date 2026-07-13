@@ -36,7 +36,8 @@ data class ExternalAccountUiModel(
     val title: String,
     val accountLabel: String,
     val syncedContentLabel: String,
-    val isLoggingOut: Boolean
+    val isLoggingOut: Boolean,
+    val authCookie: String? = null
 )
 
 data class AccountsUiState(
@@ -169,7 +170,8 @@ class AccountsViewModel @Inject constructor(
                             singular = "synced playlist",
                             plural = "synced playlists"
                         ),
-                        isLoggingOut = ExternalServiceAccount.NETEASE in activeLogouts
+                        isLoggingOut = ExternalServiceAccount.NETEASE in activeLogouts,
+                        authCookie = neteaseRepository.getCookieString().takeIf { it.isNotBlank() }
                     )
                 )
             }

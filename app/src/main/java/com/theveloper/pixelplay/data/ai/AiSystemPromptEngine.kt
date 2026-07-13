@@ -11,6 +11,7 @@ enum class AiSystemPromptType {
     MOOD_ANALYSIS,
     PERSONA,
     DAILY_MIX,
+    PLAYLIST_EVALUATION,
     GENERAL
 }
 
@@ -90,6 +91,20 @@ class AiSystemPromptEngine @Inject constructor() {
                 - Keep responses reasonably concise but beautifully written.
                 - Do NOT use the universal programmatic constraints for persona responses; you are allowed to be conversational.
                 </strategy>
+            """.trimIndent()
+
+            AiSystemPromptType.PLAYLIST_EVALUATION -> """
+                <role>Professional playlist critic and music analyst.</role>
+                <strategy>
+                - Analyze the playlist's flow, variety, and emotional coherence.
+                - Provide insightful commentary on song selection and sequencing.
+                - Rate the playlist on multiple dimensions (cohesion, diversity, energy flow).
+                - Offer constructive feedback and improvement suggestions.
+                </strategy>
+                <output_schema>
+                Return ONLY a raw JSON object string.
+                Format: {"rating": 0-10, "cohesion": 0-10, "diversity": 0-10, "energy_flow": 0-10, "comment": "Your analysis here", "suggestions": ["Suggestion 1", "Suggestion 2"]}
+                </output_schema>
             """.trimIndent()
 
             AiSystemPromptType.GENERAL -> """

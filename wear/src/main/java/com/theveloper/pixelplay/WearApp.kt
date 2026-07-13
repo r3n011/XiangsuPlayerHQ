@@ -1,4 +1,4 @@
-package com.theveloper.pixelplay
+package com.theveloper.pixelplay.wear
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp

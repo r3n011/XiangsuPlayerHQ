@@ -50,7 +50,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
+import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
+import dev.chrisbanes.haze.hazeSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,7 +108,8 @@ fun CloudMusicSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .hazeSource(MainActivity.LocalHazeState.current),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Status card

@@ -1,8 +1,10 @@
 package com.theveloper.pixelplay.presentation.components.scoped
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
-import com.google.common.truth.Truth.assertThat
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 class SheetThemeStateTest {
@@ -21,7 +23,7 @@ class SheetThemeStateTest {
             systemColorScheme = systemScheme
         )
 
-        assertThat(resolved).isSameInstanceAs(systemScheme)
+        assertSame(systemScheme, resolved)
     }
 
     @Test
@@ -34,7 +36,7 @@ class SheetThemeStateTest {
             systemColorScheme = systemScheme
         )
 
-        assertThat(resolved).isSameInstanceAs(previousAlbumScheme)
+        assertSame(previousAlbumScheme, resolved)
     }
 
     @Test
@@ -47,6 +49,19 @@ class SheetThemeStateTest {
             systemColorScheme = systemScheme
         )
 
-        assertThat(resolved).isSameInstanceAs(activeAlbumScheme)
+        assertSame(activeAlbumScheme, resolved)
+    }
+
+    @Test
+    fun resolvePlayerSheetTargetScheme_whenNotAlbumArtTheme_alwaysUsesSystemScheme() {
+        val resolved = resolvePlayerSheetTargetScheme(
+            isAlbumArtTheme = false,
+            hasAlbumArt = true,
+            currentSongActiveScheme = activeAlbumScheme,
+            lastAlbumScheme = previousAlbumScheme,
+            systemColorScheme = systemScheme
+        )
+
+        assertSame(systemScheme, resolved)
     }
 }

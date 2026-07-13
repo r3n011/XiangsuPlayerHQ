@@ -136,7 +136,10 @@ private fun SongEntity.toSongInternal(artists: List<ArtistRef>): Song {
             this.contentUriString.removePrefix("telegram://").split("/").getOrNull(1)?.toIntOrNull()
         } else null,
         neteaseId = if (this.contentUriString.startsWith("netease://")) {
-            this.contentUriString.removePrefix("netease://").toLongOrNull()
+            this.contentUriString
+                .removePrefix("netease://")
+                .substringBefore('?')
+                .toLongOrNull()
         } else null,
         gdriveFileId = if (this.contentUriString.startsWith("gdrive://")) {
             this.contentUriString.removePrefix("gdrive://")

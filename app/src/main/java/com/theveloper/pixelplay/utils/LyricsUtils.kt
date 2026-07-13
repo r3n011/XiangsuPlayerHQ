@@ -1004,8 +1004,10 @@ object LyricsUtils {
 
     /**
      * Pairs consecutive synced lines that share the same timestamp.
-     * The second line is treated as a translation of the first.
-     * Only pairs one translation per original — a third line at the same timestamp stays separate.
+     * When exactly 3 lines share a timestamp (e.g. original, romanization, translation),
+     * the second line (romanization) is left unpaired so it gets auto-generated instead,
+     * and only the third line is treated as translation.
+     * For 2 lines, the second is treated as translation.
      */
     internal fun pairTranslationLines(lines: List<SyncedLine>): List<SyncedLine> {
         if (lines.size < 2) return lines
@@ -1015,16 +1017,41 @@ object LyricsUtils {
             val current = lines[i]
             val next = lines.getOrNull(i + 1)
             if (next != null && next.time == current.time && current.translation == null && current.line.isNotBlank() && next.line.isNotBlank()) {
-                val translationParts = mutableListOf(next.line)
-                var consumed = 2
-                while (true) {
-                    val trailing = lines.getOrNull(i + consumed) ?: break
-                    if (trailing.time != current.time || !isTranslationCreditLine(trailing.line)) break
-                    translationParts.add(trailing.line)
-                    consumed++
+                // Check if there's a third line at the same timestamp (original, romanization, translation pattern)
+                val third = lines.getOrNull(i + 2)
+                val hasThirdLineAtSameTime = third != null && third.time == current.time && third.line.isNotBlank()
+
+                if (hasThirdLineAtSameTime) {
+                    // Find the last line at the same timestamp
+                    val lastSameTimeIndex = run {
+                        var idx = i + 2
+                        while (idx < lines.size && lines[idx].time == current.time) idx++
+                        idx - 1
+                    }
+                    // When exactly 3 lines: second is romanization (skip), third is translation
+                    // When 4+ lines: join all non-first lines as translation
+                    val translationParts = if (lastSameTimeIndex == i + 2) {
+                        // Exactly 3 lines: skip middle (romanization), use last as translation
+                        mutableListOf(lines[lastSameTimeIndex].line)
+                    } else {
+                        // 4+ lines: join all non-first lines
+                        (i + 1..lastSameTimeIndex).map { lines[it].line }.toMutableList()
+                    }
+                    result.add(current.copy(translation = translationParts.joinToString("\n")))
+                    i = lastSameTimeIndex + 1
+                } else {
+                    // 2 lines at same timestamp: second is translation
+                    val translationParts = mutableListOf(next.line)
+                    var consumed = 2
+                    while (true) {
+                        val trailing = lines.getOrNull(i + consumed) ?: break
+                        if (trailing.time != current.time || !isTranslationCreditLine(trailing.line)) break
+                        translationParts.add(trailing.line)
+                        consumed++
+                    }
+                    result.add(current.copy(translation = translationParts.joinToString("\n")))
+                    i += consumed
                 }
-                result.add(current.copy(translation = translationParts.joinToString("\n")))
-                i += consumed
             } else {
                 result.add(current)
                 i++

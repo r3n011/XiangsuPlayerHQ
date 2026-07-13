@@ -1633,7 +1633,7 @@ interface MusicDao {
     @Query("DELETE FROM albums WHERE NOT EXISTS (SELECT 1 FROM songs WHERE songs.album_id = albums.id)")
     suspend fun deleteOrphanedAlbums()
 
-    @Query("DELETE FROM artists WHERE NOT EXISTS (SELECT 1 FROM song_artist_cross_ref WHERE song_artist_cross_ref.artist_id = artists.id)")
+    @Query("DELETE FROM artists WHERE NOT EXISTS (SELECT 1 FROM song_artist_cross_ref WHERE song_artist_cross_ref.artist_id = artists.id) AND NOT EXISTS (SELECT 1 FROM songs WHERE songs.artist_id = artists.id)")
     suspend fun deleteOrphanedArtists()
 
     // --- Favorite Operations ---
@@ -1718,6 +1718,18 @@ interface MusicDao {
 
     @Query("UPDATE songs SET album_art_uri_string = :albumArtUri WHERE id = :songId")
     suspend fun updateSongAlbumArt(songId: Long, albumArtUri: String?)
+
+    @Query("UPDATE songs SET title = :title WHERE id = :songId")
+    suspend fun updateSongTitle(songId: Long, title: String)
+
+    @Query("UPDATE songs SET artist_name = :artistName WHERE id = :songId")
+    suspend fun updateSongArtist(songId: Long, artistName: String)
+
+    @Query("UPDATE songs SET album_name = :albumName WHERE id = :songId")
+    suspend fun updateSongAlbum(songId: Long, albumName: String)
+
+    @Query("UPDATE songs SET genre = :genre WHERE id = :songId")
+    suspend fun updateSongGenre(songId: Long, genre: String?)
 
     @Query("UPDATE songs SET lyrics = :lyrics WHERE id = :songId")
     suspend fun updateLyrics(songId: Long, lyrics: String)

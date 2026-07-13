@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
+import com.theveloper.pixelplay.presentation.components.CarModeQuickActionsCard
 
 import android.content.Intent
 import androidx.activity.compose.ReportDrawnWhen
@@ -27,6 +28,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import androidx.compose.foundation.lazy.LazyColumn
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -107,6 +110,7 @@ import com.theveloper.pixelplay.presentation.components.RecentlyPlayedSection
 import com.theveloper.pixelplay.presentation.components.RecentlyPlayedSectionMinSongsToShow
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.StatsOverviewCard
+import com.theveloper.pixelplay.presentation.components.AiRecommendationCard
 import com.theveloper.pixelplay.presentation.components.resolveMainScreenBottomGradientHeight
 import com.theveloper.pixelplay.presentation.model.collectRecentlyPlayedSongIds
 import com.theveloper.pixelplay.presentation.model.mapRecentlyPlayedSongs
@@ -151,10 +155,35 @@ fun HomeScreen(
     }
     val statsViewModel: StatsViewModel = hiltViewModel()
     val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-    val dailyMixSongs by playerViewModel.dailyMixSongs.collectAsStateWithLifecycle()
-    val curatedYourMixSongs by playerViewModel.yourMixSongs.collectAsStateWithLifecycle()
-    val homeMixPreviewSongs by playerViewModel.homeMixPreviewSongs.collectAsStateWithLifecycle()
+    val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
+    val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
+    val isCarModeEnabled by remember(settingsViewModel.uiState) {
+        settingsViewModel.uiState.map { it.carModeEnabled }
+    }.collectAsStateWithLifecycle(initialValue = false)
+    
+    // ⚡ Optimization: Delay non-critical data loading
+    // Load playback history immediately (needed for UI)
     val playbackHistory by playerViewModel.playbackHistory.collectAsStateWithLifecycle()
+    
+    // Defer mix songs loading until first frame
+    var shouldLoadMixData by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(100)
+        shouldLoadMixData = true
+    }
+    
+    // Only collect mix data when needed
+    val dailyMixSongs by remember {
+        playerViewModel.dailyMixSongs
+    }.collectAsStateWithLifecycle(initialValue = persistentListOf(), minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED)
+    
+    val curatedYourMixSongs by remember {
+        playerViewModel.yourMixSongs
+    }.collectAsStateWithLifecycle(initialValue = persistentListOf(), minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED)
+    
+    val homeMixPreviewSongs by remember {
+        playerViewModel.homeMixPreviewSongs
+    }.collectAsStateWithLifecycle(initialValue = persistentListOf(), minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED)
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val usesFallbackHomeMix = remember(curatedYourMixSongs, dailyMixSongs) {
@@ -326,10 +355,11 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        Scaffold(
+    Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 if (!isLandscape) {
+                    val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
                     HomeGradientTopBar(
                         onNavigationIconClick = {
                             navController.navigateSafely(Screen.Settings.route)
@@ -346,7 +376,8 @@ fun HomeScreen(
                         onMenuClick = {
                             // onOpenSidebar() // Disabled
                         },
-                        isScrolled = isScrolledPastThreshold.value
+                        isScrolled = isScrolledPastThreshold.value,
+                        disableBlurAllOver = disableBlurAllOver
                     )
                 }
             }
@@ -356,7 +387,8 @@ fun HomeScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(MaterialTheme.colorScheme.background)
+                    .hazeSource(MainActivity.LocalHazeState.current),
                 contentPadding = PaddingValues(
                     start = paddingValuesParent.calculateStartPadding(layoutDirection),
                     top = innerPadding.calculateTopPadding(),
@@ -371,9 +403,9 @@ fun HomeScreen(
                         key = "your_mix_placeholder",
                         contentType = "your_mix_placeholder"
                     ) {
-                        if (shouldShowYourMixLoadingPlaceholder) {
+                        if (!isCarModeEnabled && shouldShowYourMixLoadingPlaceholder) {
                             YourMixLoadingPlaceholder()
-                        } else {
+                        } else if (!isCarModeEnabled) {
                             YourMixEmptyPlaceholder(
                                 onRefresh = {
                                     homePlaceholderRefreshGeneration++
@@ -383,7 +415,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                } else {
+                } else if (!isCarModeEnabled) {
                     item(
                         key = "your_mix_header",
                         contentType = "your_mix_header"
@@ -402,6 +434,21 @@ fun HomeScreen(
                                     )
                                 }
                             }
+                        )
+                    }
+                }
+
+                if (isCarModeEnabled) {
+                    item(
+                        key = "car_mode_quick_actions",
+                        contentType = "car_mode_quick_actions"
+                    ) {
+                        CarModeQuickActionsCard(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            onSearchClick = { navController.navigateSafely(Screen.Search.route) },
+                            onRoamingClick = { playerViewModel.startRoamingMode() },
+                            onLibraryClick = { navController.navigateSafely(Screen.Library.route) },
+                            onSettingsClick = { navController.navigateSafely(Screen.Settings.route) }
                         )
                     }
                 }
@@ -430,7 +477,7 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxWidth(),
                             songs = yourMixSongs,
                             padding = 16.dp,
-                            height = 400.dp,
+                            height = if (isCarModeEnabled) 250.dp else 400.dp,
                             pattern = activePattern,
                             onSongClick = { song ->
                                 if (usesFallbackHomeMix) {
@@ -448,16 +495,15 @@ fun HomeScreen(
                         key = "horizontal_sections_row",
                         contentType = "horizontal_sections_row"
                     ) {
-                        val cardWidth = 420.dp
-                        val cardHeight = 500.dp
+                        val cardWidth = if (isCarModeEnabled) 400.dp else 420.dp
+                        val cardHeight = if (isCarModeEnabled) 450.dp else 500.dp
                         LazyRow(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(cardHeight),
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            contentPadding = PaddingValues(horizontal = if (isCarModeEnabled) 24.dp else 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(if (isCarModeEnabled) 24.dp else 16.dp)
                         ) {
-                            // Collage card
                             if (yourMixSongs.isNotEmpty()) {
                                 item(key = "card_collage", contentType = "card") {
                                     val basePattern = settingsUiState.collagePattern
@@ -474,7 +520,7 @@ fun HomeScreen(
                                     }
                                     Card(
                                         modifier = Modifier.width(cardWidth).fillMaxHeight(),
-                                        shape = RoundedCornerShape(28.dp),
+                                        shape = RoundedCornerShape(24.dp),
                                         colors = CardDefaults.cardColors(
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer
                                         ),
@@ -483,8 +529,8 @@ fun HomeScreen(
                                         AlbumArtCollage(
                                             modifier = Modifier.fillMaxSize(),
                                             songs = yourMixSongs,
-                                            padding = 10.dp,
-                                            height = 400.dp,
+                                            padding = 8.dp,
+                                            height = Dp.Unspecified,
                                             pattern = activePattern,
                                             onSongClick = { song ->
                                                 if (usesFallbackHomeMix) {
@@ -498,7 +544,29 @@ fun HomeScreen(
                                 }
                             }
 
-                            // Daily Mix card
+                            if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
+                                item(key = "card_ai_recommendation", contentType = "card") {
+                                    Card(
+                                        modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                    ) {
+                                        AiRecommendationCard(
+                                            modifier = Modifier.fillMaxSize(),
+                                            playerViewModel = playerViewModel,
+                                            recentlyPlayedSongs = recentlyPlayedQueue,
+                                            isManualOnly = isAiRecommendationManualOnly,
+                                            onClickOpen = {
+                                                navController.navigateSafely(Screen.AiMixScreen.route)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
                             if (dailyMixSongs.isNotEmpty()) {
                                 item(key = "card_daily_mix", contentType = "card") {
                                     DailyMixSection(
@@ -524,12 +592,17 @@ fun HomeScreen(
                                                 navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
                                             }
                                         },
+                                        onNavigateToNeteaseArtistHomepage = { neteaseArtistId ->
+                                            navController.navigateSafelyReplacing(
+                                                route = Screen.ArtistHomepage.createRoute(neteaseArtistId),
+                                                patternToPop = Screen.ArtistHomepage.route
+                                            )
+                                        },
                                         playerViewModel = playerViewModel
                                     )
                                 }
                             }
 
-                            // Recently Played card — 平板模式：两列竖向滚动，避免与卡片横向滑动冲突
                             if (recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
                                 item(key = "card_recently_played", contentType = "card") {
                                     Box(
@@ -560,8 +633,7 @@ fun HomeScreen(
                                 }
                             }
 
-                            // Stats Overview card
-                            if (homeStatsOverview != null) {
+                            if (homeStatsOverview != null && !isCarModeEnabled) {
                                 item(key = "card_stats", contentType = "card") {
                                     StatsOverviewCard(
                                         modifier = Modifier.width(cardWidth).fillMaxHeight(),
@@ -573,6 +645,24 @@ fun HomeScreen(
                         }
                     }
                 } else {
+                    // AI Recommendation Card - disabled in car mode for performance
+                    if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
+                        item(
+                            key = "ai_recommendation_card",
+                            contentType = "ai_recommendation_card"
+                        ) {
+                            AiRecommendationCard(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                playerViewModel = playerViewModel,
+                                recentlyPlayedSongs = recentlyPlayedQueue,
+                                isManualOnly = isAiRecommendationManualOnly,
+                                onClickOpen = {
+                                        navController.navigateSafely(Screen.AiMixScreen.route)
+                                    }
+                                )
+                        }
+                    }
+
                     // Daily Mix
                     if (dailyMixSongs.isNotEmpty()) {
                         item(
@@ -601,6 +691,12 @@ fun HomeScreen(
                                     song.genre?.let {
                                         navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
                                     }
+                                },
+                                onNavigateToNeteaseArtistHomepage = { neteaseArtistId ->
+                                    navController.navigateSafelyReplacing(
+                                        route = Screen.ArtistHomepage.createRoute(neteaseArtistId),
+                                        patternToPop = Screen.ArtistHomepage.route
+                                    )
                                 },
                                 playerViewModel = playerViewModel
                             )
@@ -633,7 +729,8 @@ fun HomeScreen(
                         }
                     }
 
-                    if (homeStatsOverview != null) {
+                    // Stats card - disabled in car mode for performance
+                    if (homeStatsOverview != null && !isCarModeEnabled) {
                         item(
                             key = "listening_stats_preview",
                             contentType = "listening_stats_preview"

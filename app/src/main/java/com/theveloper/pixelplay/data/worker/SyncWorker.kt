@@ -58,6 +58,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 import timber.log.Timber
 
 enum class SyncMode {
@@ -90,7 +92,7 @@ constructor(
                 try {
                     val syncModeName =
                             inputData.getString(INPUT_SYNC_MODE) ?: SyncMode.INCREMENTAL.name
-                    val syncMode = SyncMode.valueOf(syncModeName)
+                    val syncMode = runCatching { SyncMode.valueOf(syncModeName) }.getOrDefault(SyncMode.INCREMENTAL)
                     val forceMetadata = inputData.getBoolean(INPUT_FORCE_METADATA, false)
                     val runMaintenance = inputData.getBoolean(INPUT_RUN_MAINTENANCE, true)
                     val workerStartedAt = System.currentTimeMillis()
@@ -1064,11 +1066,32 @@ constructor(
             lower == "unknown album"
     }
 
+    private val SONG_PROCESS_TIMEOUT_MS = 15_000L
+
     /**
      * Process a single song's raw data into a SongEntity. This is the CPU/IO intensive work that
      * benefits from parallelization.
      */
     private suspend fun processSongData(
+            raw: RawSongData,
+            genreMap: Map<Long, String>,
+            deepScan: Boolean,
+            forceAlbumArtRefresh: Boolean
+    ): SongEntity {
+        return try {
+            withTimeout(SONG_PROCESS_TIMEOUT_MS) {
+                processSongDataInternal(raw, genreMap, deepScan, forceAlbumArtRefresh)
+            }
+        } catch (e: TimeoutCancellationException) {
+            Log.w(TAG, "Processing timed out for song: ${raw.filePath}")
+            createFallbackSongEntity(raw)
+        } catch (e: Exception) {
+            Log.w(TAG, "Processing failed for song: ${raw.filePath}", e)
+            createFallbackSongEntity(raw)
+        }
+    }
+
+    private suspend fun processSongDataInternal(
             raw: RawSongData,
             genreMap: Map<Long, String>,
             deepScan: Boolean,
@@ -1098,7 +1121,7 @@ constructor(
         var trackNumber = raw.trackNumber
         var discNumber = raw.discNumber
         var year = raw.year
-        var genre: String? = genreMap[raw.id] ?: raw.genre // Use mapped genre as default, or direct genre from main cursor
+        var genre: String? = genreMap[raw.id] ?: raw.genre
 
         val shouldAugmentMetadata =
                 deepScan ||
@@ -1107,10 +1130,6 @@ constructor(
                         raw.filePath.endsWith(".ogg", true) ||
                         raw.filePath.endsWith(".oga", true) ||
                         raw.filePath.endsWith(".aiff", true) ||
-                        // Fallback: if MediaStore returned default/missing metadata,
-                        // try TagLib+JAudioTagger to read actual tags from the file.
-                        // MediaStore uses "<unknown>" for unreadable fields;
-                        // our normalization may produce "Unknown Artist"/"Unknown Album".
                         isDefaultMetadata(raw.artist) ||
                         isDefaultMetadata(raw.album)
 
@@ -1130,7 +1149,6 @@ constructor(
                         if (meta.trackNumber != null) trackNumber = meta.trackNumber
                         if (meta.discNumber != null) discNumber = meta.discNumber
                         if (meta.year != null) year = meta.year
-
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to read metadata via TagLib for ${raw.filePath}", e)
@@ -1163,6 +1181,36 @@ constructor(
                 mimeType = audioMetadata?.mimeType ?: raw.mimeType,
                 sampleRate = audioMetadata?.sampleRate,
                 bitrate = audioMetadata?.bitrate,
+                sourceType = SourceType.LOCAL
+        )
+    }
+
+    private fun createFallbackSongEntity(raw: RawSongData): SongEntity {
+        val parentDir = java.io.File(raw.filePath).parent ?: ""
+        val contentUriString =
+                ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, raw.id)
+                        .toString()
+        return SongEntity(
+                id = raw.id,
+                title = raw.title,
+                artistName = raw.artist,
+                artistId = raw.artistId,
+                albumArtist = raw.albumArtist,
+                albumName = raw.album,
+                albumId = raw.albumId,
+                contentUriString = contentUriString,
+                albumArtUriString = null,
+                duration = raw.duration,
+                genre = raw.genre,
+                filePath = raw.filePath,
+                parentDirectoryPath = parentDir,
+                trackNumber = raw.trackNumber,
+                discNumber = raw.discNumber,
+                year = raw.year,
+                dateAdded = System.currentTimeMillis(),
+                mimeType = raw.mimeType,
+                sampleRate = null,
+                bitrate = null,
                 sourceType = SourceType.LOCAL
         )
     }

@@ -22,13 +22,24 @@ class TelegramClientManager @Inject constructor(
 ) {
 
     companion object {
+        @Volatile
+        private var nativeLibraryLoaded: Boolean = false
+
         init {
             try {
                 System.loadLibrary("tdjni")
-            } catch (e: UnsatisfiedLinkError) {
-                Timber.e(e, "Failed to load TDLib native library")
+                nativeLibraryLoaded = true
+            } catch (e: Throwable) {
+                // 捕获所有可能的异常：UnsatisfiedLinkError, ExceptionInInitializerError, etc.
+                // 记录但不崩溃 - 应用应该能在没有 TDLib 的情况下继续运行
+                try {
+                    android.util.Log.e("PixelPlay", "Failed to load TDLib native library: ${e.message}")
+                } catch (_: Throwable) {}
+                nativeLibraryLoaded = false
             }
         }
+
+        fun isNativeLibraryAvailable(): Boolean = nativeLibraryLoaded
     }
 
     private val _authorizationState = MutableStateFlow<TdApi.AuthorizationState?>(null)
@@ -66,21 +77,37 @@ class TelegramClientManager @Inject constructor(
     }
 
     init {
-        initializeClient()
+        try {
+            if (isNativeLibraryAvailable()) {
+                initializeClient()
+            }
+        } catch (e: Throwable) {
+            // 捕获所有异常，防止初始化失败时不崩溃应用
+            try {
+                android.util.Log.e("PixelPlay", "TelegramClientManager init failed: ${e.message}")
+            } catch (_: Throwable) {}
+        }
     }
 
     @Synchronized
     private fun initializeClient() {
         if (client != null) return
-        // Set log verbosity to 1 (Errors only) to prevent heavy logging
+        if (!isNativeLibraryAvailable()) return
         try {
             Client.execute(TdApi.SetLogVerbosityLevel(1))
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to set TDLib log verbosity")
+        } catch (e: Throwable) {
+            try {
+                android.util.Log.e("PixelPlay", "Failed to set TDLib log verbosity: ${e.message}")
+            } catch (_: Throwable) {}
         }
 
-        // Create a new instance of TDLib Client
-        client = Client.create(updateHandler, null, null)
+        try {
+            client = Client.create(updateHandler, null, null)
+        } catch (e: Throwable) {
+            try {
+                android.util.Log.e("PixelPlay", "Failed to create TDLib client: ${e.message}")
+            } catch (_: Throwable) {}
+        }
     }
 
     private fun onAuthorizationStateUpdated(authState: TdApi.AuthorizationState) {

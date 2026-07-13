@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.ui.theme
 
+import android.content.Context
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.PlatformTextStyle
@@ -13,7 +14,47 @@ import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.theveloper.pixelplay.R
+import java.io.File
 
+const val CUSTOM_FONT_PREFIX = "CUSTOM:"
+private const val FONTS_DIR_NAME = "fonts"
+
+fun isCustomFontKey(key: String): Boolean = key.startsWith(CUSTOM_FONT_PREFIX)
+
+fun customFontFileName(key: String): String = key.removePrefix(CUSTOM_FONT_PREFIX)
+
+fun getCustomFontsDir(context: Context): File = File(context.filesDir, FONTS_DIR_NAME)
+
+fun listCustomFonts(context: Context): List<String> {
+    val dir = getCustomFontsDir(context)
+    if (!dir.exists() || !dir.isDirectory) return emptyList()
+    return dir.listFiles()
+        ?.filter { it.isFile && (it.extension.equals("ttf", true) || it.extension.equals("otf", true)) }
+        ?.map { it.name }
+        ?: emptyList()
+}
+
+fun customFontFamily(context: Context, key: String): FontFamily? {
+    val fileName = customFontFileName(key)
+    if (fileName.isBlank()) return null
+    val fontFile = File(getCustomFontsDir(context), fileName)
+    if (!fontFile.exists()) return null
+    return try {
+        FontFamily(
+            androidx.compose.ui.text.font.Font(
+                file = fontFile,
+                weight = FontWeight.Normal
+            )
+        )
+    } catch (e: Exception) {
+        null
+    }
+}
+
+fun customFontDisplayName(key: String): String {
+    val fileName = customFontFileName(key)
+    return fileName.removeSuffix(".ttf").removeSuffix(".otf")
+}
 
 private val montserrat = GoogleFont("Montserrat")
 private val provider = GoogleFont.Provider(
@@ -107,6 +148,50 @@ val GoogleSansRounded = FontFamily(
             FontVariation.Setting("ROND", GoogleSansFlexRond)
         )
     ),
+)
+
+/**
+ * 歌词字体选项 — 名称 → FontFamily 的映射。
+ * "DEFAULT" → 跟随应用主题（Google Sans Rounded）。
+ */
+val LyricsFontFamilies: Map<String, FontFamily> = mapOf(
+    "DEFAULT" to GoogleSansRounded,
+    "MONTSERRAT" to MontserratFamily,
+    "SYSTEM_DEFAULT" to FontFamily.Default,
+    "SERIF" to FontFamily.Serif,
+    "SANS_SERIF" to FontFamily.SansSerif,
+    "MONOSPACE" to FontFamily.Monospace,
+    "CURSIVE" to FontFamily.Cursive,
+)
+
+/**
+ * 根据持久化的名称解析歌词字体，"DEFAULT" 或未知值都回落到主题字体。
+ */
+fun resolveLyricsFontFamily(name: String): FontFamily =
+    LyricsFontFamilies[name.uppercase()] ?: GoogleSansRounded
+
+/**
+ * 支持自定义字体文件的解析。返回 Pair: (FontFamily?, isCustom)
+ */
+fun resolveLyricsFontFamily(context: Context, key: String): FontFamily {
+    return if (isCustomFontKey(key)) {
+        customFontFamily(context, key) ?: GoogleSansRounded
+    } else {
+        LyricsFontFamilies[key.uppercase()] ?: GoogleSansRounded
+    }
+}
+
+/**
+ * 字体选项的显示名称（供 UI 展示）。
+ */
+val LyricsFontDisplayNames: Map<String, String> = mapOf(
+    "DEFAULT" to "主题默认",
+    "MONTSERRAT" to "Montserrat",
+    "SYSTEM_DEFAULT" to "系统默认",
+    "SERIF" to "衬线",
+    "SANS_SERIF" to "无衬线",
+    "MONOSPACE" to "等宽",
+    "CURSIVE" to "手写",
 )
 
 // Tipografía - Usar fuentes amigables y modernas.

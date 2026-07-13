@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.BrightnessHigh
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -57,6 +59,12 @@ import androidx.compose.runtime.setValue
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.presentation.components.ToggleSegmentButton
+import com.theveloper.pixelplay.ui.theme.LyricsFontDisplayNames
+import com.theveloper.pixelplay.ui.theme.resolveLyricsFontFamily
+import com.theveloper.pixelplay.ui.theme.isCustomFontKey
+import com.theveloper.pixelplay.ui.theme.customFontDisplayName
+import com.theveloper.pixelplay.ui.theme.listCustomFonts
+import com.theveloper.pixelplay.ui.theme.CUSTOM_FONT_PREFIX
 import com.theveloper.pixelplay.presentation.components.player.BottomToggleRow
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -70,6 +78,7 @@ fun LyricsMoreBottomSheet(
     isSyncControlsVisible: Boolean,
     onSaveLyricsAsLrc: () -> Unit,
     onResetImportedLyrics: () -> Unit,
+    onSearchLyricsOnline: () -> Unit,
     onTranslateViaAi: () -> Unit,
     onToggleSyncControls: () -> Unit,
     isImmersiveTemporarilyDisabled: Boolean,
@@ -84,6 +93,11 @@ fun LyricsMoreBottomSheet(
     showRomanization: Boolean,
     onShowTranslationChange: (Boolean) -> Unit,
     onShowRomanizationChange: (Boolean) -> Unit,
+    lyricsFontSize: String,
+    onLyricsFontSizeChange: (String) -> Unit,
+    lyricsFontFamily: String,
+    onLyricsFontFamilyChange: (String) -> Unit,
+    onImportCustomFont: () -> Unit,
     immersiveLyricsEnabled: Boolean,
     // BottomToggleRow params
     isShuffleEnabled: Boolean,
@@ -189,11 +203,41 @@ fun LyricsMoreBottomSheet(
                     )
                 }
 
+                // Search lyrics online
+                val onlineSearchShape = if (lyrics != null) {
+                    RoundedCornerShape(8.dp)
+                } else {
+                    RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 8.dp, bottomEnd = 8.dp)
+                }
+
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.search_lyrics_online)) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(onlineSearchShape)
+                        .background(itemBackgroundColor)
+                        .clickable {
+                            onDismissRequest()
+                            onSearchLyricsOnline()
+                        },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent,
+                        headlineColor = contentColor,
+                        leadingIconColor = contentColor
+                    )
+                )
+
                 // Reset imported lyrics
                 val resetShape = if (lyrics != null) {
                     RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
                 } else {
-                    RoundedCornerShape(24.dp)
+                    RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
                 }
 
                 ListItem(
@@ -322,6 +366,153 @@ fun LyricsMoreBottomSheet(
                             onClick = { onLyricsAlignmentChange("right") },
                             imageVector = Icons.AutoMirrored.Rounded.FormatAlignRight,
                             contentDesc = stringResource(R.string.cd_lyrics_align_right)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = stringResource(R.string.lyrics_more_font_size),
+                        color = contentColor,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val sizes = listOf("SMALL", "DEFAULT", "LARGE", "EXTRA_LARGE")
+                        val sizeLabels = listOf("S", "M", "L", "XL")
+
+                        sizes.forEachIndexed { index, size ->
+                            ToggleSegmentButton(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                active = lyricsFontSize == size,
+                                activeColor = accentColor,
+                                inactiveColor = containerColor,
+                                activeContentColor = onAccentColor,
+                                inactiveContentColor = contentColor.copy(alpha = 0.78f),
+                                activeCornerRadius = 50.dp,
+                                onClick = { onLyricsFontSizeChange(size) },
+                                text = sizeLabels[index]
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = stringResource(R.string.lyrics_more_font),
+                        color = contentColor,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    // 构建字体选项列表：预定义 + 自定义字体
+                    val sheetContext = LocalContext.current
+                    val customFonts = remember {
+                        listCustomFonts(sheetContext).map { "$CUSTOM_FONT_PREFIX$it" }
+                    }
+                    val predefinedFonts = LyricsFontDisplayNames.keys.toList()
+                    val allFontFamilies = predefinedFonts + customFonts
+
+                    fun displayName(key: String): String =
+                        if (isCustomFontKey(key)) customFontDisplayName(key)
+                        else LyricsFontDisplayNames[key] ?: key
+
+                    val row1 = allFontFamilies.take(3)
+                    val row2 = allFontFamilies.drop(3).take(3)
+                    val row3 = allFontFamilies.drop(6)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        row1.forEach { family ->
+                            ToggleSegmentButton(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                active = lyricsFontFamily == family,
+                                activeColor = accentColor,
+                                inactiveColor = containerColor,
+                                activeContentColor = onAccentColor,
+                                inactiveContentColor = contentColor.copy(alpha = 0.78f),
+                                activeCornerRadius = 50.dp,
+                                onClick = { onLyricsFontFamilyChange(family) },
+                                text = displayName(family)
+                            )
+                        }
+                    }
+
+                    if (row2.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row2.forEach { family ->
+                                ToggleSegmentButton(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(48.dp),
+                                    active = lyricsFontFamily == family,
+                                    activeColor = accentColor,
+                                    inactiveColor = containerColor,
+                                    activeContentColor = onAccentColor,
+                                    inactiveContentColor = contentColor.copy(alpha = 0.78f),
+                                    activeCornerRadius = 50.dp,
+                                    onClick = { onLyricsFontFamilyChange(family) },
+                                    text = displayName(family)
+                                )
+                            }
+                        }
+                    }
+
+                    if (row3.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row3.forEach { family ->
+                                ToggleSegmentButton(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(48.dp),
+                                    active = lyricsFontFamily == family,
+                                    activeColor = accentColor,
+                                    inactiveColor = containerColor,
+                                    activeContentColor = onAccentColor,
+                                    inactiveContentColor = contentColor.copy(alpha = 0.78f),
+                                    activeCornerRadius = 50.dp,
+                                    onClick = { onLyricsFontFamilyChange(family) },
+                                    text = displayName(family)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 导入字体按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ToggleSegmentButton(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            active = false,
+                            activeColor = accentColor,
+                            inactiveColor = containerColor,
+                            activeContentColor = onAccentColor,
+                            inactiveContentColor = accentColor,
+                            activeCornerRadius = 50.dp,
+                            onClick = onImportCustomFont,
+                            text = "＋ 导入字体"
                         )
                     }
                 }

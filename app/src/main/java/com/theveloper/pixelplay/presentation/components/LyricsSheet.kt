@@ -3,7 +3,10 @@ package com.theveloper.pixelplay.presentation.components
 import android.widget.Toast
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.Lyrics
+import com.theveloper.pixelplay.ui.theme.resolveLyricsFontFamily
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import androidx.activity.compose.BackHandler
 import com.theveloper.pixelplay.presentation.components.scoped.LyricsPredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
@@ -75,6 +78,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -234,6 +239,11 @@ fun LyricsSheet(
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
     lyricsTextStyle: TextStyle,
+    lyricsFontSize: String,
+    onLyricsFontSizeChange: (String) -> Unit,
+    lyricsFontFamily: String,
+    onLyricsFontFamilyChange: (String) -> Unit,
+    onImportCustomFont: () -> Unit,
     colorScheme: ColorScheme,
     onBackClick: () -> Unit,
     onSeekTo: (Long) -> Unit,
@@ -253,6 +263,7 @@ fun LyricsSheet(
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
     onFavoriteToggle: () -> Unit,
+    showLyricsTrackInfo: Boolean,
     modifier: Modifier = Modifier,
     swipeThreshold: Dp = 100.dp,
     highlightZoneFraction: Float = 0.08f, // Reduced from 0.22 for less padding
@@ -372,27 +383,31 @@ fun LyricsSheet(
     // Apply FLAG_KEEP_SCREEN_ON via the window when enabled
     val view = LocalView.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val activityWindow = remember(view) { (view.context as? android.app.Activity)?.window }
 
-    DisposableEffect(keepScreenOn, lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP && keepScreenOn) {
-                keepScreenOn = false
-                coroutineScope.launch {
-                    context.dataStore.edit { prefs ->
-                        prefs[booleanPreferencesKey("keep_screen_on_lyrics")] = false
-                    }
+    // Hide the status bar for a fully immersive lyrics screen; restore on exit.
+    DisposableEffect(Unit) {
+        val window = activityWindow
+        val insetsController = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
+        val previousFlags = window?.attributes?.flags ?: 0
+        val previousSystemBarsBehavior = insetsController?.systemBarsBehavior
+        window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        insetsController?.let {
+            it.systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            it.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        }
+        onDispose {
+            if (window != null) {
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                window.attributes = window.attributes.apply { flags = previousFlags }
+            }
+            insetsController?.let {
+                it.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                previousSystemBarsBehavior?.let { behavior ->
+                    it.systemBarsBehavior = behavior
                 }
             }
-        }
-
-        if (keepScreenOn) {
-            view.keepScreenOn = true
-        }
-
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            view.keepScreenOn = false
-            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -407,7 +422,7 @@ fun LyricsSheet(
                 }
             }
         }
-        
+
         if (keepScreenOn) {
             view.keepScreenOn = true
         }
@@ -421,8 +436,8 @@ fun LyricsSheet(
 
     val resolvedAutoscrollSpec = autoscrollAnimationSpec ?: if (useAnimatedLyrics) {
         spring(
-            stiffness = Spring.StiffnessMediumLow,
-            dampingRatio = Spring.DampingRatioLowBouncy
+            stiffness = 280f,
+            dampingRatio = Spring.DampingRatioMediumBouncy
         )
     } else {
         tween(durationMillis = 450, easing = FastOutSlowInEasing)
@@ -436,18 +451,26 @@ fun LyricsSheet(
     var showSyncControls by remember { mutableStateOf(false) }
     var previewSeekPositionMs by remember(currentSong?.id) { mutableStateOf<Long?>(null) }
 
-    var showSyncedLyrics by remember(lyrics) {
+    // 关键修复：当 isLoadingLyrics 为 true 或搜索正在加载时，
+    // 即使有旧歌词也显示加载中状态，避免切歌后短暂显示上一首歌的歌词
+    var showSyncedLyrics by remember(lyrics, isLoadingLyrics, lyricsSearchUiState) {
         mutableStateOf(
-            when {
-                !lyrics?.synced.isNullOrEmpty() -> true
-                !lyrics?.plain.isNullOrEmpty() -> false
-                else -> null
+            if (isLoadingLyrics || lyricsSearchUiState is LyricsSearchUiState.Loading) {
+                null
+            } else {
+                when {
+                    !lyrics?.synced.isNullOrEmpty() -> true
+                    !lyrics?.plain.isNullOrEmpty() -> false
+                    else -> null
+                }
             }
         )
     }
 
-    val hasSyncedLyrics = remember(lyrics) {
-        !lyrics?.synced.isNullOrEmpty()
+    val hasSyncedLyrics = remember(lyrics, isLoadingLyrics, lyricsSearchUiState) {
+        !isLoadingLyrics &&
+            lyricsSearchUiState !is LyricsSearchUiState.Loading &&
+            !lyrics?.synced.isNullOrEmpty()
     }
 
     // Immersive Mode State
@@ -497,15 +520,29 @@ fun LyricsSheet(
     }
 
     // Font Scaling
+    val baseFontSize = when (lyricsFontSize) {
+        "SMALL" -> 14.sp
+        "DEFAULT" -> 20.sp
+        "LARGE" -> 26.sp
+        "EXTRA_LARGE" -> 32.sp
+        else -> 20.sp
+    }
+
     val fontScale by animateFloatAsState(
-        targetValue = if (immersiveMode) 1.4f else 1f,
+        targetValue = if (immersiveMode) 1.25f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "fontScale"
     )
     
+    val sheetContext = LocalContext.current
+    val selectedFontFamily = remember(lyricsFontFamily) {
+        resolveLyricsFontFamily(sheetContext, lyricsFontFamily)
+    }
+
     val scaledTextStyle = lyricsTextStyle.copy(
-        fontSize = lyricsTextStyle.fontSize * fontScale,
-        lineHeight = lyricsTextStyle.lineHeight * fontScale
+        fontFamily = selectedFontFamily,
+        fontSize = baseFontSize * fontScale,
+        lineHeight = (baseFontSize.value * 1.4f).sp * fontScale
     )
 
     fun resetImmersiveTimer() {
@@ -513,19 +550,36 @@ fun LyricsSheet(
         immersiveMode = false
     }
 
-    LaunchedEffect(currentSong, lyrics, isLoadingLyrics) {
-        if (currentSong != null && lyrics == null && !isLoadingLyrics) {
-            // Only show dialog if reset was not just triggered
-            if (!wasResetTriggered) {
+    LaunchedEffect(currentSong, lyrics, isLoadingLyrics, lyricsSearchUiState) {
+        val song = currentSong
+        if (song != null && lyrics == null && !isLoadingLyrics) {
+            if (lyricsSearchUiState is LyricsSearchUiState.Idle && !wasResetTriggered) {
+                val uri = song.contentUriString
+                val isLocal = song.neteaseId == null &&
+                    !uri.startsWith("netease://", ignoreCase = true) &&
+                    !uri.startsWith("cloud://lx/", ignoreCase = true) &&
+                    song.qqMusicMid == null &&
+                    song.navidromeId == null &&
+                    song.jellyfinId == null &&
+                    song.gdriveFileId == null
+                if (isLocal) {
+                    showFetchLyricsDialog = true
+                } else {
+                    onSearchLyrics(false)
+                }
+            } else if (lyricsSearchUiState is LyricsSearchUiState.PickResult ||
+                lyricsSearchUiState is LyricsSearchUiState.NotFound ||
+                lyricsSearchUiState is LyricsSearchUiState.Error
+            ) {
                 showFetchLyricsDialog = true
             }
         } else if (lyrics != null || isLoadingLyrics) {
             showFetchLyricsDialog = false
-            wasResetTriggered = false // Reset the flag when lyrics are loaded
+            wasResetTriggered = false
         }
     }
 
-    if (showFetchLyricsDialog) {
+    if (showFetchLyricsDialog && lyrics == null) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = MaterialTheme.typography,
@@ -539,6 +593,7 @@ fun LyricsSheet(
                 onManualSearch = onManualSearch,
                 onDismiss = {
                     showFetchLyricsDialog = false
+                    wasResetTriggered = true
                     onDismissLyricsSearch()
                     if (lyrics == null && !isLoadingLyrics) {
                         onBackClick()
@@ -670,11 +725,48 @@ fun LyricsSheet(
                     }
                 )
             },
-        containerColor = containerColor,
+        containerColor = Color.Transparent,
         contentColor = contentColor,
+        contentWindowInsets = WindowInsets(0),
         // Removed TopBar and FAB
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(containerColor)
+            )
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = currentSong?.albumArtUriString != null,
+                enter = fadeIn(animationSpec = tween(400)),
+                exit = fadeOut(animationSpec = tween(300)),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                SmartImage(
+                    model = currentSong?.albumArtUriString,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(radiusX = 40.dp, radiusY = 40.dp)
+                        .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                containerColor.copy(alpha = 0.55f),
+                                containerColor.copy(alpha = 0.82f)
+                            )
+                        )
+                    )
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -704,44 +796,45 @@ fun LyricsSheet(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                // Track Info Header (Fixed at top)
-                AnimatedContent(
-                    targetState = currentSong,
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(300)) + 
-                         scaleIn(initialScale = 0.9f, animationSpec = tween(300)))
-                        .togetherWith(fadeOut(animationSpec = tween(300)))
-                    },
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .zIndex(2f)
-                        .wrapContentWidth(),
-                    label = "headerAnimation"
-                ) { song ->
-                    LyricsTrackInfo(
-                        song = song,
+                // Dynamic Island style Track Info (Fixed at top center)
+                if (showLyricsTrackInfo) {
+                    AnimatedContent(
+                        targetState = currentSong,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(300)) + 
+                             scaleIn(initialScale = 0.9f, animationSpec = tween(300)))
+                            .togetherWith(fadeOut(animationSpec = tween(300)))
+                        },
                         modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(
-                                top = 4.dp, bottom = 24.dp, start = 18.dp, end = 18.dp
+                            .align(Alignment.TopCenter)
+                            .zIndex(2f),
+                        label = "headerAnimation"
+                    ) { song ->
+                        if (song != null) {
+                            LyricsTrackInfo(
+                                song = song,
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .widthIn(max = 360.dp)
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    .background(
+                                        color = backgroundColor,
+                                        shape = CircleShape
+                                    )
+                                    .animateContentSize(),
+                                backgroundColor = backgroundColor,
+                                contentColor = onBackgroundColor,
+                                isPlaying = isPlaying
                             )
-                            .background(
-                                color = backgroundColor,
-                                shape = CircleShape
-                            )
-                            .wrapContentWidth()
-                            .animateContentSize(), // Animate width changes
-                        backgroundColor = backgroundColor, // Distinct solid background
-                        contentColor = onBackgroundColor,
-                        isPlaying = isPlaying
-                    )
+                        }
+                    }
                 }
 
                 when (showSyncedLyrics) {
                     null -> {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 110.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
+                            modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
+                            contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
                         ) {
                             item(key = "loader_or_empty") {
                                 Box(
@@ -749,7 +842,8 @@ fun LyricsSheet(
                                         .fillParentMaxSize(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (isLoadingLyrics) {
+                                    val searchLoading = lyricsSearchUiState is LyricsSearchUiState.Loading
+                                    if (isLoadingLyrics || searchLoading) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Text(
                                                 text = stringResource(R.string.loading_lyrics),
@@ -774,13 +868,14 @@ fun LyricsSheet(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(horizontal = 24.dp),
-                                contentPadding = PaddingValues(top = 130.dp, bottom = 100.dp),
+                                contentPadding = PaddingValues(top = 80.dp, bottom = 100.dp),
                                 lines = synced,
                                 listState = syncedListState,
                                 playbackPositionFlow = playbackPositionFlow,
                                 lyricsSyncOffset = lyricsSyncOffset,
                                 positionOverrideMs = previewSeekPositionMs,
                                 accentColor = lyricHighlightColor,
+                                containerColor = containerColor,
                                 textStyle = scaledTextStyle,
                                 onLineClick = { syncedLine -> 
                                     onSeekTo(
@@ -838,7 +933,7 @@ fun LyricsSheet(
                                 ) { _, line ->
                                     PlainLyricsLine(
                                         line = line,
-                                        style = lyricsTextStyle,
+                                        style = scaledTextStyle,
                                         lyricsAlignment = lyricsAlignment,
                                         showTranslation = if (hasTranslatedLyrics) showLyricsTranslation else true,
                                         showRomanization = if (hasRomanizedLyrics) showLyricsRomanization else true,
@@ -1023,6 +1118,9 @@ fun LyricsSheet(
                         wasResetTriggered = true
                         resetLyricsForCurrentSong()
                     },
+                    onSearchLyricsOnline = {
+                        onSearchLyrics(true)
+                    },
                     onTranslateViaAi = onTranslateViaAi,
                     onToggleSyncControls = {
                         resetImmersiveTimer()
@@ -1042,6 +1140,11 @@ fun LyricsSheet(
                             }
                         }
                     },
+                    lyricsFontSize = lyricsFontSize,
+                    onLyricsFontSizeChange = onLyricsFontSizeChange,
+                    lyricsFontFamily = lyricsFontFamily,
+                    onLyricsFontFamilyChange = onLyricsFontFamilyChange,
+                    onImportCustomFont = onImportCustomFont,
                     lyricsAlignment = lyricsAlignment,
                     onLyricsAlignmentChange = { newAlignment ->
                         coroutineScope.launch {
@@ -1196,6 +1299,7 @@ fun SyncedLyricsList(
     lyricsSyncOffset: Int,
     positionOverrideMs: Long? = null,
     accentColor: Color,
+    containerColor: Color,
     textStyle: TextStyle,
     onLineClick: (SyncedLine) -> Unit,
     highlightZoneFraction: Float,
@@ -1226,7 +1330,40 @@ fun SyncedLyricsList(
     var hasAlignedInitialLine by remember(lines) { mutableStateOf(false) }
     var lastAutoScrolledLineIndex by remember(lines) { mutableIntStateOf(-1) }
 
-    BoxWithConstraints(modifier = modifier) {
+    // 拖动时取消模糊效果，停止后5秒恢复
+    var blurDisabledByDrag by remember { mutableStateOf(false) }
+    var isUserInteracting by remember { mutableStateOf(false) }
+
+    // 检测滚动状态，仅在用户手动拖动时禁用模糊
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress && isUserInteracting) {
+            blurDisabledByDrag = true
+        } else if (listState.isScrollInProgress && !isUserInteracting) {
+            // 自动滚动，不禁用模糊
+        } else if (blurDisabledByDrag) {
+            // 停止滚动后等待5秒恢复模糊
+            kotlinx.coroutines.delay(5000L)
+            blurDisabledByDrag = false
+        }
+    }
+
+    // 点击歌词跳转后5秒恢复模糊
+    LaunchedEffect(currentLineIndex) {
+        if (blurDisabledByDrag && lastAutoScrolledLineIndex != currentLineIndex) {
+            kotlinx.coroutines.delay(5000L)
+            blurDisabledByDrag = false
+        }
+    }
+
+    val effectiveBlurEnabled = animatedLyricsBlurEnabled && !blurDisabledByDrag
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fadingEdges(
+                edges = FadingEdges(top = 16.dp, bottom = 100.dp),
+                backgroundColor = containerColor
+            )
+    ) {
         val metrics = remember(maxHeight, highlightZoneFraction, highlightOffsetDp) {
             calculateHighlightMetrics(maxHeight, highlightZoneFraction, highlightOffsetDp)
         }
@@ -1244,7 +1381,11 @@ fun SyncedLyricsList(
         LaunchedEffect(currentLineIndex, lines.size, metrics, isPreviewSeeking) {
             if (lines.isEmpty()) return@LaunchedEffect
             if (currentLineIndex !in lines.indices) return@LaunchedEffect
-            if (listState.layoutInfo.totalItemsCount == 0) return@LaunchedEffect
+            
+            if (listState.layoutInfo.totalItemsCount == 0) {
+                kotlinx.coroutines.delay(100L)
+                if (listState.layoutInfo.totalItemsCount == 0) return@LaunchedEffect
+            }
 
             if (!hasAlignedInitialLine) {
                 listState.scrollToItem(currentLineIndex)
@@ -1258,7 +1399,9 @@ fun SyncedLyricsList(
                 return@LaunchedEffect
             }
 
-            if (listState.isScrollInProgress && !isPreviewSeeking) return@LaunchedEffect
+            if (listState.isScrollInProgress && !isPreviewSeeking && !isUserInteracting) {
+                return@LaunchedEffect
+            }
 
             val lineJumpDistance = if (lastAutoScrolledLineIndex >= 0) {
                 abs(currentLineIndex - lastAutoScrolledLineIndex)
@@ -1286,15 +1429,16 @@ fun SyncedLyricsList(
                 return@LaunchedEffect
             }
 
-            // Music Style Dynamic Velocity
+            // Music Style Dynamic Velocity - 优化弹簧效果视觉表现
+            // 问题：之前根据 timeDiff 决定动画时长（最高 2000ms），当歌词间隔很长时
+            // 动画移动太慢，字体大小动画早已完成但位置还在缓慢移动，视觉不自然
+            // 优化：
+            // 1. 缩短动画时长上限（从 2000ms → 600ms），让动画响应更即时
+            // 2. 使用 spring 动画替代 tween，产生自然的"弹簧"效果
             val dynamicAnimationSpec = if (useAnimatedLyrics) {
-                val currentLineTime = lines.getOrNull(currentLineIndex)?.time ?: 0
-                val nextLineTime = lines.getOrNull(currentLineIndex + 1)?.time ?: (currentLineTime + 1000)
-                val timeDiff = (nextLineTime - currentLineTime).coerceIn(250, 2000) // Bound the duration
-                
-                tween<Float>(
-                    durationMillis = timeDiff,
-                    easing = FastOutSlowInEasing
+                spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
             } else {
                 autoscrollAnimationSpec
@@ -1311,7 +1455,22 @@ fun SyncedLyricsList(
 
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            isUserInteracting = true
+                            // 等待所有手指抬起
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                if (event.changes.all { !it.pressed }) {
+                                    break
+                                }
+                            }
+                            isUserInteracting = false
+                        }
+                    },
                 state = listState,
                 flingBehavior = flingBehavior,
                 contentPadding = contentPadding
@@ -1346,7 +1505,7 @@ fun SyncedLyricsList(
                             position = position,
                             distanceFromCurrent = distanceFromCurrent,
                             useAnimatedLyrics = useAnimatedLyrics,
-                            animatedLyricsBlurEnabled = animatedLyricsBlurEnabled,
+                            animatedLyricsBlurEnabled = effectiveBlurEnabled,
                             animatedLyricsBlurStrength = animatedLyricsBlurStrength,
                             immersiveMode = immersiveMode,
                             lyricsAlignment = lyricsAlignment,
@@ -1424,63 +1583,105 @@ fun LyricLineRow(
         derivedStateOf { position in line.time.toLong()..<lineEndTime }
     }
     val unhighlightedColor = LocalContentColor.current.copy(alpha = 0.45f)
+    // amlv-style spring animation
+    // dampingRatio = LowBouncy, stiffness = StiffnessLow
+    val springFloatAnimSpec = spring(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessLow,
+        visibilityThreshold = 0.005f
+    )
+    val springColorAnimSpec = spring<Color>(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessLow
+    )
+    val springDpAnimSpec = spring<Dp>(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessLow
+    )
+
+    val colorAnimSpec: AnimationSpec<Color> = if (useAnimatedLyrics) {
+        springColorAnimSpec
+    } else {
+        tween(durationMillis = 180, easing = FastOutSlowInEasing)
+    }
     val lineColor by animateColorAsState(
         targetValue = if (isCurrentLine) accentColor else unhighlightedColor,
-        animationSpec = if (useAnimatedLyrics) spring(
-            stiffness = Spring.StiffnessVeryLow,
-            dampingRatio = Spring.DampingRatioMediumBouncy
-        ) else tween(durationMillis = 250),
+        animationSpec = colorAnimSpec,
         label = "lineColor"
     )
 
-    // Animated mode: fisheye scaling + alpha based on distance from current line
-    val targetScale = if (useAnimatedLyrics) when (distanceFromCurrent) {
-        0 -> if (immersiveMode) 1.02f else 1.1f; 1 -> 0.95f; else -> 0.85f
-    } else 1f
-    val targetPadding = if (useAnimatedLyrics) when (distanceFromCurrent) {
-        0 -> 32.dp; 1 -> 16.dp; else -> 8.dp
-    } else 12.dp
-    val targetAlpha = if (useAnimatedLyrics) when (distanceFromCurrent) {
-        0 -> 1.0f; 1 -> 0.6f; else -> 0.3f
-    } else 1f
+    // amlv-style: active scale = 1.1f, inactive scale = 1f, active alpha = 1f, inactive alpha = 0.35f
+    val (targetScale, targetAlpha, targetOffsetY) = if (useAnimatedLyrics) {
+        when (distanceFromCurrent) {
+            0 -> Triple(1.1f, 1.0f, 0.dp)
+            1 -> Triple(1f, 0.50f, 0.dp)
+            else -> Triple(1f, 0.35f, 0.dp)
+        }
+    } else Triple(1f, 1f, 0.dp)
+
+    val floatAnimSpec: AnimationSpec<Float> = if (useAnimatedLyrics) {
+        springFloatAnimSpec
+    } else {
+        tween(durationMillis = 180, easing = FastOutSlowInEasing)
+    }
+    val dpAnimSpec: AnimationSpec<Dp> = if (useAnimatedLyrics) {
+        springDpAnimSpec
+    } else {
+        tween(durationMillis = 180, easing = FastOutSlowInEasing)
+    }
 
     val scale by animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = if (useAnimatedLyrics) spring(
-            stiffness = Spring.StiffnessVeryLow,
-            dampingRatio = Spring.DampingRatioMediumBouncy
-        ) else tween(durationMillis = 200),
+        animationSpec = floatAnimSpec,
         label = "lineScale"
-    )
-    val verticalPadding by animateDpAsState(
-        targetValue = targetPadding,
-        animationSpec = if (useAnimatedLyrics) spring(
-            stiffness = Spring.StiffnessVeryLow,
-            dampingRatio = Spring.DampingRatioMediumBouncy
-        ) else tween(durationMillis = 200),
-        label = "linePadding"
     )
     val alpha by animateFloatAsState(
         targetValue = targetAlpha,
-        animationSpec = if (useAnimatedLyrics) spring(
-            stiffness = Spring.StiffnessLow,
-            dampingRatio = Spring.DampingRatioNoBouncy
-        ) else tween(durationMillis = 200),
+        animationSpec = floatAnimSpec,
         label = "lineAlpha"
     )
+    val offsetYDp by animateDpAsState(
+        targetValue = targetOffsetY,
+        animationSpec = dpAnimSpec,
+        label = "lineOffsetY"
+    )
 
-    // Blur Effect
+    // Blur Effect: a gentle visual distance cue — use the same unified animationSpec so it
+    // arrives together with the scale/alpha change, no lag.
     val targetBlur = if (useAnimatedLyrics && animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
         (distanceFromCurrent * animatedLyricsBlurStrength).coerceAtMost(10f).dp
     } else 0.dp
-
     val blurRadius by animateDpAsState(
         targetValue = targetBlur,
-        animationSpec = if (useAnimatedLyrics) tween(durationMillis = 400) else tween(durationMillis = 200),
+        animationSpec = if (useAnimatedLyrics) tween(durationMillis = 250, easing = FastOutSlowInEasing)
+        else tween(durationMillis = 200),
         label = "lineBlur"
     )
 
-    // Animated mode: apply graphicsLayer for scale/alpha transforms
+    // 行距也有弹簧动画：当前歌词间距更大，其他歌词间距更小
+    // 同样的柔和弹簧参数，形成"被拉动"的整体感
+    val targetVerticalPadding = if (useAnimatedLyrics) {
+        when (distanceFromCurrent) {
+            0 -> if (immersiveMode) 20.dp else 24.dp
+            1 -> 14.dp
+            else -> 10.dp
+        }
+    } else 12.dp
+    val animatedVerticalPadding by animateDpAsState(
+        targetValue = targetVerticalPadding,
+        animationSpec = if (useAnimatedLyrics) {
+            when (distanceFromCurrent) {
+                0 -> spring(stiffness = 180f, dampingRatio = Spring.DampingRatioMediumBouncy)
+                1 -> spring(stiffness = 220f, dampingRatio = Spring.DampingRatioLowBouncy)
+                else -> spring(stiffness = 280f, dampingRatio = Spring.DampingRatioLowBouncy)
+            }
+        } else {
+            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+        },
+        label = "linePadding"
+    )
+
+    // Animated mode: apply graphicsLayer for scale/alpha transforms (pure draw-phase, no layout)
     val baseModifier = if (useAnimatedLyrics && !immersiveMode) {
         when (lyricsAlignment) {
             "center" -> modifier.padding(horizontal = 36.dp)
@@ -1496,6 +1697,7 @@ fun LyricLineRow(
                 scaleX = scale
                 scaleY = scale
                 this.alpha = alpha
+                translationY = offsetYDp.toPx()
                 transformOrigin = TransformOrigin(
                     pivotFractionX = when (lyricsAlignment) {
                         "center" -> 0.5f
@@ -1546,7 +1748,7 @@ fun LyricLineRow(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
-                .padding(vertical = verticalPadding, horizontal = 2.dp),
+                .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
         ) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = boxAlignment) {
@@ -1556,14 +1758,18 @@ fun LyricLineRow(
                     style = style,
                     color = Color.Transparent,
                     fontWeight = FontWeight.Bold,
-                    textAlign = textAlign
+                    textAlign = textAlign,
+                    softWrap = true,
+                    overflow = TextOverflow.Visible
                 )
                 Text(
                     text = sanitizedLine,
                     style = style,
                     color = lineColor,
                     fontWeight = if (isCurrentLine) FontWeight.Bold else FontWeight.Normal,
-                    textAlign = textAlign
+                    textAlign = textAlign,
+                    softWrap = true,
+                    overflow = TextOverflow.Visible
                 )
             }
 
@@ -1573,6 +1779,8 @@ fun LyricLineRow(
                     style = secondaryStyle,
                     color = romanizationColor,
                     textAlign = textAlign,
+                    softWrap = true,
+                    overflow = TextOverflow.Visible,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -1583,6 +1791,8 @@ fun LyricLineRow(
                     style = secondaryStyle,
                     color = translationColor,
                     textAlign = textAlign,
+                    softWrap = true,
+                    overflow = TextOverflow.Visible,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -1604,7 +1814,7 @@ fun LyricLineRow(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
-                .padding(vertical = verticalPadding, horizontal = 2.dp),
+                .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
         ) {
             FlowRow(
@@ -1666,17 +1876,18 @@ fun LyricWordSpan(
     unhighlightedColor: Color,
     modifier: Modifier = Modifier
 ) {
+    // Unified word-level animation spec — fast and crisp, matches the line-level curve.
     val wordAnimSpec = if (useAnimatedLyrics) spring<Float>(
-        stiffness = Spring.StiffnessVeryLow,
-        dampingRatio = Spring.DampingRatioMediumBouncy
-    ) else tween(durationMillis = 200)
+        stiffness = 500f,
+        dampingRatio = Spring.DampingRatioNoBouncy
+    ) else tween(durationMillis = 180, easing = FastOutSlowInEasing)
 
     val color by animateColorAsState(
         targetValue = if (isHighlighted) highlightedColor else unhighlightedColor,
         animationSpec = if (useAnimatedLyrics) spring(
-            stiffness = Spring.StiffnessVeryLow,
-            dampingRatio = Spring.DampingRatioMediumBouncy
-        ) else tween(durationMillis = 200),
+            stiffness = 500f,
+            dampingRatio = Spring.DampingRatioNoBouncy
+        ) else tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "wordColor"
     )
 
@@ -1993,28 +2204,11 @@ private fun LyricsTrackInfo(
     if (song == null) return
 
     val albumShape = CircleShape
-
-    // Helper state to stop rotation when paused, but we want it to pause in place?
-    // Using infiniteTransition.animateFloat will reset on recomposition if spec changes or stops.
-    // For a realistic vinyl pause, we need a manual Animatable that loops.
-    // But for simplicity requested: "Animate the cover art to rotate... when music is playing".
-    // If we just use conditional Modifier.graphicsLayer rotation, it might jump.
-    // Let's use a simpler approach: if isPlaying, rotate.
-    
-    // Better approach for pausing rotation in place is non-trivial without a dedicated running time state.
-    // Given the constraints, I will use a simple AnimatedVisibility or just let it reset, OR
-    // use a monotonic clock if possible.
-    // Let's stick to infinite transition for running, and maybe 0f for static?
-    // Actually, user said "simulate a vinyl record". This implies continuous storage of rotation?
-    // I'll try to implement continuous rotation.
     
     val currentRotation = remember { Animatable(0f) }
     
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
-            // Spin forever. 8s per revolution halves the effective per-second animation work
-            // vs the original 4s cadence — visually still clearly a rotating "vinyl", but
-            // drives fewer Compose invalidations during long listening sessions.
             while (true) {
                 currentRotation.animateTo(
                     targetValue = currentRotation.value + 360f,
@@ -2027,46 +2221,45 @@ private fun LyricsTrackInfo(
     }
 
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .height(56.dp)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         SmartImage(
             model = song.albumArtUriString ?: R.drawable.rounded_album_24,
             shape = albumShape,
             contentDescription = "Cover Art",
             modifier = Modifier
-                .size(66.dp)
-                .padding(6.dp)
+                .size(44.dp)
                 .graphicsLayer {
                     rotationZ = currentRotation.value % 360f
                 }
                 .clip(albumShape),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            targetSize = SmartImageCompactListTargetSize
         )
 
         Column(
             modifier = Modifier
-                .weight(1f, fill = false) // Allow shrinking if content is small
-                .padding(vertical = 6.dp)
-                .padding(end = 6.dp),
+                .weight(1f)
+                .padding(vertical = 4.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = song.title,
-                style = MaterialTheme.typography.titleMedium.copy(
+                style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.SemiBold,
                     color = contentColor,
-                    //textGeometricTransform = TextGeometricTransform(scaleX = (0.9f)),
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = song.displayArtist,
-                style = MaterialTheme.typography.bodyMedium.copy(
+                style = MaterialTheme.typography.bodySmall.copy(
                     color = contentColor.copy(alpha = 0.7f),
-                    //textGeometricTransform = TextGeometricTransform(scaleX = (0.9f)),
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -2075,8 +2268,7 @@ private fun LyricsTrackInfo(
 
         PlayingEqIcon(
             modifier = Modifier
-                .padding(start = 8.dp, end = 18.dp)
-                .size(width = 18.dp, height = 16.dp),
+                .size(width = 16.dp, height = 14.dp),
             color = contentColor,
             isPlaying = isPlaying
         )

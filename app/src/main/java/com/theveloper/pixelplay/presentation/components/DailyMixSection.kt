@@ -74,6 +74,7 @@ fun DailyMixSection(
     onNavigateToAlbum: (Song) -> Unit = {},
     onNavigateToArtist: (Song) -> Unit = {},
     onNavigateToGenre: (Song) -> Unit = {},
+    onNavigateToNeteaseArtistHomepage: (Long) -> Unit = {},
 ) {
     val playlistViewModel: PlaylistViewModel = hiltViewModel()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
@@ -135,6 +136,12 @@ fun DailyMixSection(
             },
             onNavigateToArtist = {
                 onNavigateToArtist(song)
+                showSongInfoSheet = false
+            },
+            onOpenNeteaseArtistHomepage = {
+                playerViewModel.fetchNeteaseArtistId(song.neteaseId ?: 0L) { artistId ->
+                    artistId?.let { onNavigateToNeteaseArtistHomepage(it) }
+                }
                 showSongInfoSheet = false
             },
             onNavigateToGenre = {
@@ -294,7 +301,8 @@ fun DailyMixHeader(thumbnails: ImmutableList<Song>) {
                             model = song.albumArtUriString,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            targetSize = SmartImageCompactListTargetSize
                         )
                     }
                 }

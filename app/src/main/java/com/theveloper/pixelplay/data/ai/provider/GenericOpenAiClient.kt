@@ -17,7 +17,8 @@ class GenericOpenAiClient(
     private val apiKey: String,
     private val baseUrl: String,
     private val defaultModelId: String,
-    private val providerName: String = "OpenAI"
+    private val providerName: String,
+    private val predefinedModels: List<String> = emptyList()
 ) : AiClient {
     
     @Serializable
@@ -125,6 +126,10 @@ class GenericOpenAiClient(
     
     override suspend fun getAvailableModels(apiKey: String): List<String> {
         return withContext(Dispatchers.IO) {
+            if (predefinedModels.isNotEmpty()) {
+                return@withContext predefinedModels
+            }
+            
             try {
                 val request = Request.Builder()
                     .url("${baseUrl.trimEnd('/')}/models")

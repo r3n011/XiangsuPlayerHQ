@@ -4,7 +4,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,6 +45,10 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.ui.theme.PixelPlayStatusBarStyle
 import androidx.compose.ui.res.stringResource
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +112,7 @@ fun HomeGradientTopBar(
     onTelegramClick: () -> Unit,
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
+    disableBlurAllOver: Boolean = false,
 ) {
     val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHighest
 
@@ -116,7 +125,23 @@ fun HomeGradientTopBar(
     )
 
     TopAppBar(
-        modifier = Modifier.background(surfaceContainerHigh.copy(alpha = animatedAlpha)),
+        modifier = Modifier
+            .background(surfaceContainerHigh.copy(alpha = animatedAlpha * 0.4f))
+            .then(
+                if (!disableBlurAllOver) {
+                    Modifier.hazeEffect(
+                        state = MainActivity.LocalHazeState.current,
+                        style = HazeMaterials.regular()
+                    ) {
+                        progressive = HazeProgressive.verticalGradient(
+                            startIntensity = 1f,
+                            endIntensity = 0f
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            ),
         title = { /* nada, usamos solo acciones */ },
         navigationIcon = {
             /* Deleted Beta Label as requested */
