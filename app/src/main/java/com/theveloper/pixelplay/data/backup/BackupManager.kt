@@ -10,6 +10,7 @@ import com.theveloper.pixelplay.data.backup.model.BackupHistoryEntry
 import com.theveloper.pixelplay.data.backup.model.BackupManifest
 import com.theveloper.pixelplay.data.backup.model.BackupOperationType
 import com.theveloper.pixelplay.data.backup.model.BackupSection
+import com.theveloper.pixelplay.data.backup.model.BackupFormat
 import com.theveloper.pixelplay.data.backup.model.BackupTransferProgressUpdate
 import com.theveloper.pixelplay.data.backup.model.BackupValidationResult
 import com.theveloper.pixelplay.data.backup.model.DeviceInfo
@@ -43,6 +44,7 @@ class BackupManager @Inject constructor(
     suspend fun export(
         uri: Uri,
         sections: Set<BackupSection>,
+        format: BackupFormat = BackupFormat.PXPL,
         onProgress: (BackupTransferProgressUpdate) -> Unit
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -86,9 +88,13 @@ class BackupManager @Inject constructor(
             )
 
             reportProgress(onProgress, BackupOperationType.EXPORT, ++step, totalSteps,
-                "Packaging backup", "Creating .pxpl archive.")
+                "Packaging backup", if (format == BackupFormat.EXTERNAL_PXPDAT) "Creating .pxpbak file" else "Creating .pxpl archive.")
 
-            backupWriter.write(uri, manifest, modulePayloads).getOrThrow()
+            if (format == BackupFormat.EXTERNAL_PXPDAT) {
+                backupWriter.writeExternalFormat(uri, manifest, modulePayloads).getOrThrow()
+            } else {
+                backupWriter.write(uri, manifest, modulePayloads).getOrThrow()
+            }
 
             reportProgress(onProgress, BackupOperationType.EXPORT, ++step, totalSteps,
                 "Backup complete", "Your PixelPlay backup was created successfully.")

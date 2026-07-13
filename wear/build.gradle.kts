@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.theveloper.pixelplay.wear"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.theveloper.pixelplay"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
     }
 
     buildTypes {

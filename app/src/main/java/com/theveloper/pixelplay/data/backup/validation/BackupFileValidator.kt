@@ -60,8 +60,10 @@ class BackupFileValidator @Inject constructor(
 
         // Check file name extension (if available)
         if (fileName != null && !fileName.endsWith(".pxpl", ignoreCase = true) &&
-            !fileName.endsWith(".gz", ignoreCase = true)) {
-            errors.add(ValidationError("FILE_EXTENSION", "File extension is not .pxpl. The file may not be a valid backup.", severity = Severity.WARNING))
+            !fileName.endsWith(".gz", ignoreCase = true) &&
+            !fileName.endsWith(".pxpbak", ignoreCase = true) &&
+            !fileName.endsWith(".json", ignoreCase = true)) {
+            errors.add(ValidationError("FILE_EXTENSION", "File extension is not .pxpl or .pxpbak. The file may not be a valid backup.", severity = Severity.WARNING))
         }
 
         if (format == BackupFormatDetector.Format.UNKNOWN) {

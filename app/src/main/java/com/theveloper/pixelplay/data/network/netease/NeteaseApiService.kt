@@ -58,6 +58,13 @@ class NeteaseApiService @Inject constructor() {
     /** Check if user is logged in (has MUSIC_U cookie) */
     fun hasLogin(): Boolean = !persistedCookies["MUSIC_U"].isNullOrBlank()
 
+    /** Get all persisted cookies as a "key=value; key2=value2" formatted string */
+    fun getCookieString(): String {
+        val map = persistedCookies.toMap()
+        if (map.isEmpty()) return ""
+        return map.entries.joinToString("; ") { (k, v) -> "$k=$v" }
+    }
+
     /** Set persisted cookies from saved state and inject into CookieJar */
     fun setPersistedCookies(cookies: Map<String, String>) {
         val m = cookies.toMutableMap()

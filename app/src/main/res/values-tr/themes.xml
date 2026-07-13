@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Base app theme -->
-    <style name="Theme.PixelPlay" parent="Theme.Material3.DynamicColors.DayNight">
+    <!-- Base app theme - WITHOUT DynamicColors (compatible with Android 7+) -->
+    <style name="Theme.PixelPlay" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="Theme.PixelPlay.ExternalPlayer" parent="Theme.Material3.DynamicColors.DayNight">
+    <style name="Theme.PixelPlay.ExternalPlayer" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>

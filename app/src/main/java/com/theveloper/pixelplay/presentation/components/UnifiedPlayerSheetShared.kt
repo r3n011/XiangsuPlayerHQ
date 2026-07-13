@@ -2,6 +2,8 @@
 
 package com.theveloper.pixelplay.presentation.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -32,6 +34,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -46,6 +49,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -93,9 +97,32 @@ internal fun MiniPlayerContentInternal(
     val nextInteraction = remember { MutableInteractionSource() }
     val miniPlayerIndication = remember { ripple(bounded = false) }
 
+    // ⚡ Optimization: Animate colors at the component level instead of the top level.
+    // This allows smooth transitions while the top-level LocalMaterialTheme only
+    // triggers a single recomposition when the target changes.
+    val onPrimaryContainer by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onPrimaryContainer,
+        animationSpec = tween(durationMillis = 400),
+        label = "MiniOnPrimaryContainer"
+    )
+    val primaryContainer by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.primaryContainer,
+        animationSpec = tween(durationMillis = 400),
+        label = "MiniPrimaryContainer"
+    )
+    val primary by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.primary,
+        animationSpec = tween(durationMillis = 400),
+        label = "MiniPrimary"
+    )
+    val onPrimary by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onPrimary,
+        animationSpec = tween(durationMillis = 400),
+        label = "MiniOnPrimary"
+    )
+
     // 进度条颜色：使用 primaryContainer 中略深一点的变体，保证对比度
-    val progressColor = LocalMaterialTheme.current.onPrimaryContainer
-        .copy(alpha = 0.30f)
+    val progressColor = onPrimaryContainer.copy(alpha = 0.30f)
 
     // 进度条右侧圆角（左侧为直角，右侧为小圆角，避免"半圆"感）
     val progressRightCornerRadiusPx = with(LocalDensity.current) { 10.dp.toPx() }
@@ -118,6 +145,8 @@ internal fun MiniPlayerContentInternal(
             // ⚡ 只在绘制阶段读取进度，不会触发子树重新组合或重新布局。
             .drawWithCache {
                 onDrawBehind {
+                    // 正在获取播放链接时不绘制歌曲进度条
+                    if (isPreparingPlayback) return@onDrawBehind
                     val fraction = progressFractionProvider()
                     if (fraction <= 0f) return@onDrawBehind
                     val width = this.size.width
@@ -142,142 +171,168 @@ internal fun MiniPlayerContentInternal(
                 }
             }
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(MiniPlayerHeight)
-                .padding(start = 10.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val albumArtModel = song.albumArtUriString?.takeIf { it.isNotBlank() }
-            Box(contentAlignment = Alignment.Center) {
-                key(song.id) {
-                    SmartImage(
-                        model = albumArtModel,
-                        contentDescription = "Carátula de ${song.title}",
-                        shape = CircleShape,
-                        targetSize = Size(150, 150),
-                        modifier = Modifier.size(44.dp),
-                        placeholderModel = if (albumArtModel?.startsWith("telegram_art") == true) {
-                            "$albumArtModel?quality=thumb"
-                        } else null
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 主要内容：专辑封面 + 标题 + 艺术家 + 控制按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(MiniPlayerHeight - 3.dp)
+                    .padding(start = 10.dp, end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val albumArtModel = song.albumArtUriString?.takeIf { it.isNotBlank() }
+                Box(contentAlignment = Alignment.Center) {
+                    key(song.id) {
+                        SmartImage(
+                            model = albumArtModel,
+                            contentDescription = "Carátula de ${song.title}",
+                            shape = CircleShape,
+                            targetSize = Size(150, 150),
+                            modifier = Modifier.size(44.dp),
+                            placeholderModel = if (albumArtModel?.startsWith("telegram_art") == true) {
+                                "$albumArtModel?quality=thumb"
+                            } else null
+                        )
+                    }
+                    if (isCastConnecting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = onPrimaryContainer
+                        )
+                    } else {
+                        // Smoothly transition the preparing playback indicator
+                        val preparingAlpha by animateFloatAsState(
+                            targetValue = if (isPreparingPlayback) 1f else 0f,
+                            animationSpec = tween(durationMillis = 200),
+                            label = "PreparingPlaybackAlpha"
+                        )
+                        if (preparingAlpha > 0f) {
+                            CircularWavyProgressIndicator(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .alpha(preparingAlpha)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    val titleStyle = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.2).sp,
+                        fontFamily = GoogleSansRounded,
+                        color = onPrimaryContainer
+                    )
+                    val artistStyle = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 13.sp,
+                        letterSpacing = 0.sp,
+                        fontFamily = GoogleSansRounded,
+                        color = onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+
+                    AutoScrollingText(
+                        text = when {
+                            isCastConnecting -> "Connecting to device…"
+                            isPreparingPlayback -> "正在获取播放链接…"
+                            else -> song.title
+                        },
+                        style = titleStyle,
+                        gradientEdgeColor = primaryContainer,
+                        canScroll = canScroll
+                    )
+                    AutoScrollingText(
+                        text = if (isPreparingPlayback) "稍候片刻" else song.displayArtist,
+                        style = artistStyle,
+                        gradientEdgeColor = primaryContainer,
+                        canScroll = canScroll
                     )
                 }
-                if (isCastConnecting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                        color = LocalMaterialTheme.current.onPrimaryContainer
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(onPrimary)
+                        .clickable(
+                            interactionSource = previousInteraction,
+                            indication = miniPlayerIndication,
+                            enabled = controlsEnabled
+                        ) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onPrevious()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SkipPrevious,
+                        contentDescription = "Anterior",
+                        tint = primary,
+                        modifier = Modifier.size(22.dp)
                     )
-                } else if (isPreparingPlayback) {
-                    CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(primary)
+                        .clickable(
+                            interactionSource = playPauseInteraction,
+                            indication = miniPlayerIndication,
+                            enabled = controlsEnabled
+                        ) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onPlayPause()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                        tint = onPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(onPrimary)
+                        .clickable(
+                            interactionSource = nextInteraction,
+                            indication = miniPlayerIndication,
+                            enabled = controlsEnabled
+                        ) { onNext() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SkipNext,
+                        contentDescription = "Siguiente",
+                        tint = primary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                val titleStyle = MaterialTheme.typography.titleSmall.copy(
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.2).sp,
-                    fontFamily = GoogleSansRounded,
-                    color = LocalMaterialTheme.current.onPrimaryContainer
-                )
-                val artistStyle = MaterialTheme.typography.bodySmall.copy(
-                    fontSize = 13.sp,
-                    letterSpacing = 0.sp,
-                    fontFamily = GoogleSansRounded,
-                    color = LocalMaterialTheme.current.onPrimaryContainer.copy(alpha = 0.7f)
-                )
 
-                AutoScrollingText(
-                    text = when {
-                        isCastConnecting -> "Connecting to device…"
-                        isPreparingPlayback -> "Preparing playback…"
-                        else -> song.title
-                    },
-                    style = titleStyle,
-                    gradientEdgeColor = LocalMaterialTheme.current.primaryContainer,
-                    canScroll = canScroll
-                )
-                AutoScrollingText(
-                    text = if (isPreparingPlayback) "Loading audio…" else song.displayArtist,
-                    style = artistStyle,
-                    gradientEdgeColor = LocalMaterialTheme.current.primaryContainer,
-                    canScroll = canScroll
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(LocalMaterialTheme.current.onPrimary)
-                    .clickable(
-                        interactionSource = previousInteraction,
-                        indication = miniPlayerIndication,
-                        enabled = controlsEnabled
-                    ) {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onPrevious()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.SkipPrevious,
-                    contentDescription = "Anterior",
-                    tint = LocalMaterialTheme.current.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(LocalMaterialTheme.current.primary)
-                    .clickable(
-                        interactionSource = playPauseInteraction,
-                        indication = miniPlayerIndication,
-                        enabled = controlsEnabled
-                    ) {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onPlayPause()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = if (isPlaying) "Pausar" else "Reproducir",
-                    tint = LocalMaterialTheme.current.onPrimary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(LocalMaterialTheme.current.onPrimary)
-                    .clickable(
-                        interactionSource = nextInteraction,
-                        indication = miniPlayerIndication,
-                        enabled = controlsEnabled
-                    ) { onNext() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.SkipNext,
-                    contentDescription = "Siguiente",
-                    tint = LocalMaterialTheme.current.primary,
-                    modifier = Modifier.size(22.dp)
+            // 底部细加载条（仅在 preparing 时显示，占满宽度）
+            if (isPreparingPlayback) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp),
+                    color = onPrimaryContainer,
+                    trackColor = onPrimaryContainer.copy(alpha = 0.15f)
                 )
             }
         }

@@ -2,6 +2,8 @@ package com.theveloper.pixelplay.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.io.File
+import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.text.SimpleDateFormat
@@ -33,8 +35,10 @@ data class CrashLogData(
 }
 
 /**
- * Custom UncaughtExceptionHandler that saves crash information to SharedPreferences
- * so it can be displayed to the user when the app restarts.
+ * Custom UncaughtExceptionHandler that saves crash information to both
+ * SharedPreferences and a file in the app's external files directory,
+ * so it can be displayed to the user when the app restarts or
+ * retrieved manually from the file system.
  */
 object CrashHandler : Thread.UncaughtExceptionHandler {
 
@@ -43,6 +47,7 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
     private const val KEY_TIMESTAMP = "crash_timestamp"
     private const val KEY_EXCEPTION_MESSAGE = "crash_exception_message"
     private const val KEY_STACK_TRACE = "crash_stack_trace"
+    private const val CRASH_FILE_NAME = "pixelplay_crash.log"
 
     private lateinit var appContext: Context
     private var defaultHandler: Thread.UncaughtExceptionHandler? = null
@@ -52,19 +57,25 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
 
     /**
      * Installs this crash handler as the default uncaught exception handler.
-     * Should be called in Application.onCreate().
+     * Should be called at the very start of Application.onCreate().
      */
     fun install(context: Context) {
-        appContext = context.applicationContext
-        defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler(this)
+        try {
+            appContext = context.applicationContext
+            defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler(this)
+            android.util.Log.i("PixelPlay", "CrashHandler installed successfully")
+        } catch (e: Throwable) {
+            android.util.Log.e("PixelPlay", "Failed to install CrashHandler: ${e.message}")
+        }
     }
 
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
         try {
             saveCrashLog(throwable)
-        } catch (e: Exception) {
-            // Ignore any errors during crash saving
+            saveCrashToFile(throwable)
+        } catch (e: Throwable) {
+            // Never let the crash handler crash
         }
 
         // Call the default handler to allow normal crash behavior
@@ -76,14 +87,56 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
         val stackTrace = getStackTraceString(throwable)
         val exceptionMessage = throwable.message ?: throwable.javaClass.simpleName
 
-        // Use commit() instead of apply() to ensure data is written synchronously
-        // before the process terminates
         prefs.edit().apply {
             putBoolean(KEY_HAS_CRASH, true)
             putLong(KEY_TIMESTAMP, timestamp)
             putString(KEY_EXCEPTION_MESSAGE, exceptionMessage)
             putString(KEY_STACK_TRACE, stackTrace)
-            commit() // Synchronous write - ensures data is saved before process dies
+            commit() // Synchronous write
+        }
+    }
+
+    /**
+     * Saves the crash to a plain text file in app-specific storage.
+     * Path: /sdcard/Android/data/com.r3n011.pixelplay/files/crash/pixelplay_crash.log
+     * This is readable by the user without root.
+     */
+    private fun saveCrashToFile(throwable: Throwable) {
+        try {
+            val crashDir = File(appContext.getExternalFilesDir(null), "crash")
+            if (!crashDir.exists()) crashDir.mkdirs()
+
+            val crashFile = File(crashDir, CRASH_FILE_NAME)
+            val timestamp = System.currentTimeMillis()
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val formattedDate = dateFormat.format(Date(timestamp))
+
+            val stackTrace = getStackTraceString(throwable)
+            val exceptionMessage = throwable.message ?: throwable.javaClass.simpleName
+
+            val log = buildString {
+                appendLine("===== PIXELPLAYER CRASH REPORT =====")
+                appendLine("Timestamp: $formattedDate")
+                appendLine("Build Type: ${android.os.Build.TYPE}")
+                appendLine("Device: ${android.os.Build.MODEL}")
+                appendLine("Android Version: ${android.os.Build.VERSION.RELEASE}")
+                appendLine("Thread: ${Thread.currentThread().name}")
+                appendLine()
+                appendLine("Exception: $exceptionMessage")
+                appendLine("Exception Type: ${throwable.javaClass.name}")
+                appendLine()
+                appendLine("===== STACK TRACE =====")
+                appendLine(stackTrace)
+                appendLine()
+                appendLine("===== END =====")
+            }
+
+            FileOutputStream(crashFile).use { fos ->
+                fos.write(log.toByteArray())
+            }
+            android.util.Log.e("PixelPlay", "Crash saved to: ${crashFile.absolutePath}")
+        } catch (e: Throwable) {
+            android.util.Log.e("PixelPlay", "Failed to save crash to file: ${e.message}")
         }
     }
 
@@ -95,6 +148,15 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
     }
 
     /**
+     * Returns the path of the crash log file. Returns null if no file exists.
+     */
+    fun getCrashFilePath(): String? {
+        if (!::appContext.isInitialized) return null
+        val crashFile = File(File(appContext.getExternalFilesDir(null), "crash"), CRASH_FILE_NAME)
+        return if (crashFile.exists()) crashFile.absolutePath else null
+    }
+
+    /**
      * Checks if there is a saved crash log from a previous session.
      */
     fun hasCrashLog(): Boolean {
@@ -103,7 +165,7 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
     }
 
     /**
-     * Retrieves the saved crash log data.
+     * Retrieves the saved crash log data from SharedPreferences.
      * Returns null if no crash log exists.
      */
     fun getCrashLog(): CrashLogData? {
@@ -131,5 +193,11 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
     fun clearCrashLog() {
         if (!::appContext.isInitialized) return
         prefs.edit().clear().apply()
+        try {
+            val crashFile = File(File(appContext.getExternalFilesDir(null), "crash"), CRASH_FILE_NAME)
+            if (crashFile.exists()) crashFile.delete()
+        } catch (_: Throwable) {
+            // ignore
+        }
     }
 }

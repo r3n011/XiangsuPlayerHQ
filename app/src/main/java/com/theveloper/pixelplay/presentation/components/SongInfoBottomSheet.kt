@@ -127,6 +127,7 @@ fun SongInfoBottomSheet(
     onNavigateToAlbum: () -> Unit,
     onNavigateToArtist: () -> Unit,
     onNavigateToArtistById: (Long) -> Unit = { onNavigateToArtist() },
+    onOpenNeteaseArtistHomepage: (() -> Unit)? = null,
     onNavigateToGenre: () -> Unit,
     onEditSong: (
         title: String,
@@ -641,7 +642,9 @@ fun SongInfoBottomSheet(
                                                 iconDescription = stringResource(R.string.cd_artist_icon),
                                                 shape = infoSegmentItemShape,
                                                 onClick = {
-                                                    if (song.artists.size > 1) {
+                                                    if (song.neteaseId != null && onOpenNeteaseArtistHomepage != null) {
+                                                        onOpenNeteaseArtistHomepage()
+                                                    } else if (song.artists.size > 1) {
                                                         showArtistPicker = true
                                                     } else {
                                                         onNavigateToArtist()

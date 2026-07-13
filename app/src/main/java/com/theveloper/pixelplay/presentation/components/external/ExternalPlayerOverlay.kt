@@ -252,9 +252,12 @@ fun ExternalPlayerOverlay(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
+                        // 始终保持 enabled=true，避免 totalDuration 从 0 变为有效值时
+                        // 触发 pointerInput 协程重启导致拖动失效。实际的 seek 逻辑
+                        // 仍然会对 totalDuration 做安全校验（coerceIn 处理）。
                         WavySliderExpressive(
                             value = { sliderPosition },
-                            enabled = totalDuration > 0,
+                            enabled = true,
                             onValueChange = { newValue ->
                                 isUserScrubbing = true
                                 sliderPosition = newValue.coerceIn(0f, 1f)
@@ -262,7 +265,8 @@ fun ExternalPlayerOverlay(
                             onValueCommit = { finalValue ->
                                 val finalFraction = finalValue.coerceIn(0f, 1f)
                                 sliderPosition = finalFraction
-                                val targetPosition = (finalFraction * totalDuration).roundToLong()
+                                val safeDuration = totalDuration.coerceAtLeast(1L)
+                                val targetPosition = (finalFraction * safeDuration).roundToLong()
                                 playerViewModel.seekTo(targetPosition)
                                 isUserScrubbing = false
                             },
@@ -314,32 +318,34 @@ fun ExternalPlayerOverlay(
                             tintNextIcon = skipContent
                         )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         FilledTonalButton(
                             onClick = onOpenFullPlayer,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = AbsoluteSmoothCornerShape(
-                                cornerRadiusTR = 16.dp,
-                                smoothnessAsPercentTR = 60,
-                                cornerRadiusBL = 16.dp,
-                                smoothnessAsPercentTL = 60,
-                                cornerRadiusTL = 16.dp,
-                                smoothnessAsPercentBL = 60,
-                                cornerRadiusBR = 16.dp,
-                                smoothnessAsPercentBR = 60
-                            ),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = colorScheme.primaryContainer,
-                                contentColor = colorScheme.onPrimaryContainer
-                            )
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(vertical = 10.dp),
-                                text = stringResource(id = R.string.open_full_player),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
+                                shape = AbsoluteSmoothCornerShape(
+                                    cornerRadiusTR = 16.dp,
+                                    smoothnessAsPercentTR = 60,
+                                    cornerRadiusBL = 16.dp,
+                                    smoothnessAsPercentTL = 60,
+                                    cornerRadiusTL = 16.dp,
+                                    smoothnessAsPercentBL = 60,
+                                    cornerRadiusBR = 16.dp,
+                                    smoothnessAsPercentBR = 60
+                                ),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = colorScheme.primaryContainer,
+                                    contentColor = colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Text(
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    text = stringResource(id = R.string.open_full_player),
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
                     }
                 }
             }

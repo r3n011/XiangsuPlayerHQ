@@ -25,6 +25,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -56,6 +57,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 // import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults // Removed
 // import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // Removed
@@ -97,6 +99,8 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -128,6 +132,9 @@ import com.theveloper.pixelplay.presentation.components.scoped.rememberSmoothPro
 import com.theveloper.pixelplay.presentation.components.subcomps.FetchLyricsDialog
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
+import com.theveloper.pixelplay.presentation.focusmode.FocusModeScreen
+import com.theveloper.pixelplay.presentation.focusmode.FocusTimerSetupDialog
+import com.theveloper.pixelplay.presentation.focusmode.FocusTimerState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat
@@ -148,6 +155,7 @@ import com.theveloper.pixelplay.presentation.components.WavySliderExpressive
 import com.theveloper.pixelplay.presentation.components.ToggleSegmentButton
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 private const val PREVIOUS_TRACK_RESTART_THRESHOLD_MS = 10_000L
@@ -229,11 +237,11 @@ fun FullPlayerContent(
     onShowCastClicked: () -> Unit,
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
-    onFavoriteToggle: () -> Unit
+    onFavoriteToggle: () -> Unit,
+    onDownloadClick: () -> Unit,
 ) {
-    // Use a derived state to prevent recomposing everything when expansionFraction changes by small amounts.
     val isExpanded by remember(expansionFractionProvider) {
-        derivedStateOf { expansionFractionProvider() > 0.01f }
+        derivedStateOf { expansionFractionProvider() > 0.35f }
     }
     
     if (!isExpanded && currentSheetState == PlayerSheetState.COLLAPSED) {
@@ -252,6 +260,11 @@ fun FullPlayerContent(
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showArtistPicker by rememberSaveable { mutableStateOf(false) }
     var showCommentSheet by remember { mutableStateOf(false) }
+
+    // 学习钟状态 —— 从 playerViewModel 读取，确保切歌时不丢失
+    val focusTimerState = playerViewModel.focusTimerState
+    val isInFocusMode by playerViewModel.isInFocusMode.collectAsStateWithLifecycle()
+    var showFocusSetupDialog by remember { mutableStateOf(false) }
     
     val lyricsSearchUiState by playerViewModel.lyricsSearchUiState.collectAsStateWithLifecycle()
 
@@ -261,7 +274,13 @@ fun FullPlayerContent(
     val fullPlayerSlice by playerViewModel.fullPlayerSlice.collectAsStateWithLifecycle()
     val currentSongArtists = fullPlayerSlice.currentSongArtists
     val lyricsSyncOffset = fullPlayerSlice.lyricsSyncOffset
+    val lyricsFontFamily by playerViewModel.lyricsFontFamily.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
+    val gradientEdgeColor by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.primaryContainer,
+        animationSpec = tween(durationMillis = 400),
+        label = "MetadataGradientEdgeColor"
+    )
     val playbackAudioMetadata = fullPlayerSlice.audioMetadata
     val showPlayerFileInfo = fullPlayerSlice.showPlayerFileInfo
     val immersiveLyricsEnabled = fullPlayerSlice.immersiveLyricsEnabled
@@ -317,15 +336,97 @@ fun FullPlayerContent(
         }
     )
 
+    // 字体文件选择器 — 用于导入自定义字体
+    val fontFilePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri: Uri? ->
+            uri?.let {
+                fileImportScope.launch {
+                    try {
+                        val contentResolver = context.contentResolver
+                        val fileName = run {
+                            val projection = arrayOf(android.provider.OpenableColumns.DISPLAY_NAME)
+                            val cursor = contentResolver.query(it, projection, null, null, null)
+                            cursor?.use { c ->
+                                val nameIndex = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                c.moveToFirst()
+                                c.getString(nameIndex)
+                            } ?: "custom_font.ttf"
+                        }
+
+                        if (!fileName.endsWith(".ttf", true) && !fileName.endsWith(".otf", true)) {
+                            playerViewModel.sendToast("请选择 .ttf 或 .otf 字体文件")
+                            return@launch
+                        }
+
+                        // 确保字体目录存在
+                        val fontsDir = java.io.File(context.filesDir, "fonts")
+                        if (!fontsDir.exists()) fontsDir.mkdirs()
+
+                        // 复制文件到应用内部存储
+                        val destFile = java.io.File(fontsDir, fileName)
+                        context.contentResolver.openInputStream(it)?.use { input ->
+                            destFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+
+                        // 设置为当前歌词字体
+                        playerViewModel.setLyricsFontFamily("CUSTOM:$fileName")
+                        playerViewModel.sendToast("字体已导入")
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error importing font file")
+                        playerViewModel.sendToast("字体导入失败")
+                    }
+                }
+            }
+        }
+    )
+
     // totalDurationValue is derived from stablePlayerState, so it's fine.
     // OPTIMIZATION: Use passed provider instead of collecting flow
     val totalDurationValue = totalDurationProvider()
 
-    val playerOnBaseColor = LocalMaterialTheme.current.onPrimaryContainer
-    val playerAccentColor = LocalMaterialTheme.current.primary
-    val playerOnAccentColor = LocalMaterialTheme.current.onPrimary
-    val transportPlayPauseColors = expressivePlayPauseButtonColors(LocalMaterialTheme.current)
-    val transportSkipColors = expressiveSkipButtonColors(LocalMaterialTheme.current)
+    val playerOnBaseColor by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onPrimaryContainer,
+        animationSpec = tween(durationMillis = 400),
+        label = "PlayerOnBaseColor"
+    )
+    val playerAccentColor by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.primary,
+        animationSpec = tween(durationMillis = 400),
+        label = "PlayerAccentColor"
+    )
+    val playerOnAccentColor by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onPrimary,
+        animationSpec = tween(durationMillis = 400),
+        label = "PlayerOnAccentColor"
+    )
+
+    val transportPlayPauseColors = TransportButtonColors(
+        container = androidx.compose.animation.animateColorAsState(
+            targetValue = LocalMaterialTheme.current.tertiaryFixedDim,
+            animationSpec = tween(durationMillis = 400),
+            label = "TransportPlayPauseContainer"
+        ).value,
+        content = androidx.compose.animation.animateColorAsState(
+            targetValue = LocalMaterialTheme.current.onTertiaryFixed,
+            animationSpec = tween(durationMillis = 400),
+            label = "TransportPlayPauseContent"
+        ).value
+    )
+    val transportSkipColors = TransportButtonColors(
+        container = androidx.compose.animation.animateColorAsState(
+            targetValue = LocalMaterialTheme.current.secondaryFixedDim,
+            animationSpec = tween(durationMillis = 400),
+            label = "TransportSkipContainer"
+        ).value,
+        content = androidx.compose.animation.animateColorAsState(
+            targetValue = LocalMaterialTheme.current.onSecondaryFixed,
+            animationSpec = tween(durationMillis = 400),
+            label = "TransportSkipContent"
+        ).value
+    )
     val transportSkipButtonColors = TransportButtonColors(
         container = playerAccentColor,
         content = playerOnAccentColor
@@ -335,23 +436,58 @@ fun FullPlayerContent(
     val placeholderColor = playerOnBaseColor.copy(alpha = 0.1f)
     val placeholderOnColor = playerOnBaseColor.copy(alpha = 0.2f)
 
+    // ⚡ Optimization: Consolidate color animations at top level
+    // These animations were duplicated in BottomToggleRow
+    val surfaceContainerLowest by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.surfaceContainerLowest,
+        animationSpec = tween(durationMillis = 400),
+        label = "SurfaceContainerLowest"
+    )
+    val onSurface by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onSurface,
+        animationSpec = tween(durationMillis = 400),
+        label = "OnSurface"
+    )
+    val primaryFixed by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.primaryFixed,
+        animationSpec = tween(durationMillis = 400),
+        label = "PrimaryFixed"
+    )
+    val onPrimaryFixed by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onPrimaryFixed,
+        animationSpec = tween(durationMillis = 400),
+        label = "OnPrimaryFixed"
+    )
+    val secondaryFixed by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.secondaryFixed,
+        animationSpec = tween(durationMillis = 400),
+        label = "SecondaryFixed"
+    )
+    val onSecondaryFixed by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onSecondaryFixed,
+        animationSpec = tween(durationMillis = 400),
+        label = "OnSecondaryFixed"
+    )
+    val tertiaryFixed by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.tertiaryFixed,
+        animationSpec = tween(durationMillis = 400),
+        label = "TertiaryFixed"
+    )
+    val onTertiaryFixed by androidx.compose.animation.animateColorAsState(
+        targetValue = LocalMaterialTheme.current.onTertiaryFixed,
+        animationSpec = tween(durationMillis = 400),
+        label = "OnTertiaryFixed"
+    )
+
     val isLandscape =
         LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
 
     // Lógica para el botón de Lyrics en el reproductor expandido
-    val onLyricsClick = {
-        val lyrics = lyricsProvider()
-        if (lyrics?.synced.isNullOrEmpty() && lyrics?.plain.isNullOrEmpty()) {
-            // Si no hay letra, mostramos el diálogo para buscar
-            showFetchLyricsDialog = true
-        } else {
-            // Si hay letra, mostramos el sheet directamente
-            showLyricsSheet = true
-        }
-    }
+    val latestShowLyricsSheet by rememberUpdatedState(showLyricsSheet)
+    val onLyricsClick = remember {{ showLyricsSheet = true }}
 
-    val onCommentClick = { showCommentSheet = true }
+    val onCommentClick = remember {{ showCommentSheet = true }}
 
     if (showFetchLyricsDialog) {
         MaterialTheme(
@@ -394,34 +530,51 @@ fun FullPlayerContent(
                     playerViewModel.resetLyricsSearchState()
                 }
             }
+            is LyricsSearchUiState.PickResult -> {
+                // 自动显示歌词搜索对话框
+                if (!showFetchLyricsDialog) {
+                    showFetchLyricsDialog = true
+                }
+            }
             is LyricsSearchUiState.Error -> {
+            }
+            is LyricsSearchUiState.NotFound -> {
+                // 自动显示歌词搜索对话框（允许手动搜索）
+                if (!showFetchLyricsDialog) {
+                    showFetchLyricsDialog = true
+                }
             }
             else -> Unit
         }
     }
 
-    val onAlbumSongSelected: (Song, Int) -> Unit = { newSong, index ->
+    val latestCurrentPlaybackQueue by rememberUpdatedState(currentPlaybackQueue)
+    val latestCurrentQueueSourceName by rememberUpdatedState(currentQueueSourceName)
+    val onAlbumSongSelected: (Song, Int) -> Unit = remember {{ newSong, index ->
         playerViewModel.showAndPlaySong(
             song = newSong,
-            contextSongs = currentPlaybackQueue,
-            queueName = currentQueueSourceName,
+            contextSongs = latestCurrentPlaybackQueue,
+            queueName = latestCurrentQueueSourceName,
             indexInQueue = index
         )
-    }
+    }}
 
-    val onSongMetadataQueueClick = {
+    val onSongMetadataQueueClick = remember {{
         showSongInfoBottomSheet = true
         onShowQueueClicked()
-    }
+    }}
 
-    val onSongMetadataArtistClick = {
-        val resolvedArtistId = currentSongArtists.firstOrNull { it.id != 0L && it.id != -1L }?.id ?: song.artistId
-        if (currentSongArtists.size > 1) {
+    val latestSong by rememberUpdatedState(song)
+    val latestCurrentSongArtists by rememberUpdatedState(currentSongArtists)
+    val latestShowArtistPicker by rememberUpdatedState(showArtistPicker)
+    val onSongMetadataArtistClick = remember {{
+        val resolvedArtistId = latestCurrentSongArtists.firstOrNull { it.id != 0L && it.id != -1L }?.id ?: latestSong.artistId
+        if (latestCurrentSongArtists.size > 1) {
             showArtistPicker = true
         } else {
-            playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId)
+            playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId, latestSong.neteaseId)
         }
-    }
+    }}
 
     var pendingCarouselIndex by remember { mutableStateOf<Int?>(null) }
     val currentQueueIndex = remember(song.id, currentMediaItemIndex, currentPlaybackQueue) {
@@ -470,13 +623,13 @@ fun FullPlayerContent(
         }
     }
 
-    fun predictSkipCarouselIndex(direction: SkipDirection): Int? {
+    val predictSkipCarouselIndex = remember {{ direction: SkipDirection ->
         val queueSnapshot = latestQueue
         val baseIndex = pendingCarouselIndex
             ?: latestCurrentQueueIndex
             ?: queueSnapshot.indexOfFirst { it.id == latestSongId }.takeIf { it >= 0 }
 
-        return when (direction) {
+        when (direction) {
             SkipDirection.NEXT -> predictSkipNextCarouselIndex(
                 currentIndex = baseIndex,
                 queue = queueSnapshot,
@@ -491,24 +644,18 @@ fun FullPlayerContent(
                 isRemotePlaybackActive = latestIsRemotePlaybackActive
             )
         }
-    }
+    }}
 
-    fun requestSkip(direction: SkipDirection) {
+    val requestSkip = remember {{ direction: SkipDirection ->
         val predictedTargetIndex = predictSkipCarouselIndex(direction)
         if (skipRequests.tryEmit(direction) && predictedTargetIndex != null) {
             pendingCarouselIndex = predictedTargetIndex
         }
-    }
+    }}
 
-    val onNextWithOptimisticCarousel = {
-        requestSkip(SkipDirection.NEXT)
-        Unit
-    }
+    val onNextWithOptimisticCarousel = remember {{ requestSkip(SkipDirection.NEXT); Unit }}
 
-    val onPreviousWithOptimisticCarousel = {
-        requestSkip(SkipDirection.PREVIOUS)
-        Unit
-    }
+    val onPreviousWithOptimisticCarousel = remember {{ requestSkip(SkipDirection.PREVIOUS); Unit }}
 
     val albumCoverSection: @Composable (Modifier) -> Unit = { modifier ->
         FullPlayerAlbumCoverSection(
@@ -557,6 +704,10 @@ fun FullPlayerContent(
     }
 
     val controlsSection: @Composable () -> Unit = {
+        val downloadInfo = currentSong?.let { song ->
+            playerViewModel.getDownloadInfo(song.id)
+        }
+        val isOnlineSong = currentSong?.let { playerViewModel.isOnlineSong(it) } == true
         FullPlayerControlsSection(
             loadingTweaks = loadingTweaks,
             isSheetDragGestureActive = isSheetDragGestureActive,
@@ -576,7 +727,20 @@ fun FullPlayerContent(
             isFavoriteProvider = isFavoriteProvider,
             onShuffleToggle = onShuffleToggle,
             onRepeatToggle = onRepeatToggle,
-            onFavoriteToggle = onFavoriteToggle
+            onFavoriteToggle = onFavoriteToggle,
+            isOnlineSong = isOnlineSong,
+            onDownloadClick = onDownloadClick,
+            downloadProgress = downloadInfo?.progress.takeIf { it != 0f || downloadInfo?.isComplete == false },
+            isDownloadComplete = downloadInfo?.isComplete == true,
+            isDownloadFailed = downloadInfo?.isFailed == true,
+            surfaceContainerLowest = surfaceContainerLowest,
+            onSurface = onSurface,
+            primaryFixed = primaryFixed,
+            onPrimaryFixed = onPrimaryFixed,
+            secondaryFixed = secondaryFixed,
+            onSecondaryFixed = onSecondaryFixed,
+            tertiaryFixed = tertiaryFixed,
+            onTertiaryFixed = onTertiaryFixed,
         )
     }
 
@@ -588,6 +752,7 @@ fun FullPlayerContent(
             isSheetDragGestureActive = isSheetDragGestureActive,
             expansionFractionProvider = expansionFractionProvider,
             currentSheetState = currentSheetState,
+            currentQueueSourceName = currentQueueSourceName,
             placeholderColor = placeholderColor,
             placeholderOnColor = placeholderOnColor,
             isLandscape = false,
@@ -595,12 +760,15 @@ fun FullPlayerContent(
             onCommentClick = onCommentClick,
             playerOnBaseColor = playerOnBaseColor,
             playerViewModel = playerViewModel,
-            gradientEdgeColor = LocalMaterialTheme.current.primaryContainer,
+            gradientEdgeColor = gradientEdgeColor,
             chipColor = playerOnAccentColor.copy(alpha = 0.8f),
             chipContentColor = playerAccentColor,
             onQueueClick = onSongMetadataQueueClick,
             onArtistClick = onSongMetadataArtistClick,
-            isPlayingProvider = isPlayingProvider
+            isPlayingProvider = isPlayingProvider,
+            focusTimerState = focusTimerState,
+            onShowFocusSetup = remember {{ showFocusSetupDialog = true }},
+            onEnterFocusMode = remember {{ playerViewModel.setFocusMode(true) }}
         )
     }
 
@@ -612,6 +780,7 @@ fun FullPlayerContent(
             isSheetDragGestureActive = isSheetDragGestureActive,
             expansionFractionProvider = expansionFractionProvider,
             currentSheetState = currentSheetState,
+            currentQueueSourceName = currentQueueSourceName,
             placeholderColor = placeholderColor,
             placeholderOnColor = placeholderOnColor,
             isLandscape = true,
@@ -619,12 +788,15 @@ fun FullPlayerContent(
             onCommentClick = onCommentClick,
             playerOnBaseColor = playerOnBaseColor,
             playerViewModel = playerViewModel,
-            gradientEdgeColor = LocalMaterialTheme.current.primaryContainer,
+            gradientEdgeColor = gradientEdgeColor,
             chipColor = playerOnAccentColor.copy(alpha = 0.8f),
             chipContentColor = playerAccentColor,
             onQueueClick = onSongMetadataQueueClick,
             onArtistClick = onSongMetadataArtistClick,
-            isPlayingProvider = isPlayingProvider
+            isPlayingProvider = isPlayingProvider,
+            focusTimerState = focusTimerState,
+            onShowFocusSetup = remember {{ showFocusSetupDialog = true }},
+            onEnterFocusMode = remember {{ playerViewModel.setFocusMode(true) }}
         )
     }
 
@@ -882,6 +1054,35 @@ fun FullPlayerContent(
                                 }
                             }
 
+                            // Focus Mode Button
+                            Box(
+                                modifier = Modifier
+                                    .size(height = 42.dp, width = 50.dp)
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = 50.dp,
+                                            topEnd = 50.dp,
+                                            bottomStart = 50.dp,
+                                            bottomEnd = 50.dp
+                                        )
+                                    )
+                                    .background(playerOnAccentColor.copy(alpha = 0.7f))
+                                    .clickable {
+                                        if (focusTimerState.currentPhase == com.theveloper.pixelplay.presentation.focusmode.FocusPhase.IDLE) {
+                                            showFocusSetupDialog = true
+                                        } else {
+                                            playerViewModel.setFocusMode(true)
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.rounded_schedule_24),
+                                    contentDescription = "Focus mode",
+                                    tint = playerAccentColor
+                                )
+                            }
+
                             // Queue Button
                             Box(
                                 modifier = Modifier
@@ -972,6 +1173,11 @@ fun FullPlayerContent(
             lyricsSyncOffset = lyricsSyncOffset,
             onLyricsSyncOffsetChange = { currentSong?.id?.let { songId -> playerViewModel.setLyricsSyncOffset(songId, it) } },
             lyricsTextStyle = MaterialTheme.typography.titleLarge,
+            lyricsFontSize = fullPlayerSlice.lyricsFontSize,
+            onLyricsFontSizeChange = { playerViewModel.setLyricsFontSize(it) },
+            lyricsFontFamily = lyricsFontFamily,
+            onLyricsFontFamilyChange = { playerViewModel.setLyricsFontFamily(it) },
+            onImportCustomFont = { fontFilePickerLauncher.launch(arrayOf("font/ttf", "font/otf", "application/x-font-ttf", "application/x-font-opentype", "application/font-sfnt")) },
             colorScheme = LocalMaterialTheme.current,
             onBackClick = { showLyricsSheet = false },
             onSaveLyricsToFile = playerViewModel::saveLyricsToFile,
@@ -991,7 +1197,8 @@ fun FullPlayerContent(
             isFavoriteProvider = isFavoriteProvider,
             onShuffleToggle = onShuffleToggle,
             onRepeatToggle = onRepeatToggle,
-            onFavoriteToggle = onFavoriteToggle
+            onFavoriteToggle = onFavoriteToggle,
+            showLyricsTrackInfo = fullPlayerSlice.showLyricsTrackInfo
         )
     }
 
@@ -1013,6 +1220,9 @@ fun FullPlayerContent(
             songTitle = song.title,
             songArtist = song.displayArtist,
             api = playerViewModel.lxSearchApi,
+            personalFmApi = playerViewModel.personalFmApi,
+            cookie = playerViewModel.neteaseCookie.ifBlank { null },
+            currentUserId = playerViewModel.neteaseUserId,
             colorScheme = LocalMaterialTheme.current,
             onBackClick = { showCommentSheet = false }
         )
@@ -1026,10 +1236,60 @@ fun FullPlayerContent(
             sheetState = artistPickerSheetState,
             onDismiss = { showArtistPicker = false },
             onArtistClick = { artist ->
-                playerViewModel.triggerArtistNavigationFromPlayer(artist.id)
+                playerViewModel.triggerArtistNavigationFromPlayer(artist.id, song.neteaseId)
                 showArtistPicker = false
             }
         )
+    }
+
+    // 学习钟设置对话框
+    if (showFocusSetupDialog) {
+        FocusTimerSetupDialog(
+            onDismiss = { showFocusSetupDialog = false },
+            onConfirm = { studyMin, breakMin ->
+                focusTimerState.resetWithConfig(studyMin, breakMin)
+                focusTimerState.start()
+                showFocusSetupDialog = false
+                playerViewModel.setFocusMode(true)
+            }
+        )
+    }
+
+    // 专注模式全屏界面
+    AnimatedVisibility(
+        visible = isInFocusMode,
+        enter = fadeIn(animationSpec = tween(200)) +
+                slideInVertically(
+                    initialOffsetY = { it / 8 },
+                    animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                ),
+        exit = fadeOut(animationSpec = tween(200)) +
+                slideOutVertically(
+                    targetOffsetY = { it / 8 },
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                )
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            FocusModeScreen(
+                currentSong = currentSong,
+                currentPositionMs = currentPositionProvider(),
+                totalDurationMs = totalDurationProvider(),
+                isPlaying = isPlayingProvider(),
+                timerState = focusTimerState,
+                onPlayPause = onPlayPause,
+                onNext = onNext,
+                onPrevious = onPrevious,
+                onSeek = onSeek,
+                onExit = { playerViewModel.setFocusMode(false) },
+                onStopTimer = {
+                    focusTimerState.stop()
+                    playerViewModel.setFocusMode(false)
+                }
+            )
+        }
     }
 }
 
@@ -1070,14 +1330,27 @@ private fun FullPlayerAlbumCoverSection(
 
     BoxWithConstraints(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
     ) {
-        val carouselHeight = when (carouselStyle) {
+        // 计算基础尺寸
+        val externalHeightConstraint = maxHeight
+        val widthBasedHeight = when (carouselStyle) {
             CarouselStyle.NO_PEEK -> maxWidth
             CarouselStyle.ONE_PEEK -> maxWidth * 0.8f
             CarouselStyle.TWO_PEEK -> maxWidth * 0.6f
             else -> maxWidth * 0.8f
+        }
+        
+        // 竖屏模式：封面应该是正方形，取宽度的最小值
+        // 横屏模式：使用外部高度约束或宽度计算高度的较小值
+        val carouselHeight = if (externalHeightConstraint < maxWidth) {
+            // 竖屏模式：取外部高度约束（正方形）和宽度计算高度的较小值
+            // 正方形时 externalHeightConstraint 应该等于宽度，所以 minOf 会取较小的那个
+            minOf(externalHeightConstraint, widthBasedHeight)
+        } else {
+            // 横屏模式：使用外部高度约束或宽度计算高度的较小值
+            minOf(externalHeightConstraint, widthBasedHeight)
         }
 
         DelayedContent(
@@ -1086,7 +1359,7 @@ private fun FullPlayerAlbumCoverSection(
             applyPlaceholderDelayOnClose = loadingTweaks.applyPlaceholdersOnClose,
             switchOnDragRelease = loadingTweaks.switchOnDragRelease,
             isSheetDragGestureActive = isSheetDragGestureActive,
-            sharedBoundsModifier = Modifier.fillMaxWidth().height(carouselHeight),
+            sharedBoundsModifier = Modifier.widthIn(max = carouselHeight).height(carouselHeight),
             expansionFractionProvider = expansionFractionProvider,
             isExpandedOverride = currentSheetState == PlayerSheetState.EXPANDED,
             normalStartThreshold = 0.08f,
@@ -1096,8 +1369,8 @@ private fun FullPlayerAlbumCoverSection(
                 if (loadingTweaks.transparentPlaceholders) {
                     Box(
                         Modifier
+                            .widthIn(max = carouselHeight) // 正方形
                             .height(carouselHeight)
-                            .fillMaxWidth()
                             .graphicsLayer {
                                 scaleX = albumArtScale
                                 scaleY = albumArtScale
@@ -1108,10 +1381,12 @@ private fun FullPlayerAlbumCoverSection(
                         height = carouselHeight,
                         color = placeholderColor,
                         onColor = placeholderOnColor,
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = albumArtScale
-                            scaleY = albumArtScale
-                        }
+                        modifier = Modifier
+                            .widthIn(max = carouselHeight) // 正方形
+                            .graphicsLayer {
+                                scaleX = albumArtScale
+                                scaleY = albumArtScale
+                            }
                     )
                 }
             }
@@ -1130,6 +1405,7 @@ private fun FullPlayerAlbumCoverSection(
                 onAlbumClick = onAlbumClick,
                 carouselStyle = carouselStyle,
                 modifier = Modifier
+                    .widthIn(max = carouselHeight) // 限制宽度等于高度，实现正方形
                     .height(carouselHeight)
                     .graphicsLayer {
                         scaleX = albumArtScale
@@ -1161,7 +1437,20 @@ private fun FullPlayerControlsSection(
     isFavoriteProvider: () -> Boolean,
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
-    onFavoriteToggle: () -> Unit
+    onFavoriteToggle: () -> Unit,
+    isOnlineSong: Boolean,
+    onDownloadClick: () -> Unit,
+    downloadProgress: Float?,
+    isDownloadComplete: Boolean,
+    isDownloadFailed: Boolean,
+    surfaceContainerLowest: Color,
+    onSurface: Color,
+    primaryFixed: Color,
+    onPrimaryFixed: Color,
+    secondaryFixed: Color,
+    onSecondaryFixed: Color,
+    tertiaryFixed: Color,
+    onTertiaryFixed: Color,
 ) {
     val motionScheme = remember { MotionScheme.expressive() }
     val controlSpatialSpec = remember { motionScheme.fastSpatialSpec<Float>() }
@@ -1173,7 +1462,7 @@ private fun FullPlayerControlsSection(
         applyPlaceholderDelayOnClose = loadingTweaks.applyPlaceholdersOnClose,
         switchOnDragRelease = loadingTweaks.switchOnDragRelease,
         isSheetDragGestureActive = isSheetDragGestureActive,
-        sharedBoundsModifier = Modifier.fillMaxWidth().height(182.dp),
+        sharedBoundsModifier = Modifier.fillMaxWidth().height(180.dp),
         expansionFractionProvider = expansionFractionProvider,
         isExpandedOverride = currentSheetState == PlayerSheetState.EXPANDED,
         normalStartThreshold = 0.42f,
@@ -1181,23 +1470,26 @@ private fun FullPlayerControlsSection(
         delayCloseThreshold = 1f - (loadingTweaks.contentCloseThresholdPercent / 100f),
         placeholder = {
             if (loadingTweaks.transparentPlaceholders) {
-                Box(Modifier.fillMaxWidth().height(182.dp))
+                Box(Modifier.fillMaxWidth().height(180.dp))
             } else {
                 ControlsPlaceholder(placeholderColor, placeholderOnColor)
             }
         }
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
             AnimatedPlaybackControls(
                 modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
                 isPlayingProvider = isPlayingProvider,
                 onPrevious = onPrevious,
                 onPlayPause = onPlayPause,
                 onNext = onNext,
-                height = 80.dp,
+                height = 72.dp,
                 pressAnimationSpec = controlSpatialSpec,
                 releaseDelay = 220L,
                 colorOtherButtons = transportSkipColors.container,
@@ -1210,21 +1502,31 @@ private fun FullPlayerControlsSection(
                 tintNextIcon = transportSkipColors.content
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
-
             BottomToggleRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 66.dp, max = 86.dp)
-                    .padding(horizontal = 26.dp, vertical = 0.dp)
-                    .padding(bottom = 6.dp),
+                    .height(56.dp)
+                    .padding(horizontal = 26.dp),
                 isShuffleEnabled = isShuffleEnabledProvider(),
                 isShuffleTransitionInProgress = shuffleTransitionInProgress,
                 repeatMode = repeatModeProvider(),
                 isFavoriteProvider = isFavoriteProvider,
                 onShuffleToggle = onShuffleToggle,
                 onRepeatToggle = onRepeatToggle,
-                onFavoriteToggle = onFavoriteToggle
+                onFavoriteToggle = onFavoriteToggle,
+                isOnlineSong = isOnlineSong,
+                onDownloadClick = onDownloadClick,
+                downloadProgress = downloadProgress,
+                isDownloadComplete = isDownloadComplete,
+                isDownloadFailed = isDownloadFailed,
+                surfaceContainerLowest = surfaceContainerLowest,
+                onSurface = onSurface,
+                primaryFixed = primaryFixed,
+                onPrimaryFixed = onPrimaryFixed,
+                secondaryFixed = secondaryFixed,
+                onSecondaryFixed = onSecondaryFixed,
+                tertiaryFixed = tertiaryFixed,
+                onTertiaryFixed = onTertiaryFixed,
             )
         }
     }
@@ -1344,6 +1646,7 @@ private fun FullPlayerSongMetadataSection(
     isSheetDragGestureActive: Boolean,
     expansionFractionProvider: () -> Float,
     currentSheetState: PlayerSheetState,
+    currentQueueSourceName: String,
     placeholderColor: Color,
     placeholderOnColor: Color,
     isLandscape: Boolean,
@@ -1356,7 +1659,10 @@ private fun FullPlayerSongMetadataSection(
     chipContentColor: Color,
     onQueueClick: () -> Unit,
     onArtistClick: () -> Unit,
-    isPlayingProvider: () -> Boolean = { true }
+    isPlayingProvider: () -> Boolean = { true },
+    focusTimerState: com.theveloper.pixelplay.presentation.focusmode.FocusTimerState? = null,
+    onShowFocusSetup: () -> Unit = { },
+    onEnterFocusMode: () -> Unit = { }
 ) {
     val shouldDelay = loadingTweaks.delayAll || loadingTweaks.delaySongMetadata
 
@@ -1399,10 +1705,14 @@ private fun FullPlayerSongMetadataSection(
             gradientEdgeColor = gradientEdgeColor,
             chipColor = chipColor,
             chipContentColor = chipContentColor,
+            currentQueueSourceName = currentQueueSourceName,
             showQueueButton = isLandscape,
             onClickQueue = onQueueClick,
             onClickArtist = onArtistClick,
-            isPlayingProvider = isPlayingProvider
+            isPlayingProvider = isPlayingProvider,
+            onShowFocusSetup = onShowFocusSetup,
+            focusTimerState = focusTimerState,
+            onEnterFocusMode = onEnterFocusMode
         )
     }
 }
@@ -1413,38 +1723,96 @@ private fun FullPlayerPortraitContent(
     albumCoverSection: @Composable (Modifier) -> Unit,
     songMetadataSection: @Composable () -> Unit,
     playerProgressSection: @Composable () -> Unit,
-    controlsSection: @Composable () -> Unit
+    controlsSection: @Composable () -> Unit,
+    downloadSection: @Composable () -> Unit = {}
 ) {
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .padding(
-                horizontal = 24.dp,
-                vertical = 0.dp
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
     ) {
-        albumCoverSection(Modifier)
+        val totalHeight = maxHeight
+        val totalWidth = maxWidth
         
-        Spacer(modifier = Modifier.weight(1f))
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(Modifier.align(Alignment.Start)) {
-                songMetadataSection()
-            }
-            playerProgressSection()
+        // 封面左右留白
+        val coverHorizontalPadding = 12.dp
+        
+        // 歌曲信息和进度条区域需要的高度
+        val metadataProgressHeight = 100.dp
+        
+        // 播放控制区域需要的最低高度（播放按钮 + 底部切换行 + 间距）
+        // FullPlayerControlsSection 内部使用 180dp 固定高度
+        val controlsSectionMinHeight = 180.dp
+        
+        // 整个底部区域的最低高度（确保收藏那三个按钮不被挤出屏幕）
+        val bottomMinHeight = metadataProgressHeight + controlsSectionMinHeight + 20.dp
+        
+        // 方法一：封面边长 = 屏幕高度 - 底部区域最低高度
+        val coverSizeMethod1 = (totalHeight - bottomMinHeight).coerceAtLeast(100.dp)
+        
+        // 方法二：封面边长 = 屏幕宽度 - 左右留白
+        val coverSizeMethod2 = totalWidth - coverHorizontalPadding * 2
+        
+        // 决策规则：
+        // 如果方法一 > 方法二，采用方法二，空白用按钮拉高填补
+        // 如果方法二 > 方法一，采用方法一，防止按钮被挤出
+        val coverSize: Dp
+        val bottomHeight: Dp
+        
+        if (coverSizeMethod1 > coverSizeMethod2) {
+            coverSize = coverSizeMethod2
+            bottomHeight = (totalHeight - coverSize).coerceAtLeast(bottomMinHeight)
+        } else {
+            coverSize = coverSizeMethod1
+            bottomHeight = bottomMinHeight
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        controlsSection()
         
-        Spacer(modifier = Modifier.height(24.dp))
+        // 水平padding
+        val horizontalPadding = 16.dp
+        
+        // 使用Column布局：封面占固定高度，按钮占剩余所有空间
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 封面区域 - 高度正好等于封面尺寸
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(coverSize)
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                albumCoverSection(Modifier.size(coverSize))
+            }
+            
+            // 控制按钮区域 - 占据剩余所有空间（至少为bottomHeight）
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(bottomHeight)
+                    .padding(horizontal = horizontalPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // 歌曲信息和进度条
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    songMetadataSection()
+                    playerProgressSection()
+                }
+
+                // 播放控制区
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    controlsSection()
+                }
+            }
+        }
     }
 }
 
@@ -1454,7 +1822,8 @@ private fun FullPlayerLandscapeContent(
     albumCoverSection: @Composable (Modifier) -> Unit,
     songMetadataSection: @Composable () -> Unit,
     playerProgressSection: @Composable () -> Unit,
-    controlsSection: @Composable () -> Unit
+    controlsSection: @Composable () -> Unit,
+    downloadSection: @Composable () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -1508,8 +1877,12 @@ private fun SongMetadataDisplaySection(
     onClickQueue: () -> Unit,
     onClickArtist: () -> Unit,
     onClickComment: () -> Unit,
+    currentQueueSourceName: String,
     modifier: Modifier = Modifier,
-    isPlayingProvider: () -> Boolean = { true }
+    isPlayingProvider: () -> Boolean = { true },
+    onShowFocusSetup: () -> Unit = { },
+    focusTimerState: com.theveloper.pixelplay.presentation.focusmode.FocusTimerState? = null,
+    onEnterFocusMode: () -> Unit = { }
 ) {
     Row(
         modifier
@@ -1530,10 +1903,14 @@ private fun SongMetadataDisplaySection(
                 gradientEdgeColor = gradientEdgeColor,
                 playerViewModel = playerViewModel,
                 onClickArtist = onClickArtist,
+                currentQueueSourceName = currentQueueSourceName,
                 modifier = Modifier
                     .weight(1f)
                     .align(Alignment.CenterVertically),
-                isPlayingProvider = isPlayingProvider
+                isPlayingProvider = isPlayingProvider,
+                songId = currentSong.id,
+                songNeteaseId = currentSong.neteaseId,
+                songContentUriString = currentSong.contentUriString
             )
         }
         
@@ -1611,6 +1988,36 @@ private fun SongMetadataDisplaySection(
                         tint = chipContentColor
                     )
                 }
+                // 学习钟入口按钮（横屏/平板模式下显示，与其他按钮风格一致）
+                if (focusTimerState != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(height = 42.dp, width = 50.dp)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 6.dp,
+                                    topEnd = 6.dp,
+                                    bottomStart = 6.dp,
+                                    bottomEnd = 6.dp
+                                )
+                            )
+                            .background(chipColor)
+                            .clickable {
+                                if (focusTimerState.currentPhase == com.theveloper.pixelplay.presentation.focusmode.FocusPhase.IDLE) {
+                                    onShowFocusSetup()
+                                } else {
+                                    onEnterFocusMode()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_schedule_24),
+                            contentDescription = "Focus mode",
+                            tint = chipContentColor
+                        )
+                    }
+                }
                 Box(
                     modifier = Modifier
                         .size(height = 42.dp, width = 50.dp)
@@ -1660,6 +2067,23 @@ private fun SongMetadataDisplaySection(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val hasBluetooth by playerViewModel.hasBluetoothOutput.collectAsStateWithLifecycle()
+                val btLyricsEnabled by playerViewModel.bluetoothLyricsEnabled.collectAsStateWithLifecycle()
+                if (hasBluetooth) {
+                    FilledIconButton(
+                        modifier = Modifier.size(width = 48.dp, height = 48.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = if (btLyricsEnabled) chipContentColor else chipColor,
+                            contentColor = if (btLyricsEnabled) chipColor else chipContentColor
+                        ),
+                        onClick = { playerViewModel.toggleBluetoothLyrics() }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_bluetooth_24),
+                            contentDescription = "Bluetooth Lyrics"
+                        )
+                    }
+                }
                 FilledIconButton(
                     modifier = Modifier
                         .size(width = 48.dp, height = 48.dp),
@@ -1727,11 +2151,22 @@ private fun resolveCommentSongId(song: Song): String {
         return neteaseId.toString()
     }
 
+    // 1b) 如果 song id 以 "roaming_" 开头，提取后面的数字作为网易云ID
+    if (song.id.startsWith("roaming_", ignoreCase = true)) {
+        val numericPart = song.id.removePrefix("roaming_")
+        val numericId = numericPart.toLongOrNull()
+        if (numericId != null && numericId > 0L) {
+            return numericId.toString()
+        }
+    }
+
     val contentUri = song.contentUriString
     if (contentUri.isNotBlank()) {
-        // 2) netease://xxxx
+        // 2) netease://{id} 或 netease://{id}?url={encodedUrl} 格式
         if (contentUri.startsWith("netease://", ignoreCase = true)) {
-            val part = contentUri.removePrefix("netease://")
+            val part = contentUri
+                .removePrefix("netease://")
+                .substringBefore('?')
             val numeric = part.toLongOrNull()
             if (numeric != null && numeric > 0L) {
                 return numeric.toString()
@@ -2292,8 +2727,12 @@ private fun PlayerSongInfo(
     gradientEdgeColor: Color,
     playerViewModel: PlayerViewModel,
     onClickArtist: () -> Unit,
+    currentQueueSourceName: String,
     modifier: Modifier = Modifier,
-    isPlayingProvider: () -> Boolean = { true }
+    isPlayingProvider: () -> Boolean = { true },
+    songId: String? = null,
+    songNeteaseId: Long? = null,
+    songContentUriString: String = ""
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isNavigatingToArtist by remember { mutableStateOf(false) }
@@ -2318,10 +2757,71 @@ private fun PlayerSongInfo(
                 .fillMaxWidth()
             .graphicsLayer {
                 val fraction = expansionFractionProvider()
-                alpha = fraction // Or apply specific fade logic if desired
+                alpha = fraction
                 translationY = (1f - fraction) * 24f
             }
     ) {
+        val isRoaming by playerViewModel.isRoamingMode.collectAsStateWithLifecycle(initialValue = false)
+        // contentUri 为 netease://{id}?url={encodedUrl} 格式，表示JS引擎漫游播放的收藏歌曲
+        val isNeteaseWithEmbeddedUrl = songContentUriString.startsWith("netease://") && songContentUriString.contains("?url=")
+        // isVipRoamingSong: 原始漫游歌曲（roaming_开头）或 收藏的漫游歌曲（netease://?url= 格式）
+        val isVipRoamingSong = (songId != null && songNeteaseId != null && songId.startsWith("roaming_")) ||
+            (songNeteaseId != null && isNeteaseWithEmbeddedUrl)
+        // isNeteaseSong: 纯网易云歌曲（有 neteaseId 但不是通过JS引擎播放的漫游歌曲）
+        val isNeteaseSong = songNeteaseId != null && !isVipRoamingSong && !isNeteaseWithEmbeddedUrl
+        val hasSourceLabel = currentQueueSourceName.isNotBlank() && currentQueueSourceName != "本地音乐"
+        val hasAnySourceLabel = isRoaming || isVipRoamingSong || isNeteaseSong || hasSourceLabel
+        if (hasAnySourceLabel) {
+            val scrollState = rememberScrollState()
+            Row(
+                modifier = Modifier
+                    .padding(bottom = 6.dp)
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 单个来源标签的通用样式：限定最大宽度 + 单行省略，避免过长文本挤压其它内容
+                val labelTextModifier: Modifier = Modifier
+                    .padding(start = 4.dp)
+                    .widthIn(max = 120.dp)
+                val labelTextStyle = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = artistTextColor
+                )
+                val iconModifier = Modifier.size(14.dp)
+                val labelInnerPadding = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                val surfaceShape = RoundedCornerShape(12.dp)
+                val surfaceColor = textColor.copy(alpha = 0.1f)
+
+                if (isRoaming) {
+                    Surface(
+                        shape = surfaceShape,
+                        color = surfaceColor,
+                        tonalElevation = 0.dp
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = labelInnerPadding
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.rounded_wifi_24),
+                                contentDescription = null,
+                                tint = artistTextColor,
+                                modifier = iconModifier
+                            )
+                            Text(
+                                text = "漫游模式",
+                                style = labelTextStyle,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = labelTextModifier
+                            )
+                        }
+                    }
+                }
+            }
+        }
         // We pass 1f to AutoScrollingTextOnDemand because the alpha/translation is now handled by the parent Column graphicsLayer
         // and we want it "fully rendered" but hidden/moved by the layer.
         // Actually, AutoScrollingTextOnDemand uses expansionFraction to start scrolling only when fully expanded?
@@ -2367,7 +2867,7 @@ private fun PlayerSongInfo(
                     coroutineScope.launch {
                         isNavigatingToArtist = true
                         try {
-                            playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId)
+                            playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId, songNeteaseId)
                         } finally {
                             isNavigatingToArtist = false
                         }
@@ -2701,17 +3201,31 @@ private fun BottomToggleRow(
     isFavoriteProvider: () -> Boolean,
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
-    onFavoriteToggle: () -> Unit
+    onFavoriteToggle: () -> Unit,
+    isOnlineSong: Boolean,
+    onDownloadClick: () -> Unit,
+    downloadProgress: Float?,
+    isDownloadComplete: Boolean,
+    isDownloadFailed: Boolean,
+    surfaceContainerLowest: Color,
+    onSurface: Color,
+    primaryFixed: Color,
+    onPrimaryFixed: Color,
+    secondaryFixed: Color,
+    onSecondaryFixed: Color,
+    tertiaryFixed: Color,
+    onTertiaryFixed: Color,
 ) {
     val isFavorite = isFavoriteProvider()
     val rowCorners = 60.dp
-    val inactiveBg = LocalMaterialTheme.current.onSurface.copy(alpha = 0.07f)
-    val inactiveContentColor = LocalMaterialTheme.current.onSurface
+
+    val inactiveBg = onSurface.copy(alpha = 0.07f)
+    val inactiveContentColor = onSurface
 
 
     Box(
         modifier = modifier.background(
-            color = LocalMaterialTheme.current.surfaceContainerLowest.copy(alpha = 0.7f),
+            color = surfaceContainerLowest.copy(alpha = 0.7f),
             shape = AbsoluteSmoothCornerShape(
                 cornerRadiusBL = rowCorners,
                 smoothnessAsPercentTR = 60,
@@ -2750,9 +3264,9 @@ private fun BottomToggleRow(
                 modifier = commonModifier,
                 active = isShuffleEnabled,
                 enabled = !isShuffleTransitionInProgress,
-                activeColor = LocalMaterialTheme.current.primaryFixed,
+                activeColor = primaryFixed,
                 activeCornerRadius = rowCorners,
-                activeContentColor = LocalMaterialTheme.current.onPrimaryFixed,
+                activeContentColor = onPrimaryFixed,
                 inactiveColor = inactiveBg,
                 inactiveContentColor = inactiveContentColor,
                 onClick = onShuffleToggle,
@@ -2768,21 +3282,52 @@ private fun BottomToggleRow(
             ToggleSegmentButton(
                 modifier = commonModifier,
                 active = repeatActive,
-                activeColor = LocalMaterialTheme.current.secondaryFixed,
+                activeColor = secondaryFixed,
                 activeCornerRadius = rowCorners,
-                activeContentColor = LocalMaterialTheme.current.onSecondaryFixed,
+                activeContentColor = onSecondaryFixed,
                 inactiveColor = inactiveBg,
                 inactiveContentColor = inactiveContentColor,
                 onClick = onRepeatToggle,
                 iconId = repeatIcon,
                 contentDesc = "Repetir"
             )
+            if (isOnlineSong) {
+                Box(modifier = commonModifier) {
+                    if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(AbsoluteSmoothCornerShape(cornerRadiusBL = rowCorners, smoothnessAsPercentTR = 60, cornerRadiusBR = rowCorners, smoothnessAsPercentBL = 60, cornerRadiusTL = rowCorners, smoothnessAsPercentBR = 60, cornerRadiusTR = rowCorners, smoothnessAsPercentTL = 60))
+                                .background(primaryFixed)
+                                .fillMaxWidth(downloadProgress / 100f)
+                                .align(Alignment.CenterStart)
+                        )
+                    }
+                    ToggleSegmentButton(
+                        modifier = Modifier.fillMaxSize(),
+                        active = downloadProgress != null || isDownloadComplete,
+                        activeColor = if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed) Color.Transparent else primaryFixed,
+                        activeCornerRadius = rowCorners,
+                        activeContentColor = onPrimaryFixed,
+                        inactiveColor = inactiveBg,
+                        inactiveContentColor = inactiveContentColor,
+                        onClick = onDownloadClick,
+                        iconId = when {
+                            isDownloadComplete -> R.drawable.rounded_check_circle_24
+                            isDownloadFailed -> R.drawable.rounded_close_24
+                            downloadProgress != null -> R.drawable.rounded_download_24
+                            else -> R.drawable.rounded_download_24
+                        },
+                        contentDesc = "Download"
+                    )
+                }
+            }
             ToggleSegmentButton(
                 modifier = commonModifier,
                 active = isFavorite,
-                activeColor = LocalMaterialTheme.current.tertiaryFixed,
+                activeColor = tertiaryFixed,
                 activeCornerRadius = rowCorners,
-                activeContentColor = LocalMaterialTheme.current.onTertiaryFixed,
+                activeContentColor = onTertiaryFixed,
                 inactiveColor = inactiveBg,
                 inactiveContentColor = inactiveContentColor,
                 onClick = onFavoriteToggle,

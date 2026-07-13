@@ -333,17 +333,143 @@ class LxSearchApi @Inject constructor(
 
             val lrcObj = root.optJSONObject("lrc")
             val lrcText = lrcObj?.optString("lyric")?.takeIf { it.isNotBlank() }
+
+            // 同时获取翻译歌词
+            val tlyricObj = root.optJSONObject("tlyric")
+            val tlyricText = tlyricObj?.optString("lyric")?.takeIf { it.isNotBlank() }
+
+            // 场景1：原文 + 翻译都有 -> 按时间戳合并返回
+            if (lrcText != null && tlyricText != null) {
+                Timber.d("getLyric: combining lrc + tlyric for songId=$songId")
+                return@withContext mergeLrcWithTranslation(lrcText, tlyricText)
+            }
+
+            // 场景2：只有原文 -> 返回原文
             if (lrcText != null) return@withContext lrcText
 
-            // 某些实现返回 klyric / tlyric（逐字歌词/翻译歌词），作为兜底
-            val tlyric = root.optJSONObject("tlyric")?.optString("lyric").orEmpty()
-            if (tlyric.isNotBlank()) return@withContext tlyric
+            // 场景3：只有翻译 -> 返回翻译（作为兜底）
+            if (tlyricText != null) return@withContext tlyricText
+
+            // 场景4：klyric 等其他字段作为终极兜底
+            val klyric = root.optJSONObject("klyric")?.optString("lyric").orEmpty()
+            if (klyric.isNotBlank()) return@withContext klyric
 
             return@withContext null
         } catch (e: Exception) {
             Timber.e(e, "获取歌词异常: $songId")
             null
         }
+    }
+
+    /**
+     * 合并 LRC 与翻译 LRC：智能选择含中文字符更多的一方作为主文本，
+     * 然后按时间戳排序后，主文本行之后紧跟相同时间戳的次文本行。
+     * LyricsUtils.parseLyrics() 的 pairTranslationLines() 会根据相同时间戳自动配对翻译。
+     */
+    private fun mergeLrcWithTranslation(lrcText: String, tlyricText: String): String {
+        // 判断哪一侧含更多中文字符——中文多的作为主文本（line.line），
+        // 另一方作为翻译/次文本（line.translation）。
+        // 这样：中文歌曲的 lrc（中文）为主文本，英文歌曲的 tlyric（中文翻译）为主文本。
+        val cjkRegex = Regex("[\\u4e00-\\u9fff]")
+        val lrcCjkCount = cjkRegex.findAll(lrcText).count()
+        val tlyricCjkCount = cjkRegex.findAll(tlyricText).count()
+        val preferTlyricAsPrimary = tlyricCjkCount > lrcCjkCount
+
+        val primarySource = if (preferTlyricAsPrimary) tlyricText else lrcText
+        val secondarySource = if (preferTlyricAsPrimary) lrcText else tlyricText
+
+        val originalLines = primarySource.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+        val translationLines = secondarySource.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+
+        // 提取 [mm:ss.xx] 时间戳 -> 文本内容，过滤掉非歌词行（如 [by:xxx] [ti:xxx] 元数据）
+        val timestampLineRegex = Regex("^\\[(\\d{1,3}):(\\d{2})(?:[.:](\\d{1,3}))?](.*)")
+
+        data class TimedLine(val timestampMs: Long, val text: String, val rawPrefix: String, var used: Boolean = false)
+
+        fun parseTimedLines(lines: List<String>): List<TimedLine> {
+            val result = mutableListOf<TimedLine>()
+            for (rawLine in lines) {
+                val matchResult = timestampLineRegex.find(rawLine) ?: continue
+                val minutes = matchResult.groupValues[1].toLong()
+                val seconds = matchResult.groupValues[2].toLong()
+                val fracStr = matchResult.groupValues[3].ifBlank { "0" }
+                val frac = when (fracStr.length) {
+                    1 -> fracStr.toLong() * 100L
+                    2 -> fracStr.toLong() * 10L
+                    3 -> fracStr.toLong()
+                    else -> fracStr.padEnd(3, '0').take(3).toLong()
+                }
+                val timestampMs = minutes * 60_000L + seconds * 1_000L + frac
+                val text = matchResult.groupValues[4].trim()
+                if (text.isNotBlank()) {
+                    result.add(TimedLine(timestampMs, text, rawLine))
+                }
+            }
+            return result
+        }
+
+        val originalTimed = parseTimedLines(originalLines)
+        val translationTimed = parseTimedLines(translationLines)
+
+        // 如果原文没有时间戳，但翻译有时间戳（或反之），直接用翻译内容拼接
+        if (originalTimed.isEmpty()) {
+            return originalLines.joinToString("\n")
+        }
+
+        if (translationTimed.isEmpty()) {
+            return originalLines.joinToString("\n")
+        }
+
+        // 按主文本顺序输出，每行主文本后紧跟相同时间戳的次文本行
+        val output = mutableListOf<String>()
+
+        // 先复制所有非歌词元数据行（如 [by:xxx]），从主文本中提取
+        val metaLineRegex = Regex("^\\[(by|ti|ar|al|au|re|ve|offset|length):.*]", RegexOption.IGNORE_CASE)
+        originalLines.forEach { raw ->
+            if (metaLineRegex.matches(raw)) {
+                output.add(raw)
+            }
+        }
+
+        // 生成合并后的歌词行：
+        // 1) 首先尝试精确时间戳匹配（translationTimed 中未被使用的）
+        // 2) 如果没有精确匹配，使用最近邻匹配（±500ms 容差内距离最小的未使用翻译行）
+        // 3) 每次匹配成功后标记该行已使用，避免重复使用
+        val tolerance = 500L
+
+        for (orig in originalTimed) {
+            // 输出原文行：使用规范化后的时间戳格式，确保 LyricsUtils.LRC_LINE_REGEX 能正确解析
+            output.add("[${formatMsToLrcTimestamp(orig.timestampMs)}]${orig.text}")
+
+            // 精确时间戳匹配（优先使用未被使用的行）
+            val exactMatch = translationTimed
+                .firstOrNull { !it.used && it.timestampMs == orig.timestampMs }
+            if (exactMatch != null) {
+                exactMatch.used = true
+                output.add("[${formatMsToLrcTimestamp(orig.timestampMs)}]${exactMatch.text}")
+                continue
+            }
+
+            // 最近邻匹配：在 ±500ms 范围内找距离最小的未使用翻译行
+            val closestMatch = translationTimed
+                .filter { !it.used && Math.abs(it.timestampMs - orig.timestampMs) <= tolerance }
+                .minByOrNull { Math.abs(it.timestampMs - orig.timestampMs) }
+
+            if (closestMatch != null) {
+                closestMatch.used = true
+                output.add("[${formatMsToLrcTimestamp(orig.timestampMs)}]${closestMatch.text}")
+            }
+        }
+
+        return output.joinToString("\n")
+    }
+
+    private fun formatMsToLrcTimestamp(ms: Long): String {
+        val totalSeconds = ms / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        val hundredths = (ms % 1000) / 10
+        return String.format("%02d:%02d.%02d", minutes, seconds, hundredths)
     }
 
     /**

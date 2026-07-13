@@ -11,7 +11,9 @@ data class LxSongInfo(
     val singer: String = "",
     val albumName: String = "",
     val duration: Long = 0L,
-    val pic: String = ""
+    val pic: String = "",
+    /** 播放时成功获取 URL 的音源标识（如 "wy", "tx", "kw" 等）。从媒体库播放时会用它来调用 JS 引擎。 */
+    val source: String = ""
 )
 
 @Serializable

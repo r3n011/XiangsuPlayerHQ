@@ -96,6 +96,8 @@ import java.util.Locale
 import android.text.format.DateFormat as AndroidDateFormat
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -179,6 +181,7 @@ fun RecentlyPlayedScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundBrush)
+            .hazeSource(MainActivity.LocalHazeState.current)
     ) {
         if (recentlyPlayedSourceSongs == null) {
             Box(

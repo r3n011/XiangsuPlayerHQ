@@ -31,23 +31,34 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.isSystemInDarkTheme
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,7 +73,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -208,6 +219,12 @@ private data class DismissUndoBarSlice(
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        val LocalHazeState = androidx.compose.runtime.staticCompositionLocalOf<dev.chrisbanes.haze.HazeState> {
+            error("No HazeState provided")
+        }
+    }
+
     private val playerViewModel: PlayerViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
     private var isUIVisiblyReady = false
@@ -228,31 +245,71 @@ class MainActivity : ComponentActivity() {
 
     @CallSuper
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLocaleManager.wrapContext(newBase))
+        try {
+            // Install crash handler as early as possible
+            CrashHandler.install(newBase)
+            android.util.Log.i("PixelPlay", "MainActivity attachBaseContext: SDK=${android.os.Build.VERSION.SDK_INT}")
+            super.attachBaseContext(AppLocaleManager.wrapContext(newBase))
+        } catch (t: Throwable) {
+            android.util.Log.e("PixelPlay", "CRITICAL: attachBaseContext failed: ${t.message}", t)
+            super.attachBaseContext(newBase) // fallback
+        }
     }
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        android.util.Log.i("PixelPlay", "=== MainActivity.onCreate START ===")
+        android.util.Log.i("PixelPlay", "Device SDK: ${android.os.Build.VERSION.SDK_INT}, Model: ${android.os.Build.MODEL}")
         LogUtils.d(this, "onCreate")
-        val splashScreen = installSplashScreen()
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            ),
-            navigationBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            )
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.isNavigationBarContrastEnforced = false
+
+        var splashScreen: androidx.core.splashscreen.SplashScreen? = null
+        try {
+            splashScreen = installSplashScreen()
+            android.util.Log.i("PixelPlay", "installSplashScreen() completed")
+        } catch (t: Throwable) {
+            android.util.Log.e("PixelPlay", "installSplashScreen failed: ${t.message}", t)
         }
-        super.onCreate(savedInstanceState)
+
+        try {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.auto(
+                    android.graphics.Color.TRANSPARENT,
+                    android.graphics.Color.TRANSPARENT
+                ),
+                navigationBarStyle = SystemBarStyle.auto(
+                    android.graphics.Color.TRANSPARENT,
+                    android.graphics.Color.TRANSPARENT
+                )
+            )
+            android.util.Log.i("PixelPlay", "enableEdgeToEdge() completed")
+        } catch (t: Throwable) {
+            android.util.Log.e("PixelPlay", "enableEdgeToEdge failed: ${t.message}", t)
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = false
+                android.util.Log.i("PixelPlay", "isNavigationBarContrastEnforced set")
+            }
+        } catch (t: Throwable) {
+            android.util.Log.e("PixelPlay", "isNavigationBarContrastEnforced failed: ${t.message}", t)
+        }
+
+        try {
+            super.onCreate(savedInstanceState)
+            android.util.Log.i("PixelPlay", "super.onCreate() completed")
+        } catch (t: Throwable) {
+            android.util.Log.e("PixelPlay", "FATAL: super.onCreate() failed: ${t.message}", t)
+            throw t // Cannot recover from this
+        }
 
         // MD3 Optimization: Release Splash Screen immediately to render UI skeleton.
         // Data loading is handled via optimistic UI and smooth transitions.
-        splashScreen.setKeepOnScreenCondition { false }
+        try {
+            splashScreen?.setKeepOnScreenCondition { false }
+        } catch (t: Throwable) {
+            android.util.Log.e("PixelPlay", "splashScreen.setKeepOnScreenCondition failed: ${t.message}", t)
+        }
 
         // LEER SEÑAL DE BENCHMARK
         val isBenchmarkMode = intent.getBooleanExtra("is_benchmark", false)
@@ -276,12 +333,21 @@ class MainActivity : ComponentActivity() {
             val systemDarkTheme = isSystemInDarkTheme()
             val appThemeMode by themePreferencesRepository.appThemeModeFlow.collectAsStateWithLifecycle(initialValue = AppThemeMode.FOLLOW_SYSTEM)
             val showScrollbar by userPreferencesRepository.showScrollbarFlow.collectAsStateWithLifecycle(initialValue = true)
+            val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
             val useDarkTheme = when (appThemeMode) {
                 AppThemeMode.DARK -> true
                 AppThemeMode.LIGHT -> false
                 else -> systemDarkTheme
             }
             val isSetupComplete by mainViewModel.isSetupComplete.collectAsStateWithLifecycle()
+            
+            LaunchedEffect(isCarModeEnabled) {
+                requestedOrientation = if (isCarModeEnabled) {
+                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                } else {
+                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+            }
             
             // Crash report dialog state
             var showCrashReportDialog by remember { mutableStateOf(false) }
@@ -325,51 +391,52 @@ class MainActivity : ComponentActivity() {
                 PixelPlayTheme(
                     darkTheme = useDarkTheme
                 ) {
-                    var contentVisible by remember { mutableStateOf(false) }
-                    val contentAlpha by animateFloatAsState(
-                        targetValue = if (contentVisible) 1f else 0f,
-                        animationSpec = tween(600, easing = LinearOutSlowInEasing),
-                        label = "AppContentAlpha"
-                    )
+                    var splashFinished by remember { mutableStateOf(false) }
 
                     LaunchedEffect(Unit) {
-                        // Delay slightly to ensure first frame layout is done behind Splash
-                        delay(100)
-                        contentVisible = true
+                        delay(500)
+                        splashFinished = true
                     }
 
                     Surface(
-                        modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }, 
+                        modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        if (showSetupScreen == null) {
-                            SetupGateLoadingScreen()
-                        } else {
-                            AnimatedContent(
-                                targetState = showSetupScreen,
-                                transitionSpec = {
-                                    if (targetState) {
-                                        // Transition to Setup
-                                        fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
-                                    } else {
-                                        // Transition from Setup to Main App
-                                        scaleIn(initialScale = 0.95f, animationSpec = tween(450)) + fadeIn(animationSpec = tween(450)) togetherWith
-                                                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(450)) + fadeOut(animationSpec = tween(450))
-                                    }
-                                },
-                                label = "SetupTransition"
-                            ) { shouldShowSetup ->
-                                if (shouldShowSetup) {
-                                    SetupScreen(onSetupComplete = {
-                                        // Repository-backed setup completion updates the gate automatically.
-                                    })
+                        AnimatedContent(
+                            targetState = splashFinished,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(300))
+                            },
+                            label = "SplashTransition"
+                        ) { isFinished ->
+                            if (!isFinished) {
+                                PixelPlaySplashScreen()
+                            } else {
+                                if (showSetupScreen == null) {
+                                    SetupGateLoadingScreen()
                                 } else {
-                                    MainAppContent(playerViewModel, mainViewModel)
+                                    AnimatedContent(
+                                        targetState = showSetupScreen,
+                                        transitionSpec = {
+                                            if (targetState) {
+                                                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+                                            } else {
+                                                scaleIn(initialScale = 0.95f, animationSpec = tween(450)) + fadeIn(animationSpec = tween(450)) togetherWith
+                                                        slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(450)) + fadeOut(animationSpec = tween(450))
+                                            }
+                                        },
+                                        label = "SetupTransition"
+                                    ) { shouldShowSetup ->
+                                        if (shouldShowSetup) {
+                                            SetupScreen(onSetupComplete = {})
+                                        } else {
+                                            MainAppContent(playerViewModel, mainViewModel)
+                                        }
+                                    }
                                 }
                             }
                         }
 
-                        // Show crash report dialog if needed
                         if (showCrashReportDialog && crashLogData != null) {
                             CrashReportDialog(
                                 crashLog = crashLogData!!,
@@ -524,25 +591,103 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    private fun SetupGateLoadingScreen() {
+    private fun PixelPlaySplashScreen() {
+        val colorScheme = MaterialTheme.colorScheme
+        var textVisible by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            delay(50)
+            textVisible = true
+        }
+
+        val textAlpha by animateFloatAsState(
+            targetValue = if (textVisible) 1f else 0f,
+            animationSpec = tween(400, easing = LinearOutSlowInEasing),
+            label = "SplashTextAlpha"
+        )
+        val textScale by animateFloatAsState(
+            targetValue = if (textVisible) 1f else 0.9f,
+            animationSpec = tween(400, easing = LinearOutSlowInEasing),
+            label = "SplashTextScale"
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                .background(colorScheme.surface),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Xiangsu Player",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                modifier = Modifier.graphicsLayer {
+                    alpha = textAlpha
+                    scaleX = textScale
+                    scaleY = textScale
+                }
+            )
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    @Composable
+    private fun SetupGateLoadingScreen() {
+        val colorScheme = MaterialTheme.colorScheme
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colorScheme.surface),
             contentAlignment = Alignment.Center
         ) {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                CircularWavyProgressIndicator()
-                Spacer(modifier = Modifier.height(20.dp))
+                // 应用 Logo 容器
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "♫",
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onPrimary,
+                        fontSize = 48.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 应用名称
                 Text(
-                    text = "Preparing setup…",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "PixelPlay",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+
+                // 副标题
+                Text(
+                    text = "正在为您准备音乐体验…",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 加载指示器 - 使用标准 CircularProgressIndicator 兼容低版本 Android
+                CircularProgressIndicator(modifier = Modifier.size(40.dp))
             }
         }
     }
@@ -556,6 +701,7 @@ class MainActivity : ComponentActivity() {
         val isLibraryEmpty by mainViewModel.isLibraryEmpty.collectAsStateWithLifecycle()
         val hasCompletedInitialSync by mainViewModel.hasCompletedInitialSync.collectAsStateWithLifecycle()
         val syncProgress by mainViewModel.syncProgress.collectAsStateWithLifecycle()
+        val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
         
         // isMediaControllerReady used below for playlist navigation gate
         val isMediaControllerReady by playerViewModel.isMediaControllerReady.collectAsStateWithLifecycle()
@@ -643,11 +789,13 @@ class MainActivity : ComponentActivity() {
 
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
 
         val commonNavItems = remember {
             persistentListOf(
                 BottomNavItem("Home", R.string.nav_bar_home, R.drawable.rounded_home_24, R.drawable.home_24_rounded_filled, screen = Screen.Home),
                 BottomNavItem("Search", R.string.nav_bar_search, R.drawable.rounded_search_24, R.drawable.rounded_search_24, screen = Screen.Search),
+                BottomNavItem("Roaming", R.string.nav_bar_roaming, R.drawable.rounded_play_arrow_24, R.drawable.rounded_play_arrow_filled_24, screen = Screen.Roaming),
                 BottomNavItem("Library", R.string.nav_bar_library, R.drawable.rounded_library_music_24, R.drawable.round_library_music_24, screen = Screen.Library),
                 BottomNavItem("Settings", R.string.settings_top_bar_title, R.drawable.rounded_settings_24, R.drawable.rounded_settings_24, screen = Screen.Settings)
             )
@@ -731,6 +879,7 @@ class MainActivity : ComponentActivity() {
         val isMiniPlayerDismissing by playerViewModel.isMiniPlayerDismissing.collectAsStateWithLifecycle()
         val hapticsEnabled by playerViewModel.hapticsEnabled.collectAsStateWithLifecycle()
         val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
+        val navBarBlurEnabled by playerViewModel.navBarBlurEnabled.collectAsStateWithLifecycle()
         val predictiveBackCollapseFraction by playerViewModel.predictiveBackCollapseFraction.collectAsStateWithLifecycle()
         val rootView = LocalView.current
         val platformHapticFeedback = LocalHapticFeedback.current
@@ -740,6 +889,7 @@ class MainActivity : ComponentActivity() {
         val scopedHapticFeedback = remember(platformHapticFeedback, appHapticsConfig.enabled) {
             if (appHapticsConfig.enabled) platformHapticFeedback else NoOpHapticFeedback
         }
+        val hazeState = remember { dev.chrisbanes.haze.HazeState() }
 
         val systemNavBarInset = sanitizeNavigationBarBottomInset(
             WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -790,8 +940,8 @@ class MainActivity : ComponentActivity() {
         }
 
         // NavigationRail 的水平 padding:使用稳定值,不依赖动画值,避免位置抖动
-        val navRailPaddingDp = if (isLandscape) {
-            // 横屏时,始终给内容留出 80dp 的 Rail 空间
+        val navRailPaddingDp = if (isLandscape && !isCarModeEnabled) {
+            // 横屏且非车机模式时,给内容留出 80dp 的 Rail 空间
             // 不使用动画值,避免 sheetCollapsedTargetY 每帧变化
             80.dp
         } else {
@@ -834,7 +984,8 @@ class MainActivity : ComponentActivity() {
 
         CompositionLocalProvider(
             LocalAppHapticsConfig provides appHapticsConfig,
-            LocalHapticFeedback provides scopedHapticFeedback
+            LocalHapticFeedback provides scopedHapticFeedback,
+            LocalHazeState provides hazeState
         ) {
             // Auto-close sidebar drawer when player expands
             LaunchedEffect(isPlayerExpanded) {
@@ -870,13 +1021,15 @@ class MainActivity : ComponentActivity() {
         ) {
 
                 Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                    if (isLandscape) {
+                    if (isLandscape && !isCarModeEnabled) {
                         // ⚡ 横屏 NavigationRail:使用独立的 Composable,通过 Stable 参数提升重组性能
+                        // 车机模式下隐藏导航栏,为驾驶场景优化
                         MainNavigationRail(
                             navController = navController,
                             navItems = commonNavItems,
                             currentRoute = currentRoute,
-                            navRailProgressState = navRailProgressState
+                            navRailProgressState = navRailProgressState,
+                            onRoamingClick = { playerViewModel.startRoamingMode() }
                         )
                     }
 
@@ -914,13 +1067,18 @@ class MainActivity : ComponentActivity() {
                             val expansionFractionProvider = remember(playerViewModel.playerContentExpansionFraction) {
                                 { playerViewModel.playerContentExpansionFraction.value }
                             }
-                            val blurEffectCache = remember { BlurEffectCache() }
+                            // Only create BlurEffectCache on Android 12+ to avoid class loading issues on older devices
+                            val blurEffectCache = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                remember { BlurEffectCache() }
+                            } else {
+                                null
+                            }
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurEffectCache != null) {
                                             if (disableBlurAllOver) {
                                                 renderEffect = null
                                             } else {
@@ -1054,7 +1212,8 @@ class MainActivity : ComponentActivity() {
                         containerHeight = containerHeight,
                         navController = navController,
                         isNavBarHidden = isNavBarHiddenValue,
-                        navRailPadding = navRailPaddingDp
+                        navRailPadding = navRailPaddingDp,
+                        isLandscape = isLandscape
                     )
                 }
 
@@ -1116,6 +1275,7 @@ Trace.endSection()
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     private fun LoadingOverlay(syncProgress: SyncProgress) {
+        val colorScheme = MaterialTheme.colorScheme
         // Animate progress smoothly instead of jumping in steps
         val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
             targetValue = syncProgress.progress,
@@ -1125,45 +1285,66 @@ Trace.endSection()
             ),
             label = "SyncProgressAnimation"
         )
-        
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.9f))
+                .background(colorScheme.surfaceContainer.copy(alpha = 0.92f))
                 .clickable(enabled = false, onClick = {}),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 32.dp)
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 32.dp)
+                    .fillMaxWidth(),
+                color = colorScheme.surfaceContainerHigh,
+                tonalElevation = 4.dp,
+                shape = RoundedCornerShape(28.dp)
             ) {
-                CircularWavyProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Preparing your library...",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                
-                if (syncProgress.hasProgress) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    androidx.compose.material3.LinearWavyProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp, vertical = 40.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        text = "Scanned ${syncProgress.currentCount} of ${syncProgress.totalCount} songs",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "正在准备您的音乐库…",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                        textAlign = TextAlign.Center
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "首次启动需要扫描本地歌曲",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (syncProgress.hasProgress) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        androidx.compose.material3.LinearWavyProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                            trackColor = colorScheme.surfaceContainerHighest
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "已扫描 ${syncProgress.currentCount} / ${syncProgress.totalCount} 首歌曲",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
     }
 
 
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class, androidx.compose.ui.graphics.ExperimentalGraphicsApi::class)
     @Composable
     private fun MainBottomNavigationBar(
         playerViewModel: PlayerViewModel,
@@ -1185,12 +1366,25 @@ Trace.endSection()
         // 使用 Stable 参数,Compose 可以在参数不变时跳过重组
         val showPlayerContentArea = currentSongId != null
         val navBarElevation = 3.dp
+        val navBarBlurEnabledState by playerViewModel.navBarBlurEnabled.collectAsStateWithLifecycle()
+        val disableBlurAllOverState by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
 
         val densityLocal = LocalDensity.current
         val navBarCornerRadiusStaticPx = remember(navBarCornerRadius, densityLocal) {
             with(densityLocal) { navBarCornerRadius.dp.toPx() }
         }
         val playerTopCornerTargetPx = remember(densityLocal) { with(densityLocal) { 26.dp.toPx() } }
+        // 导航条背景模糊效果缓存
+        val navBarBlurEffectCache = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            remember { BlurEffectCache() }
+        } else {
+            null
+        }
+        // For DEFAULT nav bar style: when music is playing, nav bar top corners should match
+        // the now playing bar's bottom corners (10.dp). Without music: use user configured value.
+        val nowPlayingBottomRadiusPx = remember(densityLocal) {
+            with(densityLocal) { 10.dp.toPx() }
+        }
 
         var componentHeightPx by remember { mutableStateOf(0) }
         val shadowOverflowPx = remember(navBarElevation, densityLocal) {
@@ -1238,6 +1432,14 @@ Trace.endSection()
                         val safeFraction = fraction.coerceIn(0f, 1f)
                         val topPx = when {
                             navBarStyle == NavBarStyle.DEFAULT -> {
+                                // When music is playing: start from nowPlayingBottomRadius (10.dp)
+                                // to match the now playing bar's bottom corners.
+                                // When no music: keep user configured nav bar radius.
+                                val baseRadius = if (showPlayerContentArea && !isMiniPlayerDismissing) {
+                                    nowPlayingBottomRadiusPx
+                                } else {
+                                    navBarCornerRadiusStaticPx
+                                }
                                 val target = if (showPlayerContentArea && !isMiniPlayerDismissing) {
                                     playerTopCornerTargetPx
                                 } else {
@@ -1245,7 +1447,7 @@ Trace.endSection()
                                 }
                                 val transitionFraction = (safeFraction / 0.2f).coerceIn(0f, 1f)
                                 androidx.compose.ui.util.lerp(
-                                    navBarCornerRadiusStaticPx,
+                                    baseRadius,
                                     target,
                                     transitionFraction
                                 )
@@ -1285,7 +1487,19 @@ Trace.endSection()
                     compactMode = navBarCompactMode,
                     bottomBarPadding = bottomBarPadding,
                     onSearchIconDoubleTap = onSearchIconDoubleTap,
-                    modifier = Modifier.fillMaxSize()
+                    onRoamingClick = { playerViewModel.startRoamingMode() },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (navBarBlurEnabledState && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !disableBlurAllOverState) {
+                                Modifier.hazeEffect(
+                                    state = LocalHazeState.current,
+                                    style = dev.chrisbanes.haze.materials.HazeMaterials.ultraThin()
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
             }
         }
@@ -1297,7 +1511,8 @@ Trace.endSection()
         navController: NavHostController,
         navItems: kotlinx.collections.immutable.ImmutableList<BottomNavItem>,
         currentRoute: String?,
-        navRailProgressState: androidx.compose.runtime.State<Float>
+        navRailProgressState: androidx.compose.runtime.State<Float>,
+        onRoamingClick: () -> Unit = {}
     ) {
         NavigationRail(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -1312,40 +1527,92 @@ Trace.endSection()
         ) {
             navItems.forEach { item ->
                 val selected = currentRoute != null && currentRoute == item.screen.route
-                // ⚡ onClick lambda 用 remember(item.route, navController) 缓存,
-                // currentRoute 变化时不会重建 onClick(因为 key 不包含 currentRoute)
+                val isRoaming = item.screen.route == Screen.Roaming.route
                 val onClickLambda: () -> Unit = remember(item.screen.route, navController) {
                     {
-                        navController.navigateSafely(item.screen.route) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                        if (isRoaming) {
+                            onRoamingClick()
+                        } else {
+                            navController.navigateSafely(item.screen.route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
                     }
                 }
+
+                val iconColor by animateColorAsState(
+                    targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(150),
+                    label = "NavRailIconColor"
+                )
+
+                val iconScale by animateFloatAsState(
+                    targetValue = if (selected) 1.15f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "NavRailIconScale"
+                )
+
                 NavigationRailItem(
                     selected = selected,
                     onClick = onClickLambda,
                     icon = {
-                        when {
-                            item.imageVectorIcon != null -> Icon(
-                                imageVector = item.imageVectorIcon,
-                                contentDescription = null
-                            )
-                            item.selectedIconResId != null && selected -> Icon(
-                                painter = painterResource(id = item.selectedIconResId),
-                                contentDescription = null
-                            )
-                            item.iconResId != null -> Icon(
-                                painter = painterResource(id = item.iconResId),
-                                contentDescription = null
-                            )
+                        Box(
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                            }
+                        ) {
+                            androidx.compose.animation.AnimatedContent(
+                                targetState = selected,
+                                transitionSpec = {
+                                    fadeIn(tween(120)) togetherWith fadeOut(tween(80))
+                                },
+                                label = "NavRailIconTransition"
+                            ) { isSelected ->
+                                when {
+                                    item.imageVectorIcon != null -> Icon(
+                                        imageVector = item.imageVectorIcon,
+                                        contentDescription = null,
+                                        tint = iconColor
+                                    )
+                                    item.selectedIconResId != null && isSelected -> Icon(
+                                        painter = painterResource(id = item.selectedIconResId),
+                                        contentDescription = null,
+                                        tint = iconColor
+                                    )
+                                    item.iconResId != null -> Icon(
+                                        painter = painterResource(id = item.iconResId),
+                                        contentDescription = null,
+                                        tint = iconColor
+                                    )
+                                }
+                            }
                         }
                     },
                     label = {
-                        androidx.compose.material3.Text(stringResource(item.labelResId))
+                        val labelColor by animateColorAsState(
+                            targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            animationSpec = tween(150),
+                            label = "NavRailLabelColor"
+                        )
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = selected,
+                            enter = fadeIn(tween(150)) + scaleIn(animationSpec = tween(150), initialScale = 0.9f),
+                            exit = fadeOut(tween(100)) + scaleOut(animationSpec = tween(100), targetScale = 0.9f),
+                            label = "NavRailLabelVisibility"
+                        ) {
+                            androidx.compose.material3.Text(
+                                stringResource(item.labelResId),
+                                color = labelColor
+                            )
+                        }
                     }
                 )
             }
@@ -1380,7 +1647,6 @@ Trace.endSection()
     override fun onResume() {
         super.onResume()
     }
-
 
 }
 

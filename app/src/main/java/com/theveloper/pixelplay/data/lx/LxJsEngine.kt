@@ -304,6 +304,83 @@ class LxJsEngine @Inject constructor(
             if (typeof globalThis !== 'undefined') globalThis.lx = _api;
             else if (typeof global !== 'undefined') global.lx = _api;
 
+            if (typeof Promise.allSettled !== 'function') {
+                Promise.allSettled = function(iterable) {
+                    var promises = Array.prototype.slice.call(iterable);
+                    return new Promise(function(resolve) {
+                        if (promises.length === 0) { resolve([]); return; }
+                        var results = new Array(promises.length);
+                        var remaining = promises.length;
+                        for (var i = 0; i < promises.length; i++) {
+                            (function(idx, p) {
+                                var wrapped = (p && typeof p.then === 'function') ? p : Promise.resolve(p);
+                                wrapped.then(function(value) {
+                                    results[idx] = { status: 'fulfilled', value: value };
+                                    if (--remaining === 0) resolve(results);
+                                }, function(reason) {
+                                    results[idx] = { status: 'rejected', reason: reason };
+                                    if (--remaining === 0) resolve(results);
+                                });
+                            })(i, promises[i]);
+                        }
+                    });
+                };
+            }
+
+            var _px_console_log = function() {
+                try {
+                    var args = Array.prototype.slice.call(arguments);
+                    var msg = args.map(function(a) {
+                        if (a === null) return 'null';
+                        if (a === undefined) return 'undefined';
+                        if (typeof a === 'object') {
+                            try { return JSON.stringify(a); } catch(e) { return String(a); }
+                        }
+                        return String(a);
+                    }).join(' ');
+                    __pixelplay_console_log(msg);
+                } catch(e) {}
+            };
+            var _px_console_err = function() {
+                try {
+                    var args = Array.prototype.slice.call(arguments);
+                    var msg = args.map(function(a) {
+                        if (a === null) return 'null';
+                        if (a === undefined) return 'undefined';
+                        if (typeof a === 'object') {
+                            try { return JSON.stringify(a); } catch(e) { return String(a); }
+                        }
+                        return String(a);
+                    }).join(' ');
+                    __pixelplay_console_err(msg);
+                } catch(e) {}
+            };
+            if (typeof console !== 'undefined' && typeof console.stdout !== 'undefined') {
+                try {
+                    console.stdout = function(text) { try { __pixelplay_console_log(String(text)); } catch(e) {} };
+                    console.stderr = function(text) { try { __pixelplay_console_err(String(text)); } catch(e) {} };
+                } catch(e) {}
+            }
+            var _px_console = {
+                log: _px_console_log,
+                error: _px_console_err,
+                warn: _px_console_log,
+                info: _px_console_log,
+                debug: _px_console_log
+            };
+            try {
+                console.log = _px_console_log;
+                console.error = _px_console_err;
+                console.warn = _px_console_log;
+                console.info = _px_console_log;
+                console.debug = _px_console_log;
+            } catch(e) {}
+            if (typeof globalThis !== 'undefined') {
+                if (!globalThis.console) globalThis.console = _px_console;
+            } else if (typeof global !== 'undefined') {
+                if (!global.console) global.console = _px_console;
+            }
+
             __pixelplay_get_inited_js = function() { return _initedJson; };
             __pixelplay_get_done_js = function() { return _done; };
             __pixelplay_call_js = function(action, source, info) {

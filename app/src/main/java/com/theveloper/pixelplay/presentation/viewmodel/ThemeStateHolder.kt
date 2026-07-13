@@ -1,12 +1,14 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import android.content.ComponentCallbacks2
 import android.os.Trace
 import androidx.compose.ui.graphics.Color
 import com.theveloper.pixelplay.data.preferences.AlbumArtColorAccuracy
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
+import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.ui.theme.DarkColorScheme
 import com.theveloper.pixelplay.ui.theme.clearExtractedColorCache
 import kotlinx.collections.immutable.ImmutableList
@@ -23,6 +25,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * ⚡ 核心原子状态容器：所有专辑封面主题相关的值（颜色方案、URI、有效颜色方案）
+ *   都封装在单一对象中，确保原子更新。UI 层永远只会看到"一致"的状态，
+ *   不会出现"颜色变了但 URI 没变"或反之的中间状态。
+ */
+data class AlbumArtThemeState(
+    val colorSchemePair: ColorSchemePair? = null,
+    val albumArtUri: String? = null,
+    val activeColorSchemePair: ColorSchemePair? = null
+)
+
 @Singleton
 class ThemeStateHolder @Inject constructor(
     private val colorSchemeProcessor: ColorSchemeProcessor,
@@ -34,32 +47,84 @@ class ThemeStateHolder @Inject constructor(
     private var currentPaletteStyle: AlbumArtPaletteStyle = AlbumArtPaletteStyle.default
     @Volatile
     private var currentPaletteAccuracy: Int = AlbumArtColorAccuracy.DEFAULT
+    @Volatile
+    private var currentThemePreference: String = ThemePreference.ALBUM_ART
+    // ⚡ 原子目标 URI：确保并发的 extractAndGenerateColorScheme 协程中，只有持有最新
+    //   targetSongUri 的协程才能更新 state。其他协程（为旧歌曲提取的）完成后直接丢弃。
+    @Volatile
+    private var targetSongUri: String? = null
 
+    // ⚡ 单一的、原子的主题状态容器
+    //   UI 层通过 collectAsStateWithLifecycle 监听它，每次更新只能看到一个完整的、
+    //   自洽的 AlbumArtThemeState，不会出现多个 StateFlow 之间不同步的中间状态。
+    private val _albumArtThemeState = MutableStateFlow(AlbumArtThemeState())
+    val albumArtThemeState: StateFlow<AlbumArtThemeState> = _albumArtThemeState.asStateFlow()
+
+    // ⚡ 独立的 MutableStateFlow：与 _albumArtThemeState 在 updateAlbumArtThemeState 中
+    //   同步更新，保持三者一致。这些供其他代码（如 PlayerViewModel 导出）使用。
     private val _currentAlbumArtColorSchemePair = MutableStateFlow<ColorSchemePair?>(null)
     val currentAlbumArtColorSchemePair: StateFlow<ColorSchemePair?> = _currentAlbumArtColorSchemePair.asStateFlow()
+
     private val _currentAlbumArtUri = MutableStateFlow<String?>(null)
     val currentAlbumArtUri: StateFlow<String?> = _currentAlbumArtUri.asStateFlow()
+
+    private val _activePlayerColorSchemePair = MutableStateFlow<ColorSchemePair?>(null)
+    val activePlayerColorSchemePair: StateFlow<ColorSchemePair?> = _activePlayerColorSchemePair.asStateFlow()
 
     private val _lavaLampColors = MutableStateFlow<ImmutableList<Color>>(persistentListOf())
     val lavaLampColors: StateFlow<ImmutableList<Color>> = _lavaLampColors.asStateFlow()
 
     private val playerThemePreference = themePreferencesRepository.playerThemePreferenceFlow
 
-    private val _activePlayerColorSchemePair = MutableStateFlow<ColorSchemePair?>(null)
-    val activePlayerColorSchemePair: StateFlow<ColorSchemePair?> = _activePlayerColorSchemePair.asStateFlow()
+    /**
+     * ⚡ 原子更新：确保 colorSchemePair、uri、activeColorSchemePair 在同一个挂起点更新。
+     *   同时做去重：如果新 URI 和已有 URI 相同且已有颜色方案，不做更新（避免无谓的 UI 重组）。
+     *
+     *   所有 4 个 StateFlow（主容器 + 3 个派生）在同一个函数调用中更新，
+     *   保证 UI 层看到的状态始终一致。
+     */
+    private fun updateAlbumArtThemeState(colorSchemePair: ColorSchemePair?, uri: String?) {
+        val current = _albumArtThemeState.value
+
+        // 去重：如果 URI 相同且已有有效的颜色方案，不更新
+        if (uri != null && current.albumArtUri != null && current.albumArtUri == uri && current.colorSchemePair != null) {
+            return
+        }
+
+        // ⚡ 原子更新：4 个 StateFlow 在同一个挂起点连续更新
+        val active = if (currentThemePreference == ThemePreference.ALBUM_ART) colorSchemePair else null
+        val newState = AlbumArtThemeState(
+            colorSchemePair = colorSchemePair,
+            albumArtUri = uri,
+            activeColorSchemePair = active
+        )
+        _albumArtThemeState.value = newState
+        _currentAlbumArtColorSchemePair.value = colorSchemePair
+        _currentAlbumArtUri.value = uri
+        _activePlayerColorSchemePair.value = active
+    }
+
+    /**
+     * 当用户切换主题偏好时更新 activeColorSchemePair，但不改变 colorSchemePair/albumArtUri。
+     */
+    private fun updateActiveSchemeForPreference(preference: String) {
+        currentThemePreference = preference
+        val current = _albumArtThemeState.value
+        val active = if (preference == ThemePreference.ALBUM_ART) current.colorSchemePair else null
+        if (current.activeColorSchemePair != active) {
+            _albumArtThemeState.value = current.copy(activeColorSchemePair = active)
+            _activePlayerColorSchemePair.value = active
+        }
+    }
 
     fun initialize(scope: CoroutineScope) {
         this.scope = scope
 
-        // Drive activePlayerColorSchemePair from the proper lifecycle-scoped coroutine
-        // instead of the orphaned placeholder CoroutineScope used during field initialisation.
+        // ⚡ 缓存主题偏好值，并响应偏好切换
         scope.launch {
-            combine(playerThemePreference, _currentAlbumArtColorSchemePair) { playerPref, albumScheme ->
-                when (playerPref) {
-                    com.theveloper.pixelplay.data.preferences.ThemePreference.ALBUM_ART -> albumScheme
-                    else -> null
-                }
-            }.collect { _activePlayerColorSchemePair.value = it }
+            playerThemePreference.collect { pref ->
+                updateActiveSchemeForPreference(pref)
+            }
         }
 
         scope.launch {
@@ -75,20 +140,20 @@ class ThemeStateHolder @Inject constructor(
 
                     if (!paletteChanged) return@collect
 
-                    val uri = _currentAlbumArtUri.value ?: return@collect
+                    val uri = _albumArtThemeState.value.albumArtUri ?: return@collect
                     val refreshedScheme = colorSchemeProcessor.getOrGenerateColorScheme(
                         albumArtUri = uri,
                         paletteStyle = style,
                         colorAccuracyLevel = accuracy
                     )
-                    _currentAlbumArtColorSchemePair.value = refreshedScheme
+                    updateAlbumArtThemeState(refreshedScheme, uri)
                     individualAlbumColorSchemes[uri]?.value = refreshedScheme
                 }
         }
 
         scope.launch {
-            activePlayerColorSchemePair.collect { schemePair ->
-                 updateLavaLampColors(schemePair)
+            albumArtThemeState.collect { state ->
+                updateLavaLampColors(state.activeColorSchemePair)
             }
         }
     }
@@ -96,30 +161,52 @@ class ThemeStateHolder @Inject constructor(
     suspend fun extractAndGenerateColorScheme(albumArtUriAsUri: Uri?, currentSongUriString: String?, isPreload: Boolean = false) {
         Trace.beginSection("ThemeStateHolder.extractAndGenerateColorScheme")
         try {
+            Log.w("PixelPlay_Debug", "[Theme] extractAndGenerateColorScheme: " +
+                "uri=${albumArtUriAsUri?.toString()?.take(30)}, " +
+                "currentSongUriString=${currentSongUriString?.take(30)}, " +
+                "isPreload=$isPreload")
+
+            // ⚡ 原子目标 URI 检查：先声明本协程的目标，然后在提取完成后验证是否仍然是最新目标。
+            //   如果在此期间有新的 extractAndGenerateColorScheme 调用（为不同的 URI，
+            //   本协程完成后将被丢弃，防止旧颜色覆盖新颜色。
+            val myTarget = currentSongUriString
+            targetSongUri = myTarget
+
             if (albumArtUriAsUri == null) {
                 if (!isPreload && currentSongUriString == null) {
-                    _currentAlbumArtColorSchemePair.value = null
-                    _currentAlbumArtUri.value = null
+                    // URI 和 target 都是 null，直接更新
+                    Log.w("PixelPlay_Debug", "  → uri 为 null，清空 schemePair 和 uri")
+                    // 在更新前再次检查目标是否仍然是本协程的目标
+                    if (targetSongUri == myTarget) {
+                        updateAlbumArtThemeState(null, null)
+                    }
+                } else {
+                    Log.w("PixelPlay_Debug", "  → uri 为 null，isPreload=$isPreload, currentSongUriString=$currentSongUriString → 跳过")
                 }
                 return
             }
 
             val uriString = albumArtUriAsUri.toString()
-            // Use the optimized ColorSchemeProcessor with LRU cache
             val schemePair = colorSchemeProcessor.getOrGenerateColorScheme(
                 albumArtUri = uriString,
                 paletteStyle = currentPaletteStyle,
                 colorAccuracyLevel = currentPaletteAccuracy
             )
+            Log.w("PixelPlay_Debug", "  → 颜色提取完成: uriString=${uriString.take(30)}, " +
+                "校验条件: isPreload=$isPreload, currentSongUriString==uriString: ${currentSongUriString == uriString}, " +
+                "targetMatch=${targetSongUri == myTarget}, " +
+                "最终结果: ${!isPreload && currentSongUriString == uriString && targetSongUri == myTarget}")
 
-            if (!isPreload && currentSongUriString == uriString) {
-                _currentAlbumArtColorSchemePair.value = schemePair
-                _currentAlbumArtUri.value = uriString
+            if (!isPreload && currentSongUriString == uriString && targetSongUri == myTarget) {
+                Log.w("PixelPlay_Debug", "  → ✅ 校验通过（目标 URI 仍匹配），原子设置 schemePair=$schemePair 和 albumArtUri=$uriString")
+                updateAlbumArtThemeState(schemePair, uriString)
+            } else {
+                Log.w("PixelPlay_Debug", "  → ⏭️  校验未通过，不设置 schemePair (歌曲可能已变化或目标 URI 已过期")
             }
         } catch (e: Exception) {
-            if (!isPreload && albumArtUriAsUri != null && currentSongUriString == albumArtUriAsUri.toString()) {
-                _currentAlbumArtColorSchemePair.value = null
-                _currentAlbumArtUri.value = null
+            Log.w("PixelPlay_Debug", "  → ❌ 颜色提取异常: ${e.message}")
+            if (!isPreload && albumArtUriAsUri != null && currentSongUriString == albumArtUriAsUri.toString() && targetSongUri == currentSongUriString) {
+                updateAlbumArtThemeState(null, null)
             }
         } finally {
             Trace.endSection()
@@ -127,7 +214,9 @@ class ThemeStateHolder @Inject constructor(
     }
 
     private fun updateLavaLampColors(schemePair: ColorSchemePair?) {
-        val schemeForLava = schemePair?.dark ?: DarkColorScheme
+        if (schemePair == null) return
+
+        val schemeForLava = schemePair.dark
         _lavaLampColors.update {
             listOf(schemeForLava.primary, schemeForLava.secondary, schemeForLava.tertiary).distinct().toImmutableList()
         }
@@ -225,7 +314,7 @@ class ThemeStateHolder @Inject constructor(
         if (targetFlow.value != null) return
         requestAlbumColorSchemeGeneration(uriString, targetFlow)
     }
-    
+
     suspend fun getOrGenerateColorScheme(uriString: String): ColorSchemePair? {
          return colorSchemeProcessor.getOrGenerateColorScheme(
              albumArtUri = uriString,
@@ -239,14 +328,14 @@ class ThemeStateHolder @Inject constructor(
         regenerateAllStyles: Boolean = false
     ) {
          if (uriString == null) {
-             _currentAlbumArtColorSchemePair.value = null
-             _currentAlbumArtUri.value = null
+             updateAlbumArtThemeState(null, null)
              return
          }
 
          android.util.Log.d("ThemeStateHolder", "forceRegenerateColorScheme called for: $uriString")
-         android.util.Log.d("ThemeStateHolder", "Current tracked global URI: ${_currentAlbumArtUri.value}")
-         
+         val current = _albumArtThemeState.value
+         android.util.Log.d("ThemeStateHolder", "Current tracked global URI: ${current.albumArtUri}")
+
          colorSchemeProcessor.invalidateScheme(uriString)
 
          val newScheme = if (regenerateAllStyles) {
@@ -272,17 +361,14 @@ class ThemeStateHolder @Inject constructor(
              )
          }
 
-         // Iterate if there is an active flow for this URI and update it
          val activeFlow = individualAlbumColorSchemes[uriString]
          if (activeFlow != null) {
              activeFlow.value = newScheme
          }
-         
-         // Also update the main current album art scheme if it matches the one we are tracking
-         // We use equality check. If they are the same string object or equal content.
-         if (_currentAlbumArtUri.value == uriString) {
+
+         if (current.albumArtUri == uriString) {
              android.util.Log.d("ThemeStateHolder", "Updating global color scheme flow directly.")
-             _currentAlbumArtColorSchemePair.value = newScheme
+             updateAlbumArtThemeState(newScheme, uriString)
          } else {
              android.util.Log.d("ThemeStateHolder", "Global URI did not match. Skipping global update.")
          }

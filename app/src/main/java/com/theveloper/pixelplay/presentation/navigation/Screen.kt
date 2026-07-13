@@ -20,7 +20,8 @@ sealed class Screen(val route: String) {
         fun createRoute(playlistId: String) = "playlist_detail/$playlistId"
     }
 
-    object  DailyMixScreen : Screen("daily_mix")
+    object DailyMixScreen : Screen("daily_mix")
+    object AiMixScreen : Screen("ai_mix")
     object RecentlyPlayed : Screen("recently_played")
     object Stats : Screen("stats")
     object GenreDetail : Screen("genre_detail/{genreId}") { // New screen
@@ -35,6 +36,11 @@ sealed class Screen(val route: String) {
 
     object ArtistDetail : Screen("artist_detail/{artistId}") {
         fun createRoute(artistId: Long) = "artist_detail/$artistId"
+    }
+
+    // 网易云歌手主页 - 通过 netease artist id 获取歌曲和专辑
+    object ArtistHomepage : Screen("artist_homepage/{artistId}") {
+        fun createRoute(artistId: Long) = "artist_homepage/$artistId"
     }
 
     object EditTransition : Screen("edit_transition?playlistId={playlistId}") {
@@ -56,4 +62,7 @@ sealed class Screen(val route: String) {
     object JellyfinDashboard : Screen("jellyfin_dashboard")
 
     object CloudMusicSettings : Screen("cloud_music_settings")
+    object DotDeviceSettings : Screen("dot_device_settings")
+    object Roaming : Screen("roaming_action")
+    object HeadphonePreset : Screen("headphone_preset")
 }

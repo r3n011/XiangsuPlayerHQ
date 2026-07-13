@@ -15,13 +15,15 @@
     <!-- Lyrics more bottom sheet -->
     <string name="lyrics_more_appearance">Appearance</string>
     <string name="lyrics_more_alignment">Alignment</string>
+    <string name="lyrics_more_font_size">Font Size</string>
+    <string name="lyrics_more_font">Font</string>
     <string name="lyrics_more_controls">Controls</string>
     <string name="lyrics_more_dialog_reset_title">Reset lyrics?</string>
     <string name="lyrics_more_dialog_reset_message">Are you sure you want to reset the lyrics for this song?</string>
     <string name="lyrics_more_hide_sync_controls">Hide sync controls</string>
     <string name="lyrics_more_adjust_sync">Adjust sync</string>
     <string name="lyrics_more_show_romanization">Show romanization</string>
-    <string name="lyrics_more_show_translations">Show translations</string>
+    <string name="lyrics_more_show_translations">Show original</string>
     <string name="lyrics_more_disable_immersive_once">Disable immersive (once)</string>
     <string name="lyrics_more_keep_screen_on">Keep screen on</string>
     <string name="cd_lyrics_align_left">Align lyrics left</string>

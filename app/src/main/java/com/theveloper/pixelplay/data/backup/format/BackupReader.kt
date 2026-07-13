@@ -20,7 +20,8 @@ class BackupReader @Inject constructor(
     @ApplicationContext private val context: Context,
     @BackupGson private val gson: Gson,
     private val formatDetector: BackupFormatDetector,
-    private val legacyAdapter: LegacyPayloadAdapter
+    private val legacyAdapter: LegacyPayloadAdapter,
+    private val externalBackupAdapter: ExternalBackupAdapter
 ) {
     companion object {
         const val MAX_MANIFEST_BYTES = 512 * 1024
@@ -44,6 +45,11 @@ class BackupReader @Inject constructor(
                 BackupFormatDetector.Format.LEGACY_RAW -> {
                     val json = decompressLegacy(uri, format)
                     val (manifest, _) = legacyAdapter.adapt(json, gson)
+                    manifest
+                }
+                BackupFormatDetector.Format.EXTERNAL_PXPDAT -> {
+                    val json = readRawJson(uri)
+                    val (manifest, _) = externalBackupAdapter.adapt(json, gson)
                     manifest
                 }
                 BackupFormatDetector.Format.UNKNOWN -> {
@@ -73,6 +79,12 @@ class BackupReader @Inject constructor(
                     modules[moduleKey]
                         ?: throw IllegalArgumentException("Module '$moduleKey' not found in legacy backup")
                 }
+                BackupFormatDetector.Format.EXTERNAL_PXPDAT -> {
+                    val json = readRawJson(uri)
+                    val (_, modules) = externalBackupAdapter.adapt(json, gson)
+                    modules[moduleKey]
+                        ?: throw IllegalArgumentException("Module '$moduleKey' not found in external backup")
+                }
                 BackupFormatDetector.Format.UNKNOWN -> {
                     throw IllegalArgumentException("Unrecognized backup file format")
                 }
@@ -96,6 +108,11 @@ class BackupReader @Inject constructor(
                 BackupFormatDetector.Format.LEGACY_RAW -> {
                     val json = decompressLegacy(uri, format)
                     val (_, modules) = legacyAdapter.adapt(json, gson)
+                    modules
+                }
+                BackupFormatDetector.Format.EXTERNAL_PXPDAT -> {
+                    val json = readRawJson(uri)
+                    val (_, modules) = externalBackupAdapter.adapt(json, gson)
                     modules
                 }
                 BackupFormatDetector.Format.UNKNOWN -> {
@@ -250,5 +267,17 @@ class BackupReader @Inject constructor(
             }
             remaining--
         }
+    }
+
+    private fun readRawJson(uri: Uri): String {
+        return context.contentResolver.openInputStream(uri)?.use { input ->
+            input.bufferedReader(Charsets.UTF_8).use { reader ->
+                readTextLimited(
+                    reader = reader,
+                    maxChars = MAX_LEGACY_BACKUP_BYTES,
+                    sourceLabel = "External backup payload"
+                )
+            }
+        } ?: throw IllegalStateException("Unable to open backup file")
     }
 }

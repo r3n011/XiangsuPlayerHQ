@@ -91,6 +91,88 @@
     <string name="presentation_batch_e_ai_custom_chip">自定义……</string>
     <string name="presentation_batch_e_ai_enter_custom_title">输入自定义值</string>
     <string name="presentation_batch_e_ai_enter_custom_label">输入你的自定义值</string>
+    <string name="presentation_batch_e_ai_evaluate_playlist">AI 评价播放列表</string>
+    <string name="presentation_batch_e_ai_recommendation_success">AI推荐歌单已生成！</string>
+    <string name="presentation_batch_e_ai_view_all_mix">查看全部AI歌单</string>
+    
+    <!-- AI recommendation descriptions -->
+    <string name="presentation_batch_e_ai_desc_1">根据你的听歌习惯，我觉得你会喜欢这些推荐！</string>
+    <string name="presentation_batch_e_ai_desc_2">为你精心挑选 - 发现符合你品味的新音乐。</string>
+    <string name="presentation_batch_e_ai_desc_3">你的品味太棒了！这些歌曲不容错过。</string>
+    <string name="presentation_batch_e_ai_desc_4">此刻的完美选择 - 让音乐引导你的心情。</string>
+    <string name="presentation_batch_e_ai_desc_5">混合你的最爱与新鲜发现 - 享受你的个性化歌单！</string>
+
+    <!-- AI recommendation time of day strings -->
+    <string name="presentation_batch_e_ai_morning_title">AI 晨间活力</string>
+    <string name="presentation_batch_e_ai_morning_subtitle">用能量开启新的一天</string>
+    <string name="presentation_batch_e_ai_tag_morning">早晨</string>
+    
+    <string name="presentation_batch_e_ai_midday_title">AI 午间流畅</string>
+    <string name="presentation_batch_e_ai_midday_subtitle">保持前进动力</string>
+    <string name="presentation_batch_e_ai_tag_work">工作</string>
+    
+    <string name="presentation_batch_e_ai_lunch_title">AI 午休时光</string>
+    <string name="presentation_batch_e_ai_lunch_subtitle">放松充电</string>
+    <string name="presentation_batch_e_ai_tag_relax">放松</string>
+    
+    <string name="presentation_batch_e_ai_afternoon_title">AI 午后旅程</string>
+    <string name="presentation_batch_e_ai_afternoon_subtitle">保持高效</string>
+    <string name="presentation_batch_e_ai_tag_focus">专注</string>
+    
+    <string name="presentation_batch_e_ai_evening_title">AI 傍晚放松</string>
+    <string name="presentation_batch_e_ai_evening_subtitle">在一天结束后放松身心</string>
+    <string name="presentation_batch_e_ai_tag_chill">惬意</string>
+    
+    <string name="presentation_batch_e_ai_night_title">AI 夜间氛围</string>
+    <string name="presentation_batch_e_ai_night_subtitle">深夜的完美选择</string>
+    <string name="presentation_batch_e_ai_tag_night">夜晚</string>
+    
+    <string name="presentation_batch_e_ai_late_night_title">AI 深夜沉浸</string>
+    <string name="presentation_batch_e_ai_late_night_subtitle">深邃而柔和</string>
+    <string name="presentation_batch_e_ai_tag_sleep">安睡</string>
+    
+    <!-- AI recommendation holiday strings -->
+    <string name="presentation_batch_e_ai_holiday_new_year">新年</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_tag">新年</string>
+    
+    <string name="presentation_batch_e_ai_holiday_valentine">情人节</string>
+    <string name="presentation_batch_e_ai_holiday_valentine_tag">爱情</string>
+    
+    <string name="presentation_batch_e_ai_holiday_womens">妇女节</string>
+    <string name="presentation_batch_e_ai_holiday_womens_tag">庆祝</string>
+    
+    <string name="presentation_batch_e_ai_holiday_st_patrick">圣帕特里克节</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">爱尔兰</string>
+    
+    <string name="presentation_batch_e_ai_holiday_april_fools">愚人节</string>
+    <string name="presentation_batch_e_ai_holiday_april_fools_tag">欢乐</string>
+    
+    <string name="presentation_batch_e_ai_holiday_labor">劳动节</string>
+    <string name="presentation_batch_e_ai_holiday_labor_tag">劳动</string>
+    
+    <string name="presentation_batch_e_ai_holiday_mothers">母亲节</string>
+    <string name="presentation_batch_e_ai_holiday_mothers_tag">家庭</string>
+    
+    <string name="presentation_batch_e_ai_holiday_fathers">父亲节</string>
+    <string name="presentation_batch_e_ai_holiday_fathers_tag">家庭</string>
+    
+    <string name="presentation_batch_e_ai_holiday_independence">独立日</string>
+    <string name="presentation_batch_e_ai_holiday_independence_tag">爱国</string>
+    
+    <string name="presentation_batch_e_ai_holiday_halloween">万圣节</string>
+    <string name="presentation_batch_e_ai_holiday_halloween_tag">惊悚</string>
+    
+    <string name="presentation_batch_e_ai_holiday_veterans">退伍军人节</string>
+    <string name="presentation_batch_e_ai_holiday_veterans_tag">致敬</string>
+    
+    <string name="presentation_batch_e_ai_holiday_thanksgiving">感恩节</string>
+    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">感恩</string>
+    
+    <string name="presentation_batch_e_ai_holiday_christmas">圣诞节</string>
+    <string name="presentation_batch_e_ai_holiday_christmas_tag">圣诞</string>
+    
+    <string name="presentation_batch_e_ai_holiday_new_year_eve">新年前夜</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">派对</string>
 
     <!-- AI prompt assembly (sent to model; localized for consistency with UI) -->
     <string name="presentation_batch_e_ai_era_any">不限年代</string>

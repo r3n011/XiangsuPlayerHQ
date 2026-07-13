@@ -104,6 +104,9 @@ import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.viewmodel.EqualizerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.MainActivity
+import com.theveloper.pixelplay.presentation.navigation.Screen
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import androidx.compose.animation.animateColorAsState
@@ -148,6 +151,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.automirrored.rounded.ViewQuilt
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -301,7 +305,7 @@ fun EqualizerScreen(
                 top = currentTopBarHeightDp + 8.dp,
                 bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 20.dp
             ),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // Preset Tabs
@@ -434,6 +438,21 @@ fun EqualizerScreen(
                     )
                 }
                 
+                Spacer(modifier = Modifier.width(12.dp))
+
+                FilledIconButton(
+                    onClick = { navController.navigate(Screen.HeadphonePreset.route) },
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Headphones,
+                        contentDescription = stringResource(R.string.headphone_preset_title)
+                    )
+                }
+
                 Spacer(modifier = Modifier.width(12.dp))
             }
         )

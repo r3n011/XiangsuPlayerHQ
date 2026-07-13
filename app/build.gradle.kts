@@ -56,7 +56,22 @@ android {
                 "/META-INF/io.netty.versions.properties",
                 "META-INF/CONTRIBUTORS.md",
                 "META-INF/NOTICE.txt",
-                "META-INF/NOTICE.md"
+                "META-INF/NOTICE.md",
+                "META-INF/*.kotlin_module",
+                "META-INF/*.version",
+                "META-INF/rxjava.properties",
+                "META-INF/services/javax.annotation.processing.Processor",
+                "*.proto",
+                "*.yaml",
+                "*.yml",
+                "LICENSE",
+                "NOTICE",
+                "CHANGELOG",
+                "README",
+                "*.txt",
+                "*.md",
+                "*.html",
+                "*.css"
             )
             pickFirsts += listOf(
                 "META-INF/LICENSE.md",
@@ -66,13 +81,17 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.theveloper.pixelplay"
+        applicationId = "com.r3n011.pixelplay"
         minSdk = 24
         targetSdk = 36
-        versionCode = (project.findProperty("APP_VERSION_CODE") as? String)?.toInt() ?: 1
-        versionName = (project.findProperty("APP_VERSION_NAME") as? String) ?: "1.0.0"
+        versionCode = 20
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        
+
+        resConfigs("zh-rCN", "en")
 
         val telegramApiId = localProperties.getProperty("TELEGRAM_API_ID")?.ifEmpty { null }
             ?: "2040"
@@ -103,11 +122,8 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
-            // TEMP: 关闭 R8/资源压缩，用于定位 release 闪退是否由混淆导致。
-            // 如果关掉后不再闪退，说明是 proguard-rules.pro 中漏了 keep 规则；
-            // 之后可逐步把这两项改回 true，只把缺规则的包名加上。
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -118,6 +134,8 @@ android {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")
             isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
     }
 
@@ -207,6 +225,10 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.appcompat)
 
+    // Haze blur effect
+    implementation(libs.haze)
+    implementation(libs.haze.materials)
+
     // DI & Navigation
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
@@ -254,6 +276,11 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.server.websockets)
+    implementation("io.ktor:ktor-server-content-negotiation-jvm:3.5.0")
+    implementation("io.ktor:ktor-server-cors-jvm:3.5.0")
+    implementation("io.ktor:ktor-server-default-headers-jvm:3.5.0")
+    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:3.5.0")
 
     // Identity & Background
     implementation(libs.androidx.work.runtime.ktx)
@@ -353,6 +380,8 @@ configurations.all {
         "androidx.compose.foundation:foundation-layout-android:1.12.0-alpha03"
     )
 }
+
+
 
 tasks.withType<Test> {
     useJUnitPlatform()

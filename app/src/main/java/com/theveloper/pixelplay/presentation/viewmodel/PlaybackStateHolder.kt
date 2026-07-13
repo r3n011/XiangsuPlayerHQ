@@ -3,6 +3,7 @@ package com.theveloper.pixelplay.presentation.viewmodel
 import android.content.Context
 import android.os.PowerManager
 import android.os.SystemClock
+import android.util.Log
 import androidx.media3.session.MediaController
 import androidx.media3.common.Player
 import androidx.media3.common.C
@@ -85,6 +86,14 @@ class PlaybackStateHolder @Inject constructor(
     val stablePlayerState: StateFlow<StablePlayerState> = _stablePlayerState.asStateFlow()
     private val _currentPosition = MutableStateFlow(0L)
     val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
+
+    private var _isWebRemoteActive = false
+    fun setWebRemoteActive(active: Boolean) {
+        _isWebRemoteActive = active
+        if (active) {
+            startProgressUpdates()
+        }
+    }
 
     // True while the full player sheet (slider visible) is mounted. Set by the
     // sheet via DisposableEffect. Controls whether the position ticker runs at
@@ -224,10 +233,14 @@ class PlaybackStateHolder @Inject constructor(
         }
     }
     
+    /**
+     * Update player state. The update lambda receives the current state and returns a new state.
+     * Uses MutableStateFlow.update for atomic, thread-safe updates.
+     */
     fun updateStablePlayerState(update: (StablePlayerState) -> StablePlayerState) {
         _stablePlayerState.update { current ->
             val updated = update(current)
-            // Auto-populate index from MediaController if not explicitly set by the update
+
             if (updated.currentMediaItemIndex == -1) {
                 if (dualPlayerEngine.isUsingWindowedQueue()) {
                     updated.copy(currentMediaItemIndex = dualPlayerEngine.getCurrentAbsoluteIndex())
@@ -239,6 +252,14 @@ class PlaybackStateHolder @Inject constructor(
             } else {
                 updated
             }
+        }
+    }
+
+    fun updateStablePlayerStateIfChanged(update: (StablePlayerState) -> StablePlayerState?) {
+        val current = _stablePlayerState.value
+        val newState = update(current)
+        if (newState != null && newState != current) {
+            updateStablePlayerState { newState }
         }
     }
 
@@ -627,15 +648,10 @@ class PlaybackStateHolder @Inject constructor(
     fun startProgressUpdates() {
         stopProgressUpdates()
         progressJob = scope?.launch {
-            // Battery: only spin the polling loop while something is actually
-            // observing currentPosition. With no subscribers (screen off and
-            // no lock-screen progress UI mounted), this collectLatest sits
-            // idle and the CPU stays asleep. As soon as a subscriber appears
-            // (player sheet opened, widget bound, etc.) the inner loop resumes.
             _currentPosition.subscriptionCount.collectLatest { subscriberCount ->
-                if (subscriberCount == 0) return@collectLatest
+                if (subscriberCount == 0 && !_isWebRemoteActive) return@collectLatest
                 coroutineScope {
-                    while (isActive) {
+                    while (isActive && (subscriberCount > 0 || _isWebRemoteActive)) {
                         val tickMs = currentProgressTickMs()
                         val castSession = castStateHolder.castSession.value
                         val remoteClient = castSession?.remoteMediaClient

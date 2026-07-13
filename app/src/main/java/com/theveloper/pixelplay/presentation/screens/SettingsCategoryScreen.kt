@@ -77,6 +77,12 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Restore
@@ -84,6 +90,9 @@ import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ButtonDefaults
@@ -105,6 +114,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
@@ -152,6 +163,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.backup.model.BackupHistoryEntry
 import com.theveloper.pixelplay.data.backup.model.BackupOperationType
 import com.theveloper.pixelplay.data.backup.model.BackupSection
+import com.theveloper.pixelplay.data.backup.model.BackupFormat
 import com.theveloper.pixelplay.data.backup.model.BackupTransferProgressUpdate
 import com.theveloper.pixelplay.data.backup.model.ModuleRestoreDetail
 import com.theveloper.pixelplay.data.backup.model.RestorePlan
@@ -165,6 +177,7 @@ import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
+import com.theveloper.pixelplay.data.ai.GeminiModel
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.FileExplorerDialog
@@ -174,7 +187,9 @@ import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsRefreshProgress
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
+import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import dev.chrisbanes.haze.hazeSource
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -230,12 +245,16 @@ fun SettingsCategoryScreen(
     var syncIndicatorLabel by remember { mutableStateOf<String?>(null) }
     var showClearLyricsDialog by remember { mutableStateOf(false) }
     var showRebuildDatabaseWarning by remember { mutableStateOf(false) }
+    var showDownloadPathDialog by remember { mutableStateOf(false) }
+    var downloadPathOptions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var showRegenerateDailyMixDialog by remember { mutableStateOf(false) }
     var showRegenerateStatsDialog by remember { mutableStateOf(false) }
     var showRegenerateAllPalettesDialog by remember { mutableStateOf(false) }
     var showExportDataDialog by remember { mutableStateOf(false) }
+    var showExportFormatDialog by remember { mutableStateOf(false) }
     var showImportFlow by remember { mutableStateOf(false) }
     var exportSections by remember { mutableStateOf(BackupSection.defaultSelection) }
+    var exportFormat by remember { mutableStateOf<BackupFormat>(BackupFormat.PXPL) }
     var importFileUri by remember { mutableStateOf<Uri?>(null) }
     var minSongDurationDraft by remember(uiState.minSongDuration) {
         mutableStateOf(uiState.minSongDuration.toFloat())
@@ -251,7 +270,7 @@ fun SettingsCategoryScreen(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri != null) {
-            settingsViewModel.exportAppData(uri, exportSections)
+            settingsViewModel.exportAppData(uri, exportSections, exportFormat)
         }
     }
 
@@ -261,6 +280,19 @@ fun SettingsCategoryScreen(
         if (uri != null) {
             importFileUri = uri
             settingsViewModel.inspectBackupFile(uri)
+        }
+    }
+
+    val downloadFolderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            settingsViewModel.setDownloadPath(uri.toString())
+            showDownloadPathDialog = false
         }
     }
 
@@ -390,7 +422,7 @@ fun SettingsCategoryScreen(
         
         LazyColumn(
             state = lazyListState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
             contentPadding = PaddingValues(
                 top = currentTopBarHeightDp + 8.dp,
                 start = 16.dp,
@@ -404,6 +436,181 @@ fun SettingsCategoryScreen(
                     modifier = Modifier.background(Color.Transparent)
                ) {
                     when (category) {
+                        SettingsCategory.AI_INTEGRATION -> {
+                            val aiProvider by settingsViewModel.aiProvider.collectAsStateWithLifecycle()
+                            val currentAiApiKey by settingsViewModel.currentAiApiKey.collectAsStateWithLifecycle()
+                            val currentAiModel by settingsViewModel.currentAiModel.collectAsStateWithLifecycle()
+                            val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+                            val availableModels = uiState.availableModels
+                            val isLoadingModels = uiState.isLoadingModels
+                            val modelsFetchError = uiState.modelsFetchError
+                            val isSafeTokenLimitEnabled by settingsViewModel.isSafeTokenLimitEnabled.collectAsStateWithLifecycle()
+                            val isAutoPlaylistEnabled by settingsViewModel.isAutoPlaylistEnabled.collectAsStateWithLifecycle()
+                            val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
+                            val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
+
+                            LaunchedEffect(aiProvider, currentAiApiKey) {
+                                settingsViewModel.loadModelsForCurrentProvider()
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_ai_provider_section)) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.setcat_ai_api_key_title, "Xiaomi MiMo"),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        OutlinedTextField(
+                                            value = currentAiApiKey,
+                                            onValueChange = { settingsViewModel.onAiApiKeyChange(it) },
+                                            placeholder = { Text("Enter API key") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            trailingIcon = {
+                                                if (currentAiApiKey.isNotBlank()) {
+                                                    IconButton(onClick = { settingsViewModel.onAiApiKeyChange("") }) {
+                                                        Icon(Icons.Rounded.Close, null)
+                                                    }
+                                                }
+                                            },
+                                            visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None
+                                        )
+                                    }
+                                }
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_model_selection)) {
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_ai_model_label),
+                                    description = if (isLoadingModels) {
+                                        stringResource(R.string.setcat_loading_models)
+                                    } else if (!modelsFetchError.isNullOrBlank()) {
+                                        modelsFetchError
+                                    } else {
+                                        stringResource(R.string.setcat_ai_model_desc)
+                                    },
+                                    options = availableModels.associate { model -> model.name to model.displayName },
+                                    selectedKey = currentAiModel,
+                                    onSelectionChanged = {
+                                        settingsViewModel.onAiModelChange(it)
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_safe_token_title)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_safe_token_title),
+                                    subtitle = if (isSafeTokenLimitEnabled) stringResource(R.string.setcat_safe_token_on) else stringResource(R.string.setcat_safe_token_off),
+                                    checked = isSafeTokenLimitEnabled,
+                                    onCheckedChange = { settingsViewModel.setSafeTokenLimitEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Tag, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_ai_auto_trigger_section)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_ai_auto_playlist_title),
+                                    subtitle = stringResource(R.string.setcat_ai_auto_playlist_subtitle),
+                                    checked = isAutoPlaylistEnabled,
+                                    onCheckedChange = { settingsViewModel.setAutoPlaylistEnabled(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.generate_playlist_ai), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_ai_recommendation_section)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_ai_recommendation_card_title),
+                                    subtitle = stringResource(R.string.setcat_ai_recommendation_card_subtitle),
+                                    checked = isAiRecommendationCardEnabled,
+                                    onCheckedChange = { settingsViewModel.setAiRecommendationCardEnabled(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.generate_playlist_ai), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_ai_recommendation_manual_title),
+                                    subtitle = stringResource(R.string.setcat_ai_recommendation_manual_subtitle),
+                                    checked = isAiRecommendationManualOnly,
+                                    onCheckedChange = { settingsViewModel.setAiRecommendationManualOnly(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+                        }
+                        SettingsCategory.WEB_REMOTE -> {
+                            val isWebRemoteEnabled by settingsViewModel.isWebRemoteEnabled.collectAsStateWithLifecycle()
+                            val isWebRemoteSyncMode by settingsViewModel.isWebRemoteSyncMode.collectAsStateWithLifecycle()
+                            val webRemoteServerAddress by settingsViewModel.webRemoteServerAddress.collectAsStateWithLifecycle()
+                            val webRemotePin by settingsViewModel.webRemotePin.collectAsStateWithLifecycle()
+                            val isWebRemoteServerRunning by settingsViewModel.isWebRemoteServerRunning.collectAsStateWithLifecycle()
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_web_remote_section)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_web_remote_enabled_title),
+                                    subtitle = stringResource(R.string.setcat_web_remote_enabled_subtitle),
+                                    checked = isWebRemoteEnabled,
+                                    onCheckedChange = { settingsViewModel.setWebRemoteEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_web_remote_sync_title),
+                                    subtitle = stringResource(R.string.setcat_web_remote_sync_subtitle),
+                                    checked = isWebRemoteSyncMode,
+                                    onCheckedChange = { settingsViewModel.setWebRemoteSyncMode(it) },
+                                    enabled = isWebRemoteEnabled,
+                                    leadingIcon = { Icon(Icons.Rounded.Sync, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_web_remote_server_status)) {
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_web_remote_server_address),
+                                    subtitle = webRemoteServerAddress ?: "-",
+                                    leadingIcon = { Icon(Icons.Rounded.Link, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    onClick = {
+                                        webRemoteServerAddress?.let { address ->
+                                            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            val clipData = android.content.ClipData.newPlainText("Server Address", address)
+                                            clipboardManager.setPrimaryClip(clipData)
+                                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_web_remote_pin),
+                                    subtitle = webRemotePin ?: "-",
+                                    leadingIcon = { Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    onClick = {
+                                        webRemotePin?.let { pin ->
+                                            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            val clipData = android.content.ClipData.newPlainText("PIN", pin)
+                                            clipboardManager.setPrimaryClip(clipData)
+                                            Toast.makeText(context, "PIN copied to clipboard", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                                SettingsItem(
+                                    title = if (isWebRemoteServerRunning) stringResource(R.string.setcat_web_remote_stop_button) else stringResource(R.string.setcat_web_remote_start_button),
+                                    subtitle = if (isWebRemoteServerRunning) stringResource(R.string.setcat_web_remote_server_running) else stringResource(R.string.setcat_web_remote_server_stopped),
+                                    leadingIcon = {
+                                        Icon(
+                                            if (isWebRemoteServerRunning) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                                            null,
+                                            tint = if (isWebRemoteServerRunning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
+                                        )
+                                    },
+                                    onClick = {
+                                        if (isWebRemoteServerRunning) {
+                                            settingsViewModel.stopWebRemoteServer()
+                                        } else {
+                                            settingsViewModel.startWebRemoteServer()
+                                        }
+                                    }
+                                )
+                            }
+                        }
                         SettingsCategory.LIBRARY -> {
                             SettingsSubsection(title = stringResource(R.string.setcat_library_structure)) {
                                 SettingsItem(
@@ -836,6 +1043,15 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.outline_high_quality_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_usb_exclusive_mode_title),
+                                    subtitle = uiState.currentUsbDeviceName?.let {
+                                        stringResource(R.string.setcat_usb_exclusive_mode_subtitle_connected, it)
+                                    } ?: stringResource(R.string.setcat_usb_exclusive_mode_subtitle_disconnected),
+                                    checked = uiState.usbExclusiveModeEnabled,
+                                    onCheckedChange = { settingsViewModel.setUsbExclusiveModeEnabled(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
                                     title = stringResource(R.string.setcat_persistent_shuffle_title),
                                     subtitle = stringResource(R.string.setcat_persistent_shuffle_subtitle),
                                     checked = uiState.persistentShuffleEnabled,
@@ -849,8 +1065,36 @@ fun SettingsCategoryScreen(
                                     onCheckedChange = { settingsViewModel.setShowQueueHistory(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_queue_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_show_lyrics_track_info_title),
+                                    subtitle = stringResource(R.string.setcat_show_lyrics_track_info_subtitle),
+                                    checked = uiState.showLyricsTrackInfo,
+                                    onCheckedChange = { settingsViewModel.setShowLyricsTrackInfo(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_music_note_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
                             }
 
+                            SettingsSubsection(title = stringResource(R.string.setcat_car_mode_title)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_car_mode_title),
+                                    subtitle = stringResource(R.string.setcat_car_mode_subtitle),
+                                    checked = uiState.carModeEnabled,
+                                    onCheckedChange = { settingsViewModel.setCarModeEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_download_settings)) {
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_download_path_title),
+                                    subtitle = if (uiState.downloadPath.startsWith("content://")) "自定义目录" else uiState.downloadPath,
+                                    leadingIcon = { Icon(Icons.Outlined.Folder, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.cd_open), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = {
+                                        downloadFolderPicker.launch(null)
+                                    }
+                                )
+                            }
                         }
                         SettingsCategory.BEHAVIOR -> {
                             SettingsSubsection(
@@ -1300,6 +1544,41 @@ fun SettingsCategoryScreen(
         )
     }
 
+    if (showDownloadPathDialog) {
+        AlertDialog(
+            icon = { Icon(Icons.Outlined.Folder, null, tint = MaterialTheme.colorScheme.secondary) },
+            title = { Text(stringResource(R.string.setcat_download_path_title)) },
+            onDismissRequest = { showDownloadPathDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showDownloadPathDialog = false }) {
+                    Text(stringResource(R.string.cancel), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            },
+            text = {
+                Column {
+                    downloadPathOptions.forEach { (path, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    settingsViewModel.setDownloadPath(path)
+                                    showDownloadPathDialog = false
+                                }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(label)
+                            if (uiState.downloadPath == path) {
+                                Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    }
+
     if (showRegenerateDailyMixDialog) {
         val toastDailyMixRegenerationStarted = stringResource(R.string.toast_daily_mix_regeneration_started)
         AlertDialog(
@@ -1345,7 +1624,6 @@ fun SettingsCategoryScreen(
     }
 
     if (showExportDataDialog) {
-        val backupFileNameFormat = stringResource(R.string.backup_file_name_format)
         BackupSectionSelectionDialog(
             operation = BackupOperationType.EXPORT,
             title = stringResource(R.string.setcat_export_backup_title),
@@ -1357,8 +1635,70 @@ fun SettingsCategoryScreen(
             onSelectionChanged = { exportSections = it },
             onConfirm = {
                 showExportDataDialog = false
-                val fileName = backupFileNameFormat.format(System.currentTimeMillis())
-                exportLauncher.launch(fileName)
+                showExportFormatDialog = true
+            }
+        )
+    }
+
+    if (showExportFormatDialog) {
+        val backupFileNameFormat = stringResource(R.string.backup_file_name_format)
+        AlertDialog(
+            title = { Text(stringResource(R.string.setcat_export_backup_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(stringResource(R.string.backup_format_select_prompt))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(stringResource(R.string.backup_format_pxpl_title), fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.backup_format_pxpl_desc), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            RadioButton(
+                                selected = exportFormat == BackupFormat.PXPL,
+                                onClick = { exportFormat = BackupFormat.PXPL },
+                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(stringResource(R.string.backup_format_external_title), fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.backup_format_external_desc), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            RadioButton(
+                                selected = exportFormat == BackupFormat.EXTERNAL_PXPDAT,
+                                onClick = { exportFormat = BackupFormat.EXTERNAL_PXPDAT },
+                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                            )
+                        }
+                    }
+                }
+            },
+            onDismissRequest = { showExportFormatDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExportFormatDialog = false
+                    val fileName = if (exportFormat == BackupFormat.EXTERNAL_PXPDAT) {
+                        "PixelPlayer_${System.currentTimeMillis()}.pxpbak"
+                    } else {
+                        backupFileNameFormat.format(System.currentTimeMillis())
+                    }
+                    exportLauncher.launch(fileName)
+                }) {
+                    Text(stringResource(R.string.backup_confirm_export_pxpl))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportFormatDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
             }
         )
     }
@@ -1719,7 +2059,7 @@ private fun BackupSectionSelectionDialog(
                             LazyColumn(
                                 state = listState,
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(bottom = 18.dp),
+                                contentPadding = PaddingValues(bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 18.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 items(BackupSection.entries, key = { it.key }) { section ->
@@ -2198,7 +2538,7 @@ private fun ImportFileSelectionDialog(
 
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(bottom = 18.dp),
+                                contentPadding = PaddingValues(bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 18.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 if (backupHistory.isEmpty()) {

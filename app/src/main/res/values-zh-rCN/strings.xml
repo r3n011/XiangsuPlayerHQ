@@ -127,6 +127,8 @@
     <string name="playlist_export_folder_display">Music/PixelPlayer Exports</string>
     <string name="ai_playlist_gemini_key_required">请在「设置」中配置你的 Gemini API 密钥。</string>
     <string name="error_unknown">未知错误</string>
+    <string name="failed_to_play_song_url_resolve">无法播放 %1$s — 无法解析播放地址</string>
+    <string name="unknown">未知</string>
 
     <!-- Watch transfer foreground service -->
     <string name="watch_transfer_sending_n_to_watch">正在发送 %1$d 首歌曲到手表</string>
@@ -255,6 +257,7 @@
     <string name="batch_edit_multiple_covers">（多种不同封面）</string>
     <string name="nav_bar_home">主页</string>
     <string name="nav_bar_search">搜索</string>
+    <string name="nav_bar_roaming">漫游</string>
     <string name="nav_bar_library">媒体库</string>
     <string name="nav_bar_settings">设置</string>
     <string name="lx_music_title">云音</string>
@@ -270,4 +273,26 @@
     <string name="lx_import">导入</string>
     <string name="lx_cancel">取消</string>
     <string name="lx_ok">好</string>
-    <string name="lx_info_title">JS 引擎信息</string></resources>
+    <string name="lx_info_title">JS 引擎信息</string>
+
+    <!-- Headphone Preset -->
+    <string name="headphone_preset_title">耳机预设</string>
+    <string name="headphone_preset_search_placeholder">搜索耳机……</string>
+    <string name="headphone_preset_categories">分类</string>
+    <string name="headphone_preset_brands">品牌</string>
+    <string name="headphone_preset_all">全部</string>
+    <string name="headphone_preset_bind_bluetooth">绑定蓝牙</string>
+    <string name="headphone_preset_apply">应用</string>
+    <string name="headphone_preset_eq_settings">均衡器设置</string>
+    <string name="headphone_preset_preamp">预增益: %1$.1fdB</string>
+    <string name="headphone_preset_bind_to_device">绑定到设备</string>
+    <string name="headphone_preset_apply_now">立即应用</string>
+    <string name="headphone_preset_select_bluetooth_device">选择蓝牙设备</string>
+    <string name="headphone_preset_no_bluetooth_devices">未找到蓝牙设备</string>
+    <string name="headphone_preset_bluetooth_settings">蓝牙设置</string>
+    <string name="headphone_preset_bluetooth_bindings">蓝牙绑定</string>
+    <string name="headphone_preset_no_bindings">暂无绑定</string>
+    <string name="headphone_preset_binding_preset">预设 ID: %1$d</string>
+    <string name="headphone_preset_unbind">取消绑定</string>
+    <string name="action_cancel">取消</string>
+</resources>

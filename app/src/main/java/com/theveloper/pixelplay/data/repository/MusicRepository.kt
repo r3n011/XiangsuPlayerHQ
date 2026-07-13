@@ -293,7 +293,7 @@ interface MusicRepository {
      * Saves a cloud/JS-engine song from basic media metadata (used when only title/artist are available,
      * e.g. during URL playback). Returns the generated song ID.
      */
-    suspend fun saveCloudSongBasic(title: String, artist: String, album: String? = null, albumArt: String? = null, duration: Long = 0L): Long
+    suspend fun saveCloudSongBasic(title: String, artist: String, album: String? = null, albumArt: String? = null, duration: Long = 0L, directPlayUrl: String? = null, neteaseIdRaw: Long? = null): Long
 
     /**
      * Finds a cloud song ID that was saved from basic data using title+artist match.
@@ -347,6 +347,8 @@ interface MusicRepository {
 
     suspend fun resetAllLyrics()
 
+    fun clearLyricsCacheForCloudSongs()
+
     fun getMusicFolders(
         storageFilter: com.theveloper.pixelplay.data.model.StorageFilter = com.theveloper.pixelplay.data.model.StorageFilter.ALL
     ): Flow<List<com.theveloper.pixelplay.data.model.MusicFolder>>
@@ -395,4 +397,17 @@ interface MusicRepository {
      * in progress under the same unique work name.
      */
     fun requestTelegramUnifiedSync()
+
+    /**
+     * Triggers automatic metadata completion for local songs that are missing data.
+     * Only operates on local songs (not cloud/streaming) and only when title/artist/album/cover is missing.
+     * This is an asynchronous operation that runs in the background.
+     */
+    suspend fun completeMetadataForSong(song: Song)
+
+    /**
+     * Triggers automatic metadata completion for all local songs that need it.
+     * This is a batch operation that may take a while.
+     */
+    suspend fun completeMetadataForAllLocalSongs()
 }

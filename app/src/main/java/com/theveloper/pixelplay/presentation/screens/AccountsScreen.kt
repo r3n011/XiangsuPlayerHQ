@@ -87,6 +87,8 @@ import com.theveloper.pixelplay.presentation.telegram.auth.TelegramLoginActivity
 import com.theveloper.pixelplay.presentation.viewmodel.AccountsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.ExternalAccountUiModel
 import com.theveloper.pixelplay.presentation.viewmodel.ExternalServiceAccount
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
@@ -173,7 +175,7 @@ fun AccountsScreen(
 
         LazyColumn(
             state = lazyListState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
             contentPadding = PaddingValues(
                 top = currentTopBarHeightDp + 8.dp,
                 start = 16.dp,
@@ -231,7 +233,9 @@ fun AccountsScreen(
                         } else null
                     )
                 }
-            } else {
+            }
+
+            if (uiState.disconnectedServices.isNotEmpty()) {
                 item {
                     EmptyAccountsCard(
                         disconnectedServices = uiState.disconnectedServices,
@@ -470,6 +474,64 @@ private fun ConnectedAccountCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                }
+            }
+
+            if (account.authCookie != null) {
+                val localContext = LocalContext.current
+                val scope = rememberCoroutineScope()
+                var cookieExpanded by remember { mutableStateOf(false) }
+                Surface(
+                    onClick = {
+                        val clipboard = localContext.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("Cookie", account.authCookie)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(localContext, "Cookie 已复制", Toast.LENGTH_SHORT).show()
+                    },
+                    shape = AbsoluteSmoothCornerShape(14.dp, 60),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CloudQueue,
+                                contentDescription = null,
+                                tint = palette.iconTint,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(
+                                text = "Cookie",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(
+                                text = "点击复制",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = if (cookieExpanded) {
+                                account.authCookie
+                            } else {
+                                val preview = account.authCookie.take(60)
+                                if (account.authCookie.length > 60) "$preview..." else account.authCookie
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                            maxLines = if (cookieExpanded) Int.MAX_VALUE else 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
 

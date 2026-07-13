@@ -101,6 +101,8 @@ fun clearExtractedColorCache() {
     extractedColorCache.evictAll()
 }
 
+
+
 fun extractSeedColor(
     bitmap: Bitmap,
     config: ColorExtractionConfig = ColorExtractionConfig()

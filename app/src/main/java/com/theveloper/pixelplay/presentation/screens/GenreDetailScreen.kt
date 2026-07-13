@@ -74,6 +74,8 @@ import com.theveloper.pixelplay.presentation.viewmodel.SectionData
 import com.theveloper.pixelplay.presentation.viewmodel.AlbumData
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 import com.theveloper.pixelplay.utils.formatDuration
 import com.theveloper.pixelplay.utils.formatSongCount
@@ -297,6 +299,7 @@ fun GenreDetailScreen(
                         val extraHeight = (topBarHeight.value - minTopBarHeightPx).roundToInt()
                         IntOffset(0, extraHeight)
                     }
+                    .hazeSource(MainActivity.LocalHazeState.current)
             ) {
                 // Optimization: Limit rendered items during the navigation transition 
                 // to ensure the slide-in animation remains smooth.

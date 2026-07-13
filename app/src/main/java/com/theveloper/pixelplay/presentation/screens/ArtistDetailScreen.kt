@@ -83,6 +83,8 @@ import com.theveloper.pixelplay.presentation.viewmodel.ArtistDetailViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.ArtistAlbumSection
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import com.theveloper.pixelplay.utils.formatSongCount
 import com.theveloper.pixelplay.utils.shapes.RoundedStarShape
 import kotlinx.coroutines.launch
@@ -300,7 +302,8 @@ fun ArtistDetailScreen(
                                 val extraHeight =
                                     (topBarHeight.value - minTopBarHeightPx).roundToInt()
                                 IntOffset(0, extraHeight)
-                            },
+                            }
+                            .hazeSource(MainActivity.LocalHazeState.current),
                         contentPadding = PaddingValues(
                             top = minTopBarHeight + 8.dp,
                             start = 16.dp,
@@ -458,9 +461,7 @@ fun ArtistDetailScreen(
     // Bottom sheets inherit the artist's dynamic color palette — same approach as AlbumDetailScreen
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
-        val isFavorite = remember(currentSong?.id, favoriteIds) {
-            currentSong?.let { favoriteIds.contains(it.id) } ?: false
-        }
+        val isFavorite = currentSong?.let { favoriteIds.contains(it.id) } ?: false
 
         if (currentSong != null) {
             val removeFromListTrigger = remember(uiState.songs) {

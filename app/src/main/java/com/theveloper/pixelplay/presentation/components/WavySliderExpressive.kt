@@ -114,8 +114,20 @@ fun WavySliderExpressive(
     val latestOnValueChange by rememberUpdatedState(onValueChange)
     val latestOnValueChangeFinished by rememberUpdatedState(onValueChangeFinished)
     val latestOnValueCommit by rememberUpdatedState(onValueCommit)
+    // 用 rememberUpdatedState 追踪运行时变化的值，避免 pointerInput 频繁重启
+    val currentEnabled by rememberUpdatedState(enabled)
+    val currentValueRange by rememberUpdatedState(valueRange)
+    val currentTrackEdgePaddingPx by rememberUpdatedState(trackEdgePaddingPx)
     var isPointerSeeking by remember { mutableStateOf(false) }
     val isInteracting = isPointerSeeking
+
+    // 安全网：如果 isPointerSeeking 卡在 true 超过3秒，强制重置
+    LaunchedEffect(isPointerSeeking) {
+        if (isPointerSeeking) {
+            kotlinx.coroutines.delay(3000L)
+            isPointerSeeking = false
+        }
+    }
 
     val thumbInteractionFraction by animateFloatAsState(
         targetValue = if (isInteracting) 1f else 0f,
@@ -191,16 +203,25 @@ fun WavySliderExpressive(
                 return@collect
             }
 
-            val durationNanos = (intervalMs * 900_000L).coerceAtLeast(1_000_000L)
-            var startFrameNanos = 0L
-            while (isActive) {
-                val frameNanos = withFrameNanos { it }
-                if (startFrameNanos == 0L) startFrameNanos = frameNanos
-                val elapsedNanos = (frameNanos - startFrameNanos).coerceAtLeast(0L)
-                val fraction = (elapsedNanos.toDouble() / durationNanos.toDouble()).toFloat().coerceIn(0f, 1f)
-                renderedNormalizedProgress.floatValue = start + (target - start) * fraction
-                if (fraction >= 1f) break
-            }
+            val durationNanos = (intervalMs * 700_000L).coerceAtLeast(1_000_000L)
+                var startFrameNanos = 0L
+                var lastRenderFrameNanos = 0L
+                val renderIntervalNanos = 16_666_667L / 2
+                while (isActive) {
+                    val frameNanos = withFrameNanos { it }
+                    if (startFrameNanos == 0L) {
+                        startFrameNanos = frameNanos
+                        lastRenderFrameNanos = frameNanos
+                    }
+                    if (frameNanos - lastRenderFrameNanos < renderIntervalNanos) {
+                        continue
+                    }
+                    lastRenderFrameNanos = frameNanos
+                    val elapsedNanos = (frameNanos - startFrameNanos).coerceAtLeast(0L)
+                    val fraction = (elapsedNanos.toDouble() / durationNanos.toDouble()).toFloat().coerceIn(0f, 1f)
+                    renderedNormalizedProgress.floatValue = start + (target - start) * fraction
+                    if (fraction >= 1f) break
+                }
             renderedNormalizedProgress.floatValue = target
         }
     }
@@ -289,49 +310,67 @@ fun WavySliderExpressive(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(enabled, valueRange, trackEdgePaddingPx) {
-                    if (!enabled) return@pointerInput
-
-                    fun valueForX(rawX: Float): Float {
-                        val edgePadding = trackEdgePaddingPx.coerceIn(0f, size.width / 2f)
-                        val trackStart = edgePadding
-                        val trackEnd = size.width - edgePadding
-                        val trackWidth = (trackEnd - trackStart).coerceAtLeast(1f)
-                        val normalized = ((rawX - trackStart) / trackWidth).coerceIn(0f, 1f)
-                        return valueRange.start +
-                            normalized * (valueRange.endInclusive - valueRange.start)
-                    }
-
-                    awaitEachGesture {
+                // 使用 Unit 作为 key：避免 enabled/valueRange/trackEdgePaddingPx 变化
+                // 导致 pointerInput 协程重启；
+                // 外层 while(true) + awaitEachGesture 保证每一轮手势处理后自动重启监听，
+                // 单个 enabled=false 或异常都不会让整个手势系统"永久死掉"。
+                // 组件卸载时 Compose 会取消 pointerInput 协程，内部挂起函数会抛出
+                // CancellationException，我们在 catch 中通过 ensureActive 重新让它传播。
+                .pointerInput(Unit) {
+                    while (true) {
                         try {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            isPointerSeeking = true
-                            down.consume()
-                            var latestGestureValue = valueForX(down.position.x)
-                            latestOnValueChange(latestGestureValue)
-
-                            var pointerId = down.id
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == pointerId }
-                                    ?: event.changes.firstOrNull { it.pressed }
-                                    ?: break
-
-                                pointerId = change.id
-                                if (!change.pressed) {
-                                    change.consume()
-                                    break
+                            awaitEachGesture {
+                                fun valueForX(rawX: Float): Float {
+                                    val edgePadding = currentTrackEdgePaddingPx.coerceIn(0f, size.width / 2f)
+                                    val trackStart = edgePadding
+                                    val trackEnd = size.width - edgePadding
+                                    val trackWidth = (trackEnd - trackStart).coerceAtLeast(1f)
+                                    val normalized = ((rawX - trackStart) / trackWidth).coerceIn(0f, 1f)
+                                    return currentValueRange.start +
+                                        normalized * (currentValueRange.endInclusive - currentValueRange.start)
                                 }
 
-                                if (change.position != change.previousPosition) {
-                                    change.consume()
-                                    latestGestureValue = valueForX(change.position.x)
-                                    latestOnValueChange(latestGestureValue)
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                // 运行时检查 enabled：若当前不可交互则静默跳过当前手势，
+                                // 外层 while 继续监听下一次。
+                                if (!currentEnabled) {
+                                    return@awaitEachGesture
                                 }
+                                isPointerSeeking = true
+                                down.consume()
+                                var latestGestureValue = valueForX(down.position.x)
+                                latestOnValueChange(latestGestureValue)
+
+                                var pointerId = down.id
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == pointerId }
+                                        ?: event.changes.firstOrNull { it.pressed }
+                                        ?: break
+
+                                    pointerId = change.id
+                                    if (!change.pressed) {
+                                        change.consume()
+                                        break
+                                    }
+
+                                    if (change.position != change.previousPosition) {
+                                        change.consume()
+                                        latestGestureValue = valueForX(change.position.x)
+                                        latestOnValueChange(latestGestureValue)
+                                    }
+                                }
+
+                                latestOnValueCommit?.invoke(latestGestureValue)
+                                    ?: latestOnValueChangeFinished?.invoke()
                             }
-
-                            latestOnValueCommit?.invoke(latestGestureValue)
-                                ?: latestOnValueChangeFinished?.invoke()
+                        } catch (ex: Throwable) {
+                            // 异常可能是"组件卸载导致取消"，也可能是单次手势处理失败。
+                            // 通过检查 Job.isActive 区分：若协程已被取消则退出循环；
+                            // 否则忽略异常，继续监听下一次手势。
+                            val active = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]?.isActive ?: true
+                            if (!active) throw ex
+                            // 重置状态后继续
                         } finally {
                             isPointerSeeking = false
                         }

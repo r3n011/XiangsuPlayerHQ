@@ -3,41 +3,133 @@ package com.theveloper.pixelplay.presentation.components.scoped
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
 
 /**
- * Simplified SheetMotionController: only animates the playerContentExpansionFraction.
- * translationY is derived from fraction in graphicsLayer at draw time.
- * This avoids the previous "two-value sync" problem (translationY vs expansionFraction
- * getting out of sync during animation interrupts).
+ * Optimized SheetMotionController:
+ * - Drives the single source of truth: playerContentExpansionFraction
+ * - Uses spring animations for gesture-natural feel and seamless interruption
+ * - Different spring parameters for expand vs collapse:
+ *   - Expand: medium-low stiffness, slightly bouncy → snappy but feels premium
+ *   - Collapse: low stiffness, no bounce → smooth slide-down
+ * - Smart initialVelocity: inherits the Animatable's current velocity so gesture
+ *   releases feel continuous instead of resetting to zero velocity
+ * - Exposes isRunning / currentFraction for callers that need to inspect state
  */
 internal class SheetMotionController(
     private val playerContentExpansionFraction: Animatable<Float, AnimationVector1D>,
     private val mutex: MutatorMutex,
     private val defaultAnimationSpec: AnimationSpec<Float>
 ) {
+
+    companion object {
+        // ⚡ Expand spring: snappy with subtle bounce at the top
+        val ExpandSpringSpec: AnimationSpec<Float> = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        )
+
+        // ⚡ Collapse spring: smooth, no bounce, slides away naturally
+        val CollapseSpringSpec: AnimationSpec<Float> = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    }
+
+    /** Whether an animation is currently running. */
+    val isRunning: Boolean
+        get() = playerContentExpansionFraction.isRunning
+
+    /** Current expansion fraction in [0, 1]. */
+    val currentFraction: Float
+        get() = playerContentExpansionFraction.value
+
+    /** Velocity of the current animation (0f if idle). */
+    val currentVelocity: Float
+        get() = playerContentExpansionFraction.velocity
+
+    /**
+     * Animate to expanded (1f) or collapsed (0f).
+     *
+     * Chooses direction-appropriate spring by default.
+     * If `animationSpec` is provided by the caller, it is used instead
+     * (e.g. SheetVerticalDragGestureHandler passes a spring derived from the user's gesture velocity).
+     */
     suspend fun animateTo(
         targetExpanded: Boolean,
-        animationSpec: AnimationSpec<Float> = defaultAnimationSpec,
-        initialVelocity: Float = 0f
+        animationSpec: AnimationSpec<Float>? = null,
+        initialVelocity: Float = Float.NaN
     ) {
         val targetFraction = if (targetExpanded) 1f else 0f
+
+        // Skip if already at target (avoids a redundant animation that produces a recomposition)
+        if (!playerContentExpansionFraction.isRunning &&
+            playerContentExpansionFraction.value == targetFraction) {
+            return
+        }
+
+        val effectiveVelocity = if (initialVelocity.isNaN()) {
+            // Inherit current animatable velocity so gesture releases feel continuous
+            playerContentExpansionFraction.velocity.coerceIn(-2f, 2f)
+        } else {
+            initialVelocity
+        }
+
+        val effectiveSpec = animationSpec ?: if (targetExpanded) {
+            ExpandSpringSpec
+        } else {
+            CollapseSpringSpec
+        }
+
         mutex.mutate {
             playerContentExpansionFraction.animateTo(
                 targetValue = targetFraction,
-                initialVelocity = initialVelocity,
+                initialVelocity = effectiveVelocity,
+                animationSpec = effectiveSpec
+            )
+        }
+    }
+
+    /**
+     * Animate to an arbitrary fraction value. Useful for custom states (half-open etc.)
+     */
+    suspend fun animateToFraction(
+        targetFraction: Float,
+        animationSpec: AnimationSpec<Float> = defaultAnimationSpec,
+        initialVelocity: Float = Float.NaN
+    ) {
+        val clamped = targetFraction.coerceIn(0f, 1f)
+        if (!playerContentExpansionFraction.isRunning &&
+            playerContentExpansionFraction.value == clamped) {
+            return
+        }
+
+        val effectiveVelocity = if (initialVelocity.isNaN()) {
+            playerContentExpansionFraction.velocity.coerceIn(-2f, 2f)
+        } else {
+            initialVelocity
+        }
+
+        mutex.mutate {
+            playerContentExpansionFraction.animateTo(
+                targetValue = clamped,
+                initialVelocity = effectiveVelocity,
                 animationSpec = animationSpec
             )
         }
     }
 
+    /** Stop any running animation. Called at the start of a drag gesture. */
     suspend fun stop() {
         playerContentExpansionFraction.stop()
     }
 
+    /** Jump to a fraction without animation. Called on every drag movement frame. */
     suspend fun snapTo(expansionFractionValue: Float) {
         mutex.mutate {
-            playerContentExpansionFraction.snapTo(expansionFractionValue)
+            playerContentExpansionFraction.snapTo(expansionFractionValue.coerceIn(0f, 1f))
         }
     }
 }

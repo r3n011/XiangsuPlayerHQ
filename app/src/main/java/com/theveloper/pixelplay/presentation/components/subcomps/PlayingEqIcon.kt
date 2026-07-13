@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlin.math.PI
 import kotlin.math.sin
@@ -27,11 +28,8 @@ fun PlayingEqIcon(
     bars: Int = 3,
     minHeightFraction: Float = 0.28f,
     maxHeightFraction: Float = 1.0f,
-    // Slower cycles mean fewer animation frames / Canvas redraws per second while the icon
-    // is visible. With many current-song indicators potentially on screen (home, queue,
-    // lyrics sheet), this noticeably lowers screen-on CPU on weaker devices.
-    phaseDurationMillis: Int = 3600,   // ciclo más lento
-    wanderDurationMillis: Int = 12000, // patrón más largo
+    phaseDurationMillis: Int = 4800,
+    wanderDurationMillis: Int = 15000,
     gapFraction: Float = 0.30f
 ) {
     val fullRotation = (2f * PI).toFloat()
@@ -43,10 +41,14 @@ fun PlayingEqIcon(
         while (isActive) {
             val start = (phaseAnim.value % fullRotation).let { if (it < 0f) it + fullRotation else it }
             phaseAnim.snapTo(start)
-            phaseAnim.animateTo(
-                targetValue = start + fullRotation,
-                animationSpec = tween(durationMillis = phaseDurationMillis, easing = LinearEasing)
-            )
+            try {
+                phaseAnim.animateTo(
+                    targetValue = start + fullRotation,
+                    animationSpec = tween(durationMillis = phaseDurationMillis, easing = LinearEasing)
+                )
+            } catch (e: CancellationException) {
+                break
+            }
         }
     }
 
@@ -55,10 +57,14 @@ fun PlayingEqIcon(
         while (isActive) {
             val start = (wanderAnim.value % fullRotation).let { if (it < 0f) it + fullRotation else it }
             wanderAnim.snapTo(start)
-            wanderAnim.animateTo(
-                targetValue = start + fullRotation,
-                animationSpec = tween(durationMillis = wanderDurationMillis, easing = LinearEasing)
-            )
+            try {
+                wanderAnim.animateTo(
+                    targetValue = start + fullRotation,
+                    animationSpec = tween(durationMillis = wanderDurationMillis, easing = LinearEasing)
+                )
+            } catch (e: CancellationException) {
+                break
+            }
         }
     }
 

@@ -82,7 +82,7 @@ fun ScreenWrapper(
     val hasVisibleNonMainRootScreen = visibleEntries.any { entry ->
         entry.destination.route?.let { route -> !isMainRootRoute(route) } == true
     }
-    val shouldRunDepthEffects = !isMainRootScreen || hasVisibleNonMainRootScreen
+    val shouldRunDepthEffects = !isMainRootScreen && hasVisibleNonMainRootScreen
 
     // Dim Logic:
     // If I am BACKGROUND (myIndex < topIndex) -> Dim.

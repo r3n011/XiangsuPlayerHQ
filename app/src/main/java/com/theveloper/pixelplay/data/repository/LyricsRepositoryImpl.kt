@@ -329,7 +329,7 @@ class LyricsRepositoryImpl @Inject constructor(
         sourcePreference: LyricsSourcePreference,
         forceRefresh: Boolean
     ): Lyrics? = withContext(Dispatchers.IO) {
-        val cacheKey = generateCacheKey(song.id)
+        val cacheKey = generateCacheKey(song)
         val isNeteaseTrack = isNeteaseSong(song)
         
         Log.d(TAG, "===== FETCH LYRICS START: ${song.displayArtist} - ${song.title} (forceRefresh=$forceRefresh, source=$sourcePreference) =====")
@@ -347,12 +347,17 @@ class LyricsRepositoryImpl @Inject constructor(
             Log.d(TAG, "===== FORCE REFRESH - BYPASSING IN-MEMORY CACHE =====")
         }
 
-        if (!forceRefresh) {
+        if (!forceRefresh && !isNeteaseTrack) {
             loadStoredLyrics(song, cacheKey, includeMemoryCache = false)?.let { stored ->
                 lyricsCache.put(cacheKey, stored.first)
                 Log.d(TAG, "===== RETURNING STORED LYRICS WITHOUT REMOTE FETCH =====")
                 return@withContext stored.first
             }
+        } else if (!forceRefresh && isNeteaseTrack) {
+            // 网易云歌曲：跳过数据库/JSON 陈旧缓存，直接从 Netease API 获取
+            // 否则会显示上一首歌的歌词（因为 song.id 可能与数据库中旧条目冲突）
+            // 但保留磁盘 JSON 作为 API 失败后的兜底（在 fetchLyricsFromAPI 内部）
+            Log.d(TAG, "===== BYPASSING STORED LYRICS FOR NETEASE TRACK — fetching from API =====")
         }
 
         // Define source fetchers (matching Rhythm pattern)
@@ -365,7 +370,17 @@ class LyricsRepositoryImpl @Inject constructor(
         }
 
         val fetchFromAPI: suspend () -> Lyrics? = {
-            fetchLyricsFromAPI(song)
+            try {
+                kotlinx.coroutines.withTimeout(20000L) {
+                    fetchLyricsFromAPI(song)
+                }
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                Log.w(TAG, "Lyrics API fetch timed out for: ${song.title}")
+                null
+            } catch (e: Exception) {
+                Log.w(TAG, "Lyrics API fetch failed: ${e.message}")
+                null
+            }
         }
 
         // Try sources in order based on preference, with fallback (matching Rhythm)
@@ -421,24 +436,35 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getStoredLyrics(song: Song): Pair<Lyrics, String>? = withContext(Dispatchers.IO) {
-        val cacheKey = generateCacheKey(song.id)
+        val cacheKey = generateCacheKey(song)
+        // 网易云歌曲：不信任数据库/JSON 存储的歌词，避免显示错误歌曲歌词
+        if (isNeteaseSong(song)) return@withContext null
         loadStoredLyrics(song, cacheKey, includeMemoryCache = true)?.also { stored ->
             lyricsCache.put(cacheKey, stored.first)
         }
     }
 
     /**
-     * Fetches lyrics from LRCLIB API with rate limiting (matching Rhythm)
+     * Fetches lyrics from LRCLIB API with rate limiting (matching Rhythm).
+     * For Netease songs: try Netease API → AMLLDB → LRCLIB search strategies.
+     * For local songs: try JSON cache → LRCLIB search strategies.
      */
     private suspend fun fetchLyricsFromAPI(song: Song): Lyrics? = withContext(Dispatchers.IO) {
         val isNetease = isNeteaseSong(song)
         val isCloudLx = song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
+        val usedNeteaseSpecific = isNetease || isCloudLx
 
-        if (isNetease || isCloudLx) {
-            // 优先使用 btwoa 镜像的歌词 API（支持绝大多数歌曲）
+        if (usedNeteaseSpecific) {
+            val cachedJson = loadLocalLyricsJson(song)
+            if (cachedJson != null) {
+                Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE (Netease) =====")
+                return@withContext cachedJson
+            }
+
             val ncmLyrics = fetchFromNeteaseApi(song)
             if (ncmLyrics != null) {
                 Log.d(TAG, "===== LOADED LYRICS FROM Netease API (btwoa) =====")
+                saveLocalLyricsJson(song, ncmLyrics)
                 return@withContext ncmLyrics
             }
         }
@@ -447,16 +473,18 @@ class LyricsRepositoryImpl @Inject constructor(
             val amlLyrics = fetchFromAmlldb(song)
             if (amlLyrics != null) {
                 Log.d(TAG, "===== LOADED WORD-BY-WORD LYRICS FROM AMLLDB =====")
+                saveLocalLyricsJson(song, amlLyrics)
                 return@withContext amlLyrics
             }
-            Log.d(TAG, "AMLLDB unavailable for Netease song, falling back to cache/LRCLIB")
+            Log.d(TAG, "AMLLDB + Netease API unavailable for Netease song ${song.id} - will try LRCLIB fallback")
         }
 
-        // Check JSON disk cache first (matching Rhythm)
-        val cachedJson = loadLocalLyricsJson(song)
-        if (cachedJson != null) {
-            Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE =====")
-            return@withContext cachedJson
+        if (!usedNeteaseSpecific) {
+            val cachedJson = loadLocalLyricsJson(song)
+            if (cachedJson != null) {
+                Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE =====")
+                return@withContext cachedJson
+            }
         }
 
         // Apply rate limiting
@@ -808,12 +836,41 @@ class LyricsRepositoryImpl @Inject constructor(
         normalizeForMatch(value) in UNKNOWN_ARTISTS
 
     private fun isNeteaseSong(song: Song): Boolean =
-        song.neteaseId != null || song.contentUriString.startsWith("netease://")
+        song.neteaseId != null ||
+        song.contentUriString.startsWith("netease://") ||
+        song.contentUriString.startsWith("cloud://lx/")
 
     private fun resolveNeteaseSongId(song: Song): Long? {
-        song.neteaseId?.let { return it }
-        if (!song.contentUriString.startsWith("netease://")) return null
-        return Uri.parse(song.contentUriString).host?.toLongOrNull()
+        // 1) 优先 song.neteaseId（最准确）
+        song.neteaseId?.let { if (it > 0L) return it }
+
+        // 2) "netease://<id>" 格式 contentUri
+        val uri = song.contentUriString
+        if (uri.startsWith("netease://", ignoreCase = true)) {
+            val hostPart = uri.removePrefix("netease://")
+                .split('/')
+                .firstOrNull()
+                ?.toLongOrNull()
+            if (hostPart != null && hostPart > 0L) return hostPart
+        }
+
+        // 3) "cloud://lx/{json}" 格式 contentUri（落雪/在线歌曲）
+        if (uri.startsWith("cloud://lx/", ignoreCase = true)) {
+            try {
+                val tail = uri.removePrefix("cloud://lx/")
+                val decoded = java.net.URLDecoder.decode(tail, "UTF-8")
+                val jsonObj = org.json.JSONObject(decoded)
+                val rawId = jsonObj.optString("id", "").trim()
+                if (rawId.isNotBlank()) {
+                    val n = rawId.toLongOrNull()
+                    if (n != null && n > 0L) return n
+                }
+            } catch (_: Throwable) { }
+        }
+
+        // ⚠️ 移除兜底：song.id 本身为纯数字（cloud 歌曲的 hash 不是 netease ID）
+        // 之前的 song.id.toLongOrNull() 回退会导致歌词请求发送到错误的 ID
+        return null
     }
 
     private suspend fun fetchFromAmlldb(song: Song): Lyrics? = withContext(Dispatchers.IO) {
@@ -854,24 +911,29 @@ class LyricsRepositoryImpl @Inject constructor(
      * 对在线（lx）、netease 源或能解析出数字 id 的歌曲都可以走这里。
      */
     private suspend fun fetchFromNeteaseApi(song: Song): Lyrics? = withContext(Dispatchers.IO) {
-        // 优先：neteaseId 或 contentUri 指向 netease；其次：lx JSON 内的 id；
-        // 最后：song.id 如果是纯数字（播放流播放时会被设置）
         val songId = resolveNeteaseSongId(song)
-            ?: resolveLxSongId(song)
-            ?: song.id.toLongOrNull()
             ?: return@withContext null
         if (songId <= 0L) return@withContext null
 
-        try {
-            val rawLrc = lxSearchApi.getLyric(songId = songId.toString())
-                ?: return@withContext null
-            val parsed = LyricsUtils.parseLyrics(rawLrc)
-            if (!parsed.isValid()) return@withContext null
-            return@withContext parsed.copy(areFromRemote = true)
+        val rawLrc = try {
+            kotlinx.coroutines.withTimeout(12000L) {
+                lxSearchApi.getLyric(songId = songId.toString())
+            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            Log.w(TAG, "Netease API timeout for songId=$songId")
+            null
         } catch (t: Throwable) {
-            Log.w(TAG, "Netease lyric API failed for songId=$songId: ${t.message}")
+            Log.w(TAG, "Netease API error for songId=$songId: ${t.message}")
+            null
+        }
+
+        if (rawLrc == null) {
+            Log.w(TAG, "Netease API returned null for songId=$songId")
             return@withContext null
         }
+        val parsed = LyricsUtils.parseLyrics(rawLrc)
+        if (!parsed.isValid()) return@withContext null
+        return@withContext parsed.copy(areFromRemote = true)
     }
 
     private fun resolveLxSongId(song: Song): Long? {
@@ -1037,9 +1099,20 @@ class LyricsRepositoryImpl @Inject constructor(
                 ?.takeIf { lines -> lines.any { !it.words.isNullOrEmpty() } }
                 ?.let(::toWordByWordLrc)
 
+            // 关键：同时保存原文行和翻译行（相同时间戳）。
+            // LyricsUtils.parseLyrics + pairTranslationLines 会自动按时间戳配对。
+            val syncedLyrics = lyrics.synced?.joinToString("\n") { line ->
+                val ts = formatTimestamp(line.time)
+                if (!line.translation.isNullOrBlank()) {
+                    "[$ts]${line.line}\n[$ts]${line.translation}"
+                } else {
+                    "[$ts]${line.line}"
+                }
+            }
+
             val lyricsData = LyricsData(
                 plainLyrics = lyrics.plain?.joinToString("\n"),
-                syncedLyrics = lyrics.synced?.joinToString("\n") { "[${formatTimestamp(it.time)}]${it.line}" },
+                syncedLyrics = syncedLyrics,
                 wordByWordLyrics = wordByWordLyrics
             )
 
@@ -1229,8 +1302,15 @@ class LyricsRepositoryImpl @Inject constructor(
             return if (hasWordTimestamps) {
                 toWordByWordLrc(syncedLyrics)
             } else {
+                // 同时保存原文行和翻译行（相同时间戳）
+                // parseLyrics + pairTranslationLines 会自动配对
                 syncedLyrics.joinToString("\n") { line ->
-                    "[${formatTimestamp(line.time)}]${line.line}"
+                    val ts = formatTimestamp(line.time)
+                    if (!line.translation.isNullOrBlank()) {
+                        "[$ts]${line.line}\n[$ts]${line.translation}"
+                    } else {
+                        "[$ts]${line.line}"
+                    }
                 }
             }
         }
@@ -1256,20 +1336,21 @@ class LyricsRepositoryImpl @Inject constructor(
         try {
             LogUtils.d(this@LyricsRepositoryImpl, "Fetching lyrics from remote for: ${song.title}")
 
-            val cacheKey = generateCacheKey(song.id)
-            loadStoredLyrics(song, cacheKey, includeMemoryCache = true)?.let { stored ->
-                lyricsCache.put(cacheKey, stored.first)
-                LogUtils.d(
-                    this@LyricsRepositoryImpl,
-                    "Skipping remote lyrics fetch because stored lyrics already exist for: ${song.title}"
-                )
-                return@withContext Result.success(stored)
+            val cacheKey = generateCacheKey(song)
+            // 网易云歌曲：跳过本地存储，始终从 API 获取，避免缓存错歌歌词
+            if (!isNeteaseSong(song)) {
+                loadStoredLyrics(song, cacheKey, includeMemoryCache = true)?.let { stored ->
+                    lyricsCache.put(cacheKey, stored.first)
+                    LogUtils.d(
+                        this@LyricsRepositoryImpl,
+                        "Skipping remote lyrics fetch because stored lyrics already exist for: ${song.title}"
+                    )
+                    return@withContext Result.success(stored)
+                }
             }
 
             // 优先使用网易云镜像（btwoa）的歌词接口，匹配 netease 源以及 lx 在线源。
-            val isCloudSource = isNeteaseSong(song) ||
-                song.contentUriString.startsWith("cloud://lx/", ignoreCase = true) ||
-                song.id.toLongOrNull() != null
+            val isCloudSource = isNeteaseSong(song)
             if (isCloudSource) {
                 val ncmLyrics = fetchFromNeteaseApi(song)
                 if (ncmLyrics != null) {
@@ -1280,7 +1361,13 @@ class LyricsRepositoryImpl @Inject constructor(
                             val minutes = totalSec / 60
                             val sec = totalSec % 60
                             val centi = (ms % 1000) / 10
-                            "[%02d:%02d.%02d]%s".format(minutes, sec, centi, line.line)
+                            val timestamp = "[%02d:%02d.%02d]".format(minutes, sec, centi)
+                            val mainLine = "$timestamp${line.line}"
+                            if (!line.translation.isNullOrBlank()) {
+                                "$mainLine\n$timestamp${line.translation}"
+                            } else {
+                                mainLine
+                            }
                         }
                     } else {
                         ncmLyrics.plain?.joinToString("\n").orEmpty()
@@ -1686,7 +1773,37 @@ class LyricsRepositoryImpl @Inject constructor(
         lyricsCache.evictAll()
     }
 
+    override fun clearLyricsCacheForCloudSongs() {
+        LogUtils.d(this, "Clearing cloud-song lyrics cache")
+        val keysToRemove = mutableListOf<String>()
+        synchronized(lyricsCache) {
+            val snapshot = lyricsCache.snapshot()
+            snapshot.keys.forEach { key ->
+                if (key.startsWith("netease::")) {
+                    keysToRemove.add(key)
+                }
+            }
+            keysToRemove.forEach { lyricsCache.remove(it) }
+        }
+        LogUtils.d(this, "Removed ${keysToRemove.size} cloud-song cache entries")
+    }
+
     private fun generateCacheKey(songId: String): String = songId
+
+    /**
+     * 为 Song 对象生成安全的缓存 key。
+     * 对于 netease/cloud 歌曲，额外包含 contentUri 和 neteaseId 的 hash，
+     * 避免不同云歌曲因 song.id hash 碰撞或被复用。
+     */
+    private fun generateCacheKey(song: Song): String {
+        val baseKey = song.id
+        if (isNeteaseSong(song)) {
+            val contentUriHash = song.contentUriString.hashCode().toString()
+            val neteaseIdPart = song.neteaseId?.toString() ?: "none"
+            return "netease::$baseKey::$neteaseIdPart::$contentUriHash"
+        }
+        return baseKey
+    }
 
     private fun createTempFileFromUri(uri: Uri): File? {
         return try {

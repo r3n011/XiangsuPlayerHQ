@@ -10,6 +10,8 @@ import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
 import java.io.File
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 
 data class AudioMetadata(
     val title: String?,
@@ -38,6 +40,7 @@ data class AudioMetadataArtwork(
 object AudioMetadataReader {
 
     private const val TAG = "AudioMetadataReader"
+    private const val METADATA_READ_TIMEOUT_MS = 10_000L
 
     /**
      * Per-file diagnostic logging (TagLib property maps, parsed fields, fallback hits)
@@ -66,6 +69,19 @@ object AudioMetadataReader {
     }
 
     fun read(file: File, readArtwork: Boolean = true): AudioMetadata? {
+        return try {
+            kotlinx.coroutines.runBlocking {
+                withTimeout(METADATA_READ_TIMEOUT_MS) {
+                    readInternal(file, readArtwork)
+                }
+            }
+        } catch (e: TimeoutCancellationException) {
+            Timber.tag(TAG).w("Metadata read timed out for file: ${file.name}")
+            null
+        }
+    }
+
+    private fun readInternal(file: File, readArtwork: Boolean = true): AudioMetadata? {
         val startNanos = System.nanoTime()
         return try {
             ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->

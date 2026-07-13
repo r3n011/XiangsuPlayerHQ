@@ -96,17 +96,17 @@ private fun PlayerInternalNavigationItemsRow(
     navBarStyle: String,
     compactMode: Boolean,
     bottomBarPadding: Dp,
-    onSearchIconDoubleTap: () -> Unit
+    onSearchIconDoubleTap: () -> Unit,
+    onRoamingClick: () -> Unit = {}
 ) {
     val navBarInsetPadding = sanitizeNavigationBarBottomInset(
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     )
-    // Maintain invariant: bottomBarPadding + innerRowPadding = the sanitized system nav bar inset.
-    // This prevents nav items from appearing behind the gesture bar during style transitions,
-    // e.g. FULL_WIDTH→DEFAULT where bottomBarPadding starts at 0 and animates to systemNavBarInset.
     val innerRowPadding = (navBarInsetPadding - bottomBarPadding).coerceAtLeast(0.dp)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestOnSearchIconDoubleTap by rememberUpdatedState(onSearchIconDoubleTap)
+    val navigationDebounceEnabled = remember { mutableStateOf(true) }
+    val debounceTimeout = 300L
 
     val rowModifier = if (navBarStyle == NavBarStyle.FULL_WIDTH) {
         modifier
@@ -181,11 +181,18 @@ private fun PlayerInternalNavigationItemsRow(
                     { Text(labelText) }
                 }
             }
+            val latestOnRoamingClick by rememberUpdatedState(onRoamingClick)
             val onClickLambda: () -> Unit = remember(item.screen.route, navController, scope) {
                 click@{
                     val itemRoute = item.screen.route
                     val isSearchTab = itemRoute == Screen.Search.route
+                    val isRoamingTab = itemRoute == Screen.Roaming.route
                     val isAlreadySelected = latestCurrentRoute == itemRoute
+
+                    if (isRoamingTab) {
+                        latestOnRoamingClick()
+                        return@click
+                    }
 
                     if (isSearchTab) {
                         val now = SystemClock.elapsedRealtime()
@@ -193,9 +200,15 @@ private fun PlayerInternalNavigationItemsRow(
                         lastSearchTapTimestamp = now
 
                         if (!isAlreadySelected) {
+                            if (!navigationDebounceEnabled.value) return@click
                             if (!navController.navigateToTopLevelSafely(itemRoute)) {
                                 lastSearchTapTimestamp = 0L
                                 return@click
+                            }
+                            navigationDebounceEnabled.value = false
+                            scope.launch {
+                                delay(debounceTimeout)
+                                navigationDebounceEnabled.value = true
                             }
                         }
 
@@ -211,8 +224,15 @@ private fun PlayerInternalNavigationItemsRow(
                             }
                         }
                     } else if (!isAlreadySelected) {
+                        if (!navigationDebounceEnabled.value) return@click
                         lastSearchTapTimestamp = 0L
-                        navController.navigateToTopLevelSafely(itemRoute)
+                        if (navController.navigateToTopLevelSafely(itemRoute)) {
+                            navigationDebounceEnabled.value = false
+                            scope.launch {
+                                delay(debounceTimeout)
+                                navigationDebounceEnabled.value = true
+                            }
+                        }
                     } else {
                         lastSearchTapTimestamp = 0L
                     }
@@ -248,7 +268,8 @@ fun PlayerInternalNavigationBar(
     navBarStyle: String,
     compactMode: Boolean,
     bottomBarPadding: Dp = 0.dp,
-    onSearchIconDoubleTap: () -> Unit = {}
+    onSearchIconDoubleTap: () -> Unit = {},
+    onRoamingClick: () -> Unit = {}
 ) {
     PlayerInternalNavigationItemsRow(
         navController = navController,
@@ -258,6 +279,7 @@ fun PlayerInternalNavigationBar(
         compactMode = compactMode,
         bottomBarPadding = bottomBarPadding,
         onSearchIconDoubleTap = onSearchIconDoubleTap,
+        onRoamingClick = onRoamingClick,
         modifier = modifier
     )
 }

@@ -116,7 +116,8 @@ fun UnifiedPlayerSheetV2(
     navController: NavHostController,
     hideMiniPlayer: Boolean = false,
     isNavBarHidden: Boolean = false,
-    navRailPadding: Dp = 0.dp
+    navRailPadding: Dp = 0.dp,
+    isLandscape: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -192,6 +193,18 @@ fun UnifiedPlayerSheetV2(
 
     val isFavorite by playerViewModel.isCurrentSongFavorite.collectAsStateWithLifecycle()
 
+    // ⚡ Optimization: bridge the gap between tracks using a retained song.
+    // When currentSong flips to null briefly during engine transitions or hydration,
+    // this ensures showPlayerContentArea stays true and the UI remains mounted,
+    // preventing a visual "flash" where the player disappears for ~1s.
+    var retainedSong by remember { mutableStateOf<Song?>(null) }
+    LaunchedEffect(infrequentPlayerState.currentSong?.id) {
+        if (infrequentPlayerState.currentSong != null) {
+            retainedSong = infrequentPlayerState.currentSong
+        }
+    }
+    val activeSong = infrequentPlayerState.currentSong ?: retainedSong
+
     val playerUiSheetSlice by remember {
         playerViewModel.playerUiState
             .map { state ->
@@ -241,8 +254,8 @@ fun UnifiedPlayerSheetV2(
     val miniPlayerContentHeightPx = remember { with(density) { MiniPlayerHeight.toPx() } }
 
     val isCastConnecting by playerViewModel.isCastConnecting.collectAsStateWithLifecycle()
-    val showPlayerContentArea by remember(infrequentPlayerState.currentSong, isCastConnecting) {
-        derivedStateOf { infrequentPlayerState.currentSong != null || isCastConnecting }
+    val showPlayerContentArea by remember(activeSong, isCastConnecting) {
+        derivedStateOf { activeSong != null || isCastConnecting }
     }
 
     val playerContentExpansionFraction = playerViewModel.playerContentExpansionFraction
@@ -256,12 +269,12 @@ fun UnifiedPlayerSheetV2(
     // - translationY = sheetCollapsedTargetY * (1f - fraction):从下方渐入
     // - 去除 scale、overshoot、复杂角半径动画
     // - 单一动画源，避免动画不同步导致卡中间
-    // ⚡ 优化：使用简单的 tween 动画（350ms）而不是复杂的弹簧动画
-    //   弹簧动画需要每帧进行物理计算，对主线程压力大；tween 只需预先生成缓动曲线
-    //   同时将时长从约 255ms 延长到 350ms，使动画更流畅自然
+    // ⚡ 优化：使用简单的 tween 动画（280ms）配合 FastOutSlowInEasing
+    //   动画时长 280ms：足够快让用户感觉即时响应，足够慢让动画平滑可见
+    //   tween 比 spring 更稳定，不需要每帧物理计算
     val sheetAnimationSpec = remember {
         tween<Float>(
-            durationMillis = 350,
+            durationMillis = 280,
             easing = FastOutSlowInEasing
         )
     }
@@ -373,7 +386,8 @@ fun UnifiedPlayerSheetV2(
         isPlaying = infrequentPlayerState.isPlaying,
         hasCurrentSong = infrequentPlayerState.currentSong != null,
         swipeDismissProgress = swipeDismissProgress,
-        navRailPadding = navRailPadding
+        navRailPadding = navRailPadding,
+        isLandscape = isLandscape
     )
     val currentBottomPadding = sheetVisualState.currentBottomPadding
     val baseBottomPadding = sheetVisualState.baseBottomPadding
@@ -507,8 +521,11 @@ fun UnifiedPlayerSheetV2(
         }
     }
 
-    val activePlayerSchemePair by playerViewModel.activePlayerColorSchemePair.collectAsStateWithLifecycle()
-    val themedAlbumArtUri by playerViewModel.currentThemedAlbumArtUri.collectAsStateWithLifecycle()
+    // ⚡ 从单一的、原子的主题状态容器中读取：activeColorSchemePair, albumArtUri 始终一致
+    //   不会出现"颜色变了但 URI 没变"或反之的中间状态
+    val albumThemeState by playerViewModel.albumArtThemeState.collectAsStateWithLifecycle()
+    val activePlayerSchemePair = albumThemeState.activeColorSchemePair
+    val themedAlbumArtUri = albumThemeState.albumArtUri
     val isDarkTheme = LocalPixelPlayDarkTheme.current
     val currentSong = infrequentPlayerState.currentSong
     val sheetThemeState = rememberSheetThemeState(
@@ -518,7 +535,9 @@ fun UnifiedPlayerSheetV2(
         currentSong = currentSong,
         themedAlbumArtUri = themedAlbumArtUri,
         preparingSongId = preparingSongId,
-        systemColorScheme = MaterialTheme.colorScheme
+        systemColorScheme = MaterialTheme.colorScheme,
+        currentSheetState = currentSheetContentState,
+        playerContentExpansionFraction = playerContentExpansionFraction
     )
     val albumColorScheme = sheetThemeState.albumColorScheme
     val miniPlayerScheme = sheetThemeState.miniPlayerScheme
@@ -529,20 +548,8 @@ fun UnifiedPlayerSheetV2(
     // Elevation is only visible in the mini/collapsed state (expansion < 0.18).
     // miniReadyAlpha fades the shadow in during the initial song-appear animation.
     val isDragging = sheetBackAndDragState.isDragging
-    val visualCardShadowElevation by remember(showQueueSheet, miniReadyAlpha, isDragging) {
-        derivedStateOf {
-            if (
-                showQueueSheet ||
-                isDragging ||
-                playerContentExpansionFraction.isRunning ||
-                playerContentExpansionFraction.value > 0.18f
-            ) {
-                0.dp
-            } else {
-                (3f * miniReadyAlpha).dp
-            }
-        }
-    }
+    // 始终为 0.dp，移除无效的 derivedStateOf 避免不必要的重组
+    val visualCardShadowElevation = 0.dp
 
     val sheetInteractionState = rememberSheetInteractionState(
         scope = scope,
@@ -592,6 +599,8 @@ fun UnifiedPlayerSheetV2(
         modifier = Modifier
             .fillMaxWidth()
             .layout { measurable, constraints ->
+                val rawFraction = playerContentExpansionFraction.value
+                val fraction = (rawFraction * 20f).toInt() / 20f
                 val translationY = visualSheetTranslationYProvider().roundToInt()
                 val overshoot = if (currentSheetContentState == PlayerSheetState.EXPANDED && !isDragging) {
                     -translationY
@@ -634,6 +643,8 @@ fun UnifiedPlayerSheetV2(
                             // Places child at startPaddingPx to center it horizontally.
                             // Reports full screen width to parent to satisfy fillMaxWidth() constraints.
                             .layout { measurable, constraints ->
+                                val rawFraction = playerContentExpansionFraction.value
+                                val fraction = (rawFraction * 20f).toInt() / 20f
                                 val targetHeightPx = playerContentAreaHeightPxProvider()
                                     .toInt().coerceAtLeast(0)
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider()
@@ -660,9 +671,11 @@ fun UnifiedPlayerSheetV2(
                             // structurally stable avoids the costly relayout/redraw
                             // restructure when the elevation crosses 0.dp during
                             // expand/collapse or right after play/pause.
+                            // Using playerShadowOnlyShape (flat bottom corners) prevents
+                            // shadow leaks at the bottom-left/right corners of the mini player.
                             .shadow(
                                 elevation = visualCardShadowElevation,
-                                shape = sheetInteractionState.playerShadowShape,
+                                shape = sheetInteractionState.playerShadowOnlyShape,
                                 clip = false
                             )
                             .background(
@@ -677,7 +690,9 @@ fun UnifiedPlayerSheetV2(
                             // During drag/animation, we measure at stable full-screen constraints to prevent jank.
                             .layout { measurable, constraints ->
                                 val targetContentHeightPx = containerHeight.roundToPx()
-                                val fraction = playerContentExpansionFraction.value
+                                // 量化 fraction 到 5% 步进，减少布局重算频率
+                                val rawFraction = playerContentExpansionFraction.value
+                                val fraction = (rawFraction * 20f).toInt() / 20f
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt()
                                 val measureWidth = if (fraction > 0f) {
                                     screenWidthPx.roundToInt()
@@ -710,14 +725,10 @@ fun UnifiedPlayerSheetV2(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) {
-                                // ⚡ 折叠状态点击：显示提示"按住上滑打开播放器"，不展开
+                                // ⚡ 折叠状态点击：直接展开播放器
                                 //   展开状态点击背景：调用 togglePlayerSheetState() 关闭播放器
                                 if (currentSheetContentState == PlayerSheetState.COLLAPSED) {
-                                    Toast.makeText(
-                                        latestContext,
-                                        "按住上滑打开播放器",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    playerViewModel.expandPlayerSheet()
                                 } else if (tapBackgroundClosesPlayer) {
                                     playerViewModel.togglePlayerSheetState()
                                 }
@@ -728,6 +739,7 @@ fun UnifiedPlayerSheetV2(
                     ) {
                         UnifiedPlayerMiniAndFullLayers(
                             currentSong = infrequentPlayerState.currentSong,
+                            retainedSong = retainedSong,
                             miniPlayerScheme = miniPlayerScheme,
                             overallSheetTopCornerRadiusProvider = overallSheetTopCornerRadiusProvider,
                             infrequentPlayerState = infrequentPlayerState,
@@ -842,6 +854,7 @@ fun UnifiedPlayerSheetV2(
                 onNavigateToAlbum = sheetActionHandlers.onNavigateToAlbum,
                 onNavigateToArtist = sheetActionHandlers.onNavigateToArtist,
                 onNavigateToGenre = sheetActionHandlers.onNavigateToGenre,
+                onOpenNeteaseArtistHomepage = sheetActionHandlers.onOpenNeteaseArtistHomepage,
                 queuePredictiveBackProgress = queuePredictiveBackProgress,
                 queuePredictiveBackSwipeEdge = queuePredictiveBackSwipeEdgeState
             )

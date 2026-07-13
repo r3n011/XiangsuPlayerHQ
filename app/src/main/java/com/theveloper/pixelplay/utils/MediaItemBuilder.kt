@@ -97,6 +97,7 @@ object MediaItemBuilder {
     const val EXTERNAL_EXTRA_SAMPLE_RATE = EXTERNAL_EXTRA_PREFIX + "SAMPLE_RATE"
     const val EXTERNAL_EXTRA_FILE_PATH = EXTERNAL_EXTRA_PREFIX + "FILE_PATH"
     const val EXTERNAL_EXTRA_NAVIDROME_ID = EXTERNAL_EXTRA_PREFIX + "NAVIDROME_ID"
+    const val EXTERNAL_EXTRA_NETEASE_ID = EXTERNAL_EXTRA_PREFIX + "NETEASE_ID"
 
     fun build(song: Song): MediaItem {
         return MediaItem.Builder()
@@ -145,6 +146,17 @@ object MediaItemBuilder {
         mimeType: String? = null
     ): Uri {
         directLocalFileUri(contentUriString, filePath, mimeType)?.let { return it }
+        // netease://{neteaseId}[?url=...]：统一去除 url 参数，
+        // 让 DualPlayerEngine 走 resolveNeteaseUriAsync → neteaseStreamProxy 动态拉取
+        // 最新可用播放地址，避免使用过期 URL 导致 404
+        if (contentUriString.startsWith("netease://")) {
+            val rawUri = Uri.parse(contentUriString)
+            val neteaseId = rawUri.host?.toLongOrNull()
+            if (neteaseId != null) {
+                return Uri.parse("netease://$neteaseId")
+            }
+            return rawUri
+        }
         val uri = runCatching { Uri.parse(contentUriString) }.getOrNull()
             ?: return Uri.fromFile(File(contentUriString))
         // Telegram downloaded files can be stored as absolute paths (without file://).
@@ -300,6 +312,7 @@ object MediaItemBuilder {
             putInt(EXTERNAL_EXTRA_SAMPLE_RATE, song.sampleRate ?: 0)
             putString(EXTERNAL_EXTRA_FILE_PATH, song.path)
             song.navidromeId?.let { putString(EXTERNAL_EXTRA_NAVIDROME_ID, it) }
+            song.neteaseId?.let { putLong(EXTERNAL_EXTRA_NETEASE_ID, it) }
         }
 
         metadataBuilder.setExtras(extras)

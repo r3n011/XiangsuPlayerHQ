@@ -10,12 +10,15 @@ import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
+import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
+import timber.log.Timber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.async
@@ -49,6 +52,8 @@ class LxMusicViewModel @Inject constructor(
     private val store: LxFileStore,
     private val searchApi: LxSearchApi,
     private val musicRepository: MusicRepository,
+    private val neteaseRepository: NeteaseRepository,
+    private val userPreferencesRepository: com.theveloper.pixelplay.data.preferences.UserPreferencesRepository,
 ) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(LxUiState())
@@ -268,7 +273,7 @@ class LxMusicViewModel @Inject constructor(
 
     fun playSong(
         song: LxSongInfo,
-        onOpenPlayer: (url: String, title: String, artist: String, cover: String) -> Unit
+        onOpenPlayer: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -293,21 +298,57 @@ class LxMusicViewModel @Inject constructor(
                     searchApi.getSongCoverFromVkeys(song.id) ?: ""
                 } else song.pic
 
-                val url = engine.getPlayUrl(targetSource, songMap, "flac")
-                    ?: engine.getPlayUrl(targetSource, songMap, "320k")
-                    ?: engine.getPlayUrl(targetSource, songMap, "128k")
+                val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
+                    val neteaseId = song.id.toLong()
+                    val preferredQuality = try {
+                        userPreferencesRepository.musicQualityFlow.first()
+                    } catch (_: Exception) {
+                        com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
+                    }
+                    val officialUrl = try {
+                        val res = neteaseRepository.getSongUrl(neteaseId, preferredQuality.neteaseLevel)
+                        res.getOrNull()
+                    } catch (t: Throwable) {
+                        Timber.w(t, "LxPlaySong: Netease official API failed for songId=$neteaseId")
+                        null
+                    }
+                    if (!officialUrl.isNullOrBlank()) {
+                        Timber.d("LxPlaySong: Using official Netease URL for '${song.name}' (id=$neteaseId)")
+                        android.util.Log.d("LxPlaySong", "Using official Netease URL for '${song.name}'")
+                        officialUrl
+                    } else {
+                        Timber.d("LxPlaySong: Official API failed, falling back to LxJsEngine for '${song.name}'")
+                        engine.getPlayUrl("wy", songMap, preferredQuality.lxValue)
+                            ?: engine.getPlayUrl("wy", songMap, "320k")
+                            ?: engine.getPlayUrl("wy", songMap, "128k")
+                    }
+                } else {
+                    val preferredQuality = try {
+                        userPreferencesRepository.musicQualityFlow.first()
+                    } catch (_: Exception) {
+                        com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
+                    }
+                    engine.getPlayUrl(targetSource, songMap, preferredQuality.lxValue)
+                        ?: engine.getPlayUrl(targetSource, songMap, "320k")
+                        ?: engine.getPlayUrl(targetSource, songMap, "128k")
+                }
                 android.util.Log.d("LxPlaySong", "Resolved URL: $url, cover: $coverToUse")
 
-                // ── 关键修复: 将歌曲保存到数据库，使用真实的 song id
-                // 这样播放页的收藏按钮就能找到它
+                // ── 将歌曲保存到数据库，使用返回的真实 song id
+                // 同时将成功获取 URL 的音源保存到 songInfo.source，
+                // 这样从媒体库播放时可以用正确的音源重新获取播放链接
                 val songWithCover = if (coverToUse.isNotBlank() && song.pic.isBlank()) {
-                    song.copy(pic = coverToUse)
-                } else song
-                runCatching {
-                    musicRepository.saveCloudSong(songWithCover)
-                }.onFailure {
-                    android.util.Log.w("LxPlaySong", "saveCloudSong 失败: ${it.message}")
+                    song.copy(pic = coverToUse, source = targetSource)
+                } else {
+                    song.copy(source = targetSource)
                 }
+                val savedSongId = try {
+                    musicRepository.saveCloudSong(songWithCover).toString()
+                } catch (t: Throwable) {
+                    android.util.Log.w("LxPlaySong", "saveCloudSong 失败: ${t.message}")
+                    "cloud_${song.id}"
+                }
+                android.util.Log.d("LxPlaySong", "Saved song ID: $savedSongId, source: $targetSource")
 
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(progress = null, progressLabel = null)
@@ -316,9 +357,9 @@ class LxMusicViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(error = "无法获取播放链接，请换一首或换音源")
                         return@withContext
                     }
-                    android.util.Log.d("LxPlaySong", "Calling onOpenPlayer with URL length: ${url.length}")
+                    android.util.Log.d("LxPlaySong", "Calling onOpenPlayer with URL length: ${url.length}, songId: $savedSongId")
                     android.util.Log.d("LxPlaySong", "URL scheme: ${android.net.Uri.parse(url).scheme}, host: ${android.net.Uri.parse(url).host}")
-                    onOpenPlayer(url, song.name, song.singer, coverToUse)
+                    onOpenPlayer(url, song.name, song.singer, coverToUse, savedSongId)
                 }
             } catch (t: Throwable) {
                 android.util.Log.e("LxPlaySong", "Error: ${t.message}", t)
@@ -341,7 +382,21 @@ class LxMusicViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Step 1: ensure the song is saved in the main database
-                val songId = musicRepository.saveCloudSong(song)
+                // 记录收藏时的默认音源，方便从媒体库播放时重新获取播放链接
+                val songWithSource = if (song.source.isNotBlank()) {
+                    song
+                } else {
+                    val availableSources = runCatching {
+                        engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
+                    }.getOrDefault(emptyList())
+                    val targetSource = if (selectedSource != "all" && availableSources.contains(selectedSource)) {
+                        selectedSource
+                    } else {
+                        availableSources.firstOrNull() ?: "wy"
+                    }
+                    song.copy(source = targetSource)
+                }
+                val songId = musicRepository.saveCloudSong(songWithSource)
                 // Step 2: toggle favorite status
                 val newFav = musicRepository.toggleFavoriteStatus(songId.toString())
                 withContext(Dispatchers.Main) {
@@ -389,8 +444,10 @@ class LxMusicViewModel @Inject constructor(
         "songmid" to (songmid.ifBlank { id }),
         "hash" to (hash.ifBlank { id }),
         "name" to name,
+        "singer" to singer,
         "artists" to singer,
         "album" to albumName,
+        "albumName" to albumName,
         "duration" to duration,
         "cover" to pic,
         "pic" to pic,

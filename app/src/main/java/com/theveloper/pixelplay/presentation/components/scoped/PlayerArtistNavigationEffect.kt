@@ -21,13 +21,23 @@ internal fun PlayerArtistNavigationEffect(
     val latestExpansionFraction = rememberUpdatedState(playerViewModel.playerContentExpansionFraction)
     LaunchedEffect(navController) {
         playerViewModel.artistNavigationRequests.collectLatest { artistId ->
-            // ⚡ 简化:snap fraction 到 0f（折叠态），然后导航
             latestExpansionFraction.value.snapTo(0f)
             playerViewModel.collapsePlayerSheet()
 
             navController.navigateSafelyReplacing(
                 route = Screen.ArtistDetail.createRoute(artistId),
                 patternToPop = Screen.ArtistDetail.route
+            )
+        }
+    }
+    LaunchedEffect(navController) {
+        playerViewModel.neteaseArtistNavigationRequests.collectLatest { artistId ->
+            latestExpansionFraction.value.snapTo(0f)
+            playerViewModel.collapsePlayerSheet()
+
+            navController.navigateSafelyReplacing(
+                route = Screen.ArtistHomepage.createRoute(artistId),
+                patternToPop = Screen.ArtistHomepage.route
             )
         }
     }

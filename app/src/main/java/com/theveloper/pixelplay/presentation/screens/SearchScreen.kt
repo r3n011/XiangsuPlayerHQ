@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
+import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
@@ -35,6 +36,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,12 +87,17 @@ import com.theveloper.pixelplay.data.model.SearchFilterType
 import com.theveloper.pixelplay.data.model.SearchHistoryItem
 import com.theveloper.pixelplay.data.model.SearchResultItem
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.presentation.components.AutoScrollingText
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.SmartImageListTargetSize
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.LxUiState
+import com.theveloper.pixelplay.presentation.viewmodel.QQMusicViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.QQSearchUiState
+import com.theveloper.pixelplay.presentation.viewmodel.BilibiliMusicViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.BilibiliUiState
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import android.util.Log
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
@@ -152,6 +160,8 @@ fun SearchScreen(
     playerViewModel: PlayerViewModel = hiltViewModel(),
     playlistViewModel: PlaylistViewModel = hiltViewModel(),
     lxViewModel: LxMusicViewModel = hiltViewModel(),
+    qqViewModel: QQMusicViewModel = hiltViewModel(),
+    bilibiliViewModel: BilibiliMusicViewModel = hiltViewModel(),
     navController: NavHostController,
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
@@ -196,13 +206,28 @@ fun SearchScreen(
 
     // Search debouncing is centralized in SearchStateHolder.
     LaunchedEffect(searchQuery, currentFilter) {
-        if (currentFilter == SearchFilterType.ONLINE) {
-            if (searchQuery.isNotBlank()) {
-                lxViewModel.keyword = searchQuery
-                lxViewModel.search()
+        when (currentFilter) {
+            SearchFilterType.ONLINE -> {
+                if (searchQuery.isNotBlank()) {
+                    lxViewModel.keyword = searchQuery
+                    lxViewModel.search()
+                }
             }
-        } else {
-            playerViewModel.performSearch(searchQuery)
+            SearchFilterType.KUWO_MUSIC -> {
+                if (searchQuery.isNotBlank()) {
+                    qqViewModel.keyword = searchQuery
+                    qqViewModel.search()
+                }
+            }
+            SearchFilterType.BILIBILI_MUSIC -> {
+                if (searchQuery.isNotBlank()) {
+                    bilibiliViewModel.keyword = searchQuery
+                    bilibiliViewModel.search()
+                }
+            }
+            else -> {
+                playerViewModel.performSearch(searchQuery)
+            }
         }
     }
     val searchResults = searchUiState.searchResults
@@ -252,6 +277,7 @@ fun SearchScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .hazeSource(MainActivity.LocalHazeState.current)
     ) {
 
         Column(
@@ -410,23 +436,31 @@ fun SearchScreen(
                             SearchFilterChip(SearchFilterType.ARTISTS, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.PLAYLISTS, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.ONLINE, currentFilter, playerViewModel)
+                            SearchFilterChip(SearchFilterType.KUWO_MUSIC, currentFilter, playerViewModel)
+                            SearchFilterChip(SearchFilterType.BILIBILI_MUSIC, currentFilter, playerViewModel)
                         }
                         Crossfade(
-                            targetState = if (currentFilter == SearchFilterType.ONLINE)
-                                Pair(true, onlineSearchState.searching)
-                            else
-                                Pair(searchResults.isEmpty(), false),
+                            targetState = when {
+                                currentFilter == SearchFilterType.ONLINE ->
+                                    Triple("online", true, onlineSearchState.searching)
+                                currentFilter == SearchFilterType.KUWO_MUSIC ->
+                                    Triple("qq", true, qqViewModel.uiState.value.searching)
+                                currentFilter == SearchFilterType.BILIBILI_MUSIC ->
+                                    Triple("bilibili", true, bilibiliViewModel.uiState.value.searching)
+                                else ->
+                                    Triple("local", searchResults.isEmpty(), false)
+                            },
                             animationSpec = tween(durationMillis = 190),
                             label = "search_results_fade"
-                        ) { (isEmpty, isOnlineSearching) ->
-                            if (currentFilter == SearchFilterType.ONLINE) {
+                        ) { (mode, isEmpty, isSearching) ->
+                            if (mode == "online") {
                                 OnlineSearchResults(
                                     state = onlineSearchState,
-                                    isSearching = isOnlineSearching,
+                                    isSearching = isSearching as Boolean,
                                     searchQuery = searchQuery,
                                     onPlaySong = { song ->
-                                        lxViewModel.playSong(song) { url, name, singer, cover ->
-                                            playerViewModel.playUrl(url, name, singer, cover)
+                                        lxViewModel.playSong(song) { url, name, singer, cover, songId ->
+                                            playerViewModel.playUrl(url, name, singer, cover, songId)
                                         }
                                     },
                                     favoriteIds = favoriteSongIds,
@@ -435,9 +469,40 @@ fun SearchScreen(
                                     },
                                     stableIdFn = { song -> lxViewModel.getStableSongId(song) },
                                     colorScheme = colorScheme,
-                                    onLoadMore = { lxViewModel.loadMore() }
+                                    onLoadMore = { lxViewModel.loadMore() },
+                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
+                                    isPlaying = stablePlayerState.isPlaying
                                 )
-                            } else if (isEmpty) {
+                            } else if (mode == "qq") {
+                                QQSearchResults(
+                                    state = qqViewModel.uiState.collectAsStateWithLifecycle().value,
+                                    isSearching = isSearching as Boolean,
+                                    searchQuery = searchQuery,
+                                    onPlaySong = { song ->
+                                        qqViewModel.playSong(song) { url, name, singer, cover, songId ->
+                                            playerViewModel.playUrl(url, name, singer, cover, songId)
+                                        }
+                                    },
+                                    colorScheme = colorScheme,
+                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
+                                    isPlaying = stablePlayerState.isPlaying
+                                )
+                            } else if (mode == "bilibili") {
+                                BilibiliSearchResults(
+                                    state = bilibiliViewModel.uiState.collectAsStateWithLifecycle().value,
+                                    isSearching = isSearching as Boolean,
+                                    searchQuery = searchQuery,
+                                    onPlaySong = { song ->
+                                        bilibiliViewModel.playSong(song) { url, name, singer, cover, songId ->
+                                            playerViewModel.playUrl(url, name, singer, cover, songId)
+                                        }
+                                    },
+                                    colorScheme = colorScheme,
+                                    onLoadMore = { bilibiliViewModel.loadMore() },
+                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
+                                    isPlaying = stablePlayerState.isPlaying
+                                )
+                            } else if (isEmpty as Boolean) {
                                 EmptySearchResults(
                                     searchQuery = searchQuery,
                                     colorScheme = colorScheme
@@ -475,11 +540,7 @@ fun SearchScreen(
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
-        val isFavorite = remember(currentSong?.id, favoriteSongIds) {
-            derivedStateOf {
-                currentSong?.let { favoriteSongIds.contains(it.id) }
-            }
-        }.value ?: false
+        val isFavorite = currentSong?.let { favoriteSongIds.contains(it.id) } ?: false
         val removeFromListTrigger = remember(currentSong) {
             {
                 searchQuery = "$searchQuery "
@@ -590,6 +651,7 @@ fun SearchHistoryList(
     onClearAllHistory: () -> Unit
 ) {
     val localDensity = LocalDensity.current
+    val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
     Column {
         Row(
             modifier = Modifier
@@ -614,6 +676,7 @@ fun SearchHistoryList(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(
                 top = 8.dp,
+                bottom = MiniPlayerHeight + systemBarPaddingBottom
             )
         ) {
             items(historyItems, key = { "history_${it.id ?: it.query}" }, contentType = { "search_history" }) { item ->
@@ -1192,7 +1255,9 @@ fun SearchFilterChip(
         label = {
             Text(
                 when (filterType) {
-                    SearchFilterType.ONLINE -> "在线"
+                    SearchFilterType.ONLINE -> "网易云搜索"
+                    SearchFilterType.KUWO_MUSIC -> "酷我"
+                    SearchFilterType.BILIBILI_MUSIC -> "B站"
                     else -> filterType.name.lowercase().replaceFirstChar { it.titlecase() }
                 }
             )
@@ -1235,8 +1300,11 @@ private fun OnlineSearchResults(
     onToggleFavorite: (LxSongInfo) -> Unit = {},
     stableIdFn: (LxSongInfo) -> String = { "" },
     colorScheme: androidx.compose.material3.ColorScheme,
-    onLoadMore: () -> Unit = {}
+    onLoadMore: () -> Unit = {},
+    currentPlayingSongId: String? = null,
+    isPlaying: Boolean = false
 ) {
+    val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
     when {
         isSearching -> {
             Box(
@@ -1251,7 +1319,7 @@ private fun OnlineSearchResults(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "正在搜索在线音源…",
+                        "正在搜索网易云音乐…",
                         color = colorScheme.onSurfaceVariant
                     )
                 }
@@ -1284,7 +1352,7 @@ private fun OnlineSearchResults(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "输入关键词开始搜索在线音乐",
+                        "输入关键词开始搜索网易云音乐",
                         color = colorScheme.onSurfaceVariant
                     )
                     if (!state.engineReady) {
@@ -1333,14 +1401,19 @@ private fun OnlineSearchResults(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
+                contentPadding = PaddingValues(
+                    top = 4.dp,
+                    bottom = MiniPlayerHeight + systemBarPaddingBottom
+                )
             ) {
-                items(items = state.results) { song ->
+                items(items = state.results, key = { song -> song.id }) { song ->
                     OnlineSongItem(
                         song = song,
                         onPlay = onPlaySong,
                         isFavorite = favoriteIds.contains(stableIdFn(song)),
-                        onToggleFavorite = onToggleFavorite
+                        onToggleFavorite = onToggleFavorite,
+                        isPlaying = isPlaying,
+                        isCurrentSong = currentPlayingSongId == stableIdFn(song)
                     )
                 }
                 // ⚡ 底部状态行：加载中 / 没有更多 / 加载失败（在已有结果时显示）
@@ -1404,47 +1477,59 @@ private fun OnlineSongItem(
     song: LxSongInfo,
     onPlay: (LxSongInfo) -> Unit,
     isFavorite: Boolean = false,
-    onToggleFavorite: (LxSongInfo) -> Unit = {}
+    onToggleFavorite: (LxSongInfo) -> Unit = {},
+    isPlaying: Boolean = false,
+    isCurrentSong: Boolean = false
 ) {
-    Card(
+    val colors = MaterialTheme.colorScheme
+    val isHighlighted = isCurrentSong
+
+    androidx.compose.material3.Surface(
         onClick = { onPlay(song) },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+            .clip(RoundedCornerShape(22.dp)),
+        shape = RoundedCornerShape(22.dp),
+        color = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(horizontal = 13.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 列表中不加载封面以降低网络请求量；点击播放后播放器会再获取封面。
-            // 这里仅显示一个占位图标即可。
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .padding(end = 12.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .size(50.dp)
+                    .padding(end = 14.dp)
+                    .clip(RoundedCornerShape(if (isHighlighted) 50.dp else 10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.MusicNote,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    song.name.ifBlank { "未知歌曲" },
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1
-                )
+                if (isHighlighted) {
+                    AutoScrollingText(
+                        text = song.name.ifBlank { "未知歌曲" },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        gradientEdgeColor = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow,
+                    )
+                } else {
+                    Text(
+                        song.name.ifBlank { "未知歌曲" },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
                 val subtitle = listOfNotNull(
                     song.singer.ifBlank { null },
                     song.albumName.ifBlank { null }
@@ -1452,26 +1537,428 @@ private fun OnlineSongItem(
                 if (subtitle.isNotBlank()) {
                     Text(
                         subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = (if (isHighlighted) colors.onPrimaryContainer else colors.onSurface).copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            IconButton(onClick = { onToggleFavorite(song) }) {
+            if (isHighlighted) {
+                PlayingEqIcon(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(width = 18.dp, height = 16.dp),
+                    color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface,
+                    isPlaying = isPlaying
+                )
+            } else {
+                IconButton(
+                    onClick = { onToggleFavorite(song) },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = if (isFavorite) "取消收藏" else "收藏",
+                        tint = if (isFavorite) colors.primary else colors.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── QQ 音乐搜索结果组件 ──────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QQSearchResults(
+    state: QQSearchUiState,
+    isSearching: Boolean,
+    searchQuery: String,
+    onPlaySong: (com.theveloper.pixelplay.data.qq.QQSearchApi.QQSong) -> Unit,
+    colorScheme: androidx.compose.material3.ColorScheme,
+    currentPlayingSongId: String? = null,
+    isPlaying: Boolean = false
+) {
+    val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
+    when {
+        isSearching -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = colorScheme.primary
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "正在搜索酷我…",
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        state.error != null && state.results.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        state.error ?: "",
+                        color = colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+        state.results.isEmpty() && searchQuery.isBlank() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "输入关键词开始搜索酷我音乐",
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        state.results.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "没有找到相关歌曲",
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        else -> {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = MiniPlayerHeight + systemBarPaddingBottom
+                )
+            ) {
+                items(
+                    items = state.results,
+                    key = { song -> song.id }
+                ) { song ->
+                    QQSongItem(
+                        song = song,
+                        onPlay = onPlaySong,
+                        isPlaying = isPlaying,
+                        isCurrentSong = currentPlayingSongId == song.id.toString()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QQSongItem(
+    song: com.theveloper.pixelplay.data.qq.QQSearchApi.QQSong,
+    onPlay: (com.theveloper.pixelplay.data.qq.QQSearchApi.QQSong) -> Unit,
+    isPlaying: Boolean = false,
+    isCurrentSong: Boolean = false
+) {
+    val colors = MaterialTheme.colorScheme
+    val isHighlighted = isCurrentSong
+
+    androidx.compose.material3.Surface(
+        onClick = { onPlay(song) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp)),
+        shape = RoundedCornerShape(22.dp),
+        color = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 13.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .padding(end = 14.dp)
+                    .clip(RoundedCornerShape(if (isHighlighted) 50.dp else 10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = if (isFavorite) "取消收藏" else "收藏",
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
-            Icon(
-                imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = "播放",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                if (isHighlighted) {
+                    AutoScrollingText(
+                        text = song.title.ifBlank { "未知歌曲" },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        gradientEdgeColor = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow,
+                    )
+                } else {
+                    Text(
+                        song.title.ifBlank { "未知歌曲" },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                val subtitle = listOfNotNull(
+                    song.singer.ifBlank { null },
+                    song.album.ifBlank { null }
+                ).joinToString(" · ")
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = (if (isHighlighted) colors.onPrimaryContainer else colors.onSurface).copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (song.quality.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    androidx.compose.foundation.text.BasicText(
+                        text = song.quality,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = colors.primary
+                        )
+                    )
+                }
+            }
+            if (isHighlighted) {
+                PlayingEqIcon(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(width = 18.dp, height = 16.dp),
+                    color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface,
+                    isPlaying = isPlaying
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BilibiliSearchResults(
+    state: BilibiliUiState,
+    isSearching: Boolean,
+    searchQuery: String,
+    onPlaySong: (com.theveloper.pixelplay.data.bilibili.BilibiliSongInfo) -> Unit,
+    colorScheme: androidx.compose.material3.ColorScheme,
+    onLoadMore: () -> Unit,
+    currentPlayingSongId: String? = null,
+    isPlaying: Boolean = false
+) {
+    val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
+    when {
+        isSearching -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = colorScheme.primary
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "正在搜索B站…",
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        state.error != null && state.results.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        state.error ?: "",
+                        color = colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+        state.results.isEmpty() && searchQuery.isBlank() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "输入关键词开始搜索B站音乐",
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        state.results.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "没有找到相关视频",
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        else -> {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = MiniPlayerHeight + systemBarPaddingBottom
+                )
+            ) {
+                items(
+                    items = state.results,
+                    key = { song -> song.id }
+                ) { song ->
+                    BilibiliSongItem(
+                        song = song,
+                        onPlay = onPlaySong,
+                        isPlaying = isPlaying,
+                        isCurrentSong = currentPlayingSongId == song.id
+                    )
+                }
+                if (state.isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                color = colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                } else if (!state.isEnd) {
+                    item {
+                        TextButton(
+                            onClick = onLoadMore,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("加载更多")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BilibiliSongItem(
+    song: com.theveloper.pixelplay.data.bilibili.BilibiliSongInfo,
+    onPlay: (com.theveloper.pixelplay.data.bilibili.BilibiliSongInfo) -> Unit,
+    isPlaying: Boolean = false,
+    isCurrentSong: Boolean = false
+) {
+    val colors = MaterialTheme.colorScheme
+    val isHighlighted = isCurrentSong
+
+    androidx.compose.material3.Surface(
+        onClick = { onPlay(song) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp)),
+        shape = RoundedCornerShape(22.dp),
+        color = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 13.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (song.pic.isNotBlank()) {
+                SmartImage(
+                    model = song.pic,
+                    contentDescription = song.name,
+                    targetSize = SmartImageListTargetSize,
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(if (isHighlighted) 50.dp else 10.dp))
+                )
+                Spacer(Modifier.width(14.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                if (isHighlighted) {
+                    AutoScrollingText(
+                        text = song.name.ifBlank { "未知歌曲" },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        gradientEdgeColor = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow,
+                    )
+                } else {
+                    Text(
+                        song.name.ifBlank { "未知歌曲" },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                val subtitle = listOfNotNull(
+                    song.singer.ifBlank { null },
+                    song.albumName.ifBlank { null }
+                ).joinToString(" · ")
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = (if (isHighlighted) colors.onPrimaryContainer else colors.onSurface).copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (isHighlighted) {
+                PlayingEqIcon(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(width = 18.dp, height = 16.dp),
+                    color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface,
+                    isPlaying = isPlaying
+                )
+            }
         }
     }
 }

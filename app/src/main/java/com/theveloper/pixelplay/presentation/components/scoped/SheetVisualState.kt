@@ -48,7 +48,8 @@ internal fun rememberSheetVisualState(
     isPlaying: Boolean,
     hasCurrentSong: Boolean,
     swipeDismissProgress: Float,
-    navRailPadding: Dp = 0.dp
+    navRailPadding: Dp = 0.dp,
+    isLandscape: Boolean = false
 ): SheetVisualState {
     // Compute in px to be read inside graphicsLayer (draw phase) — zero relayout per drag frame.
     val density = LocalDensity.current
@@ -168,11 +169,17 @@ internal fun rememberSheetVisualState(
         swipeDismissProgress,
         isNavBarHidden,
         navBarCornerRadiusDp,
-        currentSheetContentState
+        currentSheetContentState,
+        isLandscape
     ) {
         {
+            // In landscape (tablet) mode: bottom radius matches top radius
+            // (now playing bar is a floating card, not above a nav bar).
+            // In portrait: bottom radius matches nav bar top (10.dp for DEFAULT).
             val collapsedRadius = if (isNavBarHidden) {
                 32.dp
+            } else if (isLandscape && navBarStyle == NavBarStyle.DEFAULT) {
+                navBarCornerRadiusDp
             } else if (navBarStyle == NavBarStyle.DEFAULT) {
                 10.dp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
@@ -191,6 +198,8 @@ internal fun rememberSheetVisualState(
                     if (!isPlayingState.value || !hasCurrentSongState.value) {
                         if (isNavBarHidden) {
                             32.dp
+                        } else if (isLandscape && navBarStyle == NavBarStyle.DEFAULT) {
+                            navBarCornerRadiusDp
                         } else if (navBarStyle == NavBarStyle.DEFAULT) {
                             10.dp
                         } else {
@@ -210,6 +219,9 @@ internal fun rememberSheetVisualState(
             ) {
                 if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                     calculatedNormally
+                } else if (navBarStyle == NavBarStyle.DEFAULT && isLandscape) {
+                    // Landscape: bottom radius always matches top (navBarCornerRadiusDp)
+                    navBarCornerRadiusDp
                 } else if (navBarStyle == NavBarStyle.DEFAULT) {
                     lerp(32.dp, navBarCornerRadiusDp, swipeDismissProgress)
                 } else {

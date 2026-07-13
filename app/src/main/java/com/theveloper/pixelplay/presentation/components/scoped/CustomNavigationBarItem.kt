@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -166,16 +167,23 @@ fun RowScope.CustomNavigationBarItem(
                     }
 
             ) {
-                // Ícono
+                // Ícono con animación de transición
                 CompositionLocalProvider(LocalContentColor provides iconColor) {
                     Box(
                         modifier = Modifier.clearAndSetSemantics {
                             if (showLabel) {
-                                // La semántica se maneja en el nivel superior
                             }
                         }
                     ) {
-                        if (selected) selectedIcon() else icon()
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = selected,
+                            transitionSpec = {
+                                fadeIn(tween(120)) togetherWith fadeOut(tween(80))
+                            },
+                            label = "IconTransition"
+                        ) { isSelected ->
+                            if (isSelected) selectedIcon() else icon()
+                        }
                     }
                 }
             }

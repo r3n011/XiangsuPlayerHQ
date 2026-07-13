@@ -13,7 +13,9 @@ import com.theveloper.pixelplay.data.database.NeteasePlaylistEntity
 import com.theveloper.pixelplay.data.database.NeteaseSongEntity
 import com.theveloper.pixelplay.data.database.SongArtistCrossRef
 import com.theveloper.pixelplay.data.database.SongEntity
+import com.theveloper.pixelplay.data.database.SourceType
 import com.theveloper.pixelplay.data.database.toSong
+import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
@@ -46,6 +48,7 @@ class NeteaseRepository @Inject constructor(
     private val dao: NeteaseDao,
     private val musicDao: MusicDao,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
+    private val lxJsEngine: LxJsEngine,
     @ApplicationContext private val context: Context
 ) {
     private companion object {
@@ -98,6 +101,9 @@ class NeteaseRepository @Inject constructor(
 
     val isLoggedIn: Boolean
         get() = api.hasLogin()
+
+    /** Get the cookie string for third-party API calls */
+    fun getCookieString(): String = api.getCookieString()
 
     val userId: Long
         get() = prefs.getLong("netease_user_id", -1L)
@@ -523,12 +529,34 @@ class NeteaseRepository @Inject constructor(
                     val urlObj = data?.optJSONObject(0)
                     val url = urlObj?.optString("url", "")
                     if (!url.isNullOrBlank() && url != "null") {
-                        Timber.d("Resolved Netease URL for songId=$songId with level=$level")
-                        return@runCatching url
+                        // 检查是否为完整歌曲（非 30 秒预览）：如果歌曲时长小于 45 秒，
+                        // 或者有 freeTrialInfo 标记，则视为预览，继续尝试其他方案
+                        val br = urlObj.optInt("br", 0)
+                        val size = urlObj.optLong("size", 0L)
+                        val reportedDuration = urlObj.optLong("time", 0L)
+                        val hasFreeTrial = urlObj.opt("freeTrialInfo") != null &&
+                                urlObj.optString("freeTrialInfo") != "null"
+                        val isPreviewUrl = hasFreeTrial || (reportedDuration > 0 && reportedDuration < 45000) ||
+                                (br > 0 && size > 0 && size < br * 30 / 8) // 简单估算：如果大小 <30秒音频，视为预览
+                        if (!isPreviewUrl) {
+                            Timber.d("Resolved Netease URL for songId=$songId with level=$level")
+                            return@runCatching url
+                        }
+                        Timber.d("Netease songId=$songId level=$level appears to be a preview URL, will try Lx engine")
+                        lastFailure = "Preview URL at level=$level"
+                        continue
                     }
 
                     val freeTrialInfo = urlObj?.opt("freeTrialInfo")
                     lastFailure = "Empty URL at level=$level, freeTrialInfo=$freeTrialInfo"
+                }
+
+                // 官方 API 全部失败或只有预览，尝试落雪 JS 引擎
+                Timber.d("Netease official URLs exhausted for songId=$songId, trying LxJsEngine")
+                val lxUrl = tryGetLxEngineUrl(songId, quality)
+                if (lxUrl != null) {
+                    Timber.d("LxJsEngine resolved full URL for songId=$songId")
+                    return@runCatching lxUrl
                 }
 
                 throw Exception("No URL available for song $songId ($lastFailure)")
@@ -553,6 +581,56 @@ class NeteaseRepository @Inject constructor(
         return api.getSongDownloadUrl(songId, level)
     }
 
+    /**
+     * Fallback: try to resolve a streaming URL using the LxJsEngine (落雪 JS 音源).
+     * This handles VIP / copyright-protected songs where the official API only returns
+     * a 30-second preview. Returns null if the JS engine is unavailable or fails.
+     */
+    private suspend fun tryGetLxEngineUrl(songId: Long, quality: String): String? {
+        return try {
+            // 从本地数据库获取歌曲元信息（用于传给 JS 引擎）
+            val localSong = dao.getAllNeteaseSongsList().firstOrNull { it.neteaseId == songId }
+            val songTitle = localSong?.title ?: ""
+            val songArtist = localSong?.artist ?: ""
+            val songAlbum = localSong?.album ?: ""
+            val songCover = localSong?.albumArtUrl ?: ""
+            val songIdStr = songId.toString()
+            val songInfo: Map<String, Any?> = mapOf(
+                "id" to songIdStr,
+                "vid" to songIdStr,
+                "songmid" to songIdStr,
+                "hash" to songIdStr,
+                "name" to songTitle,
+                "singer" to songArtist,
+                "artists" to songArtist,
+                "album" to songAlbum,
+                "albumName" to songAlbum,
+                "duration" to (localSong?.duration ?: 0),
+                "pic" to songCover,
+                "cover" to songCover
+            )
+
+            // 质量映射：exhigh/higher -> "320k"，standard -> "128k"
+            val lxQuality = when (quality) {
+                "exhigh", "higher" -> "320k"
+                else -> "128k"
+            }
+
+            // 先尝试 320k，失败回落到 128k
+            val url320 = runCatching { lxJsEngine.getPlayUrl("wy", songInfo, "320k") }.getOrNull()
+            if (!url320.isNullOrBlank()) return url320
+
+            val url128 = runCatching { lxJsEngine.getPlayUrl("wy", songInfo, "128k") }.getOrNull()
+            if (!url128.isNullOrBlank()) return url128
+
+            Timber.d("LxJsEngine returned null for songId=$songId")
+            null
+        } catch (t: Throwable) {
+            Timber.w(t, "LxJsEngine failed for songId=$songId")
+            null
+        }
+    }
+
     // ─── Lyrics ────────────────────────────────────────────────────────
 
     suspend fun getLyrics(songId: Long): Result<String> {
@@ -560,18 +638,121 @@ class NeteaseRepository @Inject constructor(
             try {
                 val raw = api.getLyrics(songId)
                 val root = JSONObject(raw)
-                val lyric = root.optJSONObject("lrc")?.optString("lyric", "")
 
-                if (!lyric.isNullOrBlank()) {
-                    Result.success(lyric)
-                } else {
-                    Result.failure(Exception("No lyrics for song $songId"))
+                val lrcText = root.optJSONObject("lrc")?.optString("lyric")?.takeIf { it.isNotBlank() }
+                val tlyricText = root.optJSONObject("tlyric")?.optString("lyric")?.takeIf { it.isNotBlank() }
+
+                // 原文 + 翻译都存在时：按时间戳合并
+                if (lrcText != null && tlyricText != null) {
+                    Result.success(mergeLrcWithTranslation(lrcText, tlyricText))
                 }
+
+                // 只有原文
+                if (lrcText != null) {
+                    Result.success(lrcText)
+                }
+
+                // 只有翻译（作为兜底）
+                if (tlyricText != null) {
+                    Result.success(tlyricText)
+                }
+
+                Result.failure(Exception("No lyrics for song $songId"))
             } catch (e: Exception) {
                 Timber.e(e, "Failed to get lyrics for song $songId")
                 Result.failure(e)
             }
         }
+    }
+
+    /**
+     * 合并原文 LRC 与翻译 LRC：按时间戳排序后，原文行之后紧跟相同时间戳的翻译行。
+     * LyricsUtils.pairTranslationLines() 会自动根据相同时间戳配对翻译。
+     */
+    private fun mergeLrcWithTranslation(lrcText: String, tlyricText: String): String {
+        val originalLines = lrcText.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+        val translationLines = tlyricText.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+
+        val timestampLineRegex = Regex("^\\[(\\d{1,3}):(\\d{2})(?:[.:](\\d{1,3}))?](.*)")
+
+        data class TimedLine(val timestampMs: Long, val text: String, val hasFraction: Boolean, val fractionDigits: Int)
+
+        fun parseTimedLines(lines: List<String>): List<TimedLine> {
+            val result = mutableListOf<TimedLine>()
+            for (rawLine in lines) {
+                val matchResult = timestampLineRegex.find(rawLine) ?: continue
+                val minutes = matchResult.groupValues[1].toLong()
+                val seconds = matchResult.groupValues[2].toLong()
+                val fracStr = matchResult.groupValues[3].ifBlank { "0" }
+                val fractionDigits = fracStr.length
+                val frac = when (fractionDigits) {
+                    1 -> fracStr.toLong() * 100L
+                    2 -> fracStr.toLong() * 10L
+                    3 -> fracStr.toLong()
+                    else -> fracStr.padEnd(3, '0').take(3).toLong()
+                }
+                val timestampMs = minutes * 60_000L + seconds * 1_000L + frac
+                val text = matchResult.groupValues[4].trim()
+                if (text.isNotBlank()) {
+                    result.add(TimedLine(timestampMs, text, fractionDigits > 0, fractionDigits))
+                }
+            }
+            return result
+        }
+
+        val originalTimed = parseTimedLines(originalLines)
+        val translationTimed = parseTimedLines(translationLines)
+
+        if (originalTimed.isEmpty()) return originalLines.joinToString("\n")
+        if (translationTimed.isEmpty()) return originalLines.joinToString("\n")
+
+        val translationByTs = translationTimed.associate { it.timestampMs to it.text }
+
+        // Determine if we should use 3-digit fraction precision
+        val useThreeDigitFraction = originalTimed.any { it.hasFraction && it.fractionDigits == 3 }
+
+        val output = mutableListOf<String>()
+        val metaLineRegex = Regex("^\\[(by|ti|ar|al|au|re|ve|offset|length):.*]", RegexOption.IGNORE_CASE)
+        originalLines.forEach { raw ->
+            if (metaLineRegex.matches(raw)) {
+                output.add(raw)
+            }
+        }
+
+        fun formatTimestamp(ms: Long): String {
+            val totalSeconds = ms / 1000
+            val minutes = totalSeconds / 60
+            val seconds = totalSeconds % 60
+            return if (useThreeDigitFraction) {
+                val millisPart = ms % 1000
+                String.format("%02d:%02d.%03d", minutes, seconds, millisPart)
+            } else {
+                val hundredths = (ms % 1000) / 10
+                String.format("%02d:%02d.%02d", minutes, seconds, hundredths)
+            }
+        }
+
+        for (orig in originalTimed) {
+            // Use unified timestamp format for BOTH original and translation
+            val ts = formatTimestamp(orig.timestampMs)
+            output.add("[${ts}]${orig.text}")
+
+            val exactMatch = translationByTs[orig.timestampMs]
+            if (exactMatch != null) {
+                output.add("[${ts}]${exactMatch}")
+                continue
+            }
+
+            val tolerance = 500L
+            val closeMatch = translationTimed
+                .firstOrNull { Math.abs(it.timestampMs - orig.timestampMs) <= tolerance }
+                ?.text
+            if (closeMatch != null) {
+                output.add("[${ts}]${closeMatch}")
+            }
+        }
+
+        return output.joinToString("\n")
     }
 
     // ─── JSON Parsing Helpers ──────────────────────────────────────────
@@ -725,7 +906,8 @@ class NeteaseRepository @Inject constructor(
                     bitrate = neteaseSong.bitrate,
                     sampleRate = null,
                     telegramChatId = null,
-                    telegramFileId = null
+                    telegramFileId = null,
+                    sourceType = SourceType.NETEASE
                 )
             )
         }

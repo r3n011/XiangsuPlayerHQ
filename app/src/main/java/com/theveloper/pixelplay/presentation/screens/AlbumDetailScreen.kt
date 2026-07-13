@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Shuffle
@@ -298,6 +300,7 @@ fun AlbumDetailScreen(
                         state = lazyListState,
                         modifier = Modifier
                             .fillMaxSize()
+                            .hazeSource(MainActivity.LocalHazeState.current)
                             .offset {
                                 val extraHeight =
                                     (topBarHeight.value - minTopBarHeightPx).roundToInt()
@@ -402,9 +405,7 @@ fun AlbumDetailScreen(
         }
         if (showSongInfoBottomSheet && selectedSongForInfo != null) {
             val currentSong = selectedSongForInfo
-            val isFavorite = remember(currentSong?.id, favoriteIds) {
-                derivedStateOf { currentSong?.let { favoriteIds.contains(it.id) } }
-            }.value ?: false
+            val isFavorite = currentSong?.let { favoriteIds.contains(it.id) } ?: false
 
             if (currentSong != null) {
                 val removeFromListTrigger = remember(uiState.songs) {

@@ -50,15 +50,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 
 import com.theveloper.pixelplay.data.netease.NeteaseStreamProxy
+import com.theveloper.pixelplay.data.service.audioengine.AudioProcessorProvider
 import com.theveloper.pixelplay.data.navidrome.NavidromeStreamProxy
 import com.theveloper.pixelplay.data.qqmusic.QqMusicStreamProxy
 import androidx.core.net.toUri
@@ -224,6 +227,8 @@ class DualPlayerEngine @Inject constructor(
     private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder,
     private val okHttpClient: okhttp3.OkHttpClient,
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
+    private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
+    private val audioProcessorProvider: AudioProcessorProvider,
 ) {
     private companion object {
         private const val AUDIO_OFFLOAD_STALL_FALLBACK_MS = 4_000L
@@ -251,6 +256,7 @@ class DualPlayerEngine @Inject constructor(
     private var scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     var hiFiModeEnabled: Boolean = false
         private set
+    private var hiFiEngineProcessor: com.theveloper.pixelplay.data.service.audioengine.HiFiEngineAudioProcessor? = null
     private var audioOffloadEnabled = !shouldDisableAudioOffloadByDefault()
     private var transitionJob: Job? = null
     private var bufferingFallbackJob: Job? = null
@@ -262,7 +268,19 @@ class DualPlayerEngine @Inject constructor(
     private var preparedWindowStartIndex = 0
     private var preparedPlayerUsesWindowedQueue = false
 
+    // Proxy port tracking: detects when a proxy restarts with a new port
+    // so we can invalidate stale resolved URI cache entries.
+    private var lastKnownNeteasePort: Int = 0
+    private var lastKnownQqMusicPort: Int = 0
+    private var lastKnownNavidromePort: Int = 0
+    private var lastKnownJellyfinPort: Int = 0
+    private var lastKnownGDrivePort: Int = 0
+    private var lastKnownTelegramPort: Int = 0
+    private val mediaItemRetryCount = ConcurrentHashMap<String, Int>()
+    private val MAX_RETRIES_PER_ITEM = 3
+
     private lateinit var playerA: ExoPlayer
+    private var preferredAudioDevice: android.media.AudioDeviceInfo? = null
     private var playerB: ExoPlayer? = null
 
     private val onPlayerSwappedListeners = mutableListOf<(Player) -> Unit>()
@@ -284,7 +302,7 @@ class DualPlayerEngine @Inject constructor(
 
     // Audio Focus Management
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private var audioFocusRequest: AudioFocusRequest? = null
+    private var audioFocusRequest: Any? = null // AudioFocusRequest on API 26+, or null on API 24-25
     private var isFocusLossPause = false
     private var lastPlayWhenReadyAtMs: Long = 0L
     private var lastPlayingAtMs: Long = 0L
@@ -760,6 +778,12 @@ class DualPlayerEngine @Inject constructor(
 
     fun getAudioSessionId(): Int = if (::playerA.isInitialized) playerA.audioSessionId else 0
 
+    fun setVolume(volume: Float) {
+        if (::playerA.isInitialized) {
+            playerA.volume = volume.coerceIn(0f, 1f)
+        }
+    }
+
     private var isReleased = false
     private val resolvedUriCache = LruCache<String, Uri>(100)
 
@@ -794,49 +818,82 @@ class DualPlayerEngine @Inject constructor(
         activeWindowStartIndex = 0
         activePlayerUsesWindowedQueue = false
         resetPreparedWindowState()
+        // Clear stale resolved URI cache to avoid using proxy URLs from old ports
+        checkAndUpdateProxyPorts()
+        clearAllResolvedCache()
+        mediaItemRetryCount.clear()
+
+        // ⚡ 预启动 netease / qqmusic 代理（非阻塞）
+        //   - 这确保在播放恢复前代理端口已分配，
+        //     避免 ResolvingDataSource 的 5s 等待触发
+        neteaseStreamProxy.startIfNeeded()
+        qqMusicStreamProxy.startIfNeeded()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun requestAudioFocus() {
         if (audioFocusRequest != null) return
 
-        val attributes = android.media.AudioAttributes.Builder()
-            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // API 26+: use AudioFocusRequest (modern API)
+            val attributes = android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
 
-        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(attributes)
-            .setOnAudioFocusChangeListener(focusChangeListener)
-            // Let the system queue our request behind a transient holder instead of failing.
-            // Pairs with the AUDIOFOCUS_GAIN handler below: on DELAYED we pause and mark the
-            // pause as focus-driven so the eventual GAIN callback resumes playback.
-            .setAcceptsDelayedFocusGain(true)
-            .build()
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(attributes)
+                .setOnAudioFocusChangeListener(focusChangeListener)
+                // Let the system queue our request behind a transient holder instead of failing.
+                // Pairs with the AUDIOFOCUS_GAIN handler below: on DELAYED we pause and mark the
+                // pause as focus-driven so the eventual GAIN callback resumes playback.
+                .setAcceptsDelayedFocusGain(true)
+                .build()
 
-        val result = audioManager.requestAudioFocus(request)
-        when (result) {
-            AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
-                audioFocusRequest = request
+            val result = audioManager.requestAudioFocus(request)
+            when (result) {
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
+                    audioFocusRequest = request
+                }
+                AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
+                    audioFocusRequest = request
+                    isFocusLossPause = true
+                    playerA.playWhenReady = false
+                    if (transitionRunning) playerB?.playWhenReady = false
+                }
+                else -> {
+                    Timber.tag("TransitionDebug").w("AudioFocus Request Failed: $result")
+                    playerA.playWhenReady = false
+                }
             }
-            AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
-                audioFocusRequest = request
-                isFocusLossPause = true
-                playerA.playWhenReady = false
-                if (transitionRunning) playerB?.playWhenReady = false
-            }
-            else -> {
-                Timber.tag("TransitionDebug").w("AudioFocus Request Failed: $result")
-                playerA.playWhenReady = false
+        } else {
+            // API 24-25: use the legacy audio focus API
+            val result = audioManager.requestAudioFocus(
+                focusChangeListener,
+                android.media.AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+            when (result) {
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
+                    audioFocusRequest = focusChangeListener
+                }
+                else -> {
+                    Timber.tag("TransitionDebug").w("AudioFocus (legacy) Request Failed: $result")
+                    playerA.playWhenReady = false
+                }
             }
         }
     }
 
     private fun abandonAudioFocus() {
-        audioFocusRequest?.let {
-            audioManager.abandonAudioFocusRequest(it)
-            audioFocusRequest = null
+        val request = audioFocusRequest ?: return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && request is AudioFocusRequest) {
+            audioManager.abandonAudioFocusRequest(request)
+        } else {
+            // Legacy API: abandon using the focus change listener
+            audioManager.abandonAudioFocus(focusChangeListener)
         }
+        audioFocusRequest = null
     }
 
     private fun scheduleAudioOffloadFallbackIfNeeded(player: ExoPlayer) {
@@ -979,6 +1036,11 @@ class DualPlayerEngine @Inject constructor(
         _activeAudioSessionId.value = playerA.audioSessionId
         onPlayerSwappedListeners.forEach { it(playerA) }
 
+        // After rebuild: clear stale resolved URI cache to avoid using proxy URLs
+        // from a previous server instance that might have a different port
+        checkAndUpdateProxyPorts()
+        clearAllResolvedCache()
+
         AdvancedPerformanceDiagnostics.recordEventIfEnabled(
             type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
             name = "player_rebuild_end"
@@ -986,6 +1048,200 @@ class DualPlayerEngine @Inject constructor(
             mapOf("audioSessionId" to playerA.audioSessionId.toString())
         }
         Timber.tag("DualPlayerEngine").d(logMessage)
+    }
+
+    /**
+     * Checks whether any local proxy has restarted with a different port.
+     * If so, returns true to signal that the resolved URI cache must be invalidated
+     * for the affected scheme.
+     */
+    private fun checkAndUpdateProxyPorts(): Boolean {
+        var anyChanged = false
+        val currentNeteasePort = neteaseStreamProxy.getCurrentPort()
+        if (lastKnownNeteasePort != 0 && currentNeteasePort != lastKnownNeteasePort) {
+            Timber.tag("DualPlayerEngine").w("Netease proxy port changed: $lastKnownNeteasePort -> $currentNeteasePort. Clearing cached resolved URIs for netease://")
+            anyChanged = true
+        }
+        lastKnownNeteasePort = currentNeteasePort
+
+        val currentQqMusicPort = qqMusicStreamProxy.getCurrentPort()
+        if (lastKnownQqMusicPort != 0 && currentQqMusicPort != lastKnownQqMusicPort) {
+            Timber.tag("DualPlayerEngine").w("QQ Music proxy port changed: $lastKnownQqMusicPort -> $currentQqMusicPort. Clearing cached resolved URIs for qqmusic://")
+            anyChanged = true
+        }
+        lastKnownQqMusicPort = currentQqMusicPort
+
+        val currentNavidromePort = navidromeStreamProxy.getCurrentPort()
+        if (lastKnownNavidromePort != 0 && currentNavidromePort != lastKnownNavidromePort) {
+            anyChanged = true
+        }
+        lastKnownNavidromePort = currentNavidromePort
+
+        val currentJellyfinPort = jellyfinStreamProxy.getCurrentPort()
+        if (lastKnownJellyfinPort != 0 && currentJellyfinPort != lastKnownJellyfinPort) {
+            anyChanged = true
+        }
+        lastKnownJellyfinPort = currentJellyfinPort
+
+        return anyChanged
+    }
+
+    /**
+     * Returns true if the given URI points to 127.0.0.1 but the port doesn't
+     * match the current proxy port, or if any proxy has restarted.
+     */
+    private fun isLocalhostProxyUriStale(uri: Uri): Boolean {
+        if (uri.host != "127.0.0.1") return false
+        val port = uri.port
+        if (port <= 0) return false
+        return (lastKnownNeteasePort != 0 && port != lastKnownNeteasePort) ||
+                (lastKnownQqMusicPort != 0 && port != lastKnownQqMusicPort) ||
+                (lastKnownNavidromePort != 0 && port != lastKnownNavidromePort) ||
+                (lastKnownJellyfinPort != 0 && port != lastKnownJellyfinPort)
+    }
+
+    private fun invalidateResolvedCacheForScheme(originalUriString: String) {
+        try {
+            val scheme = android.net.Uri.parse(originalUriString).scheme
+            if (scheme != null) {
+                val snapshot = resolvedUriCache.snapshot()
+                val keysToRemove = mutableListOf<String>()
+                for (key in snapshot.keys) {
+                    if (key.startsWith(scheme)) {
+                        keysToRemove.add(key)
+                    }
+                }
+                for (key in keysToRemove) {
+                    resolvedUriCache.remove(key)
+                }
+                if (keysToRemove.isNotEmpty()) {
+                    Timber.tag("DualPlayerEngine").d("Invalidated ${keysToRemove.size} cached URIs for scheme $scheme")
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag("DualPlayerEngine").w(e, "Error invalidating resolved cache")
+        }
+    }
+
+    private fun clearAllResolvedCache() {
+        try {
+            resolvedUriCache.evictAll()
+            Timber.tag("DualPlayerEngine").d("Cleared all resolved URI cache")
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    private fun isLocalhostProxyConnectionError(error: androidx.media3.common.PlaybackException): Boolean {
+        if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+            error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED) {
+            var cause: Throwable? = error.cause
+            while (cause != null) {
+                val msg = cause.message ?: ""
+                if (msg.contains("127.0.0.1") ||
+                    msg.contains("localhost") ||
+                    cause is java.net.ConnectException ||
+                    cause is java.net.SocketException) {
+                    return true
+                }
+                cause = cause.cause
+            }
+        }
+        return false
+    }
+
+    /**
+     * Error recovery handler: called from the player's onPlayerError.
+     * Invalidates stale cache entries and attempts to re-prepare the same
+     * media item with fresh URL resolution.
+     */
+    private fun tryRecoverFromError(
+        player: ExoPlayer,
+        error: androidx.media3.common.PlaybackException,
+        wasPlaying: Boolean
+    ) {
+        val failingItem = player.currentMediaItem ?: return
+        val failingUri = failingItem.localConfiguration?.uri ?: return
+        val failingUriString = failingUri.toString()
+
+        // Track retries per item to prevent infinite loops
+        val mediaId = failingItem.mediaId
+        val retries = mediaItemRetryCount.getOrDefault(mediaId, 0)
+        if (retries >= MAX_RETRIES_PER_ITEM) {
+            Timber.tag("DualPlayerEngine").e("Max retries ($MAX_RETRIES_PER_ITEM) reached for $mediaId. Skipping.")
+            mediaItemRetryCount.remove(mediaId)
+            // Auto-advance to next track
+            if (player.hasNextMediaItem()) {
+                try {
+                    player.seekToNextMediaItem()
+                    player.prepare()
+                    if (wasPlaying) player.playWhenReady = true
+                } catch (e: Exception) {
+                    Timber.tag("DualPlayerEngine").w(e, "Failed to seek to next track")
+                }
+            }
+            return
+        }
+
+        // Check if this is a localhost proxy connection error (most common failure)
+        val isProxyError = isLocalhostProxyConnectionError(error) || failingUri.host == "127.0.0.1"
+
+        if (isProxyError) {
+            Timber.tag("DualPlayerEngine").w("Proxy connection error for $mediaId. Attempting recovery (retry ${retries + 1}).")
+
+            // Invalidate cache for the failing URI and its scheme
+            resolvedUriCache.remove(failingUriString)
+            // Also clear cache for the original scheme (e.g., "netease://")
+            // We need to find the original URI - stored in mediaId or extras
+            // But we don't have the original netease:// URI here; the mediaItem
+            // already has the resolved proxy URL. So invalidate the entire
+            // proxy cache and force re-resolution.
+            clearAllResolvedCache()
+
+            // Also reset proxy state so ports are re-detected
+            lastKnownNeteasePort = 0
+            lastKnownQqMusicPort = 0
+            lastKnownNavidromePort = 0
+            lastKnownJellyfinPort = 0
+            lastKnownGDrivePort = 0
+            lastKnownTelegramPort = 0
+
+            mediaItemRetryCount[mediaId] = retries + 1
+
+            // Re-prepare the same item - the resolver will be invoked again
+            // and will get fresh proxy URLs.
+            val currentIndex = player.currentMediaItemIndex
+            val currentPosition = player.currentPosition
+            try {
+                player.stop()
+                player.clearMediaItems()
+                // Rebuild the media items from the queue snapshot, so URL
+                // resolution runs again
+                val snapshot = ensureQueueSnapshot()
+                if (snapshot.isNotEmpty()) {
+                    player.setMediaItems(snapshot, currentIndex, currentPosition)
+                    player.prepare()
+                    if (wasPlaying) player.playWhenReady = true
+                    Timber.tag("DualPlayerEngine").d("Recovery: re-prepared queue at index $currentIndex")
+                }
+            } catch (e: Exception) {
+                Timber.tag("DualPlayerEngine").w(e, "Recovery failed for $mediaId")
+                // Final fallback: try next track
+                if (player.hasNextMediaItem()) {
+                    try {
+                        player.seekToNextMediaItem()
+                        player.prepare()
+                        if (wasPlaying) player.playWhenReady = true
+                    } catch (ex: Exception) {
+                        Timber.tag("DualPlayerEngine").w(ex, "Fallback also failed")
+                    }
+                }
+            }
+        } else {
+            // Non-proxy error: still try next track if retries exhausted
+            mediaItemRetryCount[mediaId] = retries + 1
+            Timber.tag("DualPlayerEngine").w("Playback error for $mediaId (non-proxy). errorCode=${error.errorCode}")
+        }
     }
 
     /**
@@ -1052,7 +1308,11 @@ class DualPlayerEngine @Inject constructor(
                     .setAudioProcessorChain(
                         DefaultAudioSink.DefaultAudioProcessorChain(
                             HiResSampleRateCapAudioProcessor(),
-                            SurroundDownmixProcessor()
+                            SurroundDownmixProcessor(),
+                            com.theveloper.pixelplay.data.service.audioengine.HiFiEngineAudioProcessor().also {
+                                hiFiEngineProcessor = it
+                                audioProcessorProvider.registerProcessor(it)
+                            }
                         )
                     )
                     .build()
@@ -1102,20 +1362,55 @@ class DualPlayerEngine @Inject constructor(
             override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
                 val uri = dataSpec.uri
                 val scheme = uri.scheme
-                android.util.Log.d("LxDataResolver", "=== resolveDataSpec ===")
-                android.util.Log.d("LxDataResolver", "URI: $uri")
-                android.util.Log.d("LxDataResolver", "scheme: $scheme, host: ${uri.host}, path: ${uri.path}")
-                android.util.Log.d("LxDataResolver", "dataSpec.uri.toString: ${uri.toString()}")
                 if (scheme in CLOUD_PROXY_SCHEMES) {
                     val originalUri = uri.toString()
-                    val resolved = resolvedUriCache.get(originalUri)
-                    if (resolved != null) {
-                        android.util.Log.d("LxDataResolver", "Cache HIT, resolved to: $resolved")
-                        return dataSpec.buildUpon().setUri(resolved).build()
+                    val cached = resolvedUriCache.get(originalUri)
+                    if (cached != null) {
+                        // Validate: cached URI pointing to 127.0.0.1 must match current proxy port
+                        if (cached.host == "127.0.0.1" && isLocalhostProxyUriStale(cached)) {
+                            Timber.tag("DualPlayerEngine").w(
+                                "Stale cached proxy URI detected (port ${cached.port} != current). Forcing re-resolution."
+                            )
+                            resolvedUriCache.remove(originalUri)
+                        } else {
+                            return dataSpec.buildUpon().setUri(cached).build()
+                        }
                     }
-                    android.util.Log.d("LxDataResolver", "Cache MISS for $scheme — using original URI")
-                } else if (scheme == "http" || scheme == "https") {
-                    android.util.Log.d("LxDataResolver", "Plain HTTP/HTTPS URL, passing through (host=${uri.host})")
+                    val resolvedNow = runBlocking(Dispatchers.IO) {
+                        try {
+                            when (scheme) {
+                                "netease" -> {
+                                    if (neteaseStreamProxy.ensureReady(5_000L)) {
+                                        neteaseStreamProxy.resolveNeteaseUri(originalUri)
+                                            ?.takeIf { it.isNotBlank() }
+                                            ?.let { Uri.parse(it) }
+                                    } else null
+                                }
+                                "qqmusic" -> {
+                                    if (qqMusicStreamProxy.ensureReady(5_000L)) {
+                                        qqMusicStreamProxy.resolveQqMusicUri(originalUri)
+                                            ?.takeIf { it.isNotBlank() }
+                                            ?.let { Uri.parse(it) }
+                                    } else null
+                                }
+                                "telegram" -> {
+                                    telegramRepository.resolveTelegramUri(originalUri)?.first
+                                        ?.let { telegramStreamProxy -> Uri.parse(telegramStreamProxy.toString()) }
+                                }
+                                else -> null
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("DualPlayerEngine").w(e, "Failed to resolve cloud URI: $originalUri")
+                            null
+                        }
+                    }
+                    if (resolvedNow != null && resolvedNow.toString().isNotBlank()) {
+                        resolvedUriCache.put(originalUri, resolvedNow)
+                        return dataSpec.buildUpon().setUri(resolvedNow).build()
+                    }
+                    Timber.tag("DualPlayerEngine").w(
+                        "Cloud URI $scheme:$originalUri could not be resolved — playback may fail"
+                    )
                 }
                 return dataSpec
             }
@@ -1172,6 +1467,7 @@ class DualPlayerEngine @Inject constructor(
                 .build()
             setHandleAudioBecomingNoisy(true)
             setWakeMode(C.WAKE_MODE_LOCAL)
+            preferredAudioDevice?.let { setPreferredAudioDevice(it) }
             playWhenReady = false
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -1195,11 +1491,20 @@ class DualPlayerEngine @Inject constructor(
                     android.util.Log.e("LxPlayer", "cause: ${error.cause}", error.cause)
                     val underlyingException = android.util.Log.getStackTraceString(error.cause ?: error)
                     android.util.Log.e("LxPlayer", "stacktrace: $underlyingException")
-                    val mediaItem = currentMediaItem
-                    if (mediaItem != null) {
-                        android.util.Log.e("LxPlayer", "currentMediaItem uri: ${mediaItem.localConfiguration?.uri}")
-                        android.util.Log.e("LxPlayer", "currentMediaItem mediaId: ${mediaItem.mediaId}")
-                        android.util.Log.e("LxPlayer", "currentMediaItem title: ${mediaItem.mediaMetadata.title}")
+                    val failingMediaItem = currentMediaItem
+                    if (failingMediaItem != null) {
+                        android.util.Log.e("LxPlayer", "currentMediaItem uri: ${failingMediaItem.localConfiguration?.uri}")
+                        android.util.Log.e("LxPlayer", "currentMediaItem mediaId: ${failingMediaItem.mediaId}")
+                        android.util.Log.e("LxPlayer", "currentMediaItem title: ${failingMediaItem.mediaMetadata.title}")
+                    }
+                    // Trigger recovery: clear stale proxy URL cache and re-prepare
+                    val wasPlaying = playWhenReady
+                    this@DualPlayerEngine.scope.launch(Dispatchers.Main) {
+                        this@DualPlayerEngine.tryRecoverFromError(
+                            player = playerA,
+                            error = error,
+                            wasPlaying = wasPlaying
+                        )
                     }
                 }
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -1218,6 +1523,14 @@ class DualPlayerEngine @Inject constructor(
             player.setWakeMode(currentWakeMode)
             playerB = player
         }
+    }
+
+    fun setPreferredAudioDevice(device: android.media.AudioDeviceInfo?) {
+        preferredAudioDevice = device
+        if (::playerA.isInitialized) {
+            playerA.setPreferredAudioDevice(device)
+        }
+        playerB?.setPreferredAudioDevice(device)
     }
 
     fun setPauseAtEndOfMediaItems(shouldPause: Boolean) {
@@ -1254,6 +1567,16 @@ class DualPlayerEngine @Inject constructor(
         }
         hiFiModeEnabled = enabled
         rebuildPlayersPreservingMasterState("Hi-Fi mode set to $enabled")
+    }
+
+    fun getHiFiEngineProcessor(): com.theveloper.pixelplay.data.service.audioengine.HiFiEngineAudioProcessor? =
+        hiFiEngineProcessor
+
+    @Volatile
+    private var musicQualityLxValue: String = "320k"
+
+    fun setMusicQuality(quality: com.theveloper.pixelplay.data.preferences.MusicQuality) {
+        musicQualityLxValue = quality.lxValue
     }
 
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
@@ -1351,25 +1674,77 @@ class DualPlayerEngine @Inject constructor(
             songMap["songmid"] = json.optString("songmid", songMap["id"] as String)
             songMap["hash"] = json.optString("hash", songMap["id"] as String)
             songMap["name"] = json.optString("name", "")
-            songMap["artists"] = json.optString("singer", "")
-            songMap["album"] = json.optString("album", "")
-            songMap["pic"] = json.optString("pic", "")
-            songMap["cover"] = json.optString("pic", "")
+            val singerValue = json.optString("singer", "")
+            songMap["singer"] = singerValue
+            songMap["artists"] = singerValue
+            val albumValue = json.optString("album", "")
+            songMap["album"] = albumValue
+            songMap["albumName"] = albumValue
+            val picValue = json.optString("pic", "")
+            songMap["pic"] = picValue
+            songMap["cover"] = picValue
             if (json.has("duration")) {
                 songMap["duration"] = json.getLong("duration")
             }
+            // 从收藏时记录的信息中获取音源；
+            // 如果没有记录，则优先用 JS 引擎注册过的音源。
+            val savedSource = json.optString("source", "").trim()
+            val availableSources = runCatching {
+                lxJsEngine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
+            }.getOrDefault(emptyList())
+            val targetSources = if (savedSource.isNotBlank()) {
+                // 优先用收藏时成功的音源，失败后再尝试其他注册过的音源
+                listOf(savedSource) + availableSources.filter { it != savedSource }
+            } else {
+                availableSources.ifEmpty { listOf("wy", "tx") }
+            }
+            android.util.Log.d(
+                "DualPlayerEngine",
+                "resolveCloudLxUri: savedSource=$savedSource targetSources=$targetSources song=${songMap["name"]}"
+            )
 
             if (!lxJsEngine.isReady()) {
                 val loaded = runCatching { lxJsEngine.ready() }.getOrDefault(false)
                 if (!loaded) return@withContext null
             }
 
-            // Try multiple qualities in order
-            val url = lxJsEngine.getPlayUrl("wy", songMap, "flac")
-                ?: lxJsEngine.getPlayUrl("wy", songMap, "320k")
-                ?: lxJsEngine.getPlayUrl("wy", songMap, "128k")
-                ?: lxJsEngine.getPlayUrl("tx", songMap, "flac")
-                ?: lxJsEngine.getPlayUrl("tx", songMap, "320k")
+            // ★: 如果 ID 是纯数字且音源为 "wy"（网易云），
+            // 优先走 neteaseStreamProxy → NeteaseRepository.getSongUrl，
+            // 通过官方 API 获取 m701.music.126.net 等可播放链接，
+            // 避免 lxJsEngine 返回的 175.27.166.236/wy/wy.php?... 404。
+            val rawId = songMap["id"]?.toString() ?: ""
+            val neteaseSongId = rawId.toLongOrNull()
+            val isNeteaseSource = neteaseSongId != null && neteaseSongId > 0 &&
+                    (savedSource == "" || savedSource == "wy")
+            if (isNeteaseSource && neteaseSongId != null) {
+                if (neteaseStreamProxy.ensureReady(5_000L)) {
+                    val proxyUrl = neteaseStreamProxy.resolveNeteaseUri("netease://$neteaseSongId")
+                    if (!proxyUrl.isNullOrBlank()) {
+                        android.util.Log.d(
+                            "DualPlayerEngine",
+                            "resolveCloudLxUri: resolved via neteaseStreamProxy for song $neteaseSongId"
+                        )
+                        return@withContext Uri.parse(proxyUrl)
+                    }
+                }
+                android.util.Log.w(
+                    "DualPlayerEngine",
+                    "resolveCloudLxUri: neteaseStreamProxy unavailable, falling back to lxJsEngine"
+                )
+            }
+
+            // 按音源优先级 + 音质优先级 尝试获取播放链接
+            var url: String? = null
+            for (source in targetSources) {
+                if (url != null) break
+                url = lxJsEngine.getPlayUrl(source, songMap, musicQualityLxValue)
+                    ?: lxJsEngine.getPlayUrl(source, songMap, "320k")
+                    ?: lxJsEngine.getPlayUrl(source, songMap, "128k")
+                if (url != null) {
+                    android.util.Log.d("DualPlayerEngine", "resolveCloudLxUri: got url from source=$source")
+                    break
+                }
+            }
 
             if (url != null) Uri.parse(url) else null
         } catch (e: Exception) {
