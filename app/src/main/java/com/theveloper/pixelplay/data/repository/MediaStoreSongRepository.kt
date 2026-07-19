@@ -117,7 +117,9 @@ class MediaStoreSongRepository @Inject constructor(
     ): List<Song> = withContext(Dispatchers.IO) {
         val songs = mutableListOf<Song>()
         val (baseSelection, baseSelectionArgs) = buildLocalAudioSelection(minDurationMs)
-        val projection = arrayOf(
+        
+        // Build projection dynamically to handle API version differences
+        val projectionList = mutableListOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
@@ -130,14 +132,15 @@ class MediaStoreSongRepository @Inject constructor(
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.DATE_MODIFIED,
-            MediaStore.Audio.Media.MIME_TYPE,
-            MediaStore.Audio.Media.ALBUM_ARTIST, // Valid on API 30+, fallback needed if minSdk < 30
-            // Genre is difficult in MediaStore.Audio.Media, usually requires separate query.
-            // keeping it simple for now, maybe null or fetch separately.
+            MediaStore.Audio.Media.MIME_TYPE
         )
-
-        // Handling API version differences for columns if necessary
-        // Assuming minSdk is high enough or columns exist (ALBUM_ARTIST is API 30+, need check if app supports lower)
+        
+        // ALBUM_ARTIST is only available on API 30+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            projectionList.add(MediaStore.Audio.Media.ALBUM_ARTIST)
+        }
+        
+        val projection = projectionList.toTypedArray()
 
         val selection = buildString {
             append(baseSelection)
@@ -176,7 +179,9 @@ class MediaStoreSongRepository @Inject constructor(
                 val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                 val dateModifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
                 val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
-                val albumArtistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST) // Can be -1
+                val albumArtistCol = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+                } else -1
 
                 val resolver = DirectoryRuleResolver(
                     allowedDirs.map(::normalizePath).toSet(),

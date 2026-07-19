@@ -201,6 +201,11 @@ class UserPreferencesRepository @Inject constructor(
         val LOUDNESS_DISMISSED = booleanPreferencesKey("loudness_dismissed")
         val BACKUP_INFO_DISMISSED = booleanPreferencesKey("backup_info_dismissed")
 
+        // Update check
+        val AUTO_UPDATE_CHECK_ENABLED = booleanPreferencesKey("auto_update_check_enabled")
+        val UPDATE_DONT_SHOW_AGAIN_VERSION = stringPreferencesKey("update_dont_show_again_version")
+        val LAST_UPDATE_CHECK_TIMESTAMP = longPreferencesKey("last_update_check_timestamp")
+
         // Equalizer view
         val VIEW_MODE = stringPreferencesKey("equalizer_view_mode")
         val CUSTOM_PRESETS = stringPreferencesKey("custom_presets_json")
@@ -327,6 +332,35 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setBackupInfoDismissed(dismissed: Boolean) {
         dataStore.edit { it[PreferencesKeys.BACKUP_INFO_DISMISSED] = dismissed }
+    }
+
+    // ─── Update check ──────────────────────────────────────────────────────────
+
+    val autoUpdateCheckEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.AUTO_UPDATE_CHECK_ENABLED] ?: true }
+
+    suspend fun setAutoUpdateCheckEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.AUTO_UPDATE_CHECK_ENABLED] = enabled }
+    }
+
+    val updateDontShowAgainVersionFlow: Flow<String?> =
+        pref { it[PreferencesKeys.UPDATE_DONT_SHOW_AGAIN_VERSION] }
+
+    suspend fun setUpdateDontShowAgainVersion(version: String?) {
+        dataStore.edit { 
+            if (version != null) {
+                it[PreferencesKeys.UPDATE_DONT_SHOW_AGAIN_VERSION] = version
+            } else {
+                it.remove(PreferencesKeys.UPDATE_DONT_SHOW_AGAIN_VERSION)
+            }
+        }
+    }
+
+    val lastUpdateCheckTimestampFlow: Flow<Long> =
+        pref { it[PreferencesKeys.LAST_UPDATE_CHECK_TIMESTAMP] ?: 0L }
+
+    suspend fun setLastUpdateCheckTimestamp(timestamp: Long) {
+        dataStore.edit { it[PreferencesKeys.LAST_UPDATE_CHECK_TIMESTAMP] = timestamp }
     }
 
     val initialSetupDoneFlow: Flow<Boolean> =

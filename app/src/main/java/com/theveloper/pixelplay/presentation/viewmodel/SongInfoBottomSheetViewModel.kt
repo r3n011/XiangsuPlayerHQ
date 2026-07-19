@@ -47,6 +47,7 @@ class SongInfoBottomSheetViewModel @Inject constructor(
     private val wearPhoneTransferSender: WearPhoneTransferSender,
     private val transferStateStore: PhoneWatchTransferStateStore,
     private val musicDao: MusicDao,
+    private val metadataAutoCompleter: com.theveloper.pixelplay.data.musicbrainz.MetadataAutoCompleter,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -264,6 +265,20 @@ class SongInfoBottomSheetViewModel @Inject constructor(
 
         val uri = song.contentUriString
         return uri.startsWith("content://") || uri.startsWith("file://")
+    }
+
+    fun autoCompleteMetadata(song: Song, onComplete: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    metadataAutoCompleter.completeMetadataIfNeeded(song)
+                    true
+                }
+                onComplete(result, null)
+            } catch (e: Exception) {
+                onComplete(false, e.message)
+            }
+        }
     }
 
     private fun getCloudProviderLabel(contentUriString: String): String? {

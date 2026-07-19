@@ -758,6 +758,17 @@ fun SongInfoBottomSheet(
         visible = showEditSheet,
         song = song,
         onDismiss = { showEditSheet = false },
+        onAutoComplete = {
+            songInfoViewModel.autoCompleteMetadata(song) { success, error ->
+                scope.launch {
+                    if (success) {
+                        android.widget.Toast.makeText(context, "元数据已自动补全", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "自动补全失败: ${error ?: "未知错误"}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        },
         onSave = { title, artist, album, albumArtist, composer, genre, lyrics, trackNumber, discNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArt ->
             onEditSong(
                 title,

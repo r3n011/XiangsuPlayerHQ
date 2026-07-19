@@ -443,8 +443,8 @@ class MediaControllerSyncStateHolder @Inject constructor(
         song?.let { currentSongValue ->
             cb.scope.launch {
                 val uri = currentSongValue.albumArtUriString?.toUri()
-                val currentUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
-                themeStateHolder.extractAndGenerateColorScheme(uri, currentUri)
+                // 使用当前歌曲的 URI 作为 target，避免第一首歌时 currentSong 为 null 导致取色失败
+                themeStateHolder.extractAndGenerateColorScheme(uri, currentSongValue.albumArtUriString)
             }
             cb.loadLyricsForCurrentSong()
         }
@@ -522,8 +522,8 @@ class MediaControllerSyncStateHolder @Inject constructor(
                 syncPlaybackPositionFromPlayer(mediaItem.mediaId, initialPosition)
                 cb.scope.launch {
                     val uri = song.albumArtUriString?.toUri()
-                    val currentUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
-                    themeStateHolder.extractAndGenerateColorScheme(uri, currentUri)
+                    // 使用当前歌曲的 URI 作为 target，避免第一首歌时 currentSong 为 null 导致取色失败
+                    themeStateHolder.extractAndGenerateColorScheme(uri, song.albumArtUriString)
                 }
                 cb.loadLyricsForCurrentSong()
                 if (playerCtrl.isPlaying) {
@@ -731,8 +731,8 @@ class MediaControllerSyncStateHolder @Inject constructor(
                         song?.let { currentSongValue ->
                             launch {
                                 val uri = currentSongValue.albumArtUriString?.toUri()
-                                val currentUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
-                                themeStateHolder.extractAndGenerateColorScheme(uri, currentUri)
+                                // 使用当前歌曲的 URI 作为 target，避免第一首歌时 currentSong 为 null 导致取色失败
+                                themeStateHolder.extractAndGenerateColorScheme(uri, currentSongValue.albumArtUriString)
                             }
                             cb.loadLyricsForCurrentSong()
                         }

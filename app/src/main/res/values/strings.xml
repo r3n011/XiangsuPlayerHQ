@@ -304,4 +304,19 @@
     <string name="headphone_preset_no_eq_bands">No EQ bands (preamp only)</string>
     <string name="headphone_preset_refresh">Refresh Presets</string>
     <string name="action_cancel">Cancel</string>
+
+    <string name="update_available_label">Update</string>
+    <string name="update_available_title">New Version Available</string>
+    <string name="update_available_body">Version %s is now available. Please download the update from our website.</string>
+    <string name="update_download_title">Go Download</string>
+    <string name="update_download_body">Click the button to visit our website and download the latest version</string>
+    <string name="update_dont_show_again">Don\'t show this again</string>
+    <string name="update_go_download">Download</string>
+    <string name="update_check_title">Check for Updates</string>
+    <string name="update_check_subtitle">Check if a new version is available</string>
+    <string name="update_auto_check_title">Auto Check Updates</string>
+    <string name="update_auto_check_subtitle">Automatically check for updates on app launch</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_no_update">You\'re on the latest version</string>
+    <string name="update_check_failed">Failed to check for updates</string>
 </resources>

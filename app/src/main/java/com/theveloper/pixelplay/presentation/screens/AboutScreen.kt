@@ -109,13 +109,16 @@ import coil.request.ImageRequest
 import coil.size.Size
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.GitHubContributorService
+import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
+import com.theveloper.pixelplay.presentation.components.UpdateAvailableDialog
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import timber.log.Timber
 import kotlin.math.roundToInt
@@ -205,6 +208,18 @@ fun AboutScreen(
     var isLoadingContributors by remember { mutableStateOf(true) }
     val githubService = remember { GitHubContributorService() }
 
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var availableUpdate by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    val updateChecker = remember { UpdateChecker() }
+
+    val installedTime = remember {
+        runCatching {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.firstInstallTime
+        }.getOrDefault(0L)
+    }
+
     LaunchedEffect(Unit) {
         try {
             val result = githubService.fetchContributors()
@@ -288,6 +303,28 @@ fun AboutScreen(
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+
+    fun checkForUpdates() {
+        coroutineScope.launch {
+            isCheckingUpdate = true
+            try {
+                val result = updateChecker.checkForUpdates()
+                result.onSuccess { info ->
+                    if (info.publishedAt > installedTime) {
+                        availableUpdate = info
+                        showUpdateDialog = true
+                    } else {
+                        android.widget.Toast.makeText(context, R.string.update_no_update, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                result.onFailure {
+                    android.widget.Toast.makeText(context, R.string.update_check_failed, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } finally {
+                isCheckingUpdate = false
+            }
+        }
+    }
 
     val statusBarHeight = WindowInsets.statusBars
         .asPaddingValues()
@@ -381,6 +418,8 @@ fun AboutScreen(
                     onVersionLongPress = {
                         navController.navigateSafely(Screen.EasterEgg.route)
                     },
+                    onCheckUpdate = ::checkForUpdates,
+                    isCheckingUpdate = isCheckingUpdate,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
@@ -562,6 +601,24 @@ fun AboutScreen(
             collapsedTitleStartPadding = 68.dp,
             showBackButton = showBackButton
         )
+
+        if (showUpdateDialog && availableUpdate != null) {
+            UpdateAvailableDialog(
+                updateInfo = availableUpdate!!,
+                onDismiss = { dontShowAgain ->
+                    showUpdateDialog = false
+                    if (dontShowAgain && availableUpdate != null) {
+                        android.widget.Toast.makeText(context, R.string.update_dont_show_again, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onDownload = {
+                    showUpdateDialog = false
+                    availableUpdate?.downloadUrl?.let { url ->
+                        openUrl(context, url)
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -569,6 +626,8 @@ fun AboutScreen(
 private fun AboutHeroCard(
     versionName: String,
     onVersionLongPress: () -> Unit,
+    onCheckUpdate: () -> Unit,
+    isCheckingUpdate: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val heroShape = AbsoluteSmoothCornerShape(30.dp, 60)
@@ -629,26 +688,56 @@ private fun AboutHeroCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.tertiaryContainer)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onVersionLongPress()
-                                },
-                            )
-                        },
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(
-                        text = stringResource(R.string.about_version_format, versionName),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onVersionLongPress()
+                                    },
+                                )
+                            },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.about_version_format, versionName),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    FilledIconButton(
+                        onClick = onCheckUpdate,
+                        enabled = !isCheckingUpdate,
+                        modifier = Modifier.size(36.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                    ) {
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.NewReleases,
+                                contentDescription = stringResource(R.string.update_check_title),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
