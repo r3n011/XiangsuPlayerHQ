@@ -1141,7 +1141,7 @@ class MediaFileHttpServerService : Service() {
         )
         Timber.tag("PX_CAST_HTTP").w("song_resolver repo_miss songId=$songId")
 
-        val projection = arrayOf(
+        val projectionList = mutableListOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
@@ -1151,12 +1151,18 @@ class MediaFileHttpServerService : Service() {
             MediaStore.Audio.Media.DATA,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.MIME_TYPE,
-            MediaStore.Audio.Media.ALBUM_ARTIST,
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.DATE_MODIFIED
         )
+        
+        // ALBUM_ARTIST is only available on API 30+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            projectionList.add(MediaStore.Audio.Media.ALBUM_ARTIST)
+        }
+        
+        val projection = projectionList.toTypedArray()
 
         val selection = "${MediaStore.Audio.Media._ID} = ?"
         val selectionArgs = arrayOf(id.toString())
@@ -1182,7 +1188,9 @@ class MediaFileHttpServerService : Service() {
                 val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
                 val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                 val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
-                val albumArtistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+                val albumArtistCol = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+                } else -1
                 val trackCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
                 val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
                 val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)

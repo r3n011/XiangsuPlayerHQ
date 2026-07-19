@@ -830,7 +830,6 @@ constructor(
                 MediaStore.Audio.Media.ARTIST_ID,
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.ALBUM_ID,
-                MediaStore.Audio.Media.ALBUM_ARTIST,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.DATA,
                 MediaStore.Audio.Media.MIME_TYPE,
@@ -839,8 +838,9 @@ constructor(
                 MediaStore.Audio.Media.DATE_MODIFIED
         )
 
-        // API 30+ supports GENRE in the main audio table
+        // API 30+ supports ALBUM_ARTIST and GENRE in the main audio table
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            projectionList.add(MediaStore.Audio.Media.ALBUM_ARTIST)
             projectionList.add(MediaStore.Audio.Media.GENRE)
         }
 
@@ -882,7 +882,9 @@ constructor(
                     val artistIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
                     val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
                     val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-                    val albumArtistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+                    val albumArtistCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+                    } else -1
                     val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                     val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
                     val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)

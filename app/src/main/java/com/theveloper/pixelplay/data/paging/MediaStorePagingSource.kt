@@ -88,7 +88,7 @@ class MediaStorePagingSource(
 
         val selection = "${MediaStore.Audio.Media._ID} IN (${ids.joinToString(",")})"
         
-        val projection = arrayOf(
+        val projectionList = mutableListOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
@@ -100,9 +100,15 @@ class MediaStorePagingSource(
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DATE_ADDED,
-            MediaStore.Audio.Media.DATE_MODIFIED,
-            MediaStore.Audio.Media.ALBUM_ARTIST
+            MediaStore.Audio.Media.DATE_MODIFIED
         )
+        
+        // ALBUM_ARTIST is only available on API 30+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            projectionList.add(MediaStore.Audio.Media.ALBUM_ARTIST)
+        }
+        
+        val projection = projectionList.toTypedArray()
 
         context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -123,7 +129,9 @@ class MediaStorePagingSource(
             val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
             val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
             val dateModifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
-            val albumArtistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+            val albumArtistCol = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+            } else -1
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)

@@ -100,6 +100,7 @@ fun EditSongSheet(
     visible: Boolean,
     song: Song,
     onDismiss: () -> Unit,
+    onAutoComplete: () -> Unit = {},
     onSave: (
         title: String,
         artist: String,
@@ -134,6 +135,7 @@ fun EditSongSheet(
                 EditSongContent(
                     song = song,
                     onDismiss = onDismiss,
+                    onAutoComplete = onAutoComplete,
                     onSave = onSave
                 )
             }
@@ -146,6 +148,7 @@ fun EditSongSheet(
 private fun EditSongContent(
     song: Song,
     onDismiss: () -> Unit,
+    onAutoComplete: () -> Unit = {},
     onSave: (
         title: String,
         artist: String,
@@ -304,6 +307,13 @@ private fun EditSongContent(
                     )
                 },
                 actions = {
+                    FilledTonalIconButton(
+                        modifier = Modifier.padding(end = 10.dp),
+                        onClick = onAutoComplete,
+                        shape = CircleShape
+                    ) {
+                        Icon(Icons.Rounded.MusicNote, contentDescription = "自动补全元数据")
+                    }
                     FilledTonalIconButton(
                         modifier = Modifier.padding(end = 10.dp),
                         onClick = { showInfoDialog = true },
