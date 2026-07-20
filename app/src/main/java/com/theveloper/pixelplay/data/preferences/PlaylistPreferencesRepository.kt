@@ -157,11 +157,39 @@ class PlaylistPreferencesRepository @Inject constructor(
     suspend fun setPlaylistSongOrderModes(modes: Map<String, String>) =
         userPreferencesRepository.setPlaylistSongOrderModes(modes)
 
+    // ─── Album song order modes ─────────────────────────────────────────────
+
+    val albumSongOrderModesFlow: Flow<Map<String, String>> =
+        userPreferencesRepository.albumSongOrderModesFlow
+
+    suspend fun setAlbumSongOrderMode(albumId: String, modeValue: String) =
+        userPreferencesRepository.setAlbumSongOrderMode(albumId, modeValue)
+
+    suspend fun clearAlbumSongOrderMode(albumId: String) =
+        userPreferencesRepository.clearAlbumSongOrderMode(albumId)
+
+    val albumSongManualOrdersFlow: Flow<Map<String, List<String>>> =
+        userPreferencesRepository.albumSongManualOrdersFlow
+
+    suspend fun setAlbumSongManualOrder(albumId: String, songOrderIds: List<String>) =
+        userPreferencesRepository.setAlbumSongManualOrder(albumId, songOrderIds)
+
+    suspend fun clearAlbumSongManualOrder(albumId: String) =
+        userPreferencesRepository.clearAlbumSongManualOrder(albumId)
+
     suspend fun setPlaylistsSortOption(optionKey: String) =
         userPreferencesRepository.setPlaylistsSortOption(optionKey)
 
     suspend fun setShowTelegramCloudPlaylists(show: Boolean) =
         userPreferencesRepository.setShowTelegramCloudPlaylists(show)
+
+    // ─── Playlist manual order (custom sort) ────────────────────────────────
+
+    val playlistsManualOrderFlow: Flow<List<String>> =
+        userPreferencesRepository.libraryManualOrderFlow(LibraryManualOrderType.PLAYLISTS)
+
+    suspend fun setPlaylistsManualOrder(order: List<String>) =
+        userPreferencesRepository.setLibraryManualOrder(LibraryManualOrderType.PLAYLISTS, order)
 
     suspend fun getPlaylistsOnce(): List<Playlist> {
         ensureMigratedIfNeeded()

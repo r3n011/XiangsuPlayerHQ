@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Topic
 import androidx.compose.material3.BasicAlertDialog
@@ -53,12 +54,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
@@ -68,6 +71,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +80,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
+import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
+import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
+import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.Song
@@ -112,7 +121,8 @@ fun PlaylistContainer(
     selectedPlaylistIds: Set<String> = emptySet(),
     onPlaylistLongPress: (Playlist) -> Unit = {},
     onPlaylistSelectionToggle: (Playlist) -> Unit = {},
-    playlistSelectionStateHolder: PlaylistSelectionStateHolder? = null
+    playlistSelectionStateHolder: PlaylistSelectionStateHolder? = null,
+    onReorder: ((List<String>) -> Unit)? = null
 ) {
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -176,7 +186,8 @@ fun PlaylistContainer(
                     isAddingToPlaylist = true,
                     filteredPlaylists = filteredPlaylists,
                     selectedPlaylists = selectedPlaylists,
-                    currentSortOption = currentSortOption
+                    currentSortOption = currentSortOption,
+                    onReorder = onReorder
                 )
             } else {
                 val playlistPullToRefreshState = rememberPullToRefreshState()
@@ -202,7 +213,8 @@ fun PlaylistContainer(
                         isSelectionMode = isSelectionMode,
                         selectedPlaylistIds = selectedPlaylistIds,
                         onPlaylistLongPress = onPlaylistLongPress,
-                        onPlaylistSelectionToggle = onPlaylistSelectionToggle
+                        onPlaylistSelectionToggle = onPlaylistSelectionToggle,
+                        onReorder = onReorder
                     )
                 }
             }
@@ -238,7 +250,8 @@ fun PlaylistItems(
     isSelectionMode: Boolean = false,
     selectedPlaylistIds: Set<String> = emptySet(),
     onPlaylistLongPress: (Playlist) -> Unit = {},
-    onPlaylistSelectionToggle: (Playlist) -> Unit = {}
+    onPlaylistSelectionToggle: (Playlist) -> Unit = {},
+    onReorder: ((List<String>) -> Unit)? = null
 ) {
     val hasCurrentSong by remember(playerViewModel) {
         playerViewModel.stablePlayerState
@@ -246,6 +259,9 @@ fun PlaylistItems(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val view = LocalView.current
+    val appHapticsConfig = LocalAppHapticsConfig.current
     val playlistFastScrollLabelProvider = remember(filteredPlaylists, currentSortOption) {
         { index: Int ->
             playlistFastScrollLabel(
@@ -256,6 +272,42 @@ fun PlaylistItems(
     }
     var lastHandledPlaylistSortKey by remember { mutableStateOf(currentSortOption?.storageKey) }
     var pendingPlaylistSortScrollReset by remember { mutableStateOf(false) }
+
+    val isCustomOrder = currentSortOption == SortOption.PlaylistCustomOrder && onReorder != null && !isAddingToPlaylist && !isSelectionMode
+    var localPlaylists by remember { mutableStateOf(filteredPlaylists) }
+    LaunchedEffect(filteredPlaylists) {
+        localPlaylists = filteredPlaylists
+    }
+    var lastMovedFrom by remember { mutableStateOf<Int?>(null) }
+    var lastMovedTo by remember { mutableStateOf<Int?>(null) }
+
+    val reorderableState = rememberReorderableLazyListState(
+        lazyListState = listState,
+        onMove = { from, to ->
+            if (!isCustomOrder) return@rememberReorderableLazyListState
+            localPlaylists = localPlaylists.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+            if (lastMovedFrom == null) {
+                lastMovedFrom = from.index
+            }
+            lastMovedTo = to.index
+            performAppCompatHapticFeedback(
+                view,
+                appHapticsConfig,
+                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+            )
+        }
+    )
+
+    LaunchedEffect(reorderableState.isAnyItemDragging, isCustomOrder) {
+        if (!isCustomOrder) return@LaunchedEffect
+        if (!reorderableState.isAnyItemDragging && lastMovedFrom != null && lastMovedTo != null) {
+            onReorder.invoke(localPlaylists.map { it.id })
+            lastMovedFrom = null
+            lastMovedTo = null
+        }
+    }
 
     LaunchedEffect(currentSortOption) {
         val currentSortKey = currentSortOption?.storageKey ?: return@LaunchedEffect
@@ -270,6 +322,8 @@ fun PlaylistItems(
         listState.scrollToItem(0)
         pendingPlaylistSortScrollReset = false
     }
+
+    val displayPlaylists = if (isCustomOrder) localPlaylists else filteredPlaylists
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -288,7 +342,7 @@ fun PlaylistItems(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
         ) {
-            items(filteredPlaylists, key = { it.id }) { playlist ->
+            items(displayPlaylists, key = { it.id }) { playlist ->
                 val rememberedOnClick = remember(playlist.id) {
                     {
                         if (isAddingToPlaylist && currentSong != null && selectedPlaylists != null) {
@@ -308,18 +362,53 @@ fun PlaylistItems(
                         -1
                     }
                 }
-                PlaylistItem(
-                    playlist = playlist,
-                    playerViewModel = playerViewModel,
-                    onClick = { rememberedOnClick() },
-                    isAddingToPlaylist = isAddingToPlaylist,
-                    selectedPlaylists = selectedPlaylists,
-                    isSelectionMode = isSelectionMode,
-                    isSelected = selectedPlaylistIds.contains(playlist.id),
-                    selectionIndex = selectionIndex,
-                    onLongPress = { onPlaylistLongPress(playlist) },
-                    onPlaylistSelectionToggle = { onPlaylistSelectionToggle(playlist) }
-                )
+                if (isCustomOrder) {
+                    ReorderableItem(reorderableState, key = playlist.id) { isDragging ->
+                        LaunchedEffect(isDragging) {
+                            if (isDragging) {
+                                performAppCompatHapticFeedback(
+                                    view,
+                                    appHapticsConfig,
+                                    HapticFeedbackConstants.GESTURE_START
+                                )
+                            }
+                        }
+                        PlaylistItem(
+                            playlist = playlist,
+                            playerViewModel = playerViewModel,
+                            onClick = { rememberedOnClick() },
+                            isAddingToPlaylist = isAddingToPlaylist,
+                            selectedPlaylists = selectedPlaylists,
+                            isSelectionMode = isSelectionMode,
+                            isSelected = selectedPlaylistIds.contains(playlist.id),
+                            selectionIndex = selectionIndex,
+                            onLongPress = { onPlaylistLongPress(playlist) },
+                            onPlaylistSelectionToggle = { onPlaylistSelectionToggle(playlist) },
+                            dragHandle = {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Rounded.DragIndicator,
+                                    contentDescription = stringResource(R.string.cd_drag_handle),
+                                    modifier = Modifier.draggableHandle(),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        )
+                    }
+                } else {
+                    PlaylistItem(
+                        playlist = playlist,
+                        playerViewModel = playerViewModel,
+                        onClick = { rememberedOnClick() },
+                        isAddingToPlaylist = isAddingToPlaylist,
+                        selectedPlaylists = selectedPlaylists,
+                        isSelectionMode = isSelectionMode,
+                        isSelected = selectedPlaylistIds.contains(playlist.id),
+                        selectionIndex = selectionIndex,
+                        onLongPress = { onPlaylistLongPress(playlist) },
+                        onPlaylistSelectionToggle = { onPlaylistSelectionToggle(playlist) }
+                    )
+                }
             }
         }
         
@@ -350,7 +439,8 @@ fun PlaylistItem(
     isSelected: Boolean = false,
     selectionIndex: Int = -1,
     onLongPress: () -> Unit = {},
-    onPlaylistSelectionToggle: () -> Unit = {}
+    onPlaylistSelectionToggle: () -> Unit = {},
+    dragHandle: @Composable (() -> Unit)? = null
 ) {
     val playlistPreviewSongIds = remember(playlist.songIds) {
         playlist.songIds.take(4)
@@ -509,6 +599,8 @@ fun PlaylistItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            dragHandle?.invoke()
 
             if (isSelected && isSelectionMode) {
                 Spacer(modifier = Modifier.width(10.dp))

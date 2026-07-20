@@ -15,9 +15,11 @@ sealed class SortOption(
     val displayName: String,
     val methodLabel: String = displayName,
     val methodKey: String = storageKey,
-    val direction: SortDirection? = null
+    val direction: SortDirection? = null,
+    open val isCustomOrder: Boolean = false
 ) {
     // Song Sort Options
+    object SongCustomOrder : SortOption("song_custom_order", "Custom Order", isCustomOrder = true)
     object SongDefaultOrder : SortOption("song_default_order", "Default Order")
     object SongTitleAZ : SortOption(
         storageKey = "song_title_az",
@@ -91,6 +93,7 @@ sealed class SortOption(
     )
 
     // Album Sort Options
+    object AlbumCustomOrder : SortOption("album_custom_order", "Custom Order", isCustomOrder = true)
     object AlbumTitleAZ : SortOption(
         storageKey = "album_title_az",
         displayName = "Title (A-Z)",
@@ -156,6 +159,7 @@ sealed class SortOption(
     )
 
     // Artist Sort Options
+    object ArtistCustomOrder : SortOption("artist_custom_order", "Custom Order", isCustomOrder = true)
     object ArtistNameAZ : SortOption(
         storageKey = "artist_name_az",
         displayName = "Name (A-Z)",
@@ -186,6 +190,7 @@ sealed class SortOption(
     )
 
     // Playlist Sort Options
+    object PlaylistCustomOrder : SortOption("playlist_custom_order", "Custom Order", isCustomOrder = true)
     object PlaylistNameAZ : SortOption(
         storageKey = "playlist_name_az",
         displayName = "Name (A-Z)",
@@ -216,6 +221,7 @@ sealed class SortOption(
     )
 
     // Liked Sort Options (similar to Songs)
+    object LikedSongCustomOrder : SortOption("liked_song_custom_order", "Custom Order", isCustomOrder = true)
     object LikedSongTitleAZ : SortOption(
         storageKey = "liked_title_az",
         displayName = "Title (A-Z)",
@@ -274,6 +280,7 @@ sealed class SortOption(
     )
 
     // Folder Sort Options
+    object FolderCustomOrder : SortOption("folder_custom_order", "Custom Order", isCustomOrder = true)
     object FolderNameAZ : SortOption(
         storageKey = "folder_name_az",
         displayName = "Name (A-Z)",
@@ -342,6 +349,7 @@ sealed class SortOption(
 
         val SONGS: List<SortOption> by lazy {
             listOf(
+                SongCustomOrder,
                 SongDefaultOrder,
                 SongTitleAZ,
                 SongTitleZA,
@@ -358,6 +366,7 @@ sealed class SortOption(
 
         val ALBUMS: List<SortOption> by lazy {
             listOf(
+                AlbumCustomOrder,
                 AlbumTitleAZ,
                 AlbumTitleZA,
                 AlbumArtist,
@@ -372,6 +381,7 @@ sealed class SortOption(
 
         val ARTISTS: List<SortOption> by lazy {
             listOf(
+                ArtistCustomOrder,
                 ArtistNameAZ,
                 ArtistNameZA,
                 ArtistNumSongsDesc,
@@ -381,6 +391,7 @@ sealed class SortOption(
 
         val PLAYLISTS: List<SortOption> by lazy {
             listOf(
+                PlaylistCustomOrder,
                 PlaylistNameAZ,
                 PlaylistNameZA,
                 PlaylistDateCreated,
@@ -390,6 +401,7 @@ sealed class SortOption(
 
         val FOLDERS: List<SortOption> by lazy {
             listOf(
+                FolderCustomOrder,
                 FolderNameAZ,
                 FolderNameZA,
                 FolderSongCountAsc,
@@ -401,6 +413,7 @@ sealed class SortOption(
 
         val LIKED: List<SortOption> by lazy {
             listOf(
+                LikedSongCustomOrder,
                 LikedSongTitleAZ,
                 LikedSongTitleZA,
                 LikedSongArtist,

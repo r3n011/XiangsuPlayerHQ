@@ -14,6 +14,8 @@ import com.theveloper.pixelplay.data.model.LibraryTabId
 import com.theveloper.pixelplay.data.model.MusicFolder
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SortOption
+import com.theveloper.pixelplay.data.model.StorageFilter
+import com.theveloper.pixelplay.data.preferences.LibraryManualOrderType
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import kotlinx.collections.immutable.ImmutableList
@@ -122,6 +124,10 @@ class LibraryStateHolder @Inject constructor(
     private val _currentFavoriteSortOption = MutableStateFlow<SortOption>(SortOption.LikedSongDateLiked)
     val currentFavoriteSortOption = _currentFavoriteSortOption.asStateFlow()
 
+    // Manual order (Custom Order) state
+    private val _manualOrders = MutableStateFlow<Map<LibraryManualOrderType, List<String>>>(emptyMap())
+    val manualOrders = _manualOrders.asStateFlow()
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val albumsPagingFlow: kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<Album>> =
         kotlinx.coroutines.flow.combine(
@@ -157,6 +163,89 @@ class LibraryStateHolder @Inject constructor(
     val favoriteSongCountFlow: kotlinx.coroutines.flow.Flow<Int> = effectiveStorageFilter
         .flatMapLatest { filter -> musicRepository.getFavoriteSongCountFlow(filter) }
         .flowOn(Dispatchers.IO)
+
+    // Non-paged flows used when the current sort option is a Custom Order.
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val customSongsFlow: kotlinx.coroutines.flow.Flow<ImmutableList<Song>> =
+        kotlinx.coroutines.flow.combine(
+            _allSongs,
+            _manualOrders,
+            _currentSongSortOption,
+            effectiveStorageFilter
+        ) { songs, orders, sortOption, filter ->
+            if (sortOption != SortOption.SongCustomOrder) {
+                persistentListOf()
+            } else {
+                val order = orders[LibraryManualOrderType.SONGS] ?: emptyList()
+                val filtered = songs.filter { it.passesStorageFilter(filter) }
+                withContext(Dispatchers.Default) {
+                    applyManualOrder(filtered, order) { it.id }.toImmutableList()
+                }
+            }
+        }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val customAlbumsFlow: kotlinx.coroutines.flow.Flow<ImmutableList<Album>> =
+        kotlinx.coroutines.flow.combine(_albums, _manualOrders, _currentAlbumSortOption) { albums, orders, sortOption ->
+            if (sortOption != SortOption.AlbumCustomOrder) {
+                persistentListOf()
+            } else {
+                val order = orders[LibraryManualOrderType.ALBUMS] ?: emptyList()
+                applyManualOrder(albums, order) { it.id.toString() }.toImmutableList()
+            }
+        }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val customArtistsFlow: kotlinx.coroutines.flow.Flow<ImmutableList<Artist>> =
+        kotlinx.coroutines.flow.combine(_artists, _manualOrders, _currentArtistSortOption) { artists, orders, sortOption ->
+            if (sortOption != SortOption.ArtistCustomOrder) {
+                persistentListOf()
+            } else {
+                val order = orders[LibraryManualOrderType.ARTISTS] ?: emptyList()
+                applyManualOrder(artists, order) { it.id.toString() }.toImmutableList()
+            }
+        }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val customFavoritesFlow: kotlinx.coroutines.flow.Flow<ImmutableList<Song>> =
+        kotlinx.coroutines.flow.combine(
+            _allSongs,
+            userPreferencesRepository.favoriteSongIdsFlow,
+            _manualOrders,
+            _currentFavoriteSortOption,
+            effectiveStorageFilter
+        ) { songs, favoriteIds, orders, sortOption, filter ->
+            if (sortOption != SortOption.LikedSongCustomOrder) {
+                persistentListOf()
+            } else {
+                val order = orders[LibraryManualOrderType.LIKED_SONGS] ?: emptyList()
+                val filtered = songs.filter { it.id in favoriteIds && it.passesStorageFilter(filter) }
+                withContext(Dispatchers.Default) {
+                    applyManualOrder(filtered, order) { it.id }.toImmutableList()
+                }
+            }
+        }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val customFoldersFlow: kotlinx.coroutines.flow.Flow<ImmutableList<MusicFolder>> =
+        kotlinx.coroutines.flow.combine(_musicFolders, _manualOrders, _currentFolderSortOption) { folders, orders, sortOption ->
+            if (sortOption != SortOption.FolderCustomOrder) {
+                persistentListOf()
+            } else {
+                val order = orders[LibraryManualOrderType.FOLDERS] ?: emptyList()
+                applyManualOrder(folders, order) { it.path }.toImmutableList()
+            }
+        }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
 
     val genres: kotlinx.coroutines.flow.Flow<ImmutableList<com.theveloper.pixelplay.data.model.Genre>> =
         musicRepository.getGenres()
@@ -220,6 +309,14 @@ class LibraryStateHolder @Inject constructor(
 
             // Restore last storage filter (All / Cloud / Local)
             _currentStorageFilter.value = userPreferencesRepository.lastStorageFilterFlow.first()
+
+            // Load saved manual orders for all library types
+            LibraryManualOrderType.entries.forEach { type ->
+                launch {
+                    val order = userPreferencesRepository.libraryManualOrderFlow(type).first()
+                    _manualOrders.update { it + (type to order) }
+                }
+            }
         }
     }
 
@@ -606,6 +703,68 @@ class LibraryStateHolder @Inject constructor(
     fun restoreAfterTrimIfNeeded() {
         if (!needsReloadAfterTrim || scope == null) return
         startObservingLibraryData()
+    }
+
+    // --- Manual order (Custom Order) ---
+
+    /**
+     * Applies the user-defined manual order to [items]. Items whose IDs appear in [order]
+     * are placed first in that order; any remaining items are appended unchanged.
+     */
+    private fun <T> applyManualOrder(
+        items: List<T>,
+        order: List<String>,
+        idSelector: (T) -> String
+    ): List<T> {
+        if (order.isEmpty()) return items
+        val orderIndex = order.withIndex().associate { it.value to it.index }
+        val known = ArrayList<T>(order.size)
+        val unknown = ArrayList<T>(items.size)
+        items.forEach { item ->
+            val id = idSelector(item)
+            if (orderIndex.containsKey(id)) {
+                known.add(item)
+            } else {
+                unknown.add(item)
+            }
+        }
+        known.sortBy { orderIndex[idSelector(it)] ?: Int.MAX_VALUE }
+        return known + unknown
+    }
+
+    /**
+     * Persists a new manual order for [listType] and updates the in-memory state.
+     * Pass the IDs in the desired order.
+     */
+    fun setManualOrder(listType: LibraryManualOrderType, order: List<String>) {
+        _manualOrders.update { it + (listType to order) }
+        scope?.launch {
+            userPreferencesRepository.setLibraryManualOrder(listType, order)
+        }
+    }
+
+    private fun Song.isOnline(): Boolean {
+        return telegramFileId != null ||
+            neteaseId != null ||
+            qqMusicMid != null ||
+            gdriveFileId != null ||
+            navidromeId != null ||
+            jellyfinId != null ||
+            contentUriString.startsWith("telegram://") ||
+            contentUriString.startsWith("netease://") ||
+            contentUriString.startsWith("gdrive://") ||
+            contentUriString.startsWith("qqmusic://") ||
+            contentUriString.startsWith("navidrome://") ||
+            contentUriString.startsWith("jellyfin://") ||
+            contentUriString.startsWith("cloud://lx/")
+    }
+
+    private fun Song.passesStorageFilter(filter: StorageFilter): Boolean {
+        return when (filter) {
+            StorageFilter.ALL -> true
+            StorageFilter.OFFLINE -> !isOnline()
+            StorageFilter.ONLINE -> isOnline()
+        }
     }
 }
 

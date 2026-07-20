@@ -64,6 +64,7 @@ import com.theveloper.pixelplay.presentation.components.songFastScrollLabel
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -73,6 +74,7 @@ import androidx.compose.ui.text.style.TextOverflow
 @Composable
 fun LibraryFavoritesTab(
     favoriteSongs: LazyPagingItems<Song>,
+    customFavoriteSongs: ImmutableList<Song>? = null,
     playerViewModel: PlayerViewModel,
     bottomBarHeight: Dp,
     onMoreOptionsClick: (Song) -> Unit,
@@ -197,6 +199,26 @@ fun LibraryFavoritesTab(
         }
     }
 
+    // Custom order renders the full non-paged list.
+    if (sortOption == SortOption.LikedSongCustomOrder && customFavoriteSongs != null) {
+        LibraryFavoritesTabCustomOrderContent(
+            songs = customFavoriteSongs,
+            playerViewModel = playerViewModel,
+            bottomBarHeight = bottomBarHeight,
+            onMoreOptionsClick = onMoreOptionsClick,
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            isSelectionMode = isSelectionMode,
+            selectedSongIds = selectedSongIds,
+            onSongLongPress = onSongLongPress,
+            onSongSelectionToggle = onSongSelectionToggle,
+            getSelectionIndex = getSelectionIndex,
+            storageFilter = storageFilter,
+            hasCurrentSong = hasCurrentSong
+        )
+        return
+    }
+
     if (favoriteSongs.itemCount == 0 && favoriteSongs.loadState.refresh !is LoadState.Loading) {
         LibraryExpressiveEmptyState(
             tabId = LibraryTabId.LIKED,
@@ -288,6 +310,108 @@ fun LibraryFavoritesTab(
                         dragLabelProvider = favoriteFastScrollLabelProvider
                     )
                 }
+            }
+        }
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LibraryFavoritesTabCustomOrderContent(
+    songs: ImmutableList<Song>,
+    playerViewModel: PlayerViewModel,
+    bottomBarHeight: Dp,
+    onMoreOptionsClick: (Song) -> Unit,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    isSelectionMode: Boolean,
+    selectedSongIds: Set<String>,
+    onSongLongPress: (Song) -> Unit,
+    onSongSelectionToggle: (Song) -> Unit,
+    getSelectionIndex: (String) -> Int?,
+    storageFilter: StorageFilter,
+    hasCurrentSong: Boolean
+) {
+    val listState = rememberLazyListState()
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    when {
+        songs.isEmpty() -> {
+            LibraryExpressiveEmptyState(
+                tabId = LibraryTabId.LIKED,
+                storageFilter = storageFilter,
+                bottomBarHeight = bottomBarHeight
+            )
+        }
+        else -> {
+            Box(modifier = Modifier.fillMaxSize()) {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = onRefresh,
+                    state = pullToRefreshState,
+                    modifier = Modifier.fillMaxSize(),
+                    indicator = {
+                        PullToRefreshDefaults.LoadingIndicator(
+                            state = pullToRefreshState,
+                            isRefreshing = isRefreshing,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 26.dp,
+                                    topEnd = 26.dp,
+                                    bottomStart = PlayerSheetCollapsedCornerRadius,
+                                    bottomEnd = PlayerSheetCollapsedCornerRadius
+                                )
+                            )
+                            .fillMaxSize(),
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
+                    ) {
+                        items(songs, key = { it.id }) { song ->
+                            val isSelected = selectedSongIds.contains(song.id)
+                            val rememberedOnMoreOptionsClick: (Song) -> Unit = remember(onMoreOptionsClick) {
+                                { songFromListItem -> onMoreOptionsClick(songFromListItem) }
+                            }
+                            val rememberedOnClick: () -> Unit = remember(song, isSelectionMode) {
+                                if (isSelectionMode) {
+                                    { onSongSelectionToggle(song) }
+                                } else {
+                                    { playerViewModel.showAndPlaySongFromFavorites(song) }
+                                }
+                            }
+                            LibraryPlaybackAwareSongItem(
+                                song = song,
+                                playerViewModel = playerViewModel,
+                                onMoreOptionsClick = rememberedOnMoreOptionsClick,
+                                onClick = rememberedOnClick,
+                                onLongPress = { onSongLongPress(song) },
+                                isSelected = isSelected,
+                                selectionIndex = if (isSelectionMode) getSelectionIndex(song.id) else null,
+                                isSelectionMode = isSelectionMode
+                            )
+                        }
+                    }
+                }
+
+                val bottomPadding = if (hasCurrentSong)
+                    bottomBarHeight + MiniPlayerHeight + 16.dp
+                else
+                    bottomBarHeight + 16.dp
+
+                ExpressiveScrollBar(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
+                    listState = listState
+                )
             }
         }
     }

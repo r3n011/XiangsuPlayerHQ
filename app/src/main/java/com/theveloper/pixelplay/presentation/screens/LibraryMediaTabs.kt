@@ -74,11 +74,13 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.collections.immutable.ImmutableList
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun LibraryAlbumsTab(
     albums: LazyPagingItems<Album>,
+    customAlbums: ImmutableList<Album>? = null,
     isLoading: Boolean,
     playerViewModel: PlayerViewModel,
     bottomBarHeight: Dp,
@@ -217,6 +219,25 @@ fun LibraryAlbumsTab(
     val refreshState = albums.loadState.refresh
     val reachedEndOfPagination = albums.loadState.append.endOfPaginationReached
     val shouldShowInitialLoading = albums.itemCount == 0 && isLoading
+
+    // Custom order renders the full non-paged list.
+    if (currentAlbumSortOption == SortOption.AlbumCustomOrder && customAlbums != null) {
+        LibraryAlbumsTabCustomOrderContent(
+            albums = customAlbums,
+            isListView = isListView,
+            playerViewModel = playerViewModel,
+            bottomBarHeight = bottomBarHeight,
+            onAlbumClick = onAlbumClick,
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            isSelectionMode = isSelectionMode,
+            selectedAlbumIds = selectedAlbumIds,
+            onAlbumLongPress = onAlbumLongPress,
+            onAlbumSelectionToggle = onAlbumSelectionToggle,
+            storageFilter = storageFilter
+        )
+        return
+    }
 
     when {
         refreshState is LoadState.Error && albums.itemCount == 0 -> {
@@ -474,6 +495,7 @@ fun LibraryAlbumsTab(
 @Composable
 fun LibraryArtistsTab(
     artists: LazyPagingItems<Artist>,
+    customArtists: ImmutableList<Artist>? = null,
     isLoading: Boolean,
     playerViewModel: PlayerViewModel,
     bottomBarHeight: Dp,
@@ -528,6 +550,20 @@ fun LibraryArtistsTab(
     val refreshState = artists.loadState.refresh
     val reachedEndOfPagination = artists.loadState.append.endOfPaginationReached
     val shouldShowInitialLoading = artists.itemCount == 0 && isLoading
+
+    // Custom order renders the full non-paged list.
+    if (currentArtistSortOption == SortOption.ArtistCustomOrder && customArtists != null) {
+        LibraryArtistsTabCustomOrderContent(
+            artists = customArtists,
+            playerViewModel = playerViewModel,
+            bottomBarHeight = bottomBarHeight,
+            onArtistClick = onArtistClick,
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            storageFilter = storageFilter
+        )
+        return
+    }
 
     when {
         refreshState is LoadState.Error && artists.itemCount == 0 -> {
@@ -677,7 +713,8 @@ fun LibraryPlaylistsTab(
     selectedPlaylistIds: Set<String> = emptySet(),
     onPlaylistLongPress: (com.theveloper.pixelplay.data.model.Playlist) -> Unit = {},
     onPlaylistSelectionToggle: (com.theveloper.pixelplay.data.model.Playlist) -> Unit = {},
-    onPlaylistOptionsClick: () -> Unit = {}
+    onPlaylistOptionsClick: () -> Unit = {},
+    onReorder: ((List<String>) -> Unit)? = null
 ) {
     PlaylistContainer(
         playlistUiState = playlistUiState,
@@ -691,6 +728,256 @@ fun LibraryPlaylistsTab(
         isSelectionMode = isSelectionMode,
         selectedPlaylistIds = selectedPlaylistIds,
         onPlaylistLongPress = onPlaylistLongPress,
-        onPlaylistSelectionToggle = onPlaylistSelectionToggle
+        onPlaylistSelectionToggle = onPlaylistSelectionToggle,
+        onReorder = onReorder
     )
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun LibraryAlbumsTabCustomOrderContent(
+    albums: ImmutableList<Album>,
+    isListView: Boolean,
+    playerViewModel: PlayerViewModel,
+    bottomBarHeight: Dp,
+    onAlbumClick: (Long) -> Unit,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    isSelectionMode: Boolean,
+    selectedAlbumIds: Set<Long>,
+    onAlbumLongPress: (Album) -> Unit,
+    onAlbumSelectionToggle: (Album) -> Unit,
+    storageFilter: StorageFilter
+) {
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val hasCurrentSong by remember(playerViewModel) {
+        playerViewModel.stablePlayerState
+            .map { it.currentSong != null && it.currentSong != Song.emptySong() }
+            .distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = false)
+
+    when {
+        albums.isEmpty() -> {
+            LibraryExpressiveEmptyState(
+                tabId = LibraryTabId.ALBUMS,
+                storageFilter = storageFilter,
+                bottomBarHeight = bottomBarHeight
+            )
+        }
+        else -> {
+            Box(modifier = Modifier.fillMaxSize()) {
+                val albumsPullToRefreshState = rememberPullToRefreshState()
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = onRefresh,
+                    state = albumsPullToRefreshState,
+                    modifier = Modifier.fillMaxSize(),
+                    indicator = {
+                        PullToRefreshDefaults.LoadingIndicator(
+                            state = albumsPullToRefreshState,
+                            isRefreshing = isRefreshing,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (isListView) {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = 16.dp,
+                                            topEnd = 16.dp,
+                                            bottomStart = PlayerSheetCollapsedCornerRadius,
+                                            bottomEnd = PlayerSheetCollapsedCornerRadius
+                                        )
+                                    )
+                                    .fillMaxSize(),
+                                state = listState,
+                                contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(albums, key = { it.id }, contentType = { "album_list_item" }) { album ->
+                                    val albumSpecificColorSchemeFlow =
+                                        playerViewModel.themeStateHolder.getAlbumColorSchemeFlow(album.albumArtUriString ?: "")
+                                    val rememberedOnClick = remember(album.id, onAlbumClick) {
+                                        { onAlbumClick(album.id) }
+                                    }
+                                    val rememberedOnLongPress = remember(album.id, onAlbumLongPress) {
+                                        { onAlbumLongPress(album) }
+                                    }
+                                    val rememberedOnSelectionToggle = remember(album.id, onAlbumSelectionToggle) {
+                                        { onAlbumSelectionToggle(album) }
+                                    }
+                                    AlbumListItem(
+                                        album = album,
+                                        albumColorSchemePairFlow = albumSpecificColorSchemeFlow,
+                                        onClick = rememberedOnClick,
+                                        isLoading = false,
+                                        isSelectionMode = isSelectionMode,
+                                        isSelected = selectedAlbumIds.contains(album.id),
+                                        onLongPress = rememberedOnLongPress,
+                                        onSelectionToggle = rememberedOnSelectionToggle
+                                    )
+                                }
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                modifier = Modifier
+                                    .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = 16.dp,
+                                            topEnd = 16.dp,
+                                            bottomStart = PlayerSheetCollapsedCornerRadius,
+                                            bottomEnd = PlayerSheetCollapsedCornerRadius
+                                        )
+                                    )
+                                    .fillMaxSize(),
+                                state = gridState,
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(albums, key = { it.id }, contentType = { "album_grid_item" }) { album ->
+                                    val albumSpecificColorSchemeFlow =
+                                        playerViewModel.themeStateHolder.getAlbumColorSchemeFlow(album.albumArtUriString ?: "")
+                                    val rememberedOnClick = remember(album.id, onAlbumClick) {
+                                        { onAlbumClick(album.id) }
+                                    }
+                                    val rememberedOnLongPress = remember(album.id, onAlbumLongPress) {
+                                        { onAlbumLongPress(album) }
+                                    }
+                                    val rememberedOnSelectionToggle = remember(album.id, onAlbumSelectionToggle) {
+                                        { onAlbumSelectionToggle(album) }
+                                    }
+                                    AlbumGridItemRedesigned(
+                                        album = album,
+                                        albumColorSchemePairFlow = albumSpecificColorSchemeFlow,
+                                        onClick = rememberedOnClick,
+                                        isLoading = false,
+                                        isSelectionMode = isSelectionMode,
+                                        isSelected = selectedAlbumIds.contains(album.id),
+                                        onLongPress = rememberedOnLongPress,
+                                        onSelectionToggle = rememberedOnSelectionToggle
+                                    )
+                                }
+                            }
+                        }
+
+                        val bottomPadding = if (hasCurrentSong)
+                            bottomBarHeight + MiniPlayerHeight + 16.dp
+                        else
+                            bottomBarHeight + 16.dp
+
+                        if (isListView) {
+                            ExpressiveScrollBar(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
+                                listState = listState
+                            )
+                        } else {
+                            ExpressiveScrollBar(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
+                                gridState = gridState
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun LibraryArtistsTabCustomOrderContent(
+    artists: ImmutableList<Artist>,
+    playerViewModel: PlayerViewModel,
+    bottomBarHeight: Dp,
+    onArtistClick: (Long) -> Unit,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    storageFilter: StorageFilter
+) {
+    val listState = rememberLazyListState()
+    val hasCurrentSong by remember(playerViewModel) {
+        playerViewModel.stablePlayerState
+            .map { it.currentSong != null && it.currentSong != Song.emptySong() }
+            .distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = false)
+
+    when {
+        artists.isEmpty() -> {
+            LibraryExpressiveEmptyState(
+                tabId = LibraryTabId.ARTISTS,
+                storageFilter = storageFilter,
+                bottomBarHeight = bottomBarHeight
+            )
+        }
+        else -> {
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val artistsPullToRefreshState = rememberPullToRefreshState()
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = onRefresh,
+                    state = artistsPullToRefreshState,
+                    modifier = Modifier.fillMaxSize(),
+                    indicator = {
+                        PullToRefreshDefaults.LoadingIndicator(
+                            state = artistsPullToRefreshState,
+                            isRefreshing = isRefreshing,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 26.dp,
+                                        topEnd = 26.dp,
+                                        bottomStart = PlayerSheetCollapsedCornerRadius,
+                                        bottomEnd = PlayerSheetCollapsedCornerRadius
+                                    )
+                                )
+                                .fillMaxSize(),
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
+                        ) {
+                            items(artists, key = { it.id }, contentType = { "artist" }) { artist ->
+                                val rememberedOnClick = remember(artist.id, onArtistClick) {
+                                    { onArtistClick(artist.id) }
+                                }
+                                ArtistListItem(artist = artist, onClick = rememberedOnClick)
+                            }
+                        }
+
+                        val bottomPadding = if (hasCurrentSong)
+                            bottomBarHeight + MiniPlayerHeight + 16.dp
+                        else
+                            bottomBarHeight + 16.dp
+
+                        ExpressiveScrollBar(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
+                            listState = listState
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
