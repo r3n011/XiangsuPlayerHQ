@@ -110,6 +110,8 @@ class UserPreferencesRepository @Inject constructor(
         val FAVORITE_SONG_IDS = stringSetPreferencesKey("favorite_song_ids")
         val USER_PLAYLISTS = stringPreferencesKey("user_playlists_json_v1")
         val PLAYLIST_SONG_ORDER_MODES = stringPreferencesKey("playlist_song_order_modes")
+        val ALBUM_SONG_ORDER_MODES = stringPreferencesKey("album_song_order_modes")
+        val ALBUM_SONG_MANUAL_ORDERS = stringPreferencesKey("album_song_manual_orders")
 
         // Sort options
         val SONGS_SORT_OPTION = stringPreferencesKey("songs_sort_option")
@@ -119,6 +121,14 @@ class UserPreferencesRepository @Inject constructor(
         val PLAYLISTS_SORT_OPTION = stringPreferencesKey("playlists_sort_option")
         val FOLDERS_SORT_OPTION = stringPreferencesKey("folders_sort_option")
         val LIKED_SONGS_SORT_OPTION = stringPreferencesKey("liked_songs_sort_option")
+
+        // Manual order (custom sort)
+        val SONGS_MANUAL_ORDER = stringPreferencesKey("songs_manual_order")
+        val ALBUMS_MANUAL_ORDER = stringPreferencesKey("albums_manual_order")
+        val ARTISTS_MANUAL_ORDER = stringPreferencesKey("artists_manual_order")
+        val PLAYLISTS_MANUAL_ORDER = stringPreferencesKey("playlists_manual_order")
+        val FOLDERS_MANUAL_ORDER = stringPreferencesKey("folders_manual_order")
+        val LIKED_SONGS_MANUAL_ORDER = stringPreferencesKey("liked_songs_manual_order")
 
         // UI state
         val LAST_LIBRARY_TAB_INDEX = intPreferencesKey("last_library_tab_index")
@@ -640,6 +650,34 @@ class UserPreferencesRepository @Inject constructor(
         editJsonMap<String>(PreferencesKeys.PLAYLIST_SONG_ORDER_MODES) { remove(playlistId) }
     }
 
+    // ─── Album song order modes ─────────────────────────────────────────────
+
+    val albumSongOrderModesFlow: Flow<Map<String, String>> =
+        pref { preferences ->
+            decodeJsonPref(preferences, PreferencesKeys.ALBUM_SONG_ORDER_MODES, emptyMap())
+        }
+
+    suspend fun setAlbumSongOrderMode(albumId: String, modeValue: String) {
+        editJsonMap<String>(PreferencesKeys.ALBUM_SONG_ORDER_MODES) { put(albumId, modeValue) }
+    }
+
+    suspend fun clearAlbumSongOrderMode(albumId: String) {
+        editJsonMap<String>(PreferencesKeys.ALBUM_SONG_ORDER_MODES) { remove(albumId) }
+    }
+
+    val albumSongManualOrdersFlow: Flow<Map<String, List<String>>> =
+        pref { preferences ->
+            decodeJsonPref(preferences, PreferencesKeys.ALBUM_SONG_MANUAL_ORDERS, emptyMap())
+        }
+
+    suspend fun setAlbumSongManualOrder(albumId: String, songOrderIds: List<String>) {
+        editJsonMap<List<String>>(PreferencesKeys.ALBUM_SONG_MANUAL_ORDERS) { put(albumId, songOrderIds) }
+    }
+
+    suspend fun clearAlbumSongManualOrder(albumId: String) {
+        editJsonMap<List<String>>(PreferencesKeys.ALBUM_SONG_MANUAL_ORDERS) { remove(albumId) }
+    }
+
     // Legacy DataStore playlist payload kept only for one-time migration and old backup compatibility.
     val legacyUserPlaylistsFlow: Flow<List<Playlist>> =
         pref { preferences ->
@@ -891,6 +929,35 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setLikedSongsSortOption(optionKey: String) {
         dataStore.edit { it[PreferencesKeys.LIKED_SONGS_SORT_OPTION] = optionKey }
+    }
+
+    // ─── Library manual order (custom sort) ───────────────────────────────────
+
+    private fun manualOrderKey(listType: LibraryManualOrderType): Preferences.Key<String> =
+        when (listType) {
+            LibraryManualOrderType.SONGS -> PreferencesKeys.SONGS_MANUAL_ORDER
+            LibraryManualOrderType.ALBUMS -> PreferencesKeys.ALBUMS_MANUAL_ORDER
+            LibraryManualOrderType.ARTISTS -> PreferencesKeys.ARTISTS_MANUAL_ORDER
+            LibraryManualOrderType.PLAYLISTS -> PreferencesKeys.PLAYLISTS_MANUAL_ORDER
+            LibraryManualOrderType.FOLDERS -> PreferencesKeys.FOLDERS_MANUAL_ORDER
+            LibraryManualOrderType.LIKED_SONGS -> PreferencesKeys.LIKED_SONGS_MANUAL_ORDER
+        }
+
+    fun libraryManualOrderFlow(listType: LibraryManualOrderType): Flow<List<String>> =
+        pref { preferences ->
+            decodeJsonPref(preferences, manualOrderKey(listType), emptyList())
+        }
+
+    suspend fun setLibraryManualOrder(listType: LibraryManualOrderType, order: List<String>) {
+        dataStore.edit { preferences ->
+            preferences[manualOrderKey(listType)] = json.encodeToString(order)
+        }
+    }
+
+    suspend fun clearLibraryManualOrder(listType: LibraryManualOrderType) {
+        dataStore.edit { preferences ->
+            preferences.remove(manualOrderKey(listType))
+        }
     }
 
     suspend fun ensureLibrarySortDefaults() {

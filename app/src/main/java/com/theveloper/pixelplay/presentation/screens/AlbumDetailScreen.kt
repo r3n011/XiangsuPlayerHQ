@@ -9,11 +9,14 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +34,8 @@ import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -38,6 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -88,9 +94,12 @@ import coil.compose.AsyncImagePainter
 import coil.size.Size
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Album
+import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
+import com.theveloper.pixelplay.presentation.components.LibrarySheetToggleCard
+import com.theveloper.pixelplay.presentation.components.LibrarySortBottomSheet
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.SmartImage
@@ -99,8 +108,11 @@ import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHei
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.viewmodel.AlbumDetailViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.AlbumSongsOrderMode
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import com.theveloper.pixelplay.utils.formatSongCount
 import com.theveloper.pixelplay.utils.shapes.RoundedStarShape
 import kotlinx.coroutines.launch
@@ -189,10 +201,36 @@ fun AlbumDetailScreen(
             uiState.album != null -> {
                 val album = uiState.album!!
                 val songs = uiState.songs
-                val songsByDisc = remember(songs) {
-                    songs.groupBy { it.discNumber ?: 1 }
+                val isManualMode = uiState.albumSongsOrderMode is AlbumSongsOrderMode.Manual
+                var localReorderableSongs by remember(songs) { mutableStateOf(songs) }
+                LaunchedEffect(songs) { localReorderableSongs = songs }
+                var showSortSheet by remember { mutableStateOf(false) }
+                var lastMovedFrom by remember { mutableStateOf<Int?>(null) }
+                var lastMovedTo by remember { mutableStateOf<Int?>(null) }
+                val listState = rememberLazyListState()
+                val reorderableState = rememberReorderableLazyListState(
+                    lazyListState = listState,
+                    onMove = { from, to ->
+                        if (!isManualMode) return@rememberReorderableLazyListState
+                        localReorderableSongs = localReorderableSongs.toMutableList().apply {
+                            add(to.index, removeAt(from.index))
+                        }
+                        if (lastMovedFrom == null) {
+                            lastMovedFrom = from.index
+                        }
+                        lastMovedTo = to.index
+                    }
+                )
+                LaunchedEffect(reorderableState.isAnyItemDragging) {
+                    if (!reorderableState.isAnyItemDragging && lastMovedFrom != null && lastMovedTo != null) {
+                        viewModel.reorderSongsInAlbum(lastMovedFrom!!, lastMovedTo!!)
+                        lastMovedFrom = null
+                        lastMovedTo = null
+                    }
                 }
-                val lazyListState = rememberLazyListState()
+                val songsByDisc = remember(songs, isManualMode) {
+                    if (isManualMode) emptyMap() else songs.groupBy { it.discNumber ?: 1 }
+                }
 
                 val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                 val minTopBarHeight = 64.dp + statusBarHeight
@@ -230,7 +268,7 @@ fun AlbumDetailScreen(
                             val delta = available.y
                             val isScrollingDown = delta < 0
 
-                            if (!isScrollingDown && (lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 0)) {
+                            if (!isScrollingDown && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)) {
                                 return Offset.Zero
                             }
 
@@ -258,12 +296,12 @@ fun AlbumDetailScreen(
                     }
                 }
 
-                LaunchedEffect(lazyListState.isScrollInProgress) {
-                    if (!lazyListState.isScrollInProgress) {
+                LaunchedEffect(listState.isScrollInProgress) {
+                    if (!listState.isScrollInProgress) {
                         val shouldExpand =
                             topBarHeight.value > (minTopBarHeightPx + maxTopBarHeightPx) / 2
                         val canExpand =
-                            lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0
+                            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
 
                         val targetValue = if (shouldExpand && canExpand) {
                             maxTopBarHeightPx
@@ -294,10 +332,10 @@ fun AlbumDetailScreen(
                     val showScrollBar =
                         LocalShowScrollbar.current &&
                         collapseFraction > 0.95f &&
-                            (lazyListState.canScrollForward || lazyListState.canScrollBackward)
+                            (listState.canScrollForward || listState.canScrollBackward)
 
                     LazyColumn(
-                        state = lazyListState,
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .hazeSource(MainActivity.LocalHazeState.current)
@@ -314,42 +352,91 @@ fun AlbumDetailScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        songsByDisc.forEach { (discNumber, discSongs) ->
-                            if (songsByDisc.size > 1) {
-                                item(key = "disc_header_$discNumber") {
-                                    Text(
-                                        text = stringResource(R.string.disc_number_header, discNumber),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier
-                                            .padding(top = 16.dp, bottom = 8.dp, start = 8.dp)
-                                    )
-                                }
-                            }
+                        if (isManualMode) {
                             items(
-                                items = discSongs,
+                                items = localReorderableSongs,
                                 key = { song -> "album_song_${song.id}" },
                                 contentType = { "album_song" }
                             ) { song ->
-                                EnhancedSongListItem(
-                                    song = song,
-                                    isCurrentSong = stablePlayerState.currentSong?.id == song.id,
-                                    isPlaying = stablePlayerState.isPlaying,
-                                    showAlbumArt = false,
-                                    onMoreOptionsClick = {
-                                        playerViewModel.selectSongForInfo(song)
-                                        showSongInfoBottomSheet = true
-                                    },
-                                    onClick = { playerViewModel.showAndPlaySong(song, songs) }
-                                )
+                                ReorderableItem(
+                                    state = reorderableState,
+                                    key = "album_song_${song.id}"
+                                ) { isDragging ->
+                                    val scale by animateFloatAsState(
+                                        targetValue = if (isDragging) 1.02f else 1f,
+                                        label = "albumSongItemScale"
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .graphicsLayer {
+                                                scaleX = scale
+                                                scaleY = scale
+                                            },
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        IconButton(
+                                            onClick = {},
+                                            modifier = Modifier.draggableHandle()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.DragIndicator,
+                                                contentDescription = stringResource(R.string.presentation_batch_b_reorder_song)
+                                            )
+                                        }
+                                        EnhancedSongListItem(
+                                            modifier = Modifier.weight(1f),
+                                            song = song,
+                                            isCurrentSong = stablePlayerState.currentSong?.id == song.id,
+                                            isPlaying = stablePlayerState.isPlaying,
+                                            showAlbumArt = false,
+                                            onMoreOptionsClick = {
+                                                playerViewModel.selectSongForInfo(song)
+                                                showSongInfoBottomSheet = true
+                                            },
+                                            onClick = { playerViewModel.showAndPlaySong(song, localReorderableSongs) }
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            songsByDisc.forEach { (discNumber, discSongs) ->
+                                if (songsByDisc.size > 1) {
+                                    item(key = "disc_header_$discNumber") {
+                                        Text(
+                                            text = stringResource(R.string.disc_number_header, discNumber),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier
+                                                .padding(top = 16.dp, bottom = 8.dp, start = 8.dp)
+                                        )
+                                    }
+                                }
+                                items(
+                                    items = discSongs,
+                                    key = { song -> "album_song_${song.id}" },
+                                    contentType = { "album_song" }
+                                ) { song ->
+                                    EnhancedSongListItem(
+                                        song = song,
+                                        isCurrentSong = stablePlayerState.currentSong?.id == song.id,
+                                        isPlaying = stablePlayerState.isPlaying,
+                                        showAlbumArt = false,
+                                        onMoreOptionsClick = {
+                                            playerViewModel.selectSongForInfo(song)
+                                            showSongInfoBottomSheet = true
+                                        },
+                                        onClick = { playerViewModel.showAndPlaySong(song, localReorderableSongs) }
+                                    )
+                                }
                             }
                         }
                     }
 
                     if (showScrollBar) {
                         ExpressiveScrollBar(
-                            listState = lazyListState,
+                            listState = listState,
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(
@@ -359,10 +446,16 @@ fun AlbumDetailScreen(
                         )
                     }
 
+                    val onPlayAlbumClick = {
+                        if (localReorderableSongs.isNotEmpty()) {
+                            val randomSong = localReorderableSongs.random()
+                            playerViewModel.showAndPlaySong(randomSong, localReorderableSongs)
+                        }
+                    }
                     if (UseSharedCollapsibleTopBarProbe) {
                         SharedAlbumTopBarProbe(
                             album = album,
-                            songsCount = songs.size,
+                            songsCount = localReorderableSongs.size,
                             collapseFraction = collapseFraction,
                             headerHeight = currentTopBarHeightDp,
                             headerImageRequestSize = headerImageRequestSize,
@@ -372,17 +465,13 @@ fun AlbumDetailScreen(
                                 }
                             },
                             onBackPressed = { navController.popBackStack() },
-                            onPlayClick = {
-                                if (songs.isNotEmpty()) {
-                                    val randomSong = songs.random()
-                                    playerViewModel.showAndPlaySong(randomSong, songs)
-                                }
-                            }
+                            onPlayClick = onPlayAlbumClick,
+                            onSortClick = { showSortSheet = true }
                         )
                     } else {
                         CollapsingAlbumTopBar(
                             album = album,
-                            songsCount = songs.size,
+                            songsCount = localReorderableSongs.size,
                             collapseFraction = collapseFraction,
                             headerHeight = currentTopBarHeightDp,
                             headerImageRequestSize = headerImageRequestSize,
@@ -392,14 +481,49 @@ fun AlbumDetailScreen(
                                 }
                             },
                             onBackPressed = { navController.popBackStack() },
-                            onPlayClick = {
-                                if (songs.isNotEmpty()) {
-                                    val randomSong = songs.random()
-                                    playerViewModel.showAndPlaySong(randomSong, songs)
-                                }
-                            }
+                            onPlayClick = onPlayAlbumClick,
+                            onSortClick = { showSortSheet = true }
                         )
                     }
+                }
+
+                if (showSortSheet) {
+                    LibrarySortBottomSheet(
+                        title = stringResource(R.string.presentation_batch_b_sort_songs),
+                        options = SortOption.SONGS,
+                        selectedOption = uiState.currentSongsSortOption,
+                        onDismiss = { showSortSheet = false },
+                        onOptionSelected = { option ->
+                            viewModel.sortAlbumSongs(option)
+                            showSortSheet = false
+                        },
+                        onDirectionToggle = { option ->
+                            viewModel.sortAlbumSongs(option)
+                        },
+                        extraContent = {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(R.string.presentation_batch_b_more_options),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontFamily = GoogleSansRounded,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 2.dp, top = 8.dp, bottom = 8.dp)
+                            )
+                            LibrarySheetToggleCard(
+                                label = stringResource(R.string.presentation_batch_b_reorder),
+                                checked = isManualMode,
+                                boxBackgroundColor = if (isManualMode) {
+                                    MaterialTheme.colorScheme.tertiary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerLow
+                                },
+                                boxCornerRadius = if (isManualMode) 18.dp else 50.dp,
+                                onCheckedChange = { enabled: Boolean ->
+                                    viewModel.setManualOrderEnabled(enabled)
+                                }
+                            )
+                        }
+                    )
                 }
             }
         }
@@ -510,7 +634,8 @@ private fun SharedAlbumTopBarProbe(
     headerImageRequestSize: Size,
     onHeaderArtworkState: ((AsyncImagePainter.State) -> Unit)? = null,
     onBackPressed: () -> Unit,
-    onPlayClick: () -> Unit
+    onPlayClick: () -> Unit,
+    onSortClick: () -> Unit
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
     val statusBarColor =
@@ -600,7 +725,15 @@ private fun SharedAlbumTopBarProbe(
             contentColor = MaterialTheme.colorScheme.onSurface,
             subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant,
             fadeSubtitleOnCollapse = false,
-            syncStatusBarWithContainer = false
+            syncStatusBarWithContainer = false,
+            actions = {
+                IconButton(onClick = onSortClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.Sort,
+                        contentDescription = stringResource(R.string.presentation_batch_b_sort_songs)
+                    )
+                }
+            }
         )
 
         LargeExtendedFloatingActionButton(
@@ -631,7 +764,8 @@ private fun CollapsingAlbumTopBar(
     headerImageRequestSize: Size,
     onHeaderArtworkState: ((AsyncImagePainter.State) -> Unit)? = null,
     onBackPressed: () -> Unit,
-    onPlayClick: () -> Unit
+    onPlayClick: () -> Unit,
+    onSortClick: () -> Unit
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
     val statusBarColor =
@@ -734,6 +868,18 @@ private fun CollapsingAlbumTopBar(
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                 ) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.auth_cd_back))
+                }
+
+                IconButton(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(end = 12.dp, top = 4.dp),
+                    onClick = onSortClick
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.Sort,
+                        contentDescription = stringResource(R.string.presentation_batch_b_sort_songs)
+                    )
                 }
 
                 Box(

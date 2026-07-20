@@ -7,6 +7,7 @@ import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 
 import android.os.Trace
 import android.text.format.Formatter
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.AnimatedVisibility
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Deselect
+import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -107,6 +109,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
@@ -170,6 +173,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SongInfoBottomSheetViewModel
 import com.theveloper.pixelplay.data.model.LibraryTabId
 import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
+import com.theveloper.pixelplay.data.preferences.LibraryManualOrderType
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.worker.SyncProgress
 import com.theveloper.pixelplay.presentation.screens.search.components.GenreTypography
@@ -246,8 +250,14 @@ import androidx.paging.compose.itemContentType
 import androidx.paging.LoadState
 import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
+import com.theveloper.pixelplay.presentation.components.LibraryReorderItem
+import com.theveloper.pixelplay.presentation.components.LibraryReorderSheet
 import com.theveloper.pixelplay.presentation.components.LibrarySortBottomSheet
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
+import com.theveloper.pixelplay.presentation.utils.LocalAppHapticsConfig
+import com.theveloper.pixelplay.presentation.utils.performAppCompatHapticFeedback
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import com.theveloper.pixelplay.data.service.wear.PhoneWatchTransferState
 import com.theveloper.pixelplay.shared.WearTransferProgress
 import java.io.File
@@ -522,6 +532,12 @@ fun LibraryScreen(
 
     var showReorderTabsSheet by remember { mutableStateOf(false) }
     var showTabSwitcherSheet by remember { mutableStateOf(false) }
+
+    // Manual reorder sheet state
+    var showLibraryReorderSheet by remember { mutableStateOf(false) }
+    var libraryReorderSheetTitle by remember { mutableStateOf("") }
+    var libraryReorderItems by remember { mutableStateOf<List<LibraryReorderItem>>(emptyList()) }
+    var libraryReorderListType by remember { mutableStateOf<LibraryManualOrderType?>(null) }
 
     LaunchedEffect(activeWatchTransfer?.requestId) {
         if (activeWatchTransfer == null) {
@@ -1035,6 +1051,12 @@ fun LibraryScreen(
             }.distinctUntilChanged()
         }.collectAsStateWithLifecycle(initialValue = true)
 
+        // Full lists used by the manual reorder sheets for paged library tabs.
+        val allSongsForReorder by playerViewModel.allSongsFlow.collectAsStateWithLifecycle()
+        val allAlbumsForReorder by playerViewModel.albumsFlow.collectAsStateWithLifecycle()
+        val allArtistsForReorder by playerViewModel.artistsFlow.collectAsStateWithLifecycle()
+        val favoriteIdsForReorder by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
+
         Box(
             modifier = Modifier
                 .padding(top = innerScaffoldPadding.calculateTopPadding())
@@ -1178,6 +1200,58 @@ fun LibraryScreen(
                                     LibraryTabId.PLAYLISTS -> playlistViewModel.sortPlaylists(option)
                                     LibraryTabId.LIKED -> playerViewModel.sortFavoriteSongs(option)
                                     LibraryTabId.FOLDERS -> playerViewModel.sortFolders(option)
+                                }
+                            }
+                        }
+
+                        val reorderSongsTitle = stringResource(R.string.reorder_songs_sheet_title)
+                        val reorderAlbumsTitle = stringResource(R.string.reorder_albums_sheet_title)
+                        val reorderArtistsTitle = stringResource(R.string.reorder_artists_sheet_title)
+                        val reorderFavoritesTitle = stringResource(R.string.reorder_favorites_sheet_title)
+
+                        val openLibraryReorderSheet: () -> Unit = remember(
+                            currentTabId,
+                            allSongsForReorder,
+                            allAlbumsForReorder,
+                            allArtistsForReorder,
+                            favoriteIdsForReorder,
+                            reorderSongsTitle,
+                            reorderAlbumsTitle,
+                            reorderArtistsTitle,
+                            reorderFavoritesTitle
+                        ) {
+                            {
+                                val (title, items, listType) = when (currentTabId) {
+                                    LibraryTabId.SONGS -> Triple(
+                                        reorderSongsTitle,
+                                        allSongsForReorder.map { LibraryReorderItem(it.id, it.title, it.displayArtist) },
+                                        LibraryManualOrderType.SONGS
+                                    )
+                                    LibraryTabId.ALBUMS -> Triple(
+                                        reorderAlbumsTitle,
+                                        allAlbumsForReorder.map { LibraryReorderItem(it.id.toString(), it.title, it.artist) },
+                                        LibraryManualOrderType.ALBUMS
+                                    )
+                                    LibraryTabId.ARTISTS -> Triple(
+                                        reorderArtistsTitle,
+                                        allArtistsForReorder.map { LibraryReorderItem(it.id.toString(), it.name, null) },
+                                        LibraryManualOrderType.ARTISTS
+                                    )
+                                    LibraryTabId.LIKED -> Triple(
+                                        reorderFavoritesTitle,
+                                        allSongsForReorder
+                                            .filter { it.id in favoriteIdsForReorder }
+                                            .map { LibraryReorderItem(it.id, it.title, it.displayArtist) },
+                                        LibraryManualOrderType.LIKED_SONGS
+                                    )
+                                    else -> Triple("", emptyList<LibraryReorderItem>(), null)
+                                }
+                                if (listType != null) {
+                                    libraryReorderSheetTitle = title
+                                    libraryReorderItems = items
+                                    libraryReorderListType = listType
+                                    playerViewModel.hideSortingSheet()
+                                    showLibraryReorderSheet = true
                                 }
                             }
                         }
@@ -1506,6 +1580,33 @@ fun LibraryScreen(
                                             onCheckedChange = { playerViewModel.setHideLocalMedia(it) }
                                         )
                                     }
+                                },
+                                onReorderRequested = if (
+                                    currentTabId == LibraryTabId.SONGS ||
+                                    currentTabId == LibraryTabId.ALBUMS ||
+                                    currentTabId == LibraryTabId.ARTISTS ||
+                                    currentTabId == LibraryTabId.LIKED
+                                ) {
+                                    openLibraryReorderSheet
+                                } else {
+                                    null
+                                }
+                            )
+                        }
+
+                        if (showLibraryReorderSheet && libraryReorderListType != null) {
+                            LibraryReorderSheet(
+                                title = libraryReorderSheetTitle,
+                                items = libraryReorderItems,
+                                onReorder = { order ->
+                                    playerViewModel.setLibraryManualOrder(libraryReorderListType!!, order)
+                                },
+                                onDismiss = {
+                                    showLibraryReorderSheet = false
+                                    libraryReorderListType = null
+                                },
+                                onReset = {
+                                    playerViewModel.setLibraryManualOrder(libraryReorderListType!!, emptyList())
                                 }
                             )
                         }
@@ -1529,8 +1630,10 @@ fun LibraryScreen(
                                 when (tabTitles.getOrNull(tabIndex)?.toLibraryTabIdOrNull()) {
                                     LibraryTabId.SONGS -> {
                                         val allSongsLazyPagingItems = libraryViewModel.songsPagingFlow.collectAsLazyPagingItems()
+                                        val customSongs by libraryViewModel.customSongsFlow.collectAsStateWithLifecycle(initialValue = persistentListOf())
                                         LibrarySongsTab(
                                             songs = allSongsLazyPagingItems,
+                                            customSongs = customSongs,
                                             isLoading = isLibraryLoading,
                                             playerViewModel = playerViewModel,
                                             bottomBarHeight = bottomBarHeightDp,
@@ -1554,6 +1657,7 @@ fun LibraryScreen(
                                     }
                                     LibraryTabId.ALBUMS -> {
                                         val albumsLazyPagingItems = libraryViewModel.albumsPagingFlow.collectAsLazyPagingItems()
+                                        val customAlbums by libraryViewModel.customAlbumsFlow.collectAsStateWithLifecycle(initialValue = persistentListOf())
                                         val isLoading = playerUiState.isLoadingLibraryCategories
 
                                         val stableOnAlbumClick: (Long) -> Unit = remember(navController) {
@@ -1566,6 +1670,7 @@ fun LibraryScreen(
                                         }
                                         LibraryAlbumsTab(
                                             albums = albumsLazyPagingItems,
+                                            customAlbums = customAlbums,
                                             isLoading = isLoading,
                                             playerViewModel = playerViewModel,
                                             bottomBarHeight = bottomBarHeightDp,
@@ -1585,10 +1690,12 @@ fun LibraryScreen(
 
                                     LibraryTabId.ARTISTS -> {
                                         val artistsLazyPagingItems = libraryViewModel.artistsPagingFlow.collectAsLazyPagingItems()
+                                        val customArtists by libraryViewModel.customArtistsFlow.collectAsStateWithLifecycle(initialValue = persistentListOf())
                                         val isLoading = playerUiState.isLoadingLibraryCategories
 
                                         LibraryArtistsTab(
                                             artists = artistsLazyPagingItems,
+                                            customArtists = customArtists,
                                             isLoading = isLoading,
                                             playerViewModel = playerViewModel,
                                             bottomBarHeight = bottomBarHeightDp,
@@ -1619,14 +1726,19 @@ fun LibraryScreen(
                                             selectedPlaylistIds = selectedPlaylistIds,
                                             onPlaylistLongPress = onPlaylistLongPress,
                                             onPlaylistSelectionToggle = onPlaylistSelectionToggle,
-                                            onPlaylistOptionsClick = { showPlaylistMultiSelectionSheet = true }
+                                            onPlaylistOptionsClick = { showPlaylistMultiSelectionSheet = true },
+                                            onReorder = { order ->
+                                                playlistViewModel.setPlaylistsManualOrder(order)
+                                            }
                                         )
                                     }
 
                                     LibraryTabId.LIKED -> {
                                         val favoritePagingItems = libraryViewModel.favoritesPagingFlow.collectAsLazyPagingItems()
+                                        val customFavorites by libraryViewModel.customFavoritesFlow.collectAsStateWithLifecycle(initialValue = persistentListOf())
                                         LibraryFavoritesTab(
                                             favoriteSongs = favoritePagingItems,
+                                            customFavoriteSongs = customFavorites,
                                             playerViewModel = playerViewModel,
                                             bottomBarHeight = bottomBarHeightDp,
                                             onMoreOptionsClick = stableOnMoreOptionsClick,
@@ -1650,12 +1762,14 @@ fun LibraryScreen(
 
                                     LibraryTabId.FOLDERS -> {
                                         val folders = playerUiState.musicFolders
+                                        val customFolders by libraryViewModel.customFoldersFlow.collectAsStateWithLifecycle(initialValue = persistentListOf())
                                         val currentFolder = playerUiState.currentFolder
                                         val isLoading = playerUiState.isLoadingLibraryCategories
                                         val defaultFolderName = stringResource(R.string.presentation_batch_d_folder_name_fallback)
 
                                         LibraryFoldersTab(
                                             folders = folders,
+                                            customFolders = customFolders,
                                             currentFolder = currentFolder,
                                             isLoading = isLoading,
                                             bottomBarHeight = bottomBarHeightDp,
@@ -1697,7 +1811,10 @@ fun LibraryScreen(
                                                 playerViewModel.navigateToFolder(folderPath)
                                             },
                                             hasCurrentSong = hasCurrentSong,
-                                            currentSong = currentSong
+                                            currentSong = currentSong,
+                                            onFoldersReordered = { order ->
+                                                playerViewModel.setLibraryManualOrder(LibraryManualOrderType.FOLDERS, order)
+                                            }
                                         )
                                     }
 
@@ -2855,6 +2972,7 @@ private fun isDescendantFolderPath(ancestorPath: String, candidatePath: String):
 @Composable
 fun LibraryFoldersTab(
     folders: ImmutableList<MusicFolder>,
+    customFolders: ImmutableList<MusicFolder>? = null,
     currentFolder: MusicFolder?,
     isLoading: Boolean,
     onNavigateBack: () -> Unit,
@@ -2879,7 +2997,8 @@ fun LibraryFoldersTab(
     onClearPendingLocate: () -> Unit = {},
     onRequestCrossFolderLocate: (String) -> Unit = {},
     hasCurrentSong: Boolean = false,
-    currentSong: Song? = null
+    currentSong: Song? = null,
+    onFoldersReordered: ((List<String>) -> Unit)? = null
 ) {
     // List state moved inside AnimatedContent to prevent state sharing issues during transitions
 
@@ -2906,6 +3025,8 @@ fun LibraryFoldersTab(
         // Each navigation destination gets its own independant ListState
         val listState = rememberLazyListState()
         val coroutineScope = rememberCoroutineScope()
+        val view = LocalView.current
+        val appHapticsConfig = LocalAppHapticsConfig.current
         val visibilityCallback by rememberUpdatedState(onLocateCurrentSongVisibilityChanged)
         val registerActionCallback by rememberUpdatedState(onRegisterLocateCurrentSongAction)
         var lastHandledFolderSortKey by remember { mutableStateOf(currentSortOption.storageKey) }
@@ -2918,13 +3039,50 @@ fun LibraryFoldersTab(
         val isRoot = targetPath == FOLDER_NAVIGATION_ROOT_KEY
         val activeFolder = if (isRoot) null else currentFolder
         val showPlaylistCards = playlistMode && activeFolder == null
-        val itemsToShow = remember(activeFolder, folders, flattenedFolders, currentSortOption) {
+        val isCustomOrder = currentSortOption == SortOption.FolderCustomOrder && onFoldersReordered != null && customFolders != null && activeFolder == null && !isSelectionMode
+        val itemsToShow = remember(activeFolder, folders, flattenedFolders, currentSortOption, customFolders, isSelectionMode) {
             when {
+                isCustomOrder -> customFolders
                 showPlaylistCards -> flattenedFolders
                 activeFolder != null -> sortMusicFoldersByOption(activeFolder.subFolders, currentSortOption)
                 else -> sortMusicFoldersByOption(folders, currentSortOption)
             }
         }.toImmutableList()
+
+        var localItems by remember(itemsToShow) { mutableStateOf(itemsToShow) }
+        LaunchedEffect(itemsToShow) {
+            localItems = itemsToShow
+        }
+        var lastMovedFrom by remember { mutableStateOf<Int?>(null) }
+        var lastMovedTo by remember { mutableStateOf<Int?>(null) }
+
+        val reorderableState = rememberReorderableLazyListState(
+            lazyListState = listState,
+            onMove = { from, to ->
+                if (!isCustomOrder) return@rememberReorderableLazyListState
+                localItems = localItems.toMutableList().apply {
+                    add(to.index, removeAt(from.index))
+                }.toImmutableList()
+                if (lastMovedFrom == null) {
+                    lastMovedFrom = from.index
+                }
+                lastMovedTo = to.index
+                performAppCompatHapticFeedback(
+                    view,
+                    appHapticsConfig,
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                )
+            }
+        )
+
+        LaunchedEffect(reorderableState.isAnyItemDragging, isCustomOrder) {
+            if (!isCustomOrder) return@LaunchedEffect
+            if (!reorderableState.isAnyItemDragging && lastMovedFrom != null && lastMovedTo != null) {
+                onFoldersReordered.invoke(localItems.map { it.path })
+                lastMovedFrom = null
+                lastMovedTo = null
+            }
+        }
 
         val songsToShow = remember(activeFolder, currentSortOption) {
             sortSongsForFolderView(activeFolder?.songs ?: emptyList(), currentSortOption)
@@ -3078,6 +3236,7 @@ fun LibraryFoldersTab(
                     ) {
                         Box(modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current)) {
                             val showScrollbar = LocalShowScrollbar.current && (listState.canScrollForward || listState.canScrollBackward)
+                            val displayItems = if (isCustomOrder) localItems else itemsToShow
                             LazyColumn(
                                 modifier = Modifier
                                     .padding(start = 12.dp, end = if (showScrollbar) 22.dp else 12.dp)
@@ -3098,18 +3257,72 @@ fun LibraryFoldersTab(
                                 )
                             ) {
                                 if (showPlaylistCards) {
-                                    items(itemsToShow, key = { it.path }, contentType = { "folder_card" }) { folder ->
-                                        FolderPlaylistItem(
-                                            folder = folder,
-                                            onClick = { onFolderAsPlaylistClick(folder) }
-                                        )
+                                    items(displayItems, key = { it.path }, contentType = { "folder_card" }) { folder ->
+                                        if (isCustomOrder) {
+                                            ReorderableItem(reorderableState, key = folder.path) { isDragging ->
+                                                LaunchedEffect(isDragging) {
+                                                    if (isDragging) {
+                                                        performAppCompatHapticFeedback(
+                                                            view,
+                                                            appHapticsConfig,
+                                                            HapticFeedbackConstants.GESTURE_START
+                                                        )
+                                                    }
+                                                }
+                                                FolderPlaylistItem(
+                                                    folder = folder,
+                                                    onClick = { onFolderAsPlaylistClick(folder) },
+                                                    dragHandle = {
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.DragIndicator,
+                                                            contentDescription = stringResource(R.string.cd_drag_handle),
+                                                            modifier = Modifier.draggableHandle(),
+                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        } else {
+                                            FolderPlaylistItem(
+                                                folder = folder,
+                                                onClick = { onFolderAsPlaylistClick(folder) }
+                                            )
+                                        }
                                     }
                                 } else {
-                                    items(itemsToShow, key = { it.path }, contentType = { "folder_list" }) { folder ->
-                                        FolderListItem(
-                                            folder = folder,
-                                            onClick = { onFolderClick(folder.path) }
-                                        )
+                                    items(displayItems, key = { it.path }, contentType = { "folder_list" }) { folder ->
+                                        if (isCustomOrder) {
+                                            ReorderableItem(reorderableState, key = folder.path) { isDragging ->
+                                                LaunchedEffect(isDragging) {
+                                                    if (isDragging) {
+                                                        performAppCompatHapticFeedback(
+                                                            view,
+                                                            appHapticsConfig,
+                                                            HapticFeedbackConstants.GESTURE_START
+                                                        )
+                                                    }
+                                                }
+                                                FolderListItem(
+                                                    folder = folder,
+                                                    onClick = { onFolderClick(folder.path) },
+                                                    dragHandle = {
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.DragIndicator,
+                                                            contentDescription = stringResource(R.string.cd_drag_handle),
+                                                            modifier = Modifier.draggableHandle(),
+                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        } else {
+                                            FolderListItem(
+                                                folder = folder,
+                                                onClick = { onFolderClick(folder.path) }
+                                            )
+                                        }
                                     }
                                 }
 
@@ -3155,7 +3368,11 @@ fun LibraryFoldersTab(
 }
 
 @Composable
-fun FolderPlaylistItem(folder: MusicFolder, onClick: () -> Unit) {
+fun FolderPlaylistItem(
+    folder: MusicFolder,
+    onClick: () -> Unit,
+    dragHandle: @Composable (() -> Unit)? = null
+) {
     val previewSongs = remember(folder) { folder.collectAllSongs().take(9) }
 
     Card(
@@ -3190,12 +3407,18 @@ fun FolderPlaylistItem(folder: MusicFolder, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            dragHandle?.invoke()
         }
     }
 }
 
 @Composable
-fun FolderListItem(folder: MusicFolder, onClick: () -> Unit) {
+fun FolderListItem(
+    folder: MusicFolder,
+    onClick: () -> Unit,
+    dragHandle: @Composable (() -> Unit)? = null
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -3214,10 +3437,12 @@ fun FolderListItem(folder: MusicFolder, onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(formatSongCount(folder.totalSongCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+
+            dragHandle?.invoke()
         }
     }
 }

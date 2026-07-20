@@ -12,6 +12,7 @@ import com.theveloper.pixelplay.data.model.SmartPlaylistRule
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.playlist.M3uManager
+import com.theveloper.pixelplay.data.preferences.LibraryManualOrderType
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -81,6 +83,8 @@ class PlaylistViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PlaylistUiState())
     val uiState: StateFlow<PlaylistUiState> = _uiState.asStateFlow()
 
+    private val _playlistsManualOrder = MutableStateFlow<List<String>>(emptyList())
+
     private val _playlistCreationEvent = MutableSharedFlow<Boolean>(
         extraBufferCapacity = 1,
         onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
@@ -112,6 +116,15 @@ class PlaylistViewModel @Inject constructor(
         observeTelegramCloudPlaylistVisibility()
         observeTelegramTopicDisplayMode()
         observePlaylistOrderModes()
+        observePlaylistsManualOrder()
+    }
+
+    private fun observePlaylistsManualOrder() {
+        viewModelScope.launch {
+            playlistPreferencesRepository.playlistsManualOrderFlow.collect { order ->
+                _playlistsManualOrder.value = order
+            }
+        }
     }
 
     private fun observePlaylistOrderModes() {
@@ -132,11 +145,16 @@ class PlaylistViewModel @Inject constructor(
             val initialSortOption = resolvePlaylistSortOption(initialSortOptionName)
             _uiState.update { it.copy(currentPlaylistSortOption = initialSortOption) }
 
-            // Then, collect playlists and apply the sort option
-            playlistPreferencesRepository.userPlaylistsFlow.collect { playlists ->
+            // Then, collect playlists and manual order and apply the sort option
+            combine(
+                playlistPreferencesRepository.userPlaylistsFlow,
+                _playlistsManualOrder
+            ) { playlists, manualOrder ->
+                playlists to manualOrder
+            }.collect { (playlists, manualOrder) ->
                 val currentSortOption =
                     _uiState.value.currentPlaylistSortOption // Use the most up-to-date sort option
-                val sortedPlaylists = sortPlaylistsList(playlists, currentSortOption)
+                val sortedPlaylists = sortPlaylistsList(playlists, currentSortOption, manualOrder)
                 _uiState.update { it.copy(playlists = sortedPlaylists) }
             }
         }
@@ -733,13 +751,25 @@ class PlaylistViewModel @Inject constructor(
         _uiState.update { it.copy(currentPlaylistSortOption = sortOption) }
 
         val currentPlaylists = _uiState.value.playlists
-        val sortedPlaylists = sortPlaylistsList(currentPlaylists, sortOption)
+        val sortedPlaylists = sortPlaylistsList(
+            currentPlaylists,
+            sortOption,
+            _playlistsManualOrder.value
+        )
 
         _uiState.update { it.copy(playlists = sortedPlaylists) }
 
         viewModelScope.launch {
             playlistPreferencesRepository.setPlaylistsSortOption(sortOption.storageKey)
         }
+    }
+
+    fun setPlaylistsManualOrder(order: List<String>) {
+        _playlistsManualOrder.value = order
+        viewModelScope.launch {
+            playlistPreferencesRepository.setPlaylistsManualOrder(order)
+        }
+        // The combine collector will re-apply the current sort with the new manual order.
     }
 
     fun setShowTelegramCloudPlaylists(show: Boolean) {
@@ -828,9 +858,11 @@ class PlaylistViewModel @Inject constructor(
 
     private fun sortPlaylistsList(
         playlists: List<com.theveloper.pixelplay.data.model.Playlist>,
-        sortOption: SortOption
+        sortOption: SortOption,
+        manualOrder: List<String> = _playlistsManualOrder.value
     ): List<com.theveloper.pixelplay.data.model.Playlist> {
         return when (sortOption) {
+            SortOption.PlaylistCustomOrder -> applyManualOrder(playlists, manualOrder) { it.id }
             SortOption.PlaylistNameAZ -> playlists.sortedWith(
                 compareBy<com.theveloper.pixelplay.data.model.Playlist> { it.name.lowercase() }
                     .thenByDescending { it.lastModified }
@@ -857,6 +889,27 @@ class PlaylistViewModel @Inject constructor(
                     .thenBy { it.id }
             )
         }
+    }
+
+    private fun <T> applyManualOrder(
+        items: List<T>,
+        order: List<String>,
+        idSelector: (T) -> String
+    ): List<T> {
+        if (order.isEmpty()) return items
+        val orderIndex = order.withIndex().associate { it.value to it.index }
+        val known = ArrayList<T>(order.size)
+        val unknown = ArrayList<T>(items.size)
+        items.forEach { item ->
+            val id = idSelector(item)
+            if (orderIndex.containsKey(id)) {
+                known.add(item)
+            } else {
+                unknown.add(item)
+            }
+        }
+        known.sortBy { orderIndex[idSelector(it)] ?: Int.MAX_VALUE }
+        return known + unknown
     }
 
     private fun sortSongsList(

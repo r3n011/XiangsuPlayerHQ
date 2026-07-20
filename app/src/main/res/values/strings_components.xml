@@ -189,4 +189,13 @@
     <string name="cd_drag_handle">Drag handle</string>
     <string name="cd_reset">Reset</string>
     <string name="action_done">Done</string>
+
+    <string name="reorder_sheets_saving">Saving order…</string>
+    <string name="sort_sheet_reorder_action">Reorder</string>
+    <string name="reorder_songs_sheet_title">Reorder Songs</string>
+    <string name="reorder_albums_sheet_title">Reorder Albums</string>
+    <string name="reorder_artists_sheet_title">Reorder Artists</string>
+    <string name="reorder_favorites_sheet_title">Reorder Liked Songs</string>
+    <string name="reorder_playlists_sheet_title">Reorder Playlists</string>
+    <string name="reorder_folders_sheet_title">Reorder Folders</string>
 </resources>

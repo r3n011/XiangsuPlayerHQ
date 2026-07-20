@@ -66,6 +66,7 @@ import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
 import com.theveloper.pixelplay.data.provider.SharedArtworkContentProvider
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
+import com.theveloper.pixelplay.data.preferences.LibraryManualOrderType
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
@@ -1764,6 +1765,13 @@ class PlayerViewModel @Inject constructor(
     // Library State - delegated to LibraryStateHolder
     // Favorites now use paginated flow from LibraryStateHolder (DB-level sort & filter)
     val favoritesPagingFlow = libraryStateHolder.favoritesPagingFlow
+
+    // Custom-order (non-paged) flows used when the current sort option is a Custom Order.
+    val customSongsFlow = libraryStateHolder.customSongsFlow
+    val customAlbumsFlow = libraryStateHolder.customAlbumsFlow
+    val customArtistsFlow = libraryStateHolder.customArtistsFlow
+    val customFavoritesFlow = libraryStateHolder.customFavoritesFlow
+    val customFoldersFlow = libraryStateHolder.customFoldersFlow
 
     // Daily mix state is now managed by DailyMixStateHolder
     val dailyMixSongs: StateFlow<ImmutableList<Song>> = dailyMixStateHolder.dailyMixSongs
@@ -6456,6 +6464,10 @@ class PlayerViewModel @Inject constructor(
 
     fun sortFolders(sortOption: SortOption, persist: Boolean = true) {
         libraryStateHolder.sortFolders(sortOption, persist)
+    }
+
+    fun setLibraryManualOrder(listType: LibraryManualOrderType, order: List<String>) {
+        libraryStateHolder.setManualOrder(listType, order)
     }
 
     fun setFoldersPlaylistView(isPlaylistView: Boolean) {

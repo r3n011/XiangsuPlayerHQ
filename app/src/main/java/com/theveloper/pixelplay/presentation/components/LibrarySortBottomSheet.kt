@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -75,7 +76,8 @@ fun LibrarySortBottomSheet(
     onViewToggleChange: (Boolean) -> Unit = {},
     viewToggleContent: (@Composable () -> Unit)? = null,
     sourceToggleContent: (@Composable () -> Unit)? = null,
-    extraContent: (@Composable () -> Unit)? = null
+    extraContent: (@Composable () -> Unit)? = null,
+    onReorderRequested: (() -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -221,6 +223,54 @@ fun LibrarySortBottomSheet(
                                 onClick = null
                             )
                         }
+                    }
+                }
+            }
+
+            if (onReorderRequested != null && resolvedSelectedOption?.isCustomOrder == true) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(
+                            shape = RoundedCornerShape(
+                                topStart = 20.dp,
+                                topEnd = 20.dp,
+                                bottomStart = 20.dp,
+                                bottomEnd = 20.dp
+                            )
+                        )
+                        .clickable(onClick = onReorderRequested),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 20.dp, end = 14.dp, top = 16.dp, bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.DragIndicator,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = stringResource(R.string.sort_sheet_reorder_action),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Rounded.ArrowDownward,
+                            contentDescription = null,
+                            modifier = Modifier.rotate(-90f),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
             }

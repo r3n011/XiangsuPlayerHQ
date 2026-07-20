@@ -22,4 +22,14 @@ class LibraryViewModel @Inject constructor(
     val favoriteSongCountFlow = libraryStateHolder.favoriteSongCountFlow
 
     val isLoadingLibrary = libraryStateHolder.isLoadingLibrary
+
+    val customSongsFlow = libraryStateHolder.customSongsFlow
+
+    val customAlbumsFlow = libraryStateHolder.customAlbumsFlow
+
+    val customArtistsFlow = libraryStateHolder.customArtistsFlow
+
+    val customFavoritesFlow = libraryStateHolder.customFavoritesFlow
+
+    val customFoldersFlow = libraryStateHolder.customFoldersFlow
 }
