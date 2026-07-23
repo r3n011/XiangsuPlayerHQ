@@ -303,10 +303,10 @@ class MainActivity : ComponentActivity() {
             throw t // Cannot recover from this
         }
 
-        // MD3 Optimization: Release Splash Screen immediately to render UI skeleton.
-        // Data loading is handled via optimistic UI and smooth transitions.
+        // 保持启动图直到第一帧绘制完成，避免低版本 Android（如 Android 10）
+        // 在启动图和 Compose UI 之间出现黑屏。
         try {
-            splashScreen?.setKeepOnScreenCondition { false }
+            splashScreen?.setKeepOnScreenCondition { !isUIVisiblyReady }
         } catch (t: Throwable) {
             android.util.Log.e("PixelPlay", "splashScreen.setKeepOnScreenCondition failed: ${t.message}", t)
         }
@@ -451,6 +451,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // 第一帧绘制后通知 SplashScreen 可以移除启动图
+        try {
+            val decor = window.decorView
+            decor.viewTreeObserver.addOnPreDrawListener(
+                object : android.view.ViewTreeObserver.OnPreDrawListener {
+                    override fun onPreDraw(): Boolean {
+                        isUIVisiblyReady = true
+                        decor.viewTreeObserver.removeOnPreDrawListener(this)
+                        return true
+                    }
+                }
+            )
+        } catch (t: Throwable) {
+            android.util.Log.e("PixelPlay", "register OnPreDrawListener failed: ${t.message}", t)
+            isUIVisiblyReady = true
+        }
+
         handleIntent(intent)
     }
 

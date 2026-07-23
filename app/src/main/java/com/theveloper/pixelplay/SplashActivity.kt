@@ -16,8 +16,8 @@ import android.view.animation.ScaleAnimation
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.graphics.Color
 import android.graphics.Typeface
+import android.util.TypedValue
 import androidx.appcompat.app.AppCompatActivity
 
 class SplashActivity : AppCompatActivity() {
@@ -38,8 +38,12 @@ class SplashActivity : AppCompatActivity() {
         }
 
         try {
+            val backgroundColor = resolveThemeColor(android.R.attr.colorBackground)
+            val foregroundColor = resolveThemeColor(android.R.attr.colorForeground)
+            val primaryColor = resolveThemeColor(android.R.attr.colorPrimary)
+
             val root = FrameLayout(this).apply {
-                setBackgroundColor(Color.BLACK)
+                setBackgroundColor(backgroundColor)
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
@@ -60,7 +64,7 @@ class SplashActivity : AppCompatActivity() {
             // 标题 —— PixelPlay
             val title = TextView(this).apply {
                 text = "PixelPlayer"
-                setTextColor(Color.WHITE)
+                setTextColor(foregroundColor)
                 textSize = 30f
                 typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
                 setPadding(0, 0, 0, 40)
@@ -79,7 +83,7 @@ class SplashActivity : AppCompatActivity() {
 
             // 加载线本身
             val loadingBar = View(this).apply {
-                setBackgroundColor(Color.parseColor("#6750A4"))
+                setBackgroundColor(primaryColor)
                 layoutParams = LinearLayout.LayoutParams(0, 6)
             }
 
@@ -175,5 +179,14 @@ class SplashActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
+    }
+
+    private fun resolveThemeColor(attrResId: Int): Int {
+        val typedValue = TypedValue()
+        return if (theme.resolveAttribute(attrResId, typedValue, true)) {
+            typedValue.data
+        } else {
+            0
+        }
     }
 }
