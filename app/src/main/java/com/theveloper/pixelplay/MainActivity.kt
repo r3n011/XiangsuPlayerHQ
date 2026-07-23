@@ -264,14 +264,6 @@ class MainActivity : ComponentActivity() {
         android.util.Log.i("PixelPlay", "Device SDK: ${android.os.Build.VERSION.SDK_INT}, Model: ${android.os.Build.MODEL}")
         LogUtils.d(this, "onCreate")
 
-        var splashScreen: androidx.core.splashscreen.SplashScreen? = null
-        try {
-            splashScreen = installSplashScreen()
-            android.util.Log.i("PixelPlay", "installSplashScreen() completed")
-        } catch (t: Throwable) {
-            android.util.Log.e("PixelPlay", "installSplashScreen failed: ${t.message}", t)
-        }
-
         try {
             enableEdgeToEdge(
                 statusBarStyle = SystemBarStyle.auto(
@@ -297,11 +289,16 @@ class MainActivity : ComponentActivity() {
             android.util.Log.e("PixelPlay", "isNavigationBarContrastEnforced failed: ${t.message}", t)
         }
 
+        var splashScreen: androidx.core.splashscreen.SplashScreen? = null
         try {
             super.onCreate(savedInstanceState)
             android.util.Log.i("PixelPlay", "super.onCreate() completed")
+
+            // 必须在 super.onCreate 之后调用，否则低版本 Android 可能因主题未就绪而崩溃
+            splashScreen = installSplashScreen()
+            android.util.Log.i("PixelPlay", "installSplashScreen() completed")
         } catch (t: Throwable) {
-            android.util.Log.e("PixelPlay", "FATAL: super.onCreate() failed: ${t.message}", t)
+            android.util.Log.e("PixelPlay", "FATAL: super.onCreate()/installSplashScreen failed: ${t.message}", t)
             throw t // Cannot recover from this
         }
 
