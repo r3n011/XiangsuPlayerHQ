@@ -1,8 +1,13 @@
 package com.theveloper.pixelplay.presentation.components
 
 import androidx.annotation.OptIn
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -11,38 +16,43 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.media3.common.util.UnstableApi
-import androidx.navigation.compose.currentBackStackEntryAsState
-import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import androidx.lifecycle.compose.currentStateAsState
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.theveloper.pixelplay.presentation.navigation.isMainRootRoute
+import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 
 
 @OptIn(UnstableApi::class)
 @Composable
 fun ScreenWrapper(
-    navController: androidx.navigation.NavController,
+    navController: NavController,
     playerViewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     content: @Composable () -> Unit
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    
+
     // Lifecycle State
-    var isResumed by remember { mutableStateOf(false) }
+    val initialCurrentState = lifecycleOwner.lifecycle.currentStateAsState().value
+    var isResumed by remember { mutableStateOf(initialCurrentState.isAtLeast(Lifecycle.State.RESUMED)) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -55,65 +65,116 @@ fun ScreenWrapper(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    
-    // Initial Check
-    val currentState = lifecycleOwner.lifecycle.currentStateAsState().value
-    if (currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-        isResumed = true
-    }
 
-    // Visible entries is the public Navigation API designed for transition-aware stacking.
-    // It stays stable while entries are entering / exiting, unlike the restricted currentBackStack.
-    val visibleEntries by navController.visibleEntries.collectAsStateWithLifecycle()
+    // Collect states to subscribe Compose to their updates. Every event that changes the back
+    // stack (navigate / pop commit) emits currentBackStackEntry, so reading these here is what
+    // triggers recomposition; the synchronous navController properties below are then re-read
+    // with frame-perfect values.
+    val visibleEntriesState by navController.visibleEntries.collectAsState()
+    val currentBackStackEntryState by navController.currentBackStackEntryAsState()
+
+    val syncVisibleEntries = navController.visibleEntries.collectAsState().value.also { _ -> visibleEntriesState }
+
     val myEntry = lifecycleOwner as? androidx.navigation.NavBackStackEntry
-    val myIndex = visibleEntries.indexOfFirst { it.id == myEntry?.id }
-    val topIndex = visibleEntries.indexOfLast {
-        it.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-    }
-
-    // currentBackStackEntry updates synchronously with navigate()/popBackStack(), so it
-    // identifies the destination the user is moving TO. The incoming screen during a pop
-    // shares STARTED state with the outgoing one for a few frames; without this check the
-    // dim overlay would flash onto the screen the user is navigating back to.
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val isNavigationTarget = myEntry != null && currentBackStackEntry?.id == myEntry.id
     val myRoute = myEntry?.destination?.route
     val isMainRootScreen = isMainRootRoute(myRoute)
-    val hasVisibleNonMainRootScreen = visibleEntries.any { entry ->
+    val hasVisibleNonMainRootScreen = syncVisibleEntries.any { entry ->
         entry.destination.route?.let { route -> !isMainRootRoute(route) } == true
     }
-    val shouldRunDepthEffects = !isMainRootScreen && hasVisibleNonMainRootScreen
+    val shouldRunDepthEffects = !isMainRootScreen || hasVisibleNonMainRootScreen
 
-    // Dim Logic:
-    // If I am BACKGROUND (myIndex < topIndex) -> Dim.
-    // If I am TOP (myIndex == topIndex) -> Clear.
-    // If I am EXITING (myIndex > topIndex, effectively in front during pop) -> Clear.
-    // If I am the navigation target (incoming during a pop) -> Clear.
-    // Created entries are on their way out, so we keep them clear instead of dimming them for a frame.
-    val shouldDim = remember(visibleEntries, myEntry, myIndex, topIndex, isNavigationTarget) {
-        !isNavigationTarget &&
-            myIndex != -1 &&
-            topIndex != -1 &&
-            myIndex < topIndex &&
-            myEntry?.lifecycle?.currentState != Lifecycle.State.CREATED
-    }
+    // Dim/Blur Logic: the screen "behind" during any transition — forward push, committed pop,
+    // or an in-progress predictive back gesture — is always the entry directly below the top of
+    // the back stack, i.e. previousBackStackEntry. The incoming screen of a committed pop is
+    // currentBackStackEntry (never previous), so it stays clear, and the exiting screen of a pop
+    // is no longer in the back stack at all, so it stays clear too.
+    //
+    // We deliberately do NOT detect "behind" through visibleEntries: when a predictive back
+    // gesture starts, prepareForTransition() raises the previous entry to STARTED without
+    // re-emitting the visibleEntries StateFlow (NavHost composes the previous entry directly,
+    // bypassing visibleEntries — see the comment inside NavHost's AnimatedContent). On a clean
+    // gesture the behind screen therefore never appeared in visibleEntries, but after a
+    // CANCELLED gesture the entry lingered in the transition set and the next flow emission
+    // included it — which made the blur/dim work only on every other back gesture.
+    //
+    // previousBackStackEntry is a plain synchronous property; the currentBackStackEntryState
+    // reference makes Compose re-read it on every navigate/pop commit (both change together).
+    val previousEntryId = navController.previousBackStackEntry?.id.also { _ -> currentBackStackEntryState }
+    val shouldDim = myEntry != null && previousEntryId == myEntry.id
+
+    val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsState()
+
+    val transition = animatedVisibilityScope?.transition
 
     // Declarative Animations
-    // Radius: If NOT Resumed -> 32dp. (Background OR Popped)
     val targetRadius = if (shouldRunDepthEffects && !isResumed) 32f else 0f
-    val cornerRadius by animateFloatAsState(
-        targetValue = targetRadius,
-        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-        label = "cornerRadius"
-    )
+    val animatedCornerRadius = if (transition != null) {
+        val animatedValue by transition.animateFloat(
+            transitionSpec = { tween(durationMillis = 350, easing = FastOutSlowInEasing) },
+            label = "cornerRadius"
+        ) { state ->
+            if (shouldRunDepthEffects && (state == EnterExitState.PostExit || state == EnterExitState.PreEnter)) {
+                32f
+            } else {
+                0f
+            }
+        }
+        animatedValue
+    } else {
+        val fallbackCornerRadius = remember { Animatable(targetRadius) }
+        LaunchedEffect(targetRadius) {
+            fallbackCornerRadius.animateTo(targetRadius, animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing))
+        }
+        fallbackCornerRadius.value
+    }
 
-    // Dim: If strictly behind Top -> 0.4f. Else -> 0f.
-    val targetDim = if (shouldRunDepthEffects && shouldDim) 0.4f else 0f
-    val dimAlpha by animateFloatAsState(
-        targetValue = targetDim,
-        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-        label = "dimAlpha"
-    )
+    // Dim: If strictly behind Top -> 0.4f (or 0.75f if blur is disabled). Else -> 0f.
+    val targetDim = if (shouldRunDepthEffects && shouldDim) {
+        if (disableBlurAllOver) 0.75f else 0.4f
+    } else {
+        0f
+    }
+    val animatedDimAlpha = if (transition != null) {
+        val animatedValue by transition.animateFloat(
+            transitionSpec = { tween(durationMillis = 350, easing = CubicBezierEasing(0.5f, 0f, 0.8f, 0.2f)) },
+            label = "dimAlpha"
+        ) { state ->
+            if (shouldRunDepthEffects && shouldDim && (state == EnterExitState.PostExit || state == EnterExitState.PreEnter)) {
+                if (disableBlurAllOver) 0.75f else 0.4f
+            } else {
+                0f
+            }
+        }
+        animatedValue
+    } else {
+        val fallbackDimAlpha = remember { Animatable(targetDim) }
+        LaunchedEffect(targetDim) {
+            fallbackDimAlpha.animateTo(targetDim, animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing))
+        }
+        fallbackDimAlpha.value
+    }
+
+    // Blur: If strictly behind Top -> 24dp. Else -> 0dp. Disabled if disableBlurAllOver is true.
+    val targetBlur = if (shouldRunDepthEffects && shouldDim && !disableBlurAllOver) 24f else 0f
+    val animatedBlurRadius = if (transition != null) {
+        val animatedValue by transition.animateDp(
+            transitionSpec = { tween(durationMillis = 350, easing = CubicBezierEasing(0.5f, 0f, 0.8f, 0.2f)) },
+            label = "blurRadius"
+        ) { state ->
+            if (shouldRunDepthEffects && shouldDim && !disableBlurAllOver && (state == EnterExitState.PostExit || state == EnterExitState.PreEnter)) {
+                24.dp
+            } else {
+                0.dp
+            }
+        }
+        animatedValue
+    } else {
+        val fallbackBlurRadius = remember { Animatable(targetBlur) }
+        LaunchedEffect(targetBlur) {
+            fallbackBlurRadius.animateTo(targetBlur, animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing))
+        }
+        fallbackBlurRadius.value.dp
+    }
 
     Box(
         modifier = modifier
@@ -131,25 +192,23 @@ fun ScreenWrapper(
                 } else {
                     CompositingStrategy.Auto
                 }
-                if (shouldRunDepthEffects && cornerRadius > 0.5f) {
-                    this.shape = RoundedCornerShape(cornerRadius.dp)
+                if (shouldRunDepthEffects && animatedCornerRadius > 0.5f) {
+                    this.shape = RoundedCornerShape(animatedCornerRadius.dp)
                     this.clip = true
                 } else {
                     this.clip = false
                 }
             }
+            .blur(radius = if (shouldRunDepthEffects) animatedBlurRadius else 0.dp)
             .background(MaterialTheme.colorScheme.background)
     ) {
         content()
 
         // Dim Layer Overlay
-        // Always composed with alpha-driven visibility instead of a conditional node.
-        // Conditionally adding/removing this Box when dimAlpha crosses 0 added a node to
-        // the composition tree mid-transition and contributed to the outgoing-screen flash.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = dimAlpha }
+                .graphicsLayer { alpha = animatedDimAlpha }
                 .background(Color.Black)
         )
     }

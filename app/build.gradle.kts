@@ -82,8 +82,8 @@ android {
 
     defaultConfig {
         applicationId = "com.r3n011.pixelplay"
-        minSdk = 24
-        targetSdk = 36
+        minSdk = 23
+        targetSdk = 29
         versionCode = 20
         versionName = "1.1.0"
 
@@ -233,7 +233,6 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
-    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.navigation.compose)

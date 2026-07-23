@@ -14,21 +14,18 @@ import javax.inject.Singleton
 class LxSearchApi @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
-    // 搜索 API：vkeys 的 netease 接口（一次返回歌曲 id、歌名、歌手、专辑、封面等）
-    // https://api.vkeys.cn/v2/music/netease?word=关键字
-    private val SEARCH_API_BASE = "https://api.vkeys.cn/v2/music/netease"
+    // 网易云官方风格搜索 API（由 btwoa 提供的 NeteaseCloudMusicApi 接口）
+    // https://ncmapi.btwoa.com/search?keywords=关键字&type=1&limit=20&offset=0
+    private val SEARCH_API_BASE = "https://ncmapi.btwoa.com/search"
 
-    // vkeys API 获取封面（搜索结果里已经自带 cover，本方法保留给单独需要获取封面的场景使用）
+    // vkeys API 获取封面（备用）
     private val COVER_API_BASE = "https://api.vkeys.cn/v2/music/netease"
 
-    // 网易云评论 / 用户详情 API （由 btwoa 提供的接口）
+    // 网易云评论 / 用户详情 / 歌词 API （由 btwoa 提供的接口）
     private val COMMENT_API_BASE = "https://ncmapi.btwoa.com"
 
     /**
-     * 使用 vkeys 搜索接口，一次返回歌曲 id / 标题 / 歌手 / 专辑 / 封面等，
-     * 不需要再单独请求封面，显著提升速度。
-     *
-     * ⚡ 新增分页支持: 使用 limit/offset 参数实现无限滚动加载更多。
+     * 使用 btwoa 提供的 NeteaseCloudMusicApi 搜索接口，支持真正的 limit/offset 分页。
      * - limit: 单页返回数量，默认 20
      * - offset: 偏移量，从 0 开始，例如第 2 页 offset = limit
      */
@@ -40,9 +37,8 @@ class LxSearchApi @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val encodedKeyword = URLEncoder.encode(keyword, "UTF-8")
-                // ⚡ 使用 limit/offset 分页参数，避免一次请求全部结果
                 val offset = (page - 1) * pageSize
-                val url = "$SEARCH_API_BASE?word=$encodedKeyword&limit=$pageSize&offset=$offset"
+                val url = "$SEARCH_API_BASE?keywords=$encodedKeyword&type=1&limit=$pageSize&offset=$offset"
                 val request = Request.Builder()
                     .url(url)
                     .header("User-Agent", "Mozilla/5.0")
@@ -57,7 +53,7 @@ class LxSearchApi @Inject constructor(
 
                 val body = response.body?.string()
                     ?: return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
-                parseVkeysSearchResponse(body, pageSize)
+                parseSearchResponse(body, pageSize, offset)
             } catch (e: Exception) {
                 Timber.e(e, "搜索API请求异常")
                 LxSearchResult(list = emptyList(), isEnd = true, total = 0)
@@ -519,7 +515,7 @@ class LxSearchApi @Inject constructor(
         return null
     }
 
-    private fun parseSearchResponse(body: String): LxSearchResult {
+    private fun parseSearchResponse(body: String, pageSize: Int = 20, offset: Int = 0): LxSearchResult {
         return try {
             val obj = JSONObject(body)
             val result = obj.optJSONObject("result") ?: return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
@@ -534,9 +530,11 @@ class LxSearchApi @Inject constructor(
                 }
             }
 
+            // 已加载数量 >= 总数量，或本次返回为空，即为最后一页
+            val isEnd = list.isEmpty() || (offset + list.size) >= total
             LxSearchResult(
                 list = list,
-                isEnd = list.size < total,
+                isEnd = isEnd,
                 total = total
             )
         } catch (e: Exception) {
@@ -566,6 +564,7 @@ class LxSearchApi @Inject constructor(
 
         val album = obj.optJSONObject("album")
         val albumName = album?.optString("name", "") ?: ""
+        val pic = album?.optString("picUrl", "")?.trim()?.replace("`", "") ?: ""
 
         val duration = obj.optLong("duration", 0L)
 
@@ -577,7 +576,7 @@ class LxSearchApi @Inject constructor(
             singer = singer,
             albumName = albumName,
             duration = duration,
-            pic = ""   // 初始为空，后续由 viewModel 调用 vkeys API 填充
+            pic = pic
         )
     }
 
