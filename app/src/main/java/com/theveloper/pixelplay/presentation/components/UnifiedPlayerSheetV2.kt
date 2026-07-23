@@ -265,9 +265,13 @@ fun UnifiedPlayerSheetV2(
         }
     }
     // 单一动画源，避免动画不同步导致卡中间
-    // 使用 Material 3 Expressive 的默认空间动画规范（spring），与原版一致
-    val motionScheme = remember { MotionScheme.expressive() }
-    val sheetAnimationSpec = remember { motionScheme.defaultSpatialSpec<Float>() }
+    // 使用稳定的 spring 动画规范，避免折叠时出现回弹/抖动
+    val sheetAnimationSpec = remember {
+        spring<Float>(
+            stiffness = Spring.StiffnessMedium,
+            dampingRatio = Spring.DampingRatioNoBouncy
+        )
+    }
     val sheetExpandedTargetY = 0f
 
     // ⚡ sheetMotionController: 封装 playerContentExpansionFraction 的动画操作
@@ -589,8 +593,6 @@ fun UnifiedPlayerSheetV2(
         modifier = Modifier
             .fillMaxWidth()
             .layout { measurable, constraints ->
-                val rawFraction = playerContentExpansionFraction.value
-                val fraction = (rawFraction * 20f).toInt() / 20f
                 val translationY = visualSheetTranslationYProvider().roundToInt()
                 val overshoot = if (currentSheetContentState == PlayerSheetState.EXPANDED && !isDragging) {
                     -translationY
@@ -633,8 +635,6 @@ fun UnifiedPlayerSheetV2(
                             // Places child at startPaddingPx to center it horizontally.
                             // Reports full screen width to parent to satisfy fillMaxWidth() constraints.
                             .layout { measurable, constraints ->
-                                val rawFraction = playerContentExpansionFraction.value
-                                val fraction = (rawFraction * 20f).toInt() / 20f
                                 val targetHeightPx = playerContentAreaHeightPxProvider()
                                     .toInt().coerceAtLeast(0)
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider()
@@ -643,7 +643,7 @@ fun UnifiedPlayerSheetV2(
                                     .toInt().coerceAtLeast(0)
                                 val innerWidth = (constraints.maxWidth - startPaddingPx - endPaddingPx)
                                     .coerceAtLeast(0)
-                                
+
                                 val placeable = measurable.measure(
                                     constraints.copy(
                                         minWidth = innerWidth,
@@ -680,9 +680,7 @@ fun UnifiedPlayerSheetV2(
                             // During drag/animation, we measure at stable full-screen constraints to prevent jank.
                             .layout { measurable, constraints ->
                                 val targetContentHeightPx = containerHeight.roundToPx()
-                                // 量化 fraction 到 5% 步进，减少布局重算频率
-                                val rawFraction = playerContentExpansionFraction.value
-                                val fraction = (rawFraction * 20f).toInt() / 20f
+                                val fraction = playerContentExpansionFraction.value
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt()
                                 val measureWidth = if (fraction > 0f) {
                                     screenWidthPx.roundToInt()

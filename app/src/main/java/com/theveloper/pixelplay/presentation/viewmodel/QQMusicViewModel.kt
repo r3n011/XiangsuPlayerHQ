@@ -20,7 +20,11 @@ data class QQSearchUiState(
     val keyword: String = "",
     val searching: Boolean = false,
     val results: List<QQSearchApi.QQSong> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    // 分页相关字段
+    val page: Int = 1,
+    val isLoadingMore: Boolean = false,
+    val isEnd: Boolean = false
 )
 
 @HiltViewModel
@@ -44,19 +48,59 @@ class QQMusicViewModel @Inject constructor(
         if (kw.isEmpty()) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
-                searching = true, error = null, results = emptyList()
+                searching = true,
+                error = null,
+                results = emptyList(),
+                page = 1,
+                isEnd = false,
+                isLoadingMore = false
             )
-            val result = qqSearchApi.search(kw)
+            val result = qqSearchApi.search(kw, page = 1)
             if (result.isSuccess) {
+                val songs = result.getOrDefault(emptyList())
                 _uiState.value = _uiState.value.copy(
                     searching = false,
-                    results = result.getOrDefault(emptyList()),
-                    error = null
+                    results = songs,
+                    error = null,
+                    isEnd = songs.size < 20
                 )
             } else {
                 _uiState.value = _uiState.value.copy(
                     searching = false,
-                    error = result.exceptionOrNull()?.message ?: "搜索失败"
+                    error = result.exceptionOrNull()?.message ?: "搜索失败",
+                    isEnd = true
+                )
+            }
+        }
+    }
+
+    /**
+     * 加载下一页酷我搜索结果
+     */
+    fun loadMore() {
+        val kw = _uiState.value.keyword.trim()
+        if (kw.isEmpty() || _uiState.value.isEnd) return
+        if (_uiState.value.searching || _uiState.value.isLoadingMore) return
+        if (_uiState.value.results.isEmpty()) return
+
+        val nextPage = _uiState.value.page + 1
+        _uiState.value = _uiState.value.copy(isLoadingMore = true, error = null)
+        viewModelScope.launch {
+            val result = qqSearchApi.search(kw, page = nextPage)
+            if (result.isSuccess) {
+                val newSongs = result.getOrDefault(emptyList())
+                val existingIds = _uiState.value.results.mapTo(LinkedHashSet()) { it.id }
+                val merged = _uiState.value.results + newSongs.filterNot { it.id in existingIds }
+                _uiState.value = _uiState.value.copy(
+                    page = nextPage,
+                    isLoadingMore = false,
+                    isEnd = newSongs.size < 20,
+                    results = merged
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    error = result.exceptionOrNull()?.message ?: "加载更多失败"
                 )
             }
         }
