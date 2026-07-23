@@ -25,9 +25,14 @@ val localProperties = Properties().apply {
     }
 }
 
-val enableAbiSplits = providers.gradleProperty("pixelplay.enableAbiSplits")
+val abiSplitsRequested = providers.gradleProperty("pixelplay.enableAbiSplits")
     .getOrElse("true")
     .toBoolean()
+// 只在 Release / Benchmark 构建时启用 ABI 分包，Debug 直接生成通用 APK，避免 x86 虚拟机无法安装
+val isReleaseLikeTask = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("Release", ignoreCase = true) || taskName.contains("Benchmark", ignoreCase = true)
+}
+val enableAbiSplits = abiSplitsRequested && isReleaseLikeTask
 
 val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableComposeCompilerReports")
     .getOrElse("false")
