@@ -71,11 +71,15 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
     }
 
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
+        // 先把完整堆栈打到 logcat，方便直接查看
+        android.util.Log.e("PixelPlay", "FATAL EXCEPTION on ${thread.name}: ${throwable.message}", throwable)
+
         try {
             saveCrashLog(throwable)
             saveCrashToFile(throwable)
         } catch (e: Throwable) {
             // Never let the crash handler crash
+            android.util.Log.e("PixelPlay", "CrashHandler failed to save log: ${e.message}", e)
         }
 
         // Call the default handler to allow normal crash behavior
