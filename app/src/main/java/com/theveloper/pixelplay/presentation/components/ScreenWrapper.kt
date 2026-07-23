@@ -97,14 +97,22 @@ fun ScreenWrapper(
     // CANCELLED gesture the entry lingered in the transition set and the next flow emission
     // included it — which made the blur/dim work only on every other back gesture.
     //
-    // previousBackStackEntry is a plain synchronous property; the currentBackStackEntryState
-    // reference makes Compose re-read it on every navigate/pop commit (both change together).
-    val previousEntryId = navController.previousBackStackEntry?.id.also { _ -> currentBackStackEntryState }
-    val shouldDim = myEntry != null && previousEntryId == myEntry.id
+    val transition = animatedVisibilityScope?.transition
 
     val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsState()
 
-    val transition = animatedVisibilityScope?.transition
+    // previousBackStackEntry is a plain synchronous property; the currentBackStackEntryState
+    // reference makes Compose re-read it on every navigate/pop commit (both change together).
+    val previousEntryId = navController.previousBackStackEntry?.id.also { _ -> currentBackStackEntryState }
+    // 只有在“前进 Push”时才让背后的页面变暗：
+    // 当前页面处于 Visible -> Visible（保持在后面）说明是旧页面被新页面盖住；
+    // 返回/Back 时，上一页是 PreEnter -> Visible（正在进入），不应变暗。
+    val isEntering = transition?.currentState == EnterExitState.PreEnter
+    val isExiting = transition?.targetState == EnterExitState.PostExit
+    val shouldDim = myEntry != null &&
+            previousEntryId == myEntry.id &&
+            !isEntering &&
+            !isExiting
 
     // Declarative Animations
     val targetRadius = if (shouldRunDepthEffects && !isResumed) 32f else 0f
