@@ -54,10 +54,11 @@ internal fun TabContentHost(
                     ) + fadeOut(animationSpec = TabFadeSpec)
                 )
                 TabDirection.BACKWARD -> (
+                    // 返回/反方向切换时，目标 Tab 保持不动，避免露出黑底
                     slideInHorizontally(
                         animationSpec = TabTransitionSpec,
-                        initialOffsetX = { -(it * 0.5f).toInt() }
-                    ) + fadeIn(animationSpec = TabFadeSpec)
+                        initialOffsetX = { 0 }
+                    )
                 ) togetherWith (
                     slideOutHorizontally(
                         animationSpec = TabTransitionSpec,

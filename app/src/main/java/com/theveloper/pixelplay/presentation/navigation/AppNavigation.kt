@@ -603,10 +603,11 @@ private fun mainRootEnterTransition(
         ) + fadeIn(animationSpec = MAIN_ROOT_FADE_SPEC)
     }
     MainRootDirection.BACKWARD -> {
+        // 返回/反方向切换时，目标页面保持不动，避免露出黑底
         slideInHorizontally(
             animationSpec = MAIN_ROOT_TRANSITION_SPEC,
-            initialOffsetX = { -(it * 0.5f).toInt() }
-        ) + fadeIn(animationSpec = MAIN_ROOT_FADE_SPEC)
+            initialOffsetX = { 0 }
+        )
     }
     null -> fallback
 }

@@ -40,10 +40,9 @@ fun aospSharedAxisExit(): ExitTransition {
 
 // Equivale a sud_slide_back_in (cuando volvés atrás, la pantalla previa reaparece desde la izquierda)
 fun aospSharedAxisPopEnter(): EnterTransition {
+    // 预测返回时，上一页保持不动，只让当前页滑走，避免中间露出黑底
     return slideInHorizontally(
-        initialOffsetX = { -it / 3 }, // Reaparece desde 1/3 de la izquierda
-        animationSpec = tween(durationMillis = AOSP_TRANSITION_DURATION, easing = M3EmphasizedEasing)
-    ) + fadeIn(
+        initialOffsetX = { 0 },
         animationSpec = tween(durationMillis = AOSP_TRANSITION_DURATION, easing = M3EmphasizedEasing)
     )
 }
