@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.utils
 
 import android.content.Context
+import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
@@ -74,21 +75,22 @@ object StorageUtils {
     }
 
     /**
-     * Get the file path for a StorageVolume
+     * Get the file path for a StorageVolume.
+     * StorageVolume#getDirectory() is only available on API 30+; on Android 10 (API 29)
+     * and below we use reflection on getPath() to avoid NoSuchMethodError crashes.
      */
     private fun getVolumePath(volume: StorageVolume): File? {
         return try {
-            // Use directory property (API 30+)
-            volume.directory
-        } catch (e: Exception) {
-            // Fallback for older approach
-            try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                volume.directory
+            } else {
+                // API 29-: StorageVolume#getDirectory() does not exist. Reflect getPath().
                 val getPath = volume.javaClass.getMethod("getPath")
                 val path = getPath.invoke(volume) as? String
-                path?.let { File(it) }
-            } catch (e: Exception) {
-                null
+                if (!path.isNullOrBlank()) File(path) else null
             }
+        } catch (e: Throwable) {
+            null
         }
     }
 

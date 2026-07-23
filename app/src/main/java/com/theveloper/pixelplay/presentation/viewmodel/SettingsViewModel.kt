@@ -3,6 +3,8 @@ package com.theveloper.pixelplay.presentation.viewmodel
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.backup.BackupManager
@@ -62,6 +64,7 @@ data class SettingsUiState(
     val playerThemePreference: String = ThemePreference.ALBUM_ART,
     val albumArtPaletteStyle: AlbumArtPaletteStyle = AlbumArtPaletteStyle.default,
     val albumArtColorAccuracy: Int = AlbumArtColorAccuracy.DEFAULT,
+    val customPaletteSeedColor: Color = Color(ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_SEED),
     val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
@@ -124,6 +127,7 @@ data class SettingsUiState(
     val songFilterKeywords: List<UserPreferencesRepository.SongFilterKeyword> = emptyList(),
     val showLyricsTrackInfo: Boolean = true,
     val carModeEnabled: Boolean = false,
+    val roamingButtonVisible: Boolean = true,
     val downloadPath: String = Environment.DIRECTORY_MUSIC,
 )
 
@@ -155,6 +159,7 @@ private sealed interface SettingsUiUpdate {
         val playerThemePreference: String,
         val albumArtPaletteStyle: AlbumArtPaletteStyle,
         val albumArtColorAccuracy: Int,
+        val customPaletteSeedColor: Color,
         val mockGenresEnabled: Boolean,
         val navBarCornerRadius: Int,
         val navBarStyle: String,
@@ -385,6 +390,7 @@ class SettingsViewModel @Inject constructor(
                 themePreferencesRepository.playerThemePreferenceFlow,
                 themePreferencesRepository.albumArtPaletteStyleFlow,
                 themePreferencesRepository.albumArtColorAccuracyFlow,
+                themePreferencesRepository.customPaletteSeedColorFlow,
                 userPreferencesRepository.mockGenresEnabledFlow,
                 userPreferencesRepository.navBarCornerRadiusFlow,
                 userPreferencesRepository.navBarStyleFlow,
@@ -400,14 +406,15 @@ class SettingsViewModel @Inject constructor(
                     playerThemePreference = values[2] as String,
                     albumArtPaletteStyle = values[3] as AlbumArtPaletteStyle,
                     albumArtColorAccuracy = values[4] as Int,
-                    mockGenresEnabled = values[5] as Boolean,
-                    navBarCornerRadius = values[6] as Int,
-                    navBarStyle = values[7] as String,
-                    navBarCompactMode = values[8] as Boolean,
-                    libraryNavigationMode = values[9] as String,
-                    carouselStyle = values[10] as String,
-                    launchTab = values[11] as String,
-                    showPlayerFileInfo = values[12] as Boolean
+                    customPaletteSeedColor = Color(values[5] as Int),
+                    mockGenresEnabled = values[6] as Boolean,
+                    navBarCornerRadius = values[7] as Int,
+                    navBarStyle = values[8] as String,
+                    navBarCompactMode = values[9] as Boolean,
+                    libraryNavigationMode = values[10] as String,
+                    carouselStyle = values[11] as String,
+                    launchTab = values[12] as String,
+                    showPlayerFileInfo = values[13] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -417,6 +424,7 @@ class SettingsViewModel @Inject constructor(
                         playerThemePreference = update.playerThemePreference,
                         albumArtPaletteStyle = update.albumArtPaletteStyle,
                         albumArtColorAccuracy = update.albumArtColorAccuracy,
+                        customPaletteSeedColor = update.customPaletteSeedColor,
                         mockGenresEnabled = update.mockGenresEnabled,
                         navBarCornerRadius = update.navBarCornerRadius,
                         navBarStyle = update.navBarStyle,
@@ -621,6 +629,12 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            userPreferencesRepository.roamingButtonVisibleFlow.collect { visible ->
+                _uiState.update { it.copy(roamingButtonVisible = visible) }
+            }
+        }
+
+        viewModelScope.launch {
             userPreferencesRepository.downloadPathFlow.collect { path ->
                 _uiState.update { it.copy(downloadPath = path) }
             }
@@ -713,6 +727,12 @@ class SettingsViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             themePreferencesRepository.setAlbumArtPaletteSettings(style, accuracyLevel)
+        }
+    }
+
+    fun setCustomPaletteSeedColor(color: Color) {
+        viewModelScope.launch {
+            themePreferencesRepository.setCustomPaletteSeedColor(color.toArgb())
         }
     }
 
@@ -1529,6 +1549,12 @@ class SettingsViewModel @Inject constructor(
     fun setCarModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setCarModeEnabled(enabled)
+        }
+    }
+
+    fun setRoamingButtonVisible(visible: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setRoamingButtonVisible(visible)
         }
     }
 

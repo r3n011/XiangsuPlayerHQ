@@ -71,7 +71,8 @@ internal fun rememberSheetThemeState(
     currentSheetState: PlayerSheetState,
     playerContentExpansionFraction: Animatable<Float, AnimationVector1D>
 ): SheetThemeState {
-    val isAlbumArtTheme = playerThemePreference == ThemePreference.ALBUM_ART
+    val isThemedTheme = playerThemePreference == ThemePreference.ALBUM_ART ||
+            playerThemePreference == ThemePreference.CUSTOM_PALETTE
     val hasAlbumArt = !currentSong?.albumArtUriString.isNullOrBlank()
 
     // ⚡ 从 activePlayerSchemePair 派生颜色方案（根据亮色/暗色主题）
@@ -79,17 +80,21 @@ internal fun rememberSheetThemeState(
         activePlayerSchemePair?.let { if (isDarkTheme) it.dark else it.light }
     }
 
-    // ⚡ currentSongActiveScheme: 只有当 activePlayerScheme 和 currentSong 的 albumArtUri 匹配时才非 null
-    //   用于：当 URI 不匹配时（切歌过渡期间），保持旧颜色方案
+    // ⚡ currentSongActiveScheme:
+    //   - 自定义调色盘：直接套用 activePlayerScheme，不校验封面 URI
+    //   - 封面取色：只有 activePlayerScheme 和 currentSong 的 albumArtUri 匹配时才非 null
+    //     用于切歌过渡期间保持旧颜色方案
     val currentSongActiveScheme = remember(
         activePlayerScheme,
+        playerThemePreference,
         currentSong?.albumArtUriString,
         themedAlbumArtUri
     ) {
-        if (activePlayerScheme != null &&
-            hasAlbumArt &&
-            currentSong.albumArtUriString == themedAlbumArtUri
-        ) {
+        if (activePlayerScheme == null) {
+            null
+        } else if (playerThemePreference == ThemePreference.CUSTOM_PALETTE) {
+            activePlayerScheme
+        } else if (hasAlbumArt && currentSong.albumArtUriString == themedAlbumArtUri) {
             activePlayerScheme
         } else {
             null
@@ -111,11 +116,11 @@ internal fun rememberSheetThemeState(
     }
 
     // ⚡ 最终颜色方案的选择逻辑：
-    //   - 如果不是 ALBUM_ART 主题 / 歌曲无封面 → 系统色
+    //   - 如果不是主题模式（封面取色/自定义调色盘）/ 歌曲无封面 → 系统色
     //   - 如果 currentSongActiveScheme 非 null → 用它
     //   - 否则（切歌过渡期间）→ 用 lastAlbumScheme
     //   - 最后回落系统色
-    val targetAlbumColorScheme = if (!isAlbumArtTheme || !hasAlbumArt) {
+    val targetAlbumColorScheme = if (!isThemedTheme || !hasAlbumArt) {
         systemColorScheme
     } else {
         currentSongActiveScheme ?: lastAlbumScheme ?: systemColorScheme

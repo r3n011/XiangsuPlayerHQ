@@ -42,7 +42,7 @@ internal fun PlayerSheetPredictiveBackHandler(
                         val progressAtRelease = playerViewModel.predictiveBackCollapseFraction.value
                         // ⚡ 简化:直接 snap fraction，无需同时维护 translationY
                         val currentVisualExpansionFraction = (1f - progressAtRelease).coerceIn(0f, 1f)
-                        playerViewModel.playerContentExpansionFraction.snapTo(currentVisualExpansionFraction)
+                        sheetMotionController?.snapTo(currentVisualExpansionFraction)
                         playerViewModel.updatePredictiveBackCollapseFraction(1f)
                         playerViewModel.collapsePlayerSheet()
                         playerViewModel.updatePredictiveBackCollapseFraction(0f)

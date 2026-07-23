@@ -788,12 +788,20 @@ fun SettingsCategoryScreen(
                                     description = stringResource(R.string.setcat_player_theme_desc),
                                     options = mapOf(
                                         ThemePreference.ALBUM_ART to stringResource(R.string.setcat_player_theme_album_art),
+                                        ThemePreference.CUSTOM_PALETTE to stringResource(R.string.setcat_player_theme_custom_palette),
                                         ThemePreference.DYNAMIC to stringResource(R.string.setcat_player_theme_dynamic)
                                     ),
                                     selectedKey = uiState.playerThemePreference,
                                     onSelectionChanged = { settingsViewModel.setPlayerThemePreference(it) },
                                     leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+
+                                if (uiState.playerThemePreference == ThemePreference.CUSTOM_PALETTE) {
+                                    CustomPaletteColorGrid(
+                                        selectedColor = uiState.customPaletteSeedColor,
+                                        onColorSelected = { settingsViewModel.setCustomPaletteSeedColor(it) }
+                                    )
+                                }
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_show_player_file_info_title),
                                     subtitle = stringResource(R.string.setcat_show_player_file_info_subtitle),
@@ -861,6 +869,19 @@ fun SettingsCategoryScreen(
                                     leadingIcon = {
                                         Icon(
                                             painterResource(R.drawable.rounded_view_week_24),
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_roaming_button_visible_title),
+                                    subtitle = stringResource(R.string.setcat_roaming_button_visible_subtitle),
+                                    checked = uiState.roamingButtonVisible,
+                                    onCheckedChange = { settingsViewModel.setRoamingButtonVisible(it) },
+                                    leadingIcon = {
+                                        Icon(
+                                            painterResource(R.drawable.rounded_play_arrow_24),
                                             null,
                                             tint = MaterialTheme.colorScheme.secondary
                                         )

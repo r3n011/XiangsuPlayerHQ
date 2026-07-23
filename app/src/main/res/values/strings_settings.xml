@@ -154,6 +154,7 @@
         name="setcat_player_theme_desc"
     >Choose the appearance for the floating player.</string>
     <string name="setcat_player_theme_album_art">Album Art</string>
+    <string name="setcat_player_theme_custom_palette">Custom Palette</string>
     <string name="setcat_player_theme_dynamic">System Dynamic</string>
     <string
         name="setcat_show_player_file_info_title"
@@ -195,6 +196,8 @@
     <string
         name="setcat_compact_mode_subtitle"
     >Show only icons and reduce the navbar height.</string>
+    <string name="setcat_roaming_button_visible_title">Show Roaming Button</string>
+    <string name="setcat_roaming_button_visible_subtitle">Display the Roaming shortcut in the bottom navigation bar.</string>
     <string name="setcat_navbar_corner_title">NavBar Corner Radius</string>
     <string
         name="setcat_navbar_corner_subtitle"

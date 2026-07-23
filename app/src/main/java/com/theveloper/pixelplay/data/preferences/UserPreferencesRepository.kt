@@ -41,6 +41,7 @@ object ThemePreference {
     const val DYNAMIC = "dynamic"
     const val ALBUM_ART = "album_art"
     const val GLOBAL = "global"
+    const val CUSTOM_PALETTE = "custom_palette"
 }
 
 object AppThemeMode {
@@ -289,7 +290,10 @@ class UserPreferencesRepository @Inject constructor(
 
         // Car mode
         val CAR_MODE_ENABLED = booleanPreferencesKey("car_mode_enabled")
-        
+
+        // Navigation bar
+        val ROAMING_BUTTON_VISIBLE = booleanPreferencesKey("roaming_button_visible")
+
         // Download settings
         val DOWNLOAD_PATH = stringPreferencesKey("download_path")
     }
@@ -1690,6 +1694,15 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setCarModeEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.CAR_MODE_ENABLED] = enabled }
+    }
+
+    // ─── Navigation Bar ───────────────────────────────────────────────────────
+
+    val roamingButtonVisibleFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.ROAMING_BUTTON_VISIBLE] ?: true }
+
+    suspend fun setRoamingButtonVisible(visible: Boolean) {
+        dataStore.edit { it[PreferencesKeys.ROAMING_BUTTON_VISIBLE] = visible }
     }
 
     // ─── Download Settings ────────────────────────────────────────────────────
