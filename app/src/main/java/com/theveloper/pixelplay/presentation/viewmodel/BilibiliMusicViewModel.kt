@@ -113,6 +113,19 @@ class BilibiliMusicViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 生成稳定的歌曲 id，与数据库保存后的 songId 一致，用于高亮当前播放项。
+     */
+    fun getStableSongId(song: BilibiliSongInfo): String {
+        var hash = 1125899906842597L
+        val input = "lx_song_" + song.id + "|" + song.name + "|" + song.singer
+        for (c in input) {
+            hash = (hash * 31 + c.code.toLong())
+        }
+        val result = hash and Long.MAX_VALUE
+        return (if (result == 0L) 1L else result).toString()
+    }
+
     fun playSong(
         song: BilibiliSongInfo,
         onOpenPlayer: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit
