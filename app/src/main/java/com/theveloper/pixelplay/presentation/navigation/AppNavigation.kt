@@ -5,9 +5,10 @@ import com.theveloper.pixelplay.presentation.screens.WordDelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
 import com.theveloper.pixelplay.presentation.screens.DeviceCapabilitiesScreen
 import android.annotation.SuppressLint
-import android.os.Build
 import androidx.annotation.OptIn
-import androidx.annotation.RequiresApi
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -66,7 +67,6 @@ import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashbo
 import com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboardScreen
 import com.theveloper.pixelplay.presentation.telegram.dashboard.TelegramDashboardScreen
 
-@RequiresApi(Build.VERSION_CODES.R)
 @OptIn(UnstableApi::class)
 @SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
@@ -86,20 +86,130 @@ fun AppNavigation(
     startDestination?.let { initialRoute ->
         NavHost(
             navController = navController,
-            startDestination = initialRoute
+            startDestination = initialRoute,
+            enterTransition = { aospSharedAxisEnter() },
+            exitTransition = { aospSharedAxisExit() },
+            popEnterTransition = { aospSharedAxisPopEnter() },
+            popExitTransition = { aospSharedAxisPopExit() }
         ) {
             // Tab 路由: 空占位符，实际内容由 TabContentHost 渲染（预加载）
-            composable(Screen.Home.route) { }
-            composable(Screen.Search.route) { }
-            composable(Screen.Library.route) { }
-            composable(Screen.Settings.route) { }
-            composable(Screen.CloudMusicSettings.route) { }
+            composable(
+                Screen.Home.route,
+                enterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = enterTransition()
+                ) },
+                exitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = exitTransition()
+                ) },
+                popEnterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popEnterTransition()
+                ) },
+                popExitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popExitTransition()
+                ) }
+            ) { }
+            composable(
+                Screen.Search.route,
+                enterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = enterTransition()
+                ) },
+                exitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = exitTransition()
+                ) },
+                popEnterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popEnterTransition()
+                ) },
+                popExitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popExitTransition()
+                ) }
+            ) { }
+            composable(
+                Screen.Library.route,
+                enterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = enterTransition()
+                ) },
+                exitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = exitTransition()
+                ) },
+                popEnterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popEnterTransition()
+                ) },
+                popExitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popExitTransition()
+                ) }
+            ) { }
+            composable(
+                Screen.Settings.route,
+                enterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = enterTransition()
+                ) },
+                exitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = exitTransition()
+                ) },
+                popEnterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popEnterTransition()
+                ) },
+                popExitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popExitTransition()
+                ) }
+            ) { }
+            composable(
+                Screen.CloudMusicSettings.route,
+                enterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = enterTransition()
+                ) },
+                exitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = exitTransition()
+                ) },
+                popEnterTransition = { mainRootEnterTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popEnterTransition()
+                ) },
+                popExitTransition = { mainRootExitTransition(
+                    fromRoute = initialState.destination.route,
+                    toRoute = targetState.destination.route,
+                    fallback = popExitTransition()
+                ) }
+            ) { }
             composable(
                 Screen.Accounts.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     AccountsScreen(
@@ -122,10 +232,6 @@ fun AppNavigation(
             composable(
                 route = Screen.SettingsCategory.route,
                 arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val categoryId = backStackEntry.arguments?.getString("categoryId")
@@ -143,10 +249,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.Equalizer.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     EqualizerScreen(
@@ -158,10 +260,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.HeadphonePreset.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     HeadphonePresetScreen(
@@ -172,10 +270,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.Stats.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     StatsScreen(
@@ -185,10 +279,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.About.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     AboutScreen(
@@ -200,10 +290,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.RecentlyPlayed.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     RecentlyPlayedScreen(
@@ -215,10 +301,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.DailyMixScreen.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DailyMixScreen(
@@ -231,10 +313,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.AiMixScreen.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     AiMixScreen(
@@ -248,10 +326,6 @@ fun AppNavigation(
             composable(
                 route = Screen.PlaylistDetail.route,
                 arguments = listOf(navArgument("playlistId") { type = NavType.StringType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val playlistId = backStackEntry.arguments?.getString("playlistId")
@@ -270,10 +344,6 @@ fun AppNavigation(
             composable(
                 route = Screen.AlbumDetail.route,
                 arguments = listOf(navArgument("albumId") { type = NavType.StringType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val albumId = backStackEntry.arguments?.getString("albumId")
@@ -290,10 +360,6 @@ fun AppNavigation(
             composable(
                 route = Screen.ArtistDetail.route,
                 arguments = listOf(navArgument("artistId") { type = NavType.StringType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val artistId = backStackEntry.arguments?.getString("artistId")
@@ -311,10 +377,6 @@ fun AppNavigation(
             composable(
                 route = Screen.ArtistHomepage.route,
                 arguments = listOf(navArgument("artistId") { type = NavType.LongType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val artistId = backStackEntry.arguments?.getLong("artistId") ?: 0L
@@ -332,10 +394,6 @@ fun AppNavigation(
             composable(
                 route = Screen.GenreDetail.route,
                 arguments = listOf(navArgument("genreId") { type = NavType.StringType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val genreId = backStackEntry.arguments?.getString("genreId")
@@ -351,10 +409,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.Experimental.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     ExperimentalSettingsScreen(
@@ -367,10 +421,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.PaletteStyle.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     PaletteStyleSettingsScreen(
@@ -382,10 +432,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.ArtistSettings.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     ArtistSettingsScreen(
@@ -396,10 +442,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.DelimiterConfig.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DelimiterConfigScreen(
@@ -410,10 +452,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.WordDelimiterConfig.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     WordDelimiterConfigScreen(
@@ -424,10 +462,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.EasterEgg.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     EasterEggScreen(
@@ -439,10 +473,6 @@ fun AppNavigation(
             composable(
                 route = Screen.EditTransition.route,
                 arguments = listOf(navArgument("playlistId") { type = NavType.StringType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val playlistId = backStackEntry.arguments?.getString("playlistId")
@@ -454,19 +484,11 @@ fun AppNavigation(
             }
             composable(
                 Screen.DJSpace.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 // DJSpace placeholder – no standalone screen currently
             }
             composable(
                 Screen.NavBarCrRad.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     NavBarCornerRadiusScreen(
@@ -477,10 +499,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.DeviceCapabilities.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DeviceCapabilitiesScreen(
@@ -492,10 +510,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.NeteaseDashboard.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     NeteaseDashboardScreen(
@@ -505,10 +519,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.QqMusicDashboard.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     QqMusicDashboardScreen(
@@ -518,10 +528,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.NavidromeDashboard.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     NavidromeDashboardScreen(
@@ -531,10 +537,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.JellyfinDashboard.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     JellyfinDashboardScreen(
@@ -544,10 +546,6 @@ fun AppNavigation(
             }
             composable(
                 Screen.DotDeviceSettings.route,
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DotDeviceSettingsScreen(
@@ -564,4 +562,71 @@ private fun String.toRoute(): String = when (this) {
     LaunchTab.SEARCH -> Screen.Search.route
     LaunchTab.LIBRARY -> Screen.Library.route
     else -> Screen.Home.route
+}
+
+private enum class MainRootDirection {
+    FORWARD,
+    BACKWARD
+}
+
+// Base duration for bottom-nav switches at 1x — at 0.5x system scale = ~190 ms.
+private const val BOTTOM_NAV_TRANSITION_DURATION = 380
+
+// MD3 Expressive easing for bottom-nav switches
+private val BottomNavEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+private val MAIN_ROOT_TRANSITION_SPEC =
+    tween<IntOffset>(durationMillis = BOTTOM_NAV_TRANSITION_DURATION, easing = BottomNavEasing)
+
+private val MAIN_ROOT_FADE_SPEC =
+    tween<Float>(durationMillis = BOTTOM_NAV_TRANSITION_DURATION / 2, easing = BottomNavEasing)
+
+private fun mainRootDirection(
+    fromRoute: String?,
+    toRoute: String?
+): MainRootDirection? {
+    val fromIndex = mainRootRouteIndex(fromRoute) ?: return null
+    val toIndex = mainRootRouteIndex(toRoute) ?: return null
+    if (fromIndex == toIndex) return null
+    return if (toIndex > fromIndex) MainRootDirection.FORWARD else MainRootDirection.BACKWARD
+}
+
+private fun mainRootEnterTransition(
+    fromRoute: String?,
+    toRoute: String?,
+    fallback: EnterTransition
+): EnterTransition = when (mainRootDirection(fromRoute, toRoute)) {
+    MainRootDirection.FORWARD -> {
+        slideInHorizontally(
+            animationSpec = MAIN_ROOT_TRANSITION_SPEC,
+            initialOffsetX = { (it * 0.5f).toInt() }
+        ) + fadeIn(animationSpec = MAIN_ROOT_FADE_SPEC)
+    }
+    MainRootDirection.BACKWARD -> {
+        slideInHorizontally(
+            animationSpec = MAIN_ROOT_TRANSITION_SPEC,
+            initialOffsetX = { -(it * 0.5f).toInt() }
+        ) + fadeIn(animationSpec = MAIN_ROOT_FADE_SPEC)
+    }
+    null -> fallback
+}
+
+private fun mainRootExitTransition(
+    fromRoute: String?,
+    toRoute: String?,
+    fallback: ExitTransition
+): ExitTransition = when (mainRootDirection(fromRoute, toRoute)) {
+    MainRootDirection.FORWARD -> {
+        slideOutHorizontally(
+            animationSpec = MAIN_ROOT_TRANSITION_SPEC,
+            targetOffsetX = { -(it * 0.5f).toInt() }
+        ) + fadeOut(animationSpec = MAIN_ROOT_FADE_SPEC)
+    }
+    MainRootDirection.BACKWARD -> {
+        slideOutHorizontally(
+            animationSpec = MAIN_ROOT_TRANSITION_SPEC,
+            targetOffsetX = { (it * 0.5f).toInt() }
+        ) + fadeOut(animationSpec = MAIN_ROOT_FADE_SPEC)
+    }
+    null -> fallback
 }

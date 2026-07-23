@@ -5,7 +5,6 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveOfflineDialog
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.spring
@@ -265,19 +264,10 @@ fun UnifiedPlayerSheetV2(
                 currentSheetContentState == PlayerSheetState.EXPANDED
         }
     }
-    // ⚡ 简化动画:只用一个 Animatable(playerContentExpansionFraction)驱动
-    // - translationY = sheetCollapsedTargetY * (1f - fraction):从下方渐入
-    // - 去除 scale、overshoot、复杂角半径动画
-    // - 单一动画源，避免动画不同步导致卡中间
-    // ⚡ 优化：使用简单的 tween 动画（280ms）配合 FastOutSlowInEasing
-    //   动画时长 280ms：足够快让用户感觉即时响应，足够慢让动画平滑可见
-    //   tween 比 spring 更稳定，不需要每帧物理计算
-    val sheetAnimationSpec = remember {
-        tween<Float>(
-            durationMillis = 280,
-            easing = FastOutSlowInEasing
-        )
-    }
+    // 单一动画源，避免动画不同步导致卡中间
+    // 使用 Material 3 Expressive 的默认空间动画规范（spring），与原版一致
+    val motionScheme = remember { MotionScheme.expressive() }
+    val sheetAnimationSpec = remember { motionScheme.defaultSpatialSpec<Float>() }
     val sheetExpandedTargetY = 0f
 
     // ⚡ sheetMotionController: 封装 playerContentExpansionFraction 的动画操作
