@@ -5,7 +5,8 @@
     <style name="Theme.PixelPlay" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:windowBackground">@android:color/white</item>
+        <!-- 使用主题背景色，避免预测返回/启动时看到黑白底色 -->
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
     </style>
 
     <style name="Theme.PixelPlay.ExternalPlayer" parent="Theme.Material3.DayNight.NoActionBar">
