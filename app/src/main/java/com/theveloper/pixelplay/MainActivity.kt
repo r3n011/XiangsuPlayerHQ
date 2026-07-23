@@ -172,6 +172,7 @@ import com.theveloper.pixelplay.presentation.navigation.TabContentHost
 import com.theveloper.pixelplay.presentation.screens.SetupScreen
 import com.theveloper.pixelplay.presentation.viewmodel.MainViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.ThemeStateHolder
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.utils.CrashHandler
@@ -179,6 +180,7 @@ import com.theveloper.pixelplay.utils.AppLocaleManager
 import com.theveloper.pixelplay.utils.LogUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -235,6 +237,8 @@ class MainActivity : ComponentActivity() {
     lateinit var userPreferencesRepository: UserPreferencesRepository // Inject here
     @Inject
     lateinit var themePreferencesRepository: ThemePreferencesRepository
+    @Inject
+    lateinit var themeStateHolder: ThemeStateHolder
     @Inject
     lateinit var syncManager: SyncManager
     // For handling shortcut navigation - using StateFlow so composables can observe changes
@@ -341,6 +345,7 @@ class MainActivity : ComponentActivity() {
             val appThemeMode by themePreferencesRepository.appThemeModeFlow.collectAsStateWithLifecycle(initialValue = AppThemeMode.FOLLOW_SYSTEM)
             val showScrollbar by userPreferencesRepository.showScrollbarFlow.collectAsStateWithLifecycle(initialValue = true)
             val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
+            val globalColorSchemePair by themeStateHolder.activeGlobalColorSchemePair.collectAsStateWithLifecycle()
             val useDarkTheme = when (appThemeMode) {
                 AppThemeMode.DARK -> true
                 AppThemeMode.LIGHT -> false
@@ -396,7 +401,8 @@ class MainActivity : ComponentActivity() {
 
             CompositionLocalProvider(LocalShowScrollbar provides showScrollbar) {
                 PixelPlayTheme(
-                    darkTheme = useDarkTheme
+                    darkTheme = useDarkTheme,
+                    colorSchemePairOverride = globalColorSchemePair
                 ) {
                     var splashFinished by remember { mutableStateOf(false) }
 
@@ -815,15 +821,18 @@ class MainActivity : ComponentActivity() {
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
+        val roamingButtonVisible by userPreferencesRepository.roamingButtonVisibleFlow.collectAsStateWithLifecycle(initialValue = true)
 
-        val commonNavItems = remember {
+        val commonNavItems = remember(roamingButtonVisible) {
             persistentListOf(
                 BottomNavItem("Home", R.string.nav_bar_home, R.drawable.rounded_home_24, R.drawable.home_24_rounded_filled, screen = Screen.Home),
                 BottomNavItem("Search", R.string.nav_bar_search, R.drawable.rounded_search_24, R.drawable.rounded_search_24, screen = Screen.Search),
-                BottomNavItem("Roaming", R.string.nav_bar_roaming, R.drawable.rounded_play_arrow_24, R.drawable.rounded_play_arrow_filled_24, screen = Screen.Roaming),
+                if (roamingButtonVisible) {
+                    BottomNavItem("Roaming", R.string.nav_bar_roaming, R.drawable.rounded_play_arrow_24, R.drawable.rounded_play_arrow_filled_24, screen = Screen.Roaming)
+                } else null,
                 BottomNavItem("Library", R.string.nav_bar_library, R.drawable.rounded_library_music_24, R.drawable.round_library_music_24, screen = Screen.Library),
                 BottomNavItem("Settings", R.string.settings_top_bar_title, R.drawable.rounded_settings_24, R.drawable.rounded_settings_24, screen = Screen.Settings)
-            )
+            ).filterNotNull().toImmutableList()
         }
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route

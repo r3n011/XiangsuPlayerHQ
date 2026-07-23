@@ -319,4 +319,9 @@
     <string name="update_checking">Checking for updates…</string>
     <string name="update_no_update">You\'re on the latest version</string>
     <string name="update_check_failed">Failed to check for updates</string>
+    <string name="about_changelog_subtitle">Latest release · %1$s · %2$s</string>
+    <string name="about_changelog_loading">Loading changelog…</string>
+    <string name="about_changelog_error">Failed to load changelog</string>
+    <string name="about_changelog_empty">No release notes</string>
+    <string name="about_changelog_unknown_date">Unknown release date</string>
 </resources>

@@ -18,7 +18,13 @@ class ThemePreferencesRepository @Inject constructor(
         val PLAYER_THEME_PREFERENCE = stringPreferencesKey("player_theme_preference_v2")
         val ALBUM_ART_PALETTE_STYLE = stringPreferencesKey("album_art_palette_style_v1")
         val ALBUM_ART_COLOR_ACCURACY = intPreferencesKey("album_art_color_accuracy_v1")
+        val CUSTOM_PALETTE_SEED_COLOR = intPreferencesKey("custom_palette_seed_color_v1")
         val APP_THEME_MODE = stringPreferencesKey("app_theme_mode")
+    }
+
+    companion object {
+        // 默认种子色：蓝色（避免 Android 10 等无系统取色时默认紫色）
+        const val DEFAULT_CUSTOM_PALETTE_SEED = 0xFF2196F3.toInt()
     }
 
     val appThemeModeFlow: Flow<String> = dataStore.data.map { preferences ->
@@ -35,6 +41,10 @@ class ThemePreferencesRepository @Inject constructor(
 
     val albumArtColorAccuracyFlow: Flow<Int> = dataStore.data.map { preferences ->
         AlbumArtColorAccuracy.clamp(preferences[Keys.ALBUM_ART_COLOR_ACCURACY] ?: AlbumArtColorAccuracy.DEFAULT)
+    }
+
+    val customPaletteSeedColorFlow: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[Keys.CUSTOM_PALETTE_SEED_COLOR] ?: DEFAULT_CUSTOM_PALETTE_SEED
     }
 
     suspend fun setPlayerThemePreference(themeMode: String) =
@@ -71,4 +81,9 @@ class ThemePreferencesRepository @Inject constructor(
         preferences[Keys.ALBUM_ART_PALETTE_STYLE] = style.storageKey
         preferences[Keys.ALBUM_ART_COLOR_ACCURACY] = AlbumArtColorAccuracy.clamp(accuracyLevel)
     }
+
+    suspend fun setCustomPaletteSeedColor(seedColor: Int) =
+        dataStore.edit { preferences ->
+            preferences[Keys.CUSTOM_PALETTE_SEED_COLOR] = seedColor
+        }
 }

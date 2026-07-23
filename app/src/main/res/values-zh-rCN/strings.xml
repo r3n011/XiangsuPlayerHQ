@@ -310,4 +310,9 @@
     <string name="update_checking">正在检查更新……</string>
     <string name="update_no_update">已是最新版本</string>
     <string name="update_check_failed">检查更新失败</string>
+    <string name="about_changelog_subtitle">最新版本 · %1$s · %2$s</string>
+    <string name="about_changelog_loading">正在加载更新日志…</string>
+    <string name="about_changelog_error">加载更新日志失败</string>
+    <string name="about_changelog_empty">暂无更新内容</string>
+    <string name="about_changelog_unknown_date">未知时间</string>
 </resources>

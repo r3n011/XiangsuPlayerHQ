@@ -265,10 +265,10 @@ fun UnifiedPlayerSheetV2(
         }
     }
     // 单一动画源，避免动画不同步导致卡中间
-    // 展开时带轻微回弹，折叠时顺滑收起
+    // 展开/折叠使用同一组 spring，避免切换目标时产生突变
     val sheetAnimationSpec = remember {
         spring<Float>(
-            stiffness = Spring.StiffnessMedium,
+            stiffness = Spring.StiffnessMediumLow,
             dampingRatio = Spring.DampingRatioMediumBouncy
         )
     }
@@ -555,15 +555,11 @@ fun UnifiedPlayerSheetV2(
         useSmoothCorners = useSmoothCorners,
         isDragging = sheetBackAndDragState.isDragging,
         onAnimateSheet = { targetExpanded, animationSpec, initialVelocity ->
-            if (animationSpec == null) {
-                animatePlayerSheet(targetExpanded = targetExpanded)
-            } else {
-                animatePlayerSheet(
-                    targetExpanded = targetExpanded,
-                    animationSpec = animationSpec,
-                    initialVelocity = initialVelocity
-                )
-            }
+            animatePlayerSheet(
+                targetExpanded = targetExpanded,
+                animationSpec = animationSpec,
+                initialVelocity = initialVelocity
+            )
         },
         onExpandSheetState = { playerViewModel.expandPlayerSheet() },
         onCollapseSheetState = { playerViewModel.collapsePlayerSheet() },

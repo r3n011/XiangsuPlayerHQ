@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteForever
@@ -349,6 +353,69 @@ fun ThemeSelectorItem(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CustomPaletteColorGrid(
+    selectedColor: Color,
+    onColorSelected: (Color) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = remember {
+        listOf(
+            Color(0xFFF44336), // Red
+            Color(0xFFE91E63), // Pink
+            Color(0xFF9C27B0), // Purple
+            Color(0xFF673AB7), // Deep Purple
+            Color(0xFF3F51B5), // Indigo
+            Color(0xFF2196F3), // Blue
+            Color(0xFF03A9F4), // Light Blue
+            Color(0xFF00BCD4), // Cyan
+            Color(0xFF009688), // Teal
+            Color(0xFF4CAF50), // Green
+            Color(0xFFFFEB3B), // Yellow
+            Color(0xFFFF9800), // Orange
+            Color(0xFFFF5722), // Deep Orange
+            Color(0xFF795548), // Brown
+            Color(0xFF607D8B)  // Blue Grey
+        )
+    }
+
+    FlowRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.Start),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        maxItemsInEachRow = 6
+    ) {
+        colors.forEach { color ->
+            val isSelected = color == selectedColor
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color)
+                    .border(
+                        width = if (isSelected) 3.dp else 0.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape
+                    )
+                    .clickable { onColorSelected(color) },
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }

@@ -11,9 +11,8 @@ import androidx.compose.foundation.MutatorMutex
  * Optimized SheetMotionController:
  * - Drives the single source of truth: playerContentExpansionFraction
  * - Uses spring animations for gesture-natural feel and seamless interruption
- * - Different spring parameters for expand vs collapse:
- *   - Expand: medium-low stiffness, slightly bouncy → snappy but feels premium
- *   - Collapse: low stiffness, no bounce → smooth slide-down
+ * - Unified spring spec for both expand and collapse to avoid visual pops when
+ *   the target direction changes mid-animation
  * - Smart initialVelocity: inherits the Animatable's current velocity so gesture
  *   releases feel continuous instead of resetting to zero velocity
  * - Exposes isRunning / currentFraction for callers that need to inspect state
@@ -25,16 +24,11 @@ internal class SheetMotionController(
 ) {
 
     companion object {
-        // ⚡ Expand spring: snappy with subtle bounce at the top
-        val ExpandSpringSpec: AnimationSpec<Float> = spring(
+        // ⚡ Unified sheet spring: medium bouncy with medium-low stiffness.
+        //    Used for both expand and collapse so direction changes never cause a spec swap/pop.
+        val SheetSpringSpec: AnimationSpec<Float> = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMediumLow
-        )
-
-        // ⚡ Collapse spring: smooth, no bounce, slides away naturally
-        val CollapseSpringSpec: AnimationSpec<Float> = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessLow
         )
     }
 
@@ -77,11 +71,7 @@ internal class SheetMotionController(
             initialVelocity
         }
 
-        val effectiveSpec = animationSpec ?: if (targetExpanded) {
-            ExpandSpringSpec
-        } else {
-            CollapseSpringSpec
-        }
+        val effectiveSpec = animationSpec ?: SheetSpringSpec
 
         mutex.mutate {
             playerContentExpansionFraction.animateTo(

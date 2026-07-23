@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -30,6 +34,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -41,13 +46,20 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -74,6 +86,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @Composable
 fun DotDeviceSettingsScreen(
@@ -82,18 +95,87 @@ fun DotDeviceSettingsScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val headerHeight = 180.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
+    val lazyListState = rememberLazyListState()
+
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val minTopBarHeight = 64.dp + statusBarHeight
+    val maxTopBarHeight = 170.dp
+
+    val minTopBarHeightPx = with(density) { minTopBarHeight.toPx() }
+    val maxTopBarHeightPx = with(density) { maxTopBarHeight.toPx() }
+
+    val topBarHeight = remember { Animatable(maxTopBarHeightPx) }
+    var collapseFraction by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(topBarHeight.value) {
+        collapseFraction = 1f - (
+            (topBarHeight.value - minTopBarHeightPx) / (maxTopBarHeightPx - minTopBarHeightPx)
+        ).coerceIn(0f, 1f)
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                val isScrollingDown = delta < 0
+
+                if (
+                    !isScrollingDown &&
+                    (lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 0)
+                ) {
+                    return Offset.Zero
+                }
+
+                val previousHeight = topBarHeight.value
+                val newHeight = (previousHeight + delta).coerceIn(minTopBarHeightPx, maxTopBarHeightPx)
+                val consumed = newHeight - previousHeight
+
+                if (consumed.roundToInt() != 0) {
+                    coroutineScope.launch {
+                        topBarHeight.snapTo(newHeight)
+                    }
+                }
+
+                val canConsumeScroll = !(isScrollingDown && newHeight == minTopBarHeightPx)
+                return if (canConsumeScroll) Offset(0f, consumed) else Offset.Zero
+            }
+        }
+    }
+
+    LaunchedEffect(lazyListState.isScrollInProgress) {
+        if (!lazyListState.isScrollInProgress) {
+            val shouldExpand = topBarHeight.value > (minTopBarHeightPx + maxTopBarHeightPx) / 2
+            val canExpand =
+                lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0
+            val targetValue = if (shouldExpand && canExpand) maxTopBarHeightPx else minTopBarHeightPx
+
+            if (topBarHeight.value != targetValue) {
+                coroutineScope.launch {
+                    topBarHeight.animateTo(targetValue, spring(stiffness = Spring.StiffnessMedium))
+                }
+            }
+        }
+    }
+
+    val currentTopBarHeightDp = with(density) { topBarHeight.value.toDp() }
+
+    Box(
+        modifier = Modifier
+            .nestedScroll(nestedScrollConnection)
+            .fillMaxSize()
+    ) {
         LazyColumn(
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = headerHeight + 8.dp)
                 .hazeSource(MainActivity.LocalHazeState.current),
             contentPadding = PaddingValues(
+                top = currentTopBarHeightDp + 8.dp,
                 start = 16.dp,
                 end = 16.dp,
-                top = 8.dp,
                 bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -125,11 +207,11 @@ fun DotDeviceSettingsScreen(
         }
 
         CollapsibleCommonTopBar(
-            collapseFraction = 0f,
-            headerHeight = headerHeight,
             title = "Dot 墨水屏",
-            subtitle = "推送内容到墨水屏设备",
-            onBackClick = onBackClick
+            collapseFraction = collapseFraction,
+            headerHeight = currentTopBarHeightDp,
+            onBackClick = onBackClick,
+            subtitle = "推送内容到墨水屏设备"
         )
     }
 }

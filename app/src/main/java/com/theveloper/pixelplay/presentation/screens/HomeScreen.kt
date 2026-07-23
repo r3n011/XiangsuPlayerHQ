@@ -97,7 +97,6 @@ import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.presentation.components.AlbumArtCollage
 import com.theveloper.pixelplay.presentation.components.BetaInfoBottomSheet
 import com.theveloper.pixelplay.presentation.components.Beta05CleanInstallDisclaimerDialog
-import com.theveloper.pixelplay.presentation.components.ChangelogBottomSheet
 import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardViewModel
 import com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboardViewModel
 import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashboardViewModel
@@ -284,7 +283,6 @@ fun HomeScreen(
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
 
     var showOptionsBottomSheet by remember { mutableStateOf(false) }
-    var showChangelogBottomSheet by remember { mutableStateOf(false) }
     var showBetaInfoBottomSheet by remember { mutableStateOf(false) }
     var showStreamingProviderSheet by remember { mutableStateOf(false) }
     var cleanInstallDisclaimerDismissedThisSession by rememberSaveable { mutableStateOf(false) }
@@ -363,9 +361,6 @@ fun HomeScreen(
                     HomeGradientTopBar(
                         onNavigationIconClick = {
                             navController.navigateSafely(Screen.Settings.route)
-                        },
-                        onMoreOptionsClick = {
-                            showChangelogBottomSheet = true
                         },
                         onBetaClick = {
                             showBetaInfoBottomSheet = true
@@ -786,14 +781,6 @@ fun HomeScreen(
                     }
                 }
             )
-        }
-    }
-    if (showChangelogBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showChangelogBottomSheet = false },
-            sheetState = sheetState
-        ) {
-            ChangelogBottomSheet()
         }
     }
     if (showBetaInfoBottomSheet) {

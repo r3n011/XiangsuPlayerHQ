@@ -3,8 +3,6 @@ package com.theveloper.pixelplay.presentation.components.scoped
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -110,19 +108,14 @@ internal class SheetVerticalDragGestureHandler(
         scope.launch {
             if (targetState == PlayerSheetState.EXPANDED) {
                 launch {
-                    onAnimateSheet(true, null, 0f)
+                    // Use the unified default spring and inherit the animatable's current velocity
+                    onAnimateSheet(true, null, Float.NaN)
                 }
                 onExpandSheetState()
             } else {
                 launch {
-                    onAnimateSheet(
-                        false,
-                        spring(
-                            dampingRatio = collapseSpringDampingForFraction(currentFraction),
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        verticalVelocity
-                    )
+                    // Use the unified default spring and inherit the animatable's current velocity
+                    onAnimateSheet(false, null, Float.NaN)
                 }
                 onCollapseSheetState()
             }

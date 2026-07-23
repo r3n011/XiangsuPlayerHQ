@@ -11,6 +11,7 @@ import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.ui.theme.DarkColorScheme
 import com.theveloper.pixelplay.ui.theme.clearExtractedColorCache
+import com.theveloper.pixelplay.ui.theme.generateColorSchemeFromSeed
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,8 +51,12 @@ class ThemeStateHolder @Inject constructor(
     private var currentPaletteAccuracy: Int = AlbumArtColorAccuracy.DEFAULT
     @Volatile
     private var currentThemePreference: String = ThemePreference.ALBUM_ART
+    @Volatile
+    private var currentCustomPaletteSeedColor: Int = ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_SEED
+    @Volatile
+    private var currentCustomPaletteSchemePair: ColorSchemePair? = null
     // ⚡ 原子目标 URI：确保并发的 extractAndGenerateColorScheme 协程中，只有持有最新
-    //   targetSongUri 的协程才能更新 state。其他协程（为旧歌曲提取的）完成后直接丢弃。
+    //   目标 URI 的协程才能更新 state。其他协程（为旧歌曲提取的）完成后直接丢弃。
     @Volatile
     private var targetSongUri: String? = null
 
@@ -71,6 +77,10 @@ class ThemeStateHolder @Inject constructor(
     private val _activePlayerColorSchemePair = MutableStateFlow<ColorSchemePair?>(null)
     val activePlayerColorSchemePair: StateFlow<ColorSchemePair?> = _activePlayerColorSchemePair.asStateFlow()
 
+    // ⚡ 全局主题覆盖：用于 Android 10 等无系统取色的设备，把自定义调色盘应用到整个 App
+    private val _activeGlobalColorSchemePair = MutableStateFlow<ColorSchemePair?>(null)
+    val activeGlobalColorSchemePair: StateFlow<ColorSchemePair?> = _activeGlobalColorSchemePair.asStateFlow()
+
     private val _lavaLampColors = MutableStateFlow<ImmutableList<Color>>(persistentListOf())
     val lavaLampColors: StateFlow<ImmutableList<Color>> = _lavaLampColors.asStateFlow()
 
@@ -83,6 +93,19 @@ class ThemeStateHolder @Inject constructor(
      *   所有 4 个 StateFlow（主容器 + 3 个派生）在同一个函数调用中更新，
      *   保证 UI 层看到的状态始终一致。
      */
+    private fun resolveActiveSchemeForPreference(preference: String): ColorSchemePair? {
+        return when (preference) {
+            ThemePreference.ALBUM_ART -> _albumArtThemeState.value.colorSchemePair
+            ThemePreference.CUSTOM_PALETTE -> currentCustomPaletteSchemePair
+            else -> null
+        }
+    }
+
+    private fun resolveGlobalSchemeForPreference(preference: String): ColorSchemePair? {
+        // 仅自定义调色盘需要覆盖全局主题；封面取色只作用于播放器
+        return if (preference == ThemePreference.CUSTOM_PALETTE) currentCustomPaletteSchemePair else null
+    }
+
     private fun updateAlbumArtThemeState(colorSchemePair: ColorSchemePair?, uri: String?) {
         val current = _albumArtThemeState.value
 
@@ -92,7 +115,7 @@ class ThemeStateHolder @Inject constructor(
         }
 
         // ⚡ 原子更新：4 个 StateFlow 在同一个挂起点连续更新
-        val active = if (currentThemePreference == ThemePreference.ALBUM_ART) colorSchemePair else null
+        val active = resolveActiveSchemeForPreference(currentThemePreference)
         val newState = AlbumArtThemeState(
             colorSchemePair = colorSchemePair,
             albumArtUri = uri,
@@ -102,6 +125,7 @@ class ThemeStateHolder @Inject constructor(
         _currentAlbumArtColorSchemePair.value = colorSchemePair
         _currentAlbumArtUri.value = uri
         _activePlayerColorSchemePair.value = active
+        _activeGlobalColorSchemePair.value = resolveGlobalSchemeForPreference(currentThemePreference)
     }
 
     /**
@@ -110,10 +134,11 @@ class ThemeStateHolder @Inject constructor(
     private fun updateActiveSchemeForPreference(preference: String) {
         currentThemePreference = preference
         val current = _albumArtThemeState.value
-        val active = if (preference == ThemePreference.ALBUM_ART) current.colorSchemePair else null
-        if (current.activeColorSchemePair != active) {
+        val active = resolveActiveSchemeForPreference(preference)
+        if (current.activeColorSchemePair != active || _activeGlobalColorSchemePair.value != resolveGlobalSchemeForPreference(preference)) {
             _albumArtThemeState.value = current.copy(activeColorSchemePair = active)
             _activePlayerColorSchemePair.value = active
+            _activeGlobalColorSchemePair.value = resolveGlobalSchemeForPreference(preference)
         }
     }
 
@@ -125,6 +150,37 @@ class ThemeStateHolder @Inject constructor(
             playerThemePreference.collect { pref ->
                 updateActiveSchemeForPreference(pref)
             }
+        }
+
+        // ⚡ 自定义调色盘：根据用户选择的种子色 + 当前风格生成配色方案
+        scope.launch {
+            combine(
+                themePreferencesRepository.customPaletteSeedColorFlow,
+                themePreferencesRepository.albumArtPaletteStyleFlow,
+                themePreferencesRepository.albumArtColorAccuracyFlow
+            ) { seed, style, accuracy -> Triple(seed, style, accuracy) }
+                .collect { (seed, style, accuracy) ->
+                    val changed = currentCustomPaletteSeedColor != seed ||
+                            currentPaletteStyle != style ||
+                            currentPaletteAccuracy != accuracy
+                    if (!changed && currentCustomPaletteSchemePair != null) return@collect
+
+                    currentCustomPaletteSeedColor = seed
+                    currentPaletteStyle = style
+                    currentPaletteAccuracy = accuracy
+
+                    val scheme = withContext(Dispatchers.IO) {
+                        generateColorSchemeFromSeed(
+                            seedColor = Color(seed),
+                            paletteStyle = style
+                        )
+                    }
+                    currentCustomPaletteSchemePair = scheme
+
+                    // 如果当前正在使用自定义调色盘，立即刷新播放器/全局主题
+                    updateActiveSchemeForPreference(currentThemePreference)
+                    updateLavaLampColors(resolveActiveSchemeForPreference(currentThemePreference))
+                }
         }
 
         scope.launch {
