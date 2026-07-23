@@ -16,6 +16,8 @@ import android.view.animation.ScaleAnimation
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.Typeface
 import android.util.TypedValue
 import androidx.appcompat.app.AppCompatActivity
@@ -38,9 +40,15 @@ class SplashActivity : AppCompatActivity() {
         }
 
         try {
-            val backgroundColor = resolveThemeColor(android.R.attr.colorBackground)
-            val foregroundColor = resolveThemeColor(android.R.attr.colorForeground)
-            val primaryColor = resolveThemeColor(android.R.attr.colorPrimary)
+            val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                    Configuration.UI_MODE_NIGHT_YES
+            val fallbackBackground = if (isNight) Color.BLACK else Color.WHITE
+            val fallbackForeground = if (isNight) Color.WHITE else Color.BLACK
+            val fallbackPrimary = Color.parseColor("#6750A4")
+
+            val backgroundColor = resolveThemeColor(android.R.attr.colorBackground, fallbackBackground)
+            val foregroundColor = resolveThemeColor(android.R.attr.colorForeground, fallbackForeground)
+            val primaryColor = resolveThemeColor(android.R.attr.colorPrimary, fallbackPrimary)
 
             val root = FrameLayout(this).apply {
                 setBackgroundColor(backgroundColor)
@@ -181,12 +189,12 @@ class SplashActivity : AppCompatActivity() {
         handler.removeCallbacksAndMessages(null)
     }
 
-    private fun resolveThemeColor(attrResId: Int): Int {
+    private fun resolveThemeColor(attrResId: Int, fallback: Int): Int {
         val typedValue = TypedValue()
         return if (theme.resolveAttribute(attrResId, typedValue, true)) {
             typedValue.data
         } else {
-            0
+            fallback
         }
     }
 }
