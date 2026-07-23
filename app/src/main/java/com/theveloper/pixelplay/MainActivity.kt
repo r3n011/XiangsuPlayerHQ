@@ -14,6 +14,8 @@ import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.Trace
 import android.provider.Settings
 import android.util.Log
@@ -227,7 +229,7 @@ class MainActivity : ComponentActivity() {
 
     private val playerViewModel: PlayerViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
-    private var isUIVisiblyReady = false
+    @Volatile private var isUIVisiblyReady = false
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
     @Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository // Inject here
@@ -310,6 +312,14 @@ class MainActivity : ComponentActivity() {
         } catch (t: Throwable) {
             android.util.Log.e("PixelPlay", "splashScreen.setKeepOnScreenCondition failed: ${t.message}", t)
         }
+
+        // 兜底：如果 2.5 秒内仍未触发第一帧绘制，强制移除启动图，避免死锁黑屏
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!isUIVisiblyReady) {
+                android.util.Log.w("PixelPlay", "SplashScreen keep-on-screen timeout fallback triggered")
+                isUIVisiblyReady = true
+            }
+        }, 2500)
 
         // LEER SEÑAL DE BENCHMARK
         val isBenchmarkMode = intent.getBooleanExtra("is_benchmark", false)

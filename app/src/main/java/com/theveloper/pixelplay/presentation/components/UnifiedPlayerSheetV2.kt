@@ -265,11 +265,11 @@ fun UnifiedPlayerSheetV2(
         }
     }
     // 单一动画源，避免动画不同步导致卡中间
-    // 使用稳定的 spring 动画规范，避免折叠时出现回弹/抖动
+    // 展开时带轻微回弹，折叠时顺滑收起
     val sheetAnimationSpec = remember {
         spring<Float>(
             stiffness = Spring.StiffnessMedium,
-            dampingRatio = Spring.DampingRatioNoBouncy
+            dampingRatio = Spring.DampingRatioMediumBouncy
         )
     }
     val sheetExpandedTargetY = 0f
@@ -353,15 +353,9 @@ fun UnifiedPlayerSheetV2(
         }
         previousSheetState = currentSheetContentState
 
-        // ⚡ 简化:直接动画 playerContentExpansionFraction
-        // 目标值:展开=1f，折叠=0f
-        val targetFraction = if (targetExpanded && showPlayerContentArea) 1f else 0f
-        scope.launch {
-            playerContentExpansionFraction.animateTo(
-                targetValue = targetFraction,
-                animationSpec = sheetAnimationSpec
-            )
-        }
+        // 统一使用 sheetMotionController 驱动动画，避免多个动画源冲突导致跳变。
+        // SheetMotionController 会根据展开/折叠自动选择带回弹或顺滑的 spring。
+        animatePlayerSheet(targetExpanded = targetExpanded && showPlayerContentArea)
     }
 
     val sheetVisualState = rememberSheetVisualState(
