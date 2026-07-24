@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.theveloper.pixelplay.shared"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 23

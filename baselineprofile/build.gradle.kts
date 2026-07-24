@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.theveloper.pixelplay.baselineprofile"
-    compileSdk = 37
+    compileSdk = 35
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         minSdk = 30
-        targetSdk = 37
+        targetSdk = 35
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
