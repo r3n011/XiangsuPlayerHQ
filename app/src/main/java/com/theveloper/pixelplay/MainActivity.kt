@@ -663,63 +663,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     private fun SetupGateLoadingScreen() {
         val colorScheme = MaterialTheme.colorScheme
+        var textVisible by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            delay(50)
+            textVisible = true
+        }
+
+        val textAlpha by animateFloatAsState(
+            targetValue = if (textVisible) 1f else 0f,
+            animationSpec = tween(400, easing = LinearOutSlowInEasing),
+            label = "SetupLoadingTextAlpha"
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorScheme.surface),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                // 应用 Logo 容器
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "♫",
-                        style = MaterialTheme.typography.displayLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onPrimary,
-                        fontSize = 48.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 应用名称
-                Text(
-                    text = "PixelPlay",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface
-                )
-
-                // 副标题
-                Text(
-                    text = "正在为您准备音乐体验…",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 加载指示器 - 使用标准 CircularProgressIndicator 兼容低版本 Android
-                CircularProgressIndicator(modifier = Modifier.size(40.dp))
-            }
+            Text(
+                text = "PixelPlay",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                modifier = Modifier.graphicsLayer { alpha = textAlpha }
+            )
         }
     }
 
