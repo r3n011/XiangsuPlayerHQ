@@ -19,13 +19,7 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.namespace == "org.jetbrains.kotlin") {
-                useVersion("2.3.0")
-            }
-        }
-    }
+
 }
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"

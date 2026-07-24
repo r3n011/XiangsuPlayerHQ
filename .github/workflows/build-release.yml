@@ -58,7 +58,7 @@ jobs:
           echo "keyPassword=994273" >> keystore.properties
 
       - name: Build release APKs
-        run: gradle :app:assembleRelease -Ppixelplay.enableAbiSplits=true
+        run: ./gradlew :app:assembleRelease -Ppixelplay.enableAbiSplits=true
 
       - name: Resolve version and date
         id: version
