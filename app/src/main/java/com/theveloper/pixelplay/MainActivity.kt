@@ -1113,152 +1113,158 @@ class MainActivity : ComponentActivity() {
                                     userPreferencesRepository = userPreferencesRepository
                                 )
                             }
-                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                            val density = LocalDensity.current
-                val containerHeight = this.maxHeight
-                val screenHeightPx = remember(containerHeight, density) {
-                    with(density) { containerHeight.toPx() }
-                }
+                        }
 
-                val showPlayerContentInitially by remember {
-                    playerViewModel.stablePlayerState
-                        .map { it.currentSong?.id != null }
-                        .distinctUntilChanged()
-                }.collectAsStateWithLifecycle(initialValue = false)
-                val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
-                val shouldHideMiniPlayer by remember(currentRoute) {
-                    derivedStateOf { currentRoute in routesWithHiddenMiniPlayer }
-                }
-
-                val miniPlayerH = with(density) { MiniPlayerHeight.toPx() }
-                val totalSheetHeightWhenContentCollapsedPx = if (showPlayerContentInitially && !shouldHideMiniPlayer) miniPlayerH else 0f
-
-                // sheet 位置只根据稳定的布局值确定，不依赖动画值（动画在 sheet 内部处理）
-                val spacerPx = with(density) { MiniPlayerBottomSpacer.toPx() }
-                val bottomMarginPx = with(density) { miniPlayerBottomMarginDp.toPx() }
-                val sheetCollapsedTargetY = calculatePlayerSheetCollapsedTargetY(
-                    containerHeightPx = screenHeightPx,
-                    collapsedContentHeightPx = totalSheetHeightWhenContentCollapsedPx,
-                    bottomMarginPx = bottomMarginPx,
-                    bottomSpacerPx = spacerPx
-                )
-
-                // ⚡ isExpandedOrExpanding：只在 playerContentExpansionFraction 跨过 0.01 时改变状态
-                // derivedStateOf 会把其他帧的变化都吞掉，不触发重组
-                val isExpandedOrExpanding by remember {
-                    derivedStateOf { playerViewModel.playerContentExpansionFraction.value > 0.01f }
-                }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isExpandedOrExpanding,
-                    enter = fadeIn(animationSpec = tween(durationMillis = 350)),
-                    exit = fadeOut(animationSpec = tween(durationMillis = 350)),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                MaterialTheme.colorScheme.surfaceContainerLowest.copy(
-                                    alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.35f else 0.6f
-                                )
-                            )
-                            .pointerInput(Unit) {
-                                detectTapGestures {
-                                    playerViewModel.collapsePlayerSheet()
+                        val dismissUndoBarSlice by remember {
+                            playerViewModel.playerUiState
+                                .map { state ->
+                                    DismissUndoBarSlice(
+                                        isVisible = state.showDismissUndoBar,
+                                        durationMillis = state.undoBarVisibleDuration
+                                    )
                                 }
-                            }
-                    )
-                }
-
-                // ⚡ mini-player 裁剪高度:根据播放器展开状态决定
-                // - 展开态(isExpandedOrExpanding=true):containerHeight(全屏高度)
-                // - 折叠态:sheetCollapsedTargetY + miniH(mini-player 底部位置)
-                // 这确保播放器展开时能覆盖整个屏幕,避免底部导航栏区域显示为黑色
-                val collapsedClipHeight = remember(
-                    showPlayerContentInitially,
-                    shouldHideMiniPlayer,
-                    currentRoute
-                ) {
-                    val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
-                            currentRoute !in setOf(Screen.NavBarCrRad.route)
-                    if (shouldShowMiniPlayer) {
-                        with(density) {
-                            val miniH = MiniPlayerHeight.toPx()
-                            (sheetCollapsedTargetY + miniH).toDp().coerceAtLeast(0.dp)
+                                .distinctUntilChanged()
+                        }.collectAsStateWithLifecycle(initialValue = DismissUndoBarSlice())
+                        val onUndoDismissPlaylist = remember(playerViewModel) {
+                            { playerViewModel.undoDismissPlaylist() }
                         }
-                    } else {
-                        containerHeight
-                    }
-                }
-                val miniPlayerClipHeight = if (isExpandedOrExpanding) containerHeight else collapsedClipHeight
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(miniPlayerClipHeight)
-                        .clipToBounds()
-                ) {
-                    // ⚡ isNavBarHidden 使用稳定的布尔值(不读动画 State),
-                    // 避免导航切换动画期间每帧触发重组。
-                    // 圆角/边距等用稳定值足矣,动画由 sheet 内部的 SheetMotionController 处理。
-                    val isNavBarHiddenValue = if (isLandscape) shouldHideNavigationRail else shouldHideBottomNavBar
-                    UnifiedPlayerSheetV2(
-                        playerViewModel = playerViewModel,
-                        sheetCollapsedTargetY = sheetCollapsedTargetY,
-                        collapsedStateHorizontalPadding = horizontalPadding,
-                        hideMiniPlayer = shouldHideMiniPlayer,
-                        containerHeight = containerHeight,
-                        navController = navController,
-                        isNavBarHidden = isNavBarHiddenValue
-                    )
-                }
+                        val onCloseDismissUndoBar = remember(playerViewModel) {
+                            { playerViewModel.hideDismissUndoBar() }
+                        }
 
-                val dismissUndoBarSlice by remember {
-                    playerViewModel.playerUiState
-                        .map { state ->
-                            DismissUndoBarSlice(
-                                isVisible = state.showDismissUndoBar,
-                                durationMillis = state.undoBarVisibleDuration
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = dismissUndoBarSlice.isVisible,
+                            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = miniPlayerBottomMarginDp + MiniPlayerBottomSpacer)
+                                .padding(horizontal = horizontalPadding)
+                        ) {
+                            DismissUndoBar(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(MiniPlayerHeight)
+                                    .padding(horizontal = 14.dp),
+                                onUndo = onUndoDismissPlaylist,
+                                onClose = onCloseDismissUndoBar,
+                                durationMillis = dismissUndoBarSlice.durationMillis
                             )
                         }
-                        .distinctUntilChanged()
-                }.collectAsStateWithLifecycle(initialValue = DismissUndoBarSlice())
-                val onUndoDismissPlaylist = remember(playerViewModel) {
-                    { playerViewModel.undoDismissPlaylist() }
-                }
-                val onCloseDismissUndoBar = remember(playerViewModel) {
-                    { playerViewModel.hideDismissUndoBar() }
-                }
+                    }
 
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = dismissUndoBarSlice.isVisible,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(start = navRailPaddingDp)
-                        .padding(bottom = miniPlayerBottomMarginDp + MiniPlayerBottomSpacer)
-                        .padding(horizontal = horizontalPadding)
-                ) {
-                    DismissUndoBar(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(MiniPlayerHeight)
-                            .padding(horizontal = 14.dp),
-                        onUndo = onUndoDismissPlaylist,
-                        onClose = onCloseDismissUndoBar,
-                        durationMillis = dismissUndoBarSlice.durationMillis
-                    )
-                }
-
-                if (showPlayStoreAnnouncement) {
-                    PlayStoreAnnouncementDialog(
-                        announcement = playStoreAnnouncement,
-                        onDismiss = { showPlayStoreAnnouncement = false },
-                        onOpenPlayStore = { url ->
-                            showPlayStoreAnnouncement = false
-                            openExternalUrl(url)
+                    // ⚡ 播放器容器移到最外层，使其能覆盖整个屏幕（包括左侧导航栏）
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val density = LocalDensity.current
+                        val containerHeight = this.maxHeight
+                        val screenHeightPx = remember(containerHeight, density) {
+                            with(density) { containerHeight.toPx() }
                         }
-                    )
+
+                        val showPlayerContentInitially by remember {
+                            playerViewModel.stablePlayerState
+                                .map { it.currentSong?.id != null }
+                                .distinctUntilChanged()
+                        }.collectAsStateWithLifecycle(initialValue = false)
+                        val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
+                        val shouldHideMiniPlayer by remember(currentRoute) {
+                            derivedStateOf { currentRoute in routesWithHiddenMiniPlayer }
+                        }
+
+                        val miniPlayerH = with(density) { MiniPlayerHeight.toPx() }
+                        val totalSheetHeightWhenContentCollapsedPx = if (showPlayerContentInitially && !shouldHideMiniPlayer) miniPlayerH else 0f
+
+                        // sheet 位置只根据稳定的布局值确定，不依赖动画值（动画在 sheet 内部处理）
+                        val spacerPx = with(density) { MiniPlayerBottomSpacer.toPx() }
+                        val bottomMarginPx = with(density) { miniPlayerBottomMarginDp.toPx() }
+                        val sheetCollapsedTargetY = calculatePlayerSheetCollapsedTargetY(
+                            containerHeightPx = screenHeightPx,
+                            collapsedContentHeightPx = totalSheetHeightWhenContentCollapsedPx,
+                            bottomMarginPx = bottomMarginPx,
+                            bottomSpacerPx = spacerPx
+                        )
+
+                        // ⚡ isExpandedOrExpanding：只在 playerContentExpansionFraction 跨过 0.01 时改变状态
+                        // derivedStateOf 会把其他帧的变化都吞掉，不触发重组
+                        val isExpandedOrExpanding by remember {
+                            derivedStateOf { playerViewModel.playerContentExpansionFraction.value > 0.01f }
+                        }
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isExpandedOrExpanding,
+                            enter = fadeIn(animationSpec = tween(durationMillis = 350)),
+                            exit = fadeOut(animationSpec = tween(durationMillis = 350)),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceContainerLowest.copy(
+                                            // ⚡ 降低背景透明度，避免预测返回时出现黑色遮罩
+                                            alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.1f else 0.2f
+                                        )
+                                    )
+                                    .pointerInput(Unit) {
+                                        detectTapGestures {
+                                            playerViewModel.collapsePlayerSheet()
+                                        }
+                                    }
+                            )
+                        }
+
+                        // ⚡ mini-player 裁剪高度:根据播放器展开状态决定
+                        // - 展开态(isExpandedOrExpanding=true):containerHeight(全屏高度)
+                        // - 折叠态:sheetCollapsedTargetY + miniH(mini-player 底部位置)
+                        // 这确保播放器展开时能覆盖整个屏幕,避免底部导航栏区域显示为黑色
+                        val collapsedClipHeight = remember(
+                            showPlayerContentInitially,
+                            shouldHideMiniPlayer,
+                            currentRoute
+                        ) {
+                            val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
+                                    currentRoute !in setOf(Screen.NavBarCrRad.route)
+                            if (shouldShowMiniPlayer) {
+                                with(density) {
+                                    val miniH = MiniPlayerHeight.toPx()
+                                    (sheetCollapsedTargetY + miniH).toDp().coerceAtLeast(0.dp)
+                                }
+                            } else {
+                                containerHeight
+                            }
+                        }
+                        val miniPlayerClipHeight = if (isExpandedOrExpanding) containerHeight else collapsedClipHeight
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(miniPlayerClipHeight)
+                                .clipToBounds()
+                        ) {
+                            // ⚡ isNavBarHidden 使用稳定的布尔值(不读动画 State),
+                            // 避免导航切换动画期间每帧触发重组。
+                            // 圆角/边距等用稳定值足矣,动画由 sheet 内部的 SheetMotionController 处理。
+                            val isNavBarHiddenValue = if (isLandscape) shouldHideNavigationRail else shouldHideBottomNavBar
+                            UnifiedPlayerSheetV2(
+                                playerViewModel = playerViewModel,
+                                sheetCollapsedTargetY = sheetCollapsedTargetY,
+                                collapsedStateHorizontalPadding = horizontalPadding,
+                                hideMiniPlayer = shouldHideMiniPlayer,
+                                containerHeight = containerHeight,
+                                navController = navController,
+                                isNavBarHidden = isNavBarHiddenValue
+                            )
+                        }
+
+                        if (showPlayStoreAnnouncement) {
+                            PlayStoreAnnouncementDialog(
+                                announcement = playStoreAnnouncement,
+                                onDismiss = { showPlayStoreAnnouncement = false },
+                                onOpenPlayStore = { url ->
+                                    showPlayStoreAnnouncement = false
+                                    openExternalUrl(url)
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }

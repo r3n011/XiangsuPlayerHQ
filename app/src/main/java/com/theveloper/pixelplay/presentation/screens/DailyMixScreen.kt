@@ -388,12 +388,13 @@ fun DailyMixScreen(
             )
         }
 
-        // Bottom Gradient
+        // Bottom Gradient - ⚡ 添加 hazeSource 以支持 Now playing 条的模糊效果
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .height(80.dp)
+                .hazeSource(MainActivity.LocalHazeState.current)
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(

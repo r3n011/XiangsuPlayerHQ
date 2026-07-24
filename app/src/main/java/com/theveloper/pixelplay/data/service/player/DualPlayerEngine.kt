@@ -1238,9 +1238,88 @@ class DualPlayerEngine @Inject constructor(
                 }
             }
         } else {
-            // Non-proxy error: still try next track if retries exhausted
-            mediaItemRetryCount[mediaId] = retries + 1
+            // ⚡ Non-proxy error: try to re-resolve URL using JS engine with different sources
+            // This handles cases where the initial URL from JS engine is invalid or expired
             Timber.tag("DualPlayerEngine").w("Playback error for $mediaId (non-proxy). errorCode=${error.errorCode}")
+
+            // Check if this might be a cloud/LX song that could be re-resolved
+            val isCloudScheme = cloudUriSchemes.any { failingUriString.startsWith("$it://") }
+            if (isCloudScheme && lxJsEngine.isReady()) {
+                mediaItemRetryCount[mediaId] = retries + 1
+                Timber.tag("DualPlayerEngine").w("Attempting JS engine re-resolution for $mediaId (retry ${retries + 1})")
+
+                try {
+                    // Extract song info from media item to re-resolve
+                    val songInfo = extractSongInfoFromMediaItem(failingItem)
+                    if (songInfo != null) {
+                        // Try all available sources
+                        val availableSources = lxJsEngine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
+                        var newUrl: String? = null
+                        for (source in availableSources) {
+                            newUrl = lxJsEngine.getPlayUrl(source, songInfo, "320k")
+                                    ?: lxJsEngine.getPlayUrl(source, songInfo, "128k")
+                            if (newUrl != null) {
+                                Timber.tag("DualPlayerEngine").d("Recovery: got new URL from source=$source")
+                                break
+                            }
+                        }
+
+                        if (newUrl != null) {
+                            // Update the media item with the new URL
+                            val newMediaItem = failingItem.buildUpon()
+                                .setUri(newUrl)
+                                .build()
+                            val currentIndex = player.currentMediaItemIndex
+                            player.stop()
+                            player.clearMediaItems()
+                            val snapshot = ensureQueueSnapshot().toMutableList()
+                            if (currentIndex >= 0 && currentIndex < snapshot.size) {
+                                snapshot[currentIndex] = newMediaItem
+                            }
+                            player.setMediaItems(snapshot, currentIndex, 0)
+                            player.prepare()
+                            if (wasPlaying) player.playWhenReady = true
+                            Timber.tag("DualPlayerEngine").d("Recovery: re-prepared with new JS engine URL")
+                            return
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("DualPlayerEngine").w(e, "JS engine recovery failed")
+                }
+            }
+
+            mediaItemRetryCount[mediaId] = retries + 1
+            // Auto-advance to next track as final fallback
+            if (player.hasNextMediaItem()) {
+                try {
+                    player.seekToNextMediaItem()
+                    player.prepare()
+                    if (wasPlaying) player.playWhenReady = true
+                } catch (e: Exception) {
+                    Timber.tag("DualPlayerEngine").w(e, "Failed to seek to next track")
+                }
+            }
+        }
+    }
+
+    /**
+     * Extract song info map from a MediaItem for URL re-resolution
+     */
+    private fun extractSongInfoFromMediaItem(item: MediaItem): Map<String, Any?>? {
+        return try {
+            val meta = item.mediaMetadata
+            val result = mutableMapOf<String, Any?>()
+            result["id"] = item.mediaId
+            result["name"] = meta.title ?: ""
+            result["singer"] = meta.artist ?: ""
+            result["album"] = meta.albumTitle ?: ""
+            result["albumName"] = meta.albumTitle ?: ""
+            result["pic"] = meta.artworkUri?.toString() ?: ""
+            result["cover"] = meta.artworkUri?.toString() ?: ""
+            result
+        } catch (e: Exception) {
+            Timber.tag("DualPlayerEngine").w(e, "Failed to extract song info")
+            null
         }
     }
 

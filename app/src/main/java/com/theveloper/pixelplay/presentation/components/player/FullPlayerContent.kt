@@ -704,8 +704,10 @@ fun FullPlayerContent(
     }
 
     val controlsSection: @Composable () -> Unit = {
+        // ⚡ 使用 collectAsStateWithLifecycle 响应式获取下载状态，确保下载进度实时更新
+        val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
         val downloadInfo = currentSong?.let { song ->
-            playerViewModel.getDownloadInfo(song.id)
+            downloads.find { it.songId == song.id }
         }
         val isOnlineSong = currentSong?.let { playerViewModel.isOnlineSong(it) } == true
         FullPlayerControlsSection(
@@ -3293,13 +3295,22 @@ private fun BottomToggleRow(
             )
             if (isOnlineSong) {
                 Box(modifier = commonModifier) {
+                    // ⚡ 下载进行中时显示进度条背景
                     if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed) {
+                        // 进度条背景（半透明，始终可见）
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(AbsoluteSmoothCornerShape(cornerRadiusBL = rowCorners, smoothnessAsPercentTR = 60, cornerRadiusBR = rowCorners, smoothnessAsPercentBL = 60, cornerRadiusTL = rowCorners, smoothnessAsPercentBR = 60, cornerRadiusTR = rowCorners, smoothnessAsPercentTL = 60))
+                                .background(primaryFixed.copy(alpha = 0.3f))
+                        )
+                        // 进度条填充（使用 coerceAtLeast 确保即使进度为0也有最小可见度）
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(AbsoluteSmoothCornerShape(cornerRadiusBL = rowCorners, smoothnessAsPercentTR = 60, cornerRadiusBR = rowCorners, smoothnessAsPercentBL = 60, cornerRadiusTL = rowCorners, smoothnessAsPercentBR = 60, cornerRadiusTR = rowCorners, smoothnessAsPercentTL = 60))
                                 .background(primaryFixed)
-                                .fillMaxWidth(downloadProgress / 100f)
+                                .fillMaxWidth((downloadProgress.coerceAtLeast(1f) / 100f))
                                 .align(Alignment.CenterStart)
                         )
                     }

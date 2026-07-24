@@ -801,6 +801,14 @@ fun SettingsCategoryScreen(
                                         selectedColor = uiState.customPaletteSeedColor,
                                         onColorSelected = { settingsViewModel.setCustomPaletteSeedColor(it) }
                                     )
+                                    // ⚡ 调色盘独立开关：控制是否将调色盘应用到全局主题
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_custom_palette_enabled_title),
+                                        subtitle = stringResource(R.string.setcat_custom_palette_enabled_subtitle),
+                                        checked = uiState.customPaletteEnabled,
+                                        onCheckedChange = { settingsViewModel.setCustomPaletteEnabled(it) },
+                                        leadingIcon = { Icon(Icons.Rounded.Palette, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
                                 }
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_show_player_file_info_title),

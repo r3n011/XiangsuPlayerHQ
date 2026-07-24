@@ -275,35 +275,8 @@ private fun RoundedCarousel(
         val carouselItemInfo = remember { CarouselItemDrawInfoImpl() }
         val scope = remember { CarouselItemScopeImpl(itemInfo = carouselItemInfo) }
 
-        val cachedShape = remember(itemCornerRadius) {
-            RoundedCornerShape(itemCornerRadius)
-        }
-
-        val clipShape = remember(cachedShape) {
-            object : Shape {
-                override fun createOutline(
-                    size: Size,
-                    layoutDirection: LayoutDirection,
-                    density: Density
-                ): Outline {
-                    // 1) Limitar la máscara al tamaño del layer (item)
-                    val layerBounds = Rect(0f, 0f, size.width, size.height)
-                    // intersecta con bounds y da un respiro sub-px para que no se vea 「cortado」
-                    val rect = carouselItemInfo.maskRect.intersect(layerBounds).inflate(0.5f)
-
-                    // 2) Creamos un outline redondeado del tamaño del rect ya intersectado
-                    val localSize = Size(rect.width, rect.height)
-                    val baseOutline = cachedShape.createOutline(localSize, layoutDirection, density)
-
-                    // 3) Lo pasamos a Path y lo trasladamos a (left,top) del maskRect
-                    val path = Path().apply {
-                        addOutline(baseOutline)
-                        translate(Offset(rect.left, rect.top))
-                    }
-                    return Outline.Generic(path)
-                }
-            }
-        }
+        // ⚡ 使用动态圆角 clipShape，确保圆角跟随展开程度和 maskRect 变化
+        val clipShape = rememberRoundedClipShape(carouselItemInfo, itemCornerRadius)
 
 //        val clipShape = remember {
 //            object : Shape {

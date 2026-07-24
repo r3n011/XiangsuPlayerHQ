@@ -41,7 +41,7 @@ val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableCom
 @Suppress("DEPRECATION")
 android {
     namespace = "com.theveloper.pixelplay"
-    compileSdk = 37
+    compileSdk = 34
 
     sourceSets {
         getByName("androidTest") {

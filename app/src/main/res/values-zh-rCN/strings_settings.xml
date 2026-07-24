@@ -133,6 +133,8 @@
     <string name="setcat_player_theme_album_art">专辑封面</string>
     <string name="setcat_player_theme_custom_palette">自定义调色盘</string>
     <string name="setcat_player_theme_dynamic">系统动态</string>
+    <string name="setcat_custom_palette_enabled_title">启用自定义调色盘</string>
+    <string name="setcat_custom_palette_enabled_subtitle">将自定义调色盘应用到全局主题</string>
     <string
         name="setcat_show_player_file_info_title"
     >显示播放器文件信息</string>

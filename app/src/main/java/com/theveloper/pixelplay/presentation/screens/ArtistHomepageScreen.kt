@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -267,6 +269,39 @@ fun ArtistHomepageScreen(
             }
 
             else -> {
+                // ⚡ 自动加载更多：监听列表滚动，当滚动到接近底部时自动触发加载
+                LaunchedEffect(lazyListState, uiState.selectedTab) {
+                    snapshotFlow {
+                        val layoutInfo = lazyListState.layoutInfo
+                        val visibleItemsInfo = layoutInfo.visibleItemsInfo
+                        if (visibleItemsInfo.isEmpty()) return@snapshotFlow false
+                        val lastVisibleIndex = visibleItemsInfo.last().index
+                        val totalItems = when (uiState.selectedTab) {
+                            "songs" -> uiState.songs.size
+                            "albums" -> uiState.albums.size
+                            else -> 0
+                        }
+                        // 当滚动到倒数第5个item时触发加载更多
+                        lastVisibleIndex >= totalItems - 5
+                    }
+                        .distinctUntilChanged()
+                        .filter { it }
+                        .collect {
+                            when (uiState.selectedTab) {
+                                "songs" -> {
+                                    if (uiState.hasMore && !uiState.isLoadingMore) {
+                                        viewModel.loadMoreSongs(playerViewModel.neteaseCookie)
+                                    }
+                                }
+                                "albums" -> {
+                                    if (uiState.albumHasMore && !uiState.isLoadingMoreAlbums) {
+                                        viewModel.loadMoreAlbums(playerViewModel.neteaseCookie)
+                                    }
+                                }
+                            }
+                        }
+                }
+
                 LazyColumn(
                     state = lazyListState,
                     modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
@@ -447,70 +482,52 @@ fun ArtistHomepageScreen(
                     // 根据 tab 显示歌曲列表或专辑列表
                     if (uiState.selectedTab == "songs") {
                         items(uiState.songs, key = { it.id }) { song ->
-                        EnhancedSongListItem(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            song = song,
-                            isCurrentSong = stablePlayerState.currentSong?.id == song.id,
-                            isPlaying = stablePlayerState.currentSong?.id == song.id && stablePlayerState.isPlaying,
-                            onClick = {
-                                playerViewModel.showAndPlaySong(
-                                    song,
-                                    uiState.songs,
-                                    uiState.artistName.ifBlank { "歌手歌曲" },
-                                    isVoluntaryPlay = false
-                                )
-                            },
-                            onMoreOptionsClick = {
-                                playerViewModel.selectSongForInfo(song)
-                                showSongInfoSheet = true
-                            }
-                        )
-                    }
+                            EnhancedSongListItem(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                song = song,
+                                isCurrentSong = stablePlayerState.currentSong?.id == song.id,
+                                isPlaying = stablePlayerState.currentSong?.id == song.id && stablePlayerState.isPlaying,
+                                onClick = {
+                                    playerViewModel.showAndPlaySong(
+                                        song,
+                                        uiState.songs,
+                                        uiState.artistName.ifBlank { "歌手歌曲" },
+                                        isVoluntaryPlay = false
+                                    )
+                                },
+                                onMoreOptionsClick = {
+                                    playerViewModel.selectSongForInfo(song)
+                                    showSongInfoSheet = true
+                                }
+                            )
+                        }
 
-                    // 加载更多 / 已全部加载
-                    item(key = "load_more") {
-                        if (uiState.isLoadingMore) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ContainedLoadingIndicator()
-                            }
-                        } else if (uiState.hasMore && uiState.songs.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                TextButton(
-                                    onClick = {
-                                        viewModel.loadMoreSongs(playerViewModel.neteaseCookie)
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                        // 加载更多 / 已全部加载
+                        item(key = "load_more") {
+                            if (uiState.isLoadingMore) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    ContainedLoadingIndicator()
+                                }
+                            } else if (uiState.songs.isNotEmpty() && !uiState.hasMore) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "加载更多",
-                                        fontWeight = FontWeight.Medium
+                                        text = "已加载全部 ${uiState.songs.size} 首",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                        } else if (uiState.songs.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "已加载全部 ${uiState.songs.size} 首",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
-                    }
-
                     }
                     
                     if (uiState.selectedTab == "albums") {
@@ -535,24 +552,7 @@ fun ArtistHomepageScreen(
                                     ) {
                                         ContainedLoadingIndicator()
                                     }
-                                } else if (uiState.albumHasMore) {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        TextButton(
-                                            onClick = {
-                                                viewModel.loadMoreAlbums(playerViewModel.neteaseCookie)
-                                            },
-                                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                                        ) {
-                                            Text(
-                                                text = "加载更多专辑",
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                        }
-                                    }
-                                } else {
+                                } else if (!uiState.albumHasMore) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()

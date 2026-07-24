@@ -168,7 +168,8 @@ internal fun rememberSheetVisualState(
             val collapsedRadius = if (isNavBarHidden) {
                 32.dp
             } else if (navBarStyle == NavBarStyle.DEFAULT) {
-                10.dp
+                // ⚡ 统一底部圆角与顶部圆角，跟随 navBarCornerRadiusDp
+                navBarCornerRadiusDp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
             } else {
@@ -186,7 +187,8 @@ internal fun rememberSheetVisualState(
                         if (isNavBarHidden) {
                             32.dp
                         } else if (navBarStyle == NavBarStyle.DEFAULT) {
-                            10.dp
+                            // ⚡ 统一底部圆角与顶部圆角
+                            navBarCornerRadiusDp
                         } else {
                             navBarCornerRadiusDp
                         }

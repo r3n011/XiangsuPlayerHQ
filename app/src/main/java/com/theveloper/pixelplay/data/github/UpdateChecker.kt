@@ -68,6 +68,8 @@ class UpdateChecker @Inject constructor() {
 
             connection.requestMethod = "GET"
             connection.addRequestProperty("Accept", "application/vnd.github.v3+json")
+            // ⚡ GitHub API 要求必须包含 User-Agent 头
+            connection.addRequestProperty("User-Agent", "XiangsuPlayerHQ")
             connection.connectTimeout = 15000
             connection.readTimeout = 15000
 

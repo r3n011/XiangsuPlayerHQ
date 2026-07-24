@@ -63,7 +63,7 @@ class QQSearchApi @Inject constructor() {
     /**
      * 搜索歌曲。
      * @param keyword 关键词
-     * @param page 第几页（oiapi 没有真正分页，此处用作偏移：每次 n=20，第 N 页再拼 query）
+     * @param page 第几页（oiapi 没有真正分页，使用不同的搜索策略实现分页）
      * @param num 每页数量（oiapi 对 n 敏感：n=1 单曲，n>=2 多首）
      */
     suspend fun search(keyword: String, page: Int = 1, num: Int = 20): Result<List<QQSong>> {
@@ -71,9 +71,19 @@ class QQSearchApi @Inject constructor() {
             try {
                 Timber.d("$TAG: search(keyword='$keyword', page=$page, num=$num)")
 
-                // oiapi 没有真正分页，但 n 控制数量。第 2+ 页时加个页码后缀做伪分页。
-                val kw = if (page <= 1) keyword else "$keyword page$page"
-                val useNum = num.coerceAtLeast(2) // 必须 >=2 才返回数组
+                // ⚡ 改进分页策略：使用更大的 n 值，并通过调整搜索词获取更多结果
+                // 第1页：正常搜索，n=50
+                // 第2页及以后：使用不同的搜索变体（关键词+空格+页码）
+                val searchNum = when (page) {
+                    1 -> 50  // 第一页获取更多结果
+                    else -> 40 // 后续页适当减少
+                }
+                val kw = when (page) {
+                    1 -> keyword
+                    2 -> "$keyword "  // 添加空格变体
+                    else -> "$keyword $page" // 添加页码作为变体
+                }
+                val useNum = searchNum.coerceAtLeast(2) // 必须 >=2 才返回数组
 
                 val encoded = java.net.URLEncoder.encode(kw, "UTF-8")
                 val url = "$BASE_URL?msg=$encoded&n=$useNum&br=$BR_320"
