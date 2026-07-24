@@ -501,7 +501,7 @@ private fun SettingsCategoryGrid(
         ExpressiveCategoryItem(
             category = SettingsCategory.ABOUT,
             customColors = getCategoryColors(SettingsCategory.ABOUT, isDark),
-            onClick = { navController.navigateSafely("about") },
+            onClick = { navController.navigateSafely(Screen.About.route) },
             shape = shapeFor(itemIndex)
         )
     }
@@ -665,7 +665,7 @@ private fun SettingsSearchResults(
                         when {
                             item.categoryTitle == "均衡器" -> navController.navigateSafely(Screen.Equalizer.route)
                             item.categoryTitle == "设备能力" -> navController.navigateSafely(Screen.DeviceCapabilities.route)
-                            item.categoryTitle == "关于" -> navController.navigateSafely("about")
+                            item.categoryTitle == "关于" -> navController.navigateSafely(Screen.About.route)
                             else -> {
                                 val cat = SettingsCategory.entries.find {
                                     settingsCategoryTitles[it.id] == item.categoryTitle
@@ -761,7 +761,7 @@ private fun TabletSettingsScreen(
             r == Screen.Equalizer.route -> "equalizer"
             r == Screen.DeviceCapabilities.route -> "device_capabilities"
             r == Screen.Accounts.route -> "accounts"
-            r == "about" -> "about"
+            r == Screen.About.route -> "about"
             else -> SettingsCategory.LIBRARY.id
         }
     } ?: SettingsCategory.LIBRARY.id
@@ -878,7 +878,7 @@ private fun TabletSettingsScreen(
                         onBackClick = {}
                     )
                 }
-                composable("about") {
+                composable(Screen.About.route) {
                     AboutScreen(
                         navController = detailNavController,
                         viewModel = playerViewModel,
@@ -1487,7 +1487,7 @@ private fun TabletSettingsSearchAndCategories(
                                             }
                                         }
                                         item.categoryTitle == "关于" -> {
-                                            detailNavController.navigate("about") {
+                                            detailNavController.navigate(Screen.About.route) {
                                                 popUpTo(0) { inclusive = true }
                                             }
                                         }
@@ -1679,7 +1679,7 @@ private fun TabletSettingsSearchAndCategories(
                         selected = currentDetailKey == "about",
                         onClick = {
                             if (currentDetailKey == "about") return@TabletCategoryItem
-                            detailNavController.navigate("about") {
+                            detailNavController.navigate(Screen.About.route) {
                                 popUpTo(0) { inclusive = true }
                             }
                         },

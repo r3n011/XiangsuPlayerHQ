@@ -37,11 +37,13 @@ internal fun rememberSheetActionHandlers(
     playerViewModel: PlayerViewModel,
     sheetMotionController: SheetMotionController,
     queueSheetController: QueueSheetController,
-    sheetModalOverlayController: SheetModalOverlayController
+    sheetModalOverlayController: SheetModalOverlayController,
+    sheetCollapsedTargetY: Float
 ): SheetActionHandlers {
     val queueSheetControllerState = rememberUpdatedState(queueSheetController)
     val sheetModalOverlayControllerState = rememberUpdatedState(sheetModalOverlayController)
     val sheetMotionControllerState = rememberUpdatedState(sheetMotionController)
+    val sheetCollapsedTargetYState = rememberUpdatedState(sheetCollapsedTargetY)
     val playerViewModelState = rememberUpdatedState(playerViewModel)
 
     val openQueueSheet = remember {
@@ -76,7 +78,7 @@ internal fun rememberSheetActionHandlers(
     val onNavigateToAlbum = remember(scope, navController) {
         { song: Song ->
             scope.launch {
-                sheetMotionControllerState.value.snapTo(0f)
+                sheetMotionControllerState.value.snapCollapsed(sheetCollapsedTargetYState.value)
             }
             playerViewModelState.value.collapsePlayerSheet()
             queueSheetControllerState.value.animate(false)
@@ -92,7 +94,7 @@ internal fun rememberSheetActionHandlers(
     val onNavigateToArtist = remember(scope, navController) {
         { song: Song ->
             scope.launch {
-                sheetMotionControllerState.value.snapTo(0f)
+                sheetMotionControllerState.value.snapCollapsed(sheetCollapsedTargetYState.value)
             }
             playerViewModelState.value.collapsePlayerSheet()
             queueSheetControllerState.value.animate(false)
@@ -108,7 +110,7 @@ internal fun rememberSheetActionHandlers(
     val onNavigateToGenre = remember(scope, navController) {
         { song: Song ->
             scope.launch {
-                sheetMotionControllerState.value.snapTo(0f)
+                sheetMotionControllerState.value.snapCollapsed(sheetCollapsedTargetYState.value)
             }
             playerViewModelState.value.collapsePlayerSheet()
             queueSheetControllerState.value.animate(false)
@@ -125,7 +127,7 @@ internal fun rememberSheetActionHandlers(
     val onOpenNeteaseArtistHomepage = remember(scope, navController, playerViewModel) {
         { song: Song ->
             scope.launch {
-                sheetMotionControllerState.value.snapTo(0f)
+                sheetMotionControllerState.value.snapCollapsed(sheetCollapsedTargetYState.value)
             }
             playerViewModelState.value.collapsePlayerSheet()
             queueSheetControllerState.value.animate(false)

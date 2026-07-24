@@ -40,20 +40,17 @@ internal fun rememberSheetVisualState(
     currentSheetContentState: PlayerSheetState,
     playerContentExpansionFraction: Animatable<Float, AnimationVector1D>,
     containerHeight: Dp,
-    // currentSheetTranslationY 已移除:translationY 直接由 fraction 计算
+    currentSheetTranslationY: Animatable<Float, AnimationVector1D>,
     sheetCollapsedTargetY: Float,
     navBarStyle: String,
     navBarCornerRadiusDp: Dp,
     isNavBarHidden: Boolean,
     isPlaying: Boolean,
     hasCurrentSong: Boolean,
-    swipeDismissProgress: Float,
-    navRailPadding: Dp = 0.dp,
-    isLandscape: Boolean = false
+    swipeDismissProgress: Float
 ): SheetVisualState {
     // Compute in px to be read inside graphicsLayer (draw phase) — zero relayout per drag frame.
     val density = LocalDensity.current
-    val navRailPaddingPx = with(density) { navRailPadding.toPx() }
     val baseBottomPadding = remember(containerHeight, sheetCollapsedTargetY, density) {
         val targetYDp = with(density) { sheetCollapsedTargetY.toDp() }
         (containerHeight - com.theveloper.pixelplay.presentation.components.MiniPlayerHeight - targetYDp)
@@ -66,18 +63,14 @@ internal fun rememberSheetVisualState(
     val containerHeightPx = remember(containerHeight, density) { with(density) { containerHeight.toPx() } }
     val baseBottomPaddingPx = remember(baseBottomPadding, density) { with(density) { baseBottomPadding.toPx() } }
     val predictiveBackCollapseProgressState = rememberUpdatedState(predictiveBackCollapseProgress)
-    // ⚡ 简化:直接基于 playerContentExpansionFraction 计算 translationY
-    // fraction=0 → 折叠态(sheetCollapsedTargetY)，fraction=1 → 展开态(0)
     val visualSheetTranslationYProvider: () -> Float = remember(
-        playerContentExpansionFraction,
+        currentSheetTranslationY,
         sheetCollapsedTargetY
     ) {
         {
             val progress = predictiveBackCollapseProgressState.value
-            val fraction = playerContentExpansionFraction.value.coerceIn(0f, 1f)
-            val baseTranslationY = sheetCollapsedTargetY * (1f - fraction)
-            // predictive back:向折叠态偏移
-            baseTranslationY * (1f - progress) + (sheetCollapsedTargetY * progress)
+            currentSheetTranslationY.value * (1f - progress) +
+                (sheetCollapsedTargetY * progress)
         }
     }
 
@@ -169,17 +162,11 @@ internal fun rememberSheetVisualState(
         swipeDismissProgress,
         isNavBarHidden,
         navBarCornerRadiusDp,
-        currentSheetContentState,
-        isLandscape
+        currentSheetContentState
     ) {
         {
-            // In landscape (tablet) mode: bottom radius matches top radius
-            // (now playing bar is a floating card, not above a nav bar).
-            // In portrait: bottom radius matches nav bar top (10.dp for DEFAULT).
             val collapsedRadius = if (isNavBarHidden) {
                 32.dp
-            } else if (isLandscape && navBarStyle == NavBarStyle.DEFAULT) {
-                navBarCornerRadiusDp
             } else if (navBarStyle == NavBarStyle.DEFAULT) {
                 10.dp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
@@ -198,8 +185,6 @@ internal fun rememberSheetVisualState(
                     if (!isPlayingState.value || !hasCurrentSongState.value) {
                         if (isNavBarHidden) {
                             32.dp
-                        } else if (isLandscape && navBarStyle == NavBarStyle.DEFAULT) {
-                            navBarCornerRadiusDp
                         } else if (navBarStyle == NavBarStyle.DEFAULT) {
                             10.dp
                         } else {
@@ -219,11 +204,8 @@ internal fun rememberSheetVisualState(
             ) {
                 if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                     calculatedNormally
-                } else if (navBarStyle == NavBarStyle.DEFAULT && isLandscape) {
-                    // Landscape: bottom radius always matches top (navBarCornerRadiusDp)
-                    navBarCornerRadiusDp
                 } else if (navBarStyle == NavBarStyle.DEFAULT) {
-                    lerp(32.dp, navBarCornerRadiusDp, swipeDismissProgress)
+                    lerp(10.dp, navBarCornerRadiusDp, swipeDismissProgress)
                 } else {
                     val baseCollapsedRadius = if (isNavBarHidden) 32.dp else navBarCornerRadiusDp
                     lerp(baseCollapsedRadius, navBarCornerRadiusDp, swipeDismissProgress)
@@ -242,12 +224,9 @@ internal fun rememberSheetVisualState(
 
     // Draw-phase lambda providers for horizontal padding — read inside graphicsLayer to avoid
     // per-frame relayout. The lambda captures Animatable/Float refs and reads them at draw time.
-    // ⚡ 播放器容器现在是全屏的（移到了最外层 Box 中），所以折叠态需要 navRailPadding 让 mini-player
-    // 位于 NavigationRail 右侧显示。展开态不需要 navRailPadding，让播放器全屏显示。
     val currentHorizontalPaddingStartPxProvider: () -> Float = remember(
         showPlayerContentArea,
         collapsedStateHorizontalPaddingPx,
-        navRailPaddingPx,
         playerContentExpansionFraction,
         predictiveBackCollapseProgress
     ) {
@@ -255,12 +234,9 @@ internal fun rememberSheetVisualState(
             if (showPlayerContentArea) {
                 val effectiveFraction = playerContentExpansionFraction.value * (1f - predictiveBackCollapseProgress)
                 val safeFraction = effectiveFraction.coerceIn(0f, 1f)
-                // 折叠态：navRailPadding + horizontalPadding；展开态：0
-                val collapsedStartPadding = navRailPaddingPx + collapsedStateHorizontalPaddingPx
-                androidx.compose.ui.util.lerp(collapsedStartPadding, 0f, safeFraction)
+                androidx.compose.ui.util.lerp(collapsedStateHorizontalPaddingPx, 0f, safeFraction)
             } else {
-                // 无内容区域时（无播放列表等），也要考虑 navRailPadding
-                navRailPaddingPx + collapsedStateHorizontalPaddingPx
+                collapsedStateHorizontalPaddingPx
             }
         }
     }

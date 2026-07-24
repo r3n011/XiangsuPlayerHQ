@@ -892,7 +892,7 @@ fun SettingsCategoryScreen(
                                     subtitle = stringResource(R.string.setcat_navbar_corner_subtitle),
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_rounded_corner_24), null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    onClick = { navController.navigateSafely("nav_bar_corner_radius") }
+                                    onClick = { navController.navigateSafely(Screen.NavBarCrRad.route) }
                                 )
                             }
 
@@ -1279,7 +1279,7 @@ fun SettingsCategoryScreen(
                                     subtitle = stringResource(R.string.setcat_about_pixelplayer_subtitle),
                                     leadingIcon = { Icon(Icons.Outlined.Info, null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    onClick = { navController.navigateSafely("about") }
+                                    onClick = { navController.navigateSafely(Screen.About.route) }
                                 )
                             }
                         }

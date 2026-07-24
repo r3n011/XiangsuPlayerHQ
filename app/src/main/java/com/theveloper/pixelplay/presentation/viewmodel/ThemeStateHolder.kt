@@ -94,9 +94,9 @@ class ThemeStateHolder @Inject constructor(
      *   保证 UI 层看到的状态始终一致。
      */
     private fun resolveActiveSchemeForPreference(preference: String): ColorSchemePair? {
+        // 播放器取色始终来自歌曲封面；自定义调色盘只影响壁纸/全局主题
         return when (preference) {
-            ThemePreference.ALBUM_ART -> _albumArtThemeState.value.colorSchemePair
-            ThemePreference.CUSTOM_PALETTE -> currentCustomPaletteSchemePair
+            ThemePreference.ALBUM_ART, ThemePreference.CUSTOM_PALETTE -> _albumArtThemeState.value.colorSchemePair
             else -> null
         }
     }

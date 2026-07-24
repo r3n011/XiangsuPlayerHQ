@@ -3,6 +3,8 @@ package com.theveloper.pixelplay.presentation.components.scoped
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -18,8 +20,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Encapsulates vertical drag gesture state and target resolution for the player sheet.
- * Simplified: only playerContentExpansionFraction is animated. translationY is derived
- * from fraction at draw time (graphicsLayer), not tracked as a separate Animatable.
+ * Behavior is kept identical to the previous inline implementation.
  */
 internal class SheetVerticalDragGestureHandler(
     private val scope: CoroutineScope,
@@ -27,10 +28,12 @@ internal class SheetVerticalDragGestureHandler(
     private val densityProvider: () -> Density,
     private val sheetMotionController: SheetMotionController,
     private val playerContentExpansionFraction: Animatable<Float, AnimationVector1D>,
+    private val currentSheetTranslationY: Animatable<Float, AnimationVector1D>,
     private val expandedYProvider: () -> Float,
     private val collapsedYProvider: () -> Float,
     private val miniHeightPxProvider: () -> Float,
     private val currentSheetStateProvider: () -> PlayerSheetState,
+    private val visualOvershootScaleY: Animatable<Float, AnimationVector1D>,
     private val onDraggingChange: (Boolean) -> Unit,
     private val onDraggingPlayerAreaChange: (Boolean) -> Unit,
     private val onAnimateSheet: suspend (
@@ -55,8 +58,7 @@ internal class SheetVerticalDragGestureHandler(
         onDraggingPlayerAreaChange(true)
         velocityTracker.resetTracking()
         initialFractionOnDragStart = playerContentExpansionFraction.value
-        // Derive initial Y from fraction instead of reading a separate Animatable
-        initialYOnDragStart = collapsedYProvider() * (1f - initialFractionOnDragStart)
+        initialYOnDragStart = currentSheetTranslationY.value
         accumulatedDragYSinceStart = 0f
     }
 
@@ -66,10 +68,8 @@ internal class SheetVerticalDragGestureHandler(
         dragAmount: Float
     ) {
         accumulatedDragYSinceStart += dragAmount
-        // Compute current Y from fraction (single source of truth)
-        val currentTranslationY = collapsedYProvider() * (1f - playerContentExpansionFraction.value)
         val dragFrame = computeSheetVerticalDragFrame(
-            currentTranslationY = currentTranslationY,
+            currentTranslationY = currentSheetTranslationY.value,
             dragAmount = dragAmount,
             expandedY = expandedYProvider(),
             collapsedY = collapsedYProvider(),
@@ -79,8 +79,10 @@ internal class SheetVerticalDragGestureHandler(
         )
         dragSnapJob?.cancel()
         dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            // Only snap fraction — Y is derived from fraction in graphicsLayer
-            sheetMotionController.snapTo(dragFrame.expansionFraction)
+            sheetMotionController.snapTo(
+                translationYValue = dragFrame.translationY,
+                expansionFractionValue = dragFrame.expansionFraction
+            )
         }
         velocityTracker.addPosition(uptimeMillis, position)
     }
@@ -108,14 +110,31 @@ internal class SheetVerticalDragGestureHandler(
         scope.launch {
             if (targetState == PlayerSheetState.EXPANDED) {
                 launch {
-                    // Use the unified default spring and inherit the animatable's current velocity
-                    onAnimateSheet(true, null, Float.NaN)
+                    onAnimateSheet(true, null, 0f)
                 }
                 onExpandSheetState()
             } else {
+                val dynamicDamping = collapseSpringDampingForFraction(currentFraction)
                 launch {
-                    // Use the unified default spring and inherit the animatable's current velocity
-                    onAnimateSheet(false, null, Float.NaN)
+                    val initialSquash = collapseInitialSquashForFraction(currentFraction)
+                    visualOvershootScaleY.snapTo(initialSquash)
+                    visualOvershootScaleY.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessVeryLow
+                        )
+                    )
+                }
+                launch {
+                    onAnimateSheet(
+                        false,
+                        spring(
+                            dampingRatio = dynamicDamping,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        verticalVelocity
+                    )
                 }
                 onCollapseSheetState()
             }

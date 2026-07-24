@@ -55,7 +55,6 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
@@ -75,7 +74,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -781,6 +779,7 @@ class MainActivity : ComponentActivity() {
             if (canShowLoadingIndicator) {
                 LoadingOverlay(syncProgress)
             }
+
         }
         Trace.endSection() // End MainActivity.MainAppContent
     }
@@ -1114,16 +1113,8 @@ class MainActivity : ComponentActivity() {
                                     userPreferencesRepository = userPreferencesRepository
                                 )
                             }
-                        }
-                    }
-
-                    // ⚡ 播放器容器移到最外层 Box，全屏显示（与 NavigationRail 同级）
-                    // 横屏时播放器展开态覆盖整个屏幕（包括 NavigationRail 区域），折叠态由 SheetVisualState
-                    // 内部的 navRailPadding 让 mini-player 位于内容区域右侧显示
-                    BoxWithConstraints(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                val density = LocalDensity.current
+                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                            val density = LocalDensity.current
                 val containerHeight = this.maxHeight
                 val screenHeightPx = remember(containerHeight, density) {
                     with(density) { containerHeight.toPx() }
@@ -1217,9 +1208,7 @@ class MainActivity : ComponentActivity() {
                         hideMiniPlayer = shouldHideMiniPlayer,
                         containerHeight = containerHeight,
                         navController = navController,
-                        isNavBarHidden = isNavBarHiddenValue,
-                        navRailPadding = navRailPaddingDp,
-                        isLandscape = isLandscape
+                        isNavBarHidden = isNavBarHiddenValue
                     )
                 }
 
@@ -1274,78 +1263,41 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-Trace.endSection()
-    }
-    }
+}
+}
+    Trace.endSection()
+}
+}
 
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     private fun LoadingOverlay(syncProgress: SyncProgress) {
         val colorScheme = MaterialTheme.colorScheme
-        // Animate progress smoothly instead of jumping in steps
-        val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-            targetValue = syncProgress.progress,
-            animationSpec = androidx.compose.animation.core.spring(
-                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-            ),
-            label = "SyncProgressAnimation"
+        var textVisible by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            delay(50)
+            textVisible = true
+        }
+
+        val textAlpha by animateFloatAsState(
+            targetValue = if (textVisible) 1f else 0f,
+            animationSpec = tween(400, easing = LinearOutSlowInEasing),
+            label = "LoadingTextAlpha"
         )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colorScheme.surfaceContainer.copy(alpha = 0.92f))
-                .clickable(enabled = false, onClick = {}),
+                .background(colorScheme.surface),
             contentAlignment = Alignment.Center
         ) {
-            Surface(
-                modifier = Modifier
-                    .padding(horizontal = 32.dp)
-                    .fillMaxWidth(),
-                color = colorScheme.surfaceContainerHigh,
-                tonalElevation = 4.dp,
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp, vertical = 40.dp)
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text(
-                        text = "正在准备您的音乐库…",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.onSurface,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "首次启动需要扫描本地歌曲",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-
-                    if (syncProgress.hasProgress) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        androidx.compose.material3.LinearWavyProgressIndicator(
-                            progress = { animatedProgress },
-                            modifier = Modifier.fillMaxWidth(),
-                            trackColor = colorScheme.surfaceContainerHighest
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "已扫描 ${syncProgress.currentCount} / ${syncProgress.totalCount} 首歌曲",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            Text(
+                text = "PixelPlay",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                modifier = Modifier.graphicsLayer { alpha = textAlpha }
+            )
         }
     }
 

@@ -1,0 +1,115 @@
+name: Build Release APKs and Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a GitHub Release and upload APKs'
+        required: true
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Release tag (e.g. v1.1.0-20). Leave empty to use current date.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Cache keystore
+        id: cache-keystore
+        uses: actions/cache@v5
+        with:
+          path: vz-pixelplay.jks
+          key: ${{ runner.os }}-keystore-vz-pixelplay
+
+      - name: Generate keystore if not cached
+        if: steps.cache-keystore.outputs.cache-hit != 'true'
+        run: |
+          keytool -genkey -v -keystore vz-pixelplay.jks -alias pixelplay-key -keyalg RSA -keysize 4096 -validity 10000 \
+            -storepass 994273 -keypass 994273 \
+            -dname "CN=PixelPlay, OU=Dev, O=PixelPlay, L=World, S=World, C=US"
+
+      - name: Create keystore.properties
+        run: |
+          echo "storePassword=994273" > keystore.properties
+          echo "keyAlias=pixelplay-key" >> keystore.properties
+          echo "keyPassword=994273" >> keystore.properties
+
+      - name: Build release APKs
+        run: gradle :app:assembleRelease -Ppixelplay.enableAbiSplits=true
+
+      - name: Resolve version and date
+        id: version
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          VERSION_CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
+          BUILD_DATE=$(date +'%Y%m%d')
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "build_date=$BUILD_DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Rename APKs with date
+        run: |
+          mkdir -p release-apks
+          cp "app/build/outputs/apk/release/app-arm64-v8a-release.apk" \
+            "release-apks/PixelPlay-${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}-${{ steps.version.outputs.build_date }}-arm64.apk"
+          cp "app/build/outputs/apk/release/app-armeabi-v7a-release.apk" \
+            "release-apks/PixelPlay-${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}-${{ steps.version.outputs.build_date }}-arm32.apk"
+
+      - name: Verify APKs
+        run: |
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          for apk in release-apks/*.apk; do
+            "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt2" dump badging "$apk" >/dev/null
+            "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose "$apk"
+          done
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: PixelPlay-release-${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}-${{ steps.version.outputs.build_date }}
+          path: release-apks/*.apk
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' || inputs.create_release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag || format('v{0}-{1}', steps.version.outputs.version_name, steps.version.outputs.version_code) }}
+          name: PixelPlay ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}-{1}', steps.version.outputs.version_name, steps.version.outputs.version_code) }}
+          body: |
+            PixelPlay release build.
+
+            - Version: `${{ steps.version.outputs.version_name }}`
+            - Version code: `${{ steps.version.outputs.version_code }}`
+            - Build date: `${{ steps.version.outputs.build_date }}`
+
+            Choose the APK matching your device architecture:
+            - `arm64` — most modern 64-bit phones (recommended)
+            - `arm32` — older 32-bit phones
+          files: release-apks/*.apk
+          fail_on_unmatched_files: true
+          generate_release_notes: false

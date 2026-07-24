@@ -24,7 +24,6 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 internal data class SheetInteractionState(
     val playerShadowShape: Shape,
-    val playerShadowOnlyShape: Shape,
     val sheetVerticalDragGestureHandler: SheetVerticalDragGestureHandler,
     val canDragSheet: Boolean
 )
@@ -35,6 +34,8 @@ internal fun rememberSheetInteractionState(
     velocityTracker: VelocityTracker,
     sheetMotionController: SheetMotionController,
     playerContentExpansionFraction: Animatable<Float, AnimationVector1D>,
+    currentSheetTranslationY: Animatable<Float, AnimationVector1D>,
+    visualOvershootScaleY: Animatable<Float, AnimationVector1D>,
     sheetCollapsedTargetY: Float,
     sheetExpandedTargetY: Float,
     miniPlayerContentHeightPx: Float,
@@ -72,23 +73,6 @@ internal fun rememberSheetInteractionState(
         )
     }
 
-    // Shadow-only shape: bottom radius is always 0.dp to avoid shadow leaks
-    // at the bottom-left/bottom-right corners of the mini/collapsed player.
-    val playerShadowOnlyShape = remember(
-        overallSheetTopCornerRadiusProvider,
-        playerContentExpansionFraction
-    ) {
-        PlayerSheetDynamicShape(
-            topRadiusProvider = overallSheetTopCornerRadiusProvider,
-            bottomRadiusProvider = { 0.dp },
-            useSmoothShapeProvider = {
-                useSmoothCornersState.value &&
-                    !isDraggingState.value &&
-                    !playerContentExpansionFraction.isRunning
-            }
-        )
-    }
-
     val collapsedYState = rememberUpdatedState(sheetCollapsedTargetY)
     val expandedYState = rememberUpdatedState(sheetExpandedTargetY)
     val miniHeightState = rememberUpdatedState(miniPlayerContentHeightPx)
@@ -104,7 +88,9 @@ internal fun rememberSheetInteractionState(
         scope,
         velocityTracker,
         sheetMotionController,
-        playerContentExpansionFraction
+        playerContentExpansionFraction,
+        currentSheetTranslationY,
+        visualOvershootScaleY
     ) {
         SheetVerticalDragGestureHandler(
             scope = scope,
@@ -112,10 +98,12 @@ internal fun rememberSheetInteractionState(
             densityProvider = { densityState.value },
             sheetMotionController = sheetMotionController,
             playerContentExpansionFraction = playerContentExpansionFraction,
+            currentSheetTranslationY = currentSheetTranslationY,
             expandedYProvider = { expandedYState.value },
             collapsedYProvider = { collapsedYState.value },
             miniHeightPxProvider = { miniHeightState.value },
             currentSheetStateProvider = { currentSheetState.value },
+            visualOvershootScaleY = visualOvershootScaleY,
             onDraggingChange = { onDraggingChangeState.value(it) },
             onDraggingPlayerAreaChange = { onDraggingPlayerAreaChangeState.value(it) },
             onAnimateSheet = { targetExpanded, animationSpec, initialVelocity ->
@@ -128,7 +116,6 @@ internal fun rememberSheetInteractionState(
 
     return SheetInteractionState(
         playerShadowShape = playerShadowShape,
-        playerShadowOnlyShape = playerShadowOnlyShape,
         sheetVerticalDragGestureHandler = sheetVerticalDragGestureHandler,
         canDragSheet = showPlayerContentArea
     )

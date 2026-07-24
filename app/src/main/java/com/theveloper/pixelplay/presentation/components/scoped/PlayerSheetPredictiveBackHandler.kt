@@ -24,7 +24,7 @@ internal fun PlayerSheetPredictiveBackHandler(
     playerViewModel: PlayerViewModel,
     sheetCollapsedTargetY: Float,
     sheetExpandedTargetY: Float,
-    sheetMotionController: SheetMotionController?,
+    sheetMotionController: SheetMotionController,
     animationDurationMs: Int,
     onSwipeEdgeChanged: (Int?) -> Unit,
     registrationKey: Any?
@@ -40,9 +40,12 @@ internal fun PlayerSheetPredictiveBackHandler(
                     }
                     scope.launch {
                         val progressAtRelease = playerViewModel.predictiveBackCollapseFraction.value
-                        // ⚡ 简化:直接 snap fraction，无需同时维护 translationY
+                        val currentVisualY = lerp(sheetExpandedTargetY, sheetCollapsedTargetY, progressAtRelease)
                         val currentVisualExpansionFraction = (1f - progressAtRelease).coerceIn(0f, 1f)
-                        sheetMotionController?.snapTo(currentVisualExpansionFraction)
+                        sheetMotionController.snapTo(
+                            translationYValue = currentVisualY,
+                            expansionFractionValue = currentVisualExpansionFraction
+                        )
                         playerViewModel.updatePredictiveBackCollapseFraction(1f)
                         playerViewModel.collapsePlayerSheet()
                         playerViewModel.updatePredictiveBackCollapseFraction(0f)
