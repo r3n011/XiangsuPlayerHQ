@@ -32,7 +32,6 @@ import com.theveloper.pixelplay.data.database.TransitionDao
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.dataStore
-import com.theveloper.pixelplay.data.github.GitHubAnnouncementPropertiesService
 import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.media.SongMetadataEditor
 import com.theveloper.pixelplay.data.network.deezer.DeezerApiService

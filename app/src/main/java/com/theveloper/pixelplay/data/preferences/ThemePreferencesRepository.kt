@@ -20,15 +20,11 @@ class ThemePreferencesRepository @Inject constructor(
         val ALBUM_ART_COLOR_ACCURACY = intPreferencesKey("album_art_color_accuracy_v1")
         val CUSTOM_PALETTE_SEED_COLOR = intPreferencesKey("custom_palette_seed_color_v1")
         val APP_THEME_MODE = stringPreferencesKey("app_theme_mode")
-        // ⚡ 自定义调色盘启用开关：关闭时调色盘不影响全局主题
-        val CUSTOM_PALETTE_ENABLED = stringPreferencesKey("custom_palette_enabled_v1")
     }
 
     companion object {
         // 默认种子色：蓝色（避免 Android 10 等无系统取色时默认紫色）
         const val DEFAULT_CUSTOM_PALETTE_SEED = 0xFF2196F3.toInt()
-        // 默认启用自定义调色盘
-        const val DEFAULT_CUSTOM_PALETTE_ENABLED = true
     }
 
     val appThemeModeFlow: Flow<String> = dataStore.data.map { preferences ->
@@ -49,11 +45,6 @@ class ThemePreferencesRepository @Inject constructor(
 
     val customPaletteSeedColorFlow: Flow<Int> = dataStore.data.map { preferences ->
         preferences[Keys.CUSTOM_PALETTE_SEED_COLOR] ?: DEFAULT_CUSTOM_PALETTE_SEED
-    }
-
-    // ⚡ 自定义调色盘启用状态 Flow
-    val customPaletteEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[Keys.CUSTOM_PALETTE_ENABLED]?.toBooleanStrictOrNull() ?: DEFAULT_CUSTOM_PALETTE_ENABLED
     }
 
     suspend fun setPlayerThemePreference(themeMode: String) =
@@ -94,11 +85,5 @@ class ThemePreferencesRepository @Inject constructor(
     suspend fun setCustomPaletteSeedColor(seedColor: Int) =
         dataStore.edit { preferences ->
             preferences[Keys.CUSTOM_PALETTE_SEED_COLOR] = seedColor
-        }
-
-    // ⚡ 设置自定义调色盘启用状态
-    suspend fun setCustomPaletteEnabled(enabled: Boolean) =
-        dataStore.edit { preferences ->
-            preferences[Keys.CUSTOM_PALETTE_ENABLED] = enabled.toString()
         }
 }

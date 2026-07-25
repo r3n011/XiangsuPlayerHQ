@@ -7,11 +7,4 @@
     <files-path
         name="files"
         path="." />
-    <!-- Allows sharing downloaded update APKs from public Downloads -->
-    <external-path
-        name="downloads"
-        path="Download/" />
-    <external-files-path
-        name="external_files"
-        path="." />
 </paths>

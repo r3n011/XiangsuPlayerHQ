@@ -119,9 +119,10 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                             .coerceIn(0f, 1f)
                     }
                     .layout { measurable, constraints ->
-                        // 量化 fraction 到 5% 步进，减少布局重算频率
+                        // 在展开初期（小于5%）保持折叠态的 padding，避免位移跳变
                         val rawFraction = playerContentExpansionFraction.value
-                        val fraction = (rawFraction * 20f).toInt() / 20f
+                        val adjustedFraction = if (rawFraction < 0.05f) 0f else rawFraction
+                        val fraction = (adjustedFraction * 20f).toInt() / 20f
                         val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)
                         val endPaddingPx = currentHorizontalPaddingEndPxProvider().toInt().coerceAtLeast(0)
                         

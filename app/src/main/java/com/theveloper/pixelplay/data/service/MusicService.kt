@@ -1774,6 +1774,10 @@ class MusicService : MediaLibraryService() {
         }
         if (alreadyHasQueue) return
 
+        // ⚡ 清除已解析的 URI 缓存，确保恢复播放时会重新获取新的播放链接
+        //   特别是对于网易云音乐、QQ音乐等云音乐服务，播放链接可能已过期
+        engine.clearResolvedUriCache()
+
         val snapshot = runCatching {
             userPreferencesRepository.getPlaybackQueueSnapshotOnce()
         }.getOrNull() ?: return

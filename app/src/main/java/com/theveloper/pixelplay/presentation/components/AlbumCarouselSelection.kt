@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.*
+import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -182,6 +183,7 @@ fun AlbumCarouselSection(
             }
     }
 
+    // 圆角跟随展开大小变化：折叠时较大，展开时较小
     val corner = lerp(36.dp, 15.dp, expansionFraction.coerceIn(0f, 1f))
 
     BoxWithConstraints(modifier = modifier) {

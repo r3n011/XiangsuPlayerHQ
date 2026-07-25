@@ -41,7 +41,7 @@ val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableCom
 @Suppress("DEPRECATION")
 android {
     namespace = "com.theveloper.pixelplay"
-    compileSdk = 35
+    compileSdk = 37
 
     sourceSets {
         getByName("androidTest") {
@@ -89,8 +89,8 @@ android {
         applicationId = "com.r3n011.pixelplay"
         minSdk = 23
         targetSdk = 29
-        versionCode = 20
-        versionName = "1.1.0"
+        versionCode = 24
+        versionName = "1.1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -365,8 +365,27 @@ dependencies {
         implementation(libs.jdom2)
         implementation(libs.jose4j)
         implementation(libs.apache.httpclient)
+
+        implementation("androidx.compose.foundation:foundation:1.12.0-alpha03")
+        implementation("androidx.compose.ui:ui:1.12.0-alpha03")
+        implementation("androidx.compose.ui:ui-graphics:1.12.0-alpha03")
+        implementation("androidx.compose.ui:ui-tooling:1.12.0-alpha03")
+        implementation("androidx.compose.ui:ui-tooling-preview:1.12.0-alpha03")
+        implementation("androidx.compose.ui:ui-text-google-fonts:1.12.0-alpha03")
+        implementation("androidx.compose.animation:animation:1.12.0-alpha03")
     }
 }
+
+configurations.all {
+    resolutionStrategy.force(
+        "androidx.compose.foundation:foundation:1.12.0-alpha03",
+        "androidx.compose.foundation:foundation-layout:1.12.0-alpha03",
+        "androidx.compose.foundation:foundation-android:1.12.0-alpha03",
+        "androidx.compose.foundation:foundation-layout-android:1.12.0-alpha03"
+    )
+}
+
+
 
 tasks.withType<Test> {
     useJUnitPlatform()

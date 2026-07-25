@@ -525,7 +525,6 @@ fun CommentSheet(
                                 CommentRow(
                                     comment = comment,
                                     avatarOverride = userAvatarCache.value[comment.user.userId],
-                                    colorScheme = colorScheme,
                                     primaryColor = colorScheme.primary,
                                     onSurface = colorScheme.onSurface,
                                     onSurfaceVariant = colorScheme.onSurfaceVariant,
@@ -615,7 +614,6 @@ fun CommentSheet(
                                 CommentRow(
                                     comment = comment,
                                     avatarOverride = userAvatarCache.value[comment.user.userId],
-                                    colorScheme = colorScheme,
                                     primaryColor = colorScheme.primary,
                                     onSurface = colorScheme.onSurface,
                                     onSurfaceVariant = colorScheme.onSurfaceVariant,
@@ -759,7 +757,6 @@ private fun SectionHeader(
 private fun CommentRow(
     comment: NeteaseComment,
     avatarOverride: String?,
-    colorScheme: androidx.compose.material3.ColorScheme,
     primaryColor: Color,
     onSurface: Color,
     onSurfaceVariant: Color,
@@ -772,7 +769,7 @@ private fun CommentRow(
     showDivider: Boolean = true
 ) {
     androidx.compose.material3.Surface(
-        color = colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -799,7 +796,7 @@ private fun CommentRow(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(colorScheme.surfaceColorAtElevation(2.dp))
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
                 )
             } else {
                 Box(
@@ -879,7 +876,7 @@ private fun CommentRow(
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (liked) colorScheme.errorContainer else Color.Transparent)
+                                .background(if (liked) MaterialTheme.colorScheme.errorContainer else Color.Transparent)
                                 .clickable(
                                     onClick = { onLikeToggle(!liked) },
                                     interactionSource = likeInteractionSource,
@@ -891,14 +888,14 @@ private fun CommentRow(
                             Text(
                                 text = if (liked) "♥" else "♡",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = if (liked) colorScheme.error else onSurfaceVariant,
+                                color = if (liked) MaterialTheme.colorScheme.error else onSurfaceVariant,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = formatCompactCount(likedCount.coerceAtLeast(0)),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (liked) colorScheme.error else onSurfaceVariant,
+                                color = if (liked) MaterialTheme.colorScheme.error else onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
                             )
                         }

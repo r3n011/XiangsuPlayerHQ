@@ -3,8 +3,6 @@ package com.theveloper.pixelplay.presentation.screens
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.provider.Settings
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -67,14 +65,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -112,9 +108,9 @@ import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.GitHubContributorService
 import com.theveloper.pixelplay.data.github.UpdateChecker
-import com.theveloper.pixelplay.data.github.UpdateDownloader
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
@@ -220,26 +216,28 @@ fun AboutScreen(
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var availableUpdate by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var selectedAsset by remember { mutableStateOf<UpdateChecker.AssetInfo?>(null) }
     val updateChecker = remember { UpdateChecker() }
-    val updateDownloader = remember { UpdateDownloader(context) }
-    val downloadState by updateDownloader.downloadState.collectAsStateWithLifecycle()
-
-    DisposableEffect(updateDownloader) {
-        onDispose {
-            updateDownloader.cleanup()
-        }
-    }
 
     var latestReleaseInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var isLoadingChangelog by remember { mutableStateOf(true) }
     var changelogError by remember { mutableStateOf<String?>(null) }
+
+    // APK 下载状态
+    var apkDownloadState by remember { mutableStateOf<ApkDownloadInstaller.DownloadState?>(null) }
+    val apkInstaller = remember { ApkDownloadInstaller() }
 
     val installedTime = remember {
         runCatching {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             packageInfo.firstInstallTime
         }.getOrDefault(0L)
+    }
+    // 使用 lastUpdateTime 更准确反映"当前安装版本的日期"
+    val lastUpdateTime = remember {
+        runCatching {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.lastUpdateTime
+        }.getOrDefault(installedTime)
     }
 
     LaunchedEffect(Unit) {
@@ -332,9 +330,8 @@ fun AboutScreen(
             try {
                 val result = updateChecker.checkForUpdates()
                 result.onSuccess { info ->
-                    if (updateChecker.isUpdateAvailable(info)) {
+                    if (info.hasUpdate(lastUpdateTime)) {
                         availableUpdate = info
-                        selectedAsset = info.recommendedAsset ?: info.assets.firstOrNull()
                         showUpdateDialog = true
                     } else {
                         android.widget.Toast.makeText(context, R.string.update_no_update, android.widget.Toast.LENGTH_SHORT).show()
@@ -345,6 +342,14 @@ fun AboutScreen(
                 }
             } finally {
                 isCheckingUpdate = false
+            }
+        }
+    }
+
+    fun startApkDownload(url: String) {
+        coroutineScope.launch {
+            apkInstaller.downloadApk(context, url).collect { state ->
+                apkDownloadState = state
             }
         }
     }
@@ -648,37 +653,16 @@ fun AboutScreen(
         if (showUpdateDialog && availableUpdate != null) {
             UpdateAvailableDialog(
                 updateInfo = availableUpdate!!,
-                selectedAsset = selectedAsset,
-                downloadState = downloadState,
+                downloadState = apkDownloadState,
                 onDismiss = { dontShowAgain ->
                     showUpdateDialog = false
+                    apkDownloadState = null
                     if (dontShowAgain && availableUpdate != null) {
                         android.widget.Toast.makeText(context, R.string.update_dont_show_again, android.widget.Toast.LENGTH_SHORT).show()
                     }
                 },
-                onSelectAsset = { asset ->
-                    selectedAsset = asset
-                },
-                onDownload = {
-                    selectedAsset?.let { asset ->
-                        updateDownloader.enqueueDownload(asset.name, asset.downloadUrl)
-                    }
-                },
-                onInstall = { localUri ->
-                    updateDownloader.installDownloadedApk(localUri)
-                },
-                onOpenInstallSettings = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                            android.net.Uri.parse("package:${context.packageName}")
-                        )
-                        try {
-                            context.startActivity(intent)
-                        } catch (_: ActivityNotFoundException) {
-                            android.widget.Toast.makeText(context, R.string.update_open_settings_failed, android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                onDownload = { url ->
+                    startApkDownload(url)
                 }
             )
         }

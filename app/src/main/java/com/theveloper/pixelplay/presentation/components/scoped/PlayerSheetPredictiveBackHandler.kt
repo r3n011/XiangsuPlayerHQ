@@ -24,7 +24,7 @@ internal fun PlayerSheetPredictiveBackHandler(
     playerViewModel: PlayerViewModel,
     sheetCollapsedTargetY: Float,
     sheetExpandedTargetY: Float,
-    sheetMotionController: SheetMotionController,
+    sheetMotionController: SheetMotionController?,
     animationDurationMs: Int,
     onSwipeEdgeChanged: (Int?) -> Unit,
     registrationKey: Any?
@@ -42,7 +42,7 @@ internal fun PlayerSheetPredictiveBackHandler(
                         val progressAtRelease = playerViewModel.predictiveBackCollapseFraction.value
                         val currentVisualY = lerp(sheetExpandedTargetY, sheetCollapsedTargetY, progressAtRelease)
                         val currentVisualExpansionFraction = (1f - progressAtRelease).coerceIn(0f, 1f)
-                        sheetMotionController.snapTo(
+                        sheetMotionController?.snapTo(
                             translationYValue = currentVisualY,
                             expansionFractionValue = currentVisualExpansionFraction
                         )

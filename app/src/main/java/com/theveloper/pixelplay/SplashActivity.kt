@@ -7,12 +7,8 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AlphaAnimation
-import android.view.animation.Animation
-import android.view.animation.ScaleAnimation
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -25,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 class SplashActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private val splashDuration: Long = 1400
+    private val splashDuration: Long = 1200
 
     override fun onCreate(savedInstanceState: Bundle?) {
         android.util.Log.i("PixelPlay", "========================================")
@@ -44,11 +40,9 @@ class SplashActivity : AppCompatActivity() {
                     Configuration.UI_MODE_NIGHT_YES
             val fallbackBackground = if (isNight) Color.BLACK else Color.WHITE
             val fallbackForeground = if (isNight) Color.WHITE else Color.BLACK
-            val fallbackPrimary = Color.parseColor("#6750A4")
 
             val backgroundColor = resolveThemeColor(android.R.attr.colorBackground, fallbackBackground)
             val foregroundColor = resolveThemeColor(android.R.attr.colorForeground, fallbackForeground)
-            val primaryColor = resolveThemeColor(android.R.attr.colorPrimary, fallbackPrimary)
 
             val root = FrameLayout(this).apply {
                 setBackgroundColor(backgroundColor)
@@ -58,7 +52,6 @@ class SplashActivity : AppCompatActivity() {
                 )
             }
 
-            // 垂直居中的内容容器
             val content = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -69,68 +62,30 @@ class SplashActivity : AppCompatActivity() {
                 )
             }
 
-            // 标题 —— PixelPlay
             val title = TextView(this).apply {
                 text = "PixelPlayer"
                 setTextColor(foregroundColor)
-                textSize = 30f
-                typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-                setPadding(0, 0, 0, 40)
+                textSize = 32f
+                typeface = Typeface.SANS_SERIF
                 alpha = 0f
             }
 
-            // 加载线容器（固定宽度，让线条在此范围内从中心扩展）
-            val barContainer = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(
-                    400,
-                    6
-                )
-            }
-
-            // 加载线本身
-            val loadingBar = View(this).apply {
-                setBackgroundColor(primaryColor)
-                layoutParams = LinearLayout.LayoutParams(0, 6)
-            }
-
-            barContainer.addView(loadingBar)
             content.addView(title)
-            content.addView(barContainer)
             root.addView(content)
             setContentView(root)
 
-            // === 动画 1: 标题淡入 ===
+            // 文字淡入动画
             val titleFade = AlphaAnimation(0f, 1f).apply {
-                duration = 500
+                duration = 600
                 fillAfter = true
             }
             title.startAnimation(titleFade)
 
-            // === 动画 2: 加载线从中心向两端扩展（从宽度 0 扩展到容器宽度） ===
-            handler.postDelayed({
-                val barWidth = 400
-                val expandAnim = ScaleAnimation(
-                    0f, 1f, 1f, 1f,
-                    Animation.RELATIVE_TO_SELF, 0.5f,
-                    Animation.RELATIVE_TO_SELF, 0.5f
-                ).apply {
-                    duration = 700
-                    interpolator = AccelerateDecelerateInterpolator()
-                    fillAfter = true
-                }
-                loadingBar.layoutParams = loadingBar.layoutParams.apply {
-                    width = barWidth
-                }
-                loadingBar.startAnimation(expandAnim)
-            }, 200)
-
-            // 延迟后跳转
             handler.postDelayed({
                 navigateToMain()
+                // 使用淡入淡出过渡，避免跳变
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                 finish()
-                overridePendingTransition(0, 0)
             }, splashDuration)
 
         } catch (t: Throwable) {
@@ -178,7 +133,6 @@ class SplashActivity : AppCompatActivity() {
             }
 
             startActivity(mainIntent)
-            overridePendingTransition(0, 0)
         } catch (t: Throwable) {
             android.util.Log.e("PixelPlay", "navigateToMain ERROR: ${t.message}", t)
         }

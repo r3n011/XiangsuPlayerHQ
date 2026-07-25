@@ -55,6 +55,7 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
@@ -74,6 +75,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -127,7 +129,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.core.net.toUri
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -229,7 +230,6 @@ class MainActivity : ComponentActivity() {
 
     private val playerViewModel: PlayerViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
-    @Volatile private var isUIVisiblyReady = false
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
     @Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository // Inject here
@@ -291,34 +291,13 @@ class MainActivity : ComponentActivity() {
             android.util.Log.e("PixelPlay", "isNavigationBarContrastEnforced failed: ${t.message}", t)
         }
 
-        var splashScreen: androidx.core.splashscreen.SplashScreen? = null
         try {
             super.onCreate(savedInstanceState)
             android.util.Log.i("PixelPlay", "super.onCreate() completed")
-
-            // 必须在 super.onCreate 之后调用，否则低版本 Android 可能因主题未就绪而崩溃
-            splashScreen = installSplashScreen()
-            android.util.Log.i("PixelPlay", "installSplashScreen() completed")
         } catch (t: Throwable) {
-            android.util.Log.e("PixelPlay", "FATAL: super.onCreate()/installSplashScreen failed: ${t.message}", t)
+            android.util.Log.e("PixelPlay", "FATAL: super.onCreate() failed: ${t.message}", t)
             throw t // Cannot recover from this
         }
-
-        // 保持启动图直到第一帧绘制完成，避免低版本 Android（如 Android 10）
-        // 在启动图和 Compose UI 之间出现黑屏。
-        try {
-            splashScreen?.setKeepOnScreenCondition { !isUIVisiblyReady }
-        } catch (t: Throwable) {
-            android.util.Log.e("PixelPlay", "splashScreen.setKeepOnScreenCondition failed: ${t.message}", t)
-        }
-
-        // 兜底：如果 2.5 秒内仍未触发第一帧绘制，强制移除启动图，避免死锁黑屏
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (!isUIVisiblyReady) {
-                android.util.Log.w("PixelPlay", "SplashScreen keep-on-screen timeout fallback triggered")
-                isUIVisiblyReady = true
-            }
-        }, 2500)
 
         // LEER SEÑAL DE BENCHMARK
         val isBenchmarkMode = intent.getBooleanExtra("is_benchmark", false)
@@ -461,23 +440,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
-
-        // 第一帧绘制后通知 SplashScreen 可以移除启动图
-        try {
-            val decor = window.decorView
-            decor.viewTreeObserver.addOnPreDrawListener(
-                object : android.view.ViewTreeObserver.OnPreDrawListener {
-                    override fun onPreDraw(): Boolean {
-                        isUIVisiblyReady = true
-                        decor.viewTreeObserver.removeOnPreDrawListener(this)
-                        return true
-                    }
-                }
-            )
-        } catch (t: Throwable) {
-            android.util.Log.e("PixelPlay", "register OnPreDrawListener failed: ${t.message}", t)
-            isUIVisiblyReady = true
         }
 
         handleIntent(intent)
@@ -661,35 +623,63 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     private fun SetupGateLoadingScreen() {
         val colorScheme = MaterialTheme.colorScheme
-        var textVisible by remember { mutableStateOf(false) }
-
-        LaunchedEffect(Unit) {
-            delay(50)
-            textVisible = true
-        }
-
-        val textAlpha by animateFloatAsState(
-            targetValue = if (textVisible) 1f else 0f,
-            animationSpec = tween(400, easing = LinearOutSlowInEasing),
-            label = "SetupLoadingTextAlpha"
-        )
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorScheme.surface),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "PixelPlay",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onSurface,
-                modifier = Modifier.graphicsLayer { alpha = textAlpha }
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // 应用 Logo 容器
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "♫",
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onPrimary,
+                        fontSize = 48.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 应用名称
+                Text(
+                    text = "PixelPlay",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+
+                // 副标题
+                Text(
+                    text = "正在为您准备音乐体验…",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 加载指示器 - 使用标准 CircularProgressIndicator 兼容低版本 Android
+                CircularProgressIndicator(modifier = Modifier.size(40.dp))
+            }
         }
     }
 
@@ -779,7 +769,6 @@ class MainActivity : ComponentActivity() {
             if (canShowLoadingIndicator) {
                 LoadingOverlay(syncProgress)
             }
-
         }
         Trace.endSection() // End MainActivity.MainAppContent
     }
@@ -1099,211 +1088,247 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                             ) {
-                                TabContentHost(
-                                    currentRoute = currentRoute,
-                                    paddingValues = innerPadding,
-                                    playerViewModel = playerViewModel,
-                                    navController = navController,
-                                    onSearchBarActiveChange = { isSearchBarActive = it },
-                                    onOpenSidebar = { scope.launch { drawerState.open() } }
-                                )
                                 AppNavigation(
                                     playerViewModel = playerViewModel,
                                     navController = navController,
-                                    userPreferencesRepository = userPreferencesRepository
+                                    userPreferencesRepository = userPreferencesRepository,
+                                    paddingValues = innerPadding,
+                                    onSearchBarActiveChange = { isSearchBarActive = it },
+                                    onOpenSidebar = { scope.launch { drawerState.open() } }
                                 )
                             }
                         }
-
-                        val dismissUndoBarSlice by remember {
-                            playerViewModel.playerUiState
-                                .map { state ->
-                                    DismissUndoBarSlice(
-                                        isVisible = state.showDismissUndoBar,
-                                        durationMillis = state.undoBarVisibleDuration
-                                    )
-                                }
-                                .distinctUntilChanged()
-                        }.collectAsStateWithLifecycle(initialValue = DismissUndoBarSlice())
-                        val onUndoDismissPlaylist = remember(playerViewModel) {
-                            { playerViewModel.undoDismissPlaylist() }
-                        }
-                        val onCloseDismissUndoBar = remember(playerViewModel) {
-                            { playerViewModel.hideDismissUndoBar() }
-                        }
-
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = dismissUndoBarSlice.isVisible,
-                            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = miniPlayerBottomMarginDp + MiniPlayerBottomSpacer)
-                                .padding(horizontal = horizontalPadding)
-                        ) {
-                            DismissUndoBar(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(MiniPlayerHeight)
-                                    .padding(horizontal = 14.dp),
-                                onUndo = onUndoDismissPlaylist,
-                                onClose = onCloseDismissUndoBar,
-                                durationMillis = dismissUndoBarSlice.durationMillis
-                            )
-                        }
                     }
 
-                    // ⚡ 播放器容器移到最外层，使其能覆盖整个屏幕（包括左侧导航栏）
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val density = LocalDensity.current
-                        val containerHeight = this.maxHeight
-                        val screenHeightPx = remember(containerHeight, density) {
-                            with(density) { containerHeight.toPx() }
-                        }
+                    // ⚡ 播放器容器移到最外层 Box，全屏显示（与 NavigationRail 同级）
+                    // 横屏时播放器展开态覆盖整个屏幕（包括 NavigationRail 区域），折叠态由 SheetVisualState
+                    // 内部的 navRailPadding 让 mini-player 位于内容区域右侧显示
+                    BoxWithConstraints(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                val density = LocalDensity.current
+                val containerHeight = this.maxHeight
+                val screenHeightPx = remember(containerHeight, density) {
+                    with(density) { containerHeight.toPx() }
+                }
 
-                        val showPlayerContentInitially by remember {
-                            playerViewModel.stablePlayerState
-                                .map { it.currentSong?.id != null }
-                                .distinctUntilChanged()
-                        }.collectAsStateWithLifecycle(initialValue = false)
-                        val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
-                        val shouldHideMiniPlayer by remember(currentRoute) {
-                            derivedStateOf { currentRoute in routesWithHiddenMiniPlayer }
-                        }
+                val showPlayerContentInitially by remember {
+                    playerViewModel.stablePlayerState
+                        .map { it.currentSong?.id != null }
+                        .distinctUntilChanged()
+                }.collectAsStateWithLifecycle(initialValue = false)
+                val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
+                val shouldHideMiniPlayer by remember(currentRoute) {
+                    derivedStateOf { currentRoute in routesWithHiddenMiniPlayer }
+                }
 
-                        val miniPlayerH = with(density) { MiniPlayerHeight.toPx() }
-                        val totalSheetHeightWhenContentCollapsedPx = if (showPlayerContentInitially && !shouldHideMiniPlayer) miniPlayerH else 0f
+                val miniPlayerH = with(density) { MiniPlayerHeight.toPx() }
+                val totalSheetHeightWhenContentCollapsedPx = if (showPlayerContentInitially && !shouldHideMiniPlayer) miniPlayerH else 0f
 
-                        // sheet 位置只根据稳定的布局值确定，不依赖动画值（动画在 sheet 内部处理）
-                        val spacerPx = with(density) { MiniPlayerBottomSpacer.toPx() }
-                        val bottomMarginPx = with(density) { miniPlayerBottomMarginDp.toPx() }
-                        val sheetCollapsedTargetY = calculatePlayerSheetCollapsedTargetY(
-                            containerHeightPx = screenHeightPx,
-                            collapsedContentHeightPx = totalSheetHeightWhenContentCollapsedPx,
-                            bottomMarginPx = bottomMarginPx,
-                            bottomSpacerPx = spacerPx
-                        )
+                // sheet 位置只根据稳定的布局值确定，不依赖动画值（动画在 sheet 内部处理）
+                val spacerPx = with(density) { MiniPlayerBottomSpacer.toPx() }
+                val bottomMarginPx = with(density) { miniPlayerBottomMarginDp.toPx() }
+                val sheetCollapsedTargetY = calculatePlayerSheetCollapsedTargetY(
+                    containerHeightPx = screenHeightPx,
+                    collapsedContentHeightPx = totalSheetHeightWhenContentCollapsedPx,
+                    bottomMarginPx = bottomMarginPx,
+                    bottomSpacerPx = spacerPx
+                )
 
-                        // ⚡ isExpandedOrExpanding：只在 playerContentExpansionFraction 跨过 0.01 时改变状态
-                        // derivedStateOf 会把其他帧的变化都吞掉，不触发重组
-                        val isExpandedOrExpanding by remember {
-                            derivedStateOf { playerViewModel.playerContentExpansionFraction.value > 0.01f }
-                        }
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = isExpandedOrExpanding,
-                            enter = fadeIn(animationSpec = tween(durationMillis = 350)),
-                            exit = fadeOut(animationSpec = tween(durationMillis = 350)),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        MaterialTheme.colorScheme.surfaceContainerLowest.copy(
-                                            // ⚡ 降低背景透明度，避免预测返回时出现黑色遮罩
-                                            alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.1f else 0.2f
-                                        )
-                                    )
-                                    .pointerInput(Unit) {
-                                        detectTapGestures {
-                                            playerViewModel.collapsePlayerSheet()
-                                        }
-                                    }
+                // ⚡ isExpandedOrExpanding：只在 playerContentExpansionFraction 跨过 0.01 时改变状态
+                // derivedStateOf 会把其他帧的变化都吞掉，不触发重组
+                val isExpandedOrExpanding by remember {
+                    derivedStateOf { playerViewModel.playerContentExpansionFraction.value > 0.01f }
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isExpandedOrExpanding,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 350)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 350)),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceContainerLowest.copy(
+                                    alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.35f else 0.6f
+                                )
                             )
-                        }
-
-                        // ⚡ mini-player 裁剪高度:根据播放器展开状态决定
-                        // - 展开态(isExpandedOrExpanding=true):containerHeight(全屏高度)
-                        // - 折叠态:sheetCollapsedTargetY + miniH(mini-player 底部位置)
-                        // 这确保播放器展开时能覆盖整个屏幕,避免底部导航栏区域显示为黑色
-                        val collapsedClipHeight = remember(
-                            showPlayerContentInitially,
-                            shouldHideMiniPlayer,
-                            currentRoute
-                        ) {
-                            val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
-                                    currentRoute !in setOf(Screen.NavBarCrRad.route)
-                            if (shouldShowMiniPlayer) {
-                                with(density) {
-                                    val miniH = MiniPlayerHeight.toPx()
-                                    (sheetCollapsedTargetY + miniH).toDp().coerceAtLeast(0.dp)
+                            .pointerInput(Unit) {
+                                detectTapGestures {
+                                    playerViewModel.collapsePlayerSheet()
                                 }
-                            } else {
-                                containerHeight
                             }
-                        }
-                        val miniPlayerClipHeight = if (isExpandedOrExpanding) containerHeight else collapsedClipHeight
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(miniPlayerClipHeight)
-                                .clipToBounds()
-                        ) {
-                            // ⚡ isNavBarHidden 使用稳定的布尔值(不读动画 State),
-                            // 避免导航切换动画期间每帧触发重组。
-                            // 圆角/边距等用稳定值足矣,动画由 sheet 内部的 SheetMotionController 处理。
-                            val isNavBarHiddenValue = if (isLandscape) shouldHideNavigationRail else shouldHideBottomNavBar
-                            UnifiedPlayerSheetV2(
-                                playerViewModel = playerViewModel,
-                                sheetCollapsedTargetY = sheetCollapsedTargetY,
-                                collapsedStateHorizontalPadding = horizontalPadding,
-                                hideMiniPlayer = shouldHideMiniPlayer,
-                                containerHeight = containerHeight,
-                                navController = navController,
-                                isNavBarHidden = isNavBarHiddenValue
-                            )
-                        }
+                    )
+                }
 
-                        if (showPlayStoreAnnouncement) {
-                            PlayStoreAnnouncementDialog(
-                                announcement = playStoreAnnouncement,
-                                onDismiss = { showPlayStoreAnnouncement = false },
-                                onOpenPlayStore = { url ->
-                                    showPlayStoreAnnouncement = false
-                                    openExternalUrl(url)
-                                }
+                // ⚡ mini-player 裁剪高度:根据播放器展开状态决定
+                // - 展开态(isExpandedOrExpanding=true):containerHeight(全屏高度)
+                // - 折叠态:sheetCollapsedTargetY + miniH(mini-player 底部位置)
+                // 这确保播放器展开时能覆盖整个屏幕,避免底部导航栏区域显示为黑色
+                val collapsedClipHeight = remember(
+                    showPlayerContentInitially,
+                    shouldHideMiniPlayer,
+                    currentRoute
+                ) {
+                    val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
+                            currentRoute !in setOf(Screen.NavBarCrRad.route)
+                    if (shouldShowMiniPlayer) {
+                        with(density) {
+                            val miniH = MiniPlayerHeight.toPx()
+                            (sheetCollapsedTargetY + miniH).toDp().coerceAtLeast(0.dp)
+                        }
+                    } else {
+                        containerHeight
+                    }
+                }
+                val miniPlayerClipHeight = if (isExpandedOrExpanding) containerHeight else collapsedClipHeight
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(miniPlayerClipHeight)
+                        .clipToBounds()
+                ) {
+                    // ⚡ isNavBarHidden 使用稳定的布尔值(不读动画 State),
+                    // 避免导航切换动画期间每帧触发重组。
+                    // 圆角/边距等用稳定值足矣,动画由 sheet 内部的 SheetMotionController 处理。
+                    val isNavBarHiddenValue = if (isLandscape) shouldHideNavigationRail else shouldHideBottomNavBar
+                    UnifiedPlayerSheetV2(
+                        playerViewModel = playerViewModel,
+                        sheetCollapsedTargetY = sheetCollapsedTargetY,
+                        collapsedStateHorizontalPadding = horizontalPadding,
+                        hideMiniPlayer = shouldHideMiniPlayer,
+                        containerHeight = containerHeight,
+                        navController = navController,
+                        isNavBarHidden = isNavBarHiddenValue,
+                        navRailPadding = navRailPaddingDp,
+                        isLandscape = isLandscape
+                    )
+                }
+
+                val dismissUndoBarSlice by remember {
+                    playerViewModel.playerUiState
+                        .map { state ->
+                            DismissUndoBarSlice(
+                                isVisible = state.showDismissUndoBar,
+                                durationMillis = state.undoBarVisibleDuration
                             )
                         }
-                    }
+                        .distinctUntilChanged()
+                }.collectAsStateWithLifecycle(initialValue = DismissUndoBarSlice())
+                val onUndoDismissPlaylist = remember(playerViewModel) {
+                    { playerViewModel.undoDismissPlaylist() }
+                }
+                val onCloseDismissUndoBar = remember(playerViewModel) {
+                    { playerViewModel.hideDismissUndoBar() }
+                }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = dismissUndoBarSlice.isVisible,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = navRailPaddingDp)
+                        .padding(bottom = miniPlayerBottomMarginDp + MiniPlayerBottomSpacer)
+                        .padding(horizontal = horizontalPadding)
+                ) {
+                    DismissUndoBar(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(MiniPlayerHeight)
+                            .padding(horizontal = 14.dp),
+                        onUndo = onUndoDismissPlaylist,
+                        onClose = onCloseDismissUndoBar,
+                        durationMillis = dismissUndoBarSlice.durationMillis
+                    )
+                }
+
+                if (showPlayStoreAnnouncement) {
+                    PlayStoreAnnouncementDialog(
+                        announcement = playStoreAnnouncement,
+                        onDismiss = { showPlayStoreAnnouncement = false },
+                        onOpenPlayStore = { url ->
+                            showPlayStoreAnnouncement = false
+                            openExternalUrl(url)
+                        }
+                    )
                 }
             }
         }
     }
-}
-}
-    Trace.endSection()
-}
-}
+Trace.endSection()
+    }
+    }
 
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     private fun LoadingOverlay(syncProgress: SyncProgress) {
         val colorScheme = MaterialTheme.colorScheme
-        var textVisible by remember { mutableStateOf(false) }
-
-        LaunchedEffect(Unit) {
-            delay(50)
-            textVisible = true
-        }
-
-        val textAlpha by animateFloatAsState(
-            targetValue = if (textVisible) 1f else 0f,
-            animationSpec = tween(400, easing = LinearOutSlowInEasing),
-            label = "LoadingTextAlpha"
+        // Animate progress smoothly instead of jumping in steps
+        val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = syncProgress.progress,
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+            ),
+            label = "SyncProgressAnimation"
         )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colorScheme.surface),
+                .background(colorScheme.surfaceContainer.copy(alpha = 0.92f))
+                .clickable(enabled = false, onClick = {}),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "PixelPlay",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onSurface,
-                modifier = Modifier.graphicsLayer { alpha = textAlpha }
-            )
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 32.dp)
+                    .fillMaxWidth(),
+                color = colorScheme.surfaceContainerHigh,
+                tonalElevation = 4.dp,
+                shape = RoundedCornerShape(28.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp, vertical = 40.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(
+                        text = "正在准备您的音乐库…",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "首次启动需要扫描本地歌曲",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (syncProgress.hasProgress) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        androidx.compose.material3.LinearWavyProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                            trackColor = colorScheme.surfaceContainerHighest
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "已扫描 ${syncProgress.currentCount} / ${syncProgress.totalCount} 首歌曲",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         }
     }
 

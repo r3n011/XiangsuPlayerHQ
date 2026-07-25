@@ -156,8 +156,6 @@
     <string name="setcat_player_theme_album_art">Album Art</string>
     <string name="setcat_player_theme_custom_palette">Custom Palette</string>
     <string name="setcat_player_theme_dynamic">System Dynamic</string>
-    <string name="setcat_custom_palette_enabled_title">Enable Custom Palette</string>
-    <string name="setcat_custom_palette_enabled_subtitle">Apply custom palette to global theme</string>
     <string
         name="setcat_show_player_file_info_title"
     >Show player file info</string>

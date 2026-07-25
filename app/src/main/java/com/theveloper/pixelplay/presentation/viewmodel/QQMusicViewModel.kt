@@ -41,7 +41,7 @@ class QQMusicViewModel @Inject constructor(
         set(v) { _uiState.value = _uiState.value.copy(keyword = v) }
 
     /**
-     * 搜索歌曲（走 oiapi.net/api/Kuwo，第一页 n=50）
+     * 搜索歌曲（走 oiapi.net/api/Kuwo，n=20）
      */
     fun search() {
         val kw = _uiState.value.keyword.trim()
@@ -58,12 +58,11 @@ class QQMusicViewModel @Inject constructor(
             val result = qqSearchApi.search(kw, page = 1)
             if (result.isSuccess) {
                 val songs = result.getOrDefault(emptyList())
-                // ⚡ 第一页请求50首，如果返回少于50首则认为是最后一页
                 _uiState.value = _uiState.value.copy(
                     searching = false,
                     results = songs,
                     error = null,
-                    isEnd = songs.size < 50
+                    isEnd = songs.size < 20
                 )
             } else {
                 _uiState.value = _uiState.value.copy(
@@ -92,11 +91,10 @@ class QQMusicViewModel @Inject constructor(
                 val newSongs = result.getOrDefault(emptyList())
                 val existingIds = _uiState.value.results.mapTo(LinkedHashSet()) { it.id }
                 val merged = _uiState.value.results + newSongs.filterNot { it.id in existingIds }
-                // ⚡ 后续页请求40首，如果返回少于40首则认为是最后一页
                 _uiState.value = _uiState.value.copy(
                     page = nextPage,
                     isLoadingMore = false,
-                    isEnd = newSongs.size < 40,
+                    isEnd = newSongs.size < 20,
                     results = merged
                 )
             } else {

@@ -23,7 +23,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -97,6 +99,13 @@ fun ScreenWrapper(
     //
     val transition = animatedVisibilityScope?.transition
 
+    val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsState()
+
+    // previousBackStackEntry is a plain synchronous property; the currentBackStackEntryState
+    // reference makes Compose re-read it on every navigate/pop commit (both change together).
+    val previousEntryId = navController.previousBackStackEntry?.id.also { _ -> currentBackStackEntryState }
+    val shouldDim = myEntry != null && previousEntryId == myEntry.id
+
     // Declarative Animations
     val targetRadius = if (shouldRunDepthEffects && !isResumed) 32f else 0f
     val animatedCornerRadius = if (transition != null) {
@@ -118,6 +127,35 @@ fun ScreenWrapper(
         }
         fallbackCornerRadius.value
     }
+
+    // Dim: If strictly behind Top -> 0.4f (or 0.75f if blur is disabled). Else -> 0f.
+    val targetDim = if (shouldRunDepthEffects && shouldDim) {
+        if (disableBlurAllOver) 0.75f else 0.4f
+    } else {
+        0f
+    }
+    val animatedDimAlpha = if (transition != null) {
+        val animatedValue by transition.animateFloat(
+            transitionSpec = { tween(durationMillis = 350, easing = CubicBezierEasing(0.5f, 0f, 0.8f, 0.2f)) },
+            label = "dimAlpha"
+        ) { state ->
+            if (shouldRunDepthEffects && shouldDim && (state == EnterExitState.PostExit || state == EnterExitState.PreEnter)) {
+                if (disableBlurAllOver) 0.75f else 0.4f
+            } else {
+                0f
+            }
+        }
+        animatedValue
+    } else {
+        val fallbackDimAlpha = remember { Animatable(targetDim) }
+        LaunchedEffect(targetDim) {
+            fallbackDimAlpha.animateTo(targetDim, animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing))
+        }
+        fallbackDimAlpha.value
+    }
+
+    // Blur: 移除模糊效果，始终为 0
+    val animatedBlurRadius = 0.dp
 
     Box(
         modifier = modifier
@@ -142,8 +180,17 @@ fun ScreenWrapper(
                     this.clip = false
                 }
             }
+            .blur(radius = if (shouldRunDepthEffects) animatedBlurRadius else 0.dp)
             .background(MaterialTheme.colorScheme.background)
     ) {
         content()
+
+        // Dim Layer Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = animatedDimAlpha }
+                .background(Color.Black)
+        )
     }
 }

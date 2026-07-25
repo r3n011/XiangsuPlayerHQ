@@ -1,16 +1,23 @@
 package com.theveloper.pixelplay.presentation.components
 
-import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material3.BasicAlertDialog
@@ -18,9 +25,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,58 +39,50 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.UpdateChecker
-import com.theveloper.pixelplay.data.github.UpdateDownloader
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
-import java.text.DecimalFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateAvailableDialog(
     updateInfo: UpdateChecker.UpdateInfo,
-    selectedAsset: UpdateChecker.AssetInfo?,
-    downloadState: UpdateDownloader.DownloadState,
+    downloadState: ApkDownloadInstaller.DownloadState?,
     onDismiss: (dontShowAgain: Boolean) -> Unit,
-    onSelectAsset: (UpdateChecker.AssetInfo) -> Unit,
-    onDownload: () -> Unit,
-    onInstall: (localUri: String) -> Unit,
-    onOpenInstallSettings: () -> Unit,
+    onDownload: (apkUrl: String) -> Unit
 ) {
     var dontShowAgain by rememberSaveable { mutableStateOf(false) }
-    val context = LocalContext.current
-    val canInstallPackages = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.packageManager.canRequestPackageInstalls()
-        } else {
-            true
-        }
+    val availableApks = remember(updateInfo) { updateInfo.availableApks() }
+    var selectedArch by rememberSaveable {
+        mutableStateOf(
+            when {
+                availableApks.containsKey("64位 (arm64)") -> "64位 (arm64)"
+                availableApks.containsKey("通用版 (universal)") -> "通用版 (universal)"
+                availableApks.isNotEmpty() -> availableApks.keys.first()
+                else -> ""
+            }
+        )
     }
 
-    val cardShape = AbsoluteSmoothCornerShape(
-        cornerRadiusTL = 30.dp,
-        cornerRadiusTR = 30.dp,
-        cornerRadiusBL = 30.dp,
-        cornerRadiusBR = 30.dp,
-        smoothnessAsPercentTL = 60,
-        smoothnessAsPercentTR = 60,
-        smoothnessAsPercentBL = 60,
-        smoothnessAsPercentBR = 60,
-    )
+    val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
+    val isDownloaded = downloadState is ApkDownloadInstaller.DownloadState.Downloaded
+    val isInstalling = downloadState is ApkDownloadInstaller.DownloadState.Installing
+    val isError = downloadState is ApkDownloadInstaller.DownloadState.Error
+    val errorMessage = (downloadState as? ApkDownloadInstaller.DownloadState.Error)?.message
+
+    val cardShape = AbsoluteSmoothCornerShape(30.dp, 60)
     val blockShape = AbsoluteSmoothCornerShape(22.dp, 60)
     val actionShape = AbsoluteSmoothCornerShape(18.dp, 60)
 
-    BasicAlertDialog(onDismissRequest = { onDismiss(dontShowAgain) }) {
+    BasicAlertDialog(onDismissRequest = { if (!isDownloading) onDismiss(dontShowAgain) }) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 0.dp)
                 .widthIn(max = 420.dp),
             shape = cardShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -91,9 +91,10 @@ fun UpdateAvailableDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                // 标题区
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = blockShape,
@@ -102,7 +103,7 @@ fun UpdateAvailableDialog(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                            .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Row(
@@ -122,7 +123,6 @@ fun UpdateAvailableDialog(
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
-
                             Surface(
                                 shape = AbsoluteSmoothCornerShape(16.dp, 60),
                                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -131,9 +131,7 @@ fun UpdateAvailableDialog(
                                     imageVector = Icons.Rounded.NewReleases,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier
-                                        .padding(10.dp)
-                                        .size(18.dp),
+                                    modifier = Modifier.padding(10.dp).size(18.dp),
                                 )
                             }
                         }
@@ -152,94 +150,101 @@ fun UpdateAvailableDialog(
                     }
                 }
 
-                if (updateInfo.assets.isNotEmpty()) {
+                // 架构选择区
+                if (availableApks.isNotEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = blockShape,
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                     ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
-                                text = "选择安装包（推荐：${updateInfo.recommendedAsset?.abi?.displayName ?: "无"}）",
-                                style = MaterialTheme.typography.labelLarge,
+                                text = "选择安装包架构",
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                             )
-
-                            updateInfo.assets.forEach { asset ->
-                                val isRecommended = asset.id == updateInfo.recommendedAsset?.id
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .selectable(
-                                            selected = asset.id == selectedAsset?.id,
-                                            onClick = { onSelectAsset(asset) }
-                                        )
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    RadioButton(
-                                        selected = asset.id == selectedAsset?.id,
-                                        onClick = { onSelectAsset(asset) }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                availableApks.keys.forEach { archLabel ->
+                                    FilterChip(
+                                        selected = selectedArch == archLabel,
+                                        onClick = { selectedArch = archLabel },
+                                        label = { Text(archLabel, style = MaterialTheme.typography.labelMedium) }
                                     )
-                                    Spacer(modifier = Modifier.size(8.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = buildString {
-                                                append(asset.abi.displayName)
-                                                if (isRecommended) append("（推荐）")
-                                            },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                        )
-                                        Text(
-                                            text = "${asset.name} · ${formatFileSize(asset.size)}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                when (downloadState) {
-                    is UpdateDownloader.DownloadState.Downloading -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.size(10.dp))
+                // 下载进度区
+                AnimatedVisibility(
+                    visible = isDownloading || isDownloaded || isInstalling || isError,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    when (downloadState) {
+                        is ApkDownloadInstaller.DownloadState.Downloading -> {
+                            val progress = downloadState.progress
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(
+                                    text = if (progress >= 0) {
+                                        "下载中… ${(progress * 100).toInt()}%"
+                                    } else {
+                                        "下载中…"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (progress >= 0) {
+                                    LinearProgressIndicator(
+                                        progress = { progress },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                } else {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                }
+                            }
+                        }
+                        is ApkDownloadInstaller.DownloadState.Downloaded -> {
                             Text(
-                                text = "正在下载更新...",
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = "下载完成，正在启动安装…",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                             )
                         }
-                    }
-                    is UpdateDownloader.DownloadState.Failed -> {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = blockShape,
-                            color = MaterialTheme.colorScheme.errorContainer,
-                        ) {
+                        ApkDownloadInstaller.DownloadState.Installing -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Text(
+                                    text = "正在启动安装…",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        is ApkDownloadInstaller.DownloadState.Error -> {
                             Text(
-                                text = "下载失败：${downloadState.message}",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                text = errorMessage ?: "下载失败",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
                             )
                         }
+                        else -> {}
                     }
-                    else -> { /* Idle or Completed - handled by action buttons */ }
                 }
 
+                // 底部操作区
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -264,56 +269,57 @@ fun UpdateAvailableDialog(
                         )
                     }
 
-                    when (val state = downloadState) {
-                        is UpdateDownloader.DownloadState.Completed -> {
-                            Button(
-                                onClick = { onInstall(state.localUri) },
-                                shape = actionShape,
+                    val canDownload = !isDownloading && !isInstalling && availableApks.isNotEmpty()
+                    val downloadProgress = (downloadState as? ApkDownloadInstaller.DownloadState.Downloading)?.progress ?: 0f
+                    
+                    if (isDownloading) {
+                        // 下载中显示进度条按钮
+                        Surface(
+                            shape = actionShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize()
                             ) {
-                                Text("安装")
-                            }
-                        }
-                        is UpdateDownloader.DownloadState.Downloading -> {
-                            Button(
-                                onClick = { onDismiss(dontShowAgain) },
-                                shape = actionShape,
-                            ) {
-                                Text("后台下载")
-                            }
-                        }
-                        else -> {
-                            Button(
-                                onClick = {
-                                    if (canInstallPackages) {
-                                        onDownload()
-                                    } else {
-                                        onOpenInstallSettings()
-                                    }
-                                },
-                                shape = actionShape,
-                                enabled = selectedAsset != null,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.rounded_arrow_forward_24),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
+                                // 进度背景填充
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(downloadProgress)
+                                        .background(MaterialTheme.colorScheme.secondary)
                                 )
-                                Spacer(modifier = Modifier.size(6.dp))
-                                Text(text = if (canInstallPackages) "下载" else "开启安装权限")
+                                // 进度文字
+                                Text(
+                                    text = "${(downloadProgress * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
                             }
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                availableApks[selectedArch]?.let { onDownload(it) }
+                            },
+                            shape = actionShape,
+                            enabled = canDownload,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = if (isDownloaded || isInstalling) "安装中" else stringResource(R.string.update_go_download),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
                         }
                     }
                 }
             }
         }
-    }
-}
-
-private fun formatFileSize(sizeBytes: Long): String {
-    val df = DecimalFormat("0.00")
-    return when {
-        sizeBytes >= 1_000_000 -> "${df.format(sizeBytes / 1_000_000.0)} MB"
-        sizeBytes >= 1_000 -> "${df.format(sizeBytes / 1_000.0)} KB"
-        else -> "$sizeBytes B"
     }
 }

@@ -262,171 +262,43 @@ class LxJsEngine @Inject constructor(
             var __px_pending_done = false;
             var __px_pending_value = null;
             var __px_pending_err = null;
-            var _isInitedApi = false;
 
             function httpSync(url, options) {
-                var method = 'GET', timeout = 15000, headers = {}, body = null, form = null, formData = null;
+                var method = 'GET', timeout = 15000, headers = {}, body = null;
                 if (options) {
                     if (options.method) method = String(options.method).toUpperCase();
                     if (options.timeout != null) timeout = Number(options.timeout);
                     if (options.headers && typeof options.headers === 'object') headers = options.headers;
                     if (options.body != null) body = (typeof options.body === 'string') ? options.body : JSON.stringify(options.body);
-                    if (options.form != null) form = options.form;
-                    if (options.formData != null) formData = options.formData;
                 }
                 try {
-                    var requestBody = body || form || formData || null;
-                    var resJson = __pixelplay_okhttp_sync(url, method, timeout, JSON.stringify(headers), requestBody);
+                    var resJson = __pixelplay_okhttp_sync(url, method, timeout, JSON.stringify(headers), body);
                     if (typeof resJson !== 'string') return { statusCode: 0, headers: {}, body: "", error: "invalid native response" };
                     var res = JSON.parse(resJson);
                     if (!res || typeof res !== 'object') return { statusCode: 0, headers: {}, body: "", error: "invalid native response" };
-                    var respBody = res.body || "";
-                    try { respBody = JSON.parse(respBody); } catch(e) {}
-                    return { 
-                        statusCode: res.statusCode || 0, 
-                        headers: res.headers || {}, 
-                        body: respBody, 
-                        error: res.error || null 
-                    };
+                    return { statusCode: res.statusCode || 0, headers: res.headers || {}, body: res.body || "", error: res.error || null };
                 } catch (e) {
                     return { statusCode: 0, headers: {}, body: "", error: String(e && e.message ? e.message : e) };
                 }
             }
 
-            var _crypto = {
-                aesEncrypt: function(buffer, mode, key, iv) {
-                    try { return __pixelplay_crypto_aes(buffer, mode, key, iv); } catch(e) { throw new Error('crypto not supported'); }
-                },
-                rsaEncrypt: function(buffer, key) {
-                    try { return __pixelplay_crypto_rsa(buffer, key); } catch(e) { throw new Error('crypto not supported'); }
-                },
-                randomBytes: function(size) {
-                    try { return __pixelplay_crypto_random(size); } catch(e) { 
-                        var arr = new Uint8Array(size);
-                        for(var i=0; i<size; i++) arr[i] = Math.floor(Math.random()*256);
-                        return arr;
-                    }
-                },
-                md5: function(str) {
-                    try { return __pixelplay_crypto_md5(str); } catch(e) { throw new Error('crypto not supported'); }
-                }
-            };
-
-            var _buffer = {
-                from: function() {
-                    var args = Array.prototype.slice.call(arguments);
-                    if (args.length === 1 && typeof args[0] === 'string') {
-                        var str = args[0], enc = args[1] || 'utf-8';
-                        var bytes = [], i = 0;
-                        while (i < str.length) {
-                            var code = str.charCodeAt(i++);
-                            if (code < 128) {
-                                bytes.push(code);
-                            } else if (code < 2048) {
-                                bytes.push((code >> 6) | 192, (code & 63) | 128);
-                            } else if (code < 65536) {
-                                bytes.push((code >> 12) | 224, ((code >> 6) & 63) | 128, (code & 63) | 128);
-                            } else {
-                                bytes.push((code >> 18) | 240, ((code >> 12) & 63) | 128, ((code >> 6) & 63) | 128, (code & 63) | 128);
-                            }
-                        }
-                        return new Uint8Array(bytes);
-                    }
-                    return new Uint8Array(args[0]);
-                },
-                bufToString: function(buf, format) {
-                    if (buf instanceof Uint8Array) {
-                        var str = '', i = 0;
-                        while (i < buf.length) {
-                            var code = buf[i++];
-                            if (code < 128) {
-                                str += String.fromCharCode(code);
-                            } else if (code > 191 && code < 224) {
-                                str += String.fromCharCode(((code & 31) << 6) | (buf[i++] & 63));
-                            } else if (code > 239 && code < 365) {
-                                var charCode = ((code & 7) << 18) | ((buf[i++] & 63) << 12) | ((buf[i++] & 63) << 6) | (buf[i++] & 63);
-                                charCode -= 0x10000;
-                                str += String.fromCharCode(charCode);
-                            } else {
-                                str += String.fromCharCode(((code & 15) << 12) | ((buf[i++] & 63) << 6) | (buf[i++] & 63));
-                            }
-                        }
-                        return str;
-                    }
-                    return String(buf);
-                }
-            };
-
-            var _zlib = {
-                inflate: function(buf) {
-                    return new Promise(function(resolve, reject) {
-                        try {
-                            var result = __pixelplay_zlib_inflate(buf);
-                            resolve(result);
-                        } catch(e) { reject(e); }
-                    });
-                },
-                deflate: function(data) {
-                    return new Promise(function(resolve, reject) {
-                        try {
-                            var result = __pixelplay_zlib_deflate(data);
-                            resolve(result);
-                        } catch(e) { reject(e); }
-                    });
-                }
-            };
-
             var _api = {
-                EVENT_NAMES: { request: 'request', inited: 'inited', updateAlert: 'updateAlert' },
+                EVENT_NAMES: { request: 'request', inited: 'inited' },
                 request: function(url, options, cb) {
                     try {
                         var res = httpSync(url, options || {});
                         if (res && res.error) { cb(new Error(String(res.error)), null); return; }
-                        cb(null, { 
-                            statusCode: res.statusCode || 0, 
-                            statusMessage: '',
-                            headers: res.headers || {}, 
-                            bytes: 0,
-                            raw: res.body,
-                            body: res.body || "" 
-                        });
+                        cb(null, { statusCode: res.statusCode || 0, headers: res.headers || {}, body: res.body || "" });
                     } catch (e) { cb(new Error(String(e && e.message ? e.message : e)), null); }
                 },
-                on: function(name, handler) { 
-                    if (name === 'request') _handlers.request = handler; 
-                    return Promise.resolve();
-                },
+                on: function(name, handler) { if (name === 'request') _handlers.request = handler; },
                 send: function(name, payload) {
-                    return new Promise(function(resolve, reject) {
-                        if (name === 'inited') {
-                            if (_isInitedApi) return reject(new Error('Script is inited'));
-                            _isInitedApi = true;
-                            try { _initedJson = JSON.stringify(payload || { sources: {} }); }
-                            catch (e) { _initedJson = JSON.stringify({ error: String(e && e.message ? e.message : e) }); }
-                            _done = true;
-                            resolve();
-                        } else if (name === 'updateAlert') {
-                            resolve();
-                        } else {
-                            reject(new Error('Unknown event name: ' + name));
-                        }
-                    });
-                },
-                utils: {
-                    crypto: _crypto,
-                    buffer: _buffer,
-                    zlib: _zlib
-                },
-                currentScriptInfo: {
-                    name: 'User API',
-                    description: 'Custom music source',
-                    version: 'custom',
-                    author: 'user',
-                    homepage: '',
-                    rawScript: ''
-                },
-                version: '2.0.0',
-                env: 'desktop'
+                    if (name === 'inited') {
+                        try { _initedJson = JSON.stringify(payload || { sources: {} }); }
+                        catch (e) { _initedJson = JSON.stringify({ error: String(e && e.message ? e.message : e) }); }
+                        _done = true;
+                    }
+                }
             };
 
             if (typeof globalThis !== 'undefined') globalThis.lx = _api;
@@ -483,6 +355,12 @@ class LxJsEngine @Inject constructor(
                     __pixelplay_console_err(msg);
                 } catch(e) {}
             };
+            if (typeof console !== 'undefined' && typeof console.stdout !== 'undefined') {
+                try {
+                    console.stdout = function(text) { try { __pixelplay_console_log(String(text)); } catch(e) {} };
+                    console.stderr = function(text) { try { __pixelplay_console_err(String(text)); } catch(e) {} };
+                } catch(e) {}
+            }
             var _px_console = {
                 log: _px_console_log,
                 error: _px_console_err,
@@ -520,10 +398,7 @@ class LxJsEngine @Inject constructor(
                     var res = h(reqData);
                     if (res && typeof res.then === 'function') {
                         res.then(function(v){
-                            try { 
-                                if (typeof v === 'string') __px_pending_value = JSON.stringify({url: v});
-                                else __px_pending_value = JSON.stringify(v); 
-                            } catch(e) { __px_pending_value = JSON.stringify({error: String(e && e.message)}); }
+                            try { __px_pending_value = JSON.stringify(v); } catch(e) { __px_pending_value = JSON.stringify({error: String(e && e.message)}); }
                             __px_pending_done = true;
                         }, function(e){
                             __px_pending_err = e ? (e.message || String(e)) : "rejected";
@@ -531,10 +406,7 @@ class LxJsEngine @Inject constructor(
                         });
                         return;
                     }
-                    try { 
-                        if (typeof res === 'string') __px_pending_value = JSON.stringify({url: res});
-                        else __px_pending_value = JSON.stringify(res); 
-                    } catch(e) { __px_pending_value = JSON.stringify({error: String(e && e.message)}); }
+                    try { __px_pending_value = JSON.stringify(res); } catch(e) { __px_pending_value = JSON.stringify({error: String(e && e.message)}); }
                     __px_pending_done = true;
                 } catch (e) {
                     __px_pending_err = e ? (e.message || String(e)) : "thrown";
@@ -574,62 +446,6 @@ class LxJsEngine @Inject constructor(
         global.setProperty("__pixelplay_console_err", JSCallFunction { args ->
             try { Log.e("LxJs", args.joinToString(" ")) } catch (_: Throwable) {}
             null
-        })
-
-        // ⚡ 添加加密支持函数
-        global.setProperty("__pixelplay_crypto_md5", JSCallFunction { args ->
-            try {
-                val input = args[0] as? String ?: ""
-                val md = java.security.MessageDigest.getInstance("MD5")
-                val bytes = md.digest(input.toByteArray(Charsets.UTF_8))
-                bytes.joinToString("") { String.format("%02x", it) }
-            } catch (t: Throwable) {
-                Log.e(TAG, "MD5 failed", t)
-                ""
-            }
-        })
-
-        global.setProperty("__pixelplay_crypto_aes", JSCallFunction { args ->
-            try {
-                val data = args[0] as? ByteArray ?: args[0].toString().toByteArray()
-                val mode = args[1] as? String ?: "AES/CBC/PKCS5Padding"
-                val key = args[2] as? ByteArray ?: ByteArray(16)
-                val iv = args[3] as? ByteArray ?: ByteArray(16)
-                val cipher = javax.crypto.Cipher.getInstance(mode)
-                cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, javax.crypto.spec.SecretKeySpec(key, "AES"), javax.crypto.spec.IvParameterSpec(iv))
-                cipher.doFinal(data)
-            } catch (t: Throwable) {
-                Log.e(TAG, "AES failed", t)
-                ByteArray(0)
-            }
-        })
-
-        global.setProperty("__pixelplay_crypto_rsa", JSCallFunction { args ->
-            try {
-                val data = args[0] as? ByteArray ?: args[0].toString().toByteArray()
-                val keyStr = args[1] as? String ?: ""
-                val keySpec = java.security.spec.X509EncodedKeySpec(android.util.Base64.decode(keyStr, android.util.Base64.DEFAULT))
-                val keyFactory = java.security.KeyFactory.getInstance("RSA")
-                val publicKey = keyFactory.generatePublic(keySpec)
-                val cipher = javax.crypto.Cipher.getInstance("RSA/ECB/PKCS1Padding")
-                cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, publicKey)
-                cipher.doFinal(data)
-            } catch (t: Throwable) {
-                Log.e(TAG, "RSA failed", t)
-                ByteArray(0)
-            }
-        })
-
-        global.setProperty("__pixelplay_crypto_random", JSCallFunction { args ->
-            try {
-                val size = (args[0] as? Number)?.toInt() ?: 16
-                val bytes = ByteArray(size)
-                java.security.SecureRandom().nextBytes(bytes)
-                bytes
-            } catch (t: Throwable) {
-                Log.e(TAG, "randomBytes failed", t)
-                ByteArray(0)
-            }
         })
 
         try { c.evaluate(shim, "pixelplay-shim.js") } catch (t: Throwable) { Log.e(TAG, "shim eval", t) }

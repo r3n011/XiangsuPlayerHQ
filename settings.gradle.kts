@@ -9,11 +9,23 @@ pluginManagement {
         }
         maven("https://maven.aliyun.com/repository/central")
         maven("https://maven.aliyun.com/repository/gradle-plugin")
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
         gradlePluginPortal()
     }
-
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.namespace == "org.jetbrains.kotlin") {
+                useVersion("2.3.0")
+            }
+        }
+    }
 }
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
@@ -29,6 +41,8 @@ dependencyResolutionManagement {
             }
         }
         maven("https://maven.aliyun.com/repository/central")
+        google()
+        mavenCentral()
         maven("https://jitpack.io") {
             content {
                 includeGroup("com.github.FaceOnLive")
@@ -37,8 +51,6 @@ dependencyResolutionManagement {
                 includeGroup("com.github.tdlibx")
             }
         }
-        google()
-        mavenCentral()
     }
 }
 

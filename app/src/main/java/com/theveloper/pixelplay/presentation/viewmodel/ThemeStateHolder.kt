@@ -85,9 +85,6 @@ class ThemeStateHolder @Inject constructor(
     val lavaLampColors: StateFlow<ImmutableList<Color>> = _lavaLampColors.asStateFlow()
 
     private val playerThemePreference = themePreferencesRepository.playerThemePreferenceFlow
-    // ⚡ 自定义调色盘启用状态
-    @Volatile
-    private var isCustomPaletteEnabled: Boolean = true
 
     /**
      * ⚡ 原子更新：确保 colorSchemePair、uri、activeColorSchemePair 在同一个挂起点更新。
@@ -97,20 +94,16 @@ class ThemeStateHolder @Inject constructor(
      *   保证 UI 层看到的状态始终一致。
      */
     private fun resolveActiveSchemeForPreference(preference: String): ColorSchemePair? {
-        // 播放器取色始终来自歌曲封面；自定义调色盘只影响壁纸/全局主题
         return when (preference) {
-            ThemePreference.ALBUM_ART, ThemePreference.CUSTOM_PALETTE -> _albumArtThemeState.value.colorSchemePair
+            ThemePreference.ALBUM_ART -> _albumArtThemeState.value.colorSchemePair
+            ThemePreference.CUSTOM_PALETTE -> currentCustomPaletteSchemePair
             else -> null
         }
     }
 
     private fun resolveGlobalSchemeForPreference(preference: String): ColorSchemePair? {
-        // ⚡ 仅自定义调色盘启用时才覆盖全局主题；封面取色只作用于播放器
-        return if (preference == ThemePreference.CUSTOM_PALETTE && isCustomPaletteEnabled) {
-            currentCustomPaletteSchemePair
-        } else {
-            null
-        }
+        // 仅自定义调色盘需要覆盖全局主题；封面取色只作用于播放器
+        return if (preference == ThemePreference.CUSTOM_PALETTE) currentCustomPaletteSchemePair else null
     }
 
     private fun updateAlbumArtThemeState(colorSchemePair: ColorSchemePair?, uri: String?) {
@@ -156,14 +149,6 @@ class ThemeStateHolder @Inject constructor(
         scope.launch {
             playerThemePreference.collect { pref ->
                 updateActiveSchemeForPreference(pref)
-            }
-        }
-
-        // ⚡ 监听自定义调色盘启用状态变化
-        scope.launch {
-            themePreferencesRepository.customPaletteEnabledFlow.collect { enabled ->
-                isCustomPaletteEnabled = enabled
-                updateActiveSchemeForPreference(currentThemePreference)
             }
         }
 

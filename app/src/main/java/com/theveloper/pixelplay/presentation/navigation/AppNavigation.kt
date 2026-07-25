@@ -14,6 +14,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,13 +71,18 @@ import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashbo
 import com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboardScreen
 import com.theveloper.pixelplay.presentation.telegram.dashboard.TelegramDashboardScreen
 
+import androidx.compose.foundation.layout.PaddingValues
+
 @OptIn(UnstableApi::class)
 @SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
 fun AppNavigation(
     playerViewModel: PlayerViewModel,
     navController: NavHostController,
-    userPreferencesRepository: UserPreferencesRepository
+    userPreferencesRepository: UserPreferencesRepository,
+    paddingValues: PaddingValues = PaddingValues(),
+    onSearchBarActiveChange: (Boolean) -> Unit = {},
+    onOpenSidebar: () -> Unit = {}
 ) {
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -92,7 +101,7 @@ fun AppNavigation(
             popEnterTransition = { aospSharedAxisPopEnter() },
             popExitTransition = { aospSharedAxisPopExit() }
         ) {
-            // Tab 路由: 空占位符，实际内容由 TabContentHost 渲染（预加载）
+            // Tab 路由: 占位背景，用于预测返回手势时露出正确的背景色（实际内容由 TabContentHost 渲染）
             composable(
                 Screen.Home.route,
                 enterTransition = { mainRootEnterTransition(
@@ -115,7 +124,15 @@ fun AppNavigation(
                     toRoute = targetState.destination.route,
                     fallback = popExitTransition()
                 ) }
-            ) { }
+            ) {
+                TabScreenContent(
+                    route = Screen.Home.route,
+                    paddingValues = paddingValues,
+                    playerViewModel = playerViewModel,
+                    navController = navController,
+                    onOpenSidebar = onOpenSidebar
+                )
+            }
             composable(
                 Screen.Search.route,
                 enterTransition = { mainRootEnterTransition(
@@ -138,7 +155,15 @@ fun AppNavigation(
                     toRoute = targetState.destination.route,
                     fallback = popExitTransition()
                 ) }
-            ) { }
+            ) {
+                TabScreenContent(
+                    route = Screen.Search.route,
+                    paddingValues = paddingValues,
+                    playerViewModel = playerViewModel,
+                    navController = navController,
+                    onSearchBarActiveChange = onSearchBarActiveChange
+                )
+            }
             composable(
                 Screen.Library.route,
                 enterTransition = { mainRootEnterTransition(
@@ -161,7 +186,14 @@ fun AppNavigation(
                     toRoute = targetState.destination.route,
                     fallback = popExitTransition()
                 ) }
-            ) { }
+            ) {
+                TabScreenContent(
+                    route = Screen.Library.route,
+                    paddingValues = paddingValues,
+                    playerViewModel = playerViewModel,
+                    navController = navController
+                )
+            }
             composable(
                 Screen.Settings.route,
                 enterTransition = { mainRootEnterTransition(
@@ -184,7 +216,14 @@ fun AppNavigation(
                     toRoute = targetState.destination.route,
                     fallback = popExitTransition()
                 ) }
-            ) { }
+            ) {
+                TabScreenContent(
+                    route = Screen.Settings.route,
+                    paddingValues = paddingValues,
+                    playerViewModel = playerViewModel,
+                    navController = navController
+                )
+            }
             composable(
                 Screen.CloudMusicSettings.route,
                 enterTransition = { mainRootEnterTransition(
@@ -207,7 +246,14 @@ fun AppNavigation(
                     toRoute = targetState.destination.route,
                     fallback = popExitTransition()
                 ) }
-            ) { }
+            ) {
+                TabScreenContent(
+                    route = Screen.CloudMusicSettings.route,
+                    paddingValues = paddingValues,
+                    playerViewModel = playerViewModel,
+                    navController = navController
+                )
+            }
             composable(
                 Screen.Accounts.route,
             ) {
@@ -603,11 +649,10 @@ private fun mainRootEnterTransition(
         ) + fadeIn(animationSpec = MAIN_ROOT_FADE_SPEC)
     }
     MainRootDirection.BACKWARD -> {
-        // 返回/反方向切换时，目标页面保持不动，避免露出黑底
         slideInHorizontally(
             animationSpec = MAIN_ROOT_TRANSITION_SPEC,
-            initialOffsetX = { 0 }
-        )
+            initialOffsetX = { -(it * 0.5f).toInt() }
+        ) + fadeIn(animationSpec = MAIN_ROOT_FADE_SPEC)
     }
     null -> fallback
 }

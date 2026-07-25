@@ -1,6 +1,5 @@
 package com.theveloper.pixelplay.presentation.screens
 
-import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 
 import androidx.compose.animation.AnimatedVisibility
@@ -227,7 +226,7 @@ fun ArtistSettingsScreen(
                                 )
                             },
                             onClick = {
-                                navController.navigateSafely(Screen.DelimiterConfig.route)
+                                navController.navigateSafely("delimiter_config")
                             }
                         )
 
@@ -259,7 +258,7 @@ fun ArtistSettingsScreen(
                                 )
                             },
                             onClick = {
-                                navController.navigateSafely(Screen.WordDelimiterConfig.route)
+                                navController.navigateSafely("word_delimiter_config")
                             }
                         )
 

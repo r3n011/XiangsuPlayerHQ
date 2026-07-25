@@ -5,7 +5,6 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveOfflineDialog
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.spring
@@ -115,7 +114,9 @@ fun UnifiedPlayerSheetV2(
     collapsedStateHorizontalPadding: Dp = 12.dp,
     navController: NavHostController,
     hideMiniPlayer: Boolean = false,
-    isNavBarHidden: Boolean = false
+    isNavBarHidden: Boolean = false,
+    navRailPadding: Dp = 0.dp,
+    isLandscape: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -191,6 +192,18 @@ fun UnifiedPlayerSheetV2(
 
     val isFavorite by playerViewModel.isCurrentSongFavorite.collectAsStateWithLifecycle()
 
+    // ⚡ Optimization: bridge the gap between tracks using a retained song.
+    // When currentSong flips to null briefly during engine transitions or hydration,
+    // this ensures showPlayerContentArea stays true and the UI remains mounted,
+    // preventing a visual "flash" where the player disappears for ~1s.
+    var retainedSong by remember { mutableStateOf<Song?>(null) }
+    LaunchedEffect(infrequentPlayerState.currentSong?.id) {
+        if (infrequentPlayerState.currentSong != null) {
+            retainedSong = infrequentPlayerState.currentSong
+        }
+    }
+    val activeSong = infrequentPlayerState.currentSong ?: retainedSong
+
     val playerUiSheetSlice by remember {
         playerViewModel.playerUiState
             .map { state ->
@@ -240,8 +253,8 @@ fun UnifiedPlayerSheetV2(
     val miniPlayerContentHeightPx = remember { with(density) { MiniPlayerHeight.toPx() } }
 
     val isCastConnecting by playerViewModel.isCastConnecting.collectAsStateWithLifecycle()
-    val showPlayerContentArea by remember(infrequentPlayerState.currentSong, isCastConnecting) {
-        derivedStateOf { infrequentPlayerState.currentSong != null || isCastConnecting }
+    val showPlayerContentArea by remember(activeSong, isCastConnecting) {
+        derivedStateOf { activeSong != null || isCastConnecting }
     }
 
     val playerContentExpansionFraction = playerViewModel.playerContentExpansionFraction
@@ -251,16 +264,21 @@ fun UnifiedPlayerSheetV2(
                 currentSheetContentState == PlayerSheetState.EXPANDED
         }
     }
-    val visualOvershootScaleY = remember { Animatable(1f) }
-    val initialFullPlayerOffsetY = remember(density) { with(density) { 24.dp.toPx() } }
-    val motionScheme = remember { MotionScheme.expressive() }
-    val sheetAnimationSpec = remember { motionScheme.defaultSpatialSpec<Float>() }
+    val sheetAnimationSpec = remember {
+        spring<Float>(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioLowBouncy
+        )
+    }
     val sheetAnimationMutex = remember { MutatorMutex() }
     val sheetExpandedTargetY = 0f
     val initialY =
         if (currentSheetContentState == PlayerSheetState.COLLAPSED) sheetCollapsedTargetY
         else sheetExpandedTargetY
     val currentSheetTranslationY = remember { Animatable(initialY) }
+    val visualOvershootScaleY = remember { Animatable(1f) }
+
+    // ⚡ sheetMotionController: 封装 translationY 和 expansionFraction 的动画操作
     val sheetMotionController = remember(
         currentSheetTranslationY,
         playerContentExpansionFraction,
@@ -274,6 +292,23 @@ fun UnifiedPlayerSheetV2(
             defaultAnimationSpec = sheetAnimationSpec,
             expandedY = sheetExpandedTargetY
         )
+    }
+
+    // ⚡ animatePlayerSheet: 统一的展开/折叠动画入口
+    fun animatePlayerSheet(
+        targetExpanded: Boolean,
+        animationSpec: androidx.compose.animation.core.AnimationSpec<Float>? = null,
+        initialVelocity: Float = 0f
+    ) {
+        scope.launch {
+            sheetMotionController.animateTo(
+                targetExpanded = targetExpanded,
+                canExpand = showPlayerContentArea,
+                collapsedY = sheetCollapsedTargetY,
+                animationSpec = animationSpec ?: sheetAnimationSpec,
+                initialVelocity = initialVelocity
+            )
+        }
     }
 
     PlayerArtistNavigationEffect(
@@ -293,7 +328,7 @@ fun UnifiedPlayerSheetV2(
     // inside graphicsLayer (draw-phase), avoiding per-frame recomposition.
     val fullPlayerVisualState = rememberFullPlayerVisualState(
         expansionFraction = playerContentExpansionFraction,
-        initialOffsetY = initialFullPlayerOffsetY
+        initialOffsetY = 0f
     )
     val fullPlayerCompositionPolicy = rememberFullPlayerCompositionPolicy(
         currentSongId = infrequentPlayerState.currentSong?.id,
@@ -310,81 +345,31 @@ fun UnifiedPlayerSheetV2(
         onDispose { playerViewModel.setSliderUiMounted(false) }
     }
 
-    suspend fun animatePlayerSheet(
-        targetExpanded: Boolean,
-        animationSpec: androidx.compose.animation.core.AnimationSpec<Float> = sheetAnimationSpec,
-        initialVelocity: Float = 0f
-    ) {
-        sheetMotionController.animateTo(
-            targetExpanded = targetExpanded,
-            canExpand = showPlayerContentArea,
-            collapsedY = sheetCollapsedTargetY,
-            animationSpec = animationSpec,
-            initialVelocity = initialVelocity
-        )
-    }
-
+    // Keep the mini player anchored to the latest collapsed target whenever
+    // the navbar height/visibility changes under it.
     LaunchedEffect(sheetCollapsedTargetY, sheetMotionController) {
-        // Keep the mini player anchored to the latest collapsed target whenever
-        // the navbar height/visibility changes under it.
         sheetMotionController.syncToExpansion(sheetCollapsedTargetY)
     }
 
     var previousSheetState by remember { mutableStateOf(currentSheetContentState) }
     LaunchedEffect(showPlayerContentArea, currentSheetContentState) {
         val targetExpanded = showPlayerContentArea && currentSheetContentState == PlayerSheetState.EXPANDED
-        val shouldBounceCollapse =
-            showPlayerContentArea &&
-                previousSheetState == PlayerSheetState.EXPANDED &&
-                currentSheetContentState == PlayerSheetState.COLLAPSED
         if (previousSheetState != currentSheetContentState) {
-            val fromState = previousSheetState
-            val toState = currentSheetContentState
             AdvancedPerformanceDiagnostics.recordEventIfEnabled(
                 type = AdvancedPerformanceDiagnostics.EventTypes.UI,
                 name = "player_sheet_state_changed"
             ) {
                 mapOf(
-                    "from" to fromState.name,
-                    "to" to toState.name,
+                    "from" to previousSheetState.name,
+                    "to" to currentSheetContentState.name,
                     "showPlayerContentArea" to showPlayerContentArea.toString()
                 )
             }
         }
         previousSheetState = currentSheetContentState
-        scope.launch {
-            animatePlayerSheet(targetExpanded = targetExpanded)
-        }
- 
-        if (showPlayerContentArea) {
-            scope.launch {
-                if (targetExpanded) {
-                    visualOvershootScaleY.snapTo(1f)
-                    visualOvershootScaleY.animateTo(
-                        targetValue = 1f,
-                        animationSpec = keyframes {
-                            durationMillis = 250
-                            1.0f at 0
-                            1.05f at 125
-                            1.0f at 250
-                        }
-                    )
-                } else if (shouldBounceCollapse) {
-                    visualOvershootScaleY.snapTo(0.96f)
-                    visualOvershootScaleY.animateTo(
-                        targetValue = 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
-                } else {
-                    visualOvershootScaleY.snapTo(1f)
-                }
-            }
-        } else {
-            scope.launch { visualOvershootScaleY.snapTo(1f) }
-        }
+
+        // 统一使用 sheetMotionController 驱动动画，避免多个动画源冲突导致跳变。
+        animatePlayerSheet(targetExpanded = targetExpanded && showPlayerContentArea)
     }
 
     val sheetVisualState = rememberSheetVisualState(
@@ -402,7 +387,9 @@ fun UnifiedPlayerSheetV2(
         isNavBarHidden = isNavBarHidden,
         isPlaying = infrequentPlayerState.isPlaying,
         hasCurrentSong = infrequentPlayerState.currentSong != null,
-        swipeDismissProgress = swipeDismissProgress
+        swipeDismissProgress = swipeDismissProgress,
+        navRailPadding = navRailPadding,
+        isLandscape = isLandscape
     )
     val currentBottomPadding = sheetVisualState.currentBottomPadding
     val baseBottomPadding = sheetVisualState.baseBottomPadding
@@ -537,14 +524,13 @@ fun UnifiedPlayerSheetV2(
         }
     }
 
-    val activePlayerSchemePair by playerViewModel.activePlayerColorSchemePair.collectAsStateWithLifecycle()
-    val themedAlbumArtUri by playerViewModel.currentThemedAlbumArtUri.collectAsStateWithLifecycle()
+    // ⚡ 从单一的、原子的主题状态容器中读取：activeColorSchemePair, albumArtUri 始终一致
+    //   不会出现"颜色变了但 URI 没变"或反之的中间状态
+    val albumThemeState by playerViewModel.albumArtThemeState.collectAsStateWithLifecycle()
+    val activePlayerSchemePair = albumThemeState.activeColorSchemePair
+    val themedAlbumArtUri = albumThemeState.albumArtUri
     val isDarkTheme = LocalPixelPlayDarkTheme.current
     val currentSong = infrequentPlayerState.currentSong
-    var retainedSong by remember { mutableStateOf<Song?>(null) }
-    if (currentSong != null) {
-        retainedSong = currentSong
-    }
     val sheetThemeState = rememberSheetThemeState(
         activePlayerSchemePair = activePlayerSchemePair,
         isDarkTheme = isDarkTheme,
@@ -565,20 +551,8 @@ fun UnifiedPlayerSheetV2(
     // Elevation is only visible in the mini/collapsed state (expansion < 0.18).
     // miniReadyAlpha fades the shadow in during the initial song-appear animation.
     val isDragging = sheetBackAndDragState.isDragging
-    val visualCardShadowElevation by remember(showQueueSheet, miniReadyAlpha, isDragging) {
-        derivedStateOf {
-            if (
-                showQueueSheet ||
-                isDragging ||
-                playerContentExpansionFraction.isRunning ||
-                playerContentExpansionFraction.value > 0.18f
-            ) {
-                0.dp
-            } else {
-                (3f * miniReadyAlpha).dp
-            }
-        }
-    }
+    // 始终为 0.dp，移除无效的 derivedStateOf 避免不必要的重组
+    val visualCardShadowElevation = 0.dp
 
     val sheetInteractionState = rememberSheetInteractionState(
         scope = scope,
@@ -597,15 +571,11 @@ fun UnifiedPlayerSheetV2(
         useSmoothCorners = useSmoothCorners,
         isDragging = sheetBackAndDragState.isDragging,
         onAnimateSheet = { targetExpanded, animationSpec, initialVelocity ->
-            if (animationSpec == null) {
-                animatePlayerSheet(targetExpanded = targetExpanded)
-            } else {
-                animatePlayerSheet(
-                    targetExpanded = targetExpanded,
-                    animationSpec = animationSpec,
-                    initialVelocity = initialVelocity
-                )
-            }
+            animatePlayerSheet(
+                targetExpanded = targetExpanded,
+                animationSpec = animationSpec,
+                initialVelocity = initialVelocity
+            )
         },
         onExpandSheetState = { playerViewModel.expandPlayerSheet() },
         onCollapseSheetState = { playerViewModel.collapsePlayerSheet() },
@@ -622,6 +592,8 @@ fun UnifiedPlayerSheetV2(
         "PixelPlay player sheet ${currentSheetContentState.name.lowercase()} " +
             (infrequentPlayerState.currentSong?.title ?: "")
     }
+
+    val miniHeightPx = with(density) { com.theveloper.pixelplay.presentation.components.MiniPlayerHeight.toPx() }
 
     Surface(
         modifier = Modifier
@@ -677,7 +649,7 @@ fun UnifiedPlayerSheetV2(
                                     .toInt().coerceAtLeast(0)
                                 val innerWidth = (constraints.maxWidth - startPaddingPx - endPaddingPx)
                                     .coerceAtLeast(0)
-                                
+
                                 val placeable = measurable.measure(
                                     constraints.copy(
                                         minWidth = innerWidth,
@@ -695,9 +667,11 @@ fun UnifiedPlayerSheetV2(
                             // structurally stable avoids the costly relayout/redraw
                             // restructure when the elevation crosses 0.dp during
                             // expand/collapse or right after play/pause.
+                            // Using playerShadowOnlyShape (flat bottom corners) prevents
+                            // shadow leaks at the bottom-left/right corners of the mini player.
                             .shadow(
                                 elevation = visualCardShadowElevation,
-                                shape = sheetInteractionState.playerShadowShape,
+                                shape = sheetInteractionState.playerShadowOnlyShape,
                                 clip = false
                             )
                             .background(
@@ -745,7 +719,13 @@ fun UnifiedPlayerSheetV2(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) {
-                                playerViewModel.togglePlayerSheetState()
+                                // ⚡ 折叠状态点击：直接展开播放器
+                                //   展开状态点击背景：调用 togglePlayerSheetState() 关闭播放器
+                                if (currentSheetContentState == PlayerSheetState.COLLAPSED) {
+                                    playerViewModel.expandPlayerSheet()
+                                } else if (tapBackgroundClosesPlayer) {
+                                    playerViewModel.togglePlayerSheetState()
+                                }
                             }
                             .semantics {
                                 contentDescription = playerSheetSemanticsDescription
@@ -868,6 +848,7 @@ fun UnifiedPlayerSheetV2(
                 onNavigateToAlbum = sheetActionHandlers.onNavigateToAlbum,
                 onNavigateToArtist = sheetActionHandlers.onNavigateToArtist,
                 onNavigateToGenre = sheetActionHandlers.onNavigateToGenre,
+                onOpenNeteaseArtistHomepage = sheetActionHandlers.onOpenNeteaseArtistHomepage,
                 queuePredictiveBackProgress = queuePredictiveBackProgress,
                 queuePredictiveBackSwipeEdge = queuePredictiveBackSwipeEdgeState
             )

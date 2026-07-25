@@ -6,10 +6,9 @@ import androidx.navigation.NavOptionsBuilder
 
 private fun NavController.isReadyForNavigation(): Boolean {
     return runCatching {
-        // Allow navigation as soon as the current entry is at least CREATED.
-        // During transitions the incoming destination may not yet be STARTED, which
-        // caused bottom-bar/tab switches to be silently dropped.
-        currentBackStackEntry?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.CREATED) == true
+        // We allow navigation if the current entry is at least STARTED.
+        // This is safer than strictly RESUMED as transitions can sometimes delay RESUMED state.
+        currentBackStackEntry?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true
     }.getOrDefault(false)
 }
 

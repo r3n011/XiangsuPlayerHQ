@@ -71,13 +71,14 @@ fun AlbumArtCollage(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(height)
+            .then(if (height == Dp.Unspecified) Modifier.fillMaxHeight() else Modifier.height(height))
             .padding(padding)
     ) {
         val boxMaxHeight = maxHeight
         val shapeConfigs by produceState<List<Config>>(initialValue = emptyList(), songsToShow, boxMaxHeight, pattern) {
             value = withContext(Dispatchers.Default) {
-                val min = minOf(300.dp, height)
+                // 当 height 未指定时，使用 boxMaxHeight 的最小值
+                val min = if (height == Dp.Unspecified) minOf(300.dp, boxMaxHeight) else minOf(300.dp, height)
                 buildCollageConfigs(pattern, min, boxMaxHeight)
             }
         }

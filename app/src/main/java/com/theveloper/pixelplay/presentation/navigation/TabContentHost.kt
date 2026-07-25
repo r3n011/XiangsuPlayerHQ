@@ -13,12 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import com.theveloper.pixelplay.presentation.components.ScreenWrapper
+import com.theveloper.pixelplay.presentation.screens.CloudMusicSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.HomeScreen
 import com.theveloper.pixelplay.presentation.screens.LibraryScreen
 import com.theveloper.pixelplay.presentation.screens.SearchScreen
 import com.theveloper.pixelplay.presentation.screens.SettingsScreen
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
-import com.theveloper.pixelplay.presentation.screens.CloudMusicSettingsScreen
 import androidx.compose.ui.unit.IntOffset
 
 private const val TabTransitionDuration = 380
@@ -54,11 +54,10 @@ internal fun TabContentHost(
                     ) + fadeOut(animationSpec = TabFadeSpec)
                 )
                 TabDirection.BACKWARD -> (
-                    // 返回/反方向切换时，目标 Tab 保持不动，避免露出黑底
                     slideInHorizontally(
                         animationSpec = TabTransitionSpec,
-                        initialOffsetX = { 0 }
-                    )
+                        initialOffsetX = { -(it * 0.5f).toInt() }
+                    ) + fadeIn(animationSpec = TabFadeSpec)
                 ) togetherWith (
                     slideOutHorizontally(
                         animationSpec = TabTransitionSpec,
@@ -72,47 +71,70 @@ internal fun TabContentHost(
         modifier = Modifier,
         label = "TabTransition"
     ) { route ->
-        when (route) {
-            Screen.Home.route -> {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    HomeScreen(
-                        navController = navController,
-                        paddingValuesParent = paddingValues,
-                        playerViewModel = playerViewModel,
-                        onOpenSidebar = onOpenSidebar
-                    )
-                }
+        TabScreenContent(
+            route = route,
+            paddingValues = paddingValues,
+            playerViewModel = playerViewModel,
+            navController = navController,
+            onSearchBarActiveChange = onSearchBarActiveChange,
+            onOpenSidebar = onOpenSidebar
+        )
+    }
+}
+
+/**
+ * 渲染单个 Tab 页面内容的函数，用于在 NavHost 中渲染 Tab 路由内容
+ * 这样预测返回手势时能看到正确的页面内容
+ */
+@Composable
+internal fun TabScreenContent(
+    route: String?,
+    paddingValues: PaddingValues,
+    playerViewModel: PlayerViewModel,
+    navController: NavHostController,
+    onSearchBarActiveChange: (Boolean) -> Unit = {},
+    onOpenSidebar: () -> Unit = {}
+) {
+    when (route) {
+        Screen.Home.route -> {
+            ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                HomeScreen(
+                    navController = navController,
+                    paddingValuesParent = paddingValues,
+                    playerViewModel = playerViewModel,
+                    onOpenSidebar = onOpenSidebar
+                )
             }
-            Screen.Search.route -> {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    SearchScreen(
-                        paddingValues = paddingValues,
-                        playerViewModel = playerViewModel,
-                        navController = navController,
-                        onSearchBarActiveChange = onSearchBarActiveChange
-                    )
-                }
+        }
+        Screen.Search.route -> {
+            ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                SearchScreen(
+                    paddingValues = paddingValues,
+                    playerViewModel = playerViewModel,
+                    navController = navController,
+                    onSearchBarActiveChange = onSearchBarActiveChange
+                )
             }
-            Screen.Library.route -> {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    LibraryScreen(navController = navController, playerViewModel = playerViewModel)
-                }
+        }
+        Screen.Library.route -> {
+            ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                LibraryScreen(navController = navController, playerViewModel = playerViewModel)
             }
-            Screen.Settings.route -> {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    SettingsScreen(
-                        navController = navController,
-                        playerViewModel = playerViewModel,
-                        onNavigationIconClick = { navController.popBackStack() }
-                    )
-                }
+        }
+        Screen.Settings.route -> {
+            ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                SettingsScreen(
+                    navController = navController,
+                    playerViewModel = playerViewModel,
+                    onNavigationIconClick = { navController.popBackStack() }
+                )
             }
-            Screen.CloudMusicSettings.route -> {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    CloudMusicSettingsScreen(
-                        onBackClick = { navController.popBackStack() }
-                    )
-                }
+        }
+        Screen.CloudMusicSettings.route -> {
+            ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                CloudMusicSettingsScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
             }
         }
     }

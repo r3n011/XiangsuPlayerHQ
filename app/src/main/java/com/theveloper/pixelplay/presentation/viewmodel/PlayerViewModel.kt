@@ -4636,33 +4636,54 @@ class PlayerViewModel @Inject constructor(
 
             val startMediaItem = buildResolvedPlaybackMediaItem(effectiveStartSong)
 
-            val playSongsAction = {
-                // Use Direct Engine Access to avoid TransactionTooLargeException on Binder
-                dualPlayerEngine.cancelNext()
-                val enginePlayer = dualPlayerEngine.masterPlayer
+            val playSongsAction: () -> Unit = {
+                try {
+                    // Use Direct Engine Access to avoid TransactionTooLargeException on Binder
+                    dualPlayerEngine.cancelNext()
+                    val enginePlayer = dualPlayerEngine.masterPlayer
 
-                enginePlayer.setMediaItem(startMediaItem, 0L)
-                enginePlayer.prepare()
-                enginePlayer.play()
-                _playerUiState.update { it.copy(isLoadingInitialSongs = false) }
+                    enginePlayer.setMediaItem(startMediaItem, 0L)
+                    enginePlayer.prepare()
+                    enginePlayer.play()
+                    _playerUiState.update { it.copy(isLoadingInitialSongs = false) }
 
-                if (songsToPlay.size > 1) {
-                    pendingQueueSegmentsJob?.cancel()
-                    pendingQueueSegmentsJob = viewModelScope.launch {
-                        val preparedSegments = preparePlaybackQueueSegments(
-                            songsToPlay = songsToPlay,
-                            startSongId = effectiveStartSong.id,
-                            playlistId = playlistId
-                        )
-                        withContext(Dispatchers.Main.immediate) {
-                            attachPreparedQueueSegmentsIfCurrent(
-                                player = dualPlayerEngine.masterPlayer,
+                    if (songsToPlay.size > 1) {
+                        pendingQueueSegmentsJob?.cancel()
+                        pendingQueueSegmentsJob = viewModelScope.launch {
+                            val preparedSegments = preparePlaybackQueueSegments(
+                                songsToPlay = songsToPlay,
                                 startSongId = effectiveStartSong.id,
-                                preparedSegments = preparedSegments
+                                playlistId = playlistId
                             )
+                            withContext(Dispatchers.Main.immediate) {
+                                attachPreparedQueueSegmentsIfCurrent(
+                                    player = dualPlayerEngine.masterPlayer,
+                                    startSongId = effectiveStartSong.id,
+                                    preparedSegments = preparedSegments
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "playSongsAction failed for song '${effectiveStartSong.title}'")
+                    _playerUiState.update { it.copy(isLoadingInitialSongs = false) }
+                    viewModelScope.launch {
+                        _toastEvents.emit(
+                            context.getString(R.string.player_playback_error, effectiveStartSong.title ?: context.getString(R.string.unknown))
+                        )
+                    }
+                    // Fallback: 回退到使用 mediaController 播放
+                    mediaController?.let { controller ->
+                        try {
+                            controller.setMediaItem(startMediaItem, 0L)
+                            controller.prepare()
+                            controller.play()
+                        } catch (e2: Exception) {
+                            Timber.e(e2, "Fallback mediaController play also failed")
                         }
                     }
                 }
+                Unit
             }
 
             // We still check for mediaController to ensure the Service is bound and active
@@ -4737,13 +4758,21 @@ class PlayerViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val mediaItem = buildResolvedPlaybackMediaItem(song)
-            if (controller.currentMediaItem?.mediaId == song.id) {
-                if (!controller.isPlaying) controller.play()
-            } else {
-                controller.setMediaItem(mediaItem)
-                controller.prepare()
-                controller.play()
+            try {
+                val mediaItem = buildResolvedPlaybackMediaItem(song)
+                if (controller.currentMediaItem?.mediaId == song.id) {
+                    if (!controller.isPlaying) controller.play()
+                } else {
+                    controller.setMediaItem(mediaItem)
+                    controller.prepare()
+                    controller.play()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "loadAndPlaySong failed for '${song.title}'")
+                clearPreparingSongIfMatching(song.id)
+                _toastEvents.emit(
+                    context.getString(R.string.player_playback_error, song.title ?: context.getString(R.string.unknown))
+                )
             }
         }
     }

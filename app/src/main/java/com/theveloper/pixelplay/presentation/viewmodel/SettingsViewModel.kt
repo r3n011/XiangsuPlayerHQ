@@ -65,7 +65,6 @@ data class SettingsUiState(
     val albumArtPaletteStyle: AlbumArtPaletteStyle = AlbumArtPaletteStyle.default,
     val albumArtColorAccuracy: Int = AlbumArtColorAccuracy.DEFAULT,
     val customPaletteSeedColor: Color = Color(ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_SEED),
-    val customPaletteEnabled: Boolean = ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_ENABLED,
     val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
@@ -161,7 +160,6 @@ private sealed interface SettingsUiUpdate {
         val albumArtPaletteStyle: AlbumArtPaletteStyle,
         val albumArtColorAccuracy: Int,
         val customPaletteSeedColor: Color,
-        val customPaletteEnabled: Boolean,
         val mockGenresEnabled: Boolean,
         val navBarCornerRadius: Int,
         val navBarStyle: String,
@@ -393,7 +391,6 @@ class SettingsViewModel @Inject constructor(
                 themePreferencesRepository.albumArtPaletteStyleFlow,
                 themePreferencesRepository.albumArtColorAccuracyFlow,
                 themePreferencesRepository.customPaletteSeedColorFlow,
-                themePreferencesRepository.customPaletteEnabledFlow,
                 userPreferencesRepository.mockGenresEnabledFlow,
                 userPreferencesRepository.navBarCornerRadiusFlow,
                 userPreferencesRepository.navBarStyleFlow,
@@ -410,15 +407,14 @@ class SettingsViewModel @Inject constructor(
                     albumArtPaletteStyle = values[3] as AlbumArtPaletteStyle,
                     albumArtColorAccuracy = values[4] as Int,
                     customPaletteSeedColor = Color(values[5] as Int),
-                    customPaletteEnabled = values[6] as Boolean,
-                    mockGenresEnabled = values[7] as Boolean,
-                    navBarCornerRadius = values[8] as Int,
-                    navBarStyle = values[9] as String,
-                    navBarCompactMode = values[10] as Boolean,
-                    libraryNavigationMode = values[11] as String,
-                    carouselStyle = values[12] as String,
-                    launchTab = values[13] as String,
-                    showPlayerFileInfo = values[14] as Boolean
+                    mockGenresEnabled = values[6] as Boolean,
+                    navBarCornerRadius = values[7] as Int,
+                    navBarStyle = values[8] as String,
+                    navBarCompactMode = values[9] as Boolean,
+                    libraryNavigationMode = values[10] as String,
+                    carouselStyle = values[11] as String,
+                    launchTab = values[12] as String,
+                    showPlayerFileInfo = values[13] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -429,7 +425,6 @@ class SettingsViewModel @Inject constructor(
                         albumArtPaletteStyle = update.albumArtPaletteStyle,
                         albumArtColorAccuracy = update.albumArtColorAccuracy,
                         customPaletteSeedColor = update.customPaletteSeedColor,
-                        customPaletteEnabled = update.customPaletteEnabled,
                         mockGenresEnabled = update.mockGenresEnabled,
                         navBarCornerRadius = update.navBarCornerRadius,
                         navBarStyle = update.navBarStyle,
@@ -738,13 +733,6 @@ class SettingsViewModel @Inject constructor(
     fun setCustomPaletteSeedColor(color: Color) {
         viewModelScope.launch {
             themePreferencesRepository.setCustomPaletteSeedColor(color.toArgb())
-        }
-    }
-
-    // ⚡ 设置自定义调色盘启用状态
-    fun setCustomPaletteEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            themePreferencesRepository.setCustomPaletteEnabled(enabled)
         }
     }
 
