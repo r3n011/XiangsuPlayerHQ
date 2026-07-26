@@ -89,8 +89,8 @@ android {
         applicationId = "com.r3n011.pixelplay"
         minSdk = 23
         targetSdk = 29
-        versionCode = 25
-        versionName = "1.2.0"
+        versionCode = 26
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
