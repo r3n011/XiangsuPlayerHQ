@@ -786,6 +786,7 @@ constructor(
             val discNumber: Int?,
             val year: Int,
             val dateModified: Long,
+            val dateAdded: Long,
             val genre: String?
     )
 
@@ -794,7 +795,7 @@ constructor(
 
         val lastSlash = raw.filePath.lastIndexOf('/')
         val parentDir = if (lastSlash > 0) raw.filePath.substring(0, lastSlash) else ""
-        val existingDateModifiedSeconds = TimeUnit.MILLISECONDS.toSeconds(existing.dateAdded)
+        val existingDateAddedSeconds = TimeUnit.MILLISECONDS.toSeconds(existing.dateAdded)
 
         return existing.filePath == raw.filePath &&
             existing.parentDirectoryPath == parentDir &&
@@ -807,7 +808,7 @@ constructor(
             existing.trackNumber == raw.trackNumber &&
             existing.discNumber == raw.discNumber &&
             existing.year == raw.year &&
-            existingDateModifiedSeconds == raw.dateModified
+            existingDateAddedSeconds == raw.dateAdded
     }
 
     private suspend fun fetchMusicFromMediaStore(
@@ -835,7 +836,8 @@ constructor(
                 MediaStore.Audio.Media.MIME_TYPE,
                 MediaStore.Audio.Media.TRACK,
                 MediaStore.Audio.Media.YEAR,
-                MediaStore.Audio.Media.DATE_MODIFIED
+                MediaStore.Audio.Media.DATE_MODIFIED,
+                MediaStore.Audio.Media.DATE_ADDED
         )
 
         // API 30+ supports ALBUM_ARTIST and GENRE in the main audio table
@@ -862,92 +864,97 @@ constructor(
         val selection = selectionBuilder.toString()
         val selectionArgs = selectionArgsList.toTypedArray()
 
-        // Phase 1: Fast cursor iteration to collect raw data
+        // Phase 1: Fast cursor iteration to collect raw data from both internal and external storage
         val rawDataList = mutableListOf<RawSongData>()
+        
+        // Query both INTERNAL and EXTERNAL storage to ensure all songs are found
+        val urisToQuery = listOf(
+            MediaStore.Audio.Media.INTERNAL_CONTENT_URI,
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        )
+        
+        var totalCount = 0
+        for (uri in urisToQuery) {
+            contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                totalCount += cursor.count
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                val artistIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
+                val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+                val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+                val albumArtistCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+                } else -1
+                val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+                val trackCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
+                val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
+                val dateModifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+                val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+                val genreCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    cursor.getColumnIndex(MediaStore.Audio.Media.GENRE)
+                } else -1
 
-        contentResolver.query(
-                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                        projection,
-                        selection,
-                        selectionArgs,
-                        null
-                )
-                ?.use { cursor ->
-                    val totalCount = cursor.count
-                    onProgress(0, totalCount, SyncProgress.SyncPhase.FETCHING_MEDIASTORE.ordinal)
-
-                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                    val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                    val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                    val artistIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
-                    val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-                    val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-                    val albumArtistCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
-                    } else -1
-                    val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-                    val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-                    val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
-                    val trackCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
-                    val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
-                    val dateModifiedCol =
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
-                    val genreCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        cursor.getColumnIndex(MediaStore.Audio.Media.GENRE)
-                    } else -1
-
-                    while (cursor.moveToNext()) {
-                        try {
-                            val data = cursor.getString(dataCol) ?: continue
-                            val lastSlash = data.lastIndexOf('/')
-                            if (lastSlash > 0) {
-                                val normalizedParent = data.substring(0, lastSlash)
-                                if (directoryResolver.isBlocked(normalizedParent)) {
-                                    continue
-                                }
+                while (cursor.moveToNext()) {
+                    try {
+                        val data = cursor.getString(dataCol) ?: continue
+                        val lastSlash = data.lastIndexOf('/')
+                        if (lastSlash > 0) {
+                            val normalizedParent = data.substring(0, lastSlash)
+                            if (directoryResolver.isBlocked(normalizedParent)) {
+                                continue
                             }
-                        } catch (e: Exception) {
-                            // Proceed on error
                         }
-
-                        rawDataList.add(
-                                RawSongData(
-                                        id = cursor.getLong(idCol),
-                                        albumId = cursor.getLong(albumIdCol),
-                                        artistId = cursor.getLong(artistIdCol),
-                                        filePath = cursor.getString(dataCol) ?: "",
-                                        mimeType = if (mimeTypeCol >= 0) cursor.getString(mimeTypeCol) else null,
-                                        title =
-                                                cursor.getString(titleCol)
-                                                        .normalizeMetadataTextOrEmpty()
-                                                        .ifEmpty { "Unknown Title" },
-                                        artist =
-                                                cursor.getString(artistCol)
-                                                        .normalizeMetadataTextOrEmpty()
-                                                        .ifEmpty { "Unknown Artist" },
-                                        album =
-                                                cursor.getString(albumCol)
-                                                        .normalizeMetadataTextOrEmpty()
-                                                        .ifEmpty { "Unknown Album" },
-                                        albumArtist =
-                                                if (albumArtistCol >= 0)
-                                                        cursor.getString(albumArtistCol)
-                                                                ?.normalizeMetadataTextOrEmpty()
-                                                                ?.takeIf { it.isNotBlank() }
-                                                else null,
-                                        duration = cursor.getLong(durationCol),
-                                        trackNumber = cursor.getInt(trackCol) % 1000,
-                                        discNumber = (cursor.getInt(trackCol) / 1000).takeIf { it > 0 },
-                                        year = cursor.getInt(yearCol),
-                                        dateModified = cursor.getLong(dateModifiedCol),
-                                        genre = if (genreCol >= 0) cursor.getString(genreCol) else null
-                                )
-                        )
+                    } catch (e: Exception) {
+                        // Proceed on error
                     }
+
+                    rawDataList.add(
+                        RawSongData(
+                            id = cursor.getLong(idCol),
+                            albumId = cursor.getLong(albumIdCol),
+                            artistId = cursor.getLong(artistIdCol),
+                            filePath = cursor.getString(dataCol) ?: "",
+                            mimeType = if (mimeTypeCol >= 0) cursor.getString(mimeTypeCol) else null,
+                            title = cursor.getString(titleCol)
+                                .normalizeMetadataTextOrEmpty()
+                                .ifEmpty { "Unknown Title" },
+                            artist = cursor.getString(artistCol)
+                                .normalizeMetadataTextOrEmpty()
+                                .ifEmpty { "Unknown Artist" },
+                            album = cursor.getString(albumCol)
+                                .normalizeMetadataTextOrEmpty()
+                                .ifEmpty { "Unknown Album" },
+                            albumArtist = if (albumArtistCol >= 0)
+                                cursor.getString(albumArtistCol)
+                                    ?.normalizeMetadataTextOrEmpty()
+                                    ?.takeIf { it.isNotBlank() }
+                            else null,
+                            duration = cursor.getLong(durationCol),
+                            trackNumber = cursor.getInt(trackCol) % 1000,
+                            discNumber = (cursor.getInt(trackCol) / 1000).takeIf { it > 0 },
+                            year = cursor.getInt(yearCol),
+                            dateModified = cursor.getLong(dateModifiedCol),
+                            dateAdded = cursor.getLong(dateAddedCol),
+                            genre = if (genreCol >= 0) cursor.getString(genreCol) else null
+                        )
+                    )
                 }
+            }
+        }
+        
+        onProgress(0, totalCount, SyncProgress.SyncPhase.FETCHING_MEDIASTORE.ordinal)
 
         if (rawDataList.isEmpty()) {
-            Log.i(TAG, "MediaStore cursor produced 0 raw songs after directory filtering")
+            Log.i(TAG, "MediaStore cursor produced 0 raw songs after directory filtering (checked both internal and external storage)")
             Trace.endSection()
             return emptyList()
         }
@@ -981,18 +988,18 @@ constructor(
         // which may allocate large existingMap objects and metadata ByteArrays.
         rawDataList.clear()
 
-        val totalCount = songsToProcess.size
+        val totalProcessCount = songsToProcess.size
         Log.i(
             TAG,
-            "MediaStore raw=$rawSongCount, songsToProcess=$totalCount, isRebuild=$isRebuild"
+            "MediaStore raw=$rawSongCount, songsToProcess=$totalProcessCount, isRebuild=$isRebuild"
         )
-        if (totalCount == 0) {
+        if (totalProcessCount == 0) {
             Trace.endSection()
             return emptyList()
         }
 
         // Phase 3: Parallel processing of songs with metadata merging
-        onProgress(0, totalCount, SyncProgress.SyncPhase.PROCESSING_FILES.ordinal)
+        onProgress(0, totalProcessCount, SyncProgress.SyncPhase.PROCESSING_FILES.ordinal)
         val processedCount = AtomicInteger(0)
         val concurrencyLimit = 4 // Reduced concurrency to save memory
         val semaphore = Semaphore(concurrencyLimit)
@@ -1039,8 +1046,8 @@ constructor(
                             }
 
                             val count = processedCount.incrementAndGet()
-                            if (count % progressBatchSize == 0 || count == totalCount) {
-                                onProgress(count, totalCount, SyncProgress.SyncPhase.PROCESSING_FILES.ordinal)
+                            if (count % progressBatchSize == 0 || count == totalProcessCount) {
+                                onProgress(count, totalProcessCount, SyncProgress.SyncPhase.PROCESSING_FILES.ordinal)
                             }
                             song
                         }
@@ -1128,10 +1135,13 @@ constructor(
         val shouldAugmentMetadata =
                 deepScan ||
                         raw.filePath.endsWith(".wav", true) ||
+                        raw.filePath.endsWith(".wave", true) ||
                         raw.filePath.endsWith(".opus", true) ||
                         raw.filePath.endsWith(".ogg", true) ||
                         raw.filePath.endsWith(".oga", true) ||
                         raw.filePath.endsWith(".aiff", true) ||
+                        raw.filePath.endsWith(".dff", true) ||
+                        raw.filePath.endsWith(".dsf", true) ||
                         isDefaultMetadata(raw.artist) ||
                         isDefaultMetadata(raw.album)
 
@@ -1176,7 +1186,7 @@ constructor(
                 discNumber = discNumber,
                 year = year,
                 dateAdded =
-                        raw.dateModified.let { seconds ->
+                        raw.dateAdded.let { seconds ->
                             if (seconds > 0) TimeUnit.SECONDS.toMillis(seconds)
                             else System.currentTimeMillis()
                         },
@@ -1219,30 +1229,39 @@ constructor(
 
     /**
      * Fetches all IDs currently available in MediaStore to identify deleted songs.
+     * Checks both internal and external storage to ensure all songs are found.
      */
     private fun fetchMediaStoreIds(directoryResolver: DirectoryRuleResolver): Set<Long> {
         val ids = mutableSetOf<Long>()
         val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DATA)
         val (selection, selectionArgs) = buildLocalAudioSelection(minSongDurationMs)
 
-        contentResolver.query(
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            selectionArgs,
-            null
-        )?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-            while (cursor.moveToNext()) {
-                val data = cursor.getString(dataCol)
-                if (data != null) {
-                    val parentPath = File(data).parent
-                    if (parentPath != null && directoryResolver.isBlocked(File(parentPath).absolutePath)) {
-                        continue
+        // Query both INTERNAL and EXTERNAL storage
+        val urisToQuery = listOf(
+            MediaStore.Audio.Media.INTERNAL_CONTENT_URI,
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        )
+
+        for (uri in urisToQuery) {
+            contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                while (cursor.moveToNext()) {
+                    val data = cursor.getString(dataCol)
+                    if (data != null) {
+                        val parentPath = File(data).parent
+                        if (parentPath != null && directoryResolver.isBlocked(File(parentPath).absolutePath)) {
+                            continue
+                        }
                     }
+                    ids.add(cursor.getLong(idCol))
                 }
-                ids.add(cursor.getLong(idCol))
             }
         }
         return ids

@@ -38,4 +38,5 @@
 
 ## Notes
 - `AudioMetaUtils.getAudioMetadata()` 也有 `withTimeout` 包裹 `MediaMetadataRetriever` native 调用的问题，但仅在 deepScan 模式触发，优先级较低，暂未修复。
+  - **已修复 (2026-07-26)**：将 `withTimeout` 替换为专用线程池 `metadataExecutor`（4线程, daemon, MIN_PRIORITY）+ `Future.get(timeout)`。与 `AudioMetadataReader` 修复方式一致。超时后调用方立即释放，native 调用在后台继续但不影响 `Dispatchers.IO`。
 - SyncManager.sync() 有 6 小时间隔限制（MIN_SYNC_INTERVAL_MS），可能导致用户感觉"无法扫描"——实际是跳过了重复扫描。下拉刷新（incrementalSync）和设置页全量扫描（fullSync）无此限制。

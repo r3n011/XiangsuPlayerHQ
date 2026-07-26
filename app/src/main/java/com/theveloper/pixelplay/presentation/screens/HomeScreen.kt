@@ -359,17 +359,8 @@ fun HomeScreen(
                 if (!isLandscape) {
                     val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
                     HomeGradientTopBar(
-                        onNavigationIconClick = {
-                            navController.navigateSafely(Screen.Settings.route)
-                        },
-                        onBetaClick = {
-                            showBetaInfoBottomSheet = true
-                        },
                         onTelegramClick = {
                             showStreamingProviderSheet = true
-                        },
-                        onMenuClick = {
-                            // onOpenSidebar() // Disabled
                         },
                         isScrolled = isScrolledPastThreshold.value,
                         disableBlurAllOver = disableBlurAllOver

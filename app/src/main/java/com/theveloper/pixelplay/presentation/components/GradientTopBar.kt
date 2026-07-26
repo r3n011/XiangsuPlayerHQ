@@ -106,8 +106,6 @@ fun GenreGradientTopBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeGradientTopBar(
-    onNavigationIconClick: () -> Unit,
-    onBetaClick: () -> Unit,
     onTelegramClick: () -> Unit,
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
@@ -162,18 +160,7 @@ fun HomeGradientTopBar(
                          contentDescription = stringResource(R.string.presentation_batch_g_topbar_cd_telegram)
                     )
                 }
-                FilledIconButton(
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    onClick = onNavigationIconClick
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_settings_24),
-                        contentDescription = stringResource(R.string.settings_top_bar_title)
-                    )
-                }
+                
             }
         },
         colors = topAppBarColors(

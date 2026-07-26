@@ -37,6 +37,14 @@ object MediaItemBuilder {
         "audio/x-aiff",
         "audio/ac3",
         "audio/vnd.dts",
+        "audio/wav",
+        "audio/x-wav",
+        "audio/x-wave",
+        "audio/dff",
+        "audio/x-dff",
+        "audio/dsf",
+        "audio/x-dsf",
+        "application/octet-stream",
     )
     private val DIRECT_FILE_URI_EXTENSIONS = setOf(
         "m4a",
@@ -58,6 +66,10 @@ object MediaItemBuilder {
         "aiff",
         "ac3",
         "dts",
+        "wav",
+        "wave",
+        "dff",
+        "dsf",
     )
     private val EXTRACTOR_FIRST_MIME_TYPES = setOf(
         "audio/mp4",

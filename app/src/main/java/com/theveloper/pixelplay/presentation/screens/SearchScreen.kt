@@ -336,24 +336,26 @@ fun SearchScreen(
                                     )
                                 },
                                 trailingIcon = {
-                                    if (searchQuery.isNotBlank()) {
-                                        IconButton(
-                                            onClick = {
-                                                searchQuery = ""
-                                                playerViewModel.updateSearchQuery("")
-                                            },
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                                    Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.CenterEnd) {
+                                        if (searchQuery.isNotBlank()) {
+                                            IconButton(
+                                                onClick = {
+                                                    searchQuery = ""
+                                                    playerViewModel.updateSearchQuery("")
+                                                },
+                                                modifier = Modifier
+                                                    .size(48.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                                                    )
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Close,
+                                                    contentDescription = stringResource(R.string.cd_clear_search_query),
+                                                    tint = MaterialTheme.colorScheme.primary
                                                 )
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Close,
-                                                contentDescription = stringResource(R.string.cd_clear_search_query),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
+                                            }
                                         }
                                     }
                                 },
@@ -363,6 +365,7 @@ fun SearchScreen(
                         expanded = false,
                         onExpandedChange = {},
                         modifier = Modifier
+                            .fillMaxWidth()
                             .clip(RoundedCornerShape(searchbarCornerRadius)),
                         colors = SearchBarDefaults.colors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
@@ -373,20 +376,7 @@ fun SearchScreen(
                     )
                 }
 
-                FilledIconButton(
-                    modifier = Modifier.padding(bottom = 2.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    ),
-                    onClick = { navController.navigateSafely(Screen.Settings.route) }
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_settings_24),
-                        contentDescription = stringResource(R.string.presentation_batch_d_open_settings_cd)
-                    )
                 }
-            }
 
             val showGenreBrowse by remember(searchQuery) { derivedStateOf { searchQuery.isBlank() } }
             AnimatedContent(

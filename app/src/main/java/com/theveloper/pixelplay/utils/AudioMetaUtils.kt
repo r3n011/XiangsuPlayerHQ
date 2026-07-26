@@ -7,8 +7,12 @@ import android.util.Log
 import com.theveloper.pixelplay.data.database.MusicDao
 import java.io.File
 import java.util.Locale
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.TimeoutCancellationException
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicInteger
 
 data class AudioMeta(
     val mimeType: String?,
@@ -18,7 +22,34 @@ data class AudioMeta(
 
 object AudioMetaUtils {
 
+    private const val TAG = "AudioMetaUtils"
     private const val METADATA_READ_TIMEOUT_MS = 10_000L
+
+    /**
+     * Dedicated thread pool for native MediaMetadataRetriever / MediaExtractor calls.
+     *
+     * These APIs perform blocking JNI I/O that cannot be interrupted by coroutine
+     * cancellation. Previously, [getAudioMetadata] used `withTimeout { ... }`, but
+     * since `MediaMetadataRetriever.setDataSource()` is a regular blocking call,
+     * the timeout could never fire while the native call was in progress — the
+     * calling Dispatchers.IO thread was blocked indefinitely, eventually exhausting
+     * the pool and freezing the library scan (see debug-media-scan-350-freeze.md).
+     *
+     * By offloading to this dedicated pool and using Future.get(timeout), the
+     * caller is released on timeout even if the native call continues running
+     * in the background. Leaked threads are confined to this pool and never
+     * starve the shared IO dispatcher.
+     */
+    private val threadCounter = AtomicInteger(0)
+    private val metadataExecutor = Executors.newFixedThreadPool(
+        4,
+        ThreadFactory { r ->
+            Thread(r, "AudioMetaUtils-${threadCounter.incrementAndGet()}").apply {
+                isDaemon = true
+                priority = Thread.MIN_PRIORITY
+            }
+        }
+    )
 
     /**
      * Returns audio metadata for a given file path.
@@ -36,57 +67,70 @@ object AudioMetaUtils {
         val file = File(filePath)
         if (!file.exists() || !file.canRead()) return AudioMeta(null, null, null)
 
+        val future = metadataExecutor.submit(Callable { readMetadataInternal(filePath) })
+        return try {
+            future.get(METADATA_READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: TimeoutException) {
+            future.cancel(true)
+            Log.w(TAG, "Metadata read timed out for file: ${file.name}")
+            AudioMeta(null, null, null)
+        } catch (e: java.util.concurrent.ExecutionException) {
+            Log.w(TAG, "Metadata read failed for ${file.name}: ${e.cause?.message}")
+            AudioMeta(null, null, null)
+        } catch (e: Exception) {
+            Log.w(TAG, "Metadata read failed for ${file.name}: ${e.message}")
+            AudioMeta(null, null, null)
+        }
+    }
+
+    /**
+     * Blocking implementation that reads mimeType/bitrate/sampleRate from the file.
+     * Runs on [metadataExecutor] so that a stuck native call cannot exhaust the
+     * shared Dispatchers.IO pool.
+     */
+    private fun readMetadataInternal(filePath: String): AudioMeta {
         var mimeType: String? = null
         var bitrate: Int? = null
         var sampleRate: Int? = null
 
-        try {
-            withTimeout(METADATA_READ_TIMEOUT_MS) {
-                MediaMetadataRetrieverPool.withRetriever { retriever ->
-                    try {
-                        retriever.setDataSource(filePath)
-                        mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
-                        bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()
-                        sampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)?.toIntOrNull()
-                    } catch (e: Exception) {
-                        Log.w("AudioMetaUtils", "Retriever failed for $filePath: ${e.message}")
-                    }
-                }
+        MediaMetadataRetrieverPool.withRetriever { retriever ->
+            try {
+                retriever.setDataSource(filePath)
+                mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+                bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()
+                sampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)?.toIntOrNull()
+            } catch (e: Exception) {
+                Log.w(TAG, "Retriever failed for $filePath: ${e.message}")
+            }
+        }
 
-                if (mimeType == null) {
-                    MediaExtractor().apply {
-                        try {
-                            setDataSource(filePath)
-                            for (i in 0 until trackCount) {
-                                val format: MediaFormat = getTrackFormat(i)
-                                val trackMime = format.getString(MediaFormat.KEY_MIME)
-                                if (trackMime?.startsWith("audio/") == true) {
-                                    mimeType = mimeType ?: trackMime
-                                    sampleRate =
-                                        sampleRate ?: format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                                    bitrate = bitrate ?: if (format.containsKey(MediaFormat.KEY_BIT_RATE)) {
-                                        format.getInteger(MediaFormat.KEY_BIT_RATE)
-                                    } else null
-                                    break
-                                }
-                            }
-                        } finally {
-                            try {
-                                release()
-                            } catch (_: Exception) {
-                            }
+        if (mimeType == null) {
+            MediaExtractor().apply {
+                try {
+                    setDataSource(filePath)
+                    for (i in 0 until trackCount) {
+                        val format: MediaFormat = getTrackFormat(i)
+                        val trackMime = format.getString(MediaFormat.KEY_MIME)
+                        if (trackMime?.startsWith("audio/") == true) {
+                            mimeType = mimeType ?: trackMime
+                            sampleRate =
+                                sampleRate ?: format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                            bitrate = bitrate ?: if (format.containsKey(MediaFormat.KEY_BIT_RATE)) {
+                                format.getInteger(MediaFormat.KEY_BIT_RATE)
+                            } else null
+                            break
                         }
+                    }
+                } finally {
+                    try {
+                        release()
+                    } catch (_: Exception) {
                     }
                 }
             }
-        } catch (e: TimeoutCancellationException) {
-            Log.w("AudioMetaUtils", "Metadata read timed out for $filePath")
-        } catch (e: Exception) {
-            Log.w("AudioMetaUtils", "Extractor failed for $filePath: ${e.message}")
         }
 
         return AudioMeta(mimeType, bitrate, sampleRate)
-
     }
 
     fun mimeTypeToFormat(mimeType: String?): String {
