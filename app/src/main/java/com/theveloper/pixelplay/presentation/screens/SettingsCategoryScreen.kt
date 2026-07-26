@@ -816,17 +816,6 @@ fun SettingsCategoryScreen(
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely(Screen.PaletteStyle.route) }
                                 )
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.setcat_carousel_style_label),
-                                    description = stringResource(R.string.setcat_carousel_style_desc),
-                                    options = mapOf(
-                                        CarouselStyle.NO_PEEK to stringResource(R.string.setcat_carousel_no_peek),
-                                        CarouselStyle.ONE_PEEK to stringResource(R.string.setcat_carousel_one_peek)
-                                    ),
-                                    selectedKey = uiState.carouselStyle,
-                                    onSelectionChanged = { settingsViewModel.setCarouselStyle(it) },
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_view_carousel_24), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_home_collage)) {

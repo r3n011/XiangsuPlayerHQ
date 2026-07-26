@@ -191,7 +191,12 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
             }
             val fullPlayerOffset by remember {
                 derivedStateOf {
-                    if (playerContentExpansionFraction.value <= 0.35f) IntOffset(0, 10000)
+                    // Align the on-screen threshold with the alpha start point (0.25).
+                    // At ef=0.25 the full-player contentAlpha is exactly 0, so moving
+                    // the composable on-screen here is invisible. The old threshold of
+                    // 0.35 caused the full player to suddenly appear at ~13% alpha —
+                    // a visible flash, especially on heavy screens (Home / Library).
+                    if (playerContentExpansionFraction.value <= 0.25f) IntOffset(0, 10000)
                     else IntOffset.Zero
                 }
             }

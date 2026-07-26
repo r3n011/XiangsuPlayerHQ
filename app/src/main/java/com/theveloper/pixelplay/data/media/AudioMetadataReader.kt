@@ -10,8 +10,12 @@ import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
 import java.io.File
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.TimeoutCancellationException
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicInteger
 
 data class AudioMetadata(
     val title: String?,
@@ -43,6 +47,32 @@ object AudioMetadataReader {
     private const val METADATA_READ_TIMEOUT_MS = 10_000L
 
     /**
+     * Dedicated thread pool for native TagLib / JAudioTagger calls.
+     *
+     * These libraries perform blocking JNI I/O that cannot be interrupted by
+     * coroutine cancellation. Previously, [read] used runBlocking { withTimeout { ... } },
+     * but since [readInternal] is a regular (non-suspend) function, the timeout
+     * could never fire while the native call was in progress — the calling thread
+     * was blocked indefinitely, eventually exhausting the Dispatchers.IO pool and
+     * freezing the library scan (see debug-media-scan-350-freeze.md).
+     *
+     * By offloading to this dedicated pool and using Future.get(timeout), the
+     * caller is released on timeout even if the native call continues running
+     * in the background. Leaked threads are confined to this pool and never
+     * starve the shared IO dispatcher.
+     */
+    private val metadataThreadCounter = AtomicInteger(0)
+    private val metadataExecutor = Executors.newFixedThreadPool(
+        4,
+        ThreadFactory { r ->
+            Thread(r, "AudioMetaReader-${metadataThreadCounter.incrementAndGet()}").apply {
+                isDaemon = true
+                priority = Thread.MIN_PRIORITY
+            }
+        }
+    )
+
+    /**
      * Per-file diagnostic logging (TagLib property maps, parsed fields, fallback hits)
      * is verbose and runs on the library-scan hot path — each line interpolates the
      * file name and, in one case, the whole TagLib property-key set. It is gated off
@@ -69,14 +99,21 @@ object AudioMetadataReader {
     }
 
     fun read(file: File, readArtwork: Boolean = true): AudioMetadata? {
+        val future = metadataExecutor.submit(Callable { readInternal(file, readArtwork) })
         return try {
-            kotlinx.coroutines.runBlocking {
-                withTimeout(METADATA_READ_TIMEOUT_MS) {
-                    readInternal(file, readArtwork)
-                }
-            }
-        } catch (e: TimeoutCancellationException) {
+            future.get(METADATA_READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: TimeoutException) {
+            // The native call may still be running in the background (it cannot be
+            // interrupted), but the caller is released immediately so the scan can
+            // continue with the next song instead of hanging forever.
+            future.cancel(true)
             Timber.tag(TAG).w("Metadata read timed out for file: ${file.name}")
+            null
+        } catch (e: java.util.concurrent.ExecutionException) {
+            Timber.tag(TAG).w(e.cause, "Metadata read failed for file: ${file.name}")
+            null
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Metadata read failed for file: ${file.name}")
             null
         }
     }

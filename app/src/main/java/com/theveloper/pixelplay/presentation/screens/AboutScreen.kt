@@ -3,7 +3,12 @@ package com.theveloper.pixelplay.presentation.screens
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.annotation.DrawableRes
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
@@ -66,6 +71,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -122,6 +128,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import timber.log.Timber
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -140,6 +147,9 @@ private data class Contributor(
     val telegramUrl: String? = null,
     val contributions: Int? = null,
 )
+
+/** 更新检查缓存有效期：5分钟内复用上次请求结果，避免频繁请求 GitHub API（未认证限流 60次/小时） */
+private const val UPDATE_CACHE_DURATION_MS = 5 * 60 * 1000L
 
 private val CoreMaintainer = Contributor(
     id = "theovilardo",
@@ -226,18 +236,59 @@ fun AboutScreen(
     var apkDownloadState by remember { mutableStateOf<ApkDownloadInstaller.DownloadState?>(null) }
     val apkInstaller = remember { ApkDownloadInstaller() }
 
-    val installedTime = remember {
-        runCatching {
-            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            packageInfo.firstInstallTime
-        }.getOrDefault(0L)
+    // 待安装文件：跳转「安装未知应用」设置页授权后返回时用于重试安装
+    var pendingInstallFile by remember { mutableStateOf<File?>(null) }
+
+    // 安装未知应用权限请求：跳转到本应用的设置页，用户返回后自动重试安装
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        val file = pendingInstallFile
+        pendingInstallFile = null
+        if (file != null) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+                context.packageManager.canRequestPackageInstalls()
+            ) {
+                apkInstaller.installApk(context, file)
+            } else {
+                apkDownloadState = ApkDownloadInstaller.DownloadState.Error(
+                    context.getString(R.string.update_install_permission_required)
+                )
+            }
+        }
     }
-    // 使用 lastUpdateTime 更准确反映"当前安装版本的日期"
-    val lastUpdateTime = remember {
+
+    /**
+     * 发起安装：先检查「安装未知应用」权限。
+     * - 已授权（或 Android 8.0 以下）→ 直接拉起系统安装器；
+     * - 未授权（API 26+）→ 跳转本应用设置页授权，用户返回后自动重试。
+     */
+    fun startInstall(file: File) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !context.packageManager.canRequestPackageInstalls()
+        ) {
+            pendingInstallFile = file
+            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            installPermissionLauncher.launch(intent)
+        } else {
+            apkInstaller.installApk(context, file)
+        }
+    }
+
+    // 获取本地版本信息：versionName 用于版本号比较（主判断），lastUpdateTime 用于时间戳兜底
+    val (currentVersionName, lastUpdateTime) = remember {
         runCatching {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            packageInfo.lastUpdateTime
-        }.getOrDefault(installedTime)
+            packageInfo.versionName.orEmpty() to packageInfo.lastUpdateTime
+        }.getOrDefault("" to 0L)
+    }
+
+    // 更新检查缓存：记录上次请求时间和结果，5分钟内复用避免重复请求 GitHub API
+    var lastCheckTime by remember { mutableStateOf(0L) }
+    val updateCacheValid by derivedStateOf {
+        lastCheckTime > 0 && System.currentTimeMillis() - lastCheckTime < UPDATE_CACHE_DURATION_MS
     }
 
     LaunchedEffect(Unit) {
@@ -324,21 +375,51 @@ fun AboutScreen(
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
 
+    /**
+     * 统一的更新检查入口。
+     * @param forceRefresh true=强制发网络请求（手动检查）；false=缓存有效时直接复用
+     * @param onResult 回调，传入检查结果（UpdateInfo 或 null）
+     */
+    suspend fun fetchUpdateInfo(
+        forceRefresh: Boolean,
+        onResult: (UpdateChecker.UpdateInfo?) -> Unit
+    ) {
+        // 缓存有效且非强制刷新 → 直接复用缓存结果
+        if (!forceRefresh && updateCacheValid) {
+            onResult(latestReleaseInfo)
+            return
+        }
+        val result = updateChecker.checkForUpdates()
+        result.onSuccess { info ->
+            latestReleaseInfo = info
+            lastCheckTime = System.currentTimeMillis()
+            onResult(info)
+        }
+        result.onFailure { exception ->
+            if (forceRefresh) {
+                Timber.e(exception, "Failed to check for updates")
+                onResult(null)
+            } else {
+                // 自动检查失败时静默，保留旧缓存（如有）
+                Timber.w(exception, "Auto update check failed, using cached result")
+                onResult(latestReleaseInfo)
+            }
+        }
+    }
+
     fun checkForUpdates() {
         coroutineScope.launch {
             isCheckingUpdate = true
             try {
-                val result = updateChecker.checkForUpdates()
-                result.onSuccess { info ->
-                    if (info.hasUpdate(lastUpdateTime)) {
+                fetchUpdateInfo(forceRefresh = true) { info ->
+                    if (info != null && info.hasUpdate(currentVersionName, lastUpdateTime)) {
                         availableUpdate = info
                         showUpdateDialog = true
-                    } else {
+                    } else if (info != null) {
                         android.widget.Toast.makeText(context, R.string.update_no_update, android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, R.string.update_check_failed, android.widget.Toast.LENGTH_SHORT).show()
                     }
-                }
-                result.onFailure {
-                    android.widget.Toast.makeText(context, R.string.update_check_failed, android.widget.Toast.LENGTH_SHORT).show()
                 }
             } finally {
                 isCheckingUpdate = false
@@ -350,6 +431,10 @@ fun AboutScreen(
         coroutineScope.launch {
             apkInstaller.downloadApk(context, url).collect { state ->
                 apkDownloadState = state
+                if (state is ApkDownloadInstaller.DownloadState.Downloaded) {
+                    apkDownloadState = ApkDownloadInstaller.DownloadState.Installing
+                    startInstall(state.file)
+                }
             }
         }
     }
@@ -358,12 +443,15 @@ fun AboutScreen(
         isLoadingChangelog = true
         changelogError = null
         try {
-            val result = updateChecker.checkForUpdates()
-            result.onSuccess { info ->
+            fetchUpdateInfo(forceRefresh = false) { info ->
                 latestReleaseInfo = info
+                // 自动检查发现新版本时也弹窗提示
+                if (info != null && info.hasUpdate(currentVersionName, lastUpdateTime)) {
+                    availableUpdate = info
+                    showUpdateDialog = true
+                }
             }
-            result.onFailure { exception ->
-                Timber.e(exception, "Failed to fetch changelog from GitHub")
+            if (latestReleaseInfo == null) {
                 changelogError = context.getString(R.string.about_changelog_error)
             }
         } finally {
@@ -654,12 +742,9 @@ fun AboutScreen(
             UpdateAvailableDialog(
                 updateInfo = availableUpdate!!,
                 downloadState = apkDownloadState,
-                onDismiss = { dontShowAgain ->
+                onDismiss = {
                     showUpdateDialog = false
                     apkDownloadState = null
-                    if (dontShowAgain && availableUpdate != null) {
-                        android.widget.Toast.makeText(context, R.string.update_dont_show_again, android.widget.Toast.LENGTH_SHORT).show()
-                    }
                 },
                 onDownload = { url ->
                     startApkDownload(url)

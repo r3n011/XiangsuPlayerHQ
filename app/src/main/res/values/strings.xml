@@ -312,6 +312,7 @@
     <string name="update_download_body">Click the button to visit our website and download the latest version</string>
     <string name="update_dont_show_again">Don\'t show this again</string>
     <string name="update_go_download">Download</string>
+    <string name="update_install_permission_required">需要「安装未知应用」权限才能安装更新，请在设置中开启本应用的安装权限后重试</string>
     <string name="update_check_title">Check for Updates</string>
     <string name="update_check_subtitle">Check if a new version is available</string>
     <string name="update_auto_check_title">Auto Check Updates</string>

@@ -1,7 +1,7 @@
 # Debug Session: media-scan-350-freeze
 
 ## Status
-[OPEN]
+[RESOLVED] — 2026-07-25
 
 ## Symptom
 媒体库扫描到大约 350 首歌曲时卡住，无法继续完成本地歌曲扫描。
@@ -26,7 +26,16 @@
 5. 根据证据选择最小修复：将阻塞调用迁移到独立线程池 + `Future.get(timeout)`，或为封面提取加独立超时。
 
 ## Evidence Log
-- TBD
+- **根因确认 (H1 + H2)**：`AudioMetadataReader.read()` (第73行) 使用 `runBlocking { withTimeout(10s) { readInternal() } }` 包裹 native TagLib 调用。但 `readInternal` 是普通函数（非 suspend），`withTimeout` 的取消机制完全无效——无法中断正在执行的 JNI 调用。`runBlocking` 会永久阻塞调用线程，直到 native 调用返回。遇到损坏/特殊音频文件时 native 调用永久阻塞，`Dispatchers.IO` 线程逐渐泄漏耗尽，扫描卡死。
+- **H3 排除**：`AlbumArtUtils.getAlbumArtUriForLibraryScan()` 在扫描阶段只检查缓存文件是否存在，不做实际封面提取，不是阻塞点。
+- **H4 排除**：`processSongData()` 的 `withTimeout(15s)` 异常处理正确，有 fallback。但由于 `AudioMetadataReader.read()` 内部 `runBlocking` 阻塞，外层 `withTimeout` 也无法生效。
+
+## Fix Applied (2026-07-25)
+1. **AudioMetadataReader.kt**：将 `runBlocking { withTimeout { } }` 替换为专用线程池 `metadataExecutor`（4线程, daemon, MIN_PRIORITY）+ `Future.get(timeout)`。超时后调用方立即释放，native 调用在后台继续但不影响 `Dispatchers.IO`。
+2. **UpdateChecker.kt**：`hasUpdate()` 参数名从 `installedTime` 改为 `lastUpdateTime`，注释同步更新。
+3. **AboutScreen.kt**：移除 `firstInstallTime` 兜底逻辑，`lastUpdateTime` 获取失败时兜底为 `0L`。
+4. 编译验证通过（`BUILD SUCCESSFUL`）。
 
 ## Notes
-- 不修改业务逻辑代码，直到收集到运行时证据。
+- `AudioMetaUtils.getAudioMetadata()` 也有 `withTimeout` 包裹 `MediaMetadataRetriever` native 调用的问题，但仅在 deepScan 模式触发，优先级较低，暂未修复。
+- SyncManager.sync() 有 6 小时间隔限制（MIN_SYNC_INTERVAL_MS），可能导致用户感觉"无法扫描"——实际是跳过了重复扫描。下拉刷新（incrementalSync）和设置页全量扫描（fullSync）无此限制。

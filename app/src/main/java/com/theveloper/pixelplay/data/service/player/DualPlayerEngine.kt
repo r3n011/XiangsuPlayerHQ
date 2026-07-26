@@ -1191,6 +1191,47 @@ class DualPlayerEngine @Inject constructor(
             return
         }
 
+        // Handle StuckPlayerException (ERROR_CODE_TIMEOUT): the audio offload HAL
+        // reported STATE_READY + isPlaying=true but the position never advanced for
+        // 10 s, so Media3's built-in StuckPlayerDetector killed the player. The
+        // custom offload fallback (scheduleAudioOffloadFallbackIfNeeded) only
+        // catches BUFFERING stalls (!isPlaying) and misses this case. Recovery:
+        // disable offload for the session and rebuild — the rebuilt player resumes
+        // from the saved position on the non-offload PCM path.
+        if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_TIMEOUT) {
+            mediaItemRetryCount[mediaId] = retries + 1
+            if (audioOffloadEnabled) {
+                Timber.tag("DualPlayerEngine").w(
+                    "StuckPlayerException for %s — disabling audio offload and rebuilding player",
+                    mediaId
+                )
+                disableAudioOffloadForSession(
+                    reason = "StuckPlayerException: player stuck with no progress (offload HAL stall)"
+                )
+            } else {
+                // Offload already disabled but still stuck — re-prepare from saved state
+                Timber.tag("DualPlayerEngine").w(
+                    "StuckPlayerException for %s with offload already disabled — re-preparing",
+                    mediaId
+                )
+                try {
+                    val currentIndex = player.currentMediaItemIndex
+                    val currentPosition = player.currentPosition
+                    player.stop()
+                    player.clearMediaItems()
+                    val snapshot = ensureQueueSnapshot()
+                    if (snapshot.isNotEmpty()) {
+                        player.setMediaItems(snapshot, currentIndex, currentPosition)
+                        player.prepare()
+                        if (wasPlaying) player.playWhenReady = true
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("DualPlayerEngine").w(e, "Re-prepare failed for %s after stuck player", mediaId)
+                }
+            }
+            return
+        }
+
         // Check if this is a localhost proxy connection error (most common failure)
         val isProxyError = isLocalhostProxyConnectionError(error) || failingUri.host == "127.0.0.1"
 

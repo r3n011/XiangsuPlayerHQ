@@ -1337,9 +1337,8 @@ private fun FullPlayerAlbumCoverSection(
         val externalHeightConstraint = maxHeight
         val widthBasedHeight = when (carouselStyle) {
             CarouselStyle.NO_PEEK -> maxWidth
-            CarouselStyle.ONE_PEEK -> maxWidth * 0.8f
             CarouselStyle.TWO_PEEK -> maxWidth * 0.6f
-            else -> maxWidth * 0.8f
+            else -> maxWidth
         }
         
         // 竖屏模式：封面应该是正方形，取宽度的最小值
@@ -1394,7 +1393,7 @@ private fun FullPlayerAlbumCoverSection(
             AlbumCarouselSection(
                 currentSong = song,
                 queue = currentPlaybackQueue,
-                expansionFraction = 1f,
+                expansionFraction = expansionFractionProvider(),
                 currentMediaItemIndex = currentMediaItemIndex,
                 requestedScrollIndex = requestedScrollIndex,
                 onSongSelected = { newSong, index ->

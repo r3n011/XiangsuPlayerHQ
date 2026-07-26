@@ -89,8 +89,8 @@ android {
         applicationId = "com.r3n011.pixelplay"
         minSdk = 23
         targetSdk = 29
-        versionCode = 24
-        versionName = "1.1.0.4"
+        versionCode = 25
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -102,8 +102,10 @@ android {
             ?: "2040"
         val telegramApiHash = localProperties.getProperty("TELEGRAM_API_HASH")?.ifEmpty { null }
             ?: "b18441a1ff607e10a989891a5462e627"
+        val githubToken = localProperties.getProperty("github.token")?.ifEmpty { null } ?: ""
         buildConfigField("int", "TELEGRAM_API_ID", telegramApiId)
         buildConfigField("String", "TELEGRAM_API_HASH", "\"$telegramApiHash\"")
+        buildConfigField("String", "GITHUB_TOKEN", "\"$githubToken\"")
     }
 
     signingConfigs {

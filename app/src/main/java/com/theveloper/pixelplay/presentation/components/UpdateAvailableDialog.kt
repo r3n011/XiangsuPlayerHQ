@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -53,10 +52,9 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 fun UpdateAvailableDialog(
     updateInfo: UpdateChecker.UpdateInfo,
     downloadState: ApkDownloadInstaller.DownloadState?,
-    onDismiss: (dontShowAgain: Boolean) -> Unit,
+    onDismiss: () -> Unit,
     onDownload: (apkUrl: String) -> Unit
 ) {
-    var dontShowAgain by rememberSaveable { mutableStateOf(false) }
     val availableApks = remember(updateInfo) { updateInfo.availableApks() }
     var selectedArch by rememberSaveable {
         mutableStateOf(
@@ -79,7 +77,7 @@ fun UpdateAvailableDialog(
     val blockShape = AbsoluteSmoothCornerShape(22.dp, 60)
     val actionShape = AbsoluteSmoothCornerShape(18.dp, 60)
 
-    BasicAlertDialog(onDismissRequest = { if (!isDownloading) onDismiss(dontShowAgain) }) {
+    BasicAlertDialog(onDismissRequest = { if (!isDownloading) onDismiss() }) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -250,25 +248,6 @@ fun UpdateAvailableDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { dontShowAgain = !dontShowAgain }
-                            .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Checkbox(
-                            checked = dontShowAgain,
-                            onCheckedChange = { dontShowAgain = it },
-                        )
-                        Text(
-                            text = stringResource(R.string.update_dont_show_again),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-
                     val canDownload = !isDownloading && !isInstalling && availableApks.isNotEmpty()
                     val downloadProgress = (downloadState as? ApkDownloadInstaller.DownloadState.Downloading)?.progress ?: 0f
                     

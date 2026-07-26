@@ -140,9 +140,8 @@ fun RoundedHorizontalMultiBrowseCarousel(
 
     val maxNonFocalItems = when (carouselStyle) {
         CarouselStyle.NO_PEEK -> 0
-        CarouselStyle.ONE_PEEK -> 1
         CarouselStyle.TWO_PEEK -> 2
-        else -> 1 // Default to one peek
+        else -> 0 // Default: no peek
     }
 
     if (carouselStyle == CarouselStyle.NO_PEEK && !suppressNoPeekSettleCorrection) {
@@ -181,17 +180,6 @@ fun RoundedHorizontalMultiBrowseCarousel(
                     mediumCounts = intArrayOf(0),
                     smallCounts = intArrayOf(0)
                 )
-                CarouselStyle.ONE_PEEK -> multiBrowseKeylineList(
-                    density = density,
-                    carouselMainAxisSize = carouselWidthPx,
-                    preferredItemSize = carouselWidthPx * 0.8f,
-                    itemSpacing = spacingPx,
-                    itemCount = itemCount,
-                    alignment = CarouselAlignment.Start,
-                    largeCounts = intArrayOf(1),
-                    mediumCounts = intArrayOf(0),
-                    smallCounts = intArrayOf(1)
-                )
                 CarouselStyle.TWO_PEEK -> {
                     // Manual keyline definition for [small, large, small]
                     val largeSize = carouselWidthPx * 0.6f // Main item is 60% of width
@@ -206,13 +194,15 @@ fun RoundedHorizontalMultiBrowseCarousel(
                         add(smallSize) // Next peek
                     }
                 }
-                else -> multiBrowseKeylineList( // Default to one peek
+                else -> multiBrowseKeylineList( // Default: no peek
                     density = density,
                     carouselMainAxisSize = carouselWidthPx,
-                    preferredItemSize = carouselWidthPx * 0.8f,
+                    preferredItemSize = carouselWidthPx,
                     itemSpacing = spacingPx,
                     itemCount = itemCount,
-                    alignment = CarouselAlignment.Start
+                    largeCounts = intArrayOf(1),
+                    mediumCounts = intArrayOf(0),
+                    smallCounts = intArrayOf(0)
                 )
             }
         },
@@ -275,32 +265,14 @@ private fun RoundedCarousel(
         val carouselItemInfo = remember { CarouselItemDrawInfoImpl() }
         val scope = remember { CarouselItemScopeImpl(itemInfo = carouselItemInfo) }
 
-        val cachedShape = remember(itemCornerRadius) {
-            RoundedCornerShape(itemCornerRadius)
-        }
-
-        val clipShape = remember(cachedShape) {
-            object : Shape {
-                override fun createOutline(
-                    size: Size,
-                    layoutDirection: LayoutDirection,
-                    density: Density
-                ): Outline {
-                    val layerBounds = Rect(0f, 0f, size.width, size.height)
-                    val rect = carouselItemInfo.maskRect.intersect(layerBounds).inflate(0.5f)
-                    val localSize = Size(rect.width, rect.height)
-                    val baseOutline = cachedShape.createOutline(localSize, layoutDirection, density)
-                    val path = Path().apply {
-                        addOutline(baseOutline)
-                        translate(Offset(rect.left, rect.top))
-                    }
-                    return Outline.Generic(path)
-                }
-            }
+        // layer clip 使用纯矩形（圆角=0），圆角由内容层 Box.clip 负责。
+        // 避免双层圆角不对齐导致白色角，也避免 maskRect 高度=layer高度时圆角露出背景色。
+        val clipShape = remember(itemCornerRadius) {
+            MaskRoundedRectShape(carouselItemInfo, 0.dp)
         }
 
         val animatedAlpha by animateFloatAsState(
-            targetValue = if (carouselStyle == CarouselStyle.ONE_PEEK && page > state.pagerState.currentPage + 1) 0f else 1f,
+            targetValue = 1f,
             animationSpec = tween(durationMillis = 200),
             label = "CarouselItemAlpha"
         )
@@ -318,6 +290,37 @@ private fun RoundedCarousel(
         ) {
             scope.content(page)
         }
+    }
+}
+
+/* Shape que lee el maskRect actual en cada frame para recortar con esquinas redondeadas */
+private class MaskRoundedRectShape(
+    private val itemInfo: CarouselItemDrawInfoImpl,
+    private val cornerRadius: Dp
+) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val layerBounds = Rect(0f, 0f, size.width, size.height)
+        val rawMask = itemInfo.maskRect
+        // 如果 maskRect 无效（零或负尺寸，常见于首次布局前 maskRectState 尚未被
+        // placeWithLayer 设置），回退到整个 layer bounds，避免 clip 退化为 1px
+        // 矩形导致圆角完全消失。
+        val effectiveRect = if (rawMask.width <= 0f || rawMask.height <= 0f) {
+            layerBounds
+        } else {
+            rawMask.intersect(layerBounds)
+        }
+        val rect = effectiveRect.inflate(0.5f)
+        val localSize = Size(rect.width, rect.height)
+        val baseOutline = RoundedCornerShape(cornerRadius).createOutline(localSize, layoutDirection, density)
+        val path = Path().apply {
+            addOutline(baseOutline)
+            translate(Offset(rect.left, rect.top))
+        }
+        return Outline.Generic(path)
     }
 }
 
@@ -371,29 +374,6 @@ private class CarouselItemScopeImpl(private val itemInfo: CarouselItemDrawInfo) 
                 val rect = carouselItemDrawInfo.maskRect.intersect(Rect(0f, 0f, size.width, size.height))
                 addOutline(shape.createOutline(rect.size, direction, density))
                 translate(Offset(rect.left, rect.top))
-            }
-        }
-    }
-}
-
-/* Clip redondeado que se actualiza por frame según maskRect (sin hairlines) */
-@Composable
-private fun rememberRoundedClipShape(
-    itemInfo: CarouselItemDrawInfoImpl,
-    itemCornerRadius: Dp
-): Shape {
-    val density = LocalDensity.current
-    return remember(itemInfo, itemCornerRadius, density) {
-        object : Shape {
-            override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-                val eps = 0.75f
-                val r = with(density) { itemCornerRadius.toPx() } + eps
-                val rect = itemInfo.maskRect
-                val rr = androidx.compose.ui.geometry.RoundRect(
-                    rect.left - eps, rect.top - eps, rect.right + eps, rect.bottom + eps,
-                    CornerRadius(r, r)
-                )
-                return Outline.Rounded(rr)
             }
         }
     }
@@ -568,7 +548,7 @@ private class CarouselItemModifierNode(
                 carouselItemDrawInfo.maxSizeState = roundedKeylines.firstFocal.size
                 carouselItemDrawInfo.maskRectState = maskRect
 
-                // --- CLIP: siempre activado con la forma redondeada
+                // --- CLIP:矩形裁剪（圆角由内容层 Box.clip 负责，避免双层圆角不对齐导致白色角）
                 clip = true
                 shape = clipShape
 

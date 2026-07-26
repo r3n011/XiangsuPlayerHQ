@@ -94,6 +94,8 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.MiniPlayerBottomSpacer
+import com.theveloper.pixelplay.presentation.components.NavBarContentHeight
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
@@ -191,6 +193,8 @@ private fun PhoneSettingsScreen(
     val maxTopBarHeightPx = with(density) { maxTopBarHeight.toPx() }
 
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+    val hasMiniPlayer = stablePlayerState.currentSong?.id != null
     val launchTab = uiState.launchTab
     val useSmoothCorners by settingsViewModel.useSmoothCorners.collectAsStateWithLifecycle()
 
@@ -268,7 +272,13 @@ private fun PhoneSettingsScreen(
                     top = currentTopBarHeightDp + 8.dp,
                     start = 16.dp,
                     end = 16.dp,
-                    bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 8.dp
+                    bottom = if (hasMiniPlayer) {
+                        MiniPlayerHeight + NavBarContentHeight +
+                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                        MiniPlayerBottomSpacer
+                    } else {
+                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+                    }
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current)

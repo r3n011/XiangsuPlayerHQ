@@ -1,10 +1,12 @@
 package com.theveloper.pixelplay.data.github
 
+import com.theveloper.pixelplay.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,6 +45,10 @@ class UpdateChecker @Inject constructor() {
 
                 connection.requestMethod = "GET"
                 connection.addRequestProperty("Accept", "application/vnd.github.v3+json")
+                if (BuildConfig.GITHUB_TOKEN.isNotBlank()) {
+                    connection.addRequestProperty("Authorization", "token ${BuildConfig.GITHUB_TOKEN}")
+                    Timber.d("Using GitHub PAT for authenticated release check")
+                }
                 connection.connectTimeout = 15000
                 connection.readTimeout = 15000
 
@@ -102,42 +108,16 @@ class UpdateChecker @Inject constructor() {
         }
     }
 
+    /**
+     * 解析 GitHub API 返回的 ISO 8601 时间字符串（如 "2026-07-20T12:34:56Z"）。
+     * 解析失败返回 0L（而非当前时间），避免误报"有更新"。
+     */
     private fun parseDateTime(dateTimeString: String): Long {
         return try {
-            val trimmed = dateTimeString.trim()
-            if (trimmed.endsWith("Z")) {
-                val withoutZ = trimmed.substring(0, trimmed.length - 1)
-                val parts = withoutZ.split("T")
-                if (parts.size == 2) {
-                    val dateParts = parts[0].split("-")
-                    val timeParts = parts[1].split(":")
-                    if (dateParts.size == 3 && timeParts.size >= 2) {
-                        val year = dateParts[0].toInt()
-                        val month = dateParts[1].toInt() - 1
-                        val day = dateParts[2].toInt()
-                        val hour = timeParts[0].toInt()
-                        val minute = timeParts[1].toInt()
-                        val second = if (timeParts.size > 2) {
-                            val secPart = timeParts[2]
-                            if (secPart.contains(".")) secPart.substringBefore(".").toInt()
-                            else secPart.toInt()
-                        } else 0
-
-                        val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-                        calendar.set(year, month, day, hour, minute, second)
-                        calendar.timeInMillis
-                    } else {
-                        System.currentTimeMillis()
-                    }
-                } else {
-                    System.currentTimeMillis()
-                }
-            } else {
-                System.currentTimeMillis()
-            }
+            Instant.parse(dateTimeString.trim()).toEpochMilli()
         } catch (e: Exception) {
-            Timber.e(e, "Failed to parse date: $dateTimeString")
-            System.currentTimeMillis()
+            Timber.w(e, "Failed to parse date: $dateTimeString")
+            0L
         }
     }
 
@@ -152,11 +132,57 @@ class UpdateChecker @Inject constructor() {
         val apkUrlUniversal: String? = null
     ) {
         /**
-         * 根据 publishedAt 判断是否有更新。
-         * 如果 GitHub 发布时间晚于本地安装时间，则视为有更新。
+         * 判断是否有更新（主判断：版本号比较）。
+         *
+         * 优先解析 tag_name 与本地 versionName 进行语义化版本比较；
+         * 若版本号无法解析，则回退到时间戳比较（publishedAt > lastUpdateTime）。
+         *
+         * @param currentVersionName 本地应用的 versionName（如 "1.1.0.4"）
+         * @param lastUpdateTime 本地 APK 的最后更新时间戳（版本号解析失败时的兜底判断）
          */
-        fun hasUpdate(installedTime: Long): Boolean {
-            return publishedAt > installedTime
+        fun hasUpdate(currentVersionName: String, lastUpdateTime: Long = 0L): Boolean {
+            val remoteVersion = parseVersionNumber(version)
+            val localVersion = parseVersionNumber(currentVersionName)
+
+            // 双方版本号都能解析 → 用版本号比较
+            if (remoteVersion != null && localVersion != null) {
+                return compareVersions(remoteVersion, localVersion) > 0
+            }
+
+            // 版本号无法解析 → 回退到时间戳比较（publishedAt <= 0 时直接返回 false）
+            if (publishedAt <= 0L) return false
+            return publishedAt > lastUpdateTime
+        }
+
+        /**
+         * 从 tag_name 或 versionName 中提取纯数字版本号。
+         * 支持 "v1.2.3"、"1.2.3"、"v1.1.0.4" 等格式。
+         * @return 版本号各段列表（如 [1, 2, 3]），无法解析时返回 null
+         */
+        private fun parseVersionNumber(raw: String): List<Int>? {
+            val cleaned = raw.trim().removePrefix("v").removePrefix("V")
+            val parts = cleaned.split(".")
+            if (parts.isEmpty()) return null
+            val numbers = mutableListOf<Int>()
+            for (part in parts) {
+                val n = part.toIntOrNull() ?: return null
+                numbers.add(n)
+            }
+            return numbers
+        }
+
+        /**
+         * 语义化版本比较。逐段比较数字，短数组用 0 补齐。
+         * @return 正数表示 a 更新，负数表示 b 更新，0 表示相同
+         */
+        private fun compareVersions(a: List<Int>, b: List<Int>): Int {
+            val maxLen = maxOf(a.size, b.size)
+            for (i in 0 until maxLen) {
+                val va = a.getOrElse(i) { 0 }
+                val vb = b.getOrElse(i) { 0 }
+                if (va != vb) return va - vb
+            }
+            return 0
         }
 
         /**
