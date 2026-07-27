@@ -13,59 +13,56 @@ private val MIDI_EXTENSION_SELECTION_ARGS = arrayOf(
     "%.midi"
 )
 
-// WAV, DFF, DSF files may have incomplete duration metadata on some devices
-// Explicitly include them to ensure they are scanned
-private val HIGH_RES_MIME_SELECTION_ARGS = arrayOf(
-    "audio/wav",
-    "audio/x-wav",
-    "audio/x-wave",
-    "audio/dff",
-    "audio/x-dff",
-    "audio/dsf",
-    "audio/x-dsf",
-    "application/octet-stream"
-)
-private val HIGH_RES_EXTENSION_SELECTION_ARGS = arrayOf(
-    "%.wav",
-    "%.wave",
-    "%.dff",
-    "%.dsf"
+/**
+ * Common audio file extensions used as a fallback when MediaStore's duration / mime_type
+ * indexing is incomplete. Some OEMs only correctly index a subset of formats (e.g. OGG),
+ * causing MP3/FLAC/M4A/WAV/etc. to be silently dropped from the scan. Matching by path
+ * extension ensures these files are still discovered without making the query overly
+ * complex.
+ */
+private val COMMON_AUDIO_EXTENSIONS = arrayOf(
+    ".mp3", ".flac", ".m4a", ".wav", ".wma", ".aac",
+    ".aiff", ".aif", ".opus", ".oga", ".dff", ".dsf",
+    ".amr", ".3gpp", ".3gp", ".awb"
 )
 
 /**
  * Builds the baseline MediaStore selection for user-facing local audio.
  *
- * We intentionally do not rely on [MediaStore.Audio.Media.IS_MUSIC] here because some devices
- * and scanners leave valid songs flagged as non-music, which makes library sync and folder
- * browsing appear to "cap out" below the real file count for specific users.
+ * The primary predicate is [MediaStore.Audio.Media.IS_MUSIC] != 0 because that is the
+ * most reliable way to discover music files across devices. We also accept any MIME
+ * type under the audio namespace, plus a curated list of common audio extensions, so
+ * files that are not flagged as music by the OEM scanner are still included.
  *
- * MIDI files may be indexed with incomplete duration metadata, so explicit MIDI MIME/path
- * matches bypass the duration floor and are left to playback capability checks.
+ * The duration floor from user preferences is intentionally NOT applied here. Some OEM
+ * MediaStore providers index MP3/FLAC/WAV/etc. with duration == 0, which would silently
+ * drop those songs. Filtering by duration is left to playback-level checks if needed.
+ *
+ * The selection intentionally avoids SQLite functions such as COALESCE/LOWER because
+ * certain OEM MediaStore providers do not support them in selection strings.
  */
 fun buildLocalAudioSelection(minDurationMs: Int): Pair<String, Array<String>> {
-    val clampedMinDurationMs = minDurationMs.coerceAtLeast(0)
     val midiMimePlaceholders = MIDI_MIME_SELECTION_ARGS.joinToString(",") { "?" }
     val midiExtensionSelection = MIDI_EXTENSION_SELECTION_ARGS.joinToString(" OR ") {
-        "LOWER(${MediaStore.Audio.Media.DATA}) LIKE ?"
+        "${MediaStore.Audio.Media.DATA} LIKE ?"
     }
-    val highResMimePlaceholders = HIGH_RES_MIME_SELECTION_ARGS.joinToString(",") { "?" }
-    val highResExtensionSelection = HIGH_RES_EXTENSION_SELECTION_ARGS.joinToString(" OR ") {
-        "LOWER(${MediaStore.Audio.Media.DATA}) LIKE ?"
+    val commonExtensionSelection = COMMON_AUDIO_EXTENSIONS.joinToString(" OR ") {
+        "${MediaStore.Audio.Media.DATA} LIKE ?"
     }
+    val commonExtensionArgs = COMMON_AUDIO_EXTENSIONS.map { "%$it" }.toTypedArray()
+
     val selection = buildString {
         append("(")
-        append("${MediaStore.Audio.Media.DURATION} >= ?")
-        append(" OR LOWER(COALESCE(${MediaStore.Audio.Media.MIME_TYPE}, '')) IN ($midiMimePlaceholders)")
+        append("${MediaStore.Audio.Media.IS_MUSIC} != 0")
+        append(" OR ${MediaStore.Audio.Media.MIME_TYPE} IN ($midiMimePlaceholders)")
         append(" OR $midiExtensionSelection")
-        append(" OR LOWER(COALESCE(${MediaStore.Audio.Media.MIME_TYPE}, '')) IN ($highResMimePlaceholders)")
-        append(" OR $highResExtensionSelection")
+        append(" OR $commonExtensionSelection")
         append(")")
-        append(" AND COALESCE(${MediaStore.Audio.Media.TITLE}, '') != ''")
+        append(" AND ${MediaStore.Audio.Media.TITLE} IS NOT NULL")
+        append(" AND ${MediaStore.Audio.Media.TITLE} != ''")
         append(" AND ${MediaStore.Audio.Media.DATA} IS NOT NULL")
     }
-    return selection to arrayOf(clampedMinDurationMs.toString()) +
-        MIDI_MIME_SELECTION_ARGS +
+    return selection to MIDI_MIME_SELECTION_ARGS +
         MIDI_EXTENSION_SELECTION_ARGS +
-        HIGH_RES_MIME_SELECTION_ARGS +
-        HIGH_RES_EXTENSION_SELECTION_ARGS
+        commonExtensionArgs
 }

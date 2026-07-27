@@ -31,8 +31,22 @@ class BilibiliSearchApi @Inject constructor(
         27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13
     )
 
-    private var mixinKey: String? = null
-    private var mixinKeyTimestamp: Long = 0
+    companion object {
+        // Static sMixinKey for retry interceptor access
+        @Volatile
+        private var sMixinKey: String? = null
+        @Volatile
+        private var sMixinKeyTimestamp: Long = 0
+
+        // Static method to invalidate sMixinKey for retry interceptor
+        @JvmStatic
+        fun invalidateMixinKey() {
+            sMixinKey = null
+            sMixinKeyTimestamp = 0
+            Timber.d("MixinKey invalidated by retry interceptor")
+        }
+    }
+
     private val MAX_RETRY_COUNT = 3
     private val RETRY_DELAY_MS = 1000L
 
@@ -71,11 +85,11 @@ class BilibiliSearchApi @Inject constructor(
             queryBuilder.append("${urlEncode(key)}=${urlEncode(value)}")
         }
 
-        val mixinKey = mixinKey ?: run {
+        val currentMixinKey = sMixinKey ?: run {
             Timber.e("WBI mixinKey is null, signing will fail!")
             return params
         }
-        val wRid = md5(queryBuilder.toString() + mixinKey)
+        val wRid = md5(queryBuilder.toString() + currentMixinKey)
         params["w_rid"] = wRid
 
         return params
@@ -128,9 +142,9 @@ class BilibiliSearchApi @Inject constructor(
                         val subKey = getFileName(subUrl, false)
 
                         if (imgKey.isNotBlank() && subKey.isNotBlank()) {
-                            mixinKey = getMixinKey(imgKey + subKey)
-                            mixinKeyTimestamp = System.currentTimeMillis()
-                            Timber.d("Successfully fetched mixinKey from wbi_img: ${mixinKey?.take(8)}...")
+                            sMixinKey = getMixinKey(imgKey + subKey)
+                            sMixinKeyTimestamp = System.currentTimeMillis()
+                            Timber.d("Successfully fetched sMixinKey from wbi_img: ${sMixinKey?.take(8)}...")
                             return@withContext true
                         }
                     }
@@ -144,9 +158,9 @@ class BilibiliSearchApi @Inject constructor(
                         val imgKey = getFileName(wbiImgUrl, false)
                         val subKey = getFileName(wbiSubUrl, false)
                         if (imgKey.isNotBlank() && subKey.isNotBlank()) {
-                            mixinKey = getMixinKey(imgKey + subKey)
-                            mixinKeyTimestamp = System.currentTimeMillis()
-                            Timber.d("Successfully fetched mixinKey from alt fields: ${mixinKey?.take(8)}...")
+                            sMixinKey = getMixinKey(imgKey + subKey)
+                            sMixinKeyTimestamp = System.currentTimeMillis()
+                            Timber.d("Successfully fetched sMixinKey from alt fields: ${sMixinKey?.take(8)}...")
                             return@withContext true
                         }
                     }
@@ -202,9 +216,9 @@ class BilibiliSearchApi @Inject constructor(
                     val subKey = getFileName(subUrl, false)
 
                     if (imgKey.isNotBlank() && subKey.isNotBlank()) {
-                        mixinKey = getMixinKey(imgKey + subKey)
-                        mixinKeyTimestamp = System.currentTimeMillis()
-                        Timber.d("Successfully fetched mixinKey from rcmd API: ${mixinKey?.take(8)}...")
+                        sMixinKey = getMixinKey(imgKey + subKey)
+                        sMixinKeyTimestamp = System.currentTimeMillis()
+                        Timber.d("Successfully fetched sMixinKey from rcmd API: ${sMixinKey?.take(8)}...")
                         return@withContext true
                     }
                 }
@@ -234,7 +248,7 @@ class BilibiliSearchApi @Inject constructor(
 
     private suspend fun ensureMixinKey(): Boolean {
         val now = System.currentTimeMillis()
-        if (mixinKey.isNullOrBlank() || now - mixinKeyTimestamp > 3600000) {
+        if (sMixinKey.isNullOrBlank() || now - sMixinKeyTimestamp > 3600000) {
             return fetchMixinKey()
         }
         return true
@@ -312,8 +326,8 @@ class BilibiliSearchApi @Inject constructor(
                 Timber.w("Bilibili search returned non-success code: $code, message: $msg, ttl: $ttl")
 
                 if (code == -403 || code == 100016) {
-                    mixinKey = null
-                    Timber.e("WBI signature invalid, clearing mixinKey")
+                    sMixinKey = null
+                    Timber.e("WBI signature invalid, clearing sMixinKey")
                 }
                 return BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = "搜索失败: $msg")
             }
@@ -493,14 +507,60 @@ class BilibiliSearchApi @Inject constructor(
     suspend fun getPlayUrl(aid: Long, cid: Long, bvid: String): String? {
         return withContext(Dispatchers.IO) {
             try {
-                if (!ensureMixinKey()) {
-                    Timber.e("Failed to get mixin key for play URL")
-                    return@withContext null
-                }
+                // 先尝试较高清晰度；若失败或无可用流，降级到 480P（未登录更稳定）。
+                fetchPlayUrl(aid, cid, bvid, qn = 80)?.let { return@withContext it }
 
+                Timber.w("Bilibili play URL qn=80 unavailable, falling back to qn=32")
+                fetchPlayUrl(aid, cid, bvid, qn = 32)
+            } catch (e: Exception) {
+                Timber.e(e, "Bilibili play URL exception")
+                null
+            }
+        }
+    }
+
+    private suspend fun fetchPlayUrl(
+        aid: Long,
+        cid: Long,
+        bvid: String,
+        qn: Int,
+        allowRetry: Boolean = true
+    ): String? {
+        return withContext(Dispatchers.IO) {
+            if (!ensureMixinKey()) {
+                Timber.e("Failed to get mixin key for play URL")
+                return@withContext null
+            }
+
+            val body = requestPlayUrl(aid, cid, bvid, qn) ?: return@withContext null
+            Timber.d("Bilibili play URL (qn=$qn) response: ${body.take(1000)}")
+
+            val obj = JSONObject(body)
+            val code = obj.optInt("code", -1)
+            if (code == -403 || code == 100016) {
+                Timber.w("Bilibili play URL WBI signature invalid (code=$code), refreshing mixin key")
+                sMixinKey = null
+                if (allowRetry && ensureMixinKey()) {
+                    return@withContext fetchPlayUrl(aid, cid, bvid, qn, allowRetry = false)
+                }
+                return@withContext null
+            }
+            if (code != 0) {
+                Timber.e("Bilibili play URL API returned error: code=$code, message=${obj.optString("message")}, ttl=${obj.optInt("ttl")}")
+                return@withContext null
+            }
+
+            val data = obj.optJSONObject("data") ?: return@withContext null
+            extractPlayableUrl(data)
+        }
+    }
+
+    private suspend fun requestPlayUrl(aid: Long, cid: Long, bvid: String, qn: Int): String? {
+        return withContext(Dispatchers.IO) {
+            try {
                 val params = mutableMapOf(
                     "cid" to cid.toString(),
-                    "qn" to "80",
+                    "qn" to qn.toString(),
                     "otype" to "json",
                     "fnver" to "0",
                     "fnval" to "4048",
@@ -549,85 +609,96 @@ class BilibiliSearchApi @Inject constructor(
                     return@withContext null
                 }
 
-                val body = response.body?.string() ?: return@withContext null
-                Timber.d("Bilibili play URL response: ${body.take(1000)}")
-
-                val obj = JSONObject(body)
-                if (obj.optInt("code", -1) != 0) {
-                    val msg = obj.optString("message", "")
-                    val ttl = obj.optInt("ttl", 0)
-                    Timber.e("Bilibili play URL API returned error: code=${obj.optInt("code")}, message=$msg, ttl=$ttl")
-                    if (obj.optInt("code") == -403 || obj.optInt("code") == 100016) {
-                        mixinKey = null
-                        Timber.e("WBI signature invalid, clearing mixinKey")
-                    }
-                    return@withContext null
-                }
-                val data = obj.optJSONObject("data") ?: return@withContext null
-
-                val dash = data.optJSONObject("dash")
-                if (dash != null) {
-                    val audioArr = dash.optJSONArray("audio")
-                    if (audioArr != null && audioArr.length() > 0) {
-                        Timber.d("Found ${audioArr.length()} audio tracks")
-                        for (i in 0 until audioArr.length()) {
-                            val audioObj = audioArr.optJSONObject(i)
-                            if (audioObj != null) {
-                                val baseUrl = audioObj.optString("base_url", "")
-                                val backupUrl = audioObj.optString("backup_url", "")
-                                var url = if (baseUrl.isNotBlank()) baseUrl else backupUrl
-                                if (url.isBlank()) {
-                                    val backupUrls = audioObj.optJSONArray("backup_url")
-                                    if (backupUrls != null && backupUrls.length() > 0) {
-                                        url = backupUrls.optString(0, "")
-                                    }
-                                }
-                                if (url.isNotBlank()) {
-                                    if (url.startsWith("//")) {
-                                        url = "https:$url"
-                                    }
-                                    Timber.d("Found audio URL: ${url.take(80)}...")
-                                    return@withContext url
-                                }
-                            }
-                        }
-                    } else {
-                        Timber.w("No audio tracks found in DASH")
-                    }
-                } else {
-                    Timber.w("No DASH data found")
-                }
-
-                val durl = data.optJSONArray("durl")
-                if (durl != null && durl.length() > 0) {
-                    Timber.d("Found ${durl.length()} durl items")
-                    val durlObj = durl.optJSONObject(0)
-                    if (durlObj != null) {
-                        var url = durlObj.optString("url", "")
-                        if (url.isBlank()) {
-                            val backupUrls = durlObj.optJSONArray("backup_url")
-                            if (backupUrls != null && backupUrls.length() > 0) {
-                                url = backupUrls.optString(0, "")
-                            }
-                        }
-                        if (url.isNotBlank()) {
-                            if (url.startsWith("//")) {
-                                url = "https:$url"
-                            }
-                            Timber.d("Found durl URL: ${url.take(80)}...")
-                            return@withContext url
-                        }
-                    }
-                } else {
-                    Timber.w("No durl data found")
-                }
-
-                Timber.w("No playable URL found in response")
-                null
+                response.body?.string()
             } catch (e: Exception) {
-                Timber.e(e, "Bilibili play URL exception")
+                Timber.e(e, "Bilibili play URL network exception")
                 null
             }
         }
+    }
+
+    private fun extractPlayableUrl(data: JSONObject): String? {
+        val dash = data.optJSONObject("dash")
+        if (dash != null) {
+            val audioArr = dash.optJSONArray("audio")
+            if (audioArr != null && audioArr.length() > 0) {
+                selectBestAudioUrl(audioArr)?.let { return it }
+            } else {
+                Timber.w("No audio tracks found in DASH")
+            }
+        } else {
+            Timber.w("No DASH data found")
+        }
+
+        val durl = data.optJSONArray("durl")
+        if (durl != null && durl.length() > 0) {
+            Timber.d("Found ${durl.length()} durl items")
+            extractUrlFromDurl(durl.optJSONObject(0))?.let { return it }
+        } else {
+            Timber.w("No durl data found")
+        }
+
+        Timber.w("No playable URL found in response")
+        return null
+    }
+
+    /**
+     * 从 DASH 音频列表中选择最稳定的音轨：
+     * 优先已知 AAC 流（30251 > 30250 > 30232 > 30216），
+     * 没有 AAC 时回退到 id 最大的音轨（可能是 Hi-Res/杜比）。
+     */
+    private fun selectBestAudioUrl(audioArr: JSONArray): String? {
+        val candidates = mutableListOf<Pair<Int, JSONObject>>()
+        for (i in 0 until audioArr.length()) {
+            val audioObj = audioArr.optJSONObject(i) ?: continue
+            val id = audioObj.optInt("id", 0)
+            if (id > 0) {
+                candidates.add(id to audioObj)
+            }
+        }
+        if (candidates.isEmpty()) return null
+
+        val aacIds = listOf(30251, 30250, 30232, 30216)
+        val bestAac = candidates.filter { it.first in aacIds }.maxByOrNull { it.first }
+        val chosen = bestAac ?: candidates.maxByOrNull { it.first }
+        val audioObj = chosen?.second ?: return null
+
+        Timber.d("Selected Bilibili audio track id=${chosen.first}")
+        return extractUrlFromAudioObj(audioObj)
+    }
+
+    private fun extractUrlFromAudioObj(audioObj: JSONObject): String? {
+        val baseUrl = audioObj.optString("base_url", "")
+        var url = baseUrl
+        if (url.isBlank()) {
+            val backupUrlString = audioObj.optString("backup_url", "")
+            url = backupUrlString
+        }
+        if (url.isBlank()) {
+            val backupUrls = audioObj.optJSONArray("backup_url")
+            if (backupUrls != null && backupUrls.length() > 0) {
+                url = backupUrls.optString(0, "")
+            }
+        }
+        return normalizeBilibiliUrl(url)
+    }
+
+    private fun extractUrlFromDurl(durlObj: JSONObject?): String? {
+        if (durlObj == null) return null
+        var url = durlObj.optString("url", "")
+        if (url.isBlank()) {
+            val backupUrls = durlObj.optJSONArray("backup_url")
+            if (backupUrls != null && backupUrls.length() > 0) {
+                url = backupUrls.optString(0, "")
+            }
+        }
+        return normalizeBilibiliUrl(url)
+    }
+
+    private fun normalizeBilibiliUrl(url: String): String? {
+        if (url.isBlank()) return null
+        val normalized = if (url.startsWith("//")) "https:$url" else url
+        Timber.d("Found Bilibili playable URL: ${normalized.take(80)}...")
+        return normalized
     }
 }

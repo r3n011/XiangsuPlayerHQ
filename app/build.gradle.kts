@@ -88,13 +88,13 @@ android {
     defaultConfig {
         applicationId = "com.r3n011.pixelplay"
         minSdk = 23
-        targetSdk = 29
-        versionCode = 26
-        versionName = "1.2.1"
+        targetSdk = 36
+        versionCode = 27
+        versionName = "1.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        
+
 
         resConfigs("zh-rCN", "en")
 

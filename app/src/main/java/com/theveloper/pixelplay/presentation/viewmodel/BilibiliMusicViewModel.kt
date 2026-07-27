@@ -184,7 +184,7 @@ class BilibiliMusicViewModel @Inject constructor(
 
                     val coverToUse = song.pic.ifBlank { "" }
                     val savedSongId = try {
-                        musicRepository.saveCloudSong(song.toLxSongInfo()).toString()
+                        musicRepository.saveCloudSong(song.toLxSongInfo(cidToUse, aidToUse)).toString()
                     } catch (t: Throwable) {
                         Timber.w("saveCloudSong failed: ${t.message}")
                         "bilibili_${song.id}"
@@ -203,16 +203,18 @@ class BilibiliMusicViewModel @Inject constructor(
     }
 }
 
-private fun BilibiliSongInfo.toLxSongInfo(): com.theveloper.pixelplay.data.lx.LxSongInfo {
+private fun BilibiliSongInfo.toLxSongInfo(cid: Long, aid: Long): com.theveloper.pixelplay.data.lx.LxSongInfo {
+    val bvidToStore = bvid.ifBlank { aid.toString() }
     return com.theveloper.pixelplay.data.lx.LxSongInfo(
         id = id,
-        songmid = bvid.ifBlank { aid.toString() },
+        songmid = bvidToStore,
         hash = id,
         name = name,
         singer = singer,
         albumName = albumName,
         duration = duration,
         pic = pic,
-        source = "bilibili"
+        source = "bilibili",
+        extra = "bilibili://$bvidToStore/$cid/$aid"
     )
 }

@@ -1,12 +1,15 @@
 package com.theveloper.pixelplay.data.worker
 
+import android.Manifest
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Trace // Import Trace
 import android.provider.MediaStore
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -135,8 +138,18 @@ constructor(
                         return@withContext Result.retry()
                     }
 
-                    Timber.tag(TAG)
-                        .i("Starting MediaStore synchronization (Mode: $syncMode, ForceMetadata: $forceMetadata)...")
+                    val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_AUDIO
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                    val hasAudioPermission = ContextCompat.checkSelfPermission(
+                        applicationContext,
+                        audioPermission
+                    ) == PackageManager.PERMISSION_GRANTED
+                    Log.i(TAG, "Audio permission status: $hasAudioPermission (required=$audioPermission)")
+
+                    Log.i(TAG, "Starting MediaStore synchronization (Mode: $syncMode, ForceMetadata: $forceMetadata)...")
                     val startTime = workerStartedAt
 
                     val artistDelimiters = userPreferencesRepository.artistDelimitersFlow.first()
@@ -215,8 +228,7 @@ constructor(
                                 0L
                             }
 
-                    Timber.tag(TAG)
-                        .i("Fetching music from MediaStore (since: $fetchTimestamp seconds)...")
+                    Log.i(TAG, "Fetching music from MediaStore (since: $fetchTimestamp seconds)...")
 
                     // Update every 50 songs or ~5% of library
                     val progressBatchSize = 50
@@ -238,8 +250,7 @@ constructor(
                                 )
                             }
 
-                    Timber.tag(TAG)
-                        .i("Fetched ${songsToInsert.size} new/modified songs from MediaStore.")
+                    Log.i(TAG, "Fetched ${songsToInsert.size} new/modified songs from MediaStore.")
 
                     // --- PROCESSING PHASE ---
                     val anySongsFetched = songsToInsert.isNotEmpty()
@@ -864,25 +875,83 @@ constructor(
         val selection = selectionBuilder.toString()
         val selectionArgs = selectionArgsList.toTypedArray()
 
-        // Phase 1: Fast cursor iteration to collect raw data from both internal and external storage
-        val rawDataList = mutableListOf<RawSongData>()
-        
-        // Query both INTERNAL and EXTERNAL storage to ensure all songs are found
-        val urisToQuery = listOf(
-            MediaStore.Audio.Media.INTERNAL_CONTENT_URI,
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        )
-        
-        var totalCount = 0
-        for (uri in urisToQuery) {
+        // Diagnostic: query all audio files without any filtering to verify permission/MediaStore state.
+        try {
             contentResolver.query(
-                uri,
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.DATA,
+                    MediaStore.Audio.Media.MIME_TYPE,
+                    MediaStore.Audio.Media.IS_MUSIC
+                ),
+                null,
+                null,
+                null
+            )?.use { diagnosticCursor ->
+                Log.w(TAG, "Diagnostic Audio.Media query returned ${diagnosticCursor.count} rows")
+                if (diagnosticCursor.count > 0) {
+                    diagnosticCursor.moveToFirst()
+                    val dataCol = diagnosticCursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                    val mimeCol = diagnosticCursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+                    val musicCol = diagnosticCursor.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
+                    val sampleData = diagnosticCursor.getString(dataCol) ?: "null"
+                    val sampleMime = if (mimeCol >= 0) diagnosticCursor.getString(mimeCol) else "null"
+                    val sampleMusic = if (musicCol >= 0) diagnosticCursor.getInt(musicCol).toString() else "null"
+                    Log.w(TAG, "Diagnostic Audio sample: path=$sampleData, mime=$sampleMime, isMusic=$sampleMusic")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Diagnostic Audio.Media query failed: ${e.message}", e)
+        }
+
+        // Diagnostic: query the generic Files table as well; some devices index audio files there
+        // even when the Audio.Media view appears empty.
+        try {
+            contentResolver.query(
+                MediaStore.Files.getContentUri("external"),
+                arrayOf(
+                    MediaStore.Files.FileColumns._ID,
+                    MediaStore.Files.FileColumns.DATA,
+                    MediaStore.Files.FileColumns.MIME_TYPE
+                ),
+                "${MediaStore.Files.FileColumns.MIME_TYPE} LIKE 'audio/%'",
+                null,
+                null
+            )?.use { filesCursor ->
+                Log.w(TAG, "Diagnostic Files table audio query returned ${filesCursor.count} rows")
+                if (filesCursor.count > 0) {
+                    filesCursor.moveToFirst()
+                    val dataCol = filesCursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+                    val mimeCol = filesCursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+                    val sampleData = filesCursor.getString(dataCol) ?: "null"
+                    val sampleMime = if (mimeCol >= 0) filesCursor.getString(mimeCol) else "null"
+                    Log.w(TAG, "Diagnostic Files sample: path=$sampleData, mime=$sampleMime")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Diagnostic Files table query failed: ${e.message}", e)
+        }
+
+        // Phase 1: Fast cursor iteration to collect raw data from external storage.
+        // Historically we queried INTERNAL_CONTENT_URI too, but on several OEM devices
+        // that URI either throws a SecurityException or returns a cursor whose columns
+        // differ from the external audio table, which aborts the whole scan.  Music
+        // lives on external/shared storage anyway (INTERNAL only covers system audio),
+        // so we restrict the primary scan to EXTERNAL and guard the query with a
+        // try/catch so a single failure cannot kill the entire sync.
+        val rawDataList = mutableListOf<RawSongData>()
+
+        var totalCount = 0
+        try {
+            contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 selection,
                 selectionArgs,
                 null
             )?.use { cursor ->
-                totalCount += cursor.count
+                totalCount = cursor.count
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
@@ -949,12 +1018,16 @@ constructor(
                     )
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "MediaStore external audio query failed: ${e.message}", e)
+            Trace.endSection()
+            return emptyList()
         }
-        
+
         onProgress(0, totalCount, SyncProgress.SyncPhase.FETCHING_MEDIASTORE.ordinal)
 
         if (rawDataList.isEmpty()) {
-            Log.i(TAG, "MediaStore cursor produced 0 raw songs after directory filtering (checked both internal and external storage)")
+            Log.w(TAG, "MediaStore cursor produced 0 raw songs after directory filtering")
             Trace.endSection()
             return emptyList()
         }
@@ -1229,22 +1302,16 @@ constructor(
 
     /**
      * Fetches all IDs currently available in MediaStore to identify deleted songs.
-     * Checks both internal and external storage to ensure all songs are found.
+     * Only external/shared storage is queried, matching the main scan path.
      */
     private fun fetchMediaStoreIds(directoryResolver: DirectoryRuleResolver): Set<Long> {
         val ids = mutableSetOf<Long>()
         val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DATA)
         val (selection, selectionArgs) = buildLocalAudioSelection(minSongDurationMs)
 
-        // Query both INTERNAL and EXTERNAL storage
-        val urisToQuery = listOf(
-            MediaStore.Audio.Media.INTERNAL_CONTENT_URI,
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        )
-
-        for (uri in urisToQuery) {
+        try {
             contentResolver.query(
-                uri,
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 selection,
                 selectionArgs,
@@ -1263,6 +1330,8 @@ constructor(
                     ids.add(cursor.getLong(idCol))
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "MediaStore external ID query failed", e)
         }
         return ids
     }

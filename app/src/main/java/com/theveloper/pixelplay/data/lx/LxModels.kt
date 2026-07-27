@@ -13,7 +13,9 @@ data class LxSongInfo(
     val duration: Long = 0L,
     val pic: String = "",
     /** 播放时成功获取 URL 的音源标识（如 "wy", "tx", "kw" 等）。从媒体库播放时会用它来调用 JS 引擎。 */
-    val source: String = ""
+    val source: String = "",
+    /** 音源自定义持久化 URI，例如 bilibili://bvid/cid/aid。用于从历史记录/收藏播放时动态解析最新地址。 */
+    val extra: String = ""
 )
 
 @Serializable

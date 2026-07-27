@@ -168,7 +168,7 @@ import com.theveloper.pixelplay.presentation.components.sanitizeNavigationBarBot
 import com.theveloper.pixelplay.presentation.navigation.AppNavigation
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.navigation.TabContentHost
-import com.theveloper.pixelplay.presentation.screens.SetupScreen
+
 import com.theveloper.pixelplay.presentation.viewmodel.MainViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.ThemeStateHolder
@@ -328,7 +328,6 @@ class MainActivity : ComponentActivity() {
                 AppThemeMode.LIGHT -> false
                 else -> systemDarkTheme
             }
-            val isSetupComplete by mainViewModel.isSetupComplete.collectAsStateWithLifecycle()
             
             LaunchedEffect(isCarModeEnabled) {
                 requestedOrientation = if (isCarModeEnabled) {
@@ -342,7 +341,7 @@ class MainActivity : ComponentActivity() {
             var showCrashReportDialog by remember { mutableStateOf(false) }
             var crashLogData by remember { mutableStateOf<CrashLogData?>(null) }
             
-            // Permissions Logic
+            // Permissions Logic - Request media and notification permissions on startup
             val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 listOf(Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
             } else {
@@ -350,21 +349,22 @@ class MainActivity : ComponentActivity() {
             }
             @OptIn(ExperimentalPermissionsApi::class)
             val permissionState = rememberMultiplePermissionsState(permissions = permissions)
-            // Determine if we need to show Setup based on completion OR missing permissions
             val permissionsValid = permissionState.allPermissionsGranted
-            val showSetupScreen = remember(isSetupComplete, permissionsValid, isBenchmarkMode) {
-                when {
-                    isBenchmarkMode -> false
-                    isSetupComplete == null -> null
-                    else -> !isSetupComplete!! || !permissionsValid
+
+            // Auto-request permissions when app starts and permissions are not granted
+            LaunchedEffect(Unit) {
+                if (!permissionsValid && !isBenchmarkMode) {
+                    permissionState.launchMultiplePermissionRequest()
                 }
             }
 
-            // Sync Trigger: When we are NOT showing setup (meaning permissions are good and setup is done)
-            LaunchedEffect(showSetupScreen) {
-                if (showSetupScreen == false) {
-                     LogUtils.i(this, "Setup complete/skipped and permissions valid. Starting sync.")
+            // Sync Trigger: When permissions are valid
+            LaunchedEffect(permissionsValid) {
+                if (permissionsValid) {
+                     LogUtils.i(this, "Permissions granted. Starting sync.")
                      mainViewModel.startSync()
+                     // Mark setup as complete to prevent showing setup screen in future
+                     userPreferencesRepository.setInitialSetupDone(true)
                 }
             }
 
@@ -402,28 +402,8 @@ class MainActivity : ComponentActivity() {
                             if (!isFinished) {
                                 PixelPlaySplashScreen()
                             } else {
-                                if (showSetupScreen == null) {
-                                    SetupGateLoadingScreen()
-                                } else {
-                                    AnimatedContent(
-                                        targetState = showSetupScreen,
-                                        transitionSpec = {
-                                            if (targetState) {
-                                                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
-                                            } else {
-                                                scaleIn(initialScale = 0.95f, animationSpec = tween(450)) + fadeIn(animationSpec = tween(450)) togetherWith
-                                                        slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(450)) + fadeOut(animationSpec = tween(450))
-                                            }
-                                        },
-                                        label = "SetupTransition"
-                                    ) { shouldShowSetup ->
-                                        if (shouldShowSetup) {
-                                            SetupScreen(onSetupComplete = {})
-                                        } else {
-                                            MainAppContent(playerViewModel, mainViewModel)
-                                        }
-                                    }
-                                }
+                                // Show main app content directly (no setup screen)
+                                MainAppContent(playerViewModel, mainViewModel)
                             }
                         }
 

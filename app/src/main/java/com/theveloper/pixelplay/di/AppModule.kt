@@ -442,7 +442,9 @@ object AppModule {
      */
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        bilibiliRepository: com.theveloper.pixelplay.data.bilibili.BilibiliRepository
+    ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             // HEADERS (not BODY) so we never print response bodies that may contain
             // cookies, tokens, or third-party API payloads. Headers are still useful
@@ -476,9 +478,16 @@ object AppModule {
             .readTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
             .writeTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            // Bilibili API / CDN 需要 Referer、Cookie、浏览器 UA 等 header，
+            // 尤其是 ExoPlayer 直接播放 CDN URL 时不会显式设置这些 header。
+            // 放在通用 UA 拦截器之前，确保 Bilibili 请求使用浏览器 UA 而不是 PixelPlayer UA。
+            .addInterceptor(com.theveloper.pixelplay.data.bilibili.BilibiliHeaderInterceptor(bilibiliRepository))
             // Add User-Agent header (required by some APIs)
             .addInterceptor { chain ->
                 val originalRequest = chain.request()
+                if (originalRequest.header("User-Agent") != null) {
+                    return@addInterceptor chain.proceed(originalRequest)
+                }
                 val requestWithUserAgent = originalRequest.newBuilder()
                     .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
                     .build()

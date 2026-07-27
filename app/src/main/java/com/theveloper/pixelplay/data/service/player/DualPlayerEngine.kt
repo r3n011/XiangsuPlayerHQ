@@ -227,6 +227,7 @@ class DualPlayerEngine @Inject constructor(
     private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder,
     private val okHttpClient: okhttp3.OkHttpClient,
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
+    private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
     private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
     private val audioProcessorProvider: AudioProcessorProvider,
 ) {
@@ -241,10 +242,10 @@ class DualPlayerEngine @Inject constructor(
         private const val POST_TRANSITION_OFFLOAD_GUARD_MS = 2_000L
         private const val MAX_AUXILIARY_TIMELINE_ITEMS = 200
         private val LOCAL_MEDIA_SCHEMES = setOf("content", "file", "android.resource")
-        private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud")
+        private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "bilibili")
         // Subset of REMOTE_MEDIA_SCHEMES: schemes that need proxy resolution.
         // http/https resolve directly and must NOT enter the resolvedUriCache lookup path.
-        private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud")
+        private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "bilibili")
     }
 
     data class TransitionTarget(
@@ -1640,6 +1641,7 @@ class DualPlayerEngine @Inject constructor(
             "jellyfin" -> resolveJellyfinUriAsync(uriString)
             "gdrive" -> resolveGDriveUriAsync(uriString)
             "cloud" -> resolveCloudLxUriAsync(uriString)
+            "bilibili" -> resolveBilibiliUri(uri)
             else -> null
         }
 
@@ -1800,6 +1802,36 @@ class DualPlayerEngine @Inject constructor(
             android.util.Log.e("DualPlayerEngine", "Failed to resolve cloud URI: ${e.message}", e)
             null
         }
+    }
+
+    /**
+     * Bilibili 真实播放 URL 会过期，因此数据库中只保存 bilibili://{bvid}/{cid}/{aid}。
+     * 实际播放前通过此函数重新请求 playurl API 获取最新可用地址。
+     */
+    private suspend fun resolveBilibiliUri(uri: Uri): Uri? = withContext(Dispatchers.IO) {
+        if (!connectivityStateHolder.isOnline.value) {
+            connectivityStateHolder.triggerOfflineBlockedEvent()
+            return@withContext null
+        }
+
+        val bvid = uri.host?.takeIf { it.isNotBlank() } ?: return@withContext null
+        val segments = uri.pathSegments ?: return@withContext null
+        val cid = segments.getOrNull(0)?.toLongOrNull() ?: run {
+            Timber.w("Bilibili URI missing cid: $uri")
+            return@withContext null
+        }
+        val aidFromPath = segments.getOrNull(1)?.toLongOrNull() ?: 0L
+
+        val realBvid = if (bvid.startsWith("BV", ignoreCase = true)) bvid else ""
+        val realAid = if (realBvid.isBlank()) bvid.toLongOrNull() ?: aidFromPath else aidFromPath
+
+        Timber.d("Resolving Bilibili URI: bvid=$realBvid, aid=$realAid, cid=$cid")
+        val url = bilibiliSearchApi.getPlayUrl(realAid, cid, realBvid)
+        if (url.isNullOrBlank()) {
+            Timber.w("Failed to resolve Bilibili playable URL for $uri")
+            return@withContext null
+        }
+        Uri.parse(url)
     }
 
     suspend fun resolveMediaItem(mediaItem: MediaItem): MediaItem {

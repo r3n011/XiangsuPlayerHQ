@@ -51,6 +51,23 @@ class BilibiliRepository @Inject constructor(
 
     fun getCookieString(): String = prefs.getString("bilibili_cookies", "") ?: ""
 
+    /**
+     * 将保存的 JSON cookie 转换为 HTTP Cookie header 格式。
+     * 返回空字符串表示无有效 cookie。
+     */
+    fun getCookieHeader(): String {
+        val json = getCookieString()
+        if (json.isBlank()) return ""
+        return try {
+            jsonToMap(json)
+                .map { "${it.key}=${it.value}" }
+                .joinToString("; ")
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to build Bilibili cookie header")
+            ""
+        }
+    }
+
     val userId: Long
         get() = prefs.getLong("bilibili_user_id", -1L)
 

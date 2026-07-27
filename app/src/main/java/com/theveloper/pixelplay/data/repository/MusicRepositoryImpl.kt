@@ -862,6 +862,10 @@ class MusicRepositoryImpl @Inject constructor(
     }
 
     private fun buildCloudContentUri(song: com.theveloper.pixelplay.data.lx.LxSongInfo): String {
+        // Bilibili 播放 URL 会过期，使用自定义 scheme 让播放器在播放时重新解析。
+        if (song.source == "bilibili" && song.extra.startsWith("bilibili://")) {
+            return song.extra
+        }
         val json = org.json.JSONObject().apply {
             put("id", song.id)
             put("songmid", song.songmid)

@@ -169,6 +169,12 @@ object MediaItemBuilder {
             }
             return rawUri
         }
+        // bilibili://{bvid}/{cid}/{aid}：真实播放 URL 会过期，保留 scheme 让
+        // DualPlayerEngine 在播放前重新解析最新地址。
+        if (contentUriString.startsWith("bilibili://")) {
+            return runCatching { Uri.parse(contentUriString) }.getOrNull()
+                ?: Uri.fromFile(File(contentUriString))
+        }
         val uri = runCatching { Uri.parse(contentUriString) }.getOrNull()
             ?: return Uri.fromFile(File(contentUriString))
         // Telegram downloaded files can be stored as absolute paths (without file://).
