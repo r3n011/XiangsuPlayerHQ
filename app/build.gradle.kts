@@ -223,7 +223,7 @@ androidComponents {
 // 构建完成后复制 APK 到自定义输出目录
 val customOutputDir = providers.gradleProperty("pixelplay.outputDir").getOrElse("G:/apk")
 
-// 创建复制任务，在 assembleRelease 完成后执行
+// 创建复制任务
 val copyApkToCustomDir by tasks.registering {
     val sourceDir = File("$buildDir/outputs/apk/release")
     val destDir = File(customOutputDir)
@@ -240,8 +240,8 @@ val copyApkToCustomDir by tasks.registering {
     }
 }
 
-// 将复制任务挂接到 assembleRelease 之后
-tasks.named("assembleRelease") {
+// 使用 matching 安全地配置 assembleRelease 任务
+tasks.matching { it.name == "assembleRelease" }.configureEach {
     finalizedBy(copyApkToCustomDir)
 }
 
