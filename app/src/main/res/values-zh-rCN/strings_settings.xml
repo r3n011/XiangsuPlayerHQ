@@ -554,6 +554,11 @@
     <!-- Download Settings -->
     <string name="setcat_download_settings">下载设置</string>
     <string name="setcat_download_path_title">下载路径</string>
+
+    <!-- 转码缓存 -->
+    <string name="setcat_transcode_cache_section">转码缓存</string>
+    <string name="setcat_transcode_cache_title">转码缓存管理</string>
+    <string name="setcat_transcode_cache_subtitle">查看和管理 Hi-Fi 音频转码缓存文件</string>
     <string name="setcat_download_progress_title">下载进度</string>
     <string name="setcat_download_complete">下载完成</string>
     <string name="setcat_download_failed">下载失败</string>

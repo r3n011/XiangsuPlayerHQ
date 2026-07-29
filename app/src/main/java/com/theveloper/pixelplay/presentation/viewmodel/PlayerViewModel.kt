@@ -313,6 +313,10 @@ class PlayerViewModel @Inject constructor(
     private val vipPreloadJobs = mutableMapOf<String, Job>()
     // VIP 歌曲预加载结果缓存：songId -> fullUrl（已经获取到但还没替换的完整 URL）
     private val vipPendingFullUrls = mutableMapOf<String, String>()
+    // ⚡ 漫游追加请求待处理标记：当 loadMoreRoamingSongs 正在进行时，新的追加请求会被记录，
+    //   等当前加载完成后自动再触发一次，避免快速切歌时追加请求被丢弃
+    @Volatile
+    private var roamingLoadPending: Boolean = false
 
     private val _playerUiState = MutableStateFlow(PlayerUiState())
     val playerUiState: StateFlow<PlayerUiState> = _playerUiState.asStateFlow()
@@ -2534,28 +2538,34 @@ class PlayerViewModel @Inject constructor(
                             }
 
                             // 常规：vipSong 之前已被跳过 → 插到"当前正在播放的这首之后"
-                            val insertionIndex =
-                                if (vipIndex in 0 until mediaItemCountNow && currentIdx >= vipIndex) {
-                                    (currentIdx + 1).coerceAtLeast(vipIndex)
-                                } else {
-                                    vipIndex.coerceAtLeast(0).coerceAtMost(mediaItemCountNow)
-                                }
-
-                            if (vipIndex in 0 until mediaItemCountNow &&
+                            // ⚡ 修复：先移除旧条目，再基于移除后的索引计算插入位置，
+                            //   避免移除前计算导致索引偏移
+                            val needRemove = vipIndex in 0 until mediaItemCountNow &&
                                 c.getMediaItemAt(vipIndex).mediaId == mediaId
-                            ) {
+                            if (needRemove) {
                                 c.removeMediaItem(vipIndex)
                             }
 
                             val countAfterRemove = c.mediaItemCount
-                            val realInsertIndex = insertionIndex
-                                .coerceAtMost(countAfterRemove)
-                                .coerceAtLeast(0)
+                            // 移除后 currentIdx 可能已变化：如果 vipIndex < 原currentIdx，
+                            // 移除后 currentIdx 减 1，需要读取最新的 currentIdx
+                            val currentIdxAfterRemove = c.currentMediaItemIndex
+                            val realInsertIndex = if (needRemove && vipIndex <= currentIdx && currentIdxAfterRemove >= 0) {
+                                // vipIndex 在 currentIdx 之前或等于，移除后 currentIdx 减 1
+                                // 插入到当前播放歌曲之后
+                                (currentIdxAfterRemove + 1).coerceAtMost(countAfterRemove)
+                            } else if (currentIdxAfterRemove >= 0) {
+                                // vipIndex 在 currentIdx 之后，currentIdx 不受影响
+                                (currentIdxAfterRemove + 1).coerceAtMost(countAfterRemove)
+                            } else {
+                                // 无当前播放歌曲，插入到原 vipIndex 位置（或末尾）
+                                vipIndex.coerceAtLeast(0).coerceAtMost(countAfterRemove)
+                            }
                             c.addMediaItem(realInsertIndex, newMediaItem)
 
                             Timber.d(
                                 "RoamingVIP: queued '$mediaId' at index=$realInsertIndex " +
-                                    "(original=$vipIndex, current=$currentIdx, total=${c.mediaItemCount})"
+                                    "(original=$vipIndex, current=$currentIdx, afterRemove=$currentIdxAfterRemove, total=${c.mediaItemCount})"
                             )
 
                             // 同步 UI 状态
@@ -3113,9 +3123,10 @@ class PlayerViewModel @Inject constructor(
                 ?: extras?.getString(MediaItemBuilder.EXTERNAL_EXTRA_ALBUM_ART)
                     ?.takeIf { it.isNotBlank() }
 
+        // ⚡ 修复：只有 metadataArtwork 存在且与存储的不同时才覆盖，
+        // 当 metadataArtwork 为 null 时，保留已有的 albumArtUriString，
+        // 否则会错误地把原本存在的封面清除，导致封面取色不触发。
         return when {
-            metadataArtwork == null && partlyMerged.albumArtUriString != null ->
-                partlyMerged.copy(albumArtUriString = null)
             metadataArtwork != null && partlyMerged.albumArtUriString != metadataArtwork ->
                 partlyMerged.copy(albumArtUriString = metadataArtwork)
             else -> partlyMerged
@@ -3451,12 +3462,38 @@ class PlayerViewModel @Inject constructor(
         }
         syncPlaybackPositionFromPlayer(mediaItem.mediaId, currentPosition)
 
-        // ⚡ 只有当 albumArtUri 真的变化了才提取颜色，避免多次回调导致
-        // 颜色被重复提取 → 动画重新启动 → 颜色跳变
+        // ⚡ 漫游 VIP 歌曲：检查是否有预加载好的完整 URL，如果有则立即切换
+        //   避免走 30s 试听检测流程（那会先跳过歌曲再后台取链接再插回，打断播放节奏）
+        if (song.id.startsWith("roaming_")) {
+            applyPendingVipFullUrlIfAvailable(song.id, expectedIndex)
+        }
+
+        // ⚡ 颜色提取触发条件：
+        // 1. albumArtUri 真的变化了
+        // 2. 或者当前 albumArtUri 已有封面，但没有有效的 ColorSchemePair（首次播放/缓存失效）
+        //    这种情况在"从首页/媒体库首次播放"时很常见：albumArtUri 是新设置的（oldSongUri
+        //    可能为 null），但 ColorSchemePair 还没有生成 → 必须触发一次提取
+        // 3. 或者主题偏好是 ALBUM_ART 但当前 activeColorSchemePair 为 null（兜底）
         val newSongUri = song.albumArtUriString
-        Log.w("PixelPlay_Debug", "  → 🎨 颜色提取检查: oldSongUri=${oldSongUri?.take(20) ?: "null"}, newSongUri=${newSongUri?.take(20) ?: "null"}")
-        if (oldSongUri != newSongUri) {
-            Log.w("PixelPlay_Debug", "  → 🎨 ✅ albumArtUri 变化，提取颜色 + 加载歌词")
+        val currentThemeState = themeStateHolder.albumArtThemeState.value
+        val hasValidColorScheme = currentThemeState.colorSchemePair != null &&
+            currentThemeState.albumArtUri == newSongUri
+        val shouldExtractByUriChange = oldSongUri != newSongUri
+        val shouldExtractByMissingScheme = !newSongUri.isNullOrBlank() && !hasValidColorScheme
+        Log.w(
+            "PixelPlay_Debug",
+            "  → 🎨 颜色提取检查: oldSongUri=${oldSongUri?.take(20) ?: "null"}, " +
+                "newSongUri=${newSongUri?.take(20) ?: "null"}, " +
+                "hasValidColorScheme=$hasValidColorScheme, " +
+                "byUriChange=$shouldExtractByUriChange, " +
+                "byMissingScheme=$shouldExtractByMissingScheme"
+        )
+        if (shouldExtractByUriChange || shouldExtractByMissingScheme) {
+            val reason = when {
+                shouldExtractByUriChange -> "albumArtUri 变化"
+                else -> "已有封面但无有效 ColorSchemePair（首次/缓存失效）"
+            }
+            Log.w("PixelPlay_Debug", "  → 🎨 ✅ 触发颜色提取：$reason")
             viewModelScope.launch {
                 val uri = newSongUri?.toUri()
                 // ⚡ 关键修复：第二个参数必须是 newSongUri（当前歌曲 uri），不是 oldSongUri
@@ -3465,7 +3502,7 @@ class PlayerViewModel @Inject constructor(
                 themeStateHolder.extractAndGenerateColorScheme(uri, newSongUri)
             }
         } else {
-            Log.w("PixelPlay_Debug", "  → 🎨 ⏭️  albumArtUri 没变，不解提取颜色 (避免颜色跳变)")
+            Log.w("PixelPlay_Debug", "  → 🎨 ⏭️  albumArtUri 没变且已有有效 ColorSchemePair，跳过提取")
         }
         // ⚡ 无论 albumArtUri 是否变化都必须加载歌词，否则同一专辑的歌曲切歌后
         // isLoadingLyrics=true 但永远不会触发实际加载，导致歌词永远卡在加载状态
@@ -3592,7 +3629,17 @@ class PlayerViewModel @Inject constructor(
         }
         if (hasRoamingItems) {
             Timber.d("RoamingRestore: detected roaming songs in MediaSession (first=$firstRoamingMediaId), _isRoamingMode=true")
-            _isRoamingMode.value = true
+            // ⚡ 启动安全检查：只有当有效的网易云 Cookie 存在时，才恢复漫游模式。
+            //   如果 Cookie 无效（用户已退出登录或 Cookie 过期），自动退出漫游模式，
+            //   防止 init 块中的 Flow collector 因 _isRoamingMode=true 而触发 loadMoreRoamingSongs，
+            //   导致启动时的快速失败和重试循环。
+            val cookie = neteaseRepository.getCookieString()
+            if (cookie.isNotBlank()) {
+                _isRoamingMode.value = true
+            } else {
+                Timber.w("RoamingRestore: Cookie is empty, skipping roaming mode restore")
+                _isRoamingMode.value = false
+            }
         }
 
         playerCtrl.currentMediaItem?.let { mediaItem ->
@@ -4090,46 +4137,55 @@ class PlayerViewModel @Inject constructor(
                 }
                 Log.w("PixelPlay_Debug", "[onMediaItemTransition] mediaItem=${mediaItem?.mediaId?.take(8)}, reason=$reasonName")
 
-                // ⚡ 漫游模式下的重复歌曲检测：如果是自动切歌（AUTO），且新歌曲与刚播放的歌曲相同，则跳过
+                // ⚡ 漫游模式下的重复歌曲检测：
+                // 仅在「标题+艺术家」完全一致 AND 队列中确实存在连续重复的 mediaId 时才跳歌。
+                // 这样可以避免误判（例如某些歌曲元数据短暂解析为相同标题+艺术家，或队列状态
+                // 与 player 不同步时）而导致的"莫名跳歌"。
                 if (_isRoamingMode.value && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && mediaItem != null) {
                     val currentQueue = _playerUiState.value.currentPlaybackQueue
                     val justPlayedSong = stablePlayerState.value.currentSong
-                    if (justPlayedSong != null && currentQueue.isNotEmpty()) {
-                        val newSong = currentQueue.find { it.id == mediaItem.mediaId }
-                            ?: resolveSongFromMediaItem(mediaItem)
-                        if (newSong != null) {
-                            val justPlayedKey = "${justPlayedSong.title.trim().lowercase()}|${justPlayedSong.displayArtist.trim().lowercase()}"
-                            val newKey = "${newSong.title.trim().lowercase()}|${newSong.displayArtist.trim().lowercase()}"
-                            if (justPlayedKey == newKey && justPlayedKey.isNotBlank()) {
-                                Timber.d("onMediaItemTransition: Auto-skip duplicate song '${newSong.title}' by '${newSong.displayArtist}' in roaming mode")
-                                // 找到接下来第一首不同的歌曲
-                                val player = dualPlayerEngine.masterPlayer
-                                val currentIdx = player.currentMediaItemIndex
-                                var targetIdx = currentIdx + 1
-                                var found = false
-                                val maxSkip = 3
-                                var skipped = 0
-                                while (skipped < maxSkip && targetIdx < player.mediaItemCount) {
-                                    val nextMedia = player.getMediaItemAt(targetIdx)
-                                    val nextSong = currentQueue.find { it.id == nextMedia.mediaId }
-                                    if (nextSong != null) {
-                                        val nextKey = "${nextSong.title.trim().lowercase()}|${nextSong.displayArtist.trim().lowercase()}"
-                                        if (nextKey != justPlayedKey) {
-                                            found = true
-                                            break
-                                        } else {
+                    val newId = mediaItem.mediaId
+                    if (justPlayedSong != null &&
+                        newId.startsWith("roaming_") &&
+                        justPlayedSong.id.startsWith("roaming_")
+                    ) {
+                        val justPlayedKey = "${justPlayedSong.title.trim().lowercase()}|${justPlayedSong.displayArtist.trim().lowercase()}"
+                        if (justPlayedKey.isNotBlank()) {
+                            // 只有当队列中紧挨着的前一首与"刚播放"的 mediaId 相同，才认定为真正重复。
+                            // 否则仅仅因为 title+artist 相同就跳歌，会把"同一艺人不同歌曲"误判为重复。
+                            val player = dualPlayerEngine.masterPlayer
+                            val currentIdx = player.currentMediaItemIndex
+                            val isTrulyPrevious = currentIdx > 0 && runCatching {
+                                player.getMediaItemAt(currentIdx - 1).mediaId == justPlayedSong.id
+                            }.getOrDefault(false)
+                            if (isTrulyPrevious) {
+                                val newSong = currentQueue.find { it.id == newId }
+                                    ?: resolveSongFromMediaItem(mediaItem)
+                                if (newSong != null) {
+                                    val newKey = "${newSong.title.trim().lowercase()}|${newSong.displayArtist.trim().lowercase()}"
+                                    if (newKey == justPlayedKey) {
+                                        Timber.d(
+                                            "onMediaItemTransition: Auto-skip true duplicate song " +
+                                                "'${newSong.title}' by '${newSong.displayArtist}' in roaming mode"
+                                        )
+                                        var targetIdx = currentIdx + 1
+                                        var skipped = 0
+                                        val maxSkip = 3
+                                        while (skipped < maxSkip && targetIdx < player.mediaItemCount) {
+                                            val nextMedia = player.getMediaItemAt(targetIdx)
+                                            val nextSong = currentQueue.find { it.id == nextMedia.mediaId }
+                                            if (nextSong == null) break
+                                            val nextKey = "${nextSong.title.trim().lowercase()}|${nextSong.displayArtist.trim().lowercase()}"
+                                            if (nextKey != justPlayedKey) break
                                             targetIdx++
                                             skipped++
                                         }
-                                    } else {
-                                        break
+                                        if (skipped > 0 && targetIdx < player.mediaItemCount) {
+                                            player.seekToDefaultPosition(targetIdx)
+                                            if (!player.isPlaying) player.play()
+                                            return
+                                        }
                                     }
-                                }
-                                if (found && targetIdx < player.mediaItemCount) {
-                                    // 直接跳到目标位置
-                                    player.seekToDefaultPosition(targetIdx)
-                                    if (!player.isPlaying) player.play()
-                                    return // 跳过后续正常处理
                                 }
                             }
                         }
@@ -4632,6 +4688,25 @@ class PlayerViewModel @Inject constructor(
                     isLoadingLyrics = false
                 )
             }
+
+            // ⚡ 兜底：如果首次播放的歌曲有封面但当前没有 ColorSchemePair，
+            // 立即触发一次颜色提取，避免依赖 onMediaItemTransition 回调
+            // （该回调可能因切歌锁定期 / currentSongId 相等等原因跳过取色）
+            val startArtUri = effectiveStartSong.albumArtUriString
+            if (!startArtUri.isNullOrBlank()) {
+                val currentState = themeStateHolder.albumArtThemeState.value
+                val hasMatchingScheme = currentState.albumArtUri == startArtUri &&
+                    currentState.colorSchemePair != null
+                if (!hasMatchingScheme) {
+                    Log.w("PixelPlay_Debug", "[internalPlaySongs] 兜底：立即触发 ${startArtUri.take(30)} 的颜色提取")
+                    viewModelScope.launch {
+                        themeStateHolder.extractAndGenerateColorScheme(
+                            startArtUri.toUri(),
+                            startArtUri
+                        )
+                    }
+                }
+            }
             _isSheetVisible.value = true
 
             val startMediaItem = buildResolvedPlaybackMediaItem(effectiveStartSong)
@@ -4748,6 +4823,23 @@ class PlayerViewModel @Inject constructor(
             )
         }
         _isSheetVisible.value = true
+
+        // ⚡ 兜底：立即触发颜色提取，确保封面取色在 loadAndPlaySong 路径下也正常工作
+        val startArtUri = song.albumArtUriString
+        if (!startArtUri.isNullOrBlank()) {
+            val currentState = themeStateHolder.albumArtThemeState.value
+            val hasMatchingScheme = currentState.albumArtUri == startArtUri &&
+                currentState.colorSchemePair != null
+            if (!hasMatchingScheme) {
+                Log.w("PixelPlay_Debug", "[loadAndPlaySong] 兜底：立即触发 ${startArtUri.take(30)} 的颜色提取")
+                viewModelScope.launch {
+                    themeStateHolder.extractAndGenerateColorScheme(
+                        startArtUri.toUri(),
+                        startArtUri
+                    )
+                }
+            }
+        }
 
         val controller = mediaController
         if (controller == null) {
@@ -6088,7 +6180,11 @@ class PlayerViewModel @Inject constructor(
      * 将当前播放的歌曲从 netease 30s 试听切换到完整 URL，保持播放位置。
      */
     private fun switchToFullUrl(songId: String, fullUrl: String, indexInQueue: Int) {
-        val controller = mediaController ?: dualPlayerEngine.masterPlayer
+        // ⚡ 启动安全检查：确保 controller 已就绪
+        val controller = mediaController ?: runCatching { dualPlayerEngine.masterPlayer }.getOrNull() ?: run {
+            Timber.w("RoamingVIP: switchToFullUrl skipped, controller not ready yet")
+            return
+        }
         val currentIndex = controller.currentMediaItemIndex
 
         // 验证索引是否匹配（队列可能已变化）
@@ -6131,10 +6227,10 @@ class PlayerViewModel @Inject constructor(
                 _playerUiState.update { it.copy(currentPlaybackQueue = updatedQueue.toPlaybackQueue()) }
             }
 
-            // 标记为已处理，避免现有 RoamingVIP 监听逻辑再次处理
-            synchronized(roamingVipSongHandledIds) {
-                roamingVipSongHandledIds.add(songId)
-            }
+            // ⚡ 不在此处标记 roamingVipSongHandledIds：
+            //   switchToFullUrl 是预加载成功后的主动替换，不应阻止后续 URL 过期时
+            //   的重新处理。如果替换后的 URL 也过期了，onPlayerError 和 VIP 试听
+            //   检测逻辑应该仍能为它重新获取 URL。
         }
     }
 
@@ -6157,7 +6253,12 @@ class PlayerViewModel @Inject constructor(
      */
     private fun loadMoreRoamingSongs(count: Int = ROAMING_PRELOAD_COUNT) {
         viewModelScope.launch {
-            if (_isRoamingLoading.value) return@launch
+            if (_isRoamingLoading.value) {
+                // ⚡ 修复：正在加载时不直接丢弃请求，而是标记为 pending，
+                //   等当前加载完成后自动再触发一次
+                roamingLoadPending = true
+                return@launch
+            }
 
             if (count <= 0) return@launch
 
@@ -6380,6 +6481,17 @@ class PlayerViewModel @Inject constructor(
                 Timber.e(t, "loadMoreRoamingSongs failed")
             } finally {
                 _isRoamingLoading.value = false
+                // ⚡ 修复：如果加载期间有新的追加请求被标记为 pending，延迟 500ms 后再触发一次
+                //   延迟是为了防止快速循环（特别是在启动阶段，状态恢复可能导致频繁触发）
+                if (roamingLoadPending && _isRoamingMode.value) {
+                    roamingLoadPending = false
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(500)
+                        if (_isRoamingMode.value) {
+                            loadMoreRoamingSongs(count)
+                        }
+                    }
+                }
             }
         }
     }
@@ -6407,39 +6519,39 @@ class PlayerViewModel @Inject constructor(
                 loadMoreRoamingSongs()
             }
 
-            // ⚡ 关键修复：检查下一首是否与当前歌曲相同（标题+歌手），相同则自动跳过
+            // ⚡ 仅在「同一首歌（标题+艺术家）连续重复，且队列中 mediaId 相同」时才跳过。
+            // 否则直接让播放器播放下一首，避免把"不同歌曲"误判为重复。
             if (currentIndex >= 0 && currentIndex + 1 < currentQueue.size) {
                 val currentSong = currentQueue[currentIndex]
                 val currentKey = "${currentSong.title.trim().lowercase()}|${currentSong.displayArtist.trim().lowercase()}"
-
-                // 检查最多后面 3 首，找到第一首不同的歌曲
-                val player = dualPlayerEngine.masterPlayer
-                val playerIndex = player.currentMediaItemIndex
-                var nextIndexToPlay = playerIndex + 1
-                var skipCount = 0
-                val maxSkip = 3
-                while (skipCount < maxSkip && nextIndexToPlay < player.mediaItemCount) {
-                    val nextMediaItem = player.getMediaItemAt(nextIndexToPlay)
-                    val nextSong = currentQueue.find { it.id == nextMediaItem.mediaId }
-                    if (nextSong != null) {
+                if (currentKey.isNotBlank()) {
+                    val player = dualPlayerEngine.masterPlayer
+                    val playerIndex = player.currentMediaItemIndex
+                    var nextIndexToPlay = playerIndex + 1
+                    var skipCount = 0
+                    val maxSkip = 3
+                    while (skipCount < maxSkip && nextIndexToPlay < player.mediaItemCount) {
+                        val nextMediaItem = player.getMediaItemAt(nextIndexToPlay)
+                        val nextSong = currentQueue.find { it.id == nextMediaItem.mediaId }
+                            ?: resolveSongFromMediaItem(nextMediaItem)
+                        if (nextSong == null) break
                         val nextKey = "${nextSong.title.trim().lowercase()}|${nextSong.displayArtist.trim().lowercase()}"
-                        if (nextKey != currentKey) {
-                            break // 找到不同的歌曲
-                        } else {
-                            Timber.d("nextSong: Skipping duplicate song '${nextSong.title}' by '${nextSong.displayArtist}'")
+                        // 必须 mediaId 相同（真实重复）才跳过，否则同一艺人的不同歌曲会被误判
+                        val sameMediaId = nextSong.id == currentSong.id
+                        if (nextKey == currentKey && sameMediaId) {
+                            Timber.d("nextSong: Skipping true duplicate song '${nextSong.title}' by '${nextSong.displayArtist}'")
                             nextIndexToPlay++
                             skipCount++
+                        } else {
+                            break
                         }
-                    } else {
-                        break
                     }
-                }
 
-                // 如果需要跳过，则直接跳到找到的位置
-                if (skipCount > 0 && nextIndexToPlay < player.mediaItemCount) {
-                    player.seekToDefaultPosition(nextIndexToPlay)
-                    if (!player.isPlaying) player.play()
-                    return
+                    if (skipCount > 0 && nextIndexToPlay < player.mediaItemCount) {
+                        player.seekToDefaultPosition(nextIndexToPlay)
+                        if (!player.isPlaying) player.play()
+                        return
+                    }
                 }
             }
 
@@ -7042,6 +7154,21 @@ class PlayerViewModel @Inject constructor(
 
             _isSheetVisible.value = true
             _sheetState.value = PlayerSheetState.EXPANDED
+
+            // ⚡ 兜底：playSong 是单首播放路径，立即触发颜色提取
+            val startArtUri = song.albumArtUriString
+            if (!startArtUri.isNullOrBlank()) {
+                val currentState = themeStateHolder.albumArtThemeState.value
+                val hasMatchingScheme = currentState.albumArtUri == startArtUri &&
+                    currentState.colorSchemePair != null
+                if (!hasMatchingScheme) {
+                    Log.w("PixelPlay_Debug", "[playSong] 兜底：立即触发 ${startArtUri.take(30)} 的颜色提取")
+                    themeStateHolder.extractAndGenerateColorScheme(
+                        startArtUri.toUri(),
+                        startArtUri
+                    )
+                }
+            }
         }
     }
 

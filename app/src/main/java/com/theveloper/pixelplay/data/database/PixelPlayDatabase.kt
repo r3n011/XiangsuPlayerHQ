@@ -37,9 +37,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiUsageEntity::class,
         HeadphonePresetEntity::class,
         HeadphoneEqBandEntity::class,
-        BluetoothPresetBindingEntity::class
+        BluetoothPresetBindingEntity::class,
+        TranscodeCacheEntity::class
     ],
-    version = 44,
+    version = 45,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -61,6 +62,7 @@ abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun aiUsageDao(): AiUsageDao
     abstract fun headphonePresetDao(): HeadphonePresetDao
     abstract fun bluetoothPresetBindingDao(): BluetoothPresetBindingDao
+    abstract fun transcodeCacheDao(): TranscodeCacheDao
 
     companion object {
         // Gap-bridging no-op migrations for missing version ranges.
@@ -859,6 +861,25 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_address ON bluetooth_preset_bindings(device_address)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_name ON bluetooth_preset_bindings(device_name)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_preset_id ON bluetooth_preset_bindings(preset_id)")
+            }
+        }
+
+        val MIGRATION_44_45 = object : Migration(44, 45) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS transcode_cache (
+                        cache_key TEXT NOT NULL PRIMARY KEY,
+                        song_id TEXT,
+                        song_title TEXT,
+                        artist_name TEXT,
+                        file_path TEXT NOT NULL,
+                        file_size_bytes INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL DEFAULT 0,
+                        last_played INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_transcode_cache_last_played ON transcode_cache(last_played)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_transcode_cache_file_path ON transcode_cache(file_path)")
             }
         }
 

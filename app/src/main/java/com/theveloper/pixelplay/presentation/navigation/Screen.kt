@@ -65,4 +65,5 @@ sealed class Screen(val route: String) {
     object DotDeviceSettings : Screen("dot_device_settings")
     object Roaming : Screen("roaming_action")
     object HeadphonePreset : Screen("headphone_preset")
+    object TranscodeCacheManagement : Screen("transcode_cache_management")
 }

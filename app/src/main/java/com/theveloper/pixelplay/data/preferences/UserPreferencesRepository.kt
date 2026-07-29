@@ -296,6 +296,9 @@ class UserPreferencesRepository @Inject constructor(
 
         // Download settings
         val DOWNLOAD_PATH = stringPreferencesKey("download_path")
+
+        // Transcode cache settings
+        val TRANSCODE_CACHE_TTL = stringPreferencesKey("transcode_cache_ttl")
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────
@@ -1716,6 +1719,25 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun getDownloadPath(): String {
         return downloadPathFlow.first()
+    }
+
+    // ─── Transcode Cache Settings ────────────────────────────────────────────
+
+    val transcodeCacheTtlFlow: Flow<String> =
+        pref { it[PreferencesKeys.TRANSCODE_CACHE_TTL] ?: "3_days" }
+
+    suspend fun setTranscodeCacheTtl(ttlKey: String) {
+        dataStore.edit { it[PreferencesKeys.TRANSCODE_CACHE_TTL] = ttlKey }
+    }
+
+    /**
+     * 获取转码缓存 TTL（毫秒）
+     * 默认 3 天
+     */
+    suspend fun getTranscodeCacheTtl(): Long {
+        val ttlKey = transcodeCacheTtlFlow.first()
+        return com.theveloper.pixelplay.utils.TranscodeCacheManager.TTL_OPTIONS[ttlKey]
+            ?: com.theveloper.pixelplay.utils.TranscodeCacheManager.DEFAULT_TTL
     }
 
     // ─── Companion ────────────────────────────────────────────────────────────

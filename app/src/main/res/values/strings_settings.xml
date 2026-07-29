@@ -658,6 +658,11 @@
     <!-- Download Settings -->
     <string name="setcat_download_settings">Download Settings</string>
     <string name="setcat_download_path_title">Download Path</string>
+
+    <!-- Transcode Cache -->
+    <string name="setcat_transcode_cache_section">Transcode Cache</string>
+    <string name="setcat_transcode_cache_title">Transcode Cache Management</string>
+    <string name="setcat_transcode_cache_subtitle">View and manage transcoded Hi-Fi audio cache files</string>
     
     <!-- Car Mode Quick Actions -->
     <string name="car_mode_quick_actions_title">Quick Actions</string>

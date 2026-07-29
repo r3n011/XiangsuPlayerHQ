@@ -315,4 +315,29 @@
     <string name="about_changelog_error">加载更新日志失败</string>
     <string name="about_changelog_empty">暂无更新内容</string>
     <string name="about_changelog_unknown_date">未知时间</string>
+
+    <!-- 转码缓存管理 -->
+    <string name="transcode_cache_title">转码缓存管理</string>
+    <string name="transcode_cache_action_cleanup">立即清理过期文件</string>
+    <string name="transcode_cache_action_clear_all">清空全部缓存</string>
+    <string name="transcode_cache_action_delete">删除缓存</string>
+    <string name="transcode_cache_last_played">最后播放</string>
+    <string name="transcode_cache_count_format">%d 首歌曲</string>
+    <string name="transcode_cache_list_title">已缓存的歌曲</string>
+    <string name="transcode_cache_stats_title">转码缓存</string>
+    <string name="transcode_cache_stats_subtitle">共 %1$d 首 · 占 %2$s</string>
+    <string name="transcode_cache_empty_title">暂无转码缓存</string>
+    <string name="transcode_cache_empty_subtitle">播放 Hi-Fi 歌曲（DSD/DFF/WAV）将自动生成转码缓存。</string>
+    <string name="transcode_cache_ttl_title">自动删除存活时间（TTL）</string>
+    <string name="transcode_cache_ttl_subtitle">缓存文件在选定的不活跃期后将被自动删除。</string>
+    <string name="transcode_cache_ttl_current_format">当前设置：%1$s</string>
+    <string name="transcode_cache_ttl_1_day">1 天</string>
+    <string name="transcode_cache_ttl_3_days">3 天</string>
+    <string name="transcode_cache_ttl_7_days">7 天</string>
+    <string name="transcode_cache_ttl_30_days">30 天</string>
+    <string name="transcode_cache_ttl_never">永不过期</string>
+    <string name="transcode_cache_delete_title">删除缓存？</string>
+    <string name="transcode_cache_delete_message">删除「%1$s」的缓存？这将移除已转码的 WAV 文件，下次播放需要重新转码。</string>
+    <string name="transcode_cache_clear_all_title">清空全部缓存？</string>
+    <string name="transcode_cache_clear_all_message">这将删除全部 %1$d 个转码缓存文件。下次播放 Hi-Fi 歌曲时需要重新转码。</string>
 </resources>

@@ -109,8 +109,11 @@ class ThemeStateHolder @Inject constructor(
     private fun updateAlbumArtThemeState(colorSchemePair: ColorSchemePair?, uri: String?) {
         val current = _albumArtThemeState.value
 
-        // 去重：如果 URI 相同且已有有效的颜色方案，不更新
-        if (uri != null && current.albumArtUri != null && current.albumArtUri == uri && current.colorSchemePair != null) {
+        // ⚡ 去重逻辑：
+        // - URI 相同且 colorSchemePair 也相同（或都为 null）时，不解更新
+        // - URI 相同但新的 colorSchemePair 不同（重新提取），仍需更新
+        //   以支持"强制刷新"或"缓存失效后重新提取"的场景
+        if (uri != null && current.albumArtUri == uri && current.colorSchemePair == colorSchemePair) {
             return
         }
 

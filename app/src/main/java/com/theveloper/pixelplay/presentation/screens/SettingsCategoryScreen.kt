@@ -1131,6 +1131,16 @@ fun SettingsCategoryScreen(
                                     }
                                 )
                             }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_transcode_cache_section)) {
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_transcode_cache_title),
+                                    subtitle = stringResource(R.string.setcat_transcode_cache_subtitle),
+                                    leadingIcon = { Icon(Icons.Rounded.Storage, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.cd_open), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { navController.navigateSafely(Screen.TranscodeCacheManagement.route) }
+                                )
+                            }
                         }
                         SettingsCategory.BEHAVIOR -> {
                             SettingsSubsection(

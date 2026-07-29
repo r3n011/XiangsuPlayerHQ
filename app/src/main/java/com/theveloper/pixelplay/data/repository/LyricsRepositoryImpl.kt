@@ -909,31 +909,78 @@ class LyricsRepositoryImpl @Inject constructor(
     /**
      * 通过 btwoa 的网易云镜像获取歌词（`/lyric?id=<songId>`）。
      * 对在线（lx）、netease 源或能解析出数字 id 的歌曲都可以走这里。
+     *
+     * 增强稳定性：
+     *  - 最多重试 2 次（指数退避 400ms / 800ms），应对网络抖动；
+     *  - 每次请求 12s 超时，防止低网速下卡死；
+     *  - 严格校验返回内容：空 lrc、纯空字符串、只有时间戳占位的结果都视为失败，
+     *    交由上层继续走 AMLLDB / LRCLIB 等兜底链路；
+     *  - 歌词成功获取后落盘 JSON + 放入内存缓存，避免重复请求。
      */
     private suspend fun fetchFromNeteaseApi(song: Song): Lyrics? = withContext(Dispatchers.IO) {
         val songId = resolveNeteaseSongId(song)
             ?: return@withContext null
         if (songId <= 0L) return@withContext null
 
-        val rawLrc = try {
-            kotlinx.coroutines.withTimeout(12000L) {
-                lxSearchApi.getLyric(songId = songId.toString())
-            }
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            Log.w(TAG, "Netease API timeout for songId=$songId")
-            null
-        } catch (t: Throwable) {
-            Log.w(TAG, "Netease API error for songId=$songId: ${t.message}")
-            null
+        val cacheKey = generateCacheKey(song)
+        val existingCached = lyricsCache.get(cacheKey)
+        if (existingCached != null) {
+            Log.d(TAG, "fetchFromNeteaseApi: using in-memory cache for songId=$songId")
+            return@withContext existingCached
         }
 
-        if (rawLrc == null) {
-            Log.w(TAG, "Netease API returned null for songId=$songId")
-            return@withContext null
+        val retryDelays = longArrayOf(0L, 400L, 800L)
+        var lastError: Throwable? = null
+        for (attempt in retryDelays.indices) {
+            if (attempt > 0) {
+                Log.d(TAG, "fetchFromNeteaseApi: retry #${attempt} for songId=$songId after ${retryDelays[attempt]}ms")
+                delay(retryDelays[attempt])
+            }
+            val rawLrc: String? = try {
+                kotlinx.coroutines.withTimeout(12000L) {
+                    lxSearchApi.getLyric(songId = songId.toString())
+                }
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                lastError = e
+                Log.w(TAG, "Netease API timeout for songId=$songId (attempt ${attempt + 1})")
+                null
+            } catch (t: Throwable) {
+                lastError = t
+                Log.w(TAG, "Netease API error for songId=$songId (attempt ${attempt + 1}): ${t.message}")
+                null
+            }
+
+            if (rawLrc.isNullOrBlank()) {
+                Log.w(TAG, "Netease API returned blank for songId=$songId (attempt ${attempt + 1})")
+                continue
+            }
+
+            // 有效性校验：过滤掉只有元数据或空行的"伪歌词"
+            val nonMetaLines = rawLrc.lineSequence()
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .filterNot { it.startsWith("[by:") || it.startsWith("[ti:") || it.startsWith("[ar:") || it.startsWith("[al:") || it.startsWith("[au:") || it.startsWith("[ve:") }
+            if (nonMetaLines.none()) {
+                Log.w(TAG, "Netease API returned empty lyric content for songId=$songId")
+                continue
+            }
+
+            val parsed = LyricsUtils.parseLyrics(rawLrc)
+            if (!parsed.isValid()) {
+                Log.w(TAG, "Netease API parse failed for songId=$songId")
+                continue
+            }
+
+            val valid = parsed.copy(areFromRemote = true)
+            lyricsCache.put(cacheKey, valid)
+            return@withContext valid
         }
-        val parsed = LyricsUtils.parseLyrics(rawLrc)
-        if (!parsed.isValid()) return@withContext null
-        return@withContext parsed.copy(areFromRemote = true)
+
+        Log.w(
+            TAG,
+            "fetchFromNeteaseApi: exhausted retries for songId=$songId, lastError=${lastError?.message}"
+        )
+        return@withContext null
     }
 
     private fun resolveLxSongId(song: Song): Long? {

@@ -7,6 +7,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.OneTimeWorkRequest
+import androidx.work.PeriodicWorkRequest
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -96,6 +97,7 @@ class SyncManager @Inject constructor(
         observeStorageChanges()
         observeAppForeground()
         schedulePeriodicMaintenance()
+        scheduleTranscodeCacheCleanup()
     }
 
     /**
@@ -108,6 +110,23 @@ class SyncManager @Inject constructor(
             SyncWorker.PERIODIC_MAINTENANCE_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             SyncWorker.periodicMaintenanceWork()
+        )
+    }
+
+    /**
+     * Schedules the periodic transcode cache cleanup (every 12 hours).
+     * Uses KEEP so users' manual cleanups / other configurations are not reset on relaunch.
+     */
+    private fun scheduleTranscodeCacheCleanup() {
+        val request = PeriodicWorkRequest.Builder(
+            TranscodeCacheCleanupWorker::class.java,
+            12, java.util.concurrent.TimeUnit.HOURS
+        ).build()
+
+        workManager.enqueueUniquePeriodicWork(
+            TranscodeCacheCleanupWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
         )
     }
 

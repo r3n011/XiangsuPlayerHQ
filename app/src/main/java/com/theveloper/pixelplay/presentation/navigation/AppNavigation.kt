@@ -47,6 +47,7 @@ import com.theveloper.pixelplay.presentation.screens.DailyMixScreen
 import com.theveloper.pixelplay.presentation.screens.AiMixScreen
 import com.theveloper.pixelplay.presentation.screens.DotDeviceSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.EditTransitionScreen
+import com.theveloper.pixelplay.presentation.screens.TranscodeCacheManagementScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.GenreDetailScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
@@ -596,6 +597,15 @@ fun AppNavigation(
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DotDeviceSettingsScreen(
                         onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.TranscodeCacheManagement.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    TranscodeCacheManagementScreen(
+                        navController = navController
                     )
                 }
             }

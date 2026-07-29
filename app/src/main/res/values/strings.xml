@@ -276,4 +276,29 @@
     <string name="about_changelog_error">Failed to load changelog</string>
     <string name="about_changelog_empty">No release notes</string>
     <string name="about_changelog_unknown_date">Unknown release date</string>
+
+    <!-- Transcode Cache Management -->
+    <string name="transcode_cache_title">Transcode Cache Management</string>
+    <string name="transcode_cache_action_cleanup">Clean expired files now</string>
+    <string name="transcode_cache_action_clear_all">Clear all cache</string>
+    <string name="transcode_cache_action_delete">Delete cache</string>
+    <string name="transcode_cache_last_played">Last played</string>
+    <string name="transcode_cache_count_format">%d song(s)</string>
+    <string name="transcode_cache_list_title">Cached Songs</string>
+    <string name="transcode_cache_stats_title">Transcode Cache</string>
+    <string name="transcode_cache_stats_subtitle">%1$d song(s) · %2$s</string>
+    <string name="transcode_cache_empty_title">No transcoded cache</string>
+    <string name="transcode_cache_empty_subtitle">Play a Hi-Fi song (DSD/DFF/WAV) to generate transcode cache automatically.</string>
+    <string name="transcode_cache_ttl_title">Auto-delete Time-to-Live (TTL)</string>
+    <string name="transcode_cache_ttl_subtitle">Cached files will be automatically deleted after the selected inactivity period.</string>
+    <string name="transcode_cache_ttl_current_format">Current setting: %1$s</string>
+    <string name="transcode_cache_ttl_1_day">1 day</string>
+    <string name="transcode_cache_ttl_3_days">3 days</string>
+    <string name="transcode_cache_ttl_7_days">7 days</string>
+    <string name="transcode_cache_ttl_30_days">30 days</string>
+    <string name="transcode_cache_ttl_never">Never</string>
+    <string name="transcode_cache_delete_title">Delete cache?</string>
+    <string name="transcode_cache_delete_message">Delete cache for \"%1$s\"? This will remove the cached transcoded WAV file. Next playback will require re-transcoding.</string>
+    <string name="transcode_cache_clear_all_title">Clear all cache?</string>
+    <string name="transcode_cache_clear_all_message">This will delete all %1$d cached transcode files. Hi-Fi songs will need to be re-transcoded the next time you play them.</string>
 </resources>
