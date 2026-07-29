@@ -31,15 +31,10 @@ val localProperties = Properties().apply {
 val abiSplitsRequested = providers.gradleProperty("pixelplay.enableAbiSplits")
     .getOrElse("true")
     .toBoolean()
-// 只在 Release / Benchmark 构建时启用 ABI 分包
-// 使用任务名判断，或通过 pixelplay.forceAbiSplits 强制启用
-val forceAbiSplits = providers.gradleProperty("pixelplay.forceAbiSplits")
-    .getOrElse("false")
-    .toBoolean()
-val isReleaseBuild = gradle.startParameter.taskNames.any { 
-    it.contains("Release", ignoreCase = true) || it.contains("Benchmark", ignoreCase = true) 
-}
-val enableAbiSplits = abiSplitsRequested && (isReleaseBuild || forceAbiSplits)
+// ABI splits 配置：
+// - 当 pixelplay.enableAbiSplits=true 时启用（默认）
+// - 所有构建类型都启用，确保输出分架构 APK
+val enableAbiSplits = abiSplitsRequested
 
 val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableComposeCompilerReports")
     .getOrElse("false")
@@ -57,7 +52,9 @@ android {
     }
 
     androidResources {
-        noCompress.add("tflite")
+        // 只添加真正需要保持未压缩的文件类型
+        // tflite 可能导致 ZipException，已移除
+        noCompress += setOf("so")
     }
 
     packaging {
@@ -209,10 +206,22 @@ androidComponents {
         val variantName = variant.name
 
         variant.outputs.forEach { output ->
-            val currentName = output.outputFileName.toString()
-            val abi = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64").find { currentName.contains(it) }
+            // 从 variant 名称或 output 属性中获取 ABI 信息
+            val abi = when {
+                variantName.contains("arm64-v8a") -> "arm64-v8a"
+                variantName.contains("armeabi-v7a") -> "armeabi-v7a"
+                variantName.contains("x86_64") -> "x86_64"
+                variantName.contains("x86") -> "x86"
+                else -> null
+            }
             val abiSuffix = abi?.let {
-                "-" + it.replace("arm64-v8a", "arm64").replace("armeabi-v7a", "arm32")
+                when (it) {
+                    "arm64-v8a" -> "-arm64"
+                    "armeabi-v7a" -> "-arm32"
+                    "x86_64" -> "-x86_64"
+                    "x86" -> "-x86"
+                    else -> ""
+                }
             } ?: ""
 
             output.outputFileName = "PixelPlay-${vName}-${vCode}-${date}-${variantName}${abiSuffix}.apk"
