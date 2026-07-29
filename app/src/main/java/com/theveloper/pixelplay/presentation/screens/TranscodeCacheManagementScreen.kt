@@ -488,8 +488,7 @@ private fun EmptyStateContent(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalArrangement = Arrangement.Center
     ) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
