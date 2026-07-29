@@ -216,6 +216,10 @@ androidComponents {
             } ?: ""
 
             output.outputFileName = "PixelPlay-${vName}-${vCode}-${date}-${variantName}${abiSuffix}.apk"
+
+            // 设置 APK 输出目录为 G:\apk
+            // 使用绝对路径，确保构建时能正确找到输出目录
+            output.outputDirectory.set(providers.gradleProperty("pixelplay.outputDir").getOrElse("G:/apk"))
         }
     }
 }
