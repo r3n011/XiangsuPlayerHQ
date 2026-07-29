@@ -29,6 +29,7 @@ import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.database.PixelPlayDatabase
 import com.theveloper.pixelplay.data.database.SearchHistoryDao
 import com.theveloper.pixelplay.data.database.TransitionDao
+import com.theveloper.pixelplay.data.database.TranscodeCacheDao
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.dataStore
@@ -270,6 +271,12 @@ object AppModule {
     @Provides
     fun provideJellyfinDao(database: PixelPlayDatabase): com.theveloper.pixelplay.data.database.JellyfinDao {
         return database.jellyfinDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideTranscodeCacheDao(database: PixelPlayDatabase): TranscodeCacheDao {
+        return database.transcodeCacheDao()
     }
 
     @Provides
