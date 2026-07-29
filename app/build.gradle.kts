@@ -216,12 +216,33 @@ androidComponents {
             } ?: ""
 
             output.outputFileName = "PixelPlay-${vName}-${vCode}-${date}-${variantName}${abiSuffix}.apk"
-
-            // 设置 APK 输出目录为 G:\apk
-            // 使用绝对路径，确保构建时能正确找到输出目录
-            output.outputDirectory.set(providers.gradleProperty("pixelplay.outputDir").getOrElse("G:/apk"))
         }
     }
+}
+
+// 构建完成后复制 APK 到自定义输出目录
+val customOutputDir = providers.gradleProperty("pixelplay.outputDir").getOrElse("G:/apk")
+
+// 创建复制任务，在 assembleRelease 完成后执行
+val copyApkToCustomDir by tasks.registering {
+    val sourceDir = File("$buildDir/outputs/apk/release")
+    val destDir = File(customOutputDir)
+    
+    doLast {
+        if (!destDir.exists()) {
+            destDir.mkdirs()
+        }
+        sourceDir.listFiles()?.filter { it.extension == "apk" }?.forEach { apkFile ->
+            val destFile = File(destDir, apkFile.name)
+            apkFile.copyTo(destFile, overwrite = true)
+            logger.lifecycle("APK copied to: ${destFile.absolutePath}")
+        }
+    }
+}
+
+// 将复制任务挂接到 assembleRelease 之后
+tasks.named("assembleRelease") {
+    finalizedBy(copyApkToCustomDir)
 }
 
 composeCompiler {
