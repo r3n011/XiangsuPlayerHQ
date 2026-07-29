@@ -24,6 +24,7 @@ import com.theveloper.pixelplay.utils.AlbumArtUtils
 import com.theveloper.pixelplay.utils.CrashHandler
 import com.theveloper.pixelplay.utils.AppLocaleManager
 import com.theveloper.pixelplay.utils.MediaMetadataRetrieverPool
+import com.theveloper.pixelplay.utils.TranscodeCacheManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -157,6 +158,13 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
             } catch (t: Throwable) {
                 android.util.Log.e("PixelPlay", "Failed to add lifecycle observer: ${t.message}")
+            }
+
+            // Initialize TranscodeCacheManager early so cacheDir is available
+            try {
+                TranscodeCacheManager.init(this)
+            } catch (t: Throwable) {
+                android.util.Log.e("PixelPlay", "Failed to init TranscodeCacheManager: ${t.message}")
             }
 
             // Background startup tasks: cache migration, preferences loading
