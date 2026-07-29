@@ -17,7 +17,9 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.util.TypedValue
 import androidx.appcompat.app.AppCompatActivity
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class SplashActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
