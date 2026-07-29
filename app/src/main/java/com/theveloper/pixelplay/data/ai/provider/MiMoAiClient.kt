@@ -43,6 +43,9 @@ class MiMoAiClient(
         val temperature: Double = 0.7,
         val max_completion_tokens: Int? = null,
         val top_p: Double? = null,
+        val top_k: Int? = null,
+        val presence_penalty: Double? = null,
+        val frequency_penalty: Double? = null,
         val stream: Boolean = false
     )
 
@@ -73,7 +76,12 @@ class MiMoAiClient(
         model: String,
         systemPrompt: String,
         prompt: String,
-        temperature: Float
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        maxTokens: Int,
+        presencePenalty: Float,
+        frequencyPenalty: Float,
     ): String {
         return withContext(Dispatchers.IO) {
             val resolvedModel = model.ifBlank { DEFAULT_MODEL }
@@ -87,8 +95,11 @@ class MiMoAiClient(
                 model = resolvedModel,
                 messages = messagesList,
                 temperature = temperature.toDouble(),
-                max_completion_tokens = 4096,
-                top_p = 0.95
+                max_completion_tokens = maxTokens,
+                top_p = topP.toDouble(),
+                top_k = topK,
+                presence_penalty = presencePenalty.toDouble(),
+                frequency_penalty = frequencyPenalty.toDouble(),
             )
 
             val jsonBody = json.encodeToString(ChatRequest.serializer(), requestBody)

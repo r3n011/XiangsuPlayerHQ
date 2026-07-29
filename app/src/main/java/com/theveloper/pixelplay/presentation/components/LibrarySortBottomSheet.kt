@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.Dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.SortDirection
 import com.theveloper.pixelplay.data.model.SortOption
+import com.theveloper.pixelplay.data.model.getDisplayNameResId
+import com.theveloper.pixelplay.data.model.getMethodLabelResId
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
@@ -214,7 +216,7 @@ fun LibrarySortBottomSheet(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = option.methodLabel,
+                                text = stringResource(id = option.getMethodLabelResId()),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
                             )

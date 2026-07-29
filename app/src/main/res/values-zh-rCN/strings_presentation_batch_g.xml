@@ -613,4 +613,37 @@
         <item>印度尼西亚语</item>
         <item>意大利语</item>
     </string-array>
+    
+    <!-- 排序选项显示名称 -->
+    <string name="sort_option_custom_order">自定义顺序</string>
+    <string name="sort_option_default_order">默认顺序</string>
+    <string name="sort_option_title">标题</string>
+    <string name="sort_option_title_az">标题（A-Z）</string>
+    <string name="sort_option_title_za">标题（Z-A）</string>
+    <string name="sort_option_artist">艺术家</string>
+    <string name="sort_option_artist_desc">艺术家（Z-A）</string>
+    <string name="sort_option_album">专辑</string>
+    <string name="sort_option_album_desc">专辑（Z-A）</string>
+    <string name="sort_option_date_added">添加时间</string>
+    <string name="sort_option_date_added_oldest">添加时间（最早优先）</string>
+    <string name="sort_option_duration">时长</string>
+    <string name="sort_option_duration_shortest">时长（最短优先）</string>
+    <string name="sort_option_release_year">发行年份</string>
+    <string name="sort_option_release_year_oldest">发行年份（最早优先）</string>
+    <string name="sort_option_fewest_songs">歌曲最少</string>
+    <string name="sort_option_most_songs">歌曲最多</string>
+    <string name="sort_option_name">名称</string>
+    <string name="sort_option_name_az">名称（A-Z）</string>
+    <string name="sort_option_name_za">名称（Z-A）</string>
+    <string name="sort_option_number_of_songs">歌曲数量</string>
+    <string name="sort_option_number_of_songs_most">歌曲数量（最多）</string>
+    <string name="sort_option_number_of_songs_fewest">歌曲数量（最少）</string>
+    <string name="sort_option_date_created">创建时间</string>
+    <string name="sort_option_date_created_oldest">创建时间（最早优先）</string>
+    <string name="sort_option_date_liked">收藏时间</string>
+    <string name="sort_option_date_liked_oldest">收藏时间（最早优先）</string>
+    <string name="sort_option_fewest_subfolders">子文件夹最少</string>
+    <string name="sort_option_most_subfolders">子文件夹最多</string>
+    <string name="sort_option_song_count">歌曲数量</string>
+    <string name="sort_option_subfolder_count">子文件夹数量</string>
 </resources>

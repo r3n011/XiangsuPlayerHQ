@@ -196,6 +196,10 @@
     <string name="about_signal_open_source">Open source</string>
     <string name="about_signal_community_first">Community-first</string>
     <string name="about_signal_material3">Material 3 expressive</string>
+    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    <string name="about_acknowledgements_lanzou_desc">Cloud integration powered by LanzouAPI</string>
     <string name="cd_open_github_profile">Open GitHub profile</string>
     <string name="cd_open_telegram">Open Telegram</string>
     <string name="cd_contributor_avatar">Avatar of %1$s</string>
@@ -252,4 +256,42 @@
     <string name="toast_added_to_queue">Added to queue</string>
     <string name="toast_playing_next">Playing next</string>
     <string name="error_share_song_format">Could not share song: %1$s</string>
+
+    <!-- Update / about -->
+    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+
+    <!-- Open source licenses -->
+    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    <string name="third_party_notices_action">Notices</string>
+    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    <string name="third_party_notices_title">Third-Party Notices</string>
+    <string name="third_party_notices_close">Close</string>
+    
+    <!-- Focus Mode -->
+    <string name="focus_timer_title">Focus Study</string>
+    <string name="focus_timer_subtitle">Set your Pomodoro timer</string>
+    <string name="focus_timer_study_title">Study Time</string>
+    <string name="focus_timer_study_subtitle">Time for focused work</string>
+    <string name="focus_timer_break_title">Break Time</string>
+    <string name="focus_timer_break_subtitle">Time to relax</string>
+    <string name="focus_timer_cancel">Cancel</string>
+    <string name="focus_timer_start">Start Focus</string>
+    <string name="focus_timer_minutes_format">%1$d min</string>
+    <string name="focus_timer_study_preset">study</string>
+    <string name="focus_timer_break_preset">break</string>
+    <string name="focus_mode_title">Focus Mode</string>
+    <string name="focus_mode_end">End</string>
+    <string name="focus_mode_completed_cycles_format">Completed %1$d cycles</string>
+    <string name="focus_mode_studying">Focusing</string>
+    <string name="focus_mode_break">Breaking</string>
+    <string name="focus_mode_paused">Paused</string>
+    <string name="focus_mode_ready">Ready to start</string>
+    <string name="focus_mode_study_duration_format">%1$d min focus</string>
+    <string name="focus_mode_break_duration_format">%1$d min break</string>
+    <string name="focus_mode_tap_to_start">Tap to start</string>
+    <string name="focus_mode_not_playing">Not playing</string>
+    <string name="content_description_exit">Exit</string>
+    <string name="content_description_previous">Previous</string>
+    <string name="content_description_play_pause">Play/Pause</string>
+    <string name="content_description_next">Next</string>
 </resources>

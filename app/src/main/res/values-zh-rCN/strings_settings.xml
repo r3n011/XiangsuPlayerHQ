@@ -133,6 +133,8 @@
     <string name="setcat_player_theme_album_art">专辑封面</string>
     <string name="setcat_player_theme_custom_palette">自定义调色盘</string>
     <string name="setcat_player_theme_dynamic">系统动态</string>
+    <string name="setcat_custom_palette_enabled_title">启用自定义调色盘</string>
+    <string name="setcat_custom_palette_enabled_subtitle">将自定义调色盘应用到全局主题</string>
     <string
         name="setcat_show_player_file_info_title"
     >显示播放器文件信息</string>
@@ -240,6 +242,26 @@
     <string
         name="setcat_hifi_mode_subtitle_unsupported"
     >此设备不支持（未提供 PCM_FLOAT AudioTrack）。</string>
+    <string name="setcat_usb_exclusive_mode_title">USB 独占模式</string>
+    <string
+        name="setcat_usb_exclusive_mode_subtitle_connected"
+    >音频输出到 USB 设备：%s</string>
+    <string
+        name="setcat_usb_exclusive_mode_subtitle_disconnected"
+    >未检测到 USB 音频设备。请连接 USB DAC 以使用此功能。</string>
+    <string name="usb_device_selector_title">选择 USB DAC</string>
+    <string name="usb_device_selector_refresh">刷新</string>
+    <string name="usb_device_selector_scanning">正在扫描 USB 设备…</string>
+    <string name="usb_device_selector_no_devices">未找到 USB 音频设备</string>
+    <string name="usb_device_selector_hint">连接 USB DAC 并启用 USB 独占模式以实现位完美音频输出。</string>
+    <string name="usb_device_selector_connect_title">USB 独占模式</string>
+    <string name="usb_device_selector_connect_message">这将启用对 USB DAC 的独占访问以实现位完美音频。系统音频将直接路由通过 DAC。</string>
+    <string name="usb_device_selector_connected_to">已连接到：%s</string>
+    <string name="usb_device_selector_connecting">正在连接 USB DAC…</string>
+    <string name="usb_device_selector_connection_failed">连接 USB DAC 失败</string>
+    <string name="usb_device_selector_permission_required">需要 USB 权限</string>
+    <string name="usb_device_selector_permission_message">PixelPlayer 需要访问你的 USB DAC 以启用独占模式。</string>
+    <string name="usb_device_selector_select_device">选择 USB DAC 设备</string>
     <string name="setcat_persistent_shuffle_title">持久随机播放</string>
     <string
         name="setcat_persistent_shuffle_subtitle"
@@ -547,4 +569,63 @@
     <string name="car_mode_action_library_desc">你的音乐</string>
     <string name="car_mode_action_settings">设置</string>
     <string name="car_mode_action_settings_desc">应用设置</string>
+
+    <!-- 设置搜索 -->
+    <string name="settings_search_category_ai_integration">AI 集成</string>
+    <string name="settings_search_category_library">音乐库</string>
+    <string name="settings_search_category_appearance">外观</string>
+    <string name="settings_search_category_playback">播放</string>
+    <string name="settings_search_category_behavior">行为</string>
+    <string name="settings_search_category_backup_restore">备份与恢复</string>
+    <string name="settings_search_category_developer">开发者</string>
+    <string name="settings_search_category_equalizer">均衡器</string>
+    <string name="settings_search_category_device_capabilities">设备能力</string>
+    <string name="settings_search_category_about">关于</string>
+    <string name="settings_search_category_subtitle">设置分类</string>
+    <string name="settings_search_category_settings_format">%1$s 设置</string>
+    
+    <!-- 设置搜索关键词 -->
+    <string name="settings_search_keyword_appearance">外观</string>
+    <string name="settings_search_keyword_theme">主题</string>
+    <string name="settings_search_keyword_corner_radius">圆角</string>
+    <string name="settings_search_keyword_blur">模糊</string>
+    <string name="settings_search_keyword_scroll">滚动</string>
+    <string name="settings_search_keyword_lyrics">歌词</string>
+    <string name="settings_search_keyword_playback">播放</string>
+    <string name="settings_search_keyword_bluetooth">蓝牙</string>
+    <string name="settings_search_keyword_headphones">耳机</string>
+    <string name="settings_search_keyword_equalizer">均衡器</string>
+    <string name="settings_search_keyword_crossfade">交叉淡化</string>
+    <string name="settings_search_keyword_hifi">HiFi</string>
+    <string name="settings_search_keyword_shuffle">随机</string>
+    <string name="settings_search_keyword_folder">文件夹</string>
+    <string name="settings_search_keyword_artist">艺术家</string>
+    <string name="settings_search_keyword_album">专辑</string>
+    <string name="settings_search_keyword_sync">同步</string>
+    <string name="settings_search_keyword_cache">缓存</string>
+    <string name="settings_search_keyword_backup">备份</string>
+    <string name="settings_search_keyword_restore">恢复</string>
+    <string name="settings_search_keyword_export">导出</string>
+    <string name="settings_search_keyword_import">导入</string>
+    <string name="settings_search_keyword_gesture">手势</string>
+    <string name="settings_search_keyword_haptics">触感</string>
+    <string name="settings_search_keyword_developer">开发者</string>
+    <string name="settings_search_keyword_device">设备</string>
+    <string name="settings_search_keyword_account">账号</string>
+    <string name="settings_search_keyword_about">关于</string>
+    <string name="settings_search_keyword_online_source">在线音源</string>
+    <string name="settings_search_keyword_color">色彩</string>
+    <string name="settings_search_keyword_language">语言</string>
+    <string name="settings_search_keyword_navigation">导航</string>
+    <string name="settings_search_keyword_player">播放器</string>
+    <string name="settings_search_keyword_queue">队列</string>
+    <string name="settings_search_keyword_mixer">混音</string>
+    <string name="settings_search_keyword_album_art">专辑封面</string>
+    <string name="settings_search_keyword_scan">扫描</string>
+    <string name="settings_search_keyword_min_duration">最小时长</string>
+    
+    <!-- 设置搜索界面 -->
+    <string name="settings_search_placeholder">搜索设置</string>
+    <string name="settings_search_no_results">未找到相关设置</string>
+    <string name="settings_search_results_count_format">%1$d 个结果</string>
 </resources>

@@ -52,11 +52,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Song
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,7 +160,7 @@ private fun FocusTopBar(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
-                contentDescription = "退出",
+                contentDescription = stringResource(R.string.content_description_exit),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -170,7 +172,7 @@ private fun FocusTopBar(
                 color = MaterialTheme.colorScheme.secondaryContainer
             ) {
                 Text(
-                    text = "已完成 $completedCycles 轮",
+                    text = stringResource(R.string.focus_mode_completed_cycles_format, completedCycles),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -183,7 +185,7 @@ private fun FocusTopBar(
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Text(
-                    text = "专注模式",
+                    text = stringResource(R.string.focus_mode_title),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -199,7 +201,7 @@ private fun FocusTopBar(
                 modifier = Modifier.height(40.dp)
             ) {
                 Text(
-                    text = "结束",
+                    text = stringResource(R.string.focus_mode_end),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -224,15 +226,16 @@ private fun FocusPhaseIndicator(
         label = "phase_text",
         modifier = modifier
     ) { (phase, running) ->
+        val phaseTextResId = when (phase) {
+            FocusPhase.STUDY -> if (running) R.string.focus_mode_studying else R.string.focus_mode_paused
+            FocusPhase.BREAK -> if (running) R.string.focus_mode_break else R.string.focus_mode_paused
+            FocusPhase.IDLE -> R.string.focus_mode_ready
+        }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = when (phase) {
-                    FocusPhase.STUDY -> if (running) "专注学习中" else "已暂停"
-                    FocusPhase.BREAK -> if (running) "休息放松中" else "已暂停"
-                    FocusPhase.IDLE -> "准备开始"
-                },
+                text = stringResource(phaseTextResId),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = indicatorColor
@@ -489,9 +492,9 @@ private fun MaterialTimerCircle(
             // 阶段标签
             Text(
                 text = when (timerState.currentPhase) {
-                    FocusPhase.STUDY -> "${timerState.studyDurationMinutes}分钟专注"
-                    FocusPhase.BREAK -> "${timerState.breakDurationMinutes}分钟休息"
-                    FocusPhase.IDLE -> "点击开始"
+                    FocusPhase.STUDY -> stringResource(R.string.focus_mode_study_duration_format, timerState.studyDurationMinutes)
+                    FocusPhase.BREAK -> stringResource(R.string.focus_mode_break_duration_format, timerState.breakDurationMinutes)
+                    FocusPhase.IDLE -> stringResource(R.string.focus_mode_tap_to_start)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
@@ -523,7 +526,7 @@ private fun MaterialFocusPlaybackControls(
         ) {
             Icon(
                 imageVector = Icons.Rounded.SkipPrevious,
-                contentDescription = "上一曲",
+                contentDescription = stringResource(R.string.content_description_previous),
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -539,7 +542,7 @@ private fun MaterialFocusPlaybackControls(
         ) {
             Icon(
                 imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = if (isPlaying) "暂停" else "播放",
+                contentDescription = stringResource(R.string.content_description_play_pause),
                 modifier = Modifier.size(36.dp)
             )
         }
@@ -551,7 +554,7 @@ private fun MaterialFocusPlaybackControls(
         ) {
             Icon(
                 imageVector = Icons.Rounded.SkipNext,
-                contentDescription = "下一曲",
+                contentDescription = stringResource(R.string.content_description_next),
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -581,7 +584,7 @@ private fun MaterialSongInfoCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = currentSong?.title ?: "未在播放",
+                text = currentSong?.title ?: stringResource(R.string.focus_mode_not_playing),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,

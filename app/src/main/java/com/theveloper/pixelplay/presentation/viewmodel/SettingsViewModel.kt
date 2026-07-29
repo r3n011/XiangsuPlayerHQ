@@ -848,6 +848,15 @@ class SettingsViewModel @Inject constructor(
         audioEngineSettings.setUsbExclusiveModeEnabled(enabled)
     }
 
+    fun selectUsbDevice(deviceInfo: com.theveloper.pixelplay.data.service.usb.UsbDeviceInfo) {
+        audioEngineSettings.selectUsbDevice(deviceInfo)
+        // 如果已经开启了独占模式，需要重新激活
+        if (_uiState.value.usbExclusiveModeEnabled) {
+            audioEngineSettings.setUsbExclusiveModeEnabled(false)
+            audioEngineSettings.setUsbExclusiveModeEnabled(true)
+        }
+    }
+
     fun setMusicQuality(quality: MusicQuality) {
         viewModelScope.launch {
             userPreferencesRepository.setMusicQuality(quality)

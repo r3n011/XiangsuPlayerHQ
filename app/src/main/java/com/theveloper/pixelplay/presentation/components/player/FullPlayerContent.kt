@@ -1337,6 +1337,7 @@ private fun FullPlayerAlbumCoverSection(
         val externalHeightConstraint = maxHeight
         val widthBasedHeight = when (carouselStyle) {
             CarouselStyle.NO_PEEK -> maxWidth
+            CarouselStyle.ONE_PEEK -> maxWidth * 0.8f
             CarouselStyle.TWO_PEEK -> maxWidth * 0.6f
             else -> maxWidth
         }
@@ -1915,10 +1916,10 @@ private fun SongMetadataDisplaySection(
         
         val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
         val isBuffering = stablePlayerState.isBuffering
-
+        val isTranscoding = stablePlayerState.isTranscoding
 
         AnimatedVisibility(
-            visible = isBuffering,
+            visible = isBuffering || isTranscoding,
             enter = scaleIn(
                 initialScale = 0.85f,
                 animationSpec = tween(
@@ -1944,19 +1945,49 @@ private fun SongMetadataDisplaySection(
                 )
             )
         ) {
-            Surface(
-                shape = CircleShape,
-                color = chipColor,
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                Box(
-                    modifier = Modifier.padding(10.dp), 
-                    contentAlignment = Alignment.Center
+            if (isTranscoding) {
+                Surface(
+                    shape = CircleShape,
+                    color = chipColor,
+                    modifier = Modifier.padding(end = 8.dp)
                 ) {
-                    LoadingIndicator(
-                        modifier = Modifier.size(28.dp),
-                        color = chipContentColor
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        LoadingIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = chipContentColor
+                        )
+                        LinearProgressIndicator(
+                            progress = { stablePlayerState.transcodeProgressPercent / 100f },
+                            modifier = Modifier.width(60.dp).height(4.dp),
+                            color = chipContentColor,
+                            trackColor = chipContentColor.copy(alpha = 0.3f)
+                        )
+                        Text(
+                            text = "${stablePlayerState.transcodeProgressPercent}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = chipContentColor
+                        )
+                    }
+                }
+            } else {
+                Surface(
+                    shape = CircleShape,
+                    color = chipColor,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.padding(10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        LoadingIndicator(
+                            modifier = Modifier.size(28.dp),
+                            color = chipContentColor
+                        )
+                    }
                 }
             }
         }

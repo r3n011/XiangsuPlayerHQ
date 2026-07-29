@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="changelog_title">Registro de cambios</string>
+    <string name="changelog_view_github">Ver en GitHub</string>
+    <string name="changelog_sec_improvements">Mejoras</string>
+    <string name="changelog_sec_fixes">Correcciones</string>
+    <string name="changelog_sec_whats_new">Novedades</string>
+    <string name="changelog_sec_added">Añadido</string>
+    <string-array name="changelog_020_added">
+        <item>Soporte para Chromecast para transmitir audio desde tu dispositivo.</item>
+        <item>Registro de cambios integrado en la app para mantenerte al día con las últimas funciones.</item>
+        <item>Soporte para archivos .LRC, tanto incrustados como externos.</item>
+        <item>Soporte para letras sin conexión.</item>
+        <item>Letras sincronizadas (al ritmo de la canción).</item>
+        <item>Nueva pantalla para ver la cola completa.</item>
+        <item>Reordenar y quitar canciones de la cola.</item>
+        <item>Gestos del mini reproductor (deslizar hacia abajo para cerrar).</item>
+        <item>Se añadieron más animaciones material.</item>
+        <item>Nuevos ajustes para personalizar el aspecto visual.</item>
+        <item>Nuevos ajustes para borrar la caché.</item>
+    </string-array>
+    <string-array name="changelog_020_improvements">
+        <item>Rediseño completo de la interfaz de usuario.</item>
+        <item>Rediseño completo del reproductor.</item>
+        <item>Mejoras de rendimiento en la biblioteca.</item>
+        <item>Mejorada la velocidad de inicio de la aplicación.</item>
+        <item>La IA ahora proporciona mejores resultados.</item>
+    </string-array>
+    <string-array name="changelog_020_fixes">
+        <item>Se corrigieron varios errores en el editor de etiquetas.</item>
+        <item>Se corrigió un error por el cual la notificación de reproducción no se borraba.</item>
+        <item>Se corrigieron varios errores que causaban el cierre inesperado de la aplicación.</item>
+    </string-array>
+    <string-array name="changelog_030_whats_new">
+        <item>Se introdujo un panel de estadísticas de escucha más rico con información más profunda sobre tus sesiones.</item>
+        <item>Se lanzó un reproductor rápido flotante para abrir y previsualizar archivos locales al instante.</item>
+        <item>Se añadió una pestaña de carpetas con un navegador en estilo árbol y vista lista para jugar.</item>
+    </string-array>
+    <string-array name="changelog_030_improvements">
+        <item>Se refinó la interfaz Material 3 general para una experiencia más limpia y cohesiva.</item>
+        <item>La edición de metadonnées ahora admite el cambio de portada.</item>
+        <item>Se suavizaron las animaciones y transiciones en toda la app para una navegación más fluida.</item>
+        <item>Se mejoró el diseño de la pantalla de artista con detalles más ricos y pulido.</item>
+        <item>Se mejoró la generación de DailyMix y YourMix con selecciones más inteligentes y diversas.</item>
+        <item>Se fortaleció la generación de listas con IA.</item>
+        <item>Se mejoró la relevancia y presentación de la búsqueda para un descubrimiento más rápido.</item>
+        <item>Soporte ampliado para una gama más amplia de formatos de archivos de audio.</item>
+    </string-array>
+    <string-array name="changelog_030_fixes">
+        <item>Se resolvieron detalles de metadatos para que la información de la canción sea precisa en todas partes.</item>
+        <item>Se restauraron los accesos directos de notificación para volver de manera fiable a la reproducción.</item>
+    </string-array>
+    <string-array name="changelog_040_improvements">
+        <item>Rediseño importante de la navegación</item>
+        <item>Nuevo explorador de archivos para elegir directorios de origen</item>
+        <item>Nuesvas funciones de conectividad y transmisión (casting)</item>
+        <item>Continuidad fluida entre dispositivos remotos</item>
+        <item>Transición sin pausas entre canciones</item>
+        <item>Control de fundido cruzado</item>
+        <item>Nueva función de transiciones personalizadas (solo para listas de reproducción)</item>
+        <item>Seguir reproduciendo después de cerrar la aplicación</item>
+        <item>Optimizaciones de la interfaz de usuario</item>
+        <item>Función de estadísticas mejorada</item>
+        <item>Control de cola rediseñado con más funciones</item>
+        <item>Soporte mejorado de differentes tipos de archivos para reproducción y edición de metadatos</item>
+        <item>Controlador de permisos mejorado</item>
+        <item>Correcciones de errores menores</item>
+    </string-array>
+    <string-array name="changelog_050_improvements">
+        <item>Actualización de interfaz Material 3 Expressive</item>
+        <item>Ecualizador de 10 bandas y efectos</item>
+        <item>Nuevo flujo de sincronización de biblioteca</item>
+        <item>Integración de IA (modelos Gemini)</item>
+        <item>Importación/exportación de listas M3U</item>
+        <item>Integración de portadas de artistas de Deezer</item>
+        <item>Portadas de listas personalizadas</item>
+        <item>Refactorización de la arquitectura de ajustes</item>
+        <item>Animaciones de cola y reproductor</item>
+        <item>Perfiles de referencia y rendimiento</item>
+        <item>Mejor sistema de letras con ajuste de sincronización</item>
+    </string-array>
+    <string-array name="changelog_050_fixes">
+        <item>Mejoras de estabilidad en transmisión (casting)</item>
+        <item>Estabilidad del panel del reproductor</item>
+        <item>Corrección de errores generales y limpieza</item>
+    </string-array>
+    <string-array name="changelog_060_whats_new">
+        <item>El soporte para Android Auto ya está disponible para la reproducción en el coche.</item>
+        <item>El soporte para Wear OS ya está activo, incluyendo mejores controles de reproducción de reloj a teléfono.</item>
+        <item>Se han ampliado las integraciones en la nube con mejoras en Telegram, NetEase, QQ Music y Google Drive.</item>
+        <item>La sección Reproducido recientemente y la restauración persistente de la cola mantienen lista tu sesión de escucha.</item>
+        <item>Ahora se incluyen Copia de seguridad y restauración v3 y herramientas de gestión de cuentas.</item>
+        <item>Las letras son más inteligentes con búsqueda manual alternativa y mejoras de almacenamiento.</item>
+    </string-array>
+    <string-array name="changelog_060_improvements">
+        <item>Gran optimización de rendimiento en el inicio, biblioteca, cola e interacciones del reproductor.</item>
+        <item>Las pantallas de Reproductor, Cast, Letras, Artista y Género se han rediseñado para un uso más fluido.</item>
+        <item>Los flujos de navegación y búsqueda son más fiables, con un manejo de rutas más seguro.</item>
+        <item>Se ha mejorado la compatibilidad de reproducción de audio para más dispositivos y formatos.</item>
+        <item>Se han ampliado los flujos de trabajo de selección múltiple en canciones, álbumes y listas de reproducción.</item>
+    </string-array>
+    <string-array name="changelog_060_fixes">
+        <item>El comportamiento de la cola y el modo aleatorio ahora es más estable y predecible.</item>
+        <item>Se han corregido varios casos extremos de reproducción en segundo plano y transmisión (casting).</item>
+        <item>Se han corregido problemas del temporizador de apagado, navegación de la pestaña Archivos y fallos del artista del álbum.</item>
+        <item>Se ha mejorado la carga del widget y la estabilidad del servicio para reducir problemas de sobrecalentamiento y memoria.</item>
+        <item>Corrección de errores generales y pulido de la interfaz de usuario en toda la aplicación.</item>
+    </string-array>
+    <string-array name="changelog_070_whats_new">
+        <item>Wear OS: Transferencia de música, reproducción local, sincronización de cola y control remoto desde el reloj.</item>
+        <item>IA: Integración con Groq AI y OpenRouter (experimental) con optimización de tokens.</item>
+        <item>Nube: Se añadió soporte para Jellyfin.</item>
+        <item>Letras: Traducción sincronizada con interruptor dedicado, soporte para formato Kugou LRC, personalización de alineación de texto y carga remota mejorada.</item>
+        <item>UI/UX: Modo de barra de navegación compacta, temas dinámicos a partir de la paleta de carátulas, marquesina para títulos largos y nuevas opciones de ordenación.</item>
+        <item>Telegram: Soporte nativo para temas y modos de visualización mejorados.</item>
+    </string-array>
+    <string-array name="changelog_070_improvements">
+        <item>Motor de audio: Reestructuración completa con soporte para más formatos (MIDI, ALAC, M4A) y optimización del decodificador.</item>
+        <item>Eficiencia: Reducción drástica del consumo de energía, corrección de sobrecalentamientos y optimización de tareas en segundo plano (SyncWorker).</item>
+        <item>Base de datos: Grandes optimizaciones de consultas y caché de portadas rediseñada para evitar la pérdida de datos.</item>
+        <item>Inicio: Tiempo de carga mejorado mediante la optimización de Baseline Profile.</item>
+    </string-array>
+    <string-array name="changelog_070_fixes">
+        <item>Reproducción: Se corrigieron tirones en Opus/MP3, errores de ReplayGain durante los fundidos cruzados y problemas de inicio en decodificadores Samsung.</item>
+        <item>Estabilidad: Se eliminaron cierres inesperados al inicio, navegación de artista y dispositivos con Android 12+.</item>
+        <item>Interfaz: Se corrigió el parpadeo de portadas, desbordamiento de texto en escrituras no latinas y comportamiento de la barra de navegación/mini reproductor.</item>
+        <item>Seguridad: Tratamiento de credenciales reforzado, permisos de almacenamiento y comunicación con el servidor multimedia.</item>
+    </string-array>
+    <string-array name="changelog_070_added">
+        <item>Localización: Español, francés, ruso, chino simplificado, indonesio, italiano</item>
+    </string-array>
+</resources>

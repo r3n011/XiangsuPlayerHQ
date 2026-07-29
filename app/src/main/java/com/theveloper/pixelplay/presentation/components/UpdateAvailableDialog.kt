@@ -59,8 +59,10 @@ fun UpdateAvailableDialog(
     var selectedArch by rememberSaveable {
         mutableStateOf(
             when {
-                availableApks.containsKey("64位 (arm64)") -> "64位 (arm64)"
-                availableApks.containsKey("通用版 (universal)") -> "通用版 (universal)"
+                updateInfo.isLanzouSynced && availableApks.containsKey("64位 (arm64) - 蓝奏云") -> "64位 (arm64) - 蓝奏云"
+                availableApks.containsKey("64位 (arm64) - GitHub") -> "64位 (arm64) - GitHub"
+                availableApks.containsKey("通用版 - 蓝奏云") -> "通用版 - 蓝奏云"
+                availableApks.containsKey("通用版 (universal) - GitHub") -> "通用版 (universal) - GitHub"
                 availableApks.isNotEmpty() -> availableApks.keys.first()
                 else -> ""
             }
@@ -145,6 +147,37 @@ fun UpdateAvailableDialog(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        
+                        // 蓝奏云同步状态
+                        if (updateInfo.isLanzouSynced) {
+                            Surface(
+                                shape = AbsoluteSmoothCornerShape(8.dp, 60),
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Text(
+                                    text = "✓ 蓝奏云已同步（国内高速下载）",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        } else if (updateInfo.lanzouFiles.isNotEmpty()) {
+                            Surface(
+                                shape = AbsoluteSmoothCornerShape(8.dp, 60),
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Text(
+                                    text = "⚠ 蓝奏云版本与 GitHub 不一致，仅使用 GitHub 下载",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -160,18 +193,24 @@ fun UpdateAvailableDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
-                                text = "选择安装包架构",
+                                text = "选择安装包",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 availableApks.keys.forEach { archLabel ->
                                     FilterChip(
                                         selected = selectedArch == archLabel,
                                         onClick = { selectedArch = archLabel },
-                                        label = { Text(archLabel, style = MaterialTheme.typography.labelMedium) }
+                                        label = { 
+                                            Text(
+                                                text = archLabel, 
+                                                style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1
+                                            ) 
+                                        }
                                     )
                                 }
                             }

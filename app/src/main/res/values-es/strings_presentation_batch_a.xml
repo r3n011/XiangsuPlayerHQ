@@ -8,8 +8,6 @@
 
     <!-- Google Drive folder setup -->
     <string name="auth_gdrive_setting_up">Configurando Google Drive…</string>
-    <string name="auth_gdrive_connect_title">Conectar Google Drive</string>
-    <string name="auth_gdrive_connect_subtitle">Reproduce música directamente desde tu Google Drive</string>
     <string name="auth_gdrive_sign_in_with_google">Iniciar sesión con Google</string>
     <string name="auth_gdrive_select_music_folder_title">Selecciona una carpeta de música</string>
     <string name="auth_gdrive_select_music_folder_subtitle">Elige o crea una carpeta para usarla como origen de música</string>

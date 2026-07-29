@@ -15,10 +15,15 @@ interface AiClient {
      * @return Generated text response
      */
     suspend fun generateContent(
-        model: String, 
-        systemPrompt: String, 
+        model: String,
+        systemPrompt: String,
         prompt: String,
-        temperature: Float = 0.7f
+        temperature: Float = 0.7f,
+        topP: Float = 1.0f,
+        topK: Int = 40,
+        maxTokens: Int = 2048,
+        presencePenalty: Float = 0.0f,
+        frequencyPenalty: Float = 0.0f,
     ): String
     
     /**

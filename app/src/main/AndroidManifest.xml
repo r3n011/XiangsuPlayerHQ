@@ -31,6 +31,8 @@
     <!-- Required only on Android 11 and below for legacy Bluetooth discovery and Wi-Fi SSID access. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
         android:maxSdkVersion="30" />
+    <!-- USB 独占模式所需权限 -->
+    <uses-permission android:name="android.permission.USB_PERMISSION" />
     <!-- For disabling battery optimization -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -171,6 +173,20 @@
         <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
+
+        <!-- USB 设备连接广播接收器 -->
+        <receiver
+            android:name=".data.service.usb.UsbConnectionReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
+            </intent-filter>
+            <!-- USB 设备连接时弹出权限请求 -->
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_device_filter" />
+        </receiver>
 
         <receiver
             android:name=".ui.glancewidget.PixelPlayGlanceWidgetReceiver"

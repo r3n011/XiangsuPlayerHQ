@@ -9,11 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.*
-import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -185,8 +182,7 @@ fun AlbumCarouselSection(
             }
     }
 
-    // 圆角跟随展开大小变化：折叠时较大，展开时较小
-    val corner = lerp(36.dp, 15.dp, expansionFraction.coerceIn(0f, 1f))
+    val corner = 18.dp//lerp(36.dp, 15.dp, expansionFraction.coerceIn(0f, 1f))
 
     BoxWithConstraints(modifier = modifier) {
         val availableWidth = this.maxWidth
@@ -203,12 +199,10 @@ fun AlbumCarouselSection(
             content = { index ->
                 val song = queue[index]
                 val isFocusedItem = carouselState.pagerState.currentPage == index
-                val albumArtShape = remember(corner) { RoundedCornerShape(corner) }
                 Box(
                     Modifier
                         .fillMaxSize()
                         .aspectRatio(1f)
-                        .clip(albumArtShape)
                         .clickable(
                             enabled = isFocusedItem && song.albumId != -1L,
                             interactionSource = remember { MutableInteractionSource() },

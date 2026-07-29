@@ -31,10 +31,15 @@ data class GitHubRelease(
 @Singleton
 class UpdateChecker @Inject constructor() {
     private val json = Json { ignoreUnknownKeys = true }
+    private val lanzouApi = LanzouCloudApi()
 
     private companion object {
         const val GITHUB_REPO_OWNER = "r3n011"
         const val GITHUB_REPO_NAME = "XiangsuPlayerHQ"
+        
+        // 蓝奏云配置
+        const val LANZOU_SHARE_URL = "https://wwbvc.lanzn.com/b011m9azlg"
+        const val LANZOU_PASSWORD = "dtu2"
     }
 
     suspend fun checkForUpdates(): Result<UpdateInfo> {
@@ -129,7 +134,9 @@ class UpdateChecker @Inject constructor() {
         val releaseNotes: String,
         val apkUrlArm64: String? = null,
         val apkUrlArmv7: String? = null,
-        val apkUrlUniversal: String? = null
+        val apkUrlUniversal: String? = null,
+        val lanzouFiles: List<LanzouCloudApi.LanzouFileInfo> = emptyList(),
+        val isLanzouSynced: Boolean = false  // 蓝奏云版本号是否与 GitHub 一致
     ) {
         /**
          * 判断是否有更新（主判断：版本号比较）。
@@ -152,6 +159,38 @@ class UpdateChecker @Inject constructor() {
             // 版本号无法解析 → 回退到时间戳比较（publishedAt <= 0 时直接返回 false）
             if (publishedAt <= 0L) return false
             return publishedAt > lastUpdateTime
+        }
+
+        /**
+         * 获取可用的 APK 下载链接映射（架构 -> URL）
+         * 优先使用蓝奏云（如果已同步），否则使用 GitHub
+         */
+        fun availableApks(): Map<String, String> {
+            val map = mutableMapOf<String, String>()
+            
+            // 如果蓝奏云已同步，优先使用蓝奏云
+            if (isLanzouSynced && lanzouFiles.isNotEmpty()) {
+                lanzouFiles.forEach { file ->
+                    when {
+                        file.fileName.contains("arm64", ignoreCase = true) -> {
+                            map["64位 (arm64) - 蓝奏云"] = file.downloadUrl
+                        }
+                        file.fileName.contains("arm32", ignoreCase = true) -> {
+                            map["32位 (arm32) - 蓝奏云"] = file.downloadUrl
+                        }
+                        else -> {
+                            map["通用版 - 蓝奏云"] = file.downloadUrl
+                        }
+                    }
+                }
+            }
+            
+            // 添加 GitHub 链接作为备选
+            apkUrlArmv7?.let { map["32位 (armv7) - GitHub"] = it }
+            apkUrlArm64?.let { map["64位 (arm64) - GitHub"] = it }
+            apkUrlUniversal?.let { map["通用版 (universal) - GitHub"] = it }
+            
+            return map
         }
 
         /**
@@ -184,16 +223,57 @@ class UpdateChecker @Inject constructor() {
             }
             return 0
         }
+    }
 
-        /**
-         * 获取可用的 APK 下载链接映射（架构 -> URL）
-         */
-        fun availableApks(): Map<String, String> {
-            val map = mutableMapOf<String, String>()
-            apkUrlArmv7?.let { map["32位 (armv7)"] = it }
-            apkUrlArm64?.let { map["64位 (arm64)"] = it }
-            apkUrlUniversal?.let { map["通用版 (universal)"] = it }
-            return map
+    /**
+     * 同步蓝奏云版本信息
+     * 检查蓝奏云中的版本是否与 GitHub 一致
+     */
+    suspend fun syncLanzouVersions(updateInfo: UpdateInfo): UpdateInfo {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = lanzouApi.resolveShare(LANZOU_SHARE_URL, LANZOU_PASSWORD)
+                
+                result.fold(
+                    onSuccess = { files ->
+                        if (files.isEmpty()) {
+                            Timber.w("蓝奏云中没有找到文件")
+                            updateInfo.copy(isLanzouSynced = false)
+                        } else {
+                            // 检查所有文件的版本号是否都与 GitHub 一致
+                            val githubVersion = updateInfo.version.removePrefix("v")
+                            val allSynced = files.all { file ->
+                                file.versionName == null || file.versionName == githubVersion
+                            }
+                            
+                            if (allSynced) {
+                                Timber.d("蓝奏云版本已同步，找到 ${files.size} 个文件")
+                                updateInfo.copy(
+                                    lanzouFiles = files,
+                                    isLanzouSynced = true
+                                )
+                            } else {
+                                Timber.w("蓝奏云版本与 GitHub 不一致，不使用蓝奏云更新")
+                                val mismatched = files.filter { file ->
+                                    file.versionName != null && file.versionName != githubVersion
+                                }
+                                Timber.w("不匹配的文件: ${mismatched.map { it.fileName }}")
+                                updateInfo.copy(
+                                    lanzouFiles = files,
+                                    isLanzouSynced = false
+                                )
+                            }
+                        }
+                    },
+                    onFailure = { error ->
+                        Timber.w(error, "无法访问蓝奏云")
+                        updateInfo.copy(isLanzouSynced = false)
+                    }
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "同步蓝奏云版本时出错")
+                updateInfo.copy(isLanzouSynced = false)
+            }
         }
     }
 }

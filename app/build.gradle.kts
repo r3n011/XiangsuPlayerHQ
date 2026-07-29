@@ -1,3 +1,6 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.Properties
 
 plugins {
@@ -89,8 +92,9 @@ android {
         applicationId = "com.r3n011.pixelplay"
         minSdk = 23
         targetSdk = 36
-        versionCode = 27
-        versionName = "1.2.2"
+        multiDexEnabled = true
+        versionCode = 30
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -157,6 +161,12 @@ android {
         buildConfig = true
     }
 
+    externalNativeBuild {
+        cmake {
+            path = file("$projectDir/src/main/cpp/CMakeLists.txt")
+        }
+    }
+
     testOptions {
         unitTests.isReturnDefaultValues = true
         unitTests.all { it.useJUnitPlatform() }
@@ -181,6 +191,25 @@ android {
         abi.enableSplit = true
         density.enableSplit = true
         language.enableSplit = true
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val vName = android.defaultConfig.versionName ?: "unknown"
+        val vCode = android.defaultConfig.versionCode ?: 0
+        val date = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        val variantName = variant.name
+
+        variant.outputs.forEach { output ->
+            val currentName = output.outputFileName.toString()
+            val abi = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64").find { currentName.contains(it) }
+            val abiSuffix = abi?.let {
+                "-" + it.replace("arm64-v8a", "arm64").replace("armeabi-v7a", "arm32")
+            } ?: ""
+
+            output.outputFileName = "PixelPlay-${vName}-${vCode}-${date}-${variantName}${abiSuffix}.apk"
+        }
     }
 }
 

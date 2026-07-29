@@ -200,6 +200,7 @@ private fun PhoneSettingsScreen(
 
     var showCornerRadiusOverlay by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    val searchPlaceholder = stringResource(R.string.settings_search_placeholder)
 
     val topBarHeight = remember { Animatable(maxTopBarHeightPx) }
     var collapseFraction by remember { mutableStateOf(0f) }
@@ -307,7 +308,7 @@ private fun PhoneSettingsScreen(
                                 onExpandedChange = {},
                                 placeholder = {
                                     Text(
-                                        text = "搜索设置",
+                                        text = searchPlaceholder,
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -413,6 +414,72 @@ private data class SettingsSearchItem(
     val categoryTitle: String,
     val onClick: () -> Unit
 )
+
+/**
+ * 获取设置分类标题映射（使用字符串资源支持多语言）
+ */
+@Composable
+private fun getSettingsCategoryTitles(): Map<String, String> {
+    return mapOf(
+        SettingsCategory.AI_INTEGRATION.id to stringResource(R.string.settings_search_category_ai_integration),
+        SettingsCategory.LIBRARY.id to stringResource(R.string.settings_search_category_library),
+        SettingsCategory.APPEARANCE.id to stringResource(R.string.settings_search_category_appearance),
+        SettingsCategory.PLAYBACK.id to stringResource(R.string.settings_search_category_playback),
+        SettingsCategory.BEHAVIOR.id to stringResource(R.string.settings_search_category_behavior),
+        SettingsCategory.BACKUP_RESTORE.id to stringResource(R.string.settings_search_category_backup_restore),
+        SettingsCategory.DEVELOPER.id to stringResource(R.string.settings_search_category_developer),
+        SettingsCategory.EQUALIZER.id to stringResource(R.string.settings_search_category_equalizer),
+        SettingsCategory.DEVICE_CAPABILITIES.id to stringResource(R.string.settings_search_category_device_capabilities),
+        SettingsCategory.ABOUT.id to stringResource(R.string.settings_search_category_about)
+    )
+}
+
+/**
+ * 获取设置关键词列表（用于搜索匹配）
+ */
+@Composable
+private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
+    return listOf(
+        stringResource(R.string.settings_search_keyword_appearance) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_theme) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_corner_radius) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_blur) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_scroll) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_lyrics) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_playback) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_bluetooth) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_headphones) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_equalizer) to SettingsCategory.EQUALIZER,
+        stringResource(R.string.settings_search_keyword_crossfade) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_hifi) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_shuffle) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_folder) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_artist) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_album) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_sync) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_cache) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_backup) to SettingsCategory.BACKUP_RESTORE,
+        stringResource(R.string.settings_search_keyword_restore) to SettingsCategory.BACKUP_RESTORE,
+        stringResource(R.string.settings_search_keyword_export) to SettingsCategory.BACKUP_RESTORE,
+        stringResource(R.string.settings_search_keyword_import) to SettingsCategory.BACKUP_RESTORE,
+        stringResource(R.string.settings_search_keyword_gesture) to SettingsCategory.BEHAVIOR,
+        stringResource(R.string.settings_search_keyword_haptics) to SettingsCategory.BEHAVIOR,
+        stringResource(R.string.settings_search_keyword_developer) to SettingsCategory.DEVELOPER,
+        stringResource(R.string.settings_search_keyword_device) to SettingsCategory.DEVICE_CAPABILITIES,
+        stringResource(R.string.settings_search_keyword_account) to SettingsCategory.ABOUT,
+        stringResource(R.string.settings_search_keyword_about) to SettingsCategory.ABOUT,
+        stringResource(R.string.settings_search_keyword_online_source) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_color) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_language) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_navigation) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_player) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_queue) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_mixer) to SettingsCategory.EQUALIZER,
+        stringResource(R.string.settings_search_keyword_album_art) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_scan) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_min_duration) to SettingsCategory.LIBRARY
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -523,23 +590,15 @@ private fun SettingsSearchResults(
     query: String,
     navController: NavController
 ) {
-    val settingsCategoryTitles = remember {
-        mapOf(
-            SettingsCategory.AI_INTEGRATION.id to "AI集成",
-            SettingsCategory.LIBRARY.id to "音乐库",
-            SettingsCategory.APPEARANCE.id to "外观",
-            SettingsCategory.PLAYBACK.id to "播放",
-            SettingsCategory.BEHAVIOR.id to "行为",
-            SettingsCategory.BACKUP_RESTORE.id to "备份与恢复",
-            SettingsCategory.DEVELOPER.id to "开发者",
-            SettingsCategory.EQUALIZER.id to "均衡器",
-            SettingsCategory.DEVICE_CAPABILITIES.id to "设备能力",
-            SettingsCategory.ABOUT.id to "关于"
-        )
-    }
+    val settingsCategoryTitles = getSettingsCategoryTitles()
+    val keywordItems = getSettingsKeywordItems()
+    val categorySubtitle = stringResource(R.string.settings_search_category_subtitle)
+    val categorySettingsFormat = stringResource(R.string.settings_search_category_settings_format)
+    val noResultsText = stringResource(R.string.settings_search_no_results)
+    val resultsCountFormat = stringResource(R.string.settings_search_results_count_format)
 
     // 构建设置项搜索索引（分类 + 典型设置项）
-    val searchItems = remember(query, settingsCategoryTitles) {
+    val searchItems = remember(query, settingsCategoryTitles, keywordItems, categorySubtitle, categorySettingsFormat) {
         val normalizedQuery = query.trim().lowercase()
         val items = mutableListOf<SettingsSearchItem>()
 
@@ -550,7 +609,7 @@ private fun SettingsSearchResults(
                 items.add(
                     SettingsSearchItem(
                         title = categoryTitle,
-                        subtitle = "设置分类",
+                        subtitle = categorySubtitle,
                         categoryTitle = categoryTitle,
                         onClick = {}
                     )
@@ -558,55 +617,14 @@ private fun SettingsSearchResults(
             }
         }
 
-        // 2. 常见设置项关键词（简化版，覆盖核心设置）
-        val keywordItems = listOf(
-            "外观" to SettingsCategory.APPEARANCE,
-            "主题" to SettingsCategory.APPEARANCE,
-            "圆角" to SettingsCategory.APPEARANCE,
-            "模糊" to SettingsCategory.APPEARANCE,
-            "滚动" to SettingsCategory.APPEARANCE,
-            "歌词" to SettingsCategory.PLAYBACK,
-            "播放" to SettingsCategory.PLAYBACK,
-            "蓝牙" to SettingsCategory.PLAYBACK,
-            "耳机" to SettingsCategory.PLAYBACK,
-            "均衡器" to SettingsCategory.EQUALIZER,
-            "交叉淡化" to SettingsCategory.PLAYBACK,
-            "HiFi" to SettingsCategory.PLAYBACK,
-            "随机" to SettingsCategory.PLAYBACK,
-            "文件夹" to SettingsCategory.LIBRARY,
-            "艺术家" to SettingsCategory.LIBRARY,
-            "专辑" to SettingsCategory.LIBRARY,
-            "同步" to SettingsCategory.LIBRARY,
-            "缓存" to SettingsCategory.LIBRARY,
-            "备份" to SettingsCategory.BACKUP_RESTORE,
-            "恢复" to SettingsCategory.BACKUP_RESTORE,
-            "导出" to SettingsCategory.BACKUP_RESTORE,
-            "导入" to SettingsCategory.BACKUP_RESTORE,
-            "手势" to SettingsCategory.BEHAVIOR,
-            "触感" to SettingsCategory.BEHAVIOR,
-            "开发者" to SettingsCategory.DEVELOPER,
-            "设备" to SettingsCategory.DEVICE_CAPABILITIES,
-            "账号" to SettingsCategory.ABOUT,
-            "关于" to SettingsCategory.ABOUT,
-            "在线音源" to SettingsCategory.LIBRARY,
-            "色彩" to SettingsCategory.APPEARANCE,
-            "语言" to SettingsCategory.APPEARANCE,
-            "导航" to SettingsCategory.APPEARANCE,
-            "播放器" to SettingsCategory.PLAYBACK,
-            "队列" to SettingsCategory.PLAYBACK,
-            "混音" to SettingsCategory.EQUALIZER,
-            "专辑封面" to SettingsCategory.LIBRARY,
-            "扫描" to SettingsCategory.LIBRARY,
-            "最小时长" to SettingsCategory.LIBRARY
-        )
-
+        // 2. 常见设置项关键词
         keywordItems.forEach { (keyword, category) ->
             if (keyword.lowercase().contains(normalizedQuery) || normalizedQuery in keyword.lowercase()) {
                 val categoryTitle = settingsCategoryTitles[category.id] ?: category.id
                 items.add(
                     SettingsSearchItem(
                         title = keyword,
-                        subtitle = "$categoryTitle 设置",
+                        subtitle = categorySettingsFormat.format(categoryTitle),
                         categoryTitle = categoryTitle,
                         onClick = {}
                     )
@@ -636,7 +654,7 @@ private fun SettingsSearchResults(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "未找到相关设置",
+                        text = noResultsText,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -644,7 +662,7 @@ private fun SettingsSearchResults(
             }
         } else {
             Text(
-                text = "${searchItems.size} 个结果",
+                text = resultsCountFormat.format(searchItems.size),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
@@ -1272,22 +1290,15 @@ private fun TabletSettingsSearchAndCategories(
         cursorColor = MaterialTheme.colorScheme.primary
     )
 
-    val settingsCategoryTitles = remember {
-        mapOf(
-            SettingsCategory.AI_INTEGRATION.id to "AI集成",
-            SettingsCategory.LIBRARY.id to "音乐库",
-            SettingsCategory.APPEARANCE.id to "外观",
-            SettingsCategory.PLAYBACK.id to "播放",
-            SettingsCategory.BEHAVIOR.id to "行为",
-            SettingsCategory.BACKUP_RESTORE.id to "备份与恢复",
-            SettingsCategory.DEVELOPER.id to "开发者",
-            SettingsCategory.EQUALIZER.id to "均衡器",
-            SettingsCategory.DEVICE_CAPABILITIES.id to "设备能力",
-            SettingsCategory.ABOUT.id to "关于"
-        )
-    }
+    val settingsCategoryTitles = getSettingsCategoryTitles()
+    val keywordItems = getSettingsKeywordItems()
+    val categorySubtitle = stringResource(R.string.settings_search_category_subtitle)
+    val categorySettingsFormat = stringResource(R.string.settings_search_category_settings_format)
+    val searchPlaceholder = stringResource(R.string.settings_search_placeholder)
+    val noResultsText = stringResource(R.string.settings_search_no_results)
+    val resultsCountFormat = stringResource(R.string.settings_search_results_count_format)
 
-    val searchItems = remember(searchQuery, settingsCategoryTitles) {
+    val searchItems = remember(searchQuery, settingsCategoryTitles, keywordItems, categorySubtitle, categorySettingsFormat) {
         if (searchQuery.isBlank()) return@remember emptyList<SettingsSearchItem>()
         
         val normalizedQuery = searchQuery.trim().lowercase()
@@ -1299,7 +1310,7 @@ private fun TabletSettingsSearchAndCategories(
                 items.add(
                     SettingsSearchItem(
                         title = categoryTitle,
-                        subtitle = "设置分类",
+                        subtitle = categorySubtitle,
                         categoryTitle = categoryTitle,
                         onClick = {}
                     )
@@ -1307,53 +1318,13 @@ private fun TabletSettingsSearchAndCategories(
             }
         }
 
-        val keywordItems = listOf(
-            "外观" to SettingsCategory.APPEARANCE,
-            "主题" to SettingsCategory.APPEARANCE,
-            "圆角" to SettingsCategory.APPEARANCE,
-            "模糊" to SettingsCategory.APPEARANCE,
-            "歌词" to SettingsCategory.PLAYBACK,
-            "播放" to SettingsCategory.PLAYBACK,
-            "蓝牙" to SettingsCategory.PLAYBACK,
-            "耳机" to SettingsCategory.PLAYBACK,
-            "均衡器" to SettingsCategory.EQUALIZER,
-            "交叉淡化" to SettingsCategory.PLAYBACK,
-            "HiFi" to SettingsCategory.PLAYBACK,
-            "随机" to SettingsCategory.PLAYBACK,
-            "文件夹" to SettingsCategory.LIBRARY,
-            "艺术家" to SettingsCategory.LIBRARY,
-            "专辑" to SettingsCategory.LIBRARY,
-            "同步" to SettingsCategory.LIBRARY,
-            "缓存" to SettingsCategory.LIBRARY,
-            "备份" to SettingsCategory.BACKUP_RESTORE,
-            "恢复" to SettingsCategory.BACKUP_RESTORE,
-            "导出" to SettingsCategory.BACKUP_RESTORE,
-            "导入" to SettingsCategory.BACKUP_RESTORE,
-            "手势" to SettingsCategory.BEHAVIOR,
-            "触感" to SettingsCategory.BEHAVIOR,
-            "开发者" to SettingsCategory.DEVELOPER,
-            "设备" to SettingsCategory.DEVICE_CAPABILITIES,
-            "账号" to SettingsCategory.ABOUT,
-            "关于" to SettingsCategory.ABOUT,
-            "在线音源" to SettingsCategory.LIBRARY,
-            "色彩" to SettingsCategory.APPEARANCE,
-            "语言" to SettingsCategory.APPEARANCE,
-            "导航" to SettingsCategory.APPEARANCE,
-            "播放器" to SettingsCategory.PLAYBACK,
-            "队列" to SettingsCategory.PLAYBACK,
-            "混音" to SettingsCategory.EQUALIZER,
-            "专辑封面" to SettingsCategory.LIBRARY,
-            "扫描" to SettingsCategory.LIBRARY,
-            "最小时长" to SettingsCategory.LIBRARY
-        )
-
         keywordItems.forEach { (keyword, category) ->
             if (keyword.lowercase().contains(normalizedQuery) || normalizedQuery in keyword.lowercase()) {
                 val categoryTitle = settingsCategoryTitles[category.id] ?: category.id
                 items.add(
                     SettingsSearchItem(
                         title = keyword,
-                        subtitle = "$categoryTitle 设置",
+                        subtitle = categorySettingsFormat.format(categoryTitle),
                         categoryTitle = categoryTitle,
                         onClick = {}
                     )
@@ -1381,7 +1352,7 @@ private fun TabletSettingsSearchAndCategories(
                         onExpandedChange = {},
                         placeholder = {
                             Text(
-                                text = "搜索设置",
+                                text = searchPlaceholder,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -1451,7 +1422,7 @@ private fun TabletSettingsSearchAndCategories(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "未找到相关设置",
+                                text = noResultsText,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1460,7 +1431,7 @@ private fun TabletSettingsSearchAndCategories(
                 } else {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "${searchItems.size} 个结果",
+                            text = resultsCountFormat.format(searchItems.size),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)

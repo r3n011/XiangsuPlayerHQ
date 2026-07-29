@@ -33,6 +33,7 @@ import com.google.android.gms.cast.MediaStatus
 import timber.log.Timber
 import com.theveloper.pixelplay.utils.QueueUtils
 import com.theveloper.pixelplay.utils.MediaItemBuilder
+import com.theveloper.pixelplay.utils.TranscodeProgressManager
 import kotlin.math.abs
 
 @Singleton
@@ -164,6 +165,21 @@ class PlaybackStateHolder @Inject constructor(
     ) {
         this.scope = coroutineScope
         this.onCastSeekBlocked = onCastSeekBlocked
+
+        // Observe transcoding progress and update player state
+        scope?.launch {
+            TranscodeProgressManager.progress.collect { progress ->
+                _stablePlayerState.update { state ->
+                    state.copy(
+                        isTranscoding = progress.isTranscoding,
+                        transcodeProgressPercent = progress.progressPercent,
+                        transcodeStage = progress.stage,
+                        transcodeFileName = progress.fileName
+                    )
+                }
+            }
+        }
+
         scope?.launch {
             val snapshot = runCatching {
                 userPreferencesRepository.getPlaybackQueueSnapshotOnce()

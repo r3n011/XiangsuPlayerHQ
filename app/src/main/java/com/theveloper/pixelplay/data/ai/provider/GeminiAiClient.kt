@@ -55,7 +55,10 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
     private data class GenerationConfig(
         val temperature: Double,
         val topK: Int = 64,
-        val topP: Double = 0.95
+        val topP: Double = 0.95,
+        val maxOutputTokens: Int? = null,
+        val presencePenalty: Float? = null,
+        val frequencyPenalty: Float? = null,
     )
 
     @Serializable
@@ -86,7 +89,12 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
         model: String,
         systemPrompt: String,
         prompt: String,
-        temperature: Float
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        maxTokens: Int,
+        presencePenalty: Float,
+        frequencyPenalty: Float,
     ): String {
         return withContext(Dispatchers.IO) {
             val resolvedModel = model.ifBlank { DEFAULT_GEMINI_MODEL }
@@ -96,7 +104,14 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
                 systemInstruction = systemPrompt
                     .takeIf { it.isNotBlank() }
                     ?.let { Content(parts = listOf(Part(it))) },
-                generationConfig = GenerationConfig(temperature = temperature.toDouble())
+                generationConfig = GenerationConfig(
+                    temperature = temperature.toDouble(),
+                    topP = topP.toDouble(),
+                    topK = topK,
+                    maxOutputTokens = maxTokens,
+                    presencePenalty = presencePenalty,
+                    frequencyPenalty = frequencyPenalty,
+                )
             )
 
             val jsonBody = json.encodeToString(GenerateRequest.serializer(), requestBody)

@@ -377,6 +377,8 @@ fun AboutScreen(
 
     /**
      * 统一的更新检查入口。
+     * 先从 GitHub API 获取版本信息，然后同步蓝奏云版本（检查版本号是否一致）。
+     *
      * @param forceRefresh true=强制发网络请求（手动检查）；false=缓存有效时直接复用
      * @param onResult 回调，传入检查结果（UpdateInfo 或 null）
      */
@@ -391,9 +393,11 @@ fun AboutScreen(
         }
         val result = updateChecker.checkForUpdates()
         result.onSuccess { info ->
-            latestReleaseInfo = info
+            // 同步蓝奏云版本信息
+            val syncedInfo = updateChecker.syncLanzouVersions(info)
+            latestReleaseInfo = syncedInfo
             lastCheckTime = System.currentTimeMillis()
-            onResult(info)
+            onResult(syncedInfo)
         }
         result.onFailure { exception ->
             if (forceRefresh) {
@@ -1410,6 +1414,8 @@ private fun DisclaimerCard(modifier: Modifier = Modifier) {
 private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val blurProjectUrl = "https://github.com/shiqizhenyes/PixelPlayer/tree/feat/gaussian_blur_effect_playingEqIconV2"
+    val miniaudioUrl = "https://github.com/mackron/miniaudio"
+    val lanzouApiUrl = "https://github.com/124019/LanzouAPI"
 
     Surface(
         modifier = modifier,
@@ -1438,32 +1444,63 @@ private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
                 }
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
-                    text = "鸣谢",
+                    text = stringResource(R.string.about_acknowledgements_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
 
+            Spacer(modifier = Modifier.height(14.dp))
+
+            AcknowledgementItem(
+                description = stringResource(R.string.about_acknowledgements_blur_desc),
+                url = blurProjectUrl,
+                context = context
+            )
+
             Spacer(modifier = Modifier.height(10.dp))
 
-            Text(
-                text = "模糊效果来自该项目",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AcknowledgementItem(
+                description = stringResource(R.string.about_acknowledgements_miniaudio_desc),
+                url = miniaudioUrl,
+                context = context
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            ClickableText(
-                text = AnnotatedString(blurProjectUrl),
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                ),
-                onClick = {
-                    openUrl(context, blurProjectUrl)
-                },
+            AcknowledgementItem(
+                description = stringResource(R.string.about_acknowledgements_lanzou_desc),
+                url = lanzouApiUrl,
+                context = context
             )
         }
+    }
+}
+
+@Composable
+private fun AcknowledgementItem(
+    description: String,
+    url: String,
+    context: android.content.Context
+) {
+    Column {
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        ClickableText(
+            text = AnnotatedString(url),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.primary,
+            ),
+            onClick = {
+                openUrl(context, url)
+            },
+        )
     }
 }
 

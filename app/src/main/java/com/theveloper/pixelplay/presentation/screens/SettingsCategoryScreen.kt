@@ -90,6 +90,7 @@ import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
+import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -295,6 +296,9 @@ fun SettingsCategoryScreen(
             showDownloadPathDialog = false
         }
     }
+
+    // USB 相关状态
+    var showUsbDeviceSelector by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         settingsViewModel.dataTransferEvents.collectLatest { message ->
@@ -816,6 +820,17 @@ fun SettingsCategoryScreen(
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely(Screen.PaletteStyle.route) }
                                 )
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_carousel_style_label),
+                                    description = stringResource(R.string.setcat_carousel_style_desc),
+                                    options = mapOf(
+                                        CarouselStyle.NO_PEEK to stringResource(R.string.setcat_carousel_no_peek),
+                                        CarouselStyle.ONE_PEEK to stringResource(R.string.setcat_carousel_one_peek)
+                                    ),
+                                    selectedKey = uiState.carouselStyle,
+                                    onSelectionChanged = { settingsViewModel.setCarouselStyle(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.ViewCarousel, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_home_collage)) {
@@ -1058,7 +1073,18 @@ fun SettingsCategoryScreen(
                                         stringResource(R.string.setcat_usb_exclusive_mode_subtitle_connected, it)
                                     } ?: stringResource(R.string.setcat_usb_exclusive_mode_subtitle_disconnected),
                                     checked = uiState.usbExclusiveModeEnabled,
-                                    onCheckedChange = { settingsViewModel.setUsbExclusiveModeEnabled(it) },
+                                    onCheckedChange = { enabled ->
+                                        if (enabled && uiState.currentUsbDeviceName == null) {
+                                            showUsbDeviceSelector = true
+                                        } else {
+                                            settingsViewModel.setUsbExclusiveModeEnabled(enabled)
+                                        }
+                                    },
+                                    onClick = {
+                                        if (!uiState.usbExclusiveModeEnabled) {
+                                            showUsbDeviceSelector = true
+                                        }
+                                    },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
@@ -1755,6 +1781,18 @@ fun SettingsCategoryScreen(
                 onRemoveHistoryEntry = { settingsViewModel.removeBackupHistoryEntry(it) }
             )
         }
+    }
+
+    // USB 设备选择对话框
+    if (showUsbDeviceSelector) {
+        com.theveloper.pixelplay.presentation.components.UsbDeviceSelectorDialog(
+            onDismiss = { showUsbDeviceSelector = false },
+            onDeviceSelected = { deviceInfo ->
+                settingsViewModel.selectUsbDevice(deviceInfo)
+                settingsViewModel.setUsbExclusiveModeEnabled(true)
+                showUsbDeviceSelector = false
+            }
+        )
     }
 }
 

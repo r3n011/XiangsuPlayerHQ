@@ -1,13 +1,21 @@
 package com.theveloper.pixelplay.data.service.audioengine
 
+import com.theveloper.pixelplay.data.service.usb.UsbDacManager
+import com.theveloper.pixelplay.data.service.usb.UsbDeviceInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AudioEngineSettings @Inject constructor() {
+class AudioEngineSettings @Inject constructor(
+    private val usbDacManager: UsbDacManager
+) {
     private val _replayGainEnabled = MutableStateFlow(false)
     private val _replayGainUseAlbumGain = MutableStateFlow(false)
     private val _replayGainPreamp = MutableStateFlow(0.0f)
@@ -30,6 +38,7 @@ class AudioEngineSettings @Inject constructor() {
 
     private val _usbExclusiveModeEnabled = MutableStateFlow(false)
     private val _currentUsbDeviceName = MutableStateFlow<String?>(null)
+    private val _selectedUsbDevice = MutableStateFlow<UsbDeviceInfo?>(null)
 
     val replayGainEnabled: StateFlow<Boolean> = _replayGainEnabled.asStateFlow()
     val replayGainUseAlbumGain: StateFlow<Boolean> = _replayGainUseAlbumGain.asStateFlow()
@@ -116,9 +125,33 @@ class AudioEngineSettings @Inject constructor() {
 
     fun setUsbExclusiveModeEnabled(enabled: Boolean) {
         _usbExclusiveModeEnabled.value = enabled
+        if (enabled) {
+            val device = _selectedUsbDevice.value
+            if (device != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val success = usbDacManager.activateExclusiveMode(device)
+                    if (!success) {
+                        _usbExclusiveModeEnabled.value = false
+                    }
+                }
+            }
+        } else {
+            CoroutineScope(Dispatchers.IO).launch {
+                usbDacManager.deactivateExclusiveMode()
+            }
+        }
     }
 
     fun setCurrentUsbDeviceName(name: String?) {
         _currentUsbDeviceName.value = name
+    }
+
+    fun selectUsbDevice(device: UsbDeviceInfo) {
+        _selectedUsbDevice.value = device
+        _currentUsbDeviceName.value = device.displayName
+    }
+
+    fun getSelectedUsbDevice(): UsbDeviceInfo? {
+        return _selectedUsbDevice.value
     }
 }

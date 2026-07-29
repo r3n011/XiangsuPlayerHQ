@@ -45,6 +45,8 @@
     <string name="action_save">保存</string>
     <string name="equalizer_action_save_new">保存新预设</string>
     <string name="action_rename">重命名</string>
+    <string name="common_back">返回</string>
+    <string name="common_playlist">播放列表</string>
 
     <!-- AI metadata sheet -->
     <string name="ai_metadata_headline_success">标签已完美整理！</string>

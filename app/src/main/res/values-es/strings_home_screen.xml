@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top Bar -->
+    <string name="topbar_beta_letter">β</string>
+    <string name="topbar_beta_label">Beta</string>
+    <string name="topbar_cd_cloud_streaming">Transmisión en la nube</string>
+    <string name="topbar_cd_changelog">Registro de cambios</string>
+    <string name="topbar_cloud_streaming_title">Transmisión en la nube</string>
+    <string name="topbar_cloud_streaming_subtitle">Transmite música desde tus cuentas en la nube</string>
+
+    <!-- BetaInfoBottomSheet -->
+    <string name="beta_sheet_version">Beta 0.7.5</string>
+    <string name="beta_sheet_letter">β</string>
+    <string name="beta_sheet_welcome_title">Bienvenido a PixelPlayer 0.7.5-beta</string>
+    <string name="beta_sheet_welcome_body">Estás usando una versión beta que puede contener errores, fallos o funciones experimentales. Ayúdanos a mejorar informando de los problemas.</string>
+    <string name="beta_sheet_expect_title">Qué esperar</string>
+    <string name="beta_sheet_expect_1">Pueden ocurrir errores, fallos o funciones incompletas de forma inesperada.</string>
+    <string name="beta_sheet_expect_2">Algunas funciones pueden cambiar o eliminarse sin previo aviso.</string>
+    <string name="beta_sheet_expect_3">Las versiones beta pueden ser más inestables que las versiones de lanzamiento.</string>
+    <string name="beta_sheet_expect_4">Comprueba siempre si hay actualizaciones antes de informar de un problema conocido.</string>
+    <string name="beta_sheet_expect_summary">Qué pueden cambiar, romper o mejorar las versiones beta durante las pruebas.</string>
+    <string name="beta_sheet_github_title">Acceso rápido a problemas de GitHub</string>
+    <string name="beta_sheet_github_body">Busca primero, luego abre un informe enfocado para errores, fallos, solicitudes o preguntas.</string>
+    <string name="beta_sheet_open_issues">Ver problemas abiertos</string>
+    <string name="beta_sheet_report_bug">Informar de un error o fallo</string>
+    <string name="beta_sheet_report_body">Comparte los pasos para reproducir, los resultados esperados, los resultados reales y los detalles de tu dispositivo y sistema operativo.</string>
+    <string name="beta_sheet_report_title">Cómo informar</string>
+    <string name="beta_sheet_report_summary">Una lista de comprobación rápida antes de abrir un nuevo problema.</string>
+    <string name="beta_sheet_before_title">Antes de abrir un problema</string>
+    <string name="beta_sheet_before_1">Busca en los problemas abiertos y cerrados existentes para evitar duplicados.</string>
+    <string name="beta_sheet_before_2">Actualiza a la última versión de PixelPlayer y confirma que el problema sigue ocurriendo.</string>
+    <string name="beta_sheet_before_3">Reinicia la aplicación y confirma que el problema persiste.</string>
+    <string name="beta_sheet_before_4">Intenta reproducirlo y escribe los pasos exactos.</string>
+    <string name="beta_sheet_issue_type_title">¿Qué tipo de problema?</string>
+    <string name="beta_sheet_issue_type_bug">Informe de error: Algo se comporta incorrectamente.</string>
+    <string name="beta_sheet_issue_type_feature">Solicitud de función: Añadir una nueva función o mejora.</string>
+    <string name="beta_sheet_issue_type_question">Pregunta: Usa Discusiones si está habilitado, o abre un problema con la etiqueta de pregunta.</string>
+    <string name="beta_sheet_bug_title">Informe de error</string>
+    <string name="beta_sheet_bug_summary_text">Copia estos campos cuando algo se comporte incorrectamente o falle.</string>
+    <string name="beta_sheet_bug_template_title">Informe de error</string>
+    <string name="beta_sheet_bug_summary">Resumen breve:</string>
+    <string name="beta_sheet_bug_expected">Comportamiento esperado:</string>
+    <string name="beta_sheet_bug_actual">Comportamiento actual:</string>
+    <string name="beta_sheet_bug_steps">Pasos para reproducir: 1. 2. 3.</string>
+    <string name="beta_sheet_bug_frequency">¿Con qué frecuencia ocurre? Siempre / A veces / Raras veces.</string>
+    <string name="beta_sheet_bug_screenshot">Captura de pantalla / vídeo: si está disponible.</string>
+    <string name="beta_sheet_bug_logs">Registros / pila de llamadas: si está disponible.</string>
+    <string name="beta_sheet_env_title">Entorno</string>
+    <string name="beta_sheet_env_version">Versión de PixelPlayer:</string>
+    <string name="beta_sheet_env_source">Origen de la instalación: GitHub Release, compilación de depuración, compilación nocturna, etc.</string>
+    <string name="beta_sheet_env_android">Versión de Android:</string>
+    <string name="beta_sheet_env_device">Modelo de dispositivo:</string>
+    <string name="beta_sheet_env_extra">Contexto adicional: Uso de tarjeta SD, ajustes especiales, permisos, etc.</string>
+    <string name="beta_sheet_feature_title">Solicitud de función</string>
+    <string name="beta_sheet_feature_summary">Copia estos campos cuando quieras una nueva función o mejora.</string>
+    <string name="beta_sheet_feature_problem">Probleman statement: ¿Qué problema estás intentando resolver?</string>
+    <string name="beta_sheet_feature_solution">Solución propuesta: ¿Cómo debería funcionar?</string>
+    <string name="beta_sheet_feature_alternatives">Alternativas consideradas: ¿Algún otro enfoque?</string>
+    <string name="beta_sheet_feature_scope">Ámbito: ¿Qué pantallas o flujos se ven afectados?</string>
+    <string name="beta_sheet_feature_mockup">Maqueta o imagen de referencia si está disponible.</string>
+    <string name="beta_sheet_quality_title">Títulos, privacidad y ámbito</string>
+    <string name="beta_sheet_quality_summary">Haz que el informe sea fácil de clasificar y seguro de compartir.</string>
+    <string name="beta_sheet_title_examples_title">Buenos títulos de problemas</string>
+    <string name="beta_sheet_title_example_1">Ecualizador: El indicador se desplaza al cambiar de pestaña de preajustes</string>
+    <string name="beta_sheet_title_example_2">Búsqueda: La lista de historial no aparece con una consulta vacía</string>
+    <string name="beta_sheet_title_example_3">Función: Añadir opción de ordenación de lista \"Añadido recientemente\"</string>
+    <string name="beta_sheet_avoid_title">Por favor evita</string>
+    <string name="beta_sheet_avoid_1">Informes genéricos como \"No funciona\".</string>
+    <string name="beta_sheet_avoid_2">Múltiples problemas no relacionados en un solo informe.</string>
+    <string name="beta_sheet_avoid_3">Registros sin editar o capturas de pantalla con datos privados.</string>
+    <string name="beta_sheet_privacy_title">Nota de privacidad</string>
+    <string name="beta_sheet_privacy_body">Antes de publicar registros, capturas de pantalla o vídeos, elimina la información personal o privada.</string>
+    <string name="beta_sheet_nightly_title">Compilaciones nocturnas (nightly)</string>
+    <string name="beta_sheet_nightly_summary">Cómo se diferencian las nocturnas de las versiones finales y qué incluir cuando fallan.</string>
+    <string name="beta_sheet_nightly_body">Las compilaciones nocturnas se generan a partir del último commit y pueden contener cambios inacabados, errores temporales o regresiones. Son más experimentales que los lanzamientos oficiales.</string>
+    <string name="beta_sheet_nightly_access">Accede a ellas desde los artefactos del flujo de trabajo de GitHub Actions del repositorio si están disponibles.</string>
+    <string name="beta_sheet_nightly_report_title">Informar de problemas de compilaciones nocturnas</string>
+    <string name="beta_sheet_nightly_report_body">Al informar de un problema desde una compilación nocturna, menciona siempre que ocurrió en una compilación nocturna, no en el lanzamiento oficial. Incluye la fecha de la compilación, el nombre o número de ejecución del flujo de trabajo o el SHA del commit si es posible. También comprueba si el mismo problema ocurre en el último lanzamiento oficial.</string>
+    <string name="beta05_title">Actualización de Beta 0.5.0</string>
+    <string name="beta05_clean_install_title">Se recomienda una instalación limpia</string>
+    <string name="beta05_clean_install_body">Si vienes de la beta 0.5.0, esta actualización puede necesitar datos nuevos de la biblioteca en lugar del estado anterior en caché.</string>
+    <string name="beta05_if_wrong_meta_title">Si los metadatos o las entradas de la biblioteca parecen incorrectos</string>
+    <string name="beta05_if_wrong_meta_body">Metadatos de canciones incorrectos, artistas o álbumes desparejados o entradas que parecen duplicadas suelen significar que la solución es una instalación limpia.</string>
+    <string name="beta05_dont_show">No volver a mostrar</string>
+    <string name="beta05_got_it">Entendido</string>
+
+    <!-- Crash report dialog -->
+    <string name="crash_report_toast_log_copied">Registro copiado al portapapeles</string>
+
+    <!-- Home Option -->
+    <string name="home_option_dj_mashup">Mashup DJ</string>
+
+    <!-- Your Mix -->
+
+    <!-- DailyMixSection -->
+    <string name="home_daily_mix_title">MIX DIARIO</string>
+    <string name="home_daily_mix_subtitle">Basado en el historial</string>
+    <string name="home_daily_mix_action_see_all">Ver todo el Mix Diario</string>
+    <string name="home_daily_mix_queue_name">Mix diario</string>
+
+    <!-- DailyMixScreen -->
+    <string name="daily_mix_title">Mix diario</string>
+    <plurals name="daily_mix_songs_dot_duration">
+        <item quantity="one">%1$d canción • %2$s</item>
+        <item quantity="other">%1$d canciones • %2$s</item>
+    </plurals>
+    <string name="daily_mix_action_play_it">Reproducir</string>
+    <string name="daily_mix_cd_ai_playlist_generator">Generador de listas con IA</string>
+
+    <!-- DailyMixMenu -->
+    <string name="daily_mix_how_title">Cómo se crea tu Daily Mix</string>
+    <string name="daily_mix_how_body">Tu Daily Mix se crea a partir de tus canciones favoritas y las que más escuchas. También añadimos temas de artistas y géneros que te gustan para que descubras música nueva.</string>
+    <string name="daily_mix_prompt_label">Dile a la IA qué quieres escuchar hoy</string>
+    <string name="daily_mix_cost_hint">Usamos una muestra pequeña para mantener los costes bajos</string>
+    <string name="daily_mix_updating">Actualizando…</string>
+    <string name="daily_mix_update">Actualizar Daily Mix</string>
+
+    <!-- AIPlaylistSheet -->
+    <string name="ai_playlist_headline_perfect">Selección impecable</string>
+    <string name="ai_playlist_headline_daily_mix">Daily Mix</string>
+    <string name="ai_playlist_subtitle_journey_ready">Tu viaje sonoro está listo</string>
+    <string name="ai_playlist_subtitle_generator">Generador de listas con IA</string>
+    <string name="ai_playlist_description">Describe el ambiente, el estado de ánimo o la actividad y deja que la IA cree la lista perfecta desde tu biblioteca.</string>
+    <string name="ai_playlist_section_size">Tamaño de la lista</string>
+    <string name="ai_playlist_min_songs">Mín. canciones</string>
+    <string name="ai_playlist_max_songs">Máx. canciones</string>
+    <string name="ai_playlist_prompt_placeholder">p. ej. ambiente relajado por la noche, energía para entrenar…</string>
+    <string name="ai_playlist_tap_to_retry">Toca para reintentar</string>
+    <string name="ai_playlist_status_default">¡Viaje sonoro sintetizado!</string>
+    <string name="ai_playlist_ready_to_play">Listo para reproducir</string>
+    <string name="ai_playlist_generating">Generando…</string>
+    <string name="ai_playlist_generate">Generar lista</string>
+
+    <!-- RecentlyPlayedSection -->
+    <string name="home_recently_played_title">Reproducido recientemente</string>
+
+    <!-- RecentlyPlayedScreen -->
+    <string name="recently_played_title">Reproducido recientemente</string>
+    <string name="recently_played_action_play_latest">Reproducir lo último</string>
+    <string name="recently_played_empty_title">Sin reproducciones recientes en %1$s</string>
+    <string name="recently_played_empty_subtitle">Cambia el rango o reproduce más canciones para llenar esta línea de tiempo.</string>
+    <string name="recently_played_queue_name">Reproducido recientemente</string>
+    <string name="recently_played_date_today">Hoy</string>
+    <string name="recently_played_date_yesterday">Ayer</string>
+
+    <!-- StatsOverviewCard -->
+    <string name="home_stats_overview_title">Estadísticas de escucha</string>
+    <string name="home_stats_overview_total_plays">Reproducciones totales</string>
+    <string name="home_stats_overview_avg_per_day">Media por día</string>
+    <string name="home_stats_overview_top_track">Pista más escuchada</string>
+    <string name="home_stats_overview_top_track_line">%1$s • %2$d repro.</string>
+
+    <!-- StatsScreen -->
+    <string name="stats_title">Estadísticas de escucha</string>
+    <string name="stats_cd_refresh">Actualizar estadísticas de escucha</string>
+    <string name="stats_range_today">Hoy</string>
+    <string name="stats_range_week_to_date">Semana hasta hoy</string>
+    <string name="stats_range_month_to_date">Mes hasta hoy</string>
+    <string name="stats_range_year_to_date">Año hasta hoy</string>
+    <string name="stats_range_all_time">Todo el tiempo</string>
+    <string name="stats_hero_listening">Escuchando</string>
+    <string name="stats_hero_plays">Reproducciones</string>
+    <string name="stats_section_listening_timeline">Línea de tiempo de escucha</string>
+    <string name="stats_timeline_metric_listening_time">Tiempo de escucha</string>
+    <string name="stats_timeline_metric_listening_time_desc">Tiempo total de escucha registrado en el rango seleccionado.</string>
+    <string name="stats_timeline_metric_play_count">Recuento de reproducciones</string>
+    <string name="stats_timeline_metric_play_count_desc">Cuántas sesiones completaste por segmento.</string>
+    <string name="stats_timeline_metric_avg_session">Sesión promedio</string>
+    <string name="stats_timeline_metric_avg_session_desc">Duración promedio de escucha para cada segmento.</string>
+    <string name="stats_timeline_support_day">Dividido en ventanas de 4 horas para revelar tu ritmo diario.</string>
+    <string name="stats_timeline_support_week">Las barras diarias facilitan la comparación de hábitos semanales.</string>
+    <string name="stats_timeline_support_month">Las barras semanales muestran la tendencia del mes.</string>
+    <string name="stats_timeline_support_year">Las barras mensuales muestran la estacionalidad a lo largo del año.</string>
+    <string name="stats_timeline_support_all">Las barras anuales resumen tu historial completo.</string>
+    <string name="stats_empty_no_timeline_title">Aún no hay datos de escucha</string>
+    <string name="stats_empty_no_timeline_subtitle">Pulsa reproducir para empezar a construir tu línea de tiempo de escucha</string>
+    <string name="stats_rhythm_daily">Ritmo diario</string>
+    <string name="stats_rhythm_weekly">Ritmo semanal</string>
+    <string name="stats_rhythm_monthly">Ritmo mensual</string>
+    <string name="stats_rhythm_year">El año de un vistazo</string>
+    <string name="stats_rhythm_all_time">Progresión histórica</string>
+    <string name="stats_grouped_4h">Agrupado en segmentos de 4 horas</string>
+    <string name="stats_grouped_dow">Agrupado por día de la semana</string>
+    <string name="stats_grouped_week_of_month">Agrupado por semana del mes</string>
+    <string name="stats_grouped_by_month">Agrupado por mes</string>
+    <string name="stats_grouped_by_year">Agrupado por año</string>
+    <string name="stats_peak_segment">Segmento pico</string>
+    <string name="stats_n_plays">%1$d reproducciones</string>
+    <string name="stats_em_dash">—</string>
+    <string name="stats_section_top_categories">Categorías principales</string>
+    <string name="stats_top_categories_subtitle">Compara cómo escuchas por géneros, artistas, álbumes y canciones.</string>
+    <string name="stats_dim_genre">Género</string>
+    <string name="stats_dim_artist">Artista</string>
+    <string name="stats_dim_album">Álbum</string>
+    <string name="stats_dim_song">Canción</string>
+    <string name="stats_card_listening_by_genre">Escucha por género</string>
+    <string name="stats_card_listening_by_artist">Escucha por artista</string>
+    <string name="stats_card_listening_by_album">Escucha por álbum</string>
+    <string name="stats_card_listening_by_song">Escucha por canción</string>
+    <string name="stats_plays_artists">%1$d repro. • %2$d artistas</string>
+    <string name="stats_plays_tracks">%1$d repro. • %2$d pistas</string>
+    <string name="stats_empty_no_category_title">Aún no hay datos de categorías</string>
+    <string name="stats_empty_no_category_subtitle">Pulsa reproducir para mostrar lo más destacado de tus escuchas</string>
+    <string name="stats_section_listening_habits">Hábitos de escucha</string>
+    <string name="stats_empty_no_habits_title">Aún no hay hábitos</string>
+    <string name="stats_empty_no_habits_subtitle">Mostraremos tus hábitos de escucha una vez que te conozcamos mejor.</string>
+    <string name="stats_habit_total_sessions">Sesiones totales</string>
+    <string name="stats_habit_avg_session">Sesión promedio</string>
+    <string name="stats_habit_longest_session">Sesión más larga</string>
+    <string name="stats_habit_sessions_per_day">Sesiones/día</string>
+    <string name="stats_habit_most_active_day">Día más activo</string>
+    <string name="stats_habit_no_playback_yet">Aún sin reproducción</string>
+    <string name="stats_habit_peak_timeline_slot">Franja horaria pico</string>
+    <string name="stats_section_top_artists">Artistas principales</string>
+    <string name="stats_empty_no_artists_title">Sin artistas principales</string>
+    <string name="stats_empty_no_artists_subtitle">Sigue escuchando y tus artistas favoritos aparecerán aquí.</string>
+    <string name="stats_avatar_placeholder">?</string>
+    <string name="stats_ranked_artist">%1$d. %2$s</string>
+    <string name="stats_section_top_albums">Álbumes principales</string>
+    <string name="stats_empty_no_albums_title">Sin álbumes principales</string>
+    <string name="stats_empty_no_albums_subtitle">Los álbumes que visitas a menudo aparecerán aquí.</string>
+    <string name="stats_ranked_album">%1$d. %2$s</string>
+    <string name="stats_track_concentration_title">Concentración de pistas</string>
+    <string name="stats_track_concentration_subtitle">Cómo se distribuye tu tiempo de escucha entre tus pistas principales.</string>
+    <string name="stats_empty_no_concentration_title">Aún no hay datos de concentración</string>
+    <string name="stats_empty_no_concentration_subtitle">Reproduce más pistas para ver qué tan enfocada está tu escucha.</string>
+    <string name="stats_slice_top_1">Top 1</string>
+    <string name="stats_slice_top_2_3">Top 2-3</string>
+    <string name="stats_slice_others">Otros</string>
+    <string name="stats_percent">%1$d%%</string>
+    <string name="stats_listening_concentration_title">Concentración de escucha</string>
+    <string name="stats_top_three_share_line">Las 3 pistas principales representan el %1$d%% de tu tiempo de escucha.</string>
+    <string name="stats_avg_plays_per_track">Media de repro./pista</string>
+    <string name="stats_unique_tracks">Pistas únicas</string>
+    <string name="stats_top_three_share_label">Cuota de Top 3</string>
+    <string name="stats_tracks_in_range_title">Pistas en este rango</string>
+    <string name="stats_tracks_in_range_subtitle">Pistas más reproducidas para el rango de tiempo seleccionado.</string>
+    <string name="stats_empty_no_tracks_title">Sin pistas principales</string>
+    <string name="stats_empty_no_tracks_subtitle">Escucha tus favoritas para verlas destacadas aquí.</string>
+    <string name="stats_collapse_tracks">Contraer pistas</string>
+    <string name="stats_show_all_tracks">Mostrar todas las pistas</string>
+
+    <!-- Time and Duration Formatting -->
+    <string name="duration_hours_minutes_long">%1$d h %2$02d min</string>
+    <string name="duration_minutes_long">%1$d min</string>
+    <string name="duration_hours_minutes_medium">%1$d h %2$02d m</string>
+    <string name="duration_hours_medium">%1$d h</string>
+    <string name="duration_minutes_medium">%1$d m</string>
+    <string name="duration_seconds_medium">%1$d s</string>
+    <string name="duration_hours_minutes_short">%1$dh %2$02dm</string>
+    <string name="duration_hours_short">%1$dh</string>
+    <string name="duration_minutes_short">%1$dm</string>
+    <string name="duration_seconds_short">%1$ds</string>
+    <string name="time_ago_never">Nunca</string>
+    <string name="time_ago_just_now">Ahora mismo</string>
+    <string name="time_ago_day_singular">Hace 1 día</string>
+    <string name="time_ago_days_plural">Hace %1$d días</string>
+    <string name="time_ago_hour_singular">Hace 1 hora</string>
+    <string name="time_ago_hours_plural">Hace %1$d horas</string>
+    <string name="time_ago_minute_singular">Hace 1 minuto</string>
+    <string name="time_ago_minutes_plural">Hace %1$d minutos</string>
+    <string name="song_count_singular">%1$d canción</string>
+    <string name="song_count_plural">%1$d canciones</string>
+    <string name="stats_week_label">Semana %1$d</string>
+</resources>

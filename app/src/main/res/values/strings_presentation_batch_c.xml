@@ -1,55 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Library list errors -->
-    <string name="library_error_loading_songs">Error loading songs</string>
     <string name="library_error_loading_albums">Error loading albums</string>
     <string name="library_error_loading_artists">Error loading artists</string>
     <string name="library_retry">Retry</string>
 
     <!-- Library empty (paginated) -->
-    <string name="library_no_songs_in_library_message">No songs found in your library.</string>
-    <string name="library_no_songs_rescan_hint">Try rescanning your library in settings if you have music on your device.</string>
     <string name="cd_no_songs_in_library">No songs found</string>
 
     <!-- Library action row -->
-    <string name="library_action_new">New</string>
     <string name="cd_create_new_playlist">Create new playlist</string>
     <string name="cd_import_m3u_playlist">Import M3U playlist</string>
     <string name="cd_locate_current_song">Locate current song</string>
-    <string name="library_storage_filter_all_songs">All songs</string>
-    <string name="library_storage_filter_online">CLOUD</string>
-    <string name="library_storage_filter_offline">LOCAL</string>
     <string name="cd_sort_options">Sort options</string>
 
     <!-- Fetch lyrics (manual search fields) -->
-    <string name="lyrics_synced_badge">SYNCED</string>
     <string name="song_field_artist_optional">Artist (optional)</string>
 
     <!-- Song picker -->
-    <string name="song_picker_title">Add songs</string>
     <string name="cd_confirm_add_songs">Add selected songs</string>
-    <string name="song_picker_action_add">Add</string>
-    <string name="song_picker_search_label">Search or filter songs…</string>
-    <string name="song_picker_filter_favorites">Liked</string>
-    <string name="song_picker_error_load_failed">Failed to load songs</string>
-    <string name="song_picker_load_more">Load more</string>
 
     <!-- AI playlist sheet -->
     <string name="cd_ai">AI</string>
-    <string name="ai_playlist_headline_perfect">Perfectly Curated</string>
-    <string name="ai_playlist_headline_daily_mix">Daily Mix</string>
-    <string name="ai_playlist_subtitle_journey_ready">Your sonic journey is ready</string>
-    <string name="ai_playlist_subtitle_generator">AI Playlist Generator</string>
-    <string name="ai_playlist_description">Describe the vibe, mood, or activity and let AI curate the perfect playlist from your library.</string>
-    <string name="ai_playlist_section_size">Playlist size</string>
-    <string name="ai_playlist_min_songs">Min songs</string>
-    <string name="ai_playlist_max_songs">Max songs</string>
-    <string name="ai_playlist_prompt_placeholder">e.g. Chill evening vibes, upbeat workout energy…</string>
-    <string name="ai_playlist_tap_to_retry">Tap to Retry</string>
-    <string name="ai_playlist_status_default">Sonic journey synthesized!</string>
-    <string name="ai_playlist_generating">Generating…</string>
-    <string name="ai_playlist_ready_to_play">Ready to Play</string>
-    <string name="ai_playlist_generate">Generate Playlist</string>
     
     <!-- Library Empty State -->
     <string name="lib_empty_songs_all_title">No songs yet</string>

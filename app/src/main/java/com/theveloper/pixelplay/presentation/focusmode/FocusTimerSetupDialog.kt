@@ -28,10 +28,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.theveloper.pixelplay.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,14 +66,14 @@ fun FocusTimerSetupDialog(
             ) {
                 // 标题
                 Text(
-                    text = "专注学习",
+                    text = stringResource(R.string.focus_timer_title),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "设置你的番茄钟时间",
+                    text = stringResource(R.string.focus_timer_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -79,8 +81,8 @@ fun FocusTimerSetupDialog(
 
                 // 学习时间设置
                 MaterialTimeDurationPicker(
-                    title = "学习时间",
-                    subtitle = "专注工作的时间",
+                    title = stringResource(R.string.focus_timer_study_title),
+                    subtitle = stringResource(R.string.focus_timer_study_subtitle),
                     value = studyMinutes,
                     minValue = 5,
                     maxValue = 120,
@@ -92,8 +94,8 @@ fun FocusTimerSetupDialog(
 
                 // 休息时间设置
                 MaterialTimeDurationPicker(
-                    title = "休息时间",
-                    subtitle = "放松的时间",
+                    title = stringResource(R.string.focus_timer_break_title),
+                    subtitle = stringResource(R.string.focus_timer_break_subtitle),
                     value = breakMinutes,
                     minValue = 1,
                     maxValue = 30,
@@ -115,7 +117,7 @@ fun FocusTimerSetupDialog(
                             .height(52.dp)
                     ) {
                         Text(
-                            text = "取消",
+                            text = stringResource(R.string.focus_timer_cancel),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -126,7 +128,7 @@ fun FocusTimerSetupDialog(
                             .height(52.dp)
                     ) {
                         Text(
-                            text = "开始专注",
+                            text = stringResource(R.string.focus_timer_start),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -147,6 +149,9 @@ private fun MaterialTimeDurationPicker(
     accentColor: androidx.compose.ui.graphics.Color,
     onValueChange: (Int) -> Unit
 ) {
+    val studyPresetLabel = stringResource(R.string.focus_timer_study_preset)
+    val breakPresetLabel = stringResource(R.string.focus_timer_break_preset)
+    
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -172,7 +177,7 @@ private fun MaterialTimeDurationPicker(
                 onClick = { },
                 label = {
                     Text(
-                        text = "$value 分钟",
+                        text = stringResource(R.string.focus_timer_minutes_format, value),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = accentColor
@@ -205,7 +210,7 @@ private fun MaterialTimeDurationPicker(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val presets = if (title == "学习时间") listOf(15, 25, 45, 60) else listOf(3, 5, 10, 15)
+            val presets = if (title == studyPresetLabel) listOf(15, 25, 45, 60) else listOf(3, 5, 10, 15)
             presets.forEach { preset ->
                 val isSelected = value == preset
                 // Material 3 SuggestionChip 替代自定义 Box

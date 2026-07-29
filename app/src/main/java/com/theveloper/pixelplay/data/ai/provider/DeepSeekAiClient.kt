@@ -28,7 +28,12 @@ class DeepSeekAiClient(private val apiKey: String) : AiClient {
     data class ChatRequest(
         val model: String,
         val messages: List<ChatMessage>,
-        val temperature: Double = 0.7
+        val temperature: Double = 0.7,
+        val top_p: Double? = null,
+        val top_k: Int? = null,
+        val max_tokens: Int? = null,
+        val presence_penalty: Double? = null,
+        val frequency_penalty: Double? = null,
     )
     
     @Serializable
@@ -55,10 +60,15 @@ class DeepSeekAiClient(private val apiKey: String) : AiClient {
     }
     
     override suspend fun generateContent(
-        model: String, 
-        systemPrompt: String, 
+        model: String,
+        systemPrompt: String,
         prompt: String,
-        temperature: Float
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        maxTokens: Int,
+        presencePenalty: Float,
+        frequencyPenalty: Float,
     ): String {
         return withContext(Dispatchers.IO) {
             val resolvedModel = model.ifBlank { DEFAULT_DEEPSEEK_MODEL }
@@ -71,7 +81,12 @@ class DeepSeekAiClient(private val apiKey: String) : AiClient {
             val requestBody = ChatRequest(
                 model = resolvedModel,
                 messages = messagesList,
-                temperature = temperature.toDouble()
+                temperature = temperature.toDouble(),
+                top_p = topP.toDouble(),
+                top_k = topK,
+                max_tokens = maxTokens,
+                presence_penalty = presencePenalty.toDouble(),
+                frequency_penalty = frequencyPenalty.toDouble(),
             )
             
             val jsonBody = json.encodeToString(ChatRequest.serializer(), requestBody)

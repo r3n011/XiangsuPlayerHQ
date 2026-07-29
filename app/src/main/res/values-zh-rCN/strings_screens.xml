@@ -196,6 +196,10 @@
     <string name="about_signal_open_source">开源</string>
     <string name="about_signal_community_first">社区优先</string>
     <string name="about_signal_material3">Material 3 表现力设计</string>
+    <string name="about_acknowledgements_title">鸣谢</string>
+    <string name="about_acknowledgements_blur_desc">模糊效果改编自该项目</string>
+    <string name="about_acknowledgements_miniaudio_desc">音频播放由 miniaudio 驱动</string>
+    <string name="about_acknowledgements_lanzou_desc">云音乐接入由 LanzouAPI 驱动</string>
     <string name="cd_open_github_profile">打开 GitHub 个人主页</string>
     <string name="cd_open_telegram">打开 Telegram</string>
     <string name="cd_contributor_avatar">%1$s 的头像</string>
@@ -252,4 +256,42 @@
     <string name="toast_added_to_queue">已加入队列</string>
     <string name="toast_playing_next">下一首播放</string>
     <string name="error_share_song_format">无法分享歌曲：%1$s</string>
+
+    <!-- Update / about -->
+    <string name="update_install_permission_required">需要安装权限才能更新应用。</string>
+
+    <!-- Open source licenses -->
+    <string name="open_source_licenses_screen_title">开源许可证</string>
+    <string name="third_party_notices_action">声明</string>
+    <string name="third_party_notices_load_error">无法加载第三方声明。</string>
+    <string name="third_party_notices_title">第三方声明</string>
+    <string name="third_party_notices_close">关闭</string>
+    
+    <!-- 专注模式 -->
+    <string name="focus_timer_title">专注学习</string>
+    <string name="focus_timer_subtitle">设置你的番茄钟时间</string>
+    <string name="focus_timer_study_title">学习时间</string>
+    <string name="focus_timer_study_subtitle">专注工作的时间</string>
+    <string name="focus_timer_break_title">休息时间</string>
+    <string name="focus_timer_break_subtitle">放松的时间</string>
+    <string name="focus_timer_cancel">取消</string>
+    <string name="focus_timer_start">开始专注</string>
+    <string name="focus_timer_minutes_format">%1$d 分钟</string>
+    <string name="focus_timer_study_preset">学习时间</string>
+    <string name="focus_timer_break_preset">休息时间</string>
+    <string name="focus_mode_title">专注模式</string>
+    <string name="focus_mode_end">结束</string>
+    <string name="focus_mode_completed_cycles_format">已完成 %1$d 轮</string>
+    <string name="focus_mode_studying">专注学习中</string>
+    <string name="focus_mode_break">休息放松中</string>
+    <string name="focus_mode_paused">已暂停</string>
+    <string name="focus_mode_ready">准备开始</string>
+    <string name="focus_mode_study_duration_format">%1$d分钟专注</string>
+    <string name="focus_mode_break_duration_format">%1$d分钟休息</string>
+    <string name="focus_mode_tap_to_start">点击开始</string>
+    <string name="focus_mode_not_playing">未在播放</string>
+    <string name="content_description_exit">退出</string>
+    <string name="content_description_previous">上一曲</string>
+    <string name="content_description_play_pause">播放/暂停</string>
+    <string name="content_description_next">下一曲</string>
 </resources>

@@ -19,21 +19,13 @@
     <string name="close_lyrics_sheet">Cerrar panel de letras</string>
     <string name="loading_lyrics">Cargando letras…</string>
     <string name="cant_find_lyrics">No se pudieron encontrar letras para esta canción.</string>
-    <string name="lyrics_provided_by">Letras proporcionadas por</string>
     <string name="lrclib_uri">https://lrclib.net/</string>
-    <string name="lyrics_not_found">Letras no encontradas</string>
     <string name="search_lyrics_online_prompt">¿Quieres buscar letras en línea?</string>
-    <string name="lyrics_custom_search_hint">No pudimos encontrar las letras automáticamente. Puedes editar el título o el artista e intentar buscar manualmente.</string>
     <string name="failed_to_search_for_lyrics">Error al buscar letras</string>
     <string name="failed_to_fetch_lyrics_from_remote">Error al obtener las letras desde el servidor</string>
-    <string name="lyrics_fetch_timeout">Tiempo de conexión agotado. Por favor, verifica tu conexión a internet.</string>
-    <string name="lyrics_network_error">Error de red. Por favor, verifica tu conexión a internet.</string>
-    <string name="lyrics_server_error">Error del servidor (código %d). Por favor, inténtalo de nuevo más tarde.</string>
     <string name="found_n_matches_format">Se encontraron %d coincidencia(s)</string>
     <string name="searched_for_x_format">Se buscó \"%s\"</string>
     <string name="searching_lyrics">Buscando letras…</string>
-    <string name="lyrics_already_available">Las letras ya están disponibles. Se omite la búsqueda en línea.</string>
-    <string name="lyrics_embedded_already_available">Letras incrustadas ya encontradas. Se omite la búsqueda en línea.</string>
     <string name="local_lrc_already_available">Letras locales (.lrc) ya encontradas. Se omite la búsqueda en línea.</string>
     <string name="fetch_lyrics_show_options_title">Mostrar opciones de letras</string>
     <string name="fetch_lyrics_show_options_subtitle">Abrir siempre el selector en lugar de aplicar automáticamente la primera coincidencia</string>
@@ -64,12 +56,7 @@
     <string name="unknown_song_title">Pista desconocida</string>
     <string name="unknown_artist">Artista desconocido</string>
     <string name="unknown_album">Álbum desconocido</string>
-    <string name="artist_picker_title">Selecciona un artista</string>
     <string name="artist_picker_supporting_text">Abre cualquiera de los artistas acreditados en esta canción.</string>
-    <string name="artist_picker_count_single">1 artista</string>
-    <string name="artist_picker_count_multiple">%1$d artistas</string>
-    <string name="artist_picker_primary_label">Artista principal</string>
-    <string name="artist_picker_shortcut_label">Página del artista</string>
     <string name="external_queue_label">Reproducción rápida</string>
     <string name="external_playback_error">No se puede abrir ese archivo de audio.</string>
     <string name="open_full_player">Abrir reproductor completo</string>
@@ -116,28 +103,14 @@
     <string name="no_valid_songs">No se encontraron canciones válidas para reproducir</string>
 
     <!-- Widgets -->
-    <string name="glance_widget_description">Widget adaptable que se ajusta a su tamaño</string>
-    <string name="widget_bar_4x1_desc">Barra de reproductor compacta</string>
-    <string name="widget_control_4x2_desc">Controles completos con aleatorio y repetición</string>
-    <string name="widget_grid_2x2_desc">Reproductor cuadrado minimalista</string>
     <string name="service_processing_action">Procesando acción de reproducción…</string>
-    <string name="cast_seek_unavailable_for_format">Por ahora no se puede mover la barra de progreso con este formato en Cast porque puede cerrar la sesión.</string>
 
-    <string name="sleep_timer_n_minutes_format">%1$d minutos</string>
-    <string name="sleep_timer_display_eot">Fin de pista</string>
-    <string name="sleep_timer_set_for_minutes_toast">Temporizador configurado para %1$d minutos.</string>
-    <string name="sleep_timer_cancelled_toast">Temporizador cancelado.</string>
-    <string name="sleep_timer_eot_no_song_toast">No se puede activar fin de pista: no hay canción activa.</string>
-    <string name="sleep_timer_eot_song_changed_toast">Temporizador de fin de pista desactivado: la canción cambió de %1$s a %2$s.</string>
     <string name="sleep_timer_eot_stop_at_end_toast">La reproducción se detendrá al final de la pista.</string>
-    <string name="sleep_timer_label_previous_track">Pista anterior</string>
-    <string name="sleep_timer_label_current_track">Pista actual</string>
     <string name="sleep_timer_ui_title">Temporizador de apagado</string>
     <string name="sleep_timer_ui_slider_label_timer">Temporizador</string>
     <string name="sleep_timer_ui_end_of_current_track">Al final de la pista actual</string>
     <string name="sleep_timer_ui_custom_time">Tiempo personalizado</string>
     <string name="sleep_timer_ui_cancel_timer">Cancelar temporizador</string>
-    <string name="sleep_timer_ui_set_custom_duration">Establecer duración personalizada</string>
     <string name="sleep_timer_ui_play_count_label">Número de reproducciones: %1$s</string>
     <string name="sleep_timer_ui_play_count_one_time">1 vez</string>
     <string name="cd_switch_on">Interruptor activado</string>

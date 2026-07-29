@@ -151,7 +151,7 @@ private const val HOME_MIX_PREVIEW_LIMIT = 48
 private const val EXTERNAL_SONG_ID_PREFIX = "external:"
 private val LOCAL_PLAYBACK_SCHEMES = setOf("content", "file", "android.resource")
 
-private fun List<Song>.toPlaybackQueue(): ImmutableList<Song> = when (this) {
+internal fun List<Song>.toPlaybackQueue(): ImmutableList<Song> = when (this) {
     is PersistentList<Song> -> this
     is ImmutableList<Song> -> this
     else -> this.toPersistentList()
@@ -190,7 +190,7 @@ private fun moveQueueIndex(index: Int, fromIndex: Int, toIndex: Int): Int {
     }
 }
 
-private data class QueueTimelineSignature(
+internal data class QueueTimelineSignature(
     val count: Int,
     val orderHash: Long,
     val firstMediaId: String?,
@@ -222,7 +222,7 @@ private data class AiUiSnapshot(
     val isGeneratingAiMetadata: Boolean,
 )
 
-private data class PreparedPlaybackQueueSegments(
+internal data class PreparedPlaybackQueueSegments(
     val beforeCurrent: List<MediaItem>,
     val afterCurrent: List<MediaItem>,
     val currentIndex: Int

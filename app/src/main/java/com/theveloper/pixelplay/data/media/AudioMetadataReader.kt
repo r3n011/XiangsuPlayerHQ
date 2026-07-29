@@ -120,6 +120,8 @@ object AudioMetadataReader {
 
     private fun readInternal(file: File, readArtwork: Boolean = true): AudioMetadata? {
         val startNanos = System.nanoTime()
+        val ext = file.extension.lowercase()
+        val isDff = ext in setOf("dff", "dsd", "dif")
         return try {
             ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
                 // Get audio properties for duration
@@ -180,17 +182,20 @@ object AudioMetadataReader {
                     null
                 }
 
-                // Fallback: TagLib sometimes parses core tags but misses APIC/other ID3 frames
-                // on some MP3s. If essential fields or requested artwork are missing, try
-                // JAudioTagger before giving up so we preserve full metadata when possible.
-                val fallback = if (title == null || artist == null || (readArtwork && artwork == null)) {
+                // Fallback: For DFF files, skip JAudioTagger (it hangs on large DFF files).
+                // For other formats, try JAudioTagger if essential fields are missing.
+                val fallback = if (!isDff && (title == null || artist == null || (readArtwork && artwork == null))) {
                     if (VERBOSE) Log.w(TAG, "TagLib incomplete for ${file.name}, trying JAudioTagger fallback...")
                     PerformanceMetrics.increment(PerformanceMetrics.Counters.METADATA_FALLBACK_JAUDIOTAGGER)
                     readWithJAudioTagger(file, readArtwork = readArtwork)
                 } else null
 
+                if (isDff && (title == null || artist == null)) {
+                    Timber.tag(TAG).d("DFF file with limited tags: ${file.name}, using filename as fallback")
+                }
+
                 AudioMetadata(
-                    title = title ?: fallback?.title,
+                    title = title ?: fallback?.title ?: file.nameWithoutExtension,
                     artist = artist ?: fallback?.artist,
                     albumArtist = albumArtist ?: fallback?.albumArtist,
                     album = album ?: fallback?.album,

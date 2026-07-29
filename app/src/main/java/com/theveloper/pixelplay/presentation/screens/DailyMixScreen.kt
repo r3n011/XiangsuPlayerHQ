@@ -257,6 +257,7 @@ fun DailyMixScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .hazeSource(MainActivity.LocalHazeState.current)
             .background(backgroundBrush)
     ) {
         if (dailyMixSongs.isEmpty()) {

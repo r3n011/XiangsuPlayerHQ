@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- USB 设备过滤器 - 匹配所有 USB 音频设备 -->
+    <usb-device class="1" /> <!-- USB Audio Device Class -->
+    <usb-device vendor-id="1237" product-id="1507" /> <!-- 通用测试设备 -->
+</resources>

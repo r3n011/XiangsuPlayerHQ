@@ -11,6 +11,8 @@
     <string name="error">Error</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_cancel">Cancel</string>
     <string name="import_file">Import</string>
     <string name="search">Search</string>
 
@@ -18,21 +20,13 @@
     <string name="close_lyrics_sheet">Close Lyrics Sheet</string>
     <string name="loading_lyrics">Loading lyrics…</string>
     <string name="cant_find_lyrics">Couldn\'t find lyrics for this song.</string>
-    <string name="lyrics_provided_by">Lyrics provided by</string>
     <string name="lrclib_uri">https://lrclib.net/</string>
-    <string name="lyrics_not_found">Lyrics not found</string>
     <string name="search_lyrics_online_prompt">Would you like to search for lyrics online?</string>
-    <string name="lyrics_custom_search_hint">We couldn\'t find lyrics automatically. You can edit the title or artist and try searching manually.</string>
     <string name="failed_to_search_for_lyrics">Failed to search for lyrics</string>
     <string name="failed_to_fetch_lyrics_from_remote">Failed to fetch lyrics from remote</string>
-    <string name="lyrics_fetch_timeout">Connection timed out. Please check your internet connection.</string>
-    <string name="lyrics_network_error">Network error. Please check your internet connection.</string>
-    <string name="lyrics_server_error">Server error (code %d). Please try again later.</string>
     <string name="found_n_matches_format">Found %d match(es)</string>
     <string name="searched_for_x_format">Searched for \"%s\"</string>
     <string name="searching_lyrics">Searching for lyrics…</string>
-    <string name="lyrics_already_available">Lyrics already available. Online fetch skipped.</string>
-    <string name="lyrics_embedded_already_available">Embedded lyrics already found. Online fetch skipped.</string>
     <string name="local_lrc_already_available">Local (.lrc) lyrics already found. Online fetch skipped.</string>
     <string name="fetch_lyrics_show_options_title">Show lyric options</string>
     <string name="fetch_lyrics_show_options_subtitle">Always open the picker instead of auto-applying the first match</string>
@@ -66,12 +60,7 @@
     <string name="unknown_song_title">Unknown track</string>
     <string name="unknown_artist">Unknown artist</string>
     <string name="unknown_album">Unknown album</string>
-    <string name="artist_picker_title">Pick an Artist</string>
     <string name="artist_picker_supporting_text">Open any credited artist for this track.</string>
-    <string name="artist_picker_count_single">1 artist</string>
-    <string name="artist_picker_count_multiple">%1$d artists</string>
-    <string name="artist_picker_primary_label">Primary artist</string>
-    <string name="artist_picker_shortcut_label">Artist page</string>
     <string name="external_queue_label">Quick play</string>
     <string name="external_playback_error">Unable to open that audio file.</string>
     <string name="open_full_player">Open full player</string>
@@ -120,10 +109,6 @@
     <string name="could_not_find_artist">Could not find the artist</string>
     <string name="no_valid_songs">No valid songs found to play</string>
 
-    <string name="glance_widget_description">Responsive widget that adapts to its size</string>
-    <string name="widget_bar_4x1_desc">Compact player bar</string>
-    <string name="widget_control_4x2_desc">Full controls with shuffle and repeat</string>
-    <string name="widget_grid_2x2_desc">Minimalist square player</string>
     <string name="service_processing_action">Processing playback action…</string>
 
     <!-- Playlist bulk actions -->
@@ -145,30 +130,17 @@
     <string name="watch_transfer_failed">Transfer failed</string>
     <string name="watch_transfer_cancelled">Transfer cancelled</string>
     <string name="watch_transfer_preparing">Preparing watch transfer</string>
-    <string name="watch_transfer_summary_n">%1$d transfers</string>
     <string name="watch_transfer_starting">Starting transfer…</string>
     <string name="watch_transfer_multiple_active">Multiple active transfers</string>
     <string name="watch_transfer_preparing_transfer">Preparing transfer…</string>
-    <string name="watch_transfer_status_transferring">Transferring</string>
-    <string name="watch_transfer_status_completed">Completed</string>
-    <string name="watch_transfer_status_failed">Failed</string>
-    <string name="watch_transfer_status_cancelled">Cancelled</string>
-    <string name="watch_transfer_status_preparing">Preparing</string>
     <string name="watch_transfer_starting_short">Starting</string>
-    <string name="watch_transfer_channel_name">Watch transfers</string>
-    <string name="watch_transfer_channel_description">Shows live progress for phone-to-watch music transfers</string>
 
     <!-- Cast HTTP server -->
-    <string name="cast_server_channel_name">Cast media server</string>
-    <string name="cast_server_notification_title">Casting to device</string>
-    <string name="cast_server_notification_text">Serving media to Cast device</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
 
     <!-- Web Remote server -->
     <string name="web_remote_server_channel_name">Web Remote</string>
     <string name="web_remote_server_notification_title">Web Remote Active</string>
     <string name="web_remote_server_notification_text">Access PixelPlay from any browser on your network</string>
-    <string name="cast_seek_unavailable_for_format">Seeking is temporarily unavailable for this audio format on Cast because it can crash the Cast session.</string>
 
     <!-- Backup / data transfer (ViewModels) -->
     <string name="backup_invalid_format">Invalid backup: %1$s</string>
@@ -222,21 +194,12 @@
     <string name="delete_action">Delete</string>
 
     <!-- Sleep timer (SleepTimerStateHolder + TimerOptionsBottomSheet) -->
-    <string name="sleep_timer_n_minutes_format">%1$d minutes</string>
-    <string name="sleep_timer_display_eot">End of track</string>
-    <string name="sleep_timer_set_for_minutes_toast">Timer set for %1$d minutes.</string>
-    <string name="sleep_timer_cancelled_toast">Timer cancelled.</string>
-    <string name="sleep_timer_eot_no_song_toast">Cannot enable end of track: no active song.</string>
-    <string name="sleep_timer_eot_song_changed_toast">End of track timer deactivated: song changed from %1$s to %2$s.</string>
     <string name="sleep_timer_eot_stop_at_end_toast">Playback will stop at end of track.</string>
-    <string name="sleep_timer_label_previous_track">Previous track</string>
-    <string name="sleep_timer_label_current_track">Current track</string>
     <string name="sleep_timer_ui_title">Sleep timer</string>
     <string name="sleep_timer_ui_slider_label_timer">Timer</string>
     <string name="sleep_timer_ui_end_of_current_track">End of current track</string>
     <string name="sleep_timer_ui_custom_time">Custom time</string>
     <string name="sleep_timer_ui_cancel_timer">Cancel timer</string>
-    <string name="sleep_timer_ui_set_custom_duration">Set custom duration</string>
     <string name="sleep_timer_ui_play_count_label">Play count: %1$s</string>
     <string name="sleep_timer_ui_play_count_one_time">1 time</string>
     <string name="cd_switch_on">Switch on</string>
@@ -245,20 +208,8 @@
     <string name="backup_manifest_device_line">%1$s %2$s</string>
 
     <!-- Batch Edit -->
-    <string name="batch_edit_toolbar_title">Edit %d Songs</string>
-    <string name="batch_edit_info_message">Only modified fields will be updated. Leave fields empty to keep existing values.</string>
-    <string name="batch_edit_mixed_values">(Mixed values)</string>
-    <string name="batch_edit_optional">(Optional - leave empty to skip)</string>
-    <string name="batch_edit_success">Successfully updated %d songs</string>
-    <string name="batch_edit_partial_success">Updated %1$d of %2$d songs. Some files could not be edited.</string>
-    <string name="batch_edit_failed">Failed to update songs</string>
 
     <!-- Batch Edit Cover Art -->
-    <string name="batch_edit_cover_art_heading">Batch Cover Art</string>
-    <string name="batch_edit_cover_art_hint">This will replace the cover art for all %d selected songs</string>
-    <string name="batch_edit_set_cover_art">Set Cover Art for All</string>
-    <string name="batch_edit_remove_all_art">Remove All Cover Art</string>
-    <string name="batch_edit_multiple_covers">(Multiple different covers)</string>
     <string name="player_playback_error">Playback error: %1$s</string>
     <string name="nav_bar_home">Home</string>
     <string name="nav_bar_search">Search</string>
@@ -312,7 +263,6 @@
     <string name="update_download_body">Click the button to visit our website and download the latest version</string>
     <string name="update_dont_show_again">Don\'t show this again</string>
     <string name="update_go_download">Download</string>
-    <string name="update_install_permission_required">需要「安装未知应用」权限才能安装更新，请在设置中开启本应用的安装权限后重试</string>
     <string name="update_check_title">Check for Updates</string>
     <string name="update_check_subtitle">Check if a new version is available</string>
     <string name="update_auto_check_title">Auto Check Updates</string>
@@ -320,6 +270,7 @@
     <string name="update_checking">Checking for updates…</string>
     <string name="update_no_update">You\'re on the latest version</string>
     <string name="update_check_failed">Failed to check for updates</string>
+    <string name="update_open_settings_failed">Failed to open install settings</string>
     <string name="about_changelog_subtitle">Latest release · %1$s · %2$s</string>
     <string name="about_changelog_loading">Loading changelog…</string>
     <string name="about_changelog_error">Failed to load changelog</string>

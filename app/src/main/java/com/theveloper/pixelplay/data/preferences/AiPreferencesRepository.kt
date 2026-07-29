@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +35,14 @@ class AiPreferencesRepository @Inject constructor(
         val AI_AUTO_METADATA = booleanPreferencesKey("ai_auto_metadata")
         val AI_AUTO_DAILY_MIX = booleanPreferencesKey("ai_auto_daily_mix")
         val AI_AUTO_PLAYLIST_EVALUATION = booleanPreferencesKey("ai_auto_playlist_evaluation")
-        
+
+        val AI_TEMPERATURE = floatPreferencesKey("ai_temperature")
+        val AI_TOP_P = floatPreferencesKey("ai_top_p")
+        val AI_TOP_K = intPreferencesKey("ai_top_k")
+        val AI_MAX_TOKENS = intPreferencesKey("ai_max_tokens")
+        val AI_PRESENCE_PENALTY = floatPreferencesKey("ai_presence_penalty")
+        val AI_FREQUENCY_PENALTY = floatPreferencesKey("ai_frequency_penalty")
+
         val AI_RECOMMENDATION_CARD_ENABLED = booleanPreferencesKey("ai_recommendation_card_enabled")
         val AI_RECOMMENDATION_MANUAL_ONLY = booleanPreferencesKey("ai_recommendation_manual_only")
 
@@ -99,6 +107,24 @@ class AiPreferencesRepository @Inject constructor(
 
     val isAutoPlaylistEvaluationEnabled: Flow<Boolean> =
         dataStore.data.map { preferences -> preferences[Keys.AI_AUTO_PLAYLIST_EVALUATION] ?: false }
+
+    val aiTemperature: Flow<Float> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_TEMPERATURE] ?: 0.7f }
+
+    val aiTopP: Flow<Float> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_TOP_P] ?: 1.0f }
+
+    val aiTopK: Flow<Int> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_TOP_K] ?: 40 }
+
+    val aiMaxTokens: Flow<Int> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_MAX_TOKENS] ?: 2048 }
+
+    val aiPresencePenalty: Flow<Float> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_PRESENCE_PENALTY] ?: 0.0f }
+
+    val aiFrequencyPenalty: Flow<Float> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_FREQUENCY_PENALTY] ?: 0.0f }
 
     val isAiRecommendationCardEnabled: Flow<Boolean> =
         dataStore.data.map { preferences -> preferences[Keys.AI_RECOMMENDATION_CARD_ENABLED] ?: false }
