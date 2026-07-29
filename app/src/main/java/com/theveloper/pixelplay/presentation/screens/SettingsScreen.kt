@@ -121,6 +121,7 @@ import com.theveloper.pixelplay.presentation.screens.WordDelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
+import com.theveloper.pixelplay.presentation.screens.TranscodeCacheManagementScreen
 
 // SettingsTopBar removed, replaced by CollapsibleCommonTopBar
 
@@ -938,6 +939,9 @@ private fun TabletSettingsScreen(
                 }
                 composable(Screen.NavBarCrRad.route) {
                     NavBarCornerRadiusScreen(navController = detailNavController)
+                }
+                composable(Screen.TranscodeCacheManagement.route) {
+                    TranscodeCacheManagementScreen(navController = detailNavController)
                 }
             }
         }
