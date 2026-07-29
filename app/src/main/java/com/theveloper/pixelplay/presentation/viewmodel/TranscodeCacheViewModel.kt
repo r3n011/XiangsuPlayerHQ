@@ -22,7 +22,6 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TranscodeCacheViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val transcodeCacheDao: TranscodeCacheDao
 ) : ViewModel() {
@@ -41,8 +40,8 @@ class TranscodeCacheViewModel @Inject constructor(
         )
 
     init {
-        // 完整初始化缓存管理器，确保 context 和 DAO 都已就绪
-        TranscodeCacheManager.init(context, transcodeCacheDao)
+        // 确保 DAO 已注入到缓存管理器
+        TranscodeCacheManager.ensureDaoInjected(transcodeCacheDao)
         observeCacheEntries()
         refreshSize()
     }
