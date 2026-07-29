@@ -40,6 +40,9 @@ class TranscodeCacheCleanupWorker @AssistedInject constructor(
         Timber.d("TranscodeCacheCleanupWorker: Starting cache cleanup...")
 
         return try {
+            // 初始化缓存管理器（确保 context 和 cacheDir 已就绪）
+            TranscodeCacheManager.setContext(applicationContext)
+
             // 1. 获取 TTL 设置
             val ttlMs = inputData.getLong(
                 INPUT_TTL_MS,

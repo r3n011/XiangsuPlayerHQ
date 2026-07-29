@@ -36,21 +36,47 @@ object TranscodeCacheManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
-     * 初始化缓存管理器
+     * 设置应用上下文（懒初始化）
+     * 在应用启动时或首次使用前调用
+     */
+    fun setContext(context: Context) {
+        if (appContext == null) {
+            appContext = context.applicationContext
+            Timber.d("$TAG: Context set")
+        }
+    }
+
+    /**
+     * 初始化缓存管理器（完整初始化，包含 DAO 注入）
      */
     fun init(context: Context, cacheDao: TranscodeCacheDao? = null) {
-        if (cacheDir == null) {
-            cacheDir = File(context.cacheDir, "transcode_cache").apply {
-                mkdirs()
-            }
-            appContext = context.applicationContext
-            Timber.d("$TAG: Cache dir initialized: ${cacheDir?.absolutePath}")
-        }
+        setContext(context)
+        ensureDir()
         if (cacheDao != null) {
             dao = cacheDao
             Timber.d("$TAG: DAO injected successfully")
         }
     }
+
+    /**
+     * 确保缓存目录已创建
+     */
+    private fun ensureDir() {
+        if (cacheDir == null) {
+            val context = appContext
+            if (context != null) {
+                cacheDir = File(context.cacheDir, "transcode_cache").apply {
+                    mkdirs()
+                }
+                Timber.d("$TAG: Cache dir initialized: ${cacheDir?.absolutePath}")
+            }
+        }
+    }
+
+    /**
+     * 检查上下文是否已设置
+     */
+    private fun hasContext(): Boolean = appContext != null
 
     /**
      * 在应用启动时通过依赖注入的 DAO 完成初始化。
@@ -80,6 +106,7 @@ object TranscodeCacheManager {
      * @return 缓存的 WAV 文件，如果不存在则返回 null
      */
     fun getCachedFile(filePath: String): File? {
+        ensureDir()
         val dir = cacheDir ?: return null
         val cacheKey = generateCacheKey(filePath)
         val cachedFile = File(dir, "$cacheKey.wav")
@@ -109,6 +136,7 @@ object TranscodeCacheManager {
         songTitle: String? = null,
         artistName: String? = null
     ): File? {
+        ensureDir()
         val dir = cacheDir ?: return null
 
         dir.mkdirs()
@@ -222,6 +250,11 @@ object TranscodeCacheManager {
         return "Cache: $fileCount files, ${sizeMB}MB"
     }
 
+    /**
+     * 检查缓存目录是否已初始化
+     */
+    fun isInitialized(): Boolean = cacheDir != null
+
     // ========== 数据库操作 ==========
 
     /**
@@ -313,29 +346,41 @@ object TranscodeCacheManager {
      * @return 被删除的记录数
      */
     suspend fun cleanExpiredByTtl(ttlMs: Long = DEFAULT_TTL_MS): Int {
+        ensureDir()
+        val dir = cacheDir
+        if (dir == null) return 0
+
         val cutoffTime = System.currentTimeMillis() - ttlMs
         var deletedCount = 0
 
-        // 1. 从数据库获取过期记录
+        // 1. 从数据库获取过期记录（如果 DAO 可用）
         val expiredEntries = runCatching {
             dao?.getExpiredCaches(cutoffTime)
-        }.getOrNull() ?: return 0
+        }.getOrNull()
 
-        // 2. 删除物理文件
-        val dir = cacheDir
-        expiredEntries.forEach { entry ->
-            if (dir != null) {
+        if (expiredEntries != null && expiredEntries.isNotEmpty()) {
+            // 有数据库记录时，优先根据记录清理
+            expiredEntries.forEach { entry ->
                 val cachedFile = File(dir, "${entry.cacheKey}.wav")
                 if (cachedFile.exists()) {
                     cachedFile.delete()
                     deletedCount++
                 }
             }
-        }
 
-        // 3. 删除数据库记录
-        runCatching {
-            dao?.deleteExpiredCaches(cutoffTime)
+            // 删除数据库记录
+            runCatching {
+                dao?.deleteExpiredCaches(cutoffTime)
+            }
+        } else {
+            // 没有数据库记录时，使用文件系统兜底清理
+            dir.listFiles()?.forEach { file ->
+                val age = System.currentTimeMillis() - file.lastModified()
+                if (age > ttlMs) {
+                    file.delete()
+                    deletedCount++
+                }
+            }
         }
 
         Timber.d("$TAG: Cleaned $deletedCount expired cache files (TTL=${ttlMs / (1000 * 60 * 60 * 24)} days)")

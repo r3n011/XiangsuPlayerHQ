@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.database.TranscodeCacheDao
@@ -14,9 +15,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,6 +22,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TranscodeCacheViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val transcodeCacheDao: TranscodeCacheDao
 ) : ViewModel() {
@@ -42,8 +41,8 @@ class TranscodeCacheViewModel @Inject constructor(
         )
 
     init {
-        // 将 DAO 注入到单例缓存管理器
-        TranscodeCacheManager.ensureDaoInjected(transcodeCacheDao)
+        // 完整初始化缓存管理器，确保 context 和 DAO 都已就绪
+        TranscodeCacheManager.init(context, transcodeCacheDao)
         observeCacheEntries()
         refreshSize()
     }
