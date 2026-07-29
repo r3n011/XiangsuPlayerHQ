@@ -31,11 +31,15 @@ val localProperties = Properties().apply {
 val abiSplitsRequested = providers.gradleProperty("pixelplay.enableAbiSplits")
     .getOrElse("true")
     .toBoolean()
-// 只在 Release / Benchmark 构建时启用 ABI 分包，Debug 直接生成通用 APK，避免 x86 虚拟机无法安装
-val isReleaseLikeTask = gradle.startParameter.taskNames.any { taskName ->
-    taskName.contains("Release", ignoreCase = true) || taskName.contains("Benchmark", ignoreCase = true)
+// 只在 Release / Benchmark 构建时启用 ABI 分包
+// 使用任务名判断，或通过 pixelplay.forceAbiSplits 强制启用
+val forceAbiSplits = providers.gradleProperty("pixelplay.forceAbiSplits")
+    .getOrElse("false")
+    .toBoolean()
+val isReleaseBuild = gradle.startParameter.taskNames.any { 
+    it.contains("Release", ignoreCase = true) || it.contains("Benchmark", ignoreCase = true) 
 }
-val enableAbiSplits = abiSplitsRequested && isReleaseLikeTask
+val enableAbiSplits = abiSplitsRequested && (isReleaseBuild || forceAbiSplits)
 
 val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableComposeCompilerReports")
     .getOrElse("false")
@@ -181,6 +185,9 @@ android {
             isEnable = enableAbiSplits
             reset()
             if (enableAbiSplits) {
+                // ABI 分包：为不同架构生成独立 APK
+                // arm64-v8a: 64位架构（主流设备）
+                // armeabi-v7a: 32位架构（旧设备）
                 include("arm64-v8a", "armeabi-v7a")
                 isUniversalApk = false
             }
