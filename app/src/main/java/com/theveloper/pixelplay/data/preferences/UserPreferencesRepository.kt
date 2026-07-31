@@ -238,6 +238,12 @@ class UserPreferencesRepository @Inject constructor(
         // Developer options
         val ALBUM_ART_QUALITY = stringPreferencesKey("album_art_quality")
         val ALBUM_ART_CACHE_LIMIT_MB = intPreferencesKey("album_art_cache_limit_mb")
+
+        // Transcode cache
+        val TRANSCODE_STRATEGY = stringPreferencesKey("transcode_strategy")
+        val TRANSCODE_CACHE_SIZE_LIMIT_MB = intPreferencesKey("transcode_cache_size_limit_mb")
+        val TRANSCODE_AUTO_CLEANUP_ENABLED = booleanPreferencesKey("transcode_auto_cleanup_enabled")
+        val TRANSCODE_CLEANUP_THRESHOLD_PERCENT = intPreferencesKey("transcode_cleanup_threshold_percent")
         val TAP_BACKGROUND_CLOSES_PLAYER = booleanPreferencesKey("tap_background_closes_player")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val ADVANCED_PERFORMANCE_DIAGNOSTICS_ENABLED =
@@ -1718,6 +1724,46 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         return downloadPathFlow.first()
     }
 
+    // ─── Transcode cache ──────────────────────────────────────────────────────
+
+    val transcodeStrategyFlow: Flow<TranscodeStrategy> =
+        pref { TranscodeStrategy.fromStorageKey(it[PreferencesKeys.TRANSCODE_STRATEGY]) }
+
+    suspend fun setTranscodeStrategy(strategy: TranscodeStrategy) {
+        dataStore.edit { it[PreferencesKeys.TRANSCODE_STRATEGY] = strategy.storageKey }
+    }
+
+    val transcodeCacheSizeLimitMbFlow: Flow<Int> =
+        pref { it[PreferencesKeys.TRANSCODE_CACHE_SIZE_LIMIT_MB] ?: DEFAULT_TRANSCODE_CACHE_LIMIT_MB }
+
+    suspend fun setTranscodeCacheSizeLimitMb(limitMb: Int) {
+        dataStore.edit { it[PreferencesKeys.TRANSCODE_CACHE_SIZE_LIMIT_MB] = limitMb.coerceIn(512, 4096) }
+    }
+
+    val transcodeAutoCleanupEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.TRANSCODE_AUTO_CLEANUP_ENABLED] ?: true }
+
+    suspend fun setTranscodeAutoCleanupEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.TRANSCODE_AUTO_CLEANUP_ENABLED] = enabled }
+    }
+
+    val transcodeCleanupThresholdPercentFlow: Flow<Int> =
+        pref { it[PreferencesKeys.TRANSCODE_CLEANUP_THRESHOLD_PERCENT] ?: 80 }
+
+    suspend fun setTranscodeCleanupThresholdPercent(percent: Int) {
+        dataStore.edit { it[PreferencesKeys.TRANSCODE_CLEANUP_THRESHOLD_PERCENT] = percent.coerceIn(50, 95) }
+    }
+
+    enum class TranscodeStrategy(val storageKey: String, val labelResId: Int) {
+        STREAMING("streaming", R.string.transcode_strategy_streaming),
+        CACHE_FIRST("cache_first", R.string.transcode_strategy_cache_first);
+
+        companion object {
+            fun fromStorageKey(key: String?): TranscodeStrategy =
+                entries.find { it.storageKey == key } ?: STREAMING
+        }
+    }
+
     // ─── Companion ────────────────────────────────────────────────────────────
 
     companion object {
@@ -1731,6 +1777,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         )
 
         const val DEFAULT_ALBUM_ART_CACHE_LIMIT_MB = 200
+        const val DEFAULT_TRANSCODE_CACHE_LIMIT_MB = 1024
     }
 
     // ─── Private utilities ────────────────────────────────────────────────────

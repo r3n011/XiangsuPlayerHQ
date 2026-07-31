@@ -120,13 +120,13 @@ class MiniaudioDataSource internal constructor(
                 frameBuffer = ByteArray(requiredBufferSize)
             }
 
-            val framesRead = dec.readFrames(framesNeeded, frameBuffer)
-            if (framesRead <= 0) {
+            val bytesRead = dec.readFrames(framesNeeded, frameBuffer)
+            if (bytesRead <= 0) {
                 if (totalRead == 0) return -1
                 break
             }
 
-            val availableBytes = framesRead * pcmBytesPerFrame
+            val availableBytes = bytesRead
             val skipFirst = if (totalRead == 0) frameOffsetInFrame else 0
             val toCopy = minOf(readLength - totalRead, availableBytes - skipFirst)
             if (toCopy <= 0) break

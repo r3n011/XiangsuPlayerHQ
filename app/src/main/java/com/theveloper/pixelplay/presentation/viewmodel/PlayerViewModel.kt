@@ -130,6 +130,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
@@ -1570,6 +1572,9 @@ class PlayerViewModel @Inject constructor(
     val favoriteSongIds: StateFlow<Set<String>> = musicRepository
         .getFavoriteSongIdsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    // 防止用户快速双击收藏按钮导致状态反复切换
+    private val favoriteToggleMutex = Mutex()
 
     val isCurrentSongFavorite: StateFlow<Boolean> = combine(
         stablePlayerState
@@ -4845,40 +4850,55 @@ class PlayerViewModel @Inject constructor(
     fun toggleFavorite() {
         val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return
         viewModelScope.launch {
-            var favoriteSongId = resolveFavoriteSongId(currentSong)
+            favoriteToggleMutex.withLock {
+                var favoriteSongId = resolveFavoriteSongId(currentSong)
 
-            // ── Cloud / URL songs: persist first if needed ──────
-            if (favoriteSongId == null && isCloudPlaybackSong(currentSong)) {
-                favoriteSongId = persistCloudSongIfNeeded(currentSong)
+                // ── Cloud / URL songs: persist first if needed ──────
+                if (favoriteSongId == null && isCloudPlaybackSong(currentSong)) {
+                    favoriteSongId = persistCloudSongIfNeeded(currentSong)
+                }
+
+                if (favoriteSongId == null) return@withLock
+
+                val newFavoriteState = try {
+                    musicRepository.toggleFavoriteStatus(favoriteSongId)
+                } catch (e: Exception) {
+                    Timber.e(e, "toggleFavorite failed for songId=$favoriteSongId")
+                    return@withLock
+                }
+
+                // ── 同步网易云红心 ──────
+                syncNeteaseLike(currentSong, newFavoriteState)
             }
-
-            if (favoriteSongId == null) return@launch
-
-            val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
-            val targetFavoriteState = !currentlyFavorite
-            setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
-
-            // ── 同步网易云红心 ──────
-            syncNeteaseLike(currentSong, targetFavoriteState)
         }
     }
 
     fun toggleFavoriteSpecificSong(song: Song, removing: Boolean = false) {
         viewModelScope.launch {
-            var favoriteSongId = resolveFavoriteSongId(song)
+            favoriteToggleMutex.withLock {
+                var favoriteSongId = resolveFavoriteSongId(song)
 
-            if (favoriteSongId == null && isCloudPlaybackSong(song)) {
-                favoriteSongId = persistCloudSongIfNeeded(song)
+                if (favoriteSongId == null && isCloudPlaybackSong(song)) {
+                    favoriteSongId = persistCloudSongIfNeeded(song)
+                }
+
+                if (favoriteSongId == null) return@withLock
+
+                val newFavoriteState = if (removing) {
+                    musicRepository.setFavoriteStatus(favoriteSongId, false)
+                    false
+                } else {
+                    try {
+                        musicRepository.toggleFavoriteStatus(favoriteSongId)
+                    } catch (e: Exception) {
+                        Timber.e(e, "toggleFavoriteSpecificSong failed for songId=$favoriteSongId")
+                        return@withLock
+                    }
+                }
+
+                // ── 同步网易云红心 ──────
+                syncNeteaseLike(song, newFavoriteState)
             }
-
-            if (favoriteSongId == null) return@launch
-
-            val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
-            val targetFavoriteState = if (removing) false else !currentlyFavorite
-            setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
-
-            // ── 同步网易云红心 ──────
-            syncNeteaseLike(song, targetFavoriteState)
         }
     }
 

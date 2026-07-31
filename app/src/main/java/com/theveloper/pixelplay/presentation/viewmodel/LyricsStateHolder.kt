@@ -194,10 +194,11 @@ class LyricsStateHolder @Inject constructor(
             android.util.Log.w("LyricsStateHolder", "scope is null, cannot trigger auto lyrics search for: ${song.title}")
             return
         }
-        
+
+        val targetSongId = song.id
         scope?.launch {
             _searchUiState.value = LyricsSearchUiState.Loading
-            
+
             try {
                 kotlinx.coroutines.withTimeout(20000L) {
                     val localLyrics = readLocalLyrics(song)
@@ -205,27 +206,33 @@ class LyricsStateHolder @Inject constructor(
                         val parsed = LyricsUtils.parseLyrics(localLyrics)
                         if (hasValidLyrics(parsed)) {
                             val finalLyrics = parsed.copy(areFromRemote = false)
-                            _searchUiState.value = LyricsSearchUiState.Success(finalLyrics)
-                            loadCallback?.onLyricsLoaded(song.id, finalLyrics)
+                            if (currentTargetSongId == targetSongId) {
+                                _searchUiState.value = LyricsSearchUiState.Success(finalLyrics)
+                                loadCallback?.onLyricsLoaded(targetSongId, finalLyrics)
+                            }
                             return@withTimeout
                         }
                     }
-                    
+
                     musicRepository.getLyricsFromRemote(song)
                         .onSuccess { (lyrics, rawLyrics) ->
+                            if (currentTargetSongId != targetSongId) return@onSuccess
                             _searchUiState.value = LyricsSearchUiState.Success(lyrics)
-                            loadCallback?.onLyricsLoaded(song.id, lyrics)
+                            loadCallback?.onLyricsLoaded(targetSongId, lyrics)
                             val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, rawLyrics)
                             val updatedSong = song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri)
                             _songUpdates.emit(updatedSong to lyrics)
                         }
                         .onFailure { error ->
+                            if (currentTargetSongId != targetSongId) return@onFailure
                             if (error is NoLyricsFoundException) {
                                 musicRepository.searchRemoteLyrics(song)
                                     .onSuccess { (query, results) ->
+                                        if (currentTargetSongId != targetSongId) return@onSuccess
                                         _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
                                     }
-                                    .onFailure { searchError -> 
+                                    .onFailure { searchError ->
+                                        if (currentTargetSongId != targetSongId) return@onFailure
                                         handleError(searchError)
                                         _searchUiState.value = LyricsSearchUiState.Idle
                                     }
@@ -236,11 +243,15 @@ class LyricsStateHolder @Inject constructor(
                         }
                 }
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                handleError(TimeoutException("Lyrics search timeout"))
-                _searchUiState.value = LyricsSearchUiState.Idle
+                if (currentTargetSongId == targetSongId) {
+                    handleError(TimeoutException("Lyrics search timeout"))
+                    _searchUiState.value = LyricsSearchUiState.Idle
+                }
             } catch (e: Exception) {
-                handleError(e)
-                _searchUiState.value = LyricsSearchUiState.Idle
+                if (currentTargetSongId == targetSongId) {
+                    handleError(e)
+                    _searchUiState.value = LyricsSearchUiState.Idle
+                }
             }
         }
     }
@@ -317,6 +328,8 @@ class LyricsStateHolder @Inject constructor(
         contextHelper: (Int) -> String
     ) {
         loadingJob?.cancel()
+        val targetSongId = song.id
+        currentTargetSongId = targetSongId
         loadingJob = scope?.launch {
             _searchUiState.value = LyricsSearchUiState.Loading
 
@@ -326,7 +339,7 @@ class LyricsStateHolder @Inject constructor(
                         val storedLyrics = withContext(Dispatchers.IO) {
                             musicRepository.getStoredLyrics(song)
                         }
-                        if (storedLyrics != null) {
+                        if (storedLyrics != null && currentTargetSongId == targetSongId) {
                             val (lyrics, rawLyrics) = storedLyrics
                             _searchUiState.value = LyricsSearchUiState.Success(lyrics)
                             _songUpdates.emit(song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri = null) to lyrics)
@@ -349,7 +362,7 @@ class LyricsStateHolder @Inject constructor(
 
                     for (sourceCheck in localSourceChecks) {
                         val result = withContext(Dispatchers.IO) { sourceCheck() }
-                        if (result != null) {
+                        if (result != null && currentTargetSongId == targetSongId) {
                             val (rawLyrics, messageResId) = result
                             val parsed = LyricsUtils.parseLyrics(rawLyrics)
                             if (hasValidLyrics(parsed)) {
@@ -371,26 +384,34 @@ class LyricsStateHolder @Inject constructor(
                     if (forcePickResults) {
                         musicRepository.searchRemoteLyrics(song)
                             .onSuccess { (query, results) ->
+                                if (currentTargetSongId != targetSongId) return@onSuccess
                                 _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
                             }
                             .onFailure { error ->
+                                if (currentTargetSongId != targetSongId) return@onFailure
                                 handleError(error)
                             }
                     } else {
                         musicRepository.getLyricsFromRemote(song)
                             .onSuccess { (lyrics, rawLyrics) ->
+                                if (currentTargetSongId != targetSongId) return@onSuccess
                                 _searchUiState.value = LyricsSearchUiState.Success(lyrics)
                                 val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, rawLyrics)
                                 val updatedSong = song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri)
                                 _songUpdates.emit(updatedSong to lyrics)
                             }
                             .onFailure { error ->
+                                if (currentTargetSongId != targetSongId) return@onFailure
                                 if (error is NoLyricsFoundException) {
                                     musicRepository.searchRemoteLyrics(song)
                                         .onSuccess { (query, results) ->
+                                            if (currentTargetSongId != targetSongId) return@onSuccess
                                             _searchUiState.value = LyricsSearchUiState.PickResult(query, results)
                                         }
-                                        .onFailure { searchError -> handleError(searchError) }
+                                        .onFailure { searchError ->
+                                            if (currentTargetSongId != targetSongId) return@onFailure
+                                            handleError(searchError)
+                                        }
                                 } else {
                                     handleError(error)
                                 }
@@ -398,9 +419,13 @@ class LyricsStateHolder @Inject constructor(
                     }
                 }
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                handleError(TimeoutException("Lyrics fetch timeout"))
+                if (currentTargetSongId == targetSongId) {
+                    handleError(TimeoutException("Lyrics fetch timeout"))
+                }
             } catch (e: Exception) {
-                handleError(e)
+                if (currentTargetSongId == targetSongId) {
+                    handleError(e)
+                }
             }
         }
     }

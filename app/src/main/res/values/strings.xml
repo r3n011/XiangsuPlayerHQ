@@ -276,4 +276,21 @@
     <string name="about_changelog_error">Failed to load changelog</string>
     <string name="about_changelog_empty">No release notes</string>
     <string name="about_changelog_unknown_date">Unknown release date</string>
+
+    <!-- Transcode cache settings -->
+    <string name="transcode_strategy_streaming">Stream while transcoding</string>
+    <string name="transcode_strategy_cache_first">Transcode then play</string>
+    <string name="setcat_transcode_cache_title">Transcode cache</string>
+    <string name="setcat_transcode_strategy_label">Transcode strategy</string>
+    <string name="setcat_transcode_strategy_desc">Choose whether to transcode on the fly or cache first</string>
+    <string name="setcat_transcode_cache_size_label">Cache size limit</string>
+    <string name="setcat_transcode_auto_cleanup_title">Auto cleanup</string>
+    <string name="setcat_transcode_auto_cleanup_subtitle">Automatically remove old cache when limit is reached</string>
+    <string name="setcat_transcode_cleanup_threshold_label">Cleanup threshold</string>
+    <string name="setcat_transcode_clear_cache_title">Clear transcode cache</string>
+    <string name="setcat_transcode_clear_cache_subtitle">%1$d files · %2$d MB</string>
+    <string name="transcode_cache_list_title">Cached transcode songs</string>
+    <string name="transcode_cache_list_empty">No cached transcode songs</string>
+    <string name="transcode_cache_list_clear_all">Clear all</string>
+    <string name="transcode_cache_list_delete">Delete cache</string>
 </resources>

@@ -145,10 +145,6 @@
     <string
         name="setcat_album_art_palette_subtitle"
     >当前：%1$s。打开实时预览并选择风格。</string>
-    <string name="setcat_carousel_style_label">轮播样式</string>
-    <string name="setcat_carousel_style_desc">为专辑轮播选择外观。</string>
-    <string name="setcat_carousel_no_peek">无预览边缘</string>
-    <string name="setcat_carousel_one_peek">单侧预览</string>
     <string name="setcat_home_collage">主页拼贴</string>
     <string name="setcat_collage_pattern_label">拼贴图案</string>
     <string

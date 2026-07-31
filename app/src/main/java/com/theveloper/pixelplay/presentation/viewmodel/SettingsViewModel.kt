@@ -37,6 +37,9 @@ import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.worker.SyncManager
 import com.theveloper.pixelplay.data.worker.SyncProgress
+import com.theveloper.pixelplay.utils.TranscodeCacheManager
+import com.theveloper.pixelplay.utils.TranscodeProgressManager
+import com.theveloper.pixelplay.utils.WavConversionDataSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
@@ -129,6 +132,10 @@ data class SettingsUiState(
     val carModeEnabled: Boolean = false,
     val roamingButtonVisible: Boolean = true,
     val downloadPath: String = Environment.DIRECTORY_MUSIC,
+    val transcodeStrategy: UserPreferencesRepository.TranscodeStrategy = UserPreferencesRepository.TranscodeStrategy.STREAMING,
+    val transcodeCacheSizeLimitMb: Int = UserPreferencesRepository.DEFAULT_TRANSCODE_CACHE_LIMIT_MB,
+    val transcodeAutoCleanupEnabled: Boolean = true,
+    val transcodeCleanupThresholdPercent: Int = 80,
 )
 
 data class FailedSongInfo(
@@ -640,11 +647,87 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch {
+            userPreferencesRepository.transcodeStrategyFlow.collect { strategy ->
+                _uiState.update { it.copy(transcodeStrategy = strategy) }
+                WavConversionDataSource.transcodeMode = when (strategy) {
+                    UserPreferencesRepository.TranscodeStrategy.STREAMING ->
+                        WavConversionDataSource.TranscodeMode.STREAM_WHILE_TRANSCODE
+                    UserPreferencesRepository.TranscodeStrategy.CACHE_FIRST ->
+                        WavConversionDataSource.TranscodeMode.CACHE_FIRST
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.transcodeCacheSizeLimitMbFlow.collect { limitMb ->
+                _uiState.update { it.copy(transcodeCacheSizeLimitMb = limitMb) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.transcodeAutoCleanupEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(transcodeAutoCleanupEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.transcodeCleanupThresholdPercentFlow.collect { percent ->
+                _uiState.update { it.copy(transcodeCleanupThresholdPercent = percent) }
+            }
+        }
+
+        viewModelScope.launch {
+            combine(
+                userPreferencesRepository.transcodeCacheSizeLimitMbFlow,
+                userPreferencesRepository.transcodeAutoCleanupEnabledFlow,
+                userPreferencesRepository.transcodeCleanupThresholdPercentFlow
+            ) { size, enabled, threshold ->
+                Triple(size, enabled, threshold)
+            }.collect { (size, enabled, threshold) ->
+                TranscodeCacheManager.configure(
+                    maxCacheSizeMb = size,
+                    cleanupThresholdPercent = threshold,
+                    autoCleanupEnabled = enabled
+                )
+            }
+        }
+
     }
 
     fun setDownloadPath(path: String) {
         viewModelScope.launch {
             userPreferencesRepository.setDownloadPath(path)
+        }
+    }
+
+    fun setTranscodeStrategy(strategy: UserPreferencesRepository.TranscodeStrategy) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTranscodeStrategy(strategy)
+        }
+    }
+
+    fun setTranscodeCacheSizeLimitMb(limitMb: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTranscodeCacheSizeLimitMb(limitMb)
+        }
+    }
+
+    fun setTranscodeAutoCleanupEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTranscodeAutoCleanupEnabled(enabled)
+        }
+    }
+
+    fun setTranscodeCleanupThresholdPercent(percent: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTranscodeCleanupThresholdPercent(percent)
+        }
+    }
+
+    fun clearTranscodeCache() {
+        viewModelScope.launch {
+            TranscodeCacheManager.clearAllCache()
         }
     }
 

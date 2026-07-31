@@ -303,7 +303,7 @@ fun SearchScreen(
                             .height(56.dp)
                             .clip(RoundedCornerShape(searchbarCornerRadius))
                             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-                            .padding(horizontal = 16.dp),
+                            .padding(start = 16.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {

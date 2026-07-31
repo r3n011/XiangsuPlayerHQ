@@ -1,10 +1,19 @@
 package com.theveloper.pixelplay.utils
 
+import android.net.Uri
+import android.os.SystemClock
+import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.concurrent.thread
 import kotlin.math.cos
 import kotlin.math.PI
 import kotlin.math.sin
@@ -736,5 +745,315 @@ object DffDecoder {
                     ext in listOf("dff", "dsd", "dif")
             }
         }.getOrDefault(false)
+    }
+
+    /**
+     * 边听边转码：后台线程持续把 DFF/DSD 解码成临时 WAV，ExoPlayer 同时从该文件读取。
+     */
+    @UnstableApi
+    class DffStreamingDataSource internal constructor(
+        private val filePath: String,
+        private val uri: Uri?,
+        private val outputDir: File
+    ) : DataSource {
+
+        private val lock = Object()
+
+        @Volatile
+        private var running = false
+
+        @Volatile
+        private var decoderFinished = false
+
+        @Volatile
+        private var decoderError: Throwable? = null
+
+        @Volatile
+        private var writePosition: Long = HEADER_SIZE.toLong()
+
+        private var decoderThread: Thread? = null
+        private var tempFile: File? = null
+        private var readRaf: RandomAccessFile? = null
+
+        private var headerBytes: ByteArray? = null
+        private var readPosition: Long = 0
+        private var totalBytes: Long = 0
+
+        private lateinit var dffInfo: DffInfo
+        private lateinit var decodeConfig: DecodeConfig
+        private var outputSampleRate: Int = 0
+        private var totalPcmFrames: Long = 0
+
+        private var transferListener: TransferListener? = null
+        private var dataSpec: DataSpec? = null
+
+        override fun addTransferListener(transferListener: TransferListener) {
+            this.transferListener = transferListener
+        }
+
+        override fun open(dataSpec: DataSpec): Long {
+            val file = File(filePath)
+            val info = readDffInfo(file)
+                ?: throw IOException("Failed to read DFF info: $filePath")
+            dffInfo = info
+
+            outputSampleRate = selectOutputRate(info.dsdSampleRate)
+            val decimationFactor = info.dsdSampleRate / outputSampleRate
+            totalPcmFrames = info.totalDsdFrames / decimationFactor
+            val totalDataBytes = totalPcmFrames * info.channels * BYTES_PER_SAMPLE
+            totalBytes = HEADER_SIZE + totalDataBytes
+            headerBytes = buildWavHeader(
+                outputSampleRate, info.channels, BYTES_PER_SAMPLE, totalDataBytes
+            )
+
+            outputDir.mkdirs()
+            tempFile = File.createTempFile("dff_stream_", ".wav", outputDir).apply { deleteOnExit() }
+            RandomAccessFile(tempFile!!, "rw").use {
+                it.setLength(0)
+                it.write(headerBytes)
+            }
+
+            readRaf = RandomAccessFile(tempFile!!, "r")
+            readPosition = dataSpec.position.coerceAtLeast(0)
+
+            writePosition = HEADER_SIZE.toLong()
+            running = true
+            decoderFinished = false
+            decoderError = null
+            this.dataSpec = dataSpec
+
+            startDecoderThread(file, info, outputSampleRate, decimationFactor.toInt(), tempFile!!)
+
+            val length = if (dataSpec.length != C.LENGTH_UNSET.toLong() && dataSpec.length <= totalBytes - readPosition) {
+                dataSpec.length
+            } else {
+                totalBytes - readPosition
+            }
+            transferListener?.onTransferStart(this, dataSpec, true)
+            return length
+        }
+
+        override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
+            val remaining = totalBytes - readPosition
+            if (remaining <= 0) return -1
+            val bytesToRead = minOf(readLength.toLong(), remaining).toInt()
+
+            if (readPosition < HEADER_SIZE) {
+                val header = headerBytes!!
+                val headerOffset = readPosition.toInt()
+                val headerAvailable = HEADER_SIZE - headerOffset
+                val headerToCopy = minOf(bytesToRead, headerAvailable)
+                System.arraycopy(header, headerOffset, buffer, offset, headerToCopy)
+                readPosition += headerToCopy
+                transferListener?.onBytesTransferred(this, dataSpec!!, true, headerToCopy)
+                if (headerToCopy >= bytesToRead) return headerToCopy
+                val pcmRead = readPcmData(buffer, offset + headerToCopy, bytesToRead - headerToCopy)
+                if (pcmRead > 0) {
+                    transferListener?.onBytesTransferred(this, dataSpec!!, true, pcmRead)
+                }
+                return if (pcmRead < 0) headerToCopy else headerToCopy + pcmRead
+            }
+            val pcmRead = readPcmData(buffer, offset, bytesToRead)
+            if (pcmRead > 0) {
+                transferListener?.onBytesTransferred(this, dataSpec!!, true, pcmRead)
+            }
+            return pcmRead
+        }
+
+        private fun readPcmData(buffer: ByteArray, offset: Int, readLength: Int): Int {
+            if (readLength <= 0) return 0
+            var totalRead = 0
+            val timeoutMs = 30000L
+            val start = SystemClock.elapsedRealtime()
+
+            while (totalRead < readLength) {
+                synchronized(lock) {
+                    val canRead = minOf(
+                        (readLength - totalRead).toLong(),
+                        (writePosition - readPosition)
+                    ).toInt()
+                    if (canRead > 0) {
+                        readRaf!!.seek(readPosition)
+                        val actual = readRaf!!.read(buffer, offset + totalRead, canRead)
+                        if (actual > 0) {
+                            readPosition += actual
+                            totalRead += actual
+                            if (totalRead >= readLength) {
+                                lock.notifyAll()
+                                return totalRead
+                            }
+                        }
+                    }
+                    if (decoderFinished || decoderError != null) {
+                        lock.notifyAll()
+                        return if (totalRead > 0) totalRead else -1
+                    }
+                    val elapsed = SystemClock.elapsedRealtime() - start
+                    val wait = minOf(100L, timeoutMs - elapsed)
+                    if (wait <= 0) {
+                        return if (totalRead > 0) totalRead else 0
+                    }
+                    lock.wait(wait)
+                }
+            }
+            return totalRead
+        }
+
+        override fun close() {
+            running = false
+            decoderThread?.interrupt()
+            decoderThread?.join(2000)
+            decoderThread = null
+            runCatching { readRaf?.close() }
+            readRaf = null
+            tempFile?.delete()
+            tempFile = null
+            synchronized(lock) { lock.notifyAll() }
+        }
+
+        override fun getUri(): Uri? = uri
+
+        private fun startDecoderThread(
+            file: File,
+            info: DffInfo,
+            outputRate: Int,
+            decimation: Int,
+            outFile: File
+        ) {
+            decoderThread = thread(name = "DffStreamDecoder", priority = Thread.MAX_PRIORITY) {
+                try {
+                    decodeToFile(file, info, outputRate, decimation, outFile)
+                } catch (e: Throwable) {
+                    decoderError = e
+                    Timber.tag(TAG).e(e, "DFF streaming decode error: ${file.name}")
+                } finally {
+                    decoderFinished = true
+                    synchronized(lock) { lock.notifyAll() }
+                }
+            }
+        }
+
+        @Suppress("SameParameterValue")
+        private fun decodeToFile(
+            file: File,
+            info: DffInfo,
+            outputRate: Int,
+            decimation: Int,
+            outFile: File
+        ) {
+            val filterTaps = 64
+            val filter = designLowpassFilterFloat(decimation, filterTaps)
+            val filterMid = filterTaps / 2
+
+            RandomAccessFile(file, "r").use { srcRaf ->
+                srcRaf.seek(info.dataStartPosition)
+
+                // 预读一段做格式自动检测
+                val detectPcmFrames = 128
+                val detectDsdFrames = (detectPcmFrames.toLong() * decimation).toInt()
+                val detectDsdBytes = (detectDsdFrames.toLong() * info.channels / 8)
+                    .coerceAtMost(2L * 1024 * 1024).toInt()
+                val detectBuffer = ByteArray(detectDsdBytes)
+                val actualFirstRead = srcRaf.read(detectBuffer, 0, detectDsdBytes)
+                if (actualFirstRead <= 0) {
+                    throw IOException("Failed to read DSD data for detection: ${file.name}")
+                }
+                val bestConfig = findBestConfig(
+                    detectBuffer, actualFirstRead, info.channels,
+                    decimation, filterTaps, filter, filterMid
+                )
+                decodeConfig = bestConfig
+                Timber.tag(TAG).i(
+                    "DFF streaming: ${file.name}, ${info.channels}ch, " +
+                        "${info.dsdSampleRate}Hz DSD → ${outputRate}Hz PCM, " +
+                        "decimation=$decimation, config=$bestConfig"
+                )
+
+                srcRaf.seek(info.dataStartPosition)
+
+                val chunkFrames = 4096
+                val pcmChunkBytes = chunkFrames * info.channels * BYTES_PER_SAMPLE
+                val pcmBuffer = ByteArray(pcmChunkBytes)
+                val ringExtraDsd = filterMid + bestConfig.decimationFactor
+                val dsdChunkFrames = (chunkFrames.toLong() * bestConfig.decimationFactor + ringExtraDsd * 2).toInt()
+                val dsdChunkBytes = (dsdChunkFrames.toLong() * info.channels / 8)
+                    .coerceAtMost(4L * 1024 * 1024).toInt()
+                val dsdBuffer = ByteArray(dsdChunkBytes)
+                val dsdBitPlanes = FloatArray(dsdChunkFrames * info.channels)
+
+                var pcmFramesWritten = 0L
+                var totalBytesWritten = 0L
+
+                RandomAccessFile(outFile, "rw").use { outRaf ->
+                    while (pcmFramesWritten < totalPcmFrames) {
+                        if (!running) break
+
+                        val pcmFramesInChunk = minOf(
+                            chunkFrames.toLong(),
+                            totalPcmFrames - pcmFramesWritten
+                        )
+                        val dsdFramesNeeded =
+                            (pcmFramesInChunk * bestConfig.decimationFactor + ringExtraDsd * 2).toInt()
+                        val dsdBytesNeeded =
+                            (dsdFramesNeeded.toLong() * info.channels / 8)
+                                .coerceAtMost(dsdChunkBytes.toLong()).toInt()
+
+                        var dsdBytesRead = 0
+                        while (dsdBytesRead < dsdBytesNeeded) {
+                            val toRead = minOf(
+                                dsdBytesNeeded - dsdBytesRead,
+                                dsdChunkBytes - dsdBytesRead
+                            )
+                            val actualRead = srcRaf.read(dsdBuffer, dsdBytesRead, toRead)
+                            if (actualRead <= 0) break
+                            dsdBytesRead += actualRead
+                        }
+                        if (dsdBytesRead == 0) break
+
+                        extractDsdBits(
+                            dsdBuffer, dsdBytesRead, info.channels,
+                            bestConfig, dsdBitPlanes, dsdChunkFrames
+                        )
+                        convolveDsdToPcm(
+                            dsdBitPlanes, dsdChunkFrames, info.channels,
+                            bestConfig, filter, filterMid,
+                            pcmBuffer, 0, pcmFramesInChunk.toInt()
+                        )
+
+                        val writeBytes =
+                            (pcmFramesInChunk * info.channels * BYTES_PER_SAMPLE).toInt()
+                        synchronized(lock) {
+                            outRaf.seek(HEADER_SIZE + totalBytesWritten)
+                            outRaf.write(pcmBuffer, 0, writeBytes.coerceAtMost(pcmChunkBytes))
+                            totalBytesWritten += writeBytes
+                            writePosition = HEADER_SIZE + totalBytesWritten
+                            lock.notifyAll()
+                        }
+                        pcmFramesWritten += pcmFramesInChunk
+                    }
+
+                    // 修正 WAV 文件头
+                    val actualDataBytes = totalBytesWritten.toInt()
+                    val fixedHeader = buildWavHeader(
+                        outputRate, info.channels, BYTES_PER_SAMPLE, actualDataBytes.toLong()
+                    )
+                    synchronized(lock) {
+                        outRaf.seek(0)
+                        outRaf.write(fixedHeader)
+                        writePosition = HEADER_SIZE + totalBytesWritten
+                        lock.notifyAll()
+                    }
+                    Timber.tag(TAG).i(
+                        "DFF streaming finished: ${file.name}, " +
+                            "pcmFrames=$pcmFramesWritten, bytes=$actualDataBytes"
+                    )
+                }
+            }
+        }
+
+        companion object {
+            private const val HEADER_SIZE = 44
+            private const val BYTES_PER_SAMPLE = 2
+        }
     }
 }

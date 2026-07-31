@@ -2,6 +2,9 @@ package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.components.BackupModuleSelectionDialog
+import com.theveloper.pixelplay.presentation.components.TranscodeCacheListDialog
+import com.theveloper.pixelplay.utils.TranscodeCacheManager
+import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import java.util.Locale
 import java.util.Date
 import androidx.compose.animation.core.animateFloatAsState
@@ -171,7 +174,6 @@ import com.theveloper.pixelplay.data.backup.model.RestorePlan
 import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
-import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
@@ -266,6 +268,14 @@ fun SettingsCategoryScreen(
     var albumArtCacheLimitDraft by remember(uiState.albumArtCacheLimitMb) {
         mutableStateOf(uiState.albumArtCacheLimitMb.toFloat())
     }
+    var transcodeCacheLimitDraft by remember(uiState.transcodeCacheSizeLimitMb) {
+        mutableStateOf(uiState.transcodeCacheSizeLimitMb.toFloat())
+    }
+    var transcodeCleanupThresholdDraft by remember(uiState.transcodeCleanupThresholdPercent) {
+        mutableStateOf(uiState.transcodeCleanupThresholdPercent.toFloat())
+    }
+    var showTranscodeCacheList by remember { mutableStateOf(false) }
+    var transcodeCacheEntries by remember { mutableStateOf(TranscodeCacheManager.getCacheEntries()) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -820,17 +830,6 @@ fun SettingsCategoryScreen(
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely(Screen.PaletteStyle.route) }
                                 )
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.setcat_carousel_style_label),
-                                    description = stringResource(R.string.setcat_carousel_style_desc),
-                                    options = mapOf(
-                                        CarouselStyle.NO_PEEK to stringResource(R.string.setcat_carousel_no_peek),
-                                        CarouselStyle.ONE_PEEK to stringResource(R.string.setcat_carousel_one_peek)
-                                    ),
-                                    selectedKey = uiState.carouselStyle,
-                                    onSelectionChanged = { settingsViewModel.setCarouselStyle(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.ViewCarousel, null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_home_collage)) {
@@ -1118,6 +1117,104 @@ fun SettingsCategoryScreen(
                                     onCheckedChange = { settingsViewModel.setCarModeEnabled(it) },
                                     leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_transcode_cache_title)) {
+                                var displayedCacheInfo by remember { mutableStateOf<TranscodeCacheManager.CacheInfo>(TranscodeCacheManager.getCacheInfo()) }
+
+                                val transcodeStrategyOptions = mutableMapOf<String, String>()
+                                for (strategy in UserPreferencesRepository.TranscodeStrategy.entries) {
+                                    transcodeStrategyOptions[strategy.storageKey] = stringResource(strategy.labelResId)
+                                }
+
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_transcode_strategy_label),
+                                    description = stringResource(R.string.setcat_transcode_strategy_desc),
+                                    options = transcodeStrategyOptions,
+                                    selectedKey = uiState.transcodeStrategy.storageKey,
+                                    onSelectionChanged = { key ->
+                                        val strategy = UserPreferencesRepository.TranscodeStrategy.entries.find { it.storageKey == key }
+                                            ?: UserPreferencesRepository.TranscodeStrategy.STREAMING
+                                        settingsViewModel.setTranscodeStrategy(strategy)
+                                    },
+                                    leadingIcon = { Icon(painterResource(R.drawable.outline_high_quality_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
+                                SliderSettingsItem(
+                                    label = stringResource(R.string.setcat_transcode_cache_size_label),
+                                    value = transcodeCacheLimitDraft,
+                                    valueRange = 512f..4096f,
+                                    steps = 7,
+                                    onValueChange = { transcodeCacheLimitDraft = it },
+                                    onValueChangeFinished = {
+                                        val selectedLimit = transcodeCacheLimitDraft.toInt()
+                                        if (selectedLimit != uiState.transcodeCacheSizeLimitMb) {
+                                            settingsViewModel.setTranscodeCacheSizeLimitMb(selectedLimit)
+                                        }
+                                    },
+                                    valueText = { value -> "${value.toInt()} MB" }
+                                )
+
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_transcode_auto_cleanup_title),
+                                    subtitle = stringResource(R.string.setcat_transcode_auto_cleanup_subtitle),
+                                    checked = uiState.transcodeAutoCleanupEnabled,
+                                    onCheckedChange = { settingsViewModel.setTranscodeAutoCleanupEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
+                                AnimatedVisibility(
+                                    visible = uiState.transcodeAutoCleanupEnabled,
+                                    enter = expandVertically(animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f)) + fadeIn(animationSpec = spring(stiffness = 400f)),
+                                    exit = shrinkVertically(animationSpec = spring(stiffness = 500f)) + fadeOut(animationSpec = spring(stiffness = 500f))
+                                ) {
+                                    SliderSettingsItem(
+                                        label = stringResource(R.string.setcat_transcode_cleanup_threshold_label),
+                                        value = transcodeCleanupThresholdDraft,
+                                        valueRange = 50f..95f,
+                                        steps = 8,
+                                        onValueChange = { transcodeCleanupThresholdDraft = it },
+                                        onValueChangeFinished = {
+                                            val selectedThreshold = transcodeCleanupThresholdDraft.toInt()
+                                            if (selectedThreshold != uiState.transcodeCleanupThresholdPercent) {
+                                                settingsViewModel.setTranscodeCleanupThresholdPercent(selectedThreshold)
+                                            }
+                                        },
+                                        valueText = { value -> "${value.toInt()}%" }
+                                    )
+                                }
+
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_transcode_clear_cache_title),
+                                    subtitle = stringResource(
+                                        R.string.setcat_transcode_clear_cache_subtitle,
+                                        displayedCacheInfo.fileCount,
+                                        displayedCacheInfo.sizeMb
+                                    ),
+                                    leadingIcon = { Icon(Icons.Outlined.ClearAll, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = {
+                                        transcodeCacheEntries = TranscodeCacheManager.getCacheEntries()
+                                        showTranscodeCacheList = true
+                                    }
+                                )
+
+                                if (showTranscodeCacheList) {
+                                    TranscodeCacheListDialog(
+                                        entries = transcodeCacheEntries,
+                                        onDismiss = { showTranscodeCacheList = false },
+                                        onDelete = { entry ->
+                                            TranscodeCacheManager.deleteCacheEntry(entry.cacheKey)
+                                            transcodeCacheEntries = TranscodeCacheManager.getCacheEntries()
+                                            displayedCacheInfo = TranscodeCacheManager.getCacheInfo()
+                                        },
+                                        onClearAll = {
+                                            settingsViewModel.clearTranscodeCache()
+                                            transcodeCacheEntries = TranscodeCacheManager.getCacheEntries()
+                                            displayedCacheInfo = TranscodeCacheManager.getCacheInfo()
+                                        }
+                                    )
+                                }
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_download_settings)) {

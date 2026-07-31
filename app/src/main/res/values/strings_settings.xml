@@ -170,12 +170,6 @@
     <string
         name="setcat_album_art_palette_subtitle"
     >Current: %1$s. Open live preview and choose style.</string>
-    <string name="setcat_carousel_style_label">Carousel Style</string>
-    <string
-        name="setcat_carousel_style_desc"
-    >Choose the appearance for the album carousel.</string>
-    <string name="setcat_carousel_no_peek">No Peek</string>
-    <string name="setcat_carousel_one_peek">One Peek</string>
     <string name="setcat_home_collage">Home Collage</string>
     <string name="setcat_collage_pattern_label">Collage Pattern</string>
     <string

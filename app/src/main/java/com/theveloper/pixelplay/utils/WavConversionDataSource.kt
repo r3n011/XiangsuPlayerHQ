@@ -17,6 +17,11 @@ class WavConversionDataSource private constructor(
     private val uri: Uri?
 ) : DataSource {
 
+    enum class TranscodeMode {
+        STREAM_WHILE_TRANSCODE,
+        CACHE_FIRST
+    }
+
     private var readPosition: Long = 0
 
     override fun open(dataSpec: DataSpec): Long {
@@ -51,6 +56,9 @@ class WavConversionDataSource private constructor(
 
     companion object {
         private const val TAG = "WavConversionDS"
+
+        @Volatile
+        var transcodeMode: TranscodeMode = TranscodeMode.STREAM_WHILE_TRANSCODE
 
         fun Factory(
             context: Context,
@@ -148,19 +156,23 @@ class WavConversionDataSource private constructor(
                 return result
             }
 
-            // Step 1: Try miniaudio streaming (zero-copy, no temp file)
-            Timber.tag(TAG).i("Step 1: Trying miniaudio streaming for ${file.name}")
-            try {
-                miniaudioSource = MiniaudioDataSource(
-                    filePath, uri,
-                    MiniaudioDecoder.FORMAT_S16, 0, 0
-                )
-                val result = miniaudioSource!!.open(dataSpec)
-                Timber.tag(TAG).i("miniaudio streaming succeeded, totalBytes=$result")
-                return result
-            } catch (e: Throwable) {
-                Timber.tag(TAG).w(e, "miniaudio streaming failed for ${file.name}")
-                miniaudioSource = null
+            // Step 1: Try miniaudio streaming (zero-copy, no temp file) when in streaming mode
+            if (transcodeMode == TranscodeMode.STREAM_WHILE_TRANSCODE) {
+                Timber.tag(TAG).i("Step 1: Trying miniaudio streaming for ${file.name}")
+                try {
+                    miniaudioSource = MiniaudioDataSource(
+                        filePath, uri,
+                        MiniaudioDecoder.FORMAT_S16, 0, 0
+                    )
+                    val result = miniaudioSource!!.open(dataSpec)
+                    Timber.tag(TAG).i("miniaudio streaming succeeded, totalBytes=$result")
+                    return result
+                } catch (e: Throwable) {
+                    Timber.tag(TAG).w(e, "miniaudio streaming failed for ${file.name}")
+                    miniaudioSource = null
+                }
+            } else {
+                Timber.tag(TAG).i("CACHE_FIRST mode: skipping streaming for ${file.name}")
             }
 
             // Step 2: miniaudio decode to temp file (works for ANY format miniaudio supports)
@@ -210,6 +222,21 @@ class WavConversionDataSource private constructor(
             if (ext in DFF_EXTENSIONS) {
                 Timber.tag(TAG).i("Step 3: Trying DFF/DSD decoder for ${file.name}")
 
+                // 边听边转码：后台线程一边解码一边让 ExoPlayer 读取
+                if (transcodeMode == TranscodeMode.STREAM_WHILE_TRANSCODE) {
+                    try {
+                        val streamingSource = DffDecoder.DffStreamingDataSource(filePath, uri, tempDir)
+                        val result = streamingSource.open(dataSpec)
+                        convertedSource = streamingSource
+                        Timber.tag(TAG).i("Step 3: DFF streaming source opened, totalBytes=$result")
+                        return result
+                    } catch (e: Throwable) {
+                        Timber.tag(TAG).w(e, "DFF streaming failed for ${file.name}, falling back to full decode")
+                        convertedSource = null
+                    }
+                }
+
+                // 先缓存后播放：整首解码完成再播放
                 // 设置进度回调
                 DffDecoder.progressCallback = { progress, stage ->
                     Timber.tag(TAG).i("[TRANSCODE] $progress% - $stage")
@@ -236,7 +263,7 @@ class WavConversionDataSource private constructor(
                     // 保存到缓存
                     val cachedFile = TranscodeCacheManager.cacheTranscodedFile(filePath, tempFile)
                     val fileToUse = cachedFile ?: tempFile
-                    
+
                     convertedTempFile = fileToUse
                     isCachedFile = cachedFile != null
                     Timber.tag(TAG).i("Step 3: DFF decoded to ${fileToUse.name} (${fileToUse.length()} bytes)")

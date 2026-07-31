@@ -315,4 +315,21 @@
     <string name="about_changelog_error">加载更新日志失败</string>
     <string name="about_changelog_empty">暂无更新内容</string>
     <string name="about_changelog_unknown_date">未知时间</string>
+
+    <!-- 转码缓存设置 -->
+    <string name="transcode_strategy_streaming">边听边转码</string>
+    <string name="transcode_strategy_cache_first">先转码后播放</string>
+    <string name="setcat_transcode_cache_title">转码缓存</string>
+    <string name="setcat_transcode_strategy_label">转码策略</string>
+    <string name="setcat_transcode_strategy_desc">选择边听边转码，或先缓存再播放</string>
+    <string name="setcat_transcode_cache_size_label">缓存大小限制</string>
+    <string name="setcat_transcode_auto_cleanup_title">自动清理</string>
+    <string name="setcat_transcode_auto_cleanup_subtitle">达到限制时自动清理旧缓存</string>
+    <string name="setcat_transcode_cleanup_threshold_label">清理阈值</string>
+    <string name="setcat_transcode_clear_cache_title">清除转码缓存</string>
+    <string name="setcat_transcode_clear_cache_subtitle">%1$d 个文件 · %2$d MB</string>
+    <string name="transcode_cache_list_title">转码缓存歌曲</string>
+    <string name="transcode_cache_list_empty">暂无转码缓存歌曲</string>
+    <string name="transcode_cache_list_clear_all">全部清除</string>
+    <string name="transcode_cache_list_delete">删除缓存</string>
 </resources>
