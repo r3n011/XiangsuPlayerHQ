@@ -221,6 +221,8 @@ class LxMusicViewModel @Inject constructor(
                     isEnd = result.isEnd,
                     error = if (result.list.isEmpty()) "无结果（请换关键词）" else null
                 )
+                // 搜索 API 不返回 picUrl，批量补充封面
+                fillMissingCovers(result.list)
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     searching = false,
@@ -262,11 +264,41 @@ class LxMusicViewModel @Inject constructor(
                     results = merged,
                     isEnd = result.isEnd
                 )
+                // 批量补充新加载项的封面
+                fillMissingCovers(newItems)
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     isLoadingMore = false,
                     error = "加载更多失败: ${t.message ?: t.javaClass.simpleName}"
                 )
+            }
+        }
+    }
+
+    /**
+     * 批量补充搜索结果中缺失封面的歌曲。
+     * 搜索 API 不返回 picUrl，需通过歌曲详情 API 补全。
+     */
+    private fun fillMissingCovers(songs: List<LxSongInfo>) {
+        val missing = songs.filter { it.pic.isBlank() && it.id.all { c -> c.isDigit() } }
+        if (missing.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            // 每批最多 50 首，避免 URL 过长
+            missing.chunked(50).forEach { batch ->
+                val covers = runCatching {
+                    searchApi.batchGetSongCovers(batch.map { it.id })
+                }.getOrDefault(emptyMap())
+                if (covers.isEmpty()) return@forEach
+                // 更新 UI 状态中的结果列表
+                val currentResults = _uiState.value.results
+                val updated = currentResults.map { existing ->
+                    if (existing.pic.isBlank() && covers.containsKey(existing.id)) {
+                        existing.copy(pic = covers[existing.id]!!)
+                    } else existing
+                }
+                if (updated != currentResults) {
+                    _uiState.value = _uiState.value.copy(results = updated)
+                }
             }
         }
     }
@@ -294,8 +326,12 @@ class LxMusicViewModel @Inject constructor(
 
                 // 如果 song.pic 为空，在播放前尝试获取封面
                 val coverToUse = if (song.pic.isBlank()) {
-                    android.util.Log.d("LxPlaySong", "封面为空，尝试从 vkeys 获取...")
-                    searchApi.getSongCoverFromVkeys(song.id) ?: ""
+                    android.util.Log.d("LxPlaySong", "封面为空，尝试从歌曲详情 API 获取...")
+                    searchApi.getSongCoverFromDetail(song.id)
+                        ?: run {
+                            android.util.Log.d("LxPlaySong", "详情 API 无封面，尝试 vkeys...")
+                            searchApi.getSongCoverFromVkeys(song.id)
+                        } ?: ""
                 } else song.pic
 
                 val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
@@ -319,6 +355,7 @@ class LxMusicViewModel @Inject constructor(
                     } else {
                         Timber.d("LxPlaySong: Official API failed, falling back to LxJsEngine for '${song.name}'")
                         engine.getPlayUrl("wy", songMap, preferredQuality.lxValue)
+                            ?: engine.getPlayUrl("wy", songMap, "flac")
                             ?: engine.getPlayUrl("wy", songMap, "320k")
                             ?: engine.getPlayUrl("wy", songMap, "128k")
                     }

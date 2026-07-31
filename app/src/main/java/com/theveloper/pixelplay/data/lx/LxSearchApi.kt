@@ -157,6 +157,85 @@ class LxSearchApi @Inject constructor(
         }
     }
 
+    /**
+     * 调用网易云歌曲详情 API 获取封面链接。
+     * 接口：`https://ncmapi.btwoa.com/song/detail?ids=<songId>`
+     * 返回 JSON 中 songs[0].al.picUrl 即为封面直链。
+     * @param songId 网易云歌曲 ID（纯数字字符串）
+     * @return 封面 URL，获取失败返回 null
+     */
+    suspend fun getSongCoverFromDetail(songId: String): String? = withContext(Dispatchers.IO) {
+        if (songId.isBlank()) return@withContext null
+        try {
+            val url = "$COMMENT_API_BASE/song/detail?ids=$songId"
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Timber.e("获取封面(detail)失败: ${response.code}")
+                return@withContext null
+            }
+
+            val body = response.body?.string() ?: return@withContext null
+            val obj = JSONObject(body)
+            if (obj.optInt("code", -1) != 200) return@withContext null
+
+            val songs = obj.optJSONArray("songs") ?: return@withContext null
+            val song = songs.optJSONObject(0) ?: return@withContext null
+            val al = song.optJSONObject("al") ?: song.optJSONObject("album")
+            val picUrl = al?.optString("picUrl", "")?.trim()?.replace("`", "")
+            if (picUrl.isNullOrBlank()) null else picUrl
+        } catch (e: Exception) {
+            Timber.e(e, "获取封面(detail)异常")
+            null
+        }
+    }
+
+    /**
+     * 批量获取多首歌曲的封面链接（一次请求）。
+     * @param songIds 歌曲 ID 列表
+     * @return Map<songId, coverUrl>，仅包含成功获取封面的条目
+     */
+    suspend fun batchGetSongCovers(songIds: List<String>): Map<String, String> = withContext(Dispatchers.IO) {
+        if (songIds.isEmpty()) return@withContext emptyMap()
+        try {
+            val idsParam = songIds.joinToString(",")
+            val url = "$COMMENT_API_BASE/song/detail?ids=$idsParam"
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext emptyMap()
+
+            val body = response.body?.string() ?: return@withContext emptyMap()
+            val obj = JSONObject(body)
+            if (obj.optInt("code", -1) != 200) return@withContext emptyMap()
+
+            val songs = obj.optJSONArray("songs") ?: return@withContext emptyMap()
+            val result = HashMap<String, String>(songs.length())
+            for (i in 0 until songs.length()) {
+                val song = songs.optJSONObject(i) ?: continue
+                val id = song.optLong("id").toString()
+                val al = song.optJSONObject("al") ?: song.optJSONObject("album")
+                val picUrl = al?.optString("picUrl", "")?.trim()?.replace("`", "")
+                if (id.isNotBlank() && !picUrl.isNullOrBlank()) {
+                    result[id] = picUrl
+                }
+            }
+            result
+        } catch (e: Exception) {
+            Timber.e(e, "批量获取封面异常")
+            emptyMap()
+        }
+    }
+
     // ─── 评论 / 用户详情 ────────────────────────────────────────────────────────
 
     /**

@@ -4850,55 +4850,40 @@ class PlayerViewModel @Inject constructor(
     fun toggleFavorite() {
         val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return
         viewModelScope.launch {
-            favoriteToggleMutex.withLock {
-                var favoriteSongId = resolveFavoriteSongId(currentSong)
+            var favoriteSongId = resolveFavoriteSongId(currentSong)
 
-                // ── Cloud / URL songs: persist first if needed ──────
-                if (favoriteSongId == null && isCloudPlaybackSong(currentSong)) {
-                    favoriteSongId = persistCloudSongIfNeeded(currentSong)
-                }
-
-                if (favoriteSongId == null) return@withLock
-
-                val newFavoriteState = try {
-                    musicRepository.toggleFavoriteStatus(favoriteSongId)
-                } catch (e: Exception) {
-                    Timber.e(e, "toggleFavorite failed for songId=$favoriteSongId")
-                    return@withLock
-                }
-
-                // ── 同步网易云红心 ──────
-                syncNeteaseLike(currentSong, newFavoriteState)
+            // ── Cloud / URL songs: persist first if needed ──────
+            if (favoriteSongId == null && isCloudPlaybackSong(currentSong)) {
+                favoriteSongId = persistCloudSongIfNeeded(currentSong)
             }
+
+            if (favoriteSongId == null) return@launch
+
+            val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
+            val targetFavoriteState = !currentlyFavorite
+            setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
+
+            // ── 同步网易云红心 ──────
+            syncNeteaseLike(currentSong, targetFavoriteState)
         }
     }
 
     fun toggleFavoriteSpecificSong(song: Song, removing: Boolean = false) {
         viewModelScope.launch {
-            favoriteToggleMutex.withLock {
-                var favoriteSongId = resolveFavoriteSongId(song)
+            var favoriteSongId = resolveFavoriteSongId(song)
 
-                if (favoriteSongId == null && isCloudPlaybackSong(song)) {
-                    favoriteSongId = persistCloudSongIfNeeded(song)
-                }
-
-                if (favoriteSongId == null) return@withLock
-
-                val newFavoriteState = if (removing) {
-                    musicRepository.setFavoriteStatus(favoriteSongId, false)
-                    false
-                } else {
-                    try {
-                        musicRepository.toggleFavoriteStatus(favoriteSongId)
-                    } catch (e: Exception) {
-                        Timber.e(e, "toggleFavoriteSpecificSong failed for songId=$favoriteSongId")
-                        return@withLock
-                    }
-                }
-
-                // ── 同步网易云红心 ──────
-                syncNeteaseLike(song, newFavoriteState)
+            if (favoriteSongId == null && isCloudPlaybackSong(song)) {
+                favoriteSongId = persistCloudSongIfNeeded(song)
             }
+
+            if (favoriteSongId == null) return@launch
+
+            val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
+            val targetFavoriteState = if (removing) false else !currentlyFavorite
+            setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
+
+            // ── 同步网易云红心 ──────
+            syncNeteaseLike(song, targetFavoriteState)
         }
     }
 
@@ -5581,7 +5566,12 @@ class PlayerViewModel @Inject constructor(
 
                 var tempSong: com.theveloper.pixelplay.data.model.Song
                 if (storedSong != null) {
-                    tempSong = storedSong
+                    // 如果数据库中保存的歌曲缺少封面，但本次播放传入的 cover 有效，则补上
+                    tempSong = if (storedSong.albumArtUriString.isNullOrBlank() && cover.isNotBlank()) {
+                        storedSong.copy(albumArtUriString = cover)
+                    } else {
+                        storedSong
+                    }
                 } else {
                     val parsedNeteaseId = id.toLongOrNull()
                     val contentUri = if (parsedNeteaseId != null && parsedNeteaseId > 0) {
@@ -5630,6 +5620,16 @@ class PlayerViewModel @Inject constructor(
                         lyrics = null,
                         isLoadingLyrics = true
                     )
+                }
+
+                // ⚡ 核心修复：手动触发颜色提取。
+                // 因为 playUrl 会立即更新 StablePlayerState，导致后续 player 监听器回调时
+                // oldSongUri == newSongUri 而跳过提取。
+                val artUri = tempSong.albumArtUriString
+                if (!artUri.isNullOrBlank()) {
+                    viewModelScope.launch {
+                        themeStateHolder.extractAndGenerateColorScheme(artUri.toUri(), artUri)
+                    }
                 }
 
                 loadLyricsForCurrentSong()
