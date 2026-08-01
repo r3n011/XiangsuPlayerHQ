@@ -1163,6 +1163,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 val miniPlayerClipHeight = if (isExpandedOrExpanding) containerHeight else collapsedClipHeight
+                // ⚠️ 当没有播放内容且非展开态时（如横滑移除 mini-player 后），
+                // 完全不渲染 UnifiedPlayerSheetV2，避免其全屏 Surface 覆盖在底部导航栏上方
+                // 拦截触摸事件导致无法切换页面。
+                val shouldRenderPlayerSheet = showPlayerContentInitially || isExpandedOrExpanding
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1172,18 +1176,20 @@ class MainActivity : ComponentActivity() {
                     // ⚡ isNavBarHidden 使用稳定的布尔值(不读动画 State),
                     // 避免导航切换动画期间每帧触发重组。
                     // 圆角/边距等用稳定值足矣,动画由 sheet 内部的 SheetMotionController 处理。
-                    val isNavBarHiddenValue = if (isLandscape) shouldHideNavigationRail else shouldHideBottomNavBar
-                    UnifiedPlayerSheetV2(
-                        playerViewModel = playerViewModel,
-                        sheetCollapsedTargetY = sheetCollapsedTargetY,
-                        collapsedStateHorizontalPadding = horizontalPadding,
-                        hideMiniPlayer = shouldHideMiniPlayer,
-                        containerHeight = containerHeight,
-                        navController = navController,
-                        isNavBarHidden = isNavBarHiddenValue,
-                        navRailPadding = navRailPaddingDp,
-                        isLandscape = isLandscape
-                    )
+                    if (shouldRenderPlayerSheet) {
+                        val isNavBarHiddenValue = if (isLandscape) shouldHideNavigationRail else shouldHideBottomNavBar
+                        UnifiedPlayerSheetV2(
+                            playerViewModel = playerViewModel,
+                            sheetCollapsedTargetY = sheetCollapsedTargetY,
+                            collapsedStateHorizontalPadding = horizontalPadding,
+                            hideMiniPlayer = shouldHideMiniPlayer,
+                            containerHeight = containerHeight,
+                            navController = navController,
+                            isNavBarHidden = isNavBarHiddenValue,
+                            navRailPadding = navRailPaddingDp,
+                            isLandscape = isLandscape
+                        )
+                    }
                 }
 
                 val dismissUndoBarSlice by remember {
