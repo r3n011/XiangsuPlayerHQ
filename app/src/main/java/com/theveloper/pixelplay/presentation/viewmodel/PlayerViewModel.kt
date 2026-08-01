@@ -4183,7 +4183,17 @@ class PlayerViewModel @Inject constructor(
                 playbackStateHolder.onPlaybackOccurrenceTransition(mediaItem?.mediaId)
                 preparePlaybackAudioMetadataForMedia(mediaItem?.mediaId)
                 transitionSchedulerJob?.cancel()
-                lyricsStateHolder.cancelLoading()
+                // ⚡ 仅当歌曲确实发生变化时才取消歌词加载。
+                // playUrl 会先更新 StablePlayerState 再调用 setMediaItem，导致
+                // onMediaItemTransition 触发时 currentSongId 已等于 mediaItem.mediaId。
+                // 如果无条件 cancelLoading，会取消 playUrl 刚启动的歌词加载，
+                // 而 syncDisplayedMediaItemIfChanged 又因 songId 匹配而跳过，导致歌词永远不加载。
+                val currentSongIdForLyricsCheck = playbackStateHolder.stablePlayerState.value.currentSong?.id
+                val isSameSong = currentSongIdForLyricsCheck != null &&
+                    currentSongIdForLyricsCheck == mediaItem?.mediaId
+                if (!isSameSong) {
+                    lyricsStateHolder.cancelLoading()
+                }
 
                 // ⚡ 关键修复：对于 mediaItem != null 的切歌，立即调用
                 // syncDisplayedMediaItemIfChanged 来更新 state（同步执行，不协程）。
