@@ -6,9 +6,13 @@ import androidx.navigation.NavOptionsBuilder
 
 private fun NavController.isReadyForNavigation(): Boolean {
     return runCatching {
-        // We allow navigation if the current entry is at least STARTED.
-        // This is safer than strictly RESUMED as transitions can sometimes delay RESUMED state.
-        currentBackStackEntry?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true
+        // Only block navigation if the current entry is DESTROYED (the graph is shutting down).
+        // STARTED/RESUMED/CREATED are all fine — NavController will safely handle navigation even
+        // if the entry is in a transient state (e.g. during transition, after mini-player swipe
+        // dismiss, or while composables recompute). The previous STARTED check was too strict and
+        // caused navigation to be silently skipped when lifecycle wasn't fully restored, leading
+        // to the "bottom-nav only blurs but doesn't switch" bug after swipe-dismiss.
+        currentBackStackEntry?.lifecycle?.currentState != Lifecycle.State.DESTROYED
     }.getOrDefault(false)
 }
 

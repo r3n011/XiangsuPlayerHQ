@@ -546,6 +546,7 @@ class PlayerViewModel @Inject constructor(
     private val _sheetState = MutableStateFlow(PlayerSheetState.COLLAPSED)
     val sheetState: StateFlow<PlayerSheetState> = _sheetState.asStateFlow()
     private val _isSheetVisible = MutableStateFlow(false)
+    val isSheetVisible: StateFlow<Boolean> = _isSheetVisible.asStateFlow()
     private val _bottomBarHeight = MutableStateFlow(0)
     val bottomBarHeight: StateFlow<Int> = _bottomBarHeight.asStateFlow()
     private val _predictiveBackCollapseFraction = MutableStateFlow(0f)
@@ -4644,10 +4645,25 @@ class PlayerViewModel @Inject constructor(
                     playWhenReady = true,
                     totalDuration = effectiveStartSong.duration.coerceAtLeast(0L),
                     lyrics = null,
-                    isLoadingLyrics = false
+                    isLoadingLyrics = true
                 )
             }
             _isSheetVisible.value = true
+
+            // ⚡ 显式触发颜色提取和歌词加载。
+            // internalPlaySongs 在 setMediaItem 之前就更新了 StablePlayerState.currentSong，
+            // 导致 onMediaItemTransition → syncDisplayedMediaItemIfChanged 检测到 songId
+            // 已匹配而提前返回，跳过颜色提取和歌词加载。因此必须在此显式触发。
+            val artUriForColor = effectiveStartSong.albumArtUriString
+            if (!artUriForColor.isNullOrBlank()) {
+                viewModelScope.launch {
+                    themeStateHolder.extractAndGenerateColorScheme(
+                        artUriForColor.toUri(),
+                        artUriForColor
+                    )
+                }
+            }
+            loadLyricsForCurrentSong()
 
             val startMediaItem = buildResolvedPlaybackMediaItem(effectiveStartSong)
 

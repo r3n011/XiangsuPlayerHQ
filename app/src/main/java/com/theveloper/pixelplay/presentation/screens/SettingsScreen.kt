@@ -194,7 +194,8 @@ private fun PhoneSettingsScreen(
 
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
-    val hasMiniPlayer = stablePlayerState.currentSong?.id != null
+    val isSheetVisible by playerViewModel.isSheetVisible.collectAsStateWithLifecycle()
+    val hasMiniPlayer = stablePlayerState.currentSong?.id != null && isSheetVisible
     val launchTab = uiState.launchTab
     val useSmoothCorners by settingsViewModel.useSmoothCorners.collectAsStateWithLifecycle()
 
