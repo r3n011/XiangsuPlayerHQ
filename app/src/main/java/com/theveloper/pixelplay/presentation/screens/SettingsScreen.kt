@@ -279,6 +279,7 @@ private fun PhoneSettingsScreen(
                         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
                         MiniPlayerBottomSpacer
                     } else {
+                        NavBarContentHeight +
                         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                     }
                 ),
