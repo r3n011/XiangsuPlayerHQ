@@ -191,15 +191,25 @@ fun UnifiedPlayerSheetV2(
     }
 
     val isFavorite by playerViewModel.isCurrentSongFavorite.collectAsStateWithLifecycle()
+    val isSheetVisible by playerViewModel.isSheetVisible.collectAsStateWithLifecycle()
 
     // ⚡ Optimization: bridge the gap between tracks using a retained song.
     // When currentSong flips to null briefly during engine transitions or hydration,
     // this ensures showPlayerContentArea stays true and the UI remains mounted,
     // preventing a visual "flash" where the player disappears for ~1s.
+    // ⚠️ 但当用户主动 dismiss（横滑移除 mini-player）后，isSheetVisible 变为 false，
+    // 此时必须清空 retainedSong，否则 showPlayerContentArea 仍为 true，
+    // UnifiedPlayerSheetV2 的 Surface 继续全屏渲染并拦截底部导航栏点击，
+    // 导致"横滑移除 mini-player 后无法切换界面"。
     var retainedSong by remember { mutableStateOf<Song?>(null) }
     LaunchedEffect(infrequentPlayerState.currentSong?.id) {
         if (infrequentPlayerState.currentSong != null) {
             retainedSong = infrequentPlayerState.currentSong
+        }
+    }
+    LaunchedEffect(isSheetVisible) {
+        if (!isSheetVisible) {
+            retainedSong = null
         }
     }
     val activeSong = infrequentPlayerState.currentSong ?: retainedSong
