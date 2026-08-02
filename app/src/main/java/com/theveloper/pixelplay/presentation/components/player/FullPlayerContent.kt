@@ -106,7 +106,6 @@ import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.input.pointer.pointerInput
@@ -143,6 +142,7 @@ import com.theveloper.pixelplay.presentation.components.LyricsSheet
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSmoothProgress
 import com.theveloper.pixelplay.presentation.components.subcomps.FetchLyricsDialog
+import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 import com.theveloper.pixelplay.presentation.viewmodel.RadioMode
@@ -3463,8 +3463,8 @@ private fun RadioRecommendationSection(
             ?: emptyList()
     }
 
-    if (recommendations.isEmpty()) {
-        // 尚未加载到热门电台：显示直播状态
+    if (!isTabletOrLandscape || recommendations.isEmpty()) {
+        // 手机模式不显示热门电台推荐（仅平板/横屏展示）；或尚未加载到热门电台：显示直播状态
         RadioLiveProgressIndicator(
             isPlayingProvider = isPlayingProvider,
             onBaseColor = onBaseColor
@@ -3476,7 +3476,7 @@ private fun RadioRecommendationSection(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = if (isTabletOrLandscape) 252.dp else 84.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -3497,37 +3497,21 @@ private fun RadioRecommendationSection(
                 color = onBaseColor.copy(alpha = 0.75f)
             )
         }
-        if (isTabletOrLandscape) {
-            // 平板/横屏：竖向排列，可用空间大则显示更多行，超出可滚动
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(
-                    items = recommendations.take(10),
-                    key = { it.stationUuid }
-                ) { station ->
-                    RadioSuggestionCard(
-                        station = station,
-                        fillWidth = true,
-                        onClick = { onStationClick(station) }
-                    )
-                }
-            }
-        } else {
-            // 手机：横向滚动，卡片按内容宽度排列，一屏列数随可用宽度自适应
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(
-                    items = recommendations,
-                    key = { it.stationUuid }
-                ) { station ->
-                    RadioSuggestionCard(
-                        station = station,
-                        onClick = { onStationClick(station) }
-                    )
-                }
+        // 平板/横屏：媒体库风格列表（圆形封面 + 副标题 + 播放指示），取色跟随播放器
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            items(
+                items = recommendations.take(10),
+                key = { it.stationUuid }
+            ) { station ->
+                RadioSuggestionCard(
+                    station = station,
+                    isPlaying = currentSongId == "radio://${station.stationUuid}",
+                    onBaseColor = onBaseColor,
+                    onClick = { onStationClick(station) }
+                )
             }
         }
     }
@@ -3535,45 +3519,71 @@ private fun RadioRecommendationSection(
 
 /**
  * 广播播放器中的热门电台推荐卡片。
- * @param fillWidth 为 true 时卡片铺满整行（竖向排列场景），文本占用剩余宽度。
+ * 模仿媒体库音乐列表：圆形封面 + 标题/副标题 + 播放指示；
+ * 颜色跟随播放器取色（onBaseColor），而非应用主题色。
  */
 @Composable
 private fun RadioSuggestionCard(
     station: RadioStation,
-    fillWidth: Boolean = false,
+    isPlaying: Boolean,
+    onBaseColor: Color,
     onClick: () -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
-            .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier)
+            .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(colors.surfaceContainer.copy(alpha = 0.6f))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SmartImage(
-            model = station.favicon.takeIf { it.isNotBlank() },
-            contentDescription = station.name,
-            contentScale = ContentScale.Crop,
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.size(32.dp)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = station.name,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = colors.onSurface,
-            modifier = if (fillWidth) {
-                Modifier.weight(1f)
+        // 封面：电台 logo，缺失时显示收音机占位图标
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(onBaseColor.copy(alpha = 0.08f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (station.favicon.isNotBlank()) {
+                SmartImage(
+                    model = station.favicon,
+                    contentDescription = station.name,
+                    contentScale = ContentScale.Crop,
+                    shape = CircleShape,
+                    modifier = Modifier.fillMaxSize()
+                )
             } else {
-                Modifier.widthIn(max = 120.dp)
+                Icon(
+                    imageVector = Icons.Rounded.Radio,
+                    contentDescription = null,
+                    tint = onBaseColor.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
-        )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = station.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isPlaying) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (isPlaying) onBaseColor else onBaseColor.copy(alpha = 0.9f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = station.subtitle(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = onBaseColor.copy(alpha = 0.55f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (isPlaying) {
+            Spacer(Modifier.width(8.dp))
+            PlayingEqIcon(color = onBaseColor, isPlaying = true)
+        }
     }
 }
 

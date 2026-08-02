@@ -306,9 +306,11 @@
     <string name="radio_search">搜索</string>
     <string name="radio_no_results">没有找到相关电台</string>
     <string name="radio_retry">重试</string>
+    <string name="radio_more_countries">更多国家</string>
+    <string name="radio_country_picker_title">选择国家</string>
     <string name="radio_live_badge">LIVE</string>
     <string name="discover_sheet_title">发现</string>
-    <string name="discover_roaming_subtitle">进入跨设备漫游播放</string>
+    <string name="discover_roaming_subtitle">收听网易云漫游，为你随机推荐歌曲</string>
     <string name="discover_radio_subtitle">收听全球网络广播电台</string>
     <string name="radio_live_playing">直播电台</string>
     <string name="radio_connecting">连接中…</string>

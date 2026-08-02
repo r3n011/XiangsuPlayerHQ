@@ -171,6 +171,7 @@
     <string name="setcat_center_nav_discover">发现</string>
     <string name="setcat_center_nav_roaming">漫游</string>
     <string name="setcat_center_nav_radio">电台</string>
+    <string name="setcat_center_nav_none">不显示</string>
     <string name="setcat_navbar_corner_title">导航栏圆角半径</string>
     <string name="setcat_navbar_corner_subtitle">调整导航栏的圆角半径。</string>
     <string name="setcat_lyrics_screen">歌词界面</string>
@@ -563,7 +564,7 @@
     <string name="car_mode_action_search">搜索</string>
     <string name="car_mode_action_search_desc">查找歌曲</string>
     <string name="car_mode_action_roaming">漫游</string>
-    <string name="car_mode_action_roaming_desc">自动混音</string>
+    <string name="car_mode_action_roaming_desc">网易云漫游</string>
     <string name="car_mode_action_library">音乐库</string>
     <string name="car_mode_action_library_desc">你的音乐</string>
     <string name="car_mode_action_settings">设置</string>

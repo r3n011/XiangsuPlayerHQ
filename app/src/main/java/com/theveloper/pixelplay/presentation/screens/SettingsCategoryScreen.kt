@@ -884,7 +884,8 @@ fun SettingsCategoryScreen(
                                     options = mapOf(
                                         com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.DISCOVER.name to stringResource(R.string.setcat_center_nav_discover),
                                         com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.ROAMING.name to stringResource(R.string.setcat_center_nav_roaming),
-                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.RADIO.name to stringResource(R.string.setcat_center_nav_radio)
+                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.RADIO.name to stringResource(R.string.setcat_center_nav_radio),
+                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.NONE.name to stringResource(R.string.setcat_center_nav_none)
                                     ),
                                     selectedKey = uiState.centerNavButtonMode.name,
                                     onSelectionChanged = { key ->

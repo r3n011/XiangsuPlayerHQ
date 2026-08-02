@@ -10,7 +10,8 @@ package com.theveloper.pixelplay.data.preferences
 enum class CenterNavButtonMode(val storageKey: String) {
     DISCOVER("discover"),
     ROAMING("roaming"),
-    RADIO("radio");
+    RADIO("radio"),
+    NONE("none");
 
     companion object {
         fun fromStorageKey(key: String?): CenterNavButtonMode =

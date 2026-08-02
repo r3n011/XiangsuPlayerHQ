@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 
 package com.theveloper.pixelplay.presentation.screens
 
@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -32,15 +34,18 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +92,7 @@ fun RadioScreen(
     val currentTitle = stablePlayerState.currentSong?.title
 
     var keyword by remember { mutableStateOf("") }
+    var showCountrySheet by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
 
     val bgColors = listOf(
@@ -132,7 +138,8 @@ fun RadioScreen(
                 countries = uiState.countries,
                 selectedCode = uiState.countryCode,
                 onAllClick = { viewModel.loadTopStations() },
-                onCountryClick = { code, name -> viewModel.loadCountry(code, name) }
+                onCountryClick = { code, name -> viewModel.loadCountry(code, name) },
+                onMoreClick = { showCountrySheet = true }
             )
 
             when {
@@ -210,6 +217,18 @@ fun RadioScreen(
                     }
                 }
             }
+        }
+
+        if (showCountrySheet) {
+            RadioCountryPickerSheet(
+                countries = uiState.countries,
+                selectedCode = uiState.countryCode,
+                onDismiss = { showCountrySheet = false },
+                onCountryClick = { code, name ->
+                    showCountrySheet = false
+                    viewModel.loadCountry(code, name)
+                }
+            )
         }
     }
 }
@@ -346,12 +365,25 @@ private fun RadioModeChips(
     }
 }
 
+/** 常用国家快捷筛选（code 与 radio-browser.info 的 ISO 3166-1 一致） */
+private val CommonRadioCountries = listOf(
+    RadioCountry("CN", "中国"),
+    RadioCountry("US", "美国"),
+    RadioCountry("GB", "英国"),
+    RadioCountry("JP", "日本"),
+    RadioCountry("KR", "韩国"),
+    RadioCountry("DE", "德国"),
+    RadioCountry("FR", "法国"),
+    RadioCountry("AU", "澳大利亚")
+)
+
 @Composable
 private fun RadioCountryChips(
     countries: List<RadioCountry>,
     selectedCode: String?,
     onAllClick: () -> Unit,
-    onCountryClick: (String, String) -> Unit
+    onCountryClick: (String, String) -> Unit,
+    onMoreClick: () -> Unit
 ) {
     if (countries.isEmpty()) return
     LazyRow(
@@ -372,7 +404,7 @@ private fun RadioCountryChips(
                 )
             )
         }
-        items(countries, key = { it.code }) { country ->
+        items(CommonRadioCountries, key = { it.code }) { country ->
             FilterChip(
                 selected = selectedCode == country.code,
                 onClick = { onCountryClick(country.code, country.name) },
@@ -383,6 +415,116 @@ private fun RadioCountryChips(
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
+        }
+        item(key = "__more__") {
+            FilterChip(
+                selected = false,
+                onClick = onMoreClick,
+                label = { Text(text = stringResource(R.string.radio_more_countries)) },
+                shape = RoundedCornerShape(18.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    }
+}
+
+/** 国家选择弹窗：搜索 + 完整国家列表 */
+@Composable
+private fun RadioCountryPickerSheet(
+    countries: List<RadioCountry>,
+    selectedCode: String?,
+    onDismiss: () -> Unit,
+    onCountryClick: (String, String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(countries, query) {
+        if (query.isBlank()) countries
+        else countries.filter {
+            it.name.contains(query, ignoreCase = true) || it.code.contains(query, ignoreCase = true)
+        }
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.radio_country_picker_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(text = stringResource(R.string.radio_search_hint)) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp)
+            )
+            if (filtered.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.radio_no_results),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(filtered, key = { it.code }) { country ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(
+                                    if (selectedCode == country.code) {
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)
+                                    }
+                                )
+                                .clickable { onCountryClick(country.code, country.name) }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = country.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = country.code,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -483,13 +625,4 @@ private fun RadioEmptyState(
             }
         }
     }
-}
-
-private fun RadioStation.subtitle(): String {
-    val parts = mutableListOf<String>()
-    if (country.isNotBlank()) parts += country
-    if (codec.isNotBlank()) parts += codec
-    if (bitrate > 0) parts += "${bitrate}k"
-    if (language.isNotBlank()) parts += language
-    return parts.joinToString(" · ")
 }

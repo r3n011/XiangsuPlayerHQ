@@ -197,6 +197,7 @@
     <string name="setcat_center_nav_discover">Discover</string>
     <string name="setcat_center_nav_roaming">Roaming</string>
     <string name="setcat_center_nav_radio">Radio</string>
+    <string name="setcat_center_nav_none">Don\'t show</string>
     <string name="setcat_navbar_corner_title">NavBar Corner Radius</string>
     <string
         name="setcat_navbar_corner_subtitle"
@@ -661,7 +662,7 @@
     <string name="car_mode_action_search">Search</string>
     <string name="car_mode_action_search_desc">Find songs</string>
     <string name="car_mode_action_roaming">Roaming</string>
-    <string name="car_mode_action_roaming_desc">Auto mix</string>
+    <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
     <string name="car_mode_action_library">Library</string>
     <string name="car_mode_action_library_desc">Your music</string>
     <string name="car_mode_action_settings">Settings</string>

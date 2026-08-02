@@ -774,8 +774,8 @@ class MainActivity : ComponentActivity() {
         // 发现模式弹窗：让用户选择进入「漫游」或「电台」
         var showDiscoverSheet by remember { mutableStateOf(false) }
 
-        // 底部导航栏中间按钮：根据设置显示「发现 / 漫游 / 电台」
-        val centerNavItem = remember(centerNavButtonMode) {
+        // 底部导航栏中间按钮：根据设置显示「发现 / 漫游 / 电台」，或选择不显示
+        val centerNavItem: BottomNavItem? = remember(centerNavButtonMode) {
             when (centerNavButtonMode) {
                 CenterNavButtonMode.DISCOVER -> BottomNavItem(
                     "Discover", R.string.nav_bar_discover,
@@ -794,6 +794,7 @@ class MainActivity : ComponentActivity() {
                     imageVectorIcon = Icons.Rounded.Radio,
                     screen = Screen.Radio
                 )
+                CenterNavButtonMode.NONE -> null
             }
         }
 
@@ -804,15 +805,16 @@ class MainActivity : ComponentActivity() {
                 centerNavItem,
                 BottomNavItem("Library", R.string.nav_bar_library, R.drawable.rounded_library_music_24, R.drawable.round_library_music_24, screen = Screen.Library),
                 BottomNavItem("Settings", R.string.settings_top_bar_title, R.drawable.rounded_settings_24, R.drawable.rounded_settings_24, screen = Screen.Settings)
-            ).toImmutableList()
+            ).filterNotNull().toImmutableList()
         }
 
-        // 中间按钮点击行为：发现模式弹出选择，漫游模式直接进入漫游（电台模式为普通导航）
+        // 中间按钮点击行为：发现模式弹出选择，漫游模式直接进入漫游（电台模式为普通导航，不显示模式无中间按钮）
         val onCenterNavClick: () -> Unit = {
             when (centerNavButtonMode) {
                 CenterNavButtonMode.DISCOVER -> showDiscoverSheet = true
                 CenterNavButtonMode.ROAMING -> playerViewModel.startRoamingMode()
                 CenterNavButtonMode.RADIO -> Unit
+                CenterNavButtonMode.NONE -> Unit
             }
         }
         val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -838,6 +840,7 @@ class MainActivity : ComponentActivity() {
                 Screen.ArtistDetail.route,
                 Screen.DJSpace.route,
                 Screen.NavBarCrRad.route,
+                Screen.Radio.route,
                 Screen.About.route,
                 Screen.Stats.route,
                 Screen.EditTransition.route,

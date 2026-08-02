@@ -35,6 +35,23 @@ class RadioBrowserApi @Inject constructor(
             "at1.api.radio-browser.info"
         )
         private const val USER_AGENT = "PixelPlayer/8.9"
+        // 国家接口不可用（网络失败/解析异常）时的兜底常用国家列表，保证国家筛选始终可用
+        val FALLBACK_COUNTRIES: List<RadioCountry> = listOf(
+            RadioCountry("CN", "China"),
+            RadioCountry("US", "United States"),
+            RadioCountry("GB", "United Kingdom"),
+            RadioCountry("JP", "Japan"),
+            RadioCountry("DE", "Germany"),
+            RadioCountry("FR", "France"),
+            RadioCountry("AU", "Australia"),
+            RadioCountry("CA", "Canada"),
+            RadioCountry("RU", "Russia"),
+            RadioCountry("KR", "South Korea"),
+            RadioCountry("IN", "India"),
+            RadioCountry("IT", "Italy"),
+            RadioCountry("ES", "Spain"),
+            RadioCountry("BR", "Brazil")
+        )
     }
     private fun endpoints(path: String): List<String> =
         SERVERS.map { "https://$it$path" }

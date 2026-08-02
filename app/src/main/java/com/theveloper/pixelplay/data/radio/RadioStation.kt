@@ -38,6 +38,16 @@ data class RadioStation(
     val streamUrl: String
         get() = urlResolved.ifBlank { url }
 
+    /** 列表副标题：国家 · 编码 · 码率 · 语言 */
+    fun subtitle(): String {
+        val parts = mutableListOf<String>()
+        if (country.isNotBlank()) parts += country
+        if (codec.isNotBlank()) parts += codec
+        if (bitrate > 0) parts += "${bitrate}k"
+        if (language.isNotBlank()) parts += language
+        return parts.joinToString(" · ")
+    }
+
     companion object {
         fun fromJson(o: JSONObject): RadioStation? {
             val name = o.optString("name").trim()
