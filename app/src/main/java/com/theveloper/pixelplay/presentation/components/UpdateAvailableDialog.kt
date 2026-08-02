@@ -24,18 +24,13 @@ import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -55,19 +50,8 @@ fun UpdateAvailableDialog(
     onDismiss: () -> Unit,
     onDownload: (apkUrl: String) -> Unit
 ) {
-    val availableApks = remember(updateInfo) { updateInfo.availableApks() }
-    var selectedArch by rememberSaveable {
-        mutableStateOf(
-            when {
-                updateInfo.isLanzouSynced && availableApks.containsKey("64位 (arm64) - 蓝奏云") -> "64位 (arm64) - 蓝奏云"
-                availableApks.containsKey("64位 (arm64) - GitHub") -> "64位 (arm64) - GitHub"
-                availableApks.containsKey("通用版 - 蓝奏云") -> "通用版 - 蓝奏云"
-                availableApks.containsKey("通用版 (universal) - GitHub") -> "通用版 (universal) - GitHub"
-                availableApks.isNotEmpty() -> availableApks.keys.first()
-                else -> ""
-            }
-        )
-    }
+    // 只对比版本号，不区分架构，直接取第一个可用下载链接（优先蓝奏云，其次 GitHub）
+    val downloadUrl = remember(updateInfo) { updateInfo.availableApkUrls().firstOrNull().orEmpty() }
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
     val isDownloaded = downloadState is ApkDownloadInstaller.DownloadState.Downloaded
@@ -181,43 +165,6 @@ fun UpdateAvailableDialog(
                     }
                 }
 
-                // 架构选择区
-                if (availableApks.isNotEmpty()) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = blockShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = "选择安装包",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                availableApks.keys.forEach { archLabel ->
-                                    FilterChip(
-                                        selected = selectedArch == archLabel,
-                                        onClick = { selectedArch = archLabel },
-                                        label = { 
-                                            Text(
-                                                text = archLabel, 
-                                                style = MaterialTheme.typography.labelSmall,
-                                                maxLines = 1
-                                            ) 
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // 下载进度区
                 AnimatedVisibility(
                     visible = isDownloading || isDownloaded || isInstalling || isError,
@@ -287,7 +234,7 @@ fun UpdateAvailableDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    val canDownload = !isDownloading && !isInstalling && availableApks.isNotEmpty()
+                    val canDownload = !isDownloading && !isInstalling && downloadUrl.isNotBlank()
                     val downloadProgress = (downloadState as? ApkDownloadInstaller.DownloadState.Downloading)?.progress ?: 0f
                     
                     if (isDownloading) {
@@ -322,7 +269,7 @@ fun UpdateAvailableDialog(
                     } else {
                         Button(
                             onClick = {
-                                availableApks[selectedArch]?.let { onDownload(it) }
+                                downloadUrl.takeIf { it.isNotBlank() }?.let { onDownload(it) }
                             },
                             shape = actionShape,
                             enabled = canDownload,

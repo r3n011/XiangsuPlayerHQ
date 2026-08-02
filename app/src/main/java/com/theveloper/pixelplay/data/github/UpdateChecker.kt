@@ -66,29 +66,10 @@ class UpdateChecker @Inject constructor() {
 
                     val publishedAt = parseDateTime(release.published_at)
 
-                    // 解析 APK 下载链接：匹配 arm64-v8a (64位) 和 armeabi-v7a (32位)
-                    var apkArm64: String? = null
-                    var apkArmv7: String? = null
-                    var apkUniversal: String? = null
-
-                    release.assets.forEach { asset ->
-                        val lowerName = asset.name.lowercase()
-                        when {
-                            lowerName.endsWith(".apk") && lowerName.contains("arm64") -> {
-                                apkArm64 = asset.browser_download_url
-                            }
-                            lowerName.endsWith(".apk") && (lowerName.contains("armv7") || lowerName.contains("armeabi")) -> {
-                                apkArmv7 = asset.browser_download_url
-                            }
-                            lowerName.endsWith(".apk") && lowerName.contains("universal") -> {
-                                apkUniversal = asset.browser_download_url
-                            }
-                            lowerName.endsWith(".apk") && apkUniversal == null && apkArm64 == null && apkArmv7 == null -> {
-                                // 兜底：如果没有架构标识，取第一个 APK
-                                apkUniversal = asset.browser_download_url
-                            }
-                        }
-                    }
+                    // 解析 APK 下载链接：只取第一个 APK 资产（不区分架构）
+                    val apkUrl = release.assets
+                        .firstOrNull { it.name.lowercase().endsWith(".apk") }
+                        ?.browser_download_url
 
                     Result.success(
                         UpdateInfo(
@@ -97,9 +78,7 @@ class UpdateChecker @Inject constructor() {
                             releaseUrl = release.html_url,
                             releaseName = release.name ?: release.tag_name,
                             releaseNotes = release.body ?: "",
-                            apkUrlArm64 = apkArm64,
-                            apkUrlArmv7 = apkArmv7,
-                            apkUrlUniversal = apkUniversal
+                            apkUrl = apkUrl
                         )
                     )
                 } else {
@@ -133,9 +112,7 @@ class UpdateChecker @Inject constructor() {
         val releaseUrl: String,
         val releaseName: String,
         val releaseNotes: String,
-        val apkUrlArm64: String? = null,
-        val apkUrlArmv7: String? = null,
-        val apkUrlUniversal: String? = null,
+        val apkUrl: String? = null,
         val lanzouFiles: List<LanzouCloudApi.LanzouFileInfo> = emptyList(),
         val isLanzouSynced: Boolean = false  // 蓝奏云版本号是否与 GitHub 一致
     ) {
@@ -163,35 +140,16 @@ class UpdateChecker @Inject constructor() {
         }
 
         /**
-         * 获取可用的 APK 下载链接映射（架构 -> URL）
+         * 获取可用的 APK 下载链接列表（仅对比版本号，不区分架构）
          * 优先使用蓝奏云（如果已同步），否则使用 GitHub
          */
-        fun availableApks(): Map<String, String> {
-            val map = mutableMapOf<String, String>()
-            
-            // 如果蓝奏云已同步，优先使用蓝奏云
+        fun availableApkUrls(): List<String> {
+            val urls = mutableListOf<String>()
             if (isLanzouSynced && lanzouFiles.isNotEmpty()) {
-                lanzouFiles.forEach { file ->
-                    when {
-                        file.fileName.contains("arm64", ignoreCase = true) -> {
-                            map["64位 (arm64) - 蓝奏云"] = file.downloadUrl
-                        }
-                        file.fileName.contains("arm32", ignoreCase = true) -> {
-                            map["32位 (arm32) - 蓝奏云"] = file.downloadUrl
-                        }
-                        else -> {
-                            map["通用版 - 蓝奏云"] = file.downloadUrl
-                        }
-                    }
-                }
+                lanzouFiles.forEach { urls.add(it.downloadUrl) }
             }
-            
-            // 添加 GitHub 链接作为备选
-            apkUrlArmv7?.let { map["32位 (armv7) - GitHub"] = it }
-            apkUrlArm64?.let { map["64位 (arm64) - GitHub"] = it }
-            apkUrlUniversal?.let { map["通用版 (universal) - GitHub"] = it }
-            
-            return map
+            apkUrl?.let { urls.add(it) }
+            return urls
         }
 
         /**
