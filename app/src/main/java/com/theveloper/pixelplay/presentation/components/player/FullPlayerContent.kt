@@ -89,6 +89,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -104,6 +105,9 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -123,6 +127,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.res.stringResource
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.model.Artist
@@ -130,14 +135,18 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
+import com.theveloper.pixelplay.data.radio.RadioStation
 import com.theveloper.pixelplay.presentation.components.AlbumCarouselSection
 import com.theveloper.pixelplay.presentation.components.AutoScrollingTextOnDemand
 import com.theveloper.pixelplay.presentation.components.LocalMaterialTheme
 import com.theveloper.pixelplay.presentation.components.LyricsSheet
+import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSmoothProgress
 import com.theveloper.pixelplay.presentation.components.subcomps.FetchLyricsDialog
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
+import com.theveloper.pixelplay.presentation.viewmodel.RadioMode
+import com.theveloper.pixelplay.presentation.viewmodel.RadioViewModel
 import com.theveloper.pixelplay.presentation.focusmode.FocusModeScreen
 import com.theveloper.pixelplay.presentation.focusmode.FocusTimerSetupDialog
 import com.theveloper.pixelplay.presentation.focusmode.FocusTimerState
@@ -691,10 +700,20 @@ fun FullPlayerContent(
 
     val playerProgressSection: @Composable () -> Unit = {
         if (isRadioPlayback) {
-            // 广播电台为实时流：无可拖动进度，显示直播状态指示
-            RadioLiveProgressIndicator(
+            // 广播电台为实时流：无可拖动进度，显示热门电台推荐（可快速切换）
+            RadioRecommendationSection(
+                currentSongId = song.id,
                 isPlayingProvider = isPlayingProvider,
-                onBaseColor = playerOnBaseColor
+                onBaseColor = playerOnBaseColor,
+                onStationClick = { station ->
+                    playerViewModel.playUrl(
+                        url = station.streamUrl,
+                        title = station.name,
+                        artist = station.country.ifBlank { "Radio" },
+                        cover = station.favicon,
+                        songId = "radio://${station.stationUuid}"
+                    )
+                }
             )
         } else {
             FullPlayerProgressSection(
@@ -3418,6 +3437,145 @@ private fun BottomToggleRow(
 }
 
 // ─── 广播电台实时流专用组件 ─────────────────────────────────────────────
+
+/**
+ * 广播电台播放时的热门电台推荐区（替代直播状态指示）。
+ * 展示横向滚动的热门电台卡片，点击即可切换电台；
+ * 热门电台数据尚未加载完成时回退到直播状态指示。
+ */
+@Composable
+private fun RadioRecommendationSection(
+    currentSongId: String,
+    isPlayingProvider: () -> Boolean,
+    onBaseColor: Color,
+    onStationClick: (RadioStation) -> Unit
+) {
+    val radioViewModel: RadioViewModel = hiltViewModel()
+    val uiState by radioViewModel.uiState.collectAsStateWithLifecycle()
+    // 平板模式（或横屏）时竖向排列，手机上横向滚动
+    val isTabletOrLandscape = LocalConfiguration.current.screenWidthDp >= 600
+    // 仅展示热门（TOP）模式的电台，过滤掉当前正在播放的电台
+    val topStations = uiState.stations.takeIf { uiState.mode == RadioMode.TOP }
+    val recommendations = remember(topStations, currentSongId) {
+        topStations
+            ?.filter { currentSongId != "radio://${it.stationUuid}" }
+            ?.take(20)
+            ?: emptyList()
+    }
+
+    if (recommendations.isEmpty()) {
+        // 尚未加载到热门电台：显示直播状态
+        RadioLiveProgressIndicator(
+            isPlayingProvider = isPlayingProvider,
+            onBaseColor = onBaseColor
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = if (isTabletOrLandscape) 252.dp else 84.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Radio,
+                contentDescription = null,
+                tint = onBaseColor.copy(alpha = 0.7f),
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = stringResource(R.string.radio_recommendations),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.4.sp,
+                color = onBaseColor.copy(alpha = 0.75f)
+            )
+        }
+        if (isTabletOrLandscape) {
+            // 平板/横屏：竖向排列，可用空间大则显示更多行，超出可滚动
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(
+                    items = recommendations.take(10),
+                    key = { it.stationUuid }
+                ) { station ->
+                    RadioSuggestionCard(
+                        station = station,
+                        fillWidth = true,
+                        onClick = { onStationClick(station) }
+                    )
+                }
+            }
+        } else {
+            // 手机：横向滚动，卡片按内容宽度排列，一屏列数随可用宽度自适应
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    items = recommendations,
+                    key = { it.stationUuid }
+                ) { station ->
+                    RadioSuggestionCard(
+                        station = station,
+                        onClick = { onStationClick(station) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 广播播放器中的热门电台推荐卡片。
+ * @param fillWidth 为 true 时卡片铺满整行（竖向排列场景），文本占用剩余宽度。
+ */
+@Composable
+private fun RadioSuggestionCard(
+    station: RadioStation,
+    fillWidth: Boolean = false,
+    onClick: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier)
+            .clip(RoundedCornerShape(14.dp))
+            .background(colors.surfaceContainer.copy(alpha = 0.6f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SmartImage(
+            model = station.favicon.takeIf { it.isNotBlank() },
+            contentDescription = station.name,
+            contentScale = ContentScale.Crop,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.size(32.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = station.name,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = colors.onSurface,
+            modifier = if (fillWidth) {
+                Modifier.weight(1f)
+            } else {
+                Modifier.widthIn(max = 120.dp)
+            }
+        )
+    }
+}
 
 /**
  * 广播电台播放时的直播状态指示（替代可拖动的进度条）。

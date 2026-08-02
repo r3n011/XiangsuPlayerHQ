@@ -192,8 +192,11 @@
     <string
         name="setcat_compact_mode_subtitle"
     >Show only icons and reduce the navbar height.</string>
-    <string name="setcat_roaming_button_visible_title">Show Roaming Button</string>
-    <string name="setcat_roaming_button_visible_subtitle">Display the Roaming shortcut in the bottom navigation bar.</string>
+    <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
+    <string name="setcat_center_nav_discover">Discover</string>
+    <string name="setcat_center_nav_roaming">Roaming</string>
+    <string name="setcat_center_nav_radio">Radio</string>
     <string name="setcat_navbar_corner_title">NavBar Corner Radius</string>
     <string
         name="setcat_navbar_corner_subtitle"

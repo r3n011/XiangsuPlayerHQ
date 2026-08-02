@@ -97,7 +97,7 @@ private fun PlayerInternalNavigationItemsRow(
     compactMode: Boolean,
     bottomBarPadding: Dp,
     onSearchIconDoubleTap: () -> Unit,
-    onRoamingClick: () -> Unit = {}
+    onCenterNavClick: () -> Unit = {}
 ) {
     val navBarInsetPadding = sanitizeNavigationBarBottomInset(
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -181,16 +181,16 @@ private fun PlayerInternalNavigationItemsRow(
                     { Text(labelText) }
                 }
             }
-            val latestOnRoamingClick by rememberUpdatedState(onRoamingClick)
+            val latestOnCenterNavClick by rememberUpdatedState(onCenterNavClick)
             val onClickLambda: () -> Unit = remember(item.screen.route, navController, scope) {
                 click@{
                     val itemRoute = item.screen.route
                     val isSearchTab = itemRoute == Screen.Search.route
-                    val isRoamingTab = itemRoute == Screen.Roaming.route
+                    val isCenterActionTab = itemRoute == Screen.Roaming.route
                     val isAlreadySelected = latestCurrentRoute == itemRoute
 
-                    if (isRoamingTab) {
-                        latestOnRoamingClick()
+                    if (isCenterActionTab) {
+                        latestOnCenterNavClick()
                         return@click
                     }
 
@@ -269,7 +269,7 @@ fun PlayerInternalNavigationBar(
     compactMode: Boolean,
     bottomBarPadding: Dp = 0.dp,
     onSearchIconDoubleTap: () -> Unit = {},
-    onRoamingClick: () -> Unit = {}
+    onCenterNavClick: () -> Unit = {}
 ) {
     PlayerInternalNavigationItemsRow(
         navController = navController,
@@ -279,7 +279,7 @@ fun PlayerInternalNavigationBar(
         compactMode = compactMode,
         bottomBarPadding = bottomBarPadding,
         onSearchIconDoubleTap = onSearchIconDoubleTap,
-        onRoamingClick = onRoamingClick,
+        onCenterNavClick = onCenterNavClick,
         modifier = modifier
     )
 }

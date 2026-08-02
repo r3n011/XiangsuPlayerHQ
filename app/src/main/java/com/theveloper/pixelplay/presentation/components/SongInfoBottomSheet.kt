@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MusicNote
@@ -95,6 +96,7 @@ import com.theveloper.pixelplay.data.media.CoverArtUpdate
 import com.theveloper.pixelplay.ui.theme.MontserratFamily
 import com.theveloper.pixelplay.presentation.viewmodel.SongInfoBottomSheetViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SongInfoBottomSheetViewModel.ToneTarget
+import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
 
 import androidx.compose.ui.graphics.TransformOrigin
@@ -164,6 +166,13 @@ fun SongInfoBottomSheet(
     var pendingTonePermissionTarget by remember { mutableStateOf<ToneTarget?>(null) }
     val audioMeta by songInfoViewModel.audioMeta.collectAsStateWithLifecycle()
     val resolvedArtists by songInfoViewModel.resolvedArtists.collectAsStateWithLifecycle()
+    // ── 在线歌曲下载 ──────────────────────────────────────
+    val playerViewModel: PlayerViewModel = hiltViewModel()
+    val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
+    val isOnlineSong = remember(song) { playerViewModel.isOnlineSong(song) }
+    val songDownloadInfo = remember(song.id, downloads) {
+        downloads.find { it.songId == song.id }
+    }
     val isPixelPlayWatchAvailable by songInfoViewModel.isPixelPlayWatchAvailable.collectAsStateWithLifecycle()
     val isWatchAvailabilityResolved by songInfoViewModel.isWatchAvailabilityResolved.collectAsStateWithLifecycle()
     val isSendingToWatch by songInfoViewModel.isSendingToWatch.collectAsStateWithLifecycle()
@@ -552,6 +561,13 @@ fun SongInfoBottomSheet(
                                                 }
                                             }
                                         )
+
+                                        if (isOnlineSong) {
+                                            DownloadActionRow(
+                                                downloadInfo = songDownloadInfo,
+                                                onClick = { playerViewModel.downloadSong(song) }
+                                            )
+                                        }
 
                                         val shouldRenderWatchTransferRow =
                                             currentSongTransfer != null ||
@@ -1618,6 +1634,58 @@ private fun Row3Actions(
                 lineHeight = 20.sp
             )
         }
+    }
+}
+
+@Composable
+private fun DownloadActionRow(
+    downloadInfo: com.theveloper.pixelplay.data.service.http.MusicDownloadService.DownloadInfo?,
+    onClick: () -> Unit,
+) {
+    val isDownloading = downloadInfo != null && !downloadInfo.isComplete && !downloadInfo.isFailed
+    val label = when {
+        isDownloading -> stringResource(
+            R.string.song_info_downloading_progress,
+            downloadInfo.progress.toInt().coerceIn(0, 100)
+        )
+        downloadInfo?.isComplete == true -> stringResource(R.string.song_info_downloaded)
+        downloadInfo?.isFailed == true -> stringResource(R.string.song_info_download_failed)
+        else -> stringResource(R.string.song_info_download)
+    }
+    FilledTonalButton(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 66.dp),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        contentPadding = PaddingValues(horizontal = 10.dp),
+        shape = CircleShape,
+        enabled = !isDownloading,
+        onClick = onClick
+    ) {
+        if (isDownloading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 3.dp,
+                progress = { (downloadInfo.progress / 100f).coerceIn(0f, 1f) }
+            )
+        } else {
+            Icon(
+                modifier = Modifier.size(24.dp),
+                imageVector = Icons.Rounded.Download,
+                contentDescription = stringResource(R.string.song_info_download)
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        TightWrapText(
+            text = label,
+            modifier = Modifier.padding(end = 4.dp),
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 2,
+            lineHeight = 20.sp
+        )
     }
 }
 

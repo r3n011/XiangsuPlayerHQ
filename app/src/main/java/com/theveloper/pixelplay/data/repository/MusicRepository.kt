@@ -292,8 +292,10 @@ interface MusicRepository {
     /**
      * Saves a cloud/JS-engine song from basic media metadata (used when only title/artist are available,
      * e.g. during URL playback). Returns the generated song ID.
+     * @param isRadio 为 true 时表示广播电台：contentUriString 直接保留 http(s) 实时流地址，
+     *                以便从收藏播放时仍能识别为电台并通过 playUrl 播放。
      */
-    suspend fun saveCloudSongBasic(title: String, artist: String, album: String? = null, albumArt: String? = null, duration: Long = 0L, directPlayUrl: String? = null, neteaseIdRaw: Long? = null): Long
+    suspend fun saveCloudSongBasic(title: String, artist: String, album: String? = null, albumArt: String? = null, duration: Long = 0L, directPlayUrl: String? = null, neteaseIdRaw: Long? = null, isRadio: Boolean = false): Long
 
     /**
      * Finds a cloud song ID that was saved from basic data using title+artist match.

@@ -3,6 +3,14 @@ package com.theveloper.pixelplay.data.radio
 import org.json.JSONObject
 
 /**
+ * radio-browser.info 国家信息（用于国家筛选）。
+ */
+data class RadioCountry(
+    val code: String,
+    val name: String
+)
+
+/**
  * radio-browser.info 电台数据结构
  *
  * 对应 API 的 Station 结构体。字段遵循新版 API 规范：

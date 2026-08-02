@@ -3,6 +3,7 @@ package com.theveloper.pixelplay.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.radio.RadioBrowserApi
+import com.theveloper.pixelplay.data.radio.RadioCountry
 import com.theveloper.pixelplay.data.radio.RadioStation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -15,6 +16,7 @@ import javax.inject.Inject
 
 data class RadioUiState(
     val stations: List<RadioStation> = emptyList(),
+    val countries: List<RadioCountry> = emptyList(),
     val loading: Boolean = false,
     val error: String? = null,
     val mode: RadioMode = RadioMode.TOP,
@@ -39,6 +41,19 @@ class RadioViewModel @Inject constructor(
 
     init {
         loadTopStations()
+        loadCountries()
+    }
+
+    /** 加载国家列表（用于国家筛选 chips），失败不阻塞主流程 */
+    fun loadCountries() {
+        viewModelScope.launch {
+            try {
+                val countries = api.getCountries(limit = 30)
+                _uiState.value = _uiState.value.copy(countries = countries)
+            } catch (e: Exception) {
+                Timber.w(e, "RadioViewModel: 加载国家列表失败")
+            }
+        }
     }
 
     fun loadTopStations() {

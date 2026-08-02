@@ -51,6 +51,7 @@ import javax.inject.Inject
 
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
+import com.theveloper.pixelplay.data.preferences.CenterNavButtonMode
 import com.theveloper.pixelplay.data.ai.GeminiModel
 import com.theveloper.pixelplay.data.ai.provider.AiClientFactory
 import com.theveloper.pixelplay.data.ai.provider.AiProvider
@@ -130,7 +131,7 @@ data class SettingsUiState(
     val songFilterKeywords: List<UserPreferencesRepository.SongFilterKeyword> = emptyList(),
     val showLyricsTrackInfo: Boolean = true,
     val carModeEnabled: Boolean = false,
-    val roamingButtonVisible: Boolean = true,
+    val centerNavButtonMode: CenterNavButtonMode = CenterNavButtonMode.DISCOVER,
     val downloadPath: String = Environment.DIRECTORY_MUSIC,
     val transcodeStrategy: UserPreferencesRepository.TranscodeStrategy = UserPreferencesRepository.TranscodeStrategy.STREAMING,
     val transcodeCacheSizeLimitMb: Int = UserPreferencesRepository.DEFAULT_TRANSCODE_CACHE_LIMIT_MB,
@@ -643,8 +644,8 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            userPreferencesRepository.roamingButtonVisibleFlow.collect { visible ->
-                _uiState.update { it.copy(roamingButtonVisible = visible) }
+            userPreferencesRepository.centerNavButtonModeFlow.collect { mode ->
+                _uiState.update { it.copy(centerNavButtonMode = mode) }
             }
         }
 
@@ -1651,9 +1652,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setRoamingButtonVisible(visible: Boolean) {
+    fun setCenterNavButtonMode(mode: CenterNavButtonMode) {
         viewModelScope.launch {
-            userPreferencesRepository.setRoamingButtonVisible(visible)
+            userPreferencesRepository.setCenterNavButtonMode(mode)
         }
     }
 

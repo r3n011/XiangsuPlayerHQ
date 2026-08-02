@@ -186,6 +186,10 @@
     <string name="song_info_audio_format_label">Song info</string>
     <string name="song_info_cd_provider">Provider</string>
     <string name="song_info_cd_file">File</string>
+    <string name="song_info_download">Download</string>
+    <string name="song_info_downloading_progress">Downloading %1$d%%</string>
+    <string name="song_info_downloaded">Downloaded</string>
+    <string name="song_info_download_failed">Download failed</string>
     <string name="multi_selection_songs_count_upper">%1$d SONGS</string>
     <string name="multi_selection_songs_selected">selected</string>
     <string name="multi_selection_playlists_count_upper">%1$d PLAYLISTS</string>

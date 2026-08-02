@@ -145,8 +145,8 @@ internal fun MiniPlayerContentInternal(
             // ⚡ 只在绘制阶段读取进度，不会触发子树重新组合或重新布局。
             .drawWithCache {
                 onDrawBehind {
-                    // 正在获取播放链接时不绘制歌曲进度条
-                    if (isPreparingPlayback) return@onDrawBehind
+                    // 正在获取播放链接、或播放广播实时流时不绘制歌曲进度条
+                    if (isPreparingPlayback || song.isRadioStation) return@onDrawBehind
                     val fraction = progressFractionProvider()
                     if (fraction <= 0f) return@onDrawBehind
                     val width = this.size.width

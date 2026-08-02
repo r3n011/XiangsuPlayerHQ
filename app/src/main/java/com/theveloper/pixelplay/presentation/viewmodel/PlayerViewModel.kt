@@ -2689,6 +2689,17 @@ class PlayerViewModel @Inject constructor(
         playlistId: String? = null,
         indexInQueue: Int? = null
     ) {
+        // 广播电台（含收藏中持久化的电台）：实时流无法进普通队列，直接走 playUrl
+        if (song.isRadioStation) {
+            playUrl(
+                url = song.contentUriString,
+                title = song.title,
+                artist = song.artist,
+                cover = song.albumArtUriString.orEmpty(),
+                songId = "radio://favorite"
+            )
+            return
+        }
         if (cancelPendingQueueBuild) {
             cancelPendingFullQueuePlayback()
         }
@@ -5010,6 +5021,8 @@ class PlayerViewModel @Inject constructor(
         // Already persisted?
         musicRepository.getCloudSongIdByTitleArtist(title, artist)?.let { return it }
 
+        val isRadio = song.id.startsWith("radio://")
+
         // 提取可直接播放的 http(s) URL 作为 directPlayUrl
         val directPlayUrl = if (
             song.contentUriString.startsWith("http://", ignoreCase = true) ||
@@ -5028,7 +5041,8 @@ class PlayerViewModel @Inject constructor(
             albumArt = song.albumArtUriString,
             duration = song.duration,
             directPlayUrl = directPlayUrl,
-            neteaseIdRaw = song.neteaseId
+            neteaseIdRaw = song.neteaseId,
+            isRadio = isRadio
         )
         return songId.toString()
     }

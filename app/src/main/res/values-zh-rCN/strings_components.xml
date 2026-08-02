@@ -153,6 +153,10 @@
     <string name="song_info_tab_details">详情</string>
     <string name="song_info_tab_info_badge">信息</string>
     <string name="cd_details_tab">详情</string>
+    <string name="song_info_download">下载</string>
+    <string name="song_info_downloading_progress">下载中 %1$d%%</string>
+    <string name="song_info_downloaded">已下载</string>
+    <string name="song_info_download_failed">下载失败</string>
 
     <!-- Multi-selection bottom sheet -->
     <string name="multi_selection_songs_count_upper">%1$d 首歌曲</string>

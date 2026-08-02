@@ -37,7 +37,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -446,8 +445,7 @@ fun HomeScreen(
                                         startAtZero = true,
                                     )
                                 }
-                            },
-                            onRadioClick = { navController.navigateSafely(Screen.Radio.route) }
+                            }
                         )
                     }
                 }
@@ -1007,8 +1005,7 @@ private fun YourMixEmptyPlaceholder(
 fun YourMixHeader(
     song: String,
     isShuffleEnabled: Boolean = false,
-    onPlayShuffled: () -> Unit,
-    onRadioClick: (() -> Unit)? = null
+    onPlayShuffled: () -> Unit
 ) {
     val buttonCorners = 68.dp
     val colors = MaterialTheme.colorScheme
@@ -1049,32 +1046,6 @@ fun YourMixHeader(
                 .padding(end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 📻 网络广播入口：位于随机播放按钮左侧，与随机播放按钮同尺寸同造型
-            if (onRadioClick != null) {
-                LargeExtendedFloatingActionButton(
-                    modifier = Modifier,
-                    onClick = onRadioClick,
-                    containerColor = colors.secondaryContainer,
-                    contentColor = colors.onSecondaryContainer,
-                    shape = AbsoluteSmoothCornerShape(
-                        cornerRadiusTL = buttonCorners,
-                        smoothnessAsPercentTR = 60,
-                        cornerRadiusBR = buttonCorners,
-                        smoothnessAsPercentTL = 60,
-                        cornerRadiusBL = buttonCorners,
-                        smoothnessAsPercentBR = 60,
-                        cornerRadiusTR = buttonCorners,
-                        smoothnessAsPercentBL = 60,
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Radio,
-                        contentDescription = stringResource(R.string.cd_radio_open),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-            }
             LargeExtendedFloatingActionButton(
                 modifier = Modifier,
                 onClick = onPlayShuffled,

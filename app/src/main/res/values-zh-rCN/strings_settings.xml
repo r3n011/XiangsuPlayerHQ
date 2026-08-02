@@ -166,8 +166,11 @@
     <string
         name="setcat_compact_mode_subtitle"
     >仅显示图标并降低导航栏高度。</string>
-    <string name="setcat_roaming_button_visible_title">显示漫游按钮</string>
-    <string name="setcat_roaming_button_visible_subtitle">在底部导航栏显示漫游快捷入口。</string>
+    <string name="setcat_center_nav_title">中间按钮</string>
+    <string name="setcat_center_nav_subtitle">选择底部导航栏中间按钮的功能。</string>
+    <string name="setcat_center_nav_discover">发现</string>
+    <string name="setcat_center_nav_roaming">漫游</string>
+    <string name="setcat_center_nav_radio">电台</string>
     <string name="setcat_navbar_corner_title">导航栏圆角半径</string>
     <string name="setcat_navbar_corner_subtitle">调整导航栏的圆角半径。</string>
     <string name="setcat_lyrics_screen">歌词界面</string>

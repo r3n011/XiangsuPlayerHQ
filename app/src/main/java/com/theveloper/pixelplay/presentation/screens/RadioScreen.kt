@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -61,9 +61,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.radio.RadioCountry
 import com.theveloper.pixelplay.data.radio.RadioStation
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
+import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.RadioMode
 import com.theveloper.pixelplay.presentation.viewmodel.RadioViewModel
@@ -125,6 +127,14 @@ fun RadioScreen(
                 onTopClick = { viewModel.loadTopStations() }
             )
 
+            // 国家列表筛选
+            RadioCountryChips(
+                countries = uiState.countries,
+                selectedCode = uiState.countryCode,
+                onAllClick = { viewModel.loadTopStations() },
+                onCountryClick = { code, name -> viewModel.loadCountry(code, name) }
+            )
+
             when {
                 uiState.loading -> {
                     Box(
@@ -172,11 +182,11 @@ fun RadioScreen(
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
-                            top = 8.dp,
+                            top = 4.dp,
                             bottom = MiniPlayerHeight +
                                 WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                         ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         items(
                             items = uiState.stations,
@@ -337,68 +347,109 @@ private fun RadioModeChips(
 }
 
 @Composable
+private fun RadioCountryChips(
+    countries: List<RadioCountry>,
+    selectedCode: String?,
+    onAllClick: () -> Unit,
+    onCountryClick: (String, String) -> Unit
+) {
+    if (countries.isEmpty()) return
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "__all__") {
+            FilterChip(
+                selected = selectedCode == null,
+                onClick = onAllClick,
+                label = { Text(text = stringResource(R.string.radio_all)) },
+                shape = RoundedCornerShape(18.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+        items(countries, key = { it.code }) { country ->
+            FilterChip(
+                selected = selectedCode == country.code,
+                onClick = { onCountryClick(country.code, country.name) },
+                label = { Text(text = country.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                shape = RoundedCornerShape(18.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    }
+}
+
+@Composable
 private fun RadioStationCard(
     station: RadioStation,
     isPlaying: Boolean,
     onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val containerColor = if (isPlaying) colors.primaryContainer.copy(alpha = 0.46f) else colors.surfaceContainer
-    val contentColor = if (isPlaying) colors.primary else colors.onSurface
 
-    androidx.compose.material3.Card(
+    // 模仿媒体库音乐列表的显示方式：圆形封面 + 标题/副标题 + 播放指示
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = containerColor),
-        elevation = androidx.compose.material3.CardDefaults.cardElevation(0.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // 封面：电台 logo，缺失时显示收音机占位图标
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .background(colors.surfaceVariant, CircleShape),
+            contentAlignment = Alignment.Center
         ) {
-            SmartImage(
-                model = station.favicon.takeIf { it.isNotBlank() },
-                contentDescription = station.name,
-                contentScale = ContentScale.Crop,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = station.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Normal,
-                    color = contentColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = station.subtitle(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = contentColor.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(colors.primary.copy(alpha = if (isPlaying) 1f else 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
+            if (station.favicon.isNotBlank()) {
+                SmartImage(
+                    model = station.favicon,
                     contentDescription = station.name,
-                    tint = if (isPlaying) colors.onPrimary else colors.primary,
-                    modifier = Modifier.size(22.dp)
+                    contentScale = ContentScale.Crop,
+                    shape = CircleShape,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Radio,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(24.dp)
                 )
             }
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = station.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isPlaying) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (isPlaying) colors.primary else colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = station.subtitle(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (isPlaying) {
+            Spacer(Modifier.width(8.dp))
+            PlayingEqIcon(color = colors.primary, isPlaying = true)
         }
     }
 }

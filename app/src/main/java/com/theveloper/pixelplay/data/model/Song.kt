@@ -65,6 +65,22 @@ data class Song(
             ?: artists.firstOrNull()
             ?: ArtistRef(id = artistId, name = artist, isPrimary = true)
 
+    /**
+     * 是否为广播电台（radio-browser.info）歌曲。
+     * 判断依据：
+     * - 播放中的电台歌曲 id 以 radio:// 开头；
+     * - 收藏中持久化的电台歌曲 contentUriString 为可直接播放的 http(s) 实时流，
+     *   且 path 与 contentUriString 相同（与云歌曲 cloud:///netease:// 区分）。
+     */
+    val isRadioStation: Boolean
+        get() {
+            if (id.startsWith("radio://")) return true
+            val contentUri = contentUriString
+            val isHttpUri = contentUri.startsWith("http://", ignoreCase = true) ||
+                contentUri.startsWith("https://", ignoreCase = true)
+            return isHttpUri && path == contentUri
+        }
+
     companion object {
         fun emptySong(): Song {
             return Song(

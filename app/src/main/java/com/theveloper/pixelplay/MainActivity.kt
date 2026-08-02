@@ -48,6 +48,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.isSystemInDarkTheme
 import dev.chrisbanes.haze.hazeEffect
@@ -68,15 +69,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Newspaper
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -142,6 +149,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.theveloper.pixelplay.data.github.GitHubAnnouncementPropertiesService
 import com.theveloper.pixelplay.data.github.PlayStoreAnnouncementRemoteConfig
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
+import com.theveloper.pixelplay.data.preferences.CenterNavButtonMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.sanitizeNavBarCornerRadius
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
@@ -754,6 +762,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @androidx.annotation.OptIn(UnstableApi::class)
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun MainUI(playerViewModel: PlayerViewModel, navController: NavHostController) {
         Trace.beginSection("MainActivity.MainUI")
@@ -761,18 +770,50 @@ class MainActivity : ComponentActivity() {
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
-        val roamingButtonVisible by userPreferencesRepository.roamingButtonVisibleFlow.collectAsStateWithLifecycle(initialValue = true)
+        val centerNavButtonMode by userPreferencesRepository.centerNavButtonModeFlow.collectAsStateWithLifecycle(initialValue = CenterNavButtonMode.DISCOVER)
+        // 发现模式弹窗：让用户选择进入「漫游」或「电台」
+        var showDiscoverSheet by remember { mutableStateOf(false) }
 
-        val commonNavItems = remember(roamingButtonVisible) {
+        // 底部导航栏中间按钮：根据设置显示「发现 / 漫游 / 电台」
+        val centerNavItem = remember(centerNavButtonMode) {
+            when (centerNavButtonMode) {
+                CenterNavButtonMode.DISCOVER -> BottomNavItem(
+                    "Discover", R.string.nav_bar_discover,
+                    null, null,
+                    imageVectorIcon = Icons.Rounded.Explore,
+                    screen = Screen.Roaming
+                )
+                CenterNavButtonMode.ROAMING -> BottomNavItem(
+                    "Roaming", R.string.nav_bar_roaming,
+                    R.drawable.rounded_play_arrow_24, R.drawable.rounded_play_arrow_filled_24,
+                    screen = Screen.Roaming
+                )
+                CenterNavButtonMode.RADIO -> BottomNavItem(
+                    "Radio", R.string.nav_bar_radio,
+                    null, null,
+                    imageVectorIcon = Icons.Rounded.Radio,
+                    screen = Screen.Radio
+                )
+            }
+        }
+
+        val commonNavItems = remember(centerNavItem) {
             persistentListOf(
                 BottomNavItem("Home", R.string.nav_bar_home, R.drawable.rounded_home_24, R.drawable.home_24_rounded_filled, screen = Screen.Home),
                 BottomNavItem("Search", R.string.nav_bar_search, R.drawable.rounded_search_24, R.drawable.rounded_search_24, screen = Screen.Search),
-                if (roamingButtonVisible) {
-                    BottomNavItem("Roaming", R.string.nav_bar_roaming, R.drawable.rounded_play_arrow_24, R.drawable.rounded_play_arrow_filled_24, screen = Screen.Roaming)
-                } else null,
+                centerNavItem,
                 BottomNavItem("Library", R.string.nav_bar_library, R.drawable.rounded_library_music_24, R.drawable.round_library_music_24, screen = Screen.Library),
                 BottomNavItem("Settings", R.string.settings_top_bar_title, R.drawable.rounded_settings_24, R.drawable.rounded_settings_24, screen = Screen.Settings)
-            ).filterNotNull().toImmutableList()
+            ).toImmutableList()
+        }
+
+        // 中间按钮点击行为：发现模式弹出选择，漫游模式直接进入漫游（电台模式为普通导航）
+        val onCenterNavClick: () -> Unit = {
+            when (centerNavButtonMode) {
+                CenterNavButtonMode.DISCOVER -> showDiscoverSheet = true
+                CenterNavButtonMode.ROAMING -> playerViewModel.startRoamingMode()
+                CenterNavButtonMode.RADIO -> Unit
+            }
         }
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
@@ -863,7 +904,13 @@ class MainActivity : ComponentActivity() {
         val scopedHapticFeedback = remember(platformHapticFeedback, appHapticsConfig.enabled) {
             if (appHapticsConfig.enabled) platformHapticFeedback else NoOpHapticFeedback
         }
-        val hazeState = remember { dev.chrisbanes.haze.HazeState() }
+        val hazeState = remember {
+            // RenderScript 模糊在部分设备/软件渲染环境下不可靠（会因 RenderScript.validate() 空指针崩溃）。
+            // 仅在 SDK>=31 且窗口硬件加速（保证 haze 走 RenderEffect 实现）时才启用模糊，
+            // 否则退回 Scrim 着色，避免触发 RenderScript 崩溃路径。
+            val blurSafe = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && rootView.isHardwareAccelerated
+            dev.chrisbanes.haze.HazeState(initialBlurEnabled = blurSafe)
+        }
 
         val systemNavBarInset = sanitizeNavigationBarBottomInset(
             WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -1003,7 +1050,7 @@ class MainActivity : ComponentActivity() {
                             navItems = commonNavItems,
                             currentRoute = currentRoute,
                             navRailProgressState = navRailProgressState,
-                            onRoamingClick = { playerViewModel.startRoamingMode() }
+                            onCenterNavClick = onCenterNavClick
                         )
                     }
 
@@ -1033,7 +1080,8 @@ class MainActivity : ComponentActivity() {
                                         navBarHeight = navBarHeight,
                                         navBarOccupiedHeight = navBarOccupiedHeight,
                                         horizontalPadding = horizontalPadding,
-                                        bottomNavBarProgressState = bottomNavBarProgressState
+                                        bottomNavBarProgressState = bottomNavBarProgressState,
+                                        onCenterNavClick = onCenterNavClick
                                     )
                                 }
                             }
@@ -1240,6 +1288,49 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
+
+                // 发现模式弹窗：选择进入「漫游」或「电台」
+                if (showDiscoverSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showDiscoverSheet = false },
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .padding(bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.discover_sheet_title),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            )
+                            DiscoverOptionRow(
+                                icon = { Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.primary) },
+                                title = stringResource(R.string.setcat_center_nav_roaming),
+                                subtitle = stringResource(R.string.discover_roaming_subtitle),
+                                onClick = {
+                                    showDiscoverSheet = false
+                                    playerViewModel.startRoamingMode()
+                                }
+                            )
+                            DiscoverOptionRow(
+                                icon = { Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.primary) },
+                                title = stringResource(R.string.setcat_center_nav_radio),
+                                subtitle = stringResource(R.string.discover_radio_subtitle),
+                                onClick = {
+                                    showDiscoverSheet = false
+                                    navController.navigateSafely(Screen.Radio.route)
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1336,7 +1427,8 @@ Trace.endSection()
         navBarHeight: androidx.compose.ui.unit.Dp,
         navBarOccupiedHeight: androidx.compose.ui.unit.Dp,
         horizontalPadding: androidx.compose.ui.unit.Dp,
-        bottomNavBarProgressState: androidx.compose.runtime.State<Float>
+        bottomNavBarProgressState: androidx.compose.runtime.State<Float>,
+        onCenterNavClick: () -> Unit = {}
     ) {
         // 使用 Stable 参数,Compose 可以在参数不变时跳过重组
         val showPlayerContentArea = currentSongId != null
@@ -1462,7 +1554,7 @@ Trace.endSection()
                     compactMode = navBarCompactMode,
                     bottomBarPadding = bottomBarPadding,
                     onSearchIconDoubleTap = onSearchIconDoubleTap,
-                    onRoamingClick = { playerViewModel.startRoamingMode() },
+                    onCenterNavClick = onCenterNavClick,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
@@ -1487,7 +1579,7 @@ Trace.endSection()
         navItems: kotlinx.collections.immutable.ImmutableList<BottomNavItem>,
         currentRoute: String?,
         navRailProgressState: androidx.compose.runtime.State<Float>,
-        onRoamingClick: () -> Unit = {}
+        onCenterNavClick: () -> Unit = {}
     ) {
         NavigationRail(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -1502,11 +1594,11 @@ Trace.endSection()
         ) {
             navItems.forEach { item ->
                 val selected = currentRoute != null && currentRoute == item.screen.route
-                val isRoaming = item.screen.route == Screen.Roaming.route
+                val isCenterAction = item.screen.route == Screen.Roaming.route
                 val onClickLambda: () -> Unit = remember(item.screen.route, navController) {
                     {
-                        if (isRoaming) {
-                            onRoamingClick()
+                        if (isCenterAction) {
+                            onCenterNavClick()
                         } else {
                             navController.navigateSafely(item.screen.route) {
                                 popUpTo(navController.graph.startDestinationId) {
@@ -1589,6 +1681,60 @@ Trace.endSection()
                             )
                         }
                     }
+                )
+            }
+        }
+    }
+
+    /**
+     * 发现弹窗中的选项行（漫游 / 电台）。
+     */
+    @Composable
+    private fun DiscoverOptionRow(
+        icon: @Composable () -> Unit,
+        title: String,
+        subtitle: String,
+        onClick: () -> Unit
+    ) {
+        val colors = MaterialTheme.colorScheme
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(20.dp),
+            color = colors.surfaceContainerHigh,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(colors.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    icon()
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurface
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant
                 )
             }
         }

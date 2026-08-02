@@ -298,7 +298,7 @@ class UserPreferencesRepository @Inject constructor(
         val CAR_MODE_ENABLED = booleanPreferencesKey("car_mode_enabled")
 
         // Navigation bar
-        val ROAMING_BUTTON_VISIBLE = booleanPreferencesKey("roaming_button_visible")
+        val CENTER_NAV_BUTTON_MODE = stringPreferencesKey("center_nav_button_mode")
 
         // Download settings
         val DOWNLOAD_PATH = stringPreferencesKey("download_path")
@@ -1704,11 +1704,11 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     // ─── Navigation Bar ───────────────────────────────────────────────────────
 
-    val roamingButtonVisibleFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.ROAMING_BUTTON_VISIBLE] ?: true }
+    val centerNavButtonModeFlow: Flow<CenterNavButtonMode> =
+        pref { CenterNavButtonMode.fromStorageKey(it[PreferencesKeys.CENTER_NAV_BUTTON_MODE]) }
 
-    suspend fun setRoamingButtonVisible(visible: Boolean) {
-        dataStore.edit { it[PreferencesKeys.ROAMING_BUTTON_VISIBLE] = visible }
+    suspend fun setCenterNavButtonMode(mode: CenterNavButtonMode) {
+        dataStore.edit { it[PreferencesKeys.CENTER_NAV_BUTTON_MODE] = mode.storageKey }
     }
 
     // ─── Download Settings ────────────────────────────────────────────────────

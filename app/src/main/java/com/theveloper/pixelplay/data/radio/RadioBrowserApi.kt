@@ -36,7 +36,6 @@ class RadioBrowserApi @Inject constructor(
         )
         private const val USER_AGENT = "PixelPlayer/8.9"
     }
-
     private fun endpoints(path: String): List<String> =
         SERVERS.map { "https://$it$path" }
 
@@ -110,6 +109,25 @@ class RadioBrowserApi @Inject constructor(
             "hidebroken=true&order=clickcount&reverse=true&limit=$limit"
         val arr = getJsonArray(path) ?: return emptyList()
         return arr.toStations()
+    }
+
+    /**
+     * 国家列表（按电台数量排序）
+     * /json/countries?order=stationcount&reverse=true&limit={limit}
+     */
+    suspend fun getCountries(limit: Int = 30): List<RadioCountry> {
+        val path = "/json/countries?order=stationcount&reverse=true&limit=$limit"
+        val arr = getJsonArray(path) ?: return emptyList()
+        val list = ArrayList<RadioCountry>(arr.length())
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            val code = obj.optString("iso_3166_1").trim().uppercase()
+            val name = obj.optString("name").trim()
+            if (code.isNotBlank() && name.isNotBlank()) {
+                list += RadioCountry(code = code, name = name)
+            }
+        }
+        return list
     }
 
     /**

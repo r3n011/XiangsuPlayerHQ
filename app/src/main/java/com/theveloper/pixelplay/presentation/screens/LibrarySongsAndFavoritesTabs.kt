@@ -275,6 +275,7 @@ fun LibraryFavoritesTab(
                                     isSelected = selectedSongIds.contains(song.id),
                                     selectionIndex = if (isSelectionMode) getSelectionIndex(song.id) else null,
                                     isSelectionMode = isSelectionMode,
+                                    isRadio = song.isRadioStation,
                                     onLongPress = { onSongLongPress(song) },
                                     onClick = {
                                         if (isSelectionMode) {
@@ -395,7 +396,8 @@ private fun LibraryFavoritesTabCustomOrderContent(
                                 onLongPress = { onSongLongPress(song) },
                                 isSelected = isSelected,
                                 selectionIndex = if (isSelectionMode) getSelectionIndex(song.id) else null,
-                                isSelectionMode = isSelectionMode
+                                isSelectionMode = isSelectionMode,
+                                isRadio = song.isRadioStation
                             )
                         }
                     }

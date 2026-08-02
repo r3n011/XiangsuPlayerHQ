@@ -80,6 +80,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -877,18 +878,21 @@ fun SettingsCategoryScreen(
                                         )
                                     }
                                 )
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_roaming_button_visible_title),
-                                    subtitle = stringResource(R.string.setcat_roaming_button_visible_subtitle),
-                                    checked = uiState.roamingButtonVisible,
-                                    onCheckedChange = { settingsViewModel.setRoamingButtonVisible(it) },
-                                    leadingIcon = {
-                                        Icon(
-                                            painterResource(R.drawable.rounded_play_arrow_24),
-                                            null,
-                                            tint = MaterialTheme.colorScheme.secondary
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_center_nav_title),
+                                    description = stringResource(R.string.setcat_center_nav_subtitle),
+                                    options = mapOf(
+                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.DISCOVER.name to stringResource(R.string.setcat_center_nav_discover),
+                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.ROAMING.name to stringResource(R.string.setcat_center_nav_roaming),
+                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.RADIO.name to stringResource(R.string.setcat_center_nav_radio)
+                                    ),
+                                    selectedKey = uiState.centerNavButtonMode.name,
+                                    onSelectionChanged = { key ->
+                                        settingsViewModel.setCenterNavButtonMode(
+                                            com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.valueOf(key)
                                         )
-                                    }
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.Explore, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_navbar_corner_title),

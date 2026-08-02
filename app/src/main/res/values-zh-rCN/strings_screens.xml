@@ -302,12 +302,17 @@
     <string name="radio_title">广播</string>
     <string name="radio_search_hint">搜索电台、国家或标签</string>
     <string name="radio_top">热门</string>
+    <string name="radio_all">全部</string>
     <string name="radio_search">搜索</string>
     <string name="radio_no_results">没有找到相关电台</string>
     <string name="radio_retry">重试</string>
     <string name="radio_live_badge">LIVE</string>
+    <string name="discover_sheet_title">发现</string>
+    <string name="discover_roaming_subtitle">进入跨设备漫游播放</string>
+    <string name="discover_radio_subtitle">收听全球网络广播电台</string>
     <string name="radio_live_playing">直播电台</string>
     <string name="radio_connecting">连接中…</string>
+    <string name="radio_recommendations">热门电台</string>
     <string name="cd_back">返回</string>
     <string name="cd_radio_open">广播</string>
 </resources>

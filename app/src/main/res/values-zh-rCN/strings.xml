@@ -258,6 +258,8 @@
     <string name="nav_bar_home">主页</string>
     <string name="nav_bar_search">搜索</string>
     <string name="nav_bar_roaming">漫游</string>
+    <string name="nav_bar_discover">发现</string>
+    <string name="nav_bar_radio">电台</string>
     <string name="nav_bar_library">媒体库</string>
     <string name="nav_bar_settings">设置</string>
     <string name="lx_music_title">云音</string>

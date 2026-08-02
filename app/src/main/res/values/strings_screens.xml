@@ -302,12 +302,17 @@
     <string name="radio_title">Radio</string>
     <string name="radio_search_hint">Search stations, countries or tags</string>
     <string name="radio_top">Top</string>
+    <string name="radio_all">All</string>
     <string name="radio_search">Search</string>
     <string name="radio_no_results">No stations found</string>
     <string name="radio_retry">Retry</string>
     <string name="radio_live_badge">LIVE</string>
+    <string name="discover_sheet_title">Discover</string>
+    <string name="discover_roaming_subtitle">Roam playback across your devices</string>
+    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
     <string name="radio_live_playing">Live broadcast</string>
     <string name="radio_connecting">Connecting…</string>
+    <string name="radio_recommendations">Popular stations</string>
     <string name="cd_back">Back</string>
     <string name="cd_radio_open">Radio</string>
 </resources>

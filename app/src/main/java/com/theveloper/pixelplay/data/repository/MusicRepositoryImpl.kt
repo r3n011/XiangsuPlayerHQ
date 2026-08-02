@@ -996,7 +996,8 @@ class MusicRepositoryImpl @Inject constructor(
         albumArt: String?,
         duration: Long,
         directPlayUrl: String?,
-        neteaseIdRaw: Long?
+        neteaseIdRaw: Long?,
+        isRadio: Boolean
     ): Long = withContext(Dispatchers.IO) {
         val cleanTitle = title.ifBlank { "Unknown Title" }
         val cleanArtist = artist.ifBlank { "Unknown Artist" }
@@ -1037,10 +1038,12 @@ class MusicRepositoryImpl @Inject constructor(
 
         // Song
         // 优先级（确保存储的 URI 总是可动态解析，而非会过期的 HTTP URL）：
+        // 0. 广播电台 → 直接保留 http(s) 实时流地址（contentUriString 即播放 URL，path 与之相同）
         // 1. 有 neteaseIdRaw → 用 netease://{neteaseIdRaw}（通过 neteaseStreamProxy 动态解析）
         // 2. directPlayUrl 含网易云模式（music.163.com / ?id=）→ 提取 id → netease://{id}
         // 3. 其它情况 → cloud://lx/basic_...（通过 lxJsEngine 按歌名/歌手重新获取）
         val contentUri = when {
+            isRadio -> directPlayUrl ?: buildCloudContentUriBasic(cleanTitle, cleanArtist, cleanAlbum)
             neteaseIdRaw != null -> {
                 "netease://$neteaseIdRaw"
             }
@@ -1066,7 +1069,7 @@ class MusicRepositoryImpl @Inject constructor(
             duration = duration,
             genre = null,
             filePath = contentUri,
-            parentDirectoryPath = "cloud",
+            parentDirectoryPath = if (isRadio) "radio" else "cloud",
             dateAdded = now,
             sourceType = com.theveloper.pixelplay.data.database.SourceType.CLOUD_LX
         )
