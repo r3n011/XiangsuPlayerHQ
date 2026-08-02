@@ -53,6 +53,7 @@ import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.PlaylistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.RecentlyPlayedScreen
+import com.theveloper.pixelplay.presentation.screens.RadioScreen
 
 import com.theveloper.pixelplay.presentation.screens.AboutScreen
 import com.theveloper.pixelplay.presentation.screens.StatsScreen
@@ -596,6 +597,16 @@ fun AppNavigation(
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DotDeviceSettingsScreen(
                         onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.Radio.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    RadioScreen(
+                        navController = navController,
+                        playerViewModel = playerViewModel
                     )
                 }
             }

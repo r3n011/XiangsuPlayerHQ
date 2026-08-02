@@ -5,25 +5,17 @@ package com.theveloper.pixelplay.data.ai.provider
  * Defines common operations for text generation and metadata completion
  */
 interface AiClient {
-    
-    /**
-     * Generate text content based on a prompt
-     * @param model The model identifier to use
-     * @param systemPrompt The system prompt instructions
-     * @param prompt The input prompt
-     * @param temperature Creativity control (0.0 to 1.0)
-     * @return Generated text response
-     */
+
     suspend fun generateContent(
-        model: String,
-        systemPrompt: String,
+        model: String, 
+        systemPrompt: String, 
         prompt: String,
         temperature: Float = 0.7f,
-        topP: Float = 1.0f,
-        topK: Int = 40,
-        maxTokens: Int = 2048,
+        topP: Float = 0.95f,
+        topK: Int = 64,
+        maxTokens: Int = 4096,
         presencePenalty: Float = 0.0f,
-        frequencyPenalty: Float = 0.0f,
+        frequencyPenalty: Float = 0.0f
     ): String
     
     /**

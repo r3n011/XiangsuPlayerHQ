@@ -229,7 +229,7 @@ class SettingsViewModel @Inject constructor(
 
     // AI Provider State
     val aiProvider: StateFlow<String> = aiPreferencesRepository.aiProvider
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "MIMO")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "GEMINI")
 
     // Generic AI settings reactive to the selected provider
     val currentAiApiKey: StateFlow<String> = aiProvider
@@ -248,12 +248,12 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     // Specific Provider StateFlows for UI Compatibility
-    val mimoApiKey: StateFlow<String> = aiPreferencesRepository.mimoApiKey
+    val mimoApiKey: StateFlow<String> = aiPreferencesRepository.geminiApiKey
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val mimoModel: StateFlow<String> = aiPreferencesRepository.mimoModel
+    val mimoModel: StateFlow<String> = aiPreferencesRepository.geminiModel
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    val mimoSystemPrompt: StateFlow<String> = aiPreferencesRepository.mimoSystemPrompt
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_MIMO_SYSTEM_PROMPT)
+    val mimoSystemPrompt: StateFlow<String> = aiPreferencesRepository.geminiSystemPrompt
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_SYSTEM_PROMPT)
 
     fun onAiApiKeyChange(apiKey: String) {
         viewModelScope.launch {
@@ -268,9 +268,10 @@ class SettingsViewModel @Inject constructor(
     // Specific on-change methods for UI binding
     fun onMimoApiKeyChange(apiKey: String) {
         viewModelScope.launch {
-            aiPreferencesRepository.setApiKey(AiProvider.MIMO, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, "MIMO")
-            else clearModelsState("MIMO")
+            val provider = AiProvider.fromString(aiProvider.value)
+            aiPreferencesRepository.setApiKey(provider, apiKey)
+            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, provider.name)
+            else clearModelsState(provider.name)
         }
     }
 
@@ -281,7 +282,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onMimoModelChange(model: String) = viewModelScope.launch { aiPreferencesRepository.setModel(AiProvider.MIMO, model) }
+    fun onMimoModelChange(model: String) = viewModelScope.launch {
+        aiPreferencesRepository.setModel(AiProvider.fromString(aiProvider.value), model)
+    }
 
     fun onAiSystemPromptChange(prompt: String) {
         viewModelScope.launch {
@@ -290,7 +293,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onMimoSystemPromptChange(prompt: String) = viewModelScope.launch { aiPreferencesRepository.setSystemPrompt(AiProvider.MIMO, prompt) }
+    fun onMimoSystemPromptChange(prompt: String) = viewModelScope.launch {
+        aiPreferencesRepository.setSystemPrompt(AiProvider.fromString(aiProvider.value), prompt)
+    }
 
     fun resetAiSystemPrompt() {
         viewModelScope.launch {
@@ -299,7 +304,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun resetMimoSystemPrompt() = viewModelScope.launch { aiPreferencesRepository.resetSystemPrompt(AiProvider.MIMO) }
+    fun resetMimoSystemPrompt() = viewModelScope.launch {
+        aiPreferencesRepository.resetSystemPrompt(AiProvider.fromString(aiProvider.value))
+    }
 
     fun clearAiUsageData() {
         viewModelScope.launch {

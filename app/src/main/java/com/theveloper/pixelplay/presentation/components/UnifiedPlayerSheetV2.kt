@@ -696,13 +696,15 @@ fun UnifiedPlayerSheetV2(
                             // During drag/animation, we measure at stable full-screen constraints to prevent jank.
                             .layout { measurable, constraints ->
                                 val targetContentHeightPx = containerHeight.roundToPx()
-                                val fraction = playerContentExpansionFraction.value
+                                val fraction = playerContentExpansionFraction.value.coerceIn(0f, 1f)
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt()
-                                val measureWidth = if (fraction > 0f) {
-                                    screenWidthPx.roundToInt()
-                                } else {
-                                    constraints.maxWidth
-                                }
+                                // 平滑过渡：折叠态按卡片宽度测量并对齐卡片左侧，展开态按全屏宽度测量并对齐屏幕左侧。
+                                // 不要用硬阈值瞬间切到全屏宽度，否则 fraction 刚离开 0 时内容会先向两侧跳变再回弹。
+                                val measureWidth = androidx.compose.ui.util.lerp(
+                                    constraints.maxWidth.toFloat(),
+                                    screenWidthPx,
+                                    fraction
+                                ).roundToInt().coerceAtLeast(0)
                                 val placeable = measurable.measure(
                                     constraints.copy(
                                         minWidth = measureWidth,
@@ -712,7 +714,7 @@ fun UnifiedPlayerSheetV2(
                                     )
                                 )
                                 layout(constraints.maxWidth, constraints.maxHeight) {
-                                    val xOffset = if (fraction > 0f) -startPaddingPx else 0
+                                    val xOffset = (-startPaddingPx * fraction).roundToInt()
                                     placeable.placeRelative(xOffset, 0)
                                 }
                             }

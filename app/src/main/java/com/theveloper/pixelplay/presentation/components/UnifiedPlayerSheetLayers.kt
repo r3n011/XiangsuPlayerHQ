@@ -119,18 +119,18 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                             .coerceIn(0f, 1f)
                     }
                     .layout { measurable, constraints ->
-                        // 在展开初期（小于5%）保持折叠态的 padding，避免位移跳变
-                        val rawFraction = playerContentExpansionFraction.value
-                        val adjustedFraction = if (rawFraction < 0.05f) 0f else rawFraction
-                        val fraction = (adjustedFraction * 20f).toInt() / 20f
+                        // 平滑过渡：宽度与偏移随展开进度连续变化，不再分段量化，
+                        // 避免展开初期 mini-player 内容先向两侧跳变再回弹。
+                        val fraction = playerContentExpansionFraction.value.coerceIn(0f, 1f)
                         val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)
                         val endPaddingPx = currentHorizontalPaddingEndPxProvider().toInt().coerceAtLeast(0)
-                        
-                        val targetWidth = if (fraction > 0f) {
-                            (constraints.maxWidth - startPaddingPx - endPaddingPx).coerceAtLeast(0)
-                        } else {
-                            constraints.maxWidth
-                        }
+
+                        val insetWidth = (constraints.maxWidth - startPaddingPx - endPaddingPx).coerceAtLeast(0)
+                        val targetWidth = lerp(
+                            constraints.maxWidth.toFloat(),
+                            insetWidth.toFloat(),
+                            fraction
+                        ).toInt()
                         val placeable = measurable.measure(
                             constraints.copy(
                                 minWidth = targetWidth,
@@ -138,7 +138,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                             )
                         )
                         layout(constraints.maxWidth, constraints.maxHeight) {
-                            val xOffset = if (fraction > 0f) startPaddingPx else 0
+                            val xOffset = (startPaddingPx * fraction).toInt()
                             placeable.placeRelative(xOffset, 0)
                         }
                     }

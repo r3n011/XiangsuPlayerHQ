@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- USB 设备过滤器 - 匹配所有 USB 音频设备 -->
-    <usb-device class="1" /> <!-- USB Audio Device Class -->
+    <!-- USB 设备过滤器 - 匹配所有 USB 设备（class=0 表示任意类），
+         避免 vendor-specific (0xFF) 等非标准音频接口的 USB DAC 无法触发连接广播 -->
+    <usb-device class="0" /> <!-- 匹配所有设备 -->
+    <usb-device class="255" /> <!-- vendor-specific 自定义设备，常见于国产 USB DAC -->
     <usb-device vendor-id="1237" product-id="1507" /> <!-- 通用测试设备 -->
 </resources>

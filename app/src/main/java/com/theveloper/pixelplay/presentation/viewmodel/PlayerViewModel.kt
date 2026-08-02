@@ -628,7 +628,7 @@ class PlayerViewModel @Inject constructor(
             initialValue = CarouselStyle.NO_PEEK
         )
 
-    val hasActiveAiProviderApiKey: StateFlow<Boolean> = aiPreferencesRepository.mimoApiKey
+    val hasActiveAiProviderApiKey: StateFlow<Boolean> = aiPreferencesRepository.geminiApiKey
         .map { it.isNotBlank() }
         .distinctUntilChanged()
         .stateIn(
@@ -637,7 +637,7 @@ class PlayerViewModel @Inject constructor(
         initialValue = false
     )
 
-    val hasGeminiApiKey: StateFlow<Boolean> = aiPreferencesRepository.mimoApiKey
+    val hasGeminiApiKey: StateFlow<Boolean> = aiPreferencesRepository.geminiApiKey
         .map { it.isNotBlank() }
         .stateIn(
             scope = viewModelScope,

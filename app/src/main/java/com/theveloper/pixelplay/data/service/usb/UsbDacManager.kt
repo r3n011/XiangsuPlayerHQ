@@ -1,7 +1,10 @@
 package com.theveloper.pixelplay.data.service.usb
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
@@ -26,7 +29,7 @@ import javax.inject.Singleton
  * USB DAC 管理器
  *
  * 负责 USB DAC 设备的发现、权限管理、连接和独占模式激活。
- * 参考 Flick 项目的实现方式，使用 Android USB Host API。
+ * 参考 Flick 项目与 moriafly/AndroidUsbAudio 示例的实现方式，使用 Android USB Host API。
  */
 @Singleton
 class UsbDacManager @Inject constructor(
@@ -35,8 +38,11 @@ class UsbDacManager @Inject constructor(
     companion object {
         private const val TAG = "UsbDacManager"
 
-        // USB 权限请求
+        // USB 权限请求（PendingIntent 广播 action）
         private const val ACTION_USB_PERMISSION = "com.theveloper.pixelplay.USB_PERMISSION"
+
+        // vendor-specific 接口类：部分 USB DAC 未声明标准音频类接口，而是使用自定义类
+        private const val USB_CLASS_VENDOR_SPECIFIC = 0xFF
 
         // 支持的音频采样率
         val SUPPORTED_SAMPLE_RATES = listOf(
@@ -77,6 +83,30 @@ class UsbDacManager @Inject constructor(
     // 权限请求回调
     private var pendingPermissionCallback: ((Boolean) -> Unit)? = null
     private var pendingPermissionDeviceName: String? = null
+
+    /** 动态注册的 USB 权限结果接收器（接收 UsbManager.requestPermission 的系统授权广播） */
+    private val permissionResultReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != ACTION_USB_PERMISSION) return
+            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            val device = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+            }
+            try {
+                context.unregisterReceiver(this)
+            } catch (_: IllegalArgumentException) {
+                // 已反注册，忽略
+            }
+            val callback = pendingPermissionCallback
+            pendingPermissionCallback = null
+            pendingPermissionDeviceName = null
+            Timber.d("$TAG: USB permission result granted=$granted for ${device?.deviceName}")
+            callback?.invoke(granted)
+        }
+    }
 
     /**
      * 扫描 USB 设备
@@ -126,11 +156,15 @@ class UsbDacManager @Inject constructor(
 
     /**
      * 判断是否是 USB 音频设备
+     *
+     * 标准 USB 音频类 (0x01) 之外，还需兼容 vendor-specific (0xFF) 接口：
+     * 部分 USB DAC / 声卡芯片（如部分国产 DAC）未声明标准音频类接口。
      */
     private fun isUsbAudioDevice(device: UsbDevice): Boolean {
         for (i in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(i)
-            if (usbInterface.interfaceClass == UsbConstants.USB_CLASS_AUDIO) {
+            val clazz = usbInterface.interfaceClass
+            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == USB_CLASS_VENDOR_SPECIFIC) {
                 return true
             }
         }
@@ -157,6 +191,10 @@ class UsbDacManager @Inject constructor(
 
     /**
      * 请求 USB 设备权限
+     *
+     * 通过 PendingIntent + 动态注册广播接收器发起系统权限对话框，
+     * 参考 moriafly/AndroidUsbAudio 示例（UsbManager.requestPermission + 权限广播）。
+     * 注意：必须在 UI 线程（Activity/可组合项）调用。
      */
     fun requestPermission(deviceName: String, callback: (Boolean) -> Unit) {
         val manager = usbManager ?: run {
@@ -165,6 +203,7 @@ class UsbDacManager @Inject constructor(
         }
 
         val device = manager.deviceList[deviceName] ?: run {
+            Timber.e("$TAG: Device not found: $deviceName")
             callback(false)
             return
         }
@@ -178,14 +217,68 @@ class UsbDacManager @Inject constructor(
         pendingPermissionCallback = callback
         pendingPermissionDeviceName = deviceName
 
-        // 创建权限请求 Intent
-        val intent = Intent(ACTION_USB_PERMISSION).apply {
-            putExtra(UsbManager.EXTRA_DEVICE, device)
+        // 动态注册权限结果接收器（保证 PendingIntent 广播能被本进程接收）
+        val filter = IntentFilter(ACTION_USB_PERMISSION)
+        try {
+            context.registerReceiver(permissionResultReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } catch (e: Exception) {
+            Timber.w(e, "$TAG: Failed to register USB permission receiver")
+            pendingPermissionCallback = null
+            pendingPermissionDeviceName = null
+            callback(false)
+            return
         }
 
-        // 这里需要使用 Activity 来启动权限请求
-        // 在实际使用中，应该通过 ActivityResultLauncher 处理
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(ACTION_USB_PERMISSION),
+            PendingIntent.FLAG_MUTABLE
+        )
+
         Timber.d("$TAG: Requesting USB permission for $deviceName")
+        manager.requestPermission(device, pendingIntent)
+    }
+
+    /**
+     * 请求权限并激活 USB DAC 独占模式
+     *
+     * 无权限时先拉起系统授权对话框，授权成功后自动激活；失败则回调 false。
+     */
+    fun requestAndActivateExclusiveMode(
+        deviceInfo: UsbDeviceInfo,
+        onResult: (Boolean) -> Unit
+    ) {
+        val manager = usbManager ?: run {
+            onResult(false)
+            return
+        }
+
+        val device = manager.deviceList[deviceInfo.deviceName] ?: run {
+            Timber.e("$TAG: Device not found: ${deviceInfo.deviceName}")
+            onResult(false)
+            return
+        }
+
+        if (manager.hasPermission(device)) {
+            CoroutineScope(Dispatchers.IO).launch {
+                onResult(activateExclusiveMode(deviceInfo))
+            }
+            return
+        }
+
+        requestPermission(deviceInfo.deviceName) { granted ->
+            if (granted) {
+                Timber.i("$TAG: USB permission granted, activating exclusive mode")
+                CoroutineScope(Dispatchers.IO).launch {
+                    onResult(activateExclusiveMode(deviceInfo))
+                }
+            } else {
+                Timber.e("$TAG: USB permission denied for ${deviceInfo.deviceName}")
+                _deviceState.value = UsbDeviceState.ERROR
+                onResult(false)
+            }
+        }
     }
 
     /**
@@ -249,6 +342,9 @@ class UsbDacManager @Inject constructor(
                 _exclusiveModeActive.value = true
                 _deviceState.value = UsbDeviceState.CONNECTED
 
+                // ⚡ 启动 libusb 等时输出，将 PCM 写入 USB DAC（独占播放）
+                UsbAudioOutput.start(connection.fileDescriptor)
+
                 Timber.i("$TAG: USB DAC activated: ${deviceInfo.displayName}")
                 true
             } catch (e: Exception) {
@@ -261,6 +357,10 @@ class UsbDacManager @Inject constructor(
 
     /**
      * 验证 USB 音频接口
+     *
+     * 只要设备存在音频相关接口（标准音频类或 vendor-specific）即视为有效。
+     * 不再强制要求同时存在 control + streaming 接口：
+     * 部分 DAC 仅提供 streaming 接口或使用非标准子类，强制校验会导致激活失败。
      */
     private fun validateAudioInterfaces(
         connection: UsbDeviceConnection,
@@ -273,27 +373,19 @@ class UsbDacManager @Inject constructor(
             return false
         }
 
-        // 检查是否有控制接口和流接口
-        val hasControl = audioInterfaces.any { it.interfaceSubclass == 0x01 }
-        val hasStreaming = audioInterfaces.any { it.interfaceSubclass == 0x02 }
-
-        if (!hasControl || !hasStreaming) {
-            Timber.w("$TAG: Missing audio interfaces - control: $hasControl, streaming: $hasStreaming")
-            return false
-        }
-
         Timber.d("$TAG: Audio interfaces validated: ${audioInterfaces.size} interfaces")
         return true
     }
 
     /**
-     * 获取 USB 音频接口列表
+     * 获取 USB 音频接口列表（标准音频类 + vendor-specific）
      */
     private fun getAudioInterfaces(device: UsbDevice): List<UsbInterface> {
         val interfaces = mutableListOf<UsbInterface>()
         for (i in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(i)
-            if (usbInterface.interfaceClass == UsbConstants.USB_CLASS_AUDIO) {
+            val clazz = usbInterface.interfaceClass
+            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == USB_CLASS_VENDOR_SPECIFIC) {
                 interfaces.add(usbInterface)
             }
         }

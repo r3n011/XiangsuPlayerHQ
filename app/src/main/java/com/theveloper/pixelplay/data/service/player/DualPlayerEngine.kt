@@ -1362,7 +1362,9 @@ class DualPlayerEngine @Inject constructor(
                             com.theveloper.pixelplay.data.service.audioengine.HiFiEngineAudioProcessor().also {
                                 hiFiEngineProcessor = it
                                 audioProcessorProvider.registerProcessor(it)
-                            }
+                            },
+                            // ⚡ USB 独占输出：镜像最终 PCM 到 USB DAC（激活时）
+                            com.theveloper.pixelplay.data.service.audioengine.UsbExclusiveAudioProcessor()
                         )
                     )
                     .build()

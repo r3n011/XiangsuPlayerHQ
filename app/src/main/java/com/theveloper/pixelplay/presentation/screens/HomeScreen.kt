@@ -33,17 +33,21 @@ import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeExtendedFloatingActionButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -204,9 +208,18 @@ fun HomeScreen(
     var hasHomeLoadingMinimumElapsed by rememberSaveable(homePlaceholderRefreshGeneration) {
         mutableStateOf(false)
     }
+    // 记录是否已成功加载过 mix：从其他页面返回时数据会短暂为空，
+    // 借助它避免每次返回主页都重新触发"加载中"占位，造成强制刷新的观感。
+    var hasMixLoadedBefore by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(yourMixSongs.isEmpty()) {
+        if (yourMixSongs.isNotEmpty()) {
+            hasMixLoadedBefore = true
+        }
+    }
 
     LaunchedEffect(homePlaceholderRefreshGeneration, yourMixSongs.isEmpty()) {
-        if (yourMixSongs.isEmpty()) {
+        if (yourMixSongs.isEmpty() && !hasMixLoadedBefore) {
             hasHomeLoadingMinimumElapsed = false
             delay(HomeLoadingPlaceholderMinDurationMillis)
             hasHomeLoadingMinimumElapsed = true
@@ -215,7 +228,7 @@ fun HomeScreen(
         }
     }
 
-    val shouldShowYourMixLoadingPlaceholder = yourMixSongs.isEmpty() && !hasHomeLoadingMinimumElapsed
+    val shouldShowYourMixLoadingPlaceholder = yourMixSongs.isEmpty() && !hasHomeLoadingMinimumElapsed && !hasMixLoadedBefore
     val recentSongIds = remember(playbackHistory) {
         collectRecentlyPlayedSongIds(
             playbackHistory = playbackHistory,
@@ -396,13 +409,22 @@ fun HomeScreen(
                     ) {
                         if (!isCarModeEnabled && shouldShowYourMixLoadingPlaceholder) {
                             YourMixLoadingPlaceholder()
-                        } else if (!isCarModeEnabled) {
+                        } else if (!isCarModeEnabled && !hasMixLoadedBefore) {
                             YourMixEmptyPlaceholder(
                                 onRefresh = {
                                     homePlaceholderRefreshGeneration++
+                                    hasMixLoadedBefore = false
                                     settingsViewModel.refreshLibrary()
                                     playerViewModel.forceUpdateDailyMix()
                                 }
+                            )
+                        } else if (!isCarModeEnabled) {
+                            // 已加载过 mix（如从其他页面返回时数据短暂为空）：
+                            // 保持与 YourMixHeader 相同的高度，避免列表跳动与占位闪烁。
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(256.dp)
                             )
                         }
                     }
@@ -424,7 +446,8 @@ fun HomeScreen(
                                         startAtZero = true,
                                     )
                                 }
-                            }
+                            },
+                            onRadioClick = { navController.navigateSafely(Screen.Radio.route) }
                         )
                     }
                 }
@@ -488,7 +511,16 @@ fun HomeScreen(
                     ) {
                         val cardWidth = if (isCarModeEnabled) 400.dp else 420.dp
                         val cardHeight = if (isCarModeEnabled) 450.dp else 500.dp
+                        // 显式管理横向滚动状态：mix 数据加载后唱片墙(首卡)会插入到行首，
+                        // 强制回到最左侧，避免行内状态停留在唱片墙中间位置。
+                        val landscapeRowState = rememberLazyListState()
+                        LaunchedEffect(yourMixSongs.isNotEmpty()) {
+                            if (yourMixSongs.isNotEmpty() && landscapeRowState.firstVisibleItemIndex > 0) {
+                                landscapeRowState.scrollToItem(0)
+                            }
+                        }
                         LazyRow(
+                            state = landscapeRowState,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(cardHeight),
@@ -975,7 +1007,8 @@ private fun YourMixEmptyPlaceholder(
 fun YourMixHeader(
     song: String,
     isShuffleEnabled: Boolean = false,
-    onPlayShuffled: () -> Unit
+    onPlayShuffled: () -> Unit,
+    onRadioClick: (() -> Unit)? = null
 ) {
     val buttonCorners = 68.dp
     val colors = MaterialTheme.colorScheme
@@ -1010,29 +1043,53 @@ fun YourMixHeader(
             )
         }
         // Play Button - color changes based on shuffle state
-        LargeExtendedFloatingActionButton(
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 12.dp),
-            onClick = onPlayShuffled,
-            containerColor = if (isShuffleEnabled) colors.primary else colors.tertiaryContainer,
-            contentColor = if (isShuffleEnabled) colors.onPrimary else colors.onTertiaryContainer,
-            shape = AbsoluteSmoothCornerShape(
-                cornerRadiusTL = buttonCorners,
-                smoothnessAsPercentTR = 60,
-                cornerRadiusBR = buttonCorners,
-                smoothnessAsPercentTL = 60,
-                cornerRadiusBL = buttonCorners,
-                smoothnessAsPercentBR = 60,
-                cornerRadiusTR = buttonCorners,
-                smoothnessAsPercentBL = 60,
-            )
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(R.drawable.rounded_shuffle_24),
-                contentDescription = stringResource(R.string.cd_shuffle_play),
-                modifier = Modifier.size(36.dp)
-            )
+            // 📻 网络广播入口：位于随机播放按钮左侧
+            if (onRadioClick != null) {
+                FilledIconButton(
+                    onClick = onRadioClick,
+                    modifier = Modifier.size(56.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = colors.tertiaryContainer,
+                        contentColor = colors.onTertiaryContainer
+                    ),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Radio,
+                        contentDescription = stringResource(R.string.cd_radio_open),
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            LargeExtendedFloatingActionButton(
+                modifier = Modifier,
+                onClick = onPlayShuffled,
+                containerColor = if (isShuffleEnabled) colors.primary else colors.tertiaryContainer,
+                contentColor = if (isShuffleEnabled) colors.onPrimary else colors.onTertiaryContainer,
+                shape = AbsoluteSmoothCornerShape(
+                    cornerRadiusTL = buttonCorners,
+                    smoothnessAsPercentTR = 60,
+                    cornerRadiusBR = buttonCorners,
+                    smoothnessAsPercentTL = 60,
+                    cornerRadiusBL = buttonCorners,
+                    smoothnessAsPercentBR = 60,
+                    cornerRadiusTR = buttonCorners,
+                    smoothnessAsPercentBL = 60,
+                )
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.rounded_shuffle_24),
+                    contentDescription = stringResource(R.string.cd_shuffle_play),
+                    modifier = Modifier.size(36.dp)
+                )
+            }
         }
     }
 }

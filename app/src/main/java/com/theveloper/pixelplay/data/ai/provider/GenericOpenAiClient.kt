@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.data.ai.provider
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -17,8 +18,7 @@ class GenericOpenAiClient(
     private val apiKey: String,
     private val baseUrl: String,
     private val defaultModelId: String,
-    private val providerName: String,
-    private val predefinedModels: List<String> = emptyList()
+    private val providerName: String = "OpenAI"
 ) : AiClient {
     
     @Serializable
@@ -29,11 +29,10 @@ class GenericOpenAiClient(
         val model: String,
         val messages: List<ChatMessage>,
         val temperature: Double = 0.7,
-        val top_p: Double? = null,
-        val top_k: Int? = null,
-        val max_tokens: Int? = null,
-        val presence_penalty: Double? = null,
-        val frequency_penalty: Double? = null,
+        @SerialName("top_p") val topP: Double? = null,
+        @SerialName("max_tokens") val maxTokens: Int? = null,
+        @SerialName("presence_penalty") val presencePenalty: Double? = null,
+        @SerialName("frequency_penalty") val frequencyPenalty: Double? = null
     )
     
     @Serializable
@@ -60,15 +59,15 @@ class GenericOpenAiClient(
     }
     
     override suspend fun generateContent(
-        model: String,
-        systemPrompt: String,
+        model: String, 
+        systemPrompt: String, 
         prompt: String,
         temperature: Float,
         topP: Float,
         topK: Int,
         maxTokens: Int,
         presencePenalty: Float,
-        frequencyPenalty: Float,
+        frequencyPenalty: Float
     ): String {
         return withContext(Dispatchers.IO) {
             val resolvedModel = model.ifBlank { defaultModelId }
@@ -82,11 +81,10 @@ class GenericOpenAiClient(
                 model = resolvedModel,
                 messages = messagesList,
                 temperature = temperature.toDouble(),
-                top_p = topP.toDouble(),
-                top_k = topK,
-                max_tokens = maxTokens,
-                presence_penalty = presencePenalty.toDouble(),
-                frequency_penalty = frequencyPenalty.toDouble(),
+                topP = topP.toDouble(),
+                maxTokens = maxTokens.takeIf { it > 0 },
+                presencePenalty = presencePenalty.toDouble(),
+                frequencyPenalty = frequencyPenalty.toDouble()
             )
             
             val jsonBody = json.encodeToString(ChatRequest.serializer(), requestBody)
@@ -141,10 +139,6 @@ class GenericOpenAiClient(
     
     override suspend fun getAvailableModels(apiKey: String): List<String> {
         return withContext(Dispatchers.IO) {
-            if (predefinedModels.isNotEmpty()) {
-                return@withContext predefinedModels
-            }
-            
             try {
                 val request = Request.Builder()
                     .url("${baseUrl.trimEnd('/')}/models")
@@ -160,9 +154,7 @@ class GenericOpenAiClient(
                 
                 val responseBody = response.body.string()
                 val modelsResponse = json.decodeFromString<ModelsResponse>(responseBody)
-                modelsResponse.data.map { it.id }.filter { 
-                    !it.contains("whisper") && !it.contains("embed") && !it.contains("tts")
-                }
+                modelsResponse.data.map { it.id }.let { UnifiedModelFilter.filterChatModels(it) }
             } catch (e: Exception) {
                 listOf(defaultModelId)
             }

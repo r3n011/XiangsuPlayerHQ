@@ -64,7 +64,9 @@ class UsbConnectionReceiver : BroadcastReceiver() {
     
     private fun isAudioDevice(device: UsbDevice): Boolean {
         for (i in 0 until device.interfaceCount) {
-            if (device.getInterface(i).interfaceClass == UsbConstants.USB_CLASS_AUDIO) {
+            val clazz = device.getInterface(i).interfaceClass
+            // 标准音频类 (0x01) 或 vendor-specific (0xFF，部分 USB DAC)
+            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == 0xFF) {
                 return true
             }
         }

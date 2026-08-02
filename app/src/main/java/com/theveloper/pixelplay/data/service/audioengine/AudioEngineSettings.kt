@@ -128,12 +128,14 @@ class AudioEngineSettings @Inject constructor(
         if (enabled) {
             val device = _selectedUsbDevice.value
             if (device != null) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val success = usbDacManager.activateExclusiveMode(device)
+                // 先请求 USB 权限（如未授权），授权成功后自动激活独占模式
+                usbDacManager.requestAndActivateExclusiveMode(device) { success ->
                     if (!success) {
                         _usbExclusiveModeEnabled.value = false
                     }
                 }
+            } else {
+                _usbExclusiveModeEnabled.value = false
             }
         } else {
             CoroutineScope(Dispatchers.IO).launch {

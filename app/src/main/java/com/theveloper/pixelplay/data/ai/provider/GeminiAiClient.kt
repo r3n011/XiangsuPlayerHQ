@@ -25,12 +25,7 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
         private const val DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite"
         private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
-        // Markers for models that cannot perform text chat generation. These are the
-        // only things we filter out — every other model the API returns is selectable.
-        private val NON_CHAT_MARKERS = listOf(
-            "embedding", "aqa", "imagen", "image-generation",
-            "tts", "audio", "veo", "vision-only", "learnlm-embedding"
-        )
+
     }
 
     private val httpClient = OkHttpClient.Builder()
@@ -42,7 +37,6 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
-        encodeDefaults = true
     }
 
     @Serializable
@@ -56,9 +50,9 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
         val temperature: Double,
         val topK: Int = 64,
         val topP: Double = 0.95,
-        val maxOutputTokens: Int? = null,
-        val presencePenalty: Float? = null,
-        val frequencyPenalty: Float? = null,
+        @SerialName("maxOutputTokens") val maxOutputTokens: Int = 8192,
+        @SerialName("presencePenalty") val presencePenalty: Double? = null,
+        @SerialName("frequencyPenalty") val frequencyPenalty: Double? = null
     )
 
     @Serializable
@@ -94,7 +88,7 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
         topK: Int,
         maxTokens: Int,
         presencePenalty: Float,
-        frequencyPenalty: Float,
+        frequencyPenalty: Float
     ): String {
         return withContext(Dispatchers.IO) {
             val resolvedModel = model.ifBlank { DEFAULT_GEMINI_MODEL }
@@ -106,11 +100,11 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
                     ?.let { Content(parts = listOf(Part(it))) },
                 generationConfig = GenerationConfig(
                     temperature = temperature.toDouble(),
-                    topP = topP.toDouble(),
                     topK = topK,
+                    topP = topP.toDouble(),
                     maxOutputTokens = maxTokens,
-                    presencePenalty = presencePenalty,
-                    frequencyPenalty = frequencyPenalty,
+                    presencePenalty = presencePenalty.toDouble().takeIf { it != 0.0 },
+                    frequencyPenalty = frequencyPenalty.toDouble().takeIf { it != 0.0 }
                 )
             )
 
@@ -275,8 +269,7 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
     }
 
     private fun isNonChatModel(modelName: String): Boolean {
-        val lower = modelName.lowercase()
-        return NON_CHAT_MARKERS.any { lower.contains(it) }
+        return !UnifiedModelFilter.isModelUsableForChat(modelName)
     }
 
     private fun getDefaultModels(): List<String> {

@@ -297,4 +297,14 @@
     <string name="content_description_previous">上一曲</string>
     <string name="content_description_play_pause">播放/暂停</string>
     <string name="content_description_next">下一曲</string>
+
+    <!-- 网络广播（radio-browser.info） -->
+    <string name="radio_title">广播</string>
+    <string name="radio_search_hint">搜索电台、国家或标签</string>
+    <string name="radio_top">热门</string>
+    <string name="radio_search">搜索</string>
+    <string name="radio_no_results">没有找到相关电台</string>
+    <string name="radio_retry">重试</string>
+    <string name="cd_back">返回</string>
+    <string name="cd_radio_open">广播</string>
 </resources>
