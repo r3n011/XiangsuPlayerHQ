@@ -1049,21 +1049,28 @@ fun YourMixHeader(
                 .padding(end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 📻 网络广播入口：位于随机播放按钮左侧
+            // 📻 网络广播入口：位于随机播放按钮左侧，与随机播放按钮同尺寸同造型
             if (onRadioClick != null) {
-                FilledIconButton(
+                LargeExtendedFloatingActionButton(
+                    modifier = Modifier,
                     onClick = onRadioClick,
-                    modifier = Modifier.size(56.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = colors.tertiaryContainer,
-                        contentColor = colors.onTertiaryContainer
-                    ),
-                    shape = CircleShape
+                    containerColor = colors.secondaryContainer,
+                    contentColor = colors.onSecondaryContainer,
+                    shape = AbsoluteSmoothCornerShape(
+                        cornerRadiusTL = buttonCorners,
+                        smoothnessAsPercentTR = 60,
+                        cornerRadiusBR = buttonCorners,
+                        smoothnessAsPercentTL = 60,
+                        cornerRadiusBL = buttonCorners,
+                        smoothnessAsPercentBR = 60,
+                        cornerRadiusTR = buttonCorners,
+                        smoothnessAsPercentBL = 60,
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Radio,
                         contentDescription = stringResource(R.string.cd_radio_open),
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier.size(36.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))

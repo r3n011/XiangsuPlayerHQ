@@ -5689,6 +5689,8 @@ class PlayerViewModel @Inject constructor(
 
                 val playAction = {
                     dualPlayerEngine.cancelNext()
+                    // 广播电台：提前进入流式模式（禁用 audio offload，规避 HAL 杂音）
+                    dualPlayerEngine.updateStreamingModeFor(id)
                     val enginePlayer = dualPlayerEngine.masterPlayer
 
                     enginePlayer.setMediaItem(mediaItem, 0L)

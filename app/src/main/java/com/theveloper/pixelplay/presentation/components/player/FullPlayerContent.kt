@@ -12,9 +12,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -110,7 +114,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.derivedStateOf
@@ -256,6 +262,8 @@ fun FullPlayerContent(
     }
 
     val song = currentSong ?: retainedSong ?: return // Keep the player visible while transitioning
+    // 广播电台实时流：隐藏进度条、上一首/下一首、随机/循环、歌词、评论、下载等不可用功能
+    val isRadioPlayback = song.id.startsWith("radio://")
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showArtistPicker by rememberSaveable { mutableStateOf(false) }
@@ -682,25 +690,33 @@ fun FullPlayerContent(
     }
 
     val playerProgressSection: @Composable () -> Unit = {
-        FullPlayerProgressSection(
-            song = song,
-            playbackMetadataMediaId = playbackAudioMetadata.mediaId,
-            playbackMetadataMimeType = playbackAudioMetadata.mimeType,
-            playbackMetadataBitrate = playbackAudioMetadata.bitrate,
-            playbackMetadataSampleRate = playbackAudioMetadata.sampleRate,
-            currentPositionProvider = currentPositionProvider,
-            totalDurationValue = totalDurationValue,
-            showPlayerFileInfo = showPlayerFileInfo,
-            onSeek = onSeek,
-            expansionFractionProvider = expansionFractionProvider,
-            isPlayingProvider = isPlayingProvider,
-            currentSheetState = currentSheetState,
-            progressActiveColor = progressActiveColor,
-            playerOnBaseColor = playerOnBaseColor,
-            allowRealtimeUpdates = allowRealtimeUpdates,
-            isSheetDragGestureActive = isSheetDragGestureActive,
-            loadingTweaks = loadingTweaks
-        )
+        if (isRadioPlayback) {
+            // 广播电台为实时流：无可拖动进度，显示直播状态指示
+            RadioLiveProgressIndicator(
+                isPlayingProvider = isPlayingProvider,
+                onBaseColor = playerOnBaseColor
+            )
+        } else {
+            FullPlayerProgressSection(
+                song = song,
+                playbackMetadataMediaId = playbackAudioMetadata.mediaId,
+                playbackMetadataMimeType = playbackAudioMetadata.mimeType,
+                playbackMetadataBitrate = playbackAudioMetadata.bitrate,
+                playbackMetadataSampleRate = playbackAudioMetadata.sampleRate,
+                currentPositionProvider = currentPositionProvider,
+                totalDurationValue = totalDurationValue,
+                showPlayerFileInfo = showPlayerFileInfo,
+                onSeek = onSeek,
+                expansionFractionProvider = expansionFractionProvider,
+                isPlayingProvider = isPlayingProvider,
+                currentSheetState = currentSheetState,
+                progressActiveColor = progressActiveColor,
+                playerOnBaseColor = playerOnBaseColor,
+                allowRealtimeUpdates = allowRealtimeUpdates,
+                isSheetDragGestureActive = isSheetDragGestureActive,
+                loadingTweaks = loadingTweaks
+            )
+        }
     }
 
     val controlsSection: @Composable () -> Unit = {
@@ -733,6 +749,7 @@ fun FullPlayerContent(
             downloadProgress = downloadInfo?.progress.takeIf { it != 0f || downloadInfo?.isComplete == false },
             isDownloadComplete = downloadInfo?.isComplete == true,
             isDownloadFailed = downloadInfo?.isFailed == true,
+            isRadioPlayback = isRadioPlayback,
             surfaceContainerLowest = surfaceContainerLowest,
             onSurface = onSurface,
             primaryFixed = primaryFixed,
@@ -756,6 +773,7 @@ fun FullPlayerContent(
             placeholderColor = placeholderColor,
             placeholderOnColor = placeholderOnColor,
             isLandscape = false,
+            isRadioPlayback = isRadioPlayback,
             onLyricsClick = onLyricsClick,
             onCommentClick = onCommentClick,
             playerOnBaseColor = playerOnBaseColor,
@@ -784,6 +802,7 @@ fun FullPlayerContent(
             placeholderColor = placeholderColor,
             placeholderOnColor = placeholderOnColor,
             isLandscape = true,
+            isRadioPlayback = isRadioPlayback,
             onLyricsClick = onLyricsClick,
             onCommentClick = onCommentClick,
             playerOnBaseColor = playerOnBaseColor,
@@ -1443,6 +1462,7 @@ private fun FullPlayerControlsSection(
     downloadProgress: Float?,
     isDownloadComplete: Boolean,
     isDownloadFailed: Boolean,
+    isRadioPlayback: Boolean = false,
     surfaceContainerLowest: Color,
     onSurface: Color,
     primaryFixed: Color,
@@ -1481,26 +1501,36 @@ private fun FullPlayerControlsSection(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            AnimatedPlaybackControls(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                isPlayingProvider = isPlayingProvider,
-                onPrevious = onPrevious,
-                onPlayPause = onPlayPause,
-                onNext = onNext,
-                height = 72.dp,
-                pressAnimationSpec = controlSpatialSpec,
-                releaseDelay = 220L,
-                colorOtherButtons = transportSkipColors.container,
-                colorPlayPause = transportPlayPauseColors.container,
-                tintPlayPauseIcon = transportPlayPauseColors.content,
-                tintOtherIcons = transportSkipColors.content,
-                colorPreviousButton = transportSkipColors.container,
-                colorNextButton = transportSkipColors.container,
-                tintPreviousIcon = transportSkipColors.content,
-                tintNextIcon = transportSkipColors.content
-            )
+            if (isRadioPlayback) {
+                // 广播电台实时流：仅保留居中的播放/暂停按钮（上一首/下一首无意义）
+                RadioPlaybackButton(
+                    isPlayingProvider = isPlayingProvider,
+                    onPlayPause = onPlayPause,
+                    containerColor = transportPlayPauseColors.container,
+                    contentColor = transportPlayPauseColors.content
+                )
+            } else {
+                AnimatedPlaybackControls(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    isPlayingProvider = isPlayingProvider,
+                    onPrevious = onPrevious,
+                    onPlayPause = onPlayPause,
+                    onNext = onNext,
+                    height = 72.dp,
+                    pressAnimationSpec = controlSpatialSpec,
+                    releaseDelay = 220L,
+                    colorOtherButtons = transportSkipColors.container,
+                    colorPlayPause = transportPlayPauseColors.container,
+                    tintPlayPauseIcon = transportPlayPauseColors.content,
+                    tintOtherIcons = transportSkipColors.content,
+                    colorPreviousButton = transportSkipColors.container,
+                    colorNextButton = transportSkipColors.container,
+                    tintPreviousIcon = transportSkipColors.content,
+                    tintNextIcon = transportSkipColors.content
+                )
+            }
 
             BottomToggleRow(
                 modifier = Modifier
@@ -1514,11 +1544,12 @@ private fun FullPlayerControlsSection(
                 onShuffleToggle = onShuffleToggle,
                 onRepeatToggle = onRepeatToggle,
                 onFavoriteToggle = onFavoriteToggle,
-                isOnlineSong = isOnlineSong,
+                isOnlineSong = isOnlineSong && !isRadioPlayback,
                 onDownloadClick = onDownloadClick,
                 downloadProgress = downloadProgress,
                 isDownloadComplete = isDownloadComplete,
                 isDownloadFailed = isDownloadFailed,
+                isRadioPlayback = isRadioPlayback,
                 surfaceContainerLowest = surfaceContainerLowest,
                 onSurface = onSurface,
                 primaryFixed = primaryFixed,
@@ -1650,6 +1681,7 @@ private fun FullPlayerSongMetadataSection(
     placeholderColor: Color,
     placeholderOnColor: Color,
     isLandscape: Boolean,
+    isRadioPlayback: Boolean = false,
     onLyricsClick: () -> Unit,
     onCommentClick: () -> Unit,
     playerOnBaseColor: Color,
@@ -1696,6 +1728,7 @@ private fun FullPlayerSongMetadataSection(
                 .padding(start = 0.dp),
             onClickLyrics = onLyricsClick,
             onClickComment = onCommentClick,
+            isRadioPlayback = isRadioPlayback,
             song = song,
             currentSongArtists = currentSongArtists,
             expansionFractionProvider = expansionFractionProvider,
@@ -1882,7 +1915,8 @@ private fun SongMetadataDisplaySection(
     isPlayingProvider: () -> Boolean = { true },
     onShowFocusSetup: () -> Unit = { },
     focusTimerState: com.theveloper.pixelplay.presentation.focusmode.FocusTimerState? = null,
-    onEnterFocusMode: () -> Unit = { }
+    onEnterFocusMode: () -> Unit = { },
+    isRadioPlayback: Boolean = false
 ) {
     Row(
         modifier
@@ -1997,26 +2031,28 @@ private fun SongMetadataDisplaySection(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(height = 42.dp, width = 50.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = 50.dp,
-                                topEnd = 6.dp,
-                                bottomStart = 50.dp,
-                                bottomEnd = 6.dp
+                if (!isRadioPlayback) {
+                    Box(
+                        modifier = Modifier
+                            .size(height = 42.dp, width = 50.dp)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 50.dp,
+                                    topEnd = 6.dp,
+                                    bottomStart = 50.dp,
+                                    bottomEnd = 6.dp
+                                )
                             )
+                            .background(chipColor)
+                            .clickable { onClickLyrics() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_lyrics_24),
+                            contentDescription = stringResource(R.string.presentation_batch_g_player_cd_lyrics),
+                            tint = chipContentColor
                         )
-                        .background(chipColor)
-                        .clickable { onClickLyrics() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_lyrics_24),
-                        contentDescription = stringResource(R.string.presentation_batch_g_player_cd_lyrics),
-                        tint = chipContentColor
-                    )
+                    }
                 }
                 // 学习钟入口按钮（横屏/平板模式下显示，与其他按钮风格一致）
                 if (focusTimerState != null) {
@@ -2048,26 +2084,28 @@ private fun SongMetadataDisplaySection(
                         )
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .size(height = 42.dp, width = 50.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = 6.dp,
-                                topEnd = 6.dp,
-                                bottomStart = 6.dp,
-                                bottomEnd = 6.dp
+                if (!isRadioPlayback) {
+                    Box(
+                        modifier = Modifier
+                            .size(height = 42.dp, width = 50.dp)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 6.dp,
+                                    topEnd = 6.dp,
+                                    bottomStart = 6.dp,
+                                    bottomEnd = 6.dp
+                                )
                             )
+                            .background(chipColor)
+                            .clickable { onClickComment() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_circle_notifications_24),
+                            contentDescription = "Comments",
+                            tint = chipContentColor
                         )
-                        .background(chipColor)
-                        .clickable { onClickComment() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_circle_notifications_24),
-                        contentDescription = "Comments",
-                        tint = chipContentColor
-                    )
+                    }
                 }
                 Box(
                     modifier = Modifier
@@ -2093,54 +2131,62 @@ private fun SongMetadataDisplaySection(
             }
         } else {
             // Portrait Mode: Lyrics + Comment buttons side by side (Queue is in TopBar)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val hasBluetooth by playerViewModel.hasBluetoothOutput.collectAsStateWithLifecycle()
-                val btLyricsEnabled by playerViewModel.bluetoothLyricsEnabled.collectAsStateWithLifecycle()
-                if (hasBluetooth) {
+            if (isRadioPlayback) {
+                // 广播电台：歌词/评论等在线功能不可用，显示 LIVE 直播徽标
+                RadioLiveBadge(
+                    chipColor = chipColor,
+                    chipContentColor = chipContentColor
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val hasBluetooth by playerViewModel.hasBluetoothOutput.collectAsStateWithLifecycle()
+                    val btLyricsEnabled by playerViewModel.bluetoothLyricsEnabled.collectAsStateWithLifecycle()
+                    if (hasBluetooth) {
+                        FilledIconButton(
+                            modifier = Modifier.size(width = 48.dp, height = 48.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = if (btLyricsEnabled) chipContentColor else chipColor,
+                                contentColor = if (btLyricsEnabled) chipColor else chipContentColor
+                            ),
+                            onClick = { playerViewModel.toggleBluetoothLyrics() }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.rounded_bluetooth_24),
+                                contentDescription = "Bluetooth Lyrics"
+                            )
+                        }
+                    }
                     FilledIconButton(
-                        modifier = Modifier.size(width = 48.dp, height = 48.dp),
+                        modifier = Modifier
+                            .size(width = 48.dp, height = 48.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = if (btLyricsEnabled) chipContentColor else chipColor,
-                            contentColor = if (btLyricsEnabled) chipColor else chipContentColor
+                            containerColor = chipColor,
+                            contentColor = chipContentColor
                         ),
-                        onClick = { playerViewModel.toggleBluetoothLyrics() }
+                        onClick = onClickLyrics,
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.rounded_bluetooth_24),
-                            contentDescription = "Bluetooth Lyrics"
+                            painter = painterResource(R.drawable.rounded_lyrics_24),
+                            contentDescription = stringResource(R.string.presentation_batch_g_player_cd_lyrics)
                         )
                     }
-                }
-                FilledIconButton(
-                    modifier = Modifier
-                        .size(width = 48.dp, height = 48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = chipColor,
-                        contentColor = chipContentColor
-                    ),
-                    onClick = onClickLyrics,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_lyrics_24),
-                        contentDescription = stringResource(R.string.presentation_batch_g_player_cd_lyrics)
-                    )
-                }
-                FilledIconButton(
-                    modifier = Modifier
-                        .size(width = 48.dp, height = 48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = chipColor,
-                        contentColor = chipContentColor
-                    ),
-                    onClick = onClickComment,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_circle_notifications_24),
-                        contentDescription = "Comments"
-                    )
+                    FilledIconButton(
+                        modifier = Modifier
+                            .size(width = 48.dp, height = 48.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = chipColor,
+                            contentColor = chipContentColor
+                        ),
+                        onClick = onClickComment,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_circle_notifications_24),
+                            contentDescription = "Comments"
+                        )
+                    }
                 }
             }
         }
@@ -3237,6 +3283,7 @@ private fun BottomToggleRow(
     downloadProgress: Float?,
     isDownloadComplete: Boolean,
     isDownloadFailed: Boolean,
+    isRadioPlayback: Boolean = false,
     surfaceContainerLowest: Color,
     onSurface: Color,
     primaryFixed: Color,
@@ -3290,37 +3337,39 @@ private fun BottomToggleRow(
         ) {
             val commonModifier = Modifier.weight(1f)
 
-            ToggleSegmentButton(
-                modifier = commonModifier,
-                active = isShuffleEnabled,
-                enabled = !isShuffleTransitionInProgress,
-                activeColor = primaryFixed,
-                activeCornerRadius = rowCorners,
-                activeContentColor = onPrimaryFixed,
-                inactiveColor = inactiveBg,
-                inactiveContentColor = inactiveContentColor,
-                onClick = onShuffleToggle,
-                iconId = R.drawable.rounded_shuffle_24,
-                contentDesc = "Aleatorio"
-            )
-            val repeatActive = repeatMode != Player.REPEAT_MODE_OFF
-            val repeatIcon = when (repeatMode) {
-                Player.REPEAT_MODE_ONE -> R.drawable.rounded_repeat_one_24
-                Player.REPEAT_MODE_ALL -> R.drawable.rounded_repeat_24
-                else -> R.drawable.rounded_repeat_24
+            if (!isRadioPlayback) {
+                ToggleSegmentButton(
+                    modifier = commonModifier,
+                    active = isShuffleEnabled,
+                    enabled = !isShuffleTransitionInProgress,
+                    activeColor = primaryFixed,
+                    activeCornerRadius = rowCorners,
+                    activeContentColor = onPrimaryFixed,
+                    inactiveColor = inactiveBg,
+                    inactiveContentColor = inactiveContentColor,
+                    onClick = onShuffleToggle,
+                    iconId = R.drawable.rounded_shuffle_24,
+                    contentDesc = "Aleatorio"
+                )
+                val repeatActive = repeatMode != Player.REPEAT_MODE_OFF
+                val repeatIcon = when (repeatMode) {
+                    Player.REPEAT_MODE_ONE -> R.drawable.rounded_repeat_one_24
+                    Player.REPEAT_MODE_ALL -> R.drawable.rounded_repeat_24
+                    else -> R.drawable.rounded_repeat_24
+                }
+                ToggleSegmentButton(
+                    modifier = commonModifier,
+                    active = repeatActive,
+                    activeColor = secondaryFixed,
+                    activeCornerRadius = rowCorners,
+                    activeContentColor = onSecondaryFixed,
+                    inactiveColor = inactiveBg,
+                    inactiveContentColor = inactiveContentColor,
+                    onClick = onRepeatToggle,
+                    iconId = repeatIcon,
+                    contentDesc = "Repetir"
+                )
             }
-            ToggleSegmentButton(
-                modifier = commonModifier,
-                active = repeatActive,
-                activeColor = secondaryFixed,
-                activeCornerRadius = rowCorners,
-                activeContentColor = onSecondaryFixed,
-                inactiveColor = inactiveBg,
-                inactiveContentColor = inactiveContentColor,
-                onClick = onRepeatToggle,
-                iconId = repeatIcon,
-                contentDesc = "Repetir"
-            )
             if (isOnlineSong) {
                 Box(modifier = commonModifier) {
                     if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed) {
@@ -3365,5 +3414,132 @@ private fun BottomToggleRow(
                 contentDesc = "Favorito"
             )
         }
+    }
+}
+
+// ─── 广播电台实时流专用组件 ─────────────────────────────────────────────
+
+/**
+ * 广播电台播放时的直播状态指示（替代可拖动的进度条）。
+ * 实时流没有可 seek 的时间轴，只展示 LIVE 直播状态。
+ */
+@Composable
+private fun RadioLiveProgressIndicator(
+    isPlayingProvider: () -> Boolean,
+    onBaseColor: Color
+) {
+    val isPlaying = isPlayingProvider()
+    val infiniteTransition = rememberInfiniteTransition(label = "radioLivePulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "radioLivePulseAlpha"
+    )
+    val dotColor = if (isPlaying) Color(0xFFE53935) else onBaseColor.copy(alpha = 0.35f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .graphicsLayer { alpha = pulseAlpha }
+                    .background(dotColor, CircleShape)
+            )
+            Text(
+                text = stringResource(
+                    if (isPlaying) R.string.radio_live_playing else R.string.radio_connecting
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp,
+                color = onBaseColor.copy(alpha = if (isPlaying) 1f else 0.55f)
+            )
+        }
+    }
+}
+
+/**
+ * 广播电台 LIVE 徽标（竖屏歌曲信息区右侧，替代歌词/评论按钮）。
+ */
+@Composable
+private fun RadioLiveBadge(
+    chipColor: Color,
+    chipContentColor: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = chipColor,
+        modifier = Modifier.padding(end = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Radio,
+                contentDescription = null,
+                tint = chipContentColor,
+                modifier = Modifier.size(15.dp)
+            )
+            Text(
+                text = stringResource(R.string.radio_live_badge),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp,
+                color = chipContentColor
+            )
+        }
+    }
+}
+
+/**
+ * 广播电台专用的居中播放/暂停按钮（无上一首/下一首）。
+ */
+@Composable
+private fun RadioPlaybackButton(
+    isPlayingProvider: () -> Boolean,
+    onPlayPause: () -> Unit,
+    containerColor: Color,
+    contentColor: Color
+) {
+    FilledIconButton(
+        onClick = onPlayPause,
+        modifier = Modifier.size(72.dp),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        shape = AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 60.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusBR = 60.dp,
+            smoothnessAsPercentTL = 60,
+            cornerRadiusBL = 60.dp,
+            smoothnessAsPercentBR = 60,
+            cornerRadiusTR = 60.dp,
+            smoothnessAsPercentBL = 60
+        )
+    ) {
+        Icon(
+            painter = painterResource(
+                if (isPlayingProvider()) R.drawable.rounded_pause_24
+                else R.drawable.rounded_play_arrow_24
+            ),
+            contentDescription = stringResource(R.string.mashup_cd_play_pause),
+            modifier = Modifier.size(36.dp)
+        )
     }
 }

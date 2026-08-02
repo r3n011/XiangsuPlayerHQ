@@ -305,6 +305,9 @@
     <string name="radio_search">搜索</string>
     <string name="radio_no_results">没有找到相关电台</string>
     <string name="radio_retry">重试</string>
+    <string name="radio_live_badge">LIVE</string>
+    <string name="radio_live_playing">直播电台</string>
+    <string name="radio_connecting">连接中…</string>
     <string name="cd_back">返回</string>
     <string name="cd_radio_open">广播</string>
 </resources>

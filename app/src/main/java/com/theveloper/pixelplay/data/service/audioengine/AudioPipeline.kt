@@ -26,6 +26,14 @@ class AudioPipeline {
 
     fun getProcessors(): List<AudioProcessor> = processors.toList()
 
+    /** 是否存在已启用的处理器（不创建拷贝，供音频热路径调用） */
+    fun hasActiveProcessor(): Boolean {
+        for (i in processors.indices) {
+            if (processors[i].isActive()) return true
+        }
+        return false
+    }
+
     fun clearProcessors() {
         processors.forEach { it.release() }
         processors.clear()

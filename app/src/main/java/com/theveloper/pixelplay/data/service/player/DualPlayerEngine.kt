@@ -259,6 +259,8 @@ class DualPlayerEngine @Inject constructor(
         private set
     private var hiFiEngineProcessor: com.theveloper.pixelplay.data.service.audioengine.HiFiEngineAudioProcessor? = null
     private var audioOffloadEnabled = !shouldDisableAudioOffloadByDefault()
+    // 广播电台等实时流媒体模式：禁用 audio offload，规避部分设备 HAL 对直播流的周期性杂音
+    private var streamingModeEnabled = false
     private var transitionJob: Job? = null
     private var bufferingFallbackJob: Job? = null
     private var transitionRunning = false
@@ -532,6 +534,8 @@ class DualPlayerEngine @Inject constructor(
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             lastMediaItemTransitionAtMs = SystemClock.elapsedRealtime()
             cancelAudioOffloadFallback()
+            // 根据当前媒体是否为广播电台流切换流式模式（禁用 audio offload）
+            updateStreamingModeFor(mediaItem?.mediaId)
             AdvancedPerformanceDiagnostics.recordEventIfEnabled(
                 type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
                 name = "media_item_transition",
@@ -647,9 +651,29 @@ class DualPlayerEngine @Inject constructor(
                     }
                     scheduleAudioOffloadFallbackIfNeeded(playerA)
                 }
-                Player.STATE_IDLE, Player.STATE_ENDED -> {
+                Player.STATE_IDLE -> {
                     bufferingStartedAtMs = 0L
                     cancelAudioOffloadFallback()
+                }
+                Player.STATE_ENDED -> {
+                    bufferingStartedAtMs = 0L
+                    cancelAudioOffloadFallback()
+                    // 广播电台直播流可能因服务端主动断开/超时而无错误地进入 ENDED，
+                    // 此时自动重新连接，避免播放静默停止。
+                    if (streamingModeEnabled &&
+                        playerA.currentMediaItem?.mediaId?.startsWith("radio://") == true
+                    ) {
+                        Timber.tag("DualPlayerEngine").w("Radio stream ended — reconnecting")
+                        scope.launch {
+                            delay(800)
+                            runCatching {
+                                if (!::playerA.isInitialized) return@runCatching
+                                playerA.seekToDefaultPosition()
+                                playerA.prepare()
+                                playerA.play()
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1291,6 +1315,31 @@ class DualPlayerEngine @Inject constructor(
             // Non-proxy error: still try next track if retries exhausted
             mediaItemRetryCount[mediaId] = retries + 1
             Timber.tag("DualPlayerEngine").w("Playback error for $mediaId (non-proxy). errorCode=${error.errorCode}")
+
+            // 广播电台重试机制：http(s) 直播流断流/失败时按退避策略自动重连
+            if (mediaId.startsWith("radio://")) {
+                val backoffMs = listOf(1_000L, 3_000L, 6_000L)[retries.coerceAtMost(2)]
+                Timber.tag("DualPlayerEngine").w(
+                    "Radio stream error, retrying in ${backoffMs}ms (attempt ${retries + 1}/$MAX_RETRIES_PER_ITEM)"
+                )
+                scope.launch(Dispatchers.Main) {
+                    delay(backoffMs)
+                    runCatching {
+                        if (!::playerA.isInitialized) return@runCatching
+                        if (playerA.currentMediaItem?.mediaId != mediaId) return@runCatching
+                        val currentIndex = player.currentMediaItemIndex
+                        player.stop()
+                        player.clearMediaItems()
+                        val snapshot = ensureQueueSnapshot()
+                        if (snapshot.isNotEmpty()) {
+                            player.setMediaItems(snapshot, currentIndex, 0L)
+                            player.prepare()
+                            player.playWhenReady = true
+                            Timber.tag("DualPlayerEngine").d("Radio retry: re-connected to $mediaId")
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1508,7 +1557,7 @@ class DualPlayerEngine @Inject constructor(
             setAudioAttributes(audioAttributes, false)
             val offloadPreferences = TrackSelectionParameters.AudioOffloadPreferences.Builder()
                 .setAudioOffloadMode(
-                    if (audioOffloadEnabled) {
+                    if (audioOffloadEnabled && !streamingModeEnabled) {
                         TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED
                     } else {
                         TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED
@@ -1584,6 +1633,47 @@ class DualPlayerEngine @Inject constructor(
             playerA.setPreferredAudioDevice(device)
         }
         playerB?.setPreferredAudioDevice(device)
+    }
+
+    /**
+     * 更新流式（广播电台）播放模式。
+     *
+     * 实时流（如 radio:// 直播电台）在部分设备上启用 audio offload 后，
+     * HAL 会对流式内容产生周期性的打嗝/电流杂音。进入流式模式时动态关闭
+     * audio offload（走 PCM 路径），切回普通歌曲时自动恢复，无需重建播放器。
+     */
+    fun updateStreamingModeFor(mediaId: String?) {
+        val isStreaming = mediaId?.startsWith("radio://") == true
+        if (streamingModeEnabled == isStreaming) return
+        streamingModeEnabled = isStreaming
+        applyStreamingOffloadPreference()
+        Timber.tag("DualPlayerEngine").i(
+            "Streaming mode: %s (audio offload enabled=%s)",
+            isStreaming, audioOffloadEnabled && !isStreaming
+        )
+    }
+
+    private fun applyStreamingOffloadPreference() {
+        val offloadEnabled = audioOffloadEnabled && !streamingModeEnabled
+        val prefs = TrackSelectionParameters.AudioOffloadPreferences.Builder()
+            .setAudioOffloadMode(
+                if (offloadEnabled) {
+                    TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED
+                } else {
+                    TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED
+                }
+            )
+            .build()
+        fun apply(player: ExoPlayer?) {
+            if (player == null) return
+            runCatching {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .setAudioOffloadPreferences(prefs)
+                    .build()
+            }
+        }
+        apply(if (::playerA.isInitialized) playerA else null)
+        apply(playerB)
     }
 
     fun setPauseAtEndOfMediaItems(shouldPause: Boolean) {

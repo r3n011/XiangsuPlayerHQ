@@ -3,15 +3,15 @@ package com.theveloper.pixelplay.presentation.focusmode
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,13 +33,11 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -51,6 +49,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +62,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.presentation.components.LocalMaterialTheme
+import com.theveloper.pixelplay.presentation.components.SmartImage
+import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,31 +85,57 @@ fun FocusModeScreen(
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val isTablet = LocalConfiguration.current.screenWidthDp >= 600
 
-    // Material You: Use dynamic color scheme based on phase
-    val containerColor by animateColorAsState(
-        targetValue = when (timerState.currentPhase) {
-            FocusPhase.STUDY -> MaterialTheme.colorScheme.primaryContainer
-            FocusPhase.BREAK -> MaterialTheme.colorScheme.tertiaryContainer
-            FocusPhase.IDLE -> MaterialTheme.colorScheme.surfaceVariant
-        },
-        animationSpec = tween(500),
-        label = "container_color"
-    )
+    // 与播放器一致的动态主题（封面取色）
+    val colors = LocalMaterialTheme.current
 
+    // 阶段主色：学习=primary，休息=tertiary，待机=primary
     val indicatorColor by animateColorAsState(
         targetValue = when (timerState.currentPhase) {
-            FocusPhase.STUDY -> MaterialTheme.colorScheme.primary
-            FocusPhase.BREAK -> MaterialTheme.colorScheme.tertiary
-            FocusPhase.IDLE -> MaterialTheme.colorScheme.primary
+            FocusPhase.STUDY -> colors.primary
+            FocusPhase.BREAK -> colors.tertiary
+            FocusPhase.IDLE -> colors.primary
         },
-        animationSpec = tween(300),
+        animationSpec = tween(500),
         label = "indicator_color"
     )
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = containerColor
+    val phaseContainer by animateColorAsState(
+        targetValue = when (timerState.currentPhase) {
+            FocusPhase.STUDY -> colors.primaryContainer
+            FocusPhase.BREAK -> colors.tertiaryContainer
+            FocusPhase.IDLE -> colors.surfaceContainerHighest
+        },
+        animationSpec = tween(600),
+        label = "phase_container"
+    )
+
+    // 柔和渐变背景（顶部阶段色 → 底部 surface），与全屏播放器一致
+    val backgroundBrush = Brush.verticalGradient(
+        colors = listOf(
+            phaseContainer.copy(alpha = 0.55f),
+            colors.surfaceContainer.copy(alpha = 0.85f),
+            colors.surface
+        )
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundBrush)
     ) {
+        // 中央阶段色光晕
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(460.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(indicatorColor.copy(alpha = 0.10f), Color.Transparent)
+                    ),
+                    CircleShape
+                )
+        )
+
         if (isLandscape || isTablet) {
             FocusModeLandscapeContent(
                 currentSong = currentSong,
@@ -140,12 +172,14 @@ fun FocusModeScreen(
 
 @Composable
 private fun FocusTopBar(
-    indicatorColor: androidx.compose.ui.graphics.Color,
+    indicatorColor: Color,
     completedCycles: Int,
     timerPhase: FocusPhase,
     onExit: () -> Unit,
     onStopTimer: () -> Unit
 ) {
+    val colors = LocalMaterialTheme.current
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -153,10 +187,15 @@ private fun FocusTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // 左侧：退出按钮 - Material 3 FilledTonalIconButton
+        // 左侧：退出按钮 - 与播放器一致的胶囊圆角
         FilledTonalIconButton(
             onClick = onExit,
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(48.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = colors.secondaryContainer.copy(alpha = 0.9f),
+                contentColor = colors.onSecondaryContainer
+            ),
+            shape = CircleShape
         ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
@@ -165,44 +204,53 @@ private fun FocusTopBar(
             )
         }
 
-        // 中间：完成轮数 - Material 3 Suggestion Chip
-        if (completedCycles > 0) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Text(
-                    text = stringResource(R.string.focus_mode_completed_cycles_format, completedCycles),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                )
+        // 中间：完成轮数 / 标题 - 胶囊徽章
+        Surface(
+            shape = AbsoluteSmoothCornerShape(
+                cornerRadiusTL = 50.dp, smoothnessAsPercentTR = 60,
+                cornerRadiusBR = 50.dp, smoothnessAsPercentTL = 60,
+                cornerRadiusBL = 50.dp, smoothnessAsPercentBR = 60,
+                cornerRadiusTR = 50.dp, smoothnessAsPercentBL = 60
+            ),
+            color = if (completedCycles > 0) {
+                colors.secondaryContainer.copy(alpha = 0.9f)
+            } else {
+                colors.surfaceContainer.copy(alpha = 0.9f)
             }
-        } else {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
-            ) {
-                Text(
-                    text = stringResource(R.string.focus_mode_title),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                )
-            }
+        ) {
+            Text(
+                text = if (completedCycles > 0) {
+                    stringResource(R.string.focus_mode_completed_cycles_format, completedCycles)
+                } else {
+                    stringResource(R.string.focus_mode_title)
+                },
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (completedCycles > 0) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
 
-        // 右侧：结束计时按钮 - Material 3 OutlinedButton
+        // 右侧：结束计时按钮 - 胶囊按钮
         if (timerPhase != FocusPhase.IDLE) {
             FilledTonalButton(
                 onClick = onStopTimer,
-                modifier = Modifier.height(40.dp)
+                modifier = Modifier.height(40.dp),
+                shape = AbsoluteSmoothCornerShape(
+                    cornerRadiusTL = 50.dp, smoothnessAsPercentTR = 60,
+                    cornerRadiusBR = 50.dp, smoothnessAsPercentTL = 60,
+                    cornerRadiusBL = 50.dp, smoothnessAsPercentBR = 60,
+                    cornerRadiusTR = 50.dp, smoothnessAsPercentBL = 60
+                ),
+                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                    containerColor = colors.surfaceContainer.copy(alpha = 0.9f),
+                    contentColor = colors.onSurface
+                )
             ) {
                 Text(
                     text = stringResource(R.string.focus_mode_end),
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         } else {
@@ -214,7 +262,7 @@ private fun FocusTopBar(
 @Composable
 private fun FocusPhaseIndicator(
     timerState: FocusTimerState,
-    indicatorColor: androidx.compose.ui.graphics.Color,
+    indicatorColor: Color,
     modifier: Modifier = Modifier
 ) {
     AnimatedContent(
@@ -237,23 +285,23 @@ private fun FocusPhaseIndicator(
             Text(
                 text = stringResource(phaseTextResId),
                 style = MaterialTheme.typography.titleLarge,
+                fontFamily = GoogleSansRounded,
                 fontWeight = FontWeight.Bold,
                 color = indicatorColor
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            // Material 3 LinearProgressIndicator 替代自定义圆点
+            Spacer(modifier = Modifier.height(10.dp))
             LinearProgressIndicator(
                 progress = { 1f },
                 modifier = Modifier
-                    .width(60.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp)),
+                    .width(64.dp)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(3.dp)),
                 color = when (phase) {
-                    FocusPhase.STUDY -> MaterialTheme.colorScheme.primary
-                    FocusPhase.BREAK -> MaterialTheme.colorScheme.tertiary
-                    FocusPhase.IDLE -> MaterialTheme.colorScheme.outline
+                    FocusPhase.STUDY -> LocalMaterialTheme.current.primary
+                    FocusPhase.BREAK -> LocalMaterialTheme.current.tertiary
+                    FocusPhase.IDLE -> LocalMaterialTheme.current.outline.copy(alpha = 0.5f)
                 },
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                trackColor = LocalMaterialTheme.current.surfaceContainerHighest,
             )
         }
     }
@@ -266,7 +314,7 @@ private fun FocusModePortraitContent(
     totalDurationMs: Long,
     isPlaying: Boolean,
     timerState: FocusTimerState,
-    indicatorColor: androidx.compose.ui.graphics.Color,
+    indicatorColor: Color,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -278,7 +326,7 @@ private fun FocusModePortraitContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
-            .padding(top = 16.dp, bottom = 24.dp),
+            .padding(top = 12.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         FocusTopBar(
@@ -289,7 +337,7 @@ private fun FocusModePortraitContent(
             onStopTimer = onStopTimer
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         FocusPhaseIndicator(
             timerState = timerState,
@@ -297,9 +345,9 @@ private fun FocusModePortraitContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Material 3 CircularProgressIndicator
+        // 玻璃质感时钟
         MaterialTimerCircle(
             timerState = timerState,
             indicatorColor = indicatorColor,
@@ -308,9 +356,8 @@ private fun FocusModePortraitContent(
                 .aspectRatio(1f)
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Material 3 播放控制
         MaterialFocusPlaybackControls(
             isPlaying = isPlaying,
             onPlayPause = onPlayPause,
@@ -321,15 +368,13 @@ private fun FocusModePortraitContent(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Material 3 Card 歌曲信息
         MaterialSongInfoCard(
             currentSong = currentSong,
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Material 3 播放进度
         MaterialProgressBar(
             currentPositionMs = currentPositionMs,
             totalDurationMs = totalDurationMs,
@@ -345,7 +390,7 @@ private fun FocusModeLandscapeContent(
     totalDurationMs: Long,
     isPlaying: Boolean,
     timerState: FocusTimerState,
-    indicatorColor: androidx.compose.ui.graphics.Color,
+    indicatorColor: Color,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -367,14 +412,14 @@ private fun FocusModeLandscapeContent(
             onStopTimer = onStopTimer
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(40.dp)
         ) {
-            // 左侧：Material 3 时钟
+            // 左侧：时钟
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -388,7 +433,7 @@ private fun FocusModeLandscapeContent(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 MaterialTimerCircle(
                     timerState = timerState,
@@ -398,7 +443,7 @@ private fun FocusModeLandscapeContent(
                         .aspectRatio(1f)
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 MaterialFocusPlaybackControls(
                     isPlaying = isPlaying,
@@ -436,15 +481,16 @@ private fun FocusModeLandscapeContent(
 }
 
 /**
- * Material 3 风格的大时钟 - 使用 CircularProgressIndicator
+ * 玻璃质感大时钟：圆角进度环 + 毛玻璃圆盘 + GoogleSansRounded 数字
  */
 @Composable
 private fun MaterialTimerCircle(
     timerState: FocusTimerState,
-    indicatorColor: androidx.compose.ui.graphics.Color,
+    indicatorColor: Color,
     modifier: Modifier = Modifier,
-    timerFontSize: Int = 56
+    timerFontSize: Int = 64
 ) {
+    val colors = LocalMaterialTheme.current
     val progress by animateFloatAsState(
         targetValue = timerState.getProgress(),
         animationSpec = tween(durationMillis = 500),
@@ -455,19 +501,28 @@ private fun MaterialTimerCircle(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        // Material 3 CircularProgressIndicator
+        // 毛玻璃圆盘
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colors.surfaceContainerLowest.copy(alpha = 0.40f), CircleShape)
+                .border(1.dp, colors.outlineVariant.copy(alpha = 0.30f), CircleShape)
+        )
+
+        // 圆角进度环
         CircularProgressIndicator(
             progress = { progress },
             modifier = Modifier.fillMaxSize(),
             color = indicatorColor,
-            strokeWidth = 12.dp,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            trackColor = colors.surfaceContainerHighest.copy(alpha = 0.55f),
+            strokeWidth = 10.dp,
+            strokeCap = StrokeCap.Round,
         )
 
-        // 内部：倒计时时间 + 阶段信息
+        // 内部：倒计时 + 阶段徽章
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             AnimatedContent(
                 targetState = timerState.formatTime(),
@@ -482,30 +537,39 @@ private fun MaterialTimerCircle(
                         fontSize = timerFontSize.sp,
                         fontWeight = FontWeight.Bold,
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = GoogleSansRounded,
+                    color = colors.onSurface,
                     textAlign = TextAlign.Center
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 阶段标签
-            Text(
-                text = when (timerState.currentPhase) {
-                    FocusPhase.STUDY -> stringResource(R.string.focus_mode_study_duration_format, timerState.studyDurationMinutes)
-                    FocusPhase.BREAK -> stringResource(R.string.focus_mode_break_duration_format, timerState.breakDurationMinutes)
-                    FocusPhase.IDLE -> stringResource(R.string.focus_mode_tap_to_start)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Surface(
+                shape = AbsoluteSmoothCornerShape(
+                    cornerRadiusTL = 50.dp, smoothnessAsPercentTR = 60,
+                    cornerRadiusBR = 50.dp, smoothnessAsPercentTL = 60,
+                    cornerRadiusBL = 50.dp, smoothnessAsPercentBR = 60,
+                    cornerRadiusTR = 50.dp, smoothnessAsPercentBL = 60
+                ),
+                color = indicatorColor.copy(alpha = 0.14f)
+            ) {
+                Text(
+                    text = when (timerState.currentPhase) {
+                        FocusPhase.STUDY -> stringResource(R.string.focus_mode_study_duration_format, timerState.studyDurationMinutes)
+                        FocusPhase.BREAK -> stringResource(R.string.focus_mode_break_duration_format, timerState.breakDurationMinutes)
+                        FocusPhase.IDLE -> stringResource(R.string.focus_mode_tap_to_start)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = indicatorColor,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                )
+            }
         }
     }
 }
 
 /**
- * Material 3 风格的播放控制按钮组
+ * 胶囊圆角播放控制按钮组（与播放器风格一致）
  */
 @Composable
 private fun MaterialFocusPlaybackControls(
@@ -513,16 +577,28 @@ private fun MaterialFocusPlaybackControls(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
-    indicatorColor: androidx.compose.ui.graphics.Color
+    indicatorColor: Color
 ) {
+    val colors = LocalMaterialTheme.current
+
     Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 上一曲 - Material 3 FilledTonalIconButton
+        // 上一曲 - 胶囊圆角
         FilledTonalIconButton(
             onClick = onPrevious,
-            modifier = Modifier.size(56.dp)
+            modifier = Modifier.size(56.dp),
+            shape = AbsoluteSmoothCornerShape(
+                cornerRadiusTL = 26.dp, smoothnessAsPercentTR = 60,
+                cornerRadiusBR = 26.dp, smoothnessAsPercentTL = 60,
+                cornerRadiusBL = 26.dp, smoothnessAsPercentBR = 60,
+                cornerRadiusTR = 26.dp, smoothnessAsPercentBL = 60
+            ),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = colors.secondaryContainer.copy(alpha = 0.9f),
+                contentColor = colors.onSecondaryContainer
+            )
         ) {
             Icon(
                 imageVector = Icons.Rounded.SkipPrevious,
@@ -531,13 +607,19 @@ private fun MaterialFocusPlaybackControls(
             )
         }
 
-        // 主播放/暂停按钮 - Material 3 FilledIconButton
+        // 主播放/暂停按钮
         FilledIconButton(
             onClick = onPlayPause,
             modifier = Modifier.size(72.dp),
+            shape = AbsoluteSmoothCornerShape(
+                cornerRadiusTL = 60.dp, smoothnessAsPercentTR = 60,
+                cornerRadiusBR = 60.dp, smoothnessAsPercentTL = 60,
+                cornerRadiusBL = 60.dp, smoothnessAsPercentBR = 60,
+                cornerRadiusTR = 60.dp, smoothnessAsPercentBL = 60
+            ),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = indicatorColor,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = colors.onPrimary
             )
         ) {
             Icon(
@@ -547,10 +629,20 @@ private fun MaterialFocusPlaybackControls(
             )
         }
 
-        // 下一曲 - Material 3 FilledTonalIconButton
+        // 下一曲 - 胶囊圆角
         FilledTonalIconButton(
             onClick = onNext,
-            modifier = Modifier.size(56.dp)
+            modifier = Modifier.size(56.dp),
+            shape = AbsoluteSmoothCornerShape(
+                cornerRadiusTL = 26.dp, smoothnessAsPercentTR = 60,
+                cornerRadiusBR = 26.dp, smoothnessAsPercentTL = 60,
+                cornerRadiusBL = 26.dp, smoothnessAsPercentBR = 60,
+                cornerRadiusTR = 26.dp, smoothnessAsPercentBL = 60
+            ),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = colors.secondaryContainer.copy(alpha = 0.9f),
+                contentColor = colors.onSecondaryContainer
+            )
         ) {
             Icon(
                 imageVector = Icons.Rounded.SkipNext,
@@ -562,70 +654,109 @@ private fun MaterialFocusPlaybackControls(
 }
 
 /**
- * Material 3 Card 风格的歌曲信息卡片
+ * 玻璃质感歌曲信息卡片：封面缩略图 + 歌名/歌手
  */
 @Composable
 private fun MaterialSongInfoCard(
     currentSong: Song?,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    val colors = LocalMaterialTheme.current
+
+    Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        shape = AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 26.dp, smoothnessAsPercentTR = 60,
+            cornerRadiusBR = 26.dp, smoothnessAsPercentTL = 60,
+            cornerRadiusBL = 26.dp, smoothnessAsPercentBR = 60,
+            cornerRadiusTR = 26.dp, smoothnessAsPercentBL = 60
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        color = colors.surfaceContainer.copy(alpha = 0.55f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            colors.outlineVariant.copy(alpha = 0.25f)
+        )
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = currentSong?.title ?: stringResource(R.string.focus_mode_not_playing),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = currentSong?.displayArtist ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // 封面缩略图
+            val albumArt = currentSong?.albumArtUriString
+            if (!albumArt.isNullOrBlank()) {
+                SmartImage(
+                    model = albumArt,
+                    contentDescription = stringResource(R.string.cd_album_art_for_title, currentSong.title),
+                    contentScale = ContentScale.Crop,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.size(52.dp)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(colors.primaryContainer.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = colors.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = currentSong?.title ?: stringResource(R.string.focus_mode_not_playing),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = currentSong?.displayArtist ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start
+                )
+            }
         }
     }
 }
 
 /**
- * Material 3 风格的播放进度条
+ * 圆角播放进度条
  */
 @Composable
 private fun MaterialProgressBar(
     currentPositionMs: Long,
     totalDurationMs: Long,
-    indicatorColor: androidx.compose.ui.graphics.Color,
+    indicatorColor: Color,
     modifier: Modifier = Modifier
 ) {
     if (totalDurationMs <= 0) return
 
+    val colors = LocalMaterialTheme.current
     val progress = (currentPositionMs.toFloat() / totalDurationMs.toFloat()).coerceIn(0f, 1f)
 
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Material 3 LinearProgressIndicator
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier
@@ -633,12 +764,11 @@ private fun MaterialProgressBar(
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp)),
             color = indicatorColor,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            trackColor = colors.surfaceContainerHighest.copy(alpha = 0.6f),
         )
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 时间显示
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -646,12 +776,12 @@ private fun MaterialProgressBar(
             Text(
                 text = formatDuration(currentPositionMs),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colors.onSurfaceVariant
             )
             Text(
                 text = formatDuration(totalDurationMs),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colors.onSurfaceVariant
             )
         }
     }

@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.radio.RadioStation
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
@@ -66,6 +67,7 @@ import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.RadioMode
 import com.theveloper.pixelplay.presentation.viewmodel.RadioViewModel
+import dev.chrisbanes.haze.hazeSource
 
 /**
  * 网络广播页面（radio-browser.info）
@@ -96,6 +98,7 @@ fun RadioScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundBrush)
+            .hazeSource(MainActivity.LocalHazeState.current)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             RadioHeader(

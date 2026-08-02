@@ -78,7 +78,7 @@ class HiFiEngineAudioProcessor : AudioProcessor {
     override fun isActive(): Boolean {
         if (!configured) return false
         // 只要有一个处理器激活，整个桥接器就激活
-        return pipeline.getProcessors().any { it.isActive() }
+        return pipeline.hasActiveProcessor()
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
@@ -89,6 +89,14 @@ class HiFiEngineAudioProcessor : AudioProcessor {
 
         val remaining = inputBuffer.remaining()
         if (remaining == 0) {
+            inputBuffer.position(inputBuffer.limit())
+            return
+        }
+
+        // 所有 DSP 处理器均未启用时直接透传：避免每次分块都做 ByteArray/FloatArray
+        // 分配与 PCM↔Float 转换，产生持续 GC 压力导致周期性音频卡顿（打嗝/电流声）。
+        if (!pipeline.hasActiveProcessor()) {
+            outputBuffer = inputBuffer.duplicate()
             inputBuffer.position(inputBuffer.limit())
             return
         }
@@ -155,6 +163,13 @@ class HiFiEngineAudioProcessor : AudioProcessor {
     }
 
     override fun queueEndOfStream() {
+        // 透传模式下无残留数据，直接标记结束
+        if (!pipeline.hasActiveProcessor()) {
+            outputBuffer = AudioProcessor.EMPTY_BUFFER
+            inputEnded = true
+            return
+        }
+
         // 处理 pending buffer 中剩余的数据
         val remaining = pendingBuffer.remaining()
         if (remaining > 0) {
