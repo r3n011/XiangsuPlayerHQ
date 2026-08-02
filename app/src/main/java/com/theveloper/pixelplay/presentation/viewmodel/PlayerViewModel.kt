@@ -3974,13 +3974,15 @@ class PlayerViewModel @Inject constructor(
                     startProgressUpdates()
                 }
                 if (playbackState == Player.STATE_IDLE && playerCtrl.mediaItemCount == 0) {
-                    Log.w("PixelPlay_Debug", "  → IDLE+empty: 清空 state")
+                    Log.w("PixelPlay_Debug", "  → IDLE+empty: 清空播放状态（保留 currentSong 防止竞态导致播放器消失）")
                     clearPreparingSongIfMatching()
                     if (!isCastConnecting.value && !isRemotePlaybackActive.value) {
                         lyricsStateHolder.cancelLoading()
+                        // ⚠️ 不清空 currentSong：MediaController 短暂断开重连时 mediaItemCount
+                        // 可能暂时报告 0，清空 currentSong 会导致播放器消失。
+                        // currentSong 的清空仅由明确的用户操作（dismiss、removeFromLibrary）触发。
                         playbackStateHolder.updateStablePlayerStateIfChanged {
                             it.copy(
-                                currentSong = null,
                                 isPlaying = false,
                                 playWhenReady = false,
                                 lyrics = null,

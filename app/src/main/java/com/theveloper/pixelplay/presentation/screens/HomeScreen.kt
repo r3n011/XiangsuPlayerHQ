@@ -102,6 +102,7 @@ import com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboar
 import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashboardViewModel
 import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardViewModel
 import com.theveloper.pixelplay.presentation.components.DailyMixSection
+import com.theveloper.pixelplay.presentation.components.FavoriteArtistsSection
 import com.theveloper.pixelplay.presentation.components.HomeGradientTopBar
 import com.theveloper.pixelplay.presentation.components.HomeOptionsBottomSheet
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
@@ -120,6 +121,7 @@ import com.theveloper.pixelplay.presentation.telegram.auth.TelegramLoginActivity
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StatsViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.FavoriteArtistViewModel
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -153,6 +155,9 @@ fun HomeScreen(
         (context as? android.app.Activity)?.intent?.getBooleanExtra("is_benchmark", false) ?: false
     }
     val statsViewModel: StatsViewModel = hiltViewModel()
+    // ⚡ 收藏的歌手
+    val favoriteArtistViewModel: FavoriteArtistViewModel = hiltViewModel()
+    val favoriteArtists by favoriteArtistViewModel.artists.collectAsStateWithLifecycle()
     val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
     val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
@@ -589,6 +594,31 @@ fun HomeScreen(
                                 }
                             }
 
+                            if (favoriteArtists.isNotEmpty()) {
+                                item(key = "card_favorite_artists", contentType = "card") {
+                                    Card(
+                                        modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                    ) {
+                                        FavoriteArtistsSection(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(top = 16.dp),
+                                            artists = favoriteArtists,
+                                            onArtistClick = { artist ->
+                                                navController.navigateSafely(
+                                                    Screen.ArtistHomepage.createRoute(artist.id)
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
                             if (recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
                                 item(key = "card_recently_played", contentType = "card") {
                                     Box(
@@ -685,6 +715,23 @@ fun HomeScreen(
                                     )
                                 },
                                 playerViewModel = playerViewModel
+                            )
+                        }
+                    }
+
+                    // ⚡ 收藏的歌手卡片
+                    if (favoriteArtists.isNotEmpty()) {
+                        item(
+                            key = "favorite_artists_section",
+                            contentType = "favorite_artists_section"
+                        ) {
+                            FavoriteArtistsSection(
+                                artists = favoriteArtists,
+                                onArtistClick = { artist ->
+                                    navController.navigateSafely(
+                                        Screen.ArtistHomepage.createRoute(artist.id)
+                                    )
+                                }
                             )
                         }
                     }

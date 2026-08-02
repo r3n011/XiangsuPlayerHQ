@@ -622,6 +622,99 @@ class LxSearchApi @Inject constructor(
         }
     }
 
+    /**
+     * 网易云歌手搜索（type=100）。
+     * 接口：`https://ncmapi.btwoa.com/search?keywords=<关键字>&type=100&limit=20&offset=0`
+     * 返回 JSON 中 result.artists 数组，每项包含 id / name / alias / picUrl。
+     * 支持真正的 limit/offset 分页。
+     */
+    suspend fun searchArtists(keyword: String, page: Int = 1, pageSize: Int = 20): LxArtistSearchResult {
+        if (keyword.isBlank()) {
+            return LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val encodedKeyword = URLEncoder.encode(keyword, "UTF-8")
+                val offset = (page - 1) * pageSize
+                val url = "$SEARCH_API_BASE?keywords=$encodedKeyword&type=100&limit=$pageSize&offset=$offset"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0")
+                    .get()
+                    .build()
+
+                val response = okHttpClient.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    Timber.e("歌手搜索API请求失败: ${response.code}")
+                    return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+
+                val body = response.body?.string()
+                    ?: return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                parseArtistSearchResponse(body, pageSize, offset)
+            } catch (e: Exception) {
+                Timber.e(e, "歌手搜索API请求异常")
+                LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+        }
+    }
+
+    private fun parseArtistSearchResponse(body: String, pageSize: Int = 20, offset: Int = 0): LxArtistSearchResult {
+        return try {
+            val obj = JSONObject(body)
+            if (obj.optInt("code", -1) != 200) {
+                Timber.w("歌手搜索返回非成功 code: ${obj.optInt("code", -1)}")
+                return LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+            val result = obj.optJSONObject("result")
+                ?: return LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            val artists = result.optJSONArray("artists")
+                ?: return LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            val total = result.optInt("artistCount", artists.length())
+
+            val list = mutableListOf<LxArtistInfo>()
+            for (i in 0 until artists.length()) {
+                val artistObj = artists.optJSONObject(i) ?: continue
+                val id = artistObj.optLong("id", 0L)
+                val name = artistObj.optString("name", "").trim()
+                if (id <= 0L || name.isBlank()) continue
+
+                // 别名（alias 数组），如 "周杰伦 / Jay Chou"
+                val aliasArr = artistObj.optJSONArray("alias")
+                val alias = if (aliasArr != null && aliasArr.length() > 0) {
+                    buildString {
+                        for (j in 0 until aliasArr.length()) {
+                            val a = aliasArr.optString(j, "").trim()
+                            if (a.isNotBlank()) {
+                                if (isNotEmpty()) append(" / ")
+                                append(a)
+                            }
+                        }
+                    }
+                } else {
+                    ""
+                }
+
+                list.add(
+                    LxArtistInfo(
+                        id = id.toString(),
+                        name = name,
+                        alias = alias,
+                        picUrl = artistObj.optString("picUrl", "").trim().replace("`", "")
+                    )
+                )
+            }
+
+            // 已加载数量 >= 总数量，或本次返回为空，即为最后一页
+            val isEnd = list.isEmpty() || (offset + list.size) >= total
+            LxArtistSearchResult(list = list, isEnd = isEnd, total = total)
+        } catch (e: Exception) {
+            Timber.e(e, "歌手搜索结果解析失败")
+            LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        }
+    }
+
     private fun parseSongInfo(obj: JSONObject): LxSongInfo {
         val id = obj.optString("id", "")
         val name = obj.optString("name", "未知歌曲")

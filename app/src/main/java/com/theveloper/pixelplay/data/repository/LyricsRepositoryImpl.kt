@@ -916,19 +916,8 @@ class LyricsRepositoryImpl @Inject constructor(
         if (songId <= 0L) return@withContext null
 
         val rawLrc = try {
-            withNetworkRetry(
-                operationName = "netease_lyrics:$songId",
-                maxAttempts = 3,
-                initialDelayMs = 500L,
-                shouldRetry = { it is IOException || (it is HttpException && it.code().isRetryableHttpStatusCode()) }
-            ) {
-                kotlinx.coroutines.withTimeout(12000L) {
-                    val response = lxSearchApi.getLyric(songId = songId.toString())
-                    if (response.isNullOrBlank()) {
-                        throw IOException("Empty netease lyrics response for songId=$songId")
-                    }
-                    response
-                }
+            kotlinx.coroutines.withTimeout(12000L) {
+                lxSearchApi.getLyric(songId = songId.toString())
             }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             Log.w(TAG, "Netease API timeout for songId=$songId")
@@ -1220,51 +1209,38 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Load embedded lyrics from audio file metadata.
-     * Avoids copying the whole file to a temp file when possible by opening a file descriptor
-     * directly from the file path or content URI.
+     * Load embedded lyrics from audio file metadata
      */
     private suspend fun loadEmbeddedLyricsFromMetadata(song: Song): Lyrics? = withContext(Dispatchers.IO) {
-        // Skip embedded lyrics for Telegram/cloud/URL songs (not supported yet/streamed)
-        if (song.contentUriString.startsWith("telegram://") ||
-            song.contentUriString.startsWith("http://") ||
-            song.contentUriString.startsWith("https://") ||
-            song.contentUriString.startsWith("netease://") ||
-            song.contentUriString.startsWith("cloud://") ||
-            song.contentUriString.isEmpty()
-        ) {
+        // Skip embedded lyrics for Telegram songs (not supported yet/streamed)
+        if (song.contentUriString.startsWith("telegram://") || song.contentUriString.isEmpty()) {
             return@withContext null
         }
 
-        val fd = try {
-            when {
-                song.path.isNotBlank() && File(song.path).exists() -> {
-                    ParcelFileDescriptor.open(File(song.path), ParcelFileDescriptor.MODE_READ_ONLY).detachFd()
-                }
-                song.contentUriString.startsWith("file://") -> {
-                    val filePath = song.contentUriString.removePrefix("file://")
-                    ParcelFileDescriptor.open(File(filePath), ParcelFileDescriptor.MODE_READ_ONLY).detachFd()
-                }
-                song.contentUriString.startsWith("content://") -> {
-                    context.contentResolver.openFileDescriptor(song.contentUriString.toUri(), "r")?.detachFd()
-                }
-                else -> null
-            }
-        } catch (e: Exception) {
-            LogUtils.w(this@LyricsRepositoryImpl, "Could not open fd for embedded lyrics: ${song.contentUriString}")
-            null
-        } ?: return@withContext null
-
+        // Then try to read from file metadata
         return@withContext try {
-            val metadata = TagLib.getMetadata(fd)
-            val propertyMap = metadata?.propertyMap
-            val parsedLyrics = parseBestEmbeddedLyricsField(propertyMap)
+            val uri = song.contentUriString.toUri()
+            val tempFile = createTempFileFromUri(uri)
+            if (tempFile == null) {
+                LogUtils.w(this@LyricsRepositoryImpl, "Could not create temp file from URI: ${song.contentUriString}")
+                return@withContext null
+            }
 
-            if (parsedLyrics != null) {
-                Log.d(TAG, "===== FOUND EMBEDDED LYRICS =====")
-                parsedLyrics
-            } else {
-                null
+            try {
+                ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                    val metadata = TagLib.getMetadata(fd.detachFd())
+                    val propertyMap = metadata?.propertyMap
+                    val parsedLyrics = parseBestEmbeddedLyricsField(propertyMap)
+
+                    if (parsedLyrics != null) {
+                        Log.d(TAG, "===== FOUND EMBEDDED LYRICS =====")
+                        parsedLyrics
+                    } else {
+                        null
+                    }
+                }
+            } finally {
+                tempFile.delete()
             }
         } catch (e: Exception) {
             LogUtils.e(this@LyricsRepositoryImpl, e, "Error reading lyrics from file metadata")

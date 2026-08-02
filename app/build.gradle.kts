@@ -93,8 +93,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 31
-        versionName = "1.3.1"
+        versionCode = 33
+        versionName = "1.3.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -181,7 +181,8 @@ android {
             isEnable = enableAbiSplits
             reset()
             if (enableAbiSplits) {
-                include("arm64-v8a", "armeabi-v7a")
+                // ⚡ 只输出 64 位包（arm64-v8a），不再打包 32 位
+                include("arm64-v8a")
                 isUniversalApk = false
             }
         }

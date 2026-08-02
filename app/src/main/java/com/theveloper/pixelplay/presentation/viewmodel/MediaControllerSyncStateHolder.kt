@@ -515,9 +515,11 @@ class MediaControllerSyncStateHolder @Inject constructor(
                     playbackStateHolder.startProgressUpdates()
                 }
             } else {
+                // ⚠️ 不清空 currentSong：MediaController 短暂断开重连时 mediaItem 可能为 null，
+                // 清空 currentSong 会导致播放器消失。
+                // currentSong 的清空仅由明确的用户操作（dismiss、removeFromLibrary）触发。
                 playbackStateHolder.updateStablePlayerState {
                     it.copy(
-                        currentSong = null,
                         isPlaying = false,
                         playWhenReady = false
                     )
@@ -615,9 +617,10 @@ class MediaControllerSyncStateHolder @Inject constructor(
                     playbackDispatchStateHolder.clearPreparingSongIfMatching()
                     if (!castStateHolder.isCastConnecting.value && !castStateHolder.isRemotePlaybackActive.value) {
                         lyricsStateHolder.cancelLoading()
+                        // ⚠️ 不清空 currentSong：MediaController 短暂断开重连时 mediaItemCount
+                        // 可能暂时报告 0，清空 currentSong 会导致播放器消失。
                         playbackStateHolder.updateStablePlayerState {
                             it.copy(
-                                currentSong = null,
                                 isPlaying = false,
                                 playWhenReady = false,
                                 lyrics = null,
@@ -723,9 +726,10 @@ class MediaControllerSyncStateHolder @Inject constructor(
                     } ?: run {
                         if (!castStateHolder.isCastConnecting.value && !castStateHolder.isRemotePlaybackActive.value) {
                             lyricsStateHolder.cancelLoading()
+                            // ⚠️ 不清空 currentSong：MediaController 短暂断开重连时可能触发此分支，
+                            // 清空 currentSong 会导致播放器消失。
                             playbackStateHolder.updateStablePlayerState {
                                 it.copy(
-                                    currentSong = null,
                                     isPlaying = false,
                                     playWhenReady = false,
                                     lyrics = null,

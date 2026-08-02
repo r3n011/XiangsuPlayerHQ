@@ -199,11 +199,14 @@
     <string name="about_acknowledgements_title">鸣谢</string>
     <string name="about_acknowledgements_blur_desc">模糊效果改编自该项目</string>
     <string name="about_acknowledgements_miniaudio_desc">音频播放由 miniaudio 驱动</string>
-    <string name="about_acknowledgements_lanzou_desc">云音乐接入由 LanzouAPI 驱动</string>
+    <string name="about_acknowledgements_lanzou_desc">更新接入由 LanzouAPI 驱动</string>
     <string name="cd_open_github_profile">打开 GitHub 个人主页</string>
     <string name="cd_open_telegram">打开 Telegram</string>
     <string name="cd_contributor_avatar">%1$s 的头像</string>
     <string name="cd_contributor_icon">%1$s 的图标</string>
+    <string name="home_favorite_artists_title">收藏的歌手</string>
+    <string name="cd_favorite_artist">收藏歌手</string>
+    <string name="cd_unfavorite_artist">取消收藏</string>
 
     <!-- Streaming / cloud dashboards -->
     <string name="screen_subsonic_dashboard_title">Subsonic</string>

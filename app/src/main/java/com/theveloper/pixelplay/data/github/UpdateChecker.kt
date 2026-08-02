@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.data.github
 
 import com.theveloper.pixelplay.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -228,52 +229,71 @@ class UpdateChecker @Inject constructor() {
     /**
      * 同步蓝奏云版本信息
      * 检查蓝奏云中的版本是否与 GitHub 一致
+     *
+     * 蓝奏云存在偶发的反爬校验/网络抖动，导致解析失败或返回空列表，
+     * 因此最多重试 5 次（失败或空列表时递增延迟后重试），仍失败则视为未同步。
      */
     suspend fun syncLanzouVersions(updateInfo: UpdateInfo): UpdateInfo {
         return withContext(Dispatchers.IO) {
-            try {
-                val result = lanzouApi.resolveShare(LANZOU_SHARE_URL, LANZOU_PASSWORD)
-                
-                result.fold(
-                    onSuccess = { files ->
-                        if (files.isEmpty()) {
-                            Timber.w("蓝奏云中没有找到文件")
-                            updateInfo.copy(isLanzouSynced = false)
-                        } else {
-                            // 检查所有文件的版本号是否都与 GitHub 一致
-                            val githubVersion = updateInfo.version.removePrefix("v")
-                            val allSynced = files.all { file ->
-                                file.versionName == null || file.versionName == githubVersion
-                            }
-                            
-                            if (allSynced) {
-                                Timber.d("蓝奏云版本已同步，找到 ${files.size} 个文件")
-                                updateInfo.copy(
-                                    lanzouFiles = files,
-                                    isLanzouSynced = true
-                                )
+            var lastError: Throwable? = null
+
+            // 最多尝试 5 次，失败或返回空列表时重试
+            for (attempt in 1..5) {
+                val outcome = try {
+                    lanzouApi.resolveShare(LANZOU_SHARE_URL, LANZOU_PASSWORD).fold(
+                        onSuccess = { files ->
+                            if (files.isEmpty()) {
+                                Timber.w("蓝奏云中没有找到文件（第 $attempt 次尝试）")
+                                null
                             } else {
-                                Timber.w("蓝奏云版本与 GitHub 不一致，不使用蓝奏云更新")
-                                val mismatched = files.filter { file ->
-                                    file.versionName != null && file.versionName != githubVersion
+                                // 检查所有文件的版本号是否都与 GitHub 一致
+                                val githubVersion = updateInfo.version.removePrefix("v")
+                                val allSynced = files.all { file ->
+                                    file.versionName == null || file.versionName == githubVersion
                                 }
-                                Timber.w("不匹配的文件: ${mismatched.map { it.fileName }}")
-                                updateInfo.copy(
-                                    lanzouFiles = files,
-                                    isLanzouSynced = false
-                                )
+
+                                if (allSynced) {
+                                    Timber.d("蓝奏云版本已同步，找到 ${files.size} 个文件")
+                                    updateInfo.copy(
+                                        lanzouFiles = files,
+                                        isLanzouSynced = true
+                                    )
+                                } else {
+                                    Timber.w("蓝奏云版本与 GitHub 不一致，不使用蓝奏云更新")
+                                    val mismatched = files.filter { file ->
+                                        file.versionName != null && file.versionName != githubVersion
+                                    }
+                                    Timber.w("不匹配的文件: ${mismatched.map { it.fileName }}")
+                                    updateInfo.copy(
+                                        lanzouFiles = files,
+                                        isLanzouSynced = false
+                                    )
+                                }
                             }
+                        },
+                        onFailure = { error ->
+                            lastError = error
+                            Timber.w(error, "无法访问蓝奏云（第 $attempt 次尝试）")
+                            null
                         }
-                    },
-                    onFailure = { error ->
-                        Timber.w(error, "无法访问蓝奏云")
-                        updateInfo.copy(isLanzouSynced = false)
-                    }
-                )
-            } catch (e: Exception) {
-                Timber.w(e, "同步蓝奏云版本时出错")
-                updateInfo.copy(isLanzouSynced = false)
+                    )
+                } catch (e: Exception) {
+                    lastError = e
+                    Timber.w(e, "同步蓝奏云版本时出错（第 $attempt 次尝试）")
+                    null
+                }
+
+                // 本次尝试已得到有效结果（无论是否同步），直接返回
+                if (outcome != null) return@withContext outcome
+
+                // 未成功 → 递增延迟后重试（第 N 次尝试后延迟 N 秒）
+                if (attempt < 5) {
+                    delay(attempt * 1000L)
+                }
             }
+
+            Timber.e(lastError, "蓝奏云同步重试 5 次后仍失败")
+            updateInfo.copy(isLanzouSynced = false)
         }
     }
 }

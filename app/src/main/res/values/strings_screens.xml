@@ -199,11 +199,14 @@
     <string name="about_acknowledgements_title">Acknowledgements</string>
     <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
     <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
-    <string name="about_acknowledgements_lanzou_desc">Cloud integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
     <string name="cd_open_github_profile">Open GitHub profile</string>
     <string name="cd_open_telegram">Open Telegram</string>
     <string name="cd_contributor_avatar">Avatar of %1$s</string>
     <string name="cd_contributor_icon">Icon of %1$s</string>
+    <string name="home_favorite_artists_title">Favorite Artists</string>
+    <string name="cd_favorite_artist">Favorite artist</string>
+    <string name="cd_unfavorite_artist">Unfavorite artist</string>
 
     <!-- Streaming / cloud dashboards -->
     <string name="screen_subsonic_dashboard_title">Subsonic</string>

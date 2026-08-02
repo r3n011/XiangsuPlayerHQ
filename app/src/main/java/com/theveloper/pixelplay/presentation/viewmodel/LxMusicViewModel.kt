@@ -9,6 +9,7 @@ import com.theveloper.pixelplay.data.lx.LxFileStore
 import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.lx.LxSongInfo
+import com.theveloper.pixelplay.data.lx.LxArtistInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
@@ -43,6 +44,11 @@ data class LxUiState(
     // ⚡ 分页相关字段
     val isEnd: Boolean = true,
     val isLoadingMore: Boolean = false,
+    // ⚡ 歌手搜索相关字段
+    val searchingArtists: Boolean = false,
+    val artistResults: List<LxArtistInfo> = emptyList(),
+    val artistIsEnd: Boolean = true,
+    val artistError: String? = null,
 )
 
 @HiltViewModel
@@ -276,6 +282,82 @@ class LxMusicViewModel @Inject constructor(
     }
 
     /**
+     * ⚡ 歌手搜索（网易云 type=100）。
+     * - 独立的分页状态（_artistCurrentPage / _lastArtistKeyword）
+     * - 不影响歌曲搜索的 results / isEnd 状态
+     */
+    private var _artistCurrentPage = 1
+    private var _lastArtistKeyword: String? = null
+
+    fun searchArtists() {
+        val kw = keyword.trim()
+        if (kw.isBlank()) return
+        // ⚡ 新搜索重置分页状态
+        _artistCurrentPage = 1
+        _lastArtistKeyword = kw
+        _uiState.value = _uiState.value.copy(
+            searchingArtists = true,
+            artistError = null,
+            artistIsEnd = false,
+            artistResults = emptyList()
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = searchApi.searchArtists(kw, page = 1, pageSize = _pageSize)
+                _uiState.value = _uiState.value.copy(
+                    searchingArtists = false,
+                    artistResults = result.list,
+                    artistIsEnd = result.isEnd,
+                    artistError = if (result.list.isEmpty()) "无相关歌手（请换关键词）" else null
+                )
+            } catch (t: Throwable) {
+                _uiState.value = _uiState.value.copy(
+                    searchingArtists = false,
+                    artistResults = emptyList(),
+                    artistIsEnd = true,
+                    artistError = "歌手搜索失败: ${t.message ?: t.javaClass.simpleName}"
+                )
+            }
+        }
+    }
+
+    /**
+     * ⚡ 加载下一页歌手搜索结果（无限滚动）
+     */
+    fun loadMoreArtists() {
+        val kw = _lastArtistKeyword?.trim() ?: keyword.trim()
+        if (kw.isBlank()) return
+        // 防重复：正在搜索/加载更多时不触发；已到最后一页时不触发
+        if (_uiState.value.searchingArtists || _uiState.value.isLoadingMore || _uiState.value.artistIsEnd) return
+        // 无现有结果时，交给普通 searchArtists()
+        if (_uiState.value.artistResults.isEmpty()) return
+
+        val nextPage = _artistCurrentPage + 1
+        _uiState.value = _uiState.value.copy(isLoadingMore = true, artistError = null)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = searchApi.searchArtists(kw, page = nextPage, pageSize = _pageSize)
+                // ⚡ 追加到现有结果列表，使用 LinkedHashSet 去重
+                val existingIds = _uiState.value.artistResults.mapTo(LinkedHashSet()) { it.id }
+                val newItems = result.list.filterNot { it.id in existingIds }
+                val merged = _uiState.value.artistResults + newItems
+
+                _artistCurrentPage = nextPage
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    artistResults = merged,
+                    artistIsEnd = result.isEnd
+                )
+            } catch (t: Throwable) {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    artistError = "加载更多失败: ${t.message ?: t.javaClass.simpleName}"
+                )
+            }
+        }
+    }
+
+    /**
      * 批量补充搜索结果中缺失封面的歌曲。
      * 搜索 API 不返回 picUrl，需通过歌曲详情 API 补全。
      */
@@ -355,6 +437,7 @@ class LxMusicViewModel @Inject constructor(
                     } else {
                         Timber.d("LxPlaySong: Official API failed, falling back to LxJsEngine for '${song.name}'")
                         engine.getPlayUrl("wy", songMap, preferredQuality.lxValue)
+                            ?: engine.getPlayUrl("wy", songMap, "24bit")
                             ?: engine.getPlayUrl("wy", songMap, "flac")
                             ?: engine.getPlayUrl("wy", songMap, "320k")
                             ?: engine.getPlayUrl("wy", songMap, "128k")

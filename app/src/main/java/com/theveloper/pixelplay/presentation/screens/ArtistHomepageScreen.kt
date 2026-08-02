@@ -30,6 +30,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
@@ -78,6 +80,7 @@ import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 import com.theveloper.pixelplay.presentation.viewmodel.ArtistAlbumSection
 import com.theveloper.pixelplay.presentation.viewmodel.ArtistHomepageViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.FavoriteArtistViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
@@ -94,6 +97,10 @@ fun ArtistHomepageScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
+    // ⚡ 收藏歌手
+    val favoriteArtistViewModel: FavoriteArtistViewModel = hiltViewModel()
+    val favoriteArtistIds by favoriteArtistViewModel.favoriteIds.collectAsStateWithLifecycle()
+    val isArtistFavorite = favoriteArtistIds.contains(artistId)
 
     var showSongInfoSheet by remember { mutableStateOf(false) }
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
@@ -393,6 +400,49 @@ fun ArtistHomepageScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    // ⚡ 收藏歌手按钮
+                    item(key = "favorite_artist_button") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            FilledTonalButton(
+                                onClick = {
+                                    favoriteArtistViewModel.toggleFavorite(
+                                        id = artistId,
+                                        name = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                                        avatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
+                                        alias = uiState.alias.joinToString(" / ")
+                                    )
+                                },
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = if (isArtistFavorite) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    }
+                                ),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isArtistFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                    contentDescription = stringResource(
+                                        if (isArtistFavorite) R.string.cd_unfavorite_artist else R.string.cd_favorite_artist
+                                    ),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                Text(
+                                    text = if (isArtistFavorite) "已收藏" else "收藏歌手",
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }

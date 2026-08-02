@@ -25,6 +25,24 @@ data class LxSearchResult(
     val total: Int = 0
 )
 
+/**
+ * 网易云歌手搜索结果（/search?type=100）。
+ */
+@Serializable
+data class LxArtistInfo(
+    val id: String = "",
+    val name: String = "",
+    val alias: String = "",
+    val picUrl: String = ""
+)
+
+@Serializable
+data class LxArtistSearchResult(
+    val isEnd: Boolean = true,
+    val list: List<LxArtistInfo> = emptyList(),
+    val total: Int = 0
+)
+
 @Serializable
 data class LxSourceInfo(
     val name: String = "",
