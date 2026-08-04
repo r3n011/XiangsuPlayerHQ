@@ -1,4 +1,4 @@
-<p align="right">[English](./README.md) | [中文](./README_zh.md)</p>
+<p align="right">[中文](./README_zh.md) | [English](./README.md)</p>
 
 # XiangsuPlayer 🎵
 
@@ -12,13 +12,13 @@
 </p>
 
 <p align="center">
-    <a href="https://github.com/theovilardo/PixelPlayer/releases/latest">
-        <img src="https://img.shields.io/github/v/release/theovilardo/PixelPlayer?include_prereleases&logo=github&style=for-the-badge&label=Latest%20Release" alt="Latest Release">
+    <a href="https://github.com/r3n011/XiangsuPlayerHQ/releases/latest">
+        <img src="https://img.shields.io/github/v/release/r3n011/XiangsuPlayerHQ?include_prereleases&logo=github&style=for-the-badge&label=Latest%20Release" alt="Latest Release">
     </a>
-    <a href="https://github.com/theovilardo/PixelPlayer/releases">
-        <img src="https://img.shields.io/github/downloads/theovilardo/PixelPlayer/total?logo=github&style=for-the-badge" alt="Total Downloads">
+    <a href="https://github.com/r3n011/XiangsuPlayerHQ/releases">
+        <img src="https://img.shields.io/github/downloads/r3n011/XiangsuPlayerHQ/total?logo=github&style=for-the-badge" alt="Total Downloads">
     </a>
-    <img src="https://img.shields.io/badge/Android-11%2B-green?style=for-the-badge&logo=android" alt="Android 11+">
+    <img src="https://img.shields.io/badge/Android-9%2B-green?style=for-the-badge&logo=android" alt="Android 9+">
     <img src="https://img.shields.io/badge/Kotlin-100%25-purple?style=for-the-badge&logo=kotlin" alt="Kotlin">
 </p>
 
@@ -164,7 +164,7 @@
 
 ## 📱 Requirements
 
-- **Android 11** (API 30) or higher
+- **Android 9** (API 28) or higher
 - **6GB RAM** recommended for smooth performance
 - **USB OTG** required for USB DAC support
 
@@ -183,8 +183,8 @@
 
 1. **Clone the repository**
    ```sh
-   git clone https://github.com/theovilardo/PixelPlayer.git
-   cd PixelPlayer
+   git clone https://github.com/r3n011/XiangsuPlayerHQ.git
+   cd XiangsuPlayerHQ
    ```
 2. **Open in Android Studio**
    - Open Android Studio
@@ -216,14 +216,8 @@
 ## ⬇️ Download
 
 <p align="center">
-  <a href="https://github.com/theovilardo/PixelPlayer/releases/latest">
+  <a href="https://github.com/r3n011/XiangsuPlayerHQ/releases/latest">
     <img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Get it on GitHub" height="60">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.theveloper.pixelplay%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Ftheovilardo%2FPixelPlayer%22%2C%22autho[...]">
-    <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="50">
   </a>
 </p>
 
@@ -231,7 +225,7 @@
 
 ## 🌐 Languages & Localization
 
-PixelPlayer supports **10+ languages** out of the box:
+XiangsuPlayer supports **10+ languages** out of the box:
 
 | Language  | Code   | Status     |
 | --------- | ------ | ---------- |
@@ -324,8 +318,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. **Fork the Project**
    ```sh
-   git clone https://github.com/your-username/PixelPlayer.git
-   cd PixelPlayer
+   git clone https://github.com/your-username/XiangsuPlayerHQ.git
+   cd XiangsuPlayerHQ
    ```
 2. **Create your Feature Branch**
    ```sh
@@ -346,7 +340,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 When reporting issues, please include:
 
 - Device model and Android version
-- PixelPlayer version
+- XiangsuPlayer version
 - Steps to reproduce
 - Expected behavior vs actual behavior
 - Logs or screenshots if applicable
@@ -355,9 +349,9 @@ When reporting issues, please include:
 
 ## 🔗 Links
 
-- [GitHub Issues](https://github.com/theovilardo/PixelPlayer/issues)
-- [Feature Requests](https://github.com/theovilardo/PixelPlayer/issues/new?template=feature_request.yml)
-- [Bug Reports](https://github.com/theovilardo/PixelPlayer/issues/new?template=bug_report.yml)
+- [GitHub Issues](https://github.com/r3n011/XiangsuPlayerHQ/issues)
+- [Feature Requests](https://github.com/r3n011/XiangsuPlayerHQ/issues/new?template=feature_request.yml)
+- [Bug Reports](https://github.com/r3n011/XiangsuPlayerHQ/issues/new?template=bug_report.yml)
 
 ***
 
@@ -368,5 +362,5 @@ This project is licensed under a Proprietary License - see the [LICENSE](LICENSE
 ***
 
 <p align="center">
-  Made with ❤️ by <a href="https://github.com/theovilardo">theovilardo</a>
+  Made with ❤️ by <a href="https://github.com/r3n011">r3n011</a>
 </p>
