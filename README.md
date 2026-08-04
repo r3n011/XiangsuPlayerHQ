@@ -1,3 +1,5 @@
+<p align="right">[English](./README.md) | [中文](./README_zh.md)</p>
+
 # XiangsuPlayer 🎵
 
 <p align="center">
@@ -162,7 +164,7 @@
 
 ## 📱 Requirements
 
-- **Android 9** (API 28) or higher（Older versions will need you to test it yourself，maybe Android 6 is ok?）
+- **Android 11** (API 30) or higher
 - **6GB RAM** recommended for smooth performance
 - **USB OTG** required for USB DAC support
 
@@ -220,7 +222,7 @@
 </p>
 
 <p align="center">
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.theveloper.pixelplay%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Ftheovilardo%2FPixelPlayer%22%2C%22author%22%3A%22theovilardo%22%2C%22name%22%3A%22PixelPlayer%22%2C%22supportFixedAPKURL%22%3Afalse%7D">
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.theveloper.pixelplay%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Ftheovilardo%2FPixelPlayer%22%2C%22autho[...]">
     <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="50">
   </a>
 </p>
