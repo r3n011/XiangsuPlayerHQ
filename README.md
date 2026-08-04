@@ -162,7 +162,7 @@
 
 ## 📱 Requirements
 
-- **Android 11** (API 30) or higher
+- **Android 9** (API 28) or higher（Older versions will need you to test it yourself，maybe Android 6 is ok?）
 - **6GB RAM** recommended for smooth performance
 - **USB OTG** required for USB DAC support
 
