@@ -116,7 +116,7 @@
     <string name="song_info_set_ringtone">设为铃声</string>
     <string name="cd_set_song_as_ringtone">将歌曲设为铃声</string>
     <string name="song_info_tone_picker_title">将这首歌用作</string>
-    <string name="song_info_tone_picker_body">选择 PixelPlayer 要安装此声音的位置。</string>
+    <string name="song_info_tone_picker_body">选择 XiangsuPlayer 要安装此声音的位置。</string>
     <string name="song_info_tone_ringtone_title">手机铃声</string>
     <string name="song_info_tone_ringtone_subtitle">来电</string>
     <string name="song_info_tone_notification_title">通知声音</string>
@@ -130,7 +130,7 @@
     <string name="song_info_tone_ringtone_label">铃声</string>
     <string name="song_info_tone_notification_label">通知声音</string>
     <string name="song_info_tone_alarm_label">闹钟声音</string>
-    <string name="song_info_ringtone_permission_prompt">开启修改系统设置，然后返回 PixelPlayer 自动完成。</string>
+    <string name="song_info_ringtone_permission_prompt">开启修改系统设置，然后返回 XiangsuPlayer 自动完成。</string>
     <string name="song_info_ringtone_permission_missing">未开启修改系统设置。</string>
     <string name="song_info_ringtone_success">已将「%1$s」设为铃声</string>
     <string name="song_info_ringtone_local_only">只有本地歌曲可用作系统声音。</string>
@@ -180,6 +180,14 @@
     <string name="playlist_picker_add_songs_title">将 %1$d 首歌曲添加到……</string>
     <string name="playlist_picker_select_playlists">选择播放列表</string>
     <string name="search_playlists_hint">搜索播放列表……</string>
+    <string name="search_filter_all">全部</string>
+    <string name="search_filter_songs">歌曲</string>
+    <string name="search_filter_albums">专辑</string>
+    <string name="search_filter_artists">歌手</string>
+    <string name="search_filter_playlists">歌单</string>
+    <string name="search_filter_online">网易云</string>
+    <string name="search_filter_kuwo">酷我</string>
+    <string name="search_filter_bilibili">B站</string>
 
     <string name="multi_selection_playlists_count_upper">%1$d 个播放列表</string>
     <string name="cd_export_all">全部导出</string>

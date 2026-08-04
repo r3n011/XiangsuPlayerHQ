@@ -48,10 +48,11 @@ fun UpdateAvailableDialog(
     updateInfo: UpdateChecker.UpdateInfo,
     downloadState: ApkDownloadInstaller.DownloadState?,
     onDismiss: () -> Unit,
-    onDownload: (apkUrl: String) -> Unit
+    onDownload: (apkUrls: List<String>) -> Unit
 ) {
-    // 只对比版本号，不区分架构，直接取第一个可用下载链接（优先蓝奏云，其次 GitHub）
-    val downloadUrl = remember(updateInfo) { updateInfo.availableApkUrls().firstOrNull().orEmpty() }
+    // 只对比版本号，不区分架构；优先蓝奏云直链，GitHub 作为兜底
+    val downloadUrls = remember(updateInfo) { updateInfo.availableApkUrls() }
+    val downloadUrl = downloadUrls.firstOrNull().orEmpty()
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
     val isDownloaded = downloadState is ApkDownloadInstaller.DownloadState.Downloaded
@@ -269,7 +270,7 @@ fun UpdateAvailableDialog(
                     } else {
                         Button(
                             onClick = {
-                                downloadUrl.takeIf { it.isNotBlank() }?.let { onDownload(it) }
+                                if (downloadUrls.isNotEmpty()) onDownload(downloadUrls)
                             },
                             shape = actionShape,
                             enabled = canDownload,

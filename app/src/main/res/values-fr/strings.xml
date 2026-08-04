@@ -1,17 +1,17 @@
 <resources>
-    <string name="app_name">PixelPlayer</string>
+    <string name="app_name">XiangsuPlayer</string>
     <string
         name="app_name_change_title"
     >Changement de nom de l\'application</string>
     <string
         name="app_name_change_message"
-    >Nous avons changé le nom de notre application de PixelPlay à PixelPlayer en raison d\'un problème de marque déposée. Bonne écoute !</string>
+    >Nous avons changé le nom de notre application de PixelPlay à XiangsuPlayer en raison d\'un problème de marque déposée. Bonne écoute !</string>
     <string name="do_not_show_again">Ne plus afficher</string>
     <string name="dismiss">Ignorer</string>
     <string name="all_files_access_title">Autorisation spéciale requise</string>
     <string
         name="all_files_access_description"
-    >Pour modifier les métadonnées des chansons (fichiers .mp3), PixelPlayer a besoin d\'un accès spécial à tous les fichiers. Cela nous permet de modifier directement les étiquettes des pistes. Veuillez accorder cette autorisation sur l\'écran suivant pour activer l\'édition des métadonnées.</string>
+    >Pour modifier les métadonnées des chansons (fichiers .mp3), XiangsuPlayer a besoin d\'un accès spécial à tous les fichiers. Cela nous permet de modifier directement les étiquettes des pistes. Veuillez accorder cette autorisation sur l\'écran suivant pour activer l\'édition des métadonnées.</string>
     <string name="grant_permission_button">Accorder l\'autorisation</string>
     <string name="all_files_access_setting">Accès à tous les fichiers</string>
     <string name="error">Erreur</string>
@@ -143,7 +143,7 @@
     >Le fournisseur d\'IA sélectionné a rejeté la demande car le compte n\'a plus de crédits ou a dépassé son quota.</string>
     <string
         name="ai_error_model_unavailable"
-    >Le modèle d\'IA sélectionné n\'est plus disponible. PixelPlayer a essayé de passer automatiquement à un modèle pris en charge.</string>
+    >Le modèle d\'IA sélectionné n\'est plus disponible. XiangsuPlayer a essayé de passer automatiquement à un modèle pris en charge.</string>
     <string
         name="ai_no_songs_found"
     >L\'IA n\'a trouvé aucune chanson pour votre demande.</string>
@@ -220,7 +220,7 @@
     >Échec de l\'exportation : %1$s</string>
     <string
         name="playlist_export_folder_display"
-    >Musique/Exportations PixelPlayer</string>
+    >Musique/Exportations XiangsuPlayer</string>
     <string
         name="ai_playlist_gemini_key_required"
     >Veuillez configurer votre clé API Gemini dans les Paramètres.</string>

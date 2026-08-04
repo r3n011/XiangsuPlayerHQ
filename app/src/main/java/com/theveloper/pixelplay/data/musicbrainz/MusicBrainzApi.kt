@@ -18,7 +18,7 @@ class MusicBrainzApi @Inject constructor(
     private val ACOUSTID_BASE = "https://api.acoustid.org/v2"
     private val COVERART_BASE = "https://coverartarchive.org"
 
-    private val USER_AGENT = "PixelPlayer/${BuildConfig.VERSION_NAME} (pixelplayer@example.com)"
+    private val USER_AGENT = "XiangsuPlayer/${BuildConfig.VERSION_NAME} (xiangsuplayer@example.com)"
 
     private val json = Json {
         ignoreUnknownKeys = true

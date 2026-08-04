@@ -33,7 +33,7 @@ class NavidromeApiService @Inject constructor(
     companion object {
         private const val TAG = "NavidromeApi"
         private const val API_VERSION = "1.16.1"
-        private const val DEFAULT_CLIENT_ID = "PixelPlayer"
+        private const val DEFAULT_CLIENT_ID = "XiangsuPlayer"
         private const val DEFAULT_FORMAT = "json"
     }
 
@@ -140,7 +140,7 @@ class NavidromeApiService @Inject constructor(
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
-                    .header("User-Agent", "PixelPlayer/${API_VERSION}")
+                    .header("User-Agent", "XiangsuPlayer/${API_VERSION}")
                     .get()
                     .build()
 

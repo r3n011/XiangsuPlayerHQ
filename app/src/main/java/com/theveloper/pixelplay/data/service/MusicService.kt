@@ -7,8 +7,10 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.hardware.usb.UsbManager
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -167,6 +169,10 @@ class MusicService : MediaLibraryService() {
     lateinit var bluetoothLyricsManager: com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager
     @Inject
     lateinit var audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings
+    @Inject
+    lateinit var usbDacManager: com.theveloper.pixelplay.data.service.usb.UsbDacManager
+    @Inject
+    lateinit var usbConnectionReceiver: com.theveloper.pixelplay.data.service.usb.UsbConnectionReceiver
     @Inject
     @AppScope
     lateinit var appScope: CoroutineScope
@@ -432,6 +438,22 @@ class MusicService : MediaLibraryService() {
             }
         }
         registerHeadsetReconnectMonitor()
+        // 动态注册 USB 连接广播接收器（Hilt 注入版本，必须动态注册）
+        try {
+            val usbFilter = IntentFilter().apply {
+                addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+                addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(usbConnectionReceiver, usbFilter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                registerReceiver(usbConnectionReceiver, usbFilter)
+            }
+            Timber.tag(TAG).d("USB connection receiver registered")
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Failed to register USB connection receiver")
+        }
         handleUsbDeviceChange()
 
         serviceScope.launch {
@@ -1534,6 +1556,16 @@ class MusicService : MediaLibraryService() {
         widgetUpdateManager.cancel()
         castSyncCoordinator.stop()
         unregisterHeadsetReconnectMonitor()
+        // 反注册 USB 连接广播接收器
+        try {
+            unregisterReceiver(usbConnectionReceiver)
+            Timber.tag(TAG).d("USB connection receiver unregistered")
+        } catch (_: IllegalArgumentException) {
+            // 未注册过，忽略
+        }
+        serviceScope.launch {
+            runCatching { usbDacManager.deactivateExclusiveMode() }
+        }
         wearStatePublisher.clearState()
         replayGainProcessor.cancel()
         bluetoothLyricsManager.stop()
@@ -1599,9 +1631,23 @@ class MusicService : MediaLibraryService() {
         audioEngineSettings.setCurrentUsbDeviceName(if (usbDevice != null) "USB Device" else null)
         if (audioEngineSettings.usbExclusiveModeEnabled.value && usbDevice != null) {
             engine.setPreferredAudioDevice(usbDevice)
-            Timber.tag(TAG).d("USB exclusive mode: routing to USB device")
+            Timber.tag(TAG).d("USB exclusive mode: routing to USB device via AudioManager")
+            // 如果用户已选中 USB 设备但 native 端未激活，则尝试激活 libusb 独占输出
+            val selectedDevice = audioEngineSettings.getSelectedUsbDevice()
+            if (selectedDevice != null && !usbDacManager.exclusiveModeActive.value) {
+                Timber.tag(TAG).d("USB exclusive mode: activating libusb output for %s", selectedDevice.displayName)
+                usbDacManager.requestAndActivateExclusiveMode(selectedDevice) { success ->
+                    Timber.tag(TAG).d("USB exclusive mode activation via handleUsbDeviceChange: success=%s", success)
+                }
+            }
         } else if (!audioEngineSettings.usbExclusiveModeEnabled.value) {
             engine.setPreferredAudioDevice(null)
+            // 未开启独占模式时关闭 native 输出
+            if (usbDacManager.exclusiveModeActive.value) {
+                serviceScope.launch {
+                    runCatching { usbDacManager.deactivateExclusiveMode() }
+                }
+            }
         }
     }
 

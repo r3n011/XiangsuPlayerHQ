@@ -397,7 +397,7 @@ fun SongInfoBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = {
-            android.util.Log.d("PixelPlayerDebug", "ModalBottomSheet: onDismissRequest called, showEditSheet=$showEditSheet")
+            android.util.Log.d("XiangsuPlayerDebug", "ModalBottomSheet: onDismissRequest called, showEditSheet=$showEditSheet")
             if (!showEditSheet) {
                 onDismiss()
             }
@@ -1281,7 +1281,7 @@ private fun Row1Actions(
                 if (clickPending) return@FilledTonalButton
                 clickPending = true
                 playVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row1Actions: Play clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row1Actions: Play clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     playVisualPressed = false
@@ -1313,7 +1313,7 @@ private fun Row1Actions(
                 if (clickPending) return@FilledIconButton
                 clickPending = true
                 favoriteVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row1Actions: Favorite clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row1Actions: Favorite clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     favoriteVisualPressed = false
@@ -1345,7 +1345,7 @@ private fun Row1Actions(
                 if (clickPending) return@FilledTonalIconButton
                 clickPending = true
                 shareVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row1Actions: Share clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row1Actions: Share clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     shareVisualPressed = false
@@ -1438,7 +1438,7 @@ private fun Row2Actions(
                 if (clickPending) return@FilledTonalButton
                 clickPending = true
                 queueVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row2Actions: AddToQueue clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row2Actions: AddToQueue clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     queueVisualPressed = false
@@ -1476,7 +1476,7 @@ private fun Row2Actions(
                 if (clickPending) return@FilledTonalButton
                 clickPending = true
                 nextVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row2Actions: AddNextToQueue clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row2Actions: AddNextToQueue clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     nextVisualPressed = false
@@ -1574,7 +1574,7 @@ private fun Row3Actions(
                 if (clickPending) return@FilledTonalButton
                 clickPending = true
                 playlistVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row3Actions: AddToPlaylist clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row3Actions: AddToPlaylist clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     playlistVisualPressed = false
@@ -1612,7 +1612,7 @@ private fun Row3Actions(
                 if (clickPending) return@FilledTonalButton
                 clickPending = true
                 deleteVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row3Actions: Delete clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row3Actions: Delete clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     deleteVisualPressed = false
@@ -1785,7 +1785,7 @@ private fun Row4Actions(
                 if (clickPending) return@RingtoneActionButton
                 clickPending = true
                 ringtoneVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row4Actions: Ringtone clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row4Actions: Ringtone clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     ringtoneVisualPressed = false
@@ -1820,7 +1820,7 @@ private fun Row4Actions(
                 if (clickPending) return@FilledTonalButton
                 clickPending = true
                 watchVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row4Actions: SendToWatch clicked")
+                android.util.Log.d("XiangsuPlayerDebug", "Row4Actions: SendToWatch clicked")
                 coroutineScope.launch {
                     kotlinx.coroutines.delay(180)
                     watchVisualPressed = false

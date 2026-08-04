@@ -164,7 +164,7 @@
     >Utiliser cette chanson comme</string>
     <string
         name="song_info_tone_picker_body"
-    >Choisissez où PixelPlayer doit installer ce son.</string>
+    >Choisissez où XiangsuPlayer doit installer ce son.</string>
     <string name="song_info_tone_ringtone_title">Sonnerie du téléphone</string>
     <string name="song_info_tone_ringtone_subtitle">Appels entrants</string>
     <string
@@ -190,7 +190,7 @@
     <string name="song_info_tone_alarm_label">son d\'alarme</string>
     <string
         name="song_info_ringtone_permission_prompt"
-    >Activez Modifier les paramètres système, puis revenez à PixelPlayer pour terminer automatiquement.</string>
+    >Activez Modifier les paramètres système, puis revenez à XiangsuPlayer pour terminer automatiquement.</string>
     <string
         name="song_info_ringtone_permission_missing"
     >Modifier les paramètres système n\'a pas été activé.</string>

@@ -177,6 +177,7 @@ import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
+import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.model.Song
@@ -250,6 +251,7 @@ fun SettingsCategoryScreen(
     var showClearLyricsDialog by remember { mutableStateOf(false) }
     var showRebuildDatabaseWarning by remember { mutableStateOf(false) }
     var showDownloadPathDialog by remember { mutableStateOf(false) }
+    var showNeteaseQualityDialog by remember { mutableStateOf(false) }
     var downloadPathOptions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var showRegenerateDailyMixDialog by remember { mutableStateOf(false) }
     var showRegenerateStatsDialog by remember { mutableStateOf(false) }
@@ -310,6 +312,17 @@ fun SettingsCategoryScreen(
 
     // USB 相关状态
     var showUsbDeviceSelector by remember { mutableStateOf(false) }
+    val usbDacManager = remember {
+        val entryPoint = dagger.hilt.android.EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            com.theveloper.pixelplay.presentation.components.UsbDacEntryPoint::class.java
+        )
+        entryPoint.usbDacManager
+    }
+    val usbExclusiveActive by usbDacManager.exclusiveModeActive.collectAsStateWithLifecycle()
+    val usbActiveDevice by usbDacManager.activeDevice.collectAsStateWithLifecycle()
+    val toastUsbActivated = stringResource(R.string.usb_exclusive_toast_activated)
+    val toastUsbActivateFailed = stringResource(R.string.usb_exclusive_toast_activate_failed)
 
     LaunchedEffect(Unit) {
         settingsViewModel.dataTransferEvents.collectLatest { message ->
@@ -1073,9 +1086,14 @@ fun SettingsCategoryScreen(
                                 )
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_usb_exclusive_mode_title),
-                                    subtitle = uiState.currentUsbDeviceName?.let {
-                                        stringResource(R.string.setcat_usb_exclusive_mode_subtitle_connected, it)
-                                    } ?: stringResource(R.string.setcat_usb_exclusive_mode_subtitle_disconnected),
+                                    subtitle = run {
+                                        val base = uiState.currentUsbDeviceName?.let {
+                                            stringResource(R.string.setcat_usb_exclusive_mode_subtitle_connected, it)
+                                        } ?: stringResource(R.string.setcat_usb_exclusive_mode_subtitle_disconnected)
+                                        val depthSuffix = if (uiState.usbExclusiveModeEnabled) " · ${uiState.usbOutputBitDepthBits}-bit" else ""
+                                        val activeSuffix = if (usbExclusiveActive && usbActiveDevice != null) " · ✓" else ""
+                                        base + depthSuffix + activeSuffix
+                                    },
                                     checked = uiState.usbExclusiveModeEnabled,
                                     onCheckedChange = { enabled ->
                                         if (enabled && uiState.currentUsbDeviceName == null) {
@@ -1091,6 +1109,47 @@ fun SettingsCategoryScreen(
                                     },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                                // AAudio 低延迟后端开关（Android O+ 自动启用，可手动关闭以兼容旧设备）
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_aaudio_title),
+                                    subtitle = buildString {
+                                        append(
+                                            if (uiState.aaudioEnabled)
+                                                stringResource(R.string.setcat_aaudio_subtitle_on)
+                                            else
+                                                stringResource(R.string.setcat_aaudio_subtitle_off)
+                                        )
+                                        if (uiState.aaudioEnabled) append(" · AAudio")
+                                    },
+                                    checked = uiState.aaudioEnabled,
+                                    onCheckedChange = { settingsViewModel.setAaudioEnabled(it) },
+                                    enabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O,
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_surround_sound_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                // USB 输出位深选项（仅在 USB 独占模式启用时可见）
+                                if (uiState.usbExclusiveModeEnabled) {
+                                    val bitDepthOptions = mapOf(
+                                        "16" to stringResource(R.string.usb_bit_depth_16),
+                                        "24" to stringResource(R.string.usb_bit_depth_24),
+                                        "32" to stringResource(R.string.usb_bit_depth_32)
+                                    )
+                                    val bitDepthSubtitleRes = when (uiState.usbOutputBitDepthBits) {
+                                        24 -> R.string.setcat_usb_bit_depth_subtitle_24
+                                        32 -> R.string.setcat_usb_bit_depth_subtitle_32
+                                        else -> R.string.setcat_usb_bit_depth_subtitle_16
+                                    }
+                                    ThemeSelectorItem(
+                                        label = stringResource(R.string.setcat_usb_bit_depth_title),
+                                        description = stringResource(bitDepthSubtitleRes),
+                                        options = bitDepthOptions,
+                                        selectedKey = uiState.usbOutputBitDepthBits.toString(),
+                                        onSelectionChanged = { key ->
+                                            val bits = key.toIntOrNull() ?: 32
+                                            settingsViewModel.setUsbOutputBitDepth(bits)
+                                        },
+                                        leadingIcon = { Icon(painterResource(R.drawable.rounded_dataset_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                }
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_persistent_shuffle_title),
                                     subtitle = stringResource(R.string.setcat_persistent_shuffle_subtitle),
@@ -1231,6 +1290,17 @@ fun SettingsCategoryScreen(
                                     onClick = {
                                         downloadFolderPicker.launch(null)
                                     }
+                                )
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_netease_quality_title),
+                                    subtitle = when (uiState.musicQuality) {
+                                        MusicQuality.FLAC -> stringResource(R.string.music_quality_flac)
+                                        MusicQuality.HIGH -> stringResource(R.string.music_quality_high)
+                                        MusicQuality.STANDARD -> stringResource(R.string.music_quality_standard)
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.cd_open), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { showNeteaseQualityDialog = true }
                                 )
                             }
                         }
@@ -1392,8 +1462,8 @@ fun SettingsCategoryScreen(
                                 addBottomSpace = false
                             ) {
                                 SettingsItem(
-                                    title = stringResource(R.string.setcat_about_pixelplayer_title),
-                                    subtitle = stringResource(R.string.setcat_about_pixelplayer_subtitle),
+                                    title = stringResource(R.string.setcat_about_xiangsuplayer_title),
+                                    subtitle = stringResource(R.string.setcat_about_xiangsuplayer_subtitle),
                                     leadingIcon = { Icon(Icons.Outlined.Info, null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely("about") }
@@ -1717,6 +1787,52 @@ fun SettingsCategoryScreen(
         )
     }
 
+    if (showNeteaseQualityDialog) {
+        AlertDialog(
+            icon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
+            title = { Text(stringResource(R.string.setcat_netease_quality_title)) },
+            onDismissRequest = { showNeteaseQualityDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showNeteaseQualityDialog = false }) {
+                    Text(stringResource(R.string.cancel), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            },
+            text = {
+                Column {
+                    MusicQuality.entries.forEach { quality ->
+                        val label = when (quality) {
+                            MusicQuality.FLAC -> stringResource(R.string.music_quality_flac)
+                            MusicQuality.HIGH -> stringResource(R.string.music_quality_high)
+                            MusicQuality.STANDARD -> stringResource(R.string.music_quality_standard)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    settingsViewModel.setMusicQuality(quality)
+                                    showNeteaseQualityDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = uiState.musicQuality == quality,
+                                onClick = {
+                                    settingsViewModel.setMusicQuality(quality)
+                                    showNeteaseQualityDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Text(label, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+            }
+        )
+    }
+
     if (showRegenerateDailyMixDialog) {
         val toastDailyMixRegenerationStarted = stringResource(R.string.toast_daily_mix_regeneration_started)
         AlertDialog(
@@ -1824,7 +1940,7 @@ fun SettingsCategoryScreen(
                 TextButton(onClick = {
                     showExportFormatDialog = false
                     val fileName = if (exportFormat == BackupFormat.EXTERNAL_PXPDAT) {
-                        "PixelPlayer_${System.currentTimeMillis()}.pxpbak"
+                        "XiangsuPlayer_${System.currentTimeMillis()}.pxpbak"
                     } else {
                         backupFileNameFormat.format(System.currentTimeMillis())
                     }
@@ -1891,7 +2007,17 @@ fun SettingsCategoryScreen(
             onDismiss = { showUsbDeviceSelector = false },
             onDeviceSelected = { deviceInfo ->
                 settingsViewModel.selectUsbDevice(deviceInfo)
-                settingsViewModel.setUsbExclusiveModeEnabled(true)
+                // 选择设备后立刻请求权限并激活独占模式
+                usbDacManager.requestAndActivateExclusiveMode(deviceInfo) { success ->
+                    val msg = if (success) {
+                        settingsViewModel.setUsbExclusiveModeEnabled(true)
+                        String.format(toastUsbActivated, deviceInfo.displayName)
+                    } else {
+                        settingsViewModel.setUsbExclusiveModeEnabled(false)
+                        toastUsbActivateFailed
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                }
                 showUsbDeviceSelector = false
             }
         )

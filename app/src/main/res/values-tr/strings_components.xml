@@ -112,7 +112,7 @@
     <string name="song_info_set_ringtone">Zil sesi olarak ayarla</string>
     <string name="cd_set_song_as_ringtone">Şarkıyı zil sesi olarak ayarla</string>
     <string name="song_info_tone_picker_title">Bu şarkıyı şu amaçla kullan:</string>
-    <string name="song_info_tone_picker_body">PixelPlayer\'ın bu sesi nereye yükleyeceğini seçin.</string>
+    <string name="song_info_tone_picker_body">XiangsuPlayer\'ın bu sesi nereye yükleyeceğini seçin.</string>
     <string name="song_info_tone_ringtone_title">Telefon zil sesi</string>
     <string name="song_info_tone_ringtone_subtitle">Gelen aramalar</string>
     <string name="song_info_tone_notification_title">Bildirim sesi</string>
@@ -126,7 +126,7 @@
     <string name="song_info_tone_ringtone_label">zil sesi</string>
     <string name="song_info_tone_notification_label">bildirim sesi</string>
     <string name="song_info_tone_alarm_label">alarm sesi</string>
-    <string name="song_info_ringtone_permission_prompt">Sistem ayarlarını değiştirmeyi etkinleştirin, ardından otomatik olarak tamamlamak için PixelPlayer\'a geri dönün.</string>
+    <string name="song_info_ringtone_permission_prompt">Sistem ayarlarını değiştirmeyi etkinleştirin, ardından otomatik olarak tamamlamak için XiangsuPlayer\'a geri dönün.</string>
     <string name="song_info_ringtone_permission_missing">Sistem ayarlarını değiştirme etkinleştirilmedi.</string>
     <string name="song_info_ringtone_success">\"%1$s\" zil sesi olarak ayarlandı</string>
     <string name="song_info_ringtone_local_only">Yalnızca yerel şarkılar zil sesi olarak kullanılabilir.</string>

@@ -16,10 +16,11 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -401,12 +402,12 @@ fun SearchScreen(
                             .fillMaxSize()
                             .padding(horizontal = 16.dp)
                     ) {
-                        FlowRow(
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
                                 .padding(vertical = 8.dp, horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             SearchFilterChip(SearchFilterType.ALL, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.SONGS, currentFilter, playerViewModel)
@@ -1267,10 +1268,14 @@ fun SearchFilterChip(
         label = {
             Text(
                 when (filterType) {
-                    SearchFilterType.ONLINE -> "网易云搜索"
-                    SearchFilterType.KUWO_MUSIC -> "酷我"
-                    SearchFilterType.BILIBILI_MUSIC -> "B站"
-                    else -> filterType.name.lowercase().replaceFirstChar { it.titlecase() }
+                    SearchFilterType.ALL -> stringResource(R.string.search_filter_all)
+                    SearchFilterType.SONGS -> stringResource(R.string.search_filter_songs)
+                    SearchFilterType.ALBUMS -> stringResource(R.string.search_filter_albums)
+                    SearchFilterType.ARTISTS -> stringResource(R.string.search_filter_artists)
+                    SearchFilterType.PLAYLISTS -> stringResource(R.string.search_filter_playlists)
+                    SearchFilterType.ONLINE -> stringResource(R.string.search_filter_online)
+                    SearchFilterType.KUWO_MUSIC -> stringResource(R.string.search_filter_kuwo)
+                    SearchFilterType.BILIBILI_MUSIC -> stringResource(R.string.search_filter_bilibili)
                 }
             )
         },

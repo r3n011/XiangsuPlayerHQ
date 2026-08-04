@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +26,7 @@ internal data class LibrarySongPlaybackUiState(
 @OptIn(UnstableApi::class)
 @Composable
 internal fun LibraryPlaybackAwareSongItem(
+    modifier: Modifier = Modifier,
     song: Song,
     playerViewModel: PlayerViewModel,
     albumArtSize: Dp = 50.dp,
@@ -31,8 +34,13 @@ internal fun LibraryPlaybackAwareSongItem(
     selectionIndex: Int? = null,
     isSelectionMode: Boolean = false,
     isRadio: Boolean = false,
+    showFavoriteButton: Boolean = false,
+    showMoreOptionsButton: Boolean = true,
+    isFavorite: Boolean = false,
+    containerColorOverride: Color? = null,
     onLongPress: () -> Unit = {},
-    onMoreOptionsClick: (Song) -> Unit,
+    onMoreOptionsClick: (Song) -> Unit = {},
+    onFavoriteClick: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val playbackUiState by remember(song.id, playerViewModel) {
@@ -48,6 +56,7 @@ internal fun LibraryPlaybackAwareSongItem(
     }.collectAsStateWithLifecycle(initialValue = LibrarySongPlaybackUiState())
 
     EnhancedSongListItem(
+        modifier = modifier,
         song = song,
         isPlaying = playbackUiState.isPlaying,
         isCurrentSong = playbackUiState.isCurrentSong,
@@ -57,8 +66,13 @@ internal fun LibraryPlaybackAwareSongItem(
         selectionIndex = selectionIndex,
         isSelectionMode = isSelectionMode,
         isRadio = isRadio,
+        showFavoriteButton = showFavoriteButton,
+        showMoreOptionsButton = showMoreOptionsButton,
+        isFavorite = isFavorite,
+        containerColorOverride = containerColorOverride,
         onLongPress = onLongPress,
         onMoreOptionsClick = onMoreOptionsClick,
+        onFavoriteClick = onFavoriteClick,
         onClick = onClick
     )
 }

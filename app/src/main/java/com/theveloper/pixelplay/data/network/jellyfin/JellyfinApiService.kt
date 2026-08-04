@@ -27,10 +27,10 @@ class JellyfinApiService @Inject constructor(
 
     companion object {
         private const val TAG = "JellyfinApi"
-        private const val CLIENT_NAME = "PixelPlayer"
+        private const val CLIENT_NAME = "XiangsuPlayer"
         private const val CLIENT_VERSION = "1.0"
         private const val DEVICE_NAME = "Android"
-        private const val DEVICE_ID = "PixelPlayer-Android"
+        private const val DEVICE_ID = "XiangsuPlayer-Android"
     }
 
     @Volatile

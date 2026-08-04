@@ -811,6 +811,7 @@ fun LyricsSheet(
                         label = "headerAnimation"
                     ) { song ->
                         if (song != null) {
+                            // 歌曲信息条固定为纯黑背景（不跟随亮色/暗色主题）
                             LyricsTrackInfo(
                                 song = song,
                                 modifier = Modifier
@@ -818,12 +819,12 @@ fun LyricsSheet(
                                     .widthIn(max = 360.dp)
                                     .padding(horizontal = 16.dp, vertical = 6.dp)
                                     .background(
-                                        color = backgroundColor,
+                                        color = Color.Black,
                                         shape = CircleShape
                                     )
                                     .animateContentSize(),
-                                backgroundColor = backgroundColor,
-                                contentColor = onBackgroundColor,
+                                backgroundColor = Color.Black,
+                                contentColor = Color.White,
                                 isPlaying = isPlaying
                             )
                         }

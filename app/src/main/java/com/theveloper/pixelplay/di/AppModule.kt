@@ -480,7 +480,7 @@ object AppModule {
             .retryOnConnectionFailure(true)
             // Bilibili API / CDN 需要 Referer、Cookie、浏览器 UA 等 header，
             // 尤其是 ExoPlayer 直接播放 CDN URL 时不会显式设置这些 header。
-            // 放在通用 UA 拦截器之前，确保 Bilibili 请求使用浏览器 UA 而不是 PixelPlayer UA。
+            // 放在通用 UA 拦截器之前，确保 Bilibili 请求使用浏览器 UA 而不是 XiangsuPlayer UA。
             .addInterceptor(com.theveloper.pixelplay.data.bilibili.BilibiliHeaderInterceptor(bilibiliRepository))
             // Add User-Agent header (required by some APIs)
             .addInterceptor { chain ->
@@ -489,7 +489,7 @@ object AppModule {
                     return@addInterceptor chain.proceed(originalRequest)
                 }
                 val requestWithUserAgent = originalRequest.newBuilder()
-                    .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
+                    .header("User-Agent", "XiangsuPlayer/1.0 (Android; Music Player)")
                     .build()
                 chain.proceed(requestWithUserAgent)
             }
@@ -545,7 +545,7 @@ object AppModule {
             .addInterceptor { chain ->
                 val originalRequest = chain.request()
                 val requestWithHeaders = originalRequest.newBuilder()
-                    .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
+                    .header("User-Agent", "XiangsuPlayer/1.0 (Android; Music Player)")
                     .header("Accept", "application/json")
                     .build()
                 chain.proceed(requestWithHeaders)

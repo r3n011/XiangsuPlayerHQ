@@ -84,17 +84,20 @@ class UsbDacManager @Inject constructor(
     private var pendingPermissionCallback: ((Boolean) -> Unit)? = null
     private var pendingPermissionDeviceName: String? = null
 
+    private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getParcelableExtra(name, T::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            getParcelableExtra(name) as? T
+        }
+
     /** 动态注册的 USB 权限结果接收器（接收 UsbManager.requestPermission 的系统授权广播） */
     private val permissionResultReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != ACTION_USB_PERMISSION) return
             val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
-            val device = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-            }
+            val device = intent.getParcelableExtraCompat<UsbDevice>(UsbManager.EXTRA_DEVICE)
             try {
                 context.unregisterReceiver(this)
             } catch (_: IllegalArgumentException) {
@@ -220,7 +223,12 @@ class UsbDacManager @Inject constructor(
         // 动态注册权限结果接收器（保证 PendingIntent 广播能被本进程接收）
         val filter = IntentFilter(ACTION_USB_PERMISSION)
         try {
-            context.registerReceiver(permissionResultReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(permissionResultReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                context.registerReceiver(permissionResultReceiver, filter)
+            }
         } catch (e: Exception) {
             Timber.w(e, "$TAG: Failed to register USB permission receiver")
             pendingPermissionCallback = null
@@ -229,11 +237,16 @@ class UsbDacManager @Inject constructor(
             return
         }
 
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_MUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            0,
+            (device.deviceId and 0xFFFF).toInt(),
             Intent(ACTION_USB_PERMISSION),
-            PendingIntent.FLAG_MUTABLE
+            flags
         )
 
         Timber.d("$TAG: Requesting USB permission for $deviceName")
@@ -283,6 +296,9 @@ class UsbDacManager @Inject constructor(
 
     /**
      * 激活 USB DAC 独占模式
+     *
+     * 步骤参考 AndroidUsbAudio-main：openDevice → 检查权限 → 对音频接口 claim（forceClaim）
+     * → 把文件描述符交给 libusb 等时输出（UsbAudioOutput.start）。
      */
     suspend fun activateExclusiveMode(deviceInfo: UsbDeviceInfo): Boolean {
         val manager = usbManager ?: run {
@@ -293,6 +309,15 @@ class UsbDacManager @Inject constructor(
         _deviceState.value = UsbDeviceState.ACTIVATING
 
         return withContext(kotlinx.coroutines.Dispatchers.IO) {
+            // 如果已经有激活中的设备，先关闭 native 输出再切换
+            if (UsbAudioOutput.isActive()) {
+                try { UsbAudioOutput.stop() } catch (_: Throwable) {}
+            }
+            val prevActiveName = _activeDevice.value?.deviceName
+            if (prevActiveName != null && prevActiveName != deviceInfo.deviceName) {
+                closeConnection(prevActiveName)
+            }
+
             try {
                 val device = manager.deviceList[deviceInfo.deviceName] ?: run {
                     Timber.e("$TAG: Device not found: ${deviceInfo.deviceName}")
@@ -308,9 +333,9 @@ class UsbDacManager @Inject constructor(
                 }
 
                 // 打开设备连接
-                val connection = usbConnections[deviceInfo.deviceName] 
-                    ?: manager.openDevice(device)
-                
+                val oldConnection = usbConnections[deviceInfo.deviceName]
+                val connection = oldConnection ?: manager.openDevice(device)
+
                 if (connection == null) {
                     Timber.e("$TAG: Failed to open USB device: ${deviceInfo.deviceName}")
                     _deviceState.value = UsbDeviceState.ERROR
@@ -321,32 +346,71 @@ class UsbDacManager @Inject constructor(
                 val fileDescriptor = connection.fileDescriptor
                 if (fileDescriptor < 0) {
                     Timber.e("$TAG: Invalid file descriptor for ${deviceInfo.deviceName}")
-                    connection.close()
+                    if (oldConnection == null) connection.close()
                     _deviceState.value = UsbDeviceState.ERROR
                     return@withContext false
+                }
+
+                // 对音频接口执行 claim + setInterface（forceClaim，避免因系统驱动占用失败）
+                val audioIfaces = getAudioInterfaces(device)
+                for (usbInterface in audioIfaces) {
+                    try {
+                        val claimed = connection.claimInterface(usbInterface, true)
+                        if (!claimed) {
+                            Timber.w("$TAG: Failed to claim iface ${usbInterface.id} on ${deviceInfo.deviceName}")
+                        } else {
+                            // 优先尝试非 0 alternate setting（部分 DAC 仅在 alt != 0 上开放等时端点带宽）
+                            // 注：Android 中每个 UsbInterface 对象即代表 (interfaceId, alternateSetting) 组合；
+                            // 遍历 device 所有接口，找到 id 相同且 alternateSetting > 0 且带等时 OUT 的对象。
+                            val ifaceId = usbInterface.id
+                            val altCount = device.interfaceCount
+                            var bestAlt: android.hardware.usb.UsbInterface? = null
+                            var i = altCount - 1
+                            while (i >= 0) {
+                                val cand = device.getInterface(i)
+                                if (cand.id == ifaceId && cand.alternateSetting >= 1) {
+                                    val hasOut = (0 until cand.endpointCount).any { j ->
+                                        val ep = cand.getEndpoint(j)
+                                        val attr = ep.attributes
+                                        val addr = ep.address
+                                        (attr and 0x03) == 0x01 /* ISO */ &&
+                                                (addr.toInt() and 0x80) == 0 /* OUT */
+                                    }
+                                    if (hasOut) { bestAlt = cand; break }
+                                }
+                                i--
+                            }
+                            if (bestAlt != null) {
+                                try {
+                                    connection.setInterface(bestAlt)
+                                    Timber.d(
+                                        "$TAG: Set alt setting ${bestAlt.alternateSetting} for iface ${bestAlt.id}"
+                                    )
+                                } catch (_: Throwable) {}
+                            }
+                        }
+                    } catch (e: Throwable) {
+                        Timber.w(e, "$TAG: Claim iface ${usbInterface.id} threw")
+                    }
                 }
 
                 // 存储连接
                 usbConnections[deviceInfo.deviceName] = connection
 
-                // 验证音频接口
-                if (!validateAudioInterfaces(connection, device)) {
-                    Timber.e("$TAG: Failed to validate audio interfaces")
+                // ⚡ 启动 libusb 等时输出，将 PCM 写入 USB DAC（独占播放）
+                val ok = UsbAudioOutput.start(connection.fileDescriptor)
+
+                if (ok) {
+                    _activeDevice.value = deviceInfo
+                    _exclusiveModeActive.value = true
+                    _deviceState.value = UsbDeviceState.STREAMING
+                    Timber.i("$TAG: USB DAC activated: ${deviceInfo.displayName}")
+                } else {
+                    Timber.e("$TAG: UsbAudioOutput.start failed for ${deviceInfo.deviceName}")
                     closeConnection(deviceInfo.deviceName)
                     _deviceState.value = UsbDeviceState.ERROR
-                    return@withContext false
                 }
-
-                // 激活成功
-                _activeDevice.value = deviceInfo
-                _exclusiveModeActive.value = true
-                _deviceState.value = UsbDeviceState.CONNECTED
-
-                // ⚡ 启动 libusb 等时输出，将 PCM 写入 USB DAC（独占播放）
-                UsbAudioOutput.start(connection.fileDescriptor)
-
-                Timber.i("$TAG: USB DAC activated: ${deviceInfo.displayName}")
-                true
+                ok
             } catch (e: Exception) {
                 Timber.e(e, "$TAG: Failed to activate exclusive mode")
                 _deviceState.value = UsbDeviceState.ERROR
@@ -398,6 +462,9 @@ class UsbDacManager @Inject constructor(
     suspend fun deactivateExclusiveMode(): Boolean {
         return withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
+                // 先停 native 输出，再释放接口和连接（避免等时 transfer 飞在外面）
+                try { UsbAudioOutput.stop() } catch (_: Throwable) {}
+
                 _exclusiveModeActive.value = false
                 _deviceState.value = UsbDeviceState.IDLE
                 _currentFormat.value = null
@@ -470,8 +537,10 @@ class UsbDacManager @Inject constructor(
      * 处理设备断开
      */
     fun handleDeviceDetached(deviceName: String) {
+        // 正在播放时设备拔出，必须先停止 native 等时传输
+        try { UsbAudioOutput.stop() } catch (_: Throwable) {}
         closeConnection(deviceName)
-        
+
         if (_activeDevice.value?.deviceName == deviceName) {
             _activeDevice.value = null
             _exclusiveModeActive.value = false

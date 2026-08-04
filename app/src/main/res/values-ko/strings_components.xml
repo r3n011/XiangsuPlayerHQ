@@ -110,7 +110,7 @@
     <string name="song_info_set_ringtone">벨소리로 설정</string>
     <string name="cd_set_song_as_ringtone">곡을 벨소리로 설정</string>
     <string name="song_info_tone_picker_title">이 곡 사용</string>
-    <string name="song_info_tone_picker_body">PixelPlayer가 이 사운드를 설치할 위치를 선택하세요.</string>
+    <string name="song_info_tone_picker_body">XiangsuPlayer가 이 사운드를 설치할 위치를 선택하세요.</string>
     <string name="song_info_tone_ringtone_title">휴대전화 벨소리</string>
     <string name="song_info_tone_ringtone_subtitle">수신 전화</string>
     <string name="song_info_tone_notification_title">알림음</string>
@@ -124,7 +124,7 @@
     <string name="song_info_tone_ringtone_label">벨소리</string>
     <string name="song_info_tone_notification_label">알림음</string>
     <string name="song_info_tone_alarm_label">알람음</string>
-    <string name="song_info_ringtone_permission_prompt">시스템 설정 수정을 켠 다음 PixelPlayer로 돌아오면 자동으로 완료됩니다.</string>
+    <string name="song_info_ringtone_permission_prompt">시스템 설정 수정을 켠 다음 XiangsuPlayer로 돌아오면 자동으로 완료됩니다.</string>
     <string name="song_info_ringtone_permission_missing">시스템 설정 수정이 켜지지 않았습니다.</string>
     <string name="song_info_ringtone_success">\"%1$s\"이(가) 벨소리로 설정되었습니다</string>
     <string name="song_info_ringtone_local_only">로컬 곡만 시스템 사운드로 사용할 수 있습니다.</string>

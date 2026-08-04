@@ -93,14 +93,22 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 34
-        versionName = "1.3.4"
+        versionCode = 35
+        versionName = "1.3.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        ndk {
+            // 预编译 libusb1.0.so 仅提供 arm64-v8a，
+            // 限制 CMake/打包只针对该 ABI，避免其他 ABI 链接阶段报错
+            abiFilters += setOf("arm64-v8a")
+        }
 
 
-        resConfigs("zh-rCN", "en")
+        resConfigs(
+            "en", "zh-rCN",
+            "de", "es", "fr", "in", "it", "ko", "nb", "ru", "tr"
+        )
 
         val telegramApiId = localProperties.getProperty("TELEGRAM_API_ID")?.ifEmpty { null }
             ?: "2040"
@@ -176,17 +184,7 @@ android {
         checkReleaseBuilds = false
     }
 
-    splits {
-        abi {
-            isEnable = enableAbiSplits
-            reset()
-            if (enableAbiSplits) {
-                // ⚡ 只输出 64 位包（arm64-v8a），不再打包 32 位
-                include("arm64-v8a")
-                isUniversalApk = false
-            }
-        }
-    }
+
 
     bundle {
         abi.enableSplit = true
@@ -286,6 +284,7 @@ dependencies {
 
     // Media & Files
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.exoplayer.ffmpeg)

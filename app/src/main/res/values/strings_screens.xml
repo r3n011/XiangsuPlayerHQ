@@ -2,7 +2,7 @@
 <resources>
     <!-- Navigation / misc -->
     <string name="nav_error_genre_id_missing">Error: Genre ID missing</string>
-    <string name="easter_egg_thank_you">Thank you for using PixelPlayer!</string>
+    <string name="easter_egg_thank_you">Thank you for using XiangsuPlayer!</string>
 
     <!-- Word delimiter config -->
     <string name="word_delimiter_section_title">Current Word Delimiters</string>
@@ -99,22 +99,22 @@
     <string name="setup_excluded_folders_description">All folders are scanned by default. Pick any locations you want to ignore when building your library.</string>
     <string name="setup_choose_folders_ignore">Choose folders to ignore</string>
     <string name="setup_permission_media_title">Media Permission</string>
-    <string name="setup_permission_media_description">PixelPlayer needs access to your audio files to build your music library.</string>
+    <string name="setup_permission_media_description">XiangsuPlayer needs access to your audio files to build your music library.</string>
     <string name="setup_permission_granted">Permission Granted</string>
     <string name="setup_grant_media_permission">Grant Media Permission</string>
     <string name="setup_permission_notifications_title">Notifications</string>
     <string name="setup_permission_notifications_description">Enable notifications to control your music from the lock screen and notification shade.</string>
     <string name="setup_enable_notifications">Enable Notifications</string>
     <string name="setup_permission_alarms_title">Alarms &amp; Reminders</string>
-    <string name="setup_permission_alarms_description">Optional, but recommended if you use Sleep Timer and want PixelPlayer to stop playback exactly on time.</string>
+    <string name="setup_permission_alarms_description">Optional, but recommended if you use Sleep Timer and want XiangsuPlayer to stop playback exactly on time.</string>
     <string name="setup_grant_permission_generic">Grant Permission</string>
     <string name="setup_backup_have_title">Do you have a backup?</string>
-    <string name="setup_backup_have_description">If you already have a PixelPlayer backup, restore it now and skip most of the remaining setup on this device.</string>
+    <string name="setup_backup_have_description">If you already have a XiangsuPlayer backup, restore it now and skip most of the remaining setup on this device.</string>
     <string name="setup_inspecting_backup">Inspecting backup</string>
     <string name="setup_restoring_backup">Restoring backup</string>
     <string name="setup_import_backup">Import backup</string>
     <string name="setup_theme_dark_title">Dark</string>
-    <string name="setup_theme_dark_description">The default Material 3 dark look for PixelPlayer.</string>
+    <string name="setup_theme_dark_description">The default Material 3 dark look for XiangsuPlayer.</string>
     <string name="setup_theme_light_title">Light</string>
     <string name="setup_theme_light_description">A brighter Material 3 look across the app.</string>
     <string name="setup_theme_follow_title">Follow system</string>
@@ -123,7 +123,7 @@
     <string name="setup_compact_mode_tab_hint">Using standard tab row</string>
     <string name="setup_preview_songs_label">Songs</string>
     <string name="setup_battery_optimization_title">Battery Optimization</string>
-    <string name="setup_battery_optimization_description">Some Android devices aggressively kill background apps. Disable battery optimization for PixelPlayer to prevent unexpected playback interruptions.</string>
+    <string name="setup_battery_optimization_description">Some Android devices aggressively kill background apps. Disable battery optimization for XiangsuPlayer to prevent unexpected playback interruptions.</string>
     <string name="setup_disable_battery_optimization">Disable Optimization</string>
     <string name="setup_nav_floating_pill_description">Floating pill with rounded corners</string>
     <string name="setup_nav_full_width_description">Standard full-width bar</string>
@@ -135,7 +135,7 @@
     <!-- Home / detail shared -->
     <string name="home_your_mix_title">Your\nMix</string>
     <string name="home_empty_placeholder_title">No data to show yet</string>
-    <string name="home_empty_placeholder_subtitle">Your mix will appear here when PixelPlayer finds songs or syncs a source.</string>
+    <string name="home_empty_placeholder_subtitle">Your mix will appear here when XiangsuPlayer finds songs or syncs a source.</string>
     <string name="home_empty_placeholder_refresh">Refresh</string>
     <string name="cd_shuffle_play">Shuffle Play</string>
     <string name="cd_album_art_for_title">Album art for %1$s</string>
@@ -157,7 +157,7 @@
     <string name="crash_report_stack_preview_label">Stack trace (preview):</string>
     <string name="crash_report_clipboard_label">Crash log</string>
     <string name="toast_crash_log_copied">Crash log copied to clipboard</string>
-    <string name="crash_report_share_subject">PixelPlayer crash report</string>
+    <string name="crash_report_share_subject">XiangsuPlayer crash report</string>
     <string name="crash_report_share_chooser">Share crash report</string>
     <string name="action_copy">Copy</string>
     <string name="action_share">Share</string>
@@ -182,13 +182,13 @@
 
     <!-- About -->
     <string name="about_no_contributors">No contributors found right now. Please try again later.</string>
-    <string name="about_app_name">PixelPlayer</string>
+    <string name="about_app_name">XiangsuPlayer</string>
     <string name="about_tagline">Open source music player built with its community.</string>
     <string name="about_version_format">Version v%1$s</string>
     <string name="about_contributions_format">%1$d contrib.</string>
     <string name="screen_about">About</string>
     <string name="about_maintainer_title">Maintainer</string>
-    <string name="about_maintainer_subtitle">The person behind PixelPlayer.</string>
+    <string name="about_maintainer_subtitle">The person behind XiangsuPlayer.</string>
     <string name="about_spotlight_title">Community spotlight</string>
     <string name="about_spotlight_subtitle">Recognition for collaborators with major impact.</string>
     <string name="about_contributors_section_title">Open source contributors</string>
@@ -270,29 +270,6 @@
     <string name="third_party_notices_title">Third-Party Notices</string>
     <string name="third_party_notices_close">Close</string>
     
-    <!-- Focus Mode -->
-    <string name="focus_timer_title">Focus Study</string>
-    <string name="focus_timer_subtitle">Set your Pomodoro timer</string>
-    <string name="focus_timer_study_title">Study Time</string>
-    <string name="focus_timer_study_subtitle">Time for focused work</string>
-    <string name="focus_timer_break_title">Break Time</string>
-    <string name="focus_timer_break_subtitle">Time to relax</string>
-    <string name="focus_timer_cancel">Cancel</string>
-    <string name="focus_timer_start">Start Focus</string>
-    <string name="focus_timer_minutes_format">%1$d min</string>
-    <string name="focus_timer_study_preset">study</string>
-    <string name="focus_timer_break_preset">break</string>
-    <string name="focus_mode_title">Focus Mode</string>
-    <string name="focus_mode_end">End</string>
-    <string name="focus_mode_completed_cycles_format">Completed %1$d cycles</string>
-    <string name="focus_mode_studying">Focusing</string>
-    <string name="focus_mode_break">Breaking</string>
-    <string name="focus_mode_paused">Paused</string>
-    <string name="focus_mode_ready">Ready to start</string>
-    <string name="focus_mode_study_duration_format">%1$d min focus</string>
-    <string name="focus_mode_break_duration_format">%1$d min break</string>
-    <string name="focus_mode_tap_to_start">Tap to start</string>
-    <string name="focus_mode_not_playing">Not playing</string>
     <string name="content_description_exit">Exit</string>
     <string name="content_description_previous">Previous</string>
     <string name="content_description_play_pause">Play/Pause</string>
@@ -312,9 +289,11 @@
     <string name="discover_sheet_title">Discover</string>
     <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
     <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
-    <string name="radio_live_playing">Live broadcast</string>
-    <string name="radio_connecting">Connecting…</string>
     <string name="radio_recommendations">Popular stations</string>
+    <string name="radio_favorite">Add to favorites</string>
+    <string name="radio_unfavorite">Remove from favorites</string>
+    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
     <string name="cd_back">Back</string>
     <string name="cd_radio_open">Radio</string>
 </resources>

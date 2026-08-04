@@ -76,6 +76,18 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
 
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "pixelplay_music_channel"
+
+        @Volatile
+        private var instance: PixelPlayApplication? = null
+
+        /** 获取应用全局 Context（Hilt EntryPoint、ContentResolver 等场景使用，非 UI 上下文） */
+        @JvmStatic
+        fun appContext(): Context = instance!!
+
+        /** 与 attachBaseContext 同时设置，保证最早可用 */
+        private fun setInstance(app: PixelPlayApplication) {
+            instance = app
+        }
     }
 
     private val appLifecycleObserver = object : DefaultLifecycleObserver {
@@ -98,6 +110,8 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
             // Absolute last resort - don't let crash handler crash us
             android.util.Log.e("PixelPlay", "Failed to install crash handler: ${t.message}")
         }
+
+        setInstance(this)
 
         try {
             super.attachBaseContext(AppLocaleManager.wrapContext(base))
@@ -142,7 +156,7 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val channel = NotificationChannel(
                         NOTIFICATION_CHANNEL_ID,
-                        "PixelPlayer Music Playback",
+                        "XiangsuPlayer Music Playback",
                         NotificationManager.IMPORTANCE_LOW
                     )
                     val notificationManager = getSystemService(NotificationManager::class.java)
@@ -211,7 +225,7 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(
                     NOTIFICATION_CHANNEL_ID,
-                    "PixelPlayer Music Playback",
+                    "XiangsuPlayer Music Playback",
                     NotificationManager.IMPORTANCE_LOW
                 )
                 val notificationManager = getSystemService(NotificationManager::class.java)

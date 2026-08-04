@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -26,6 +27,14 @@ import java.net.URL
  */
 class ApkDownloadInstaller {
 
+    private companion object {
+        const val USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0"
+
+        // 有效 APK 的最小体积（防止把 HTML 错误页等小文件当成 APK）
+        const val MIN_APK_SIZE_BYTES = 1_000_000L
+    }
+
     /**
      * GitHub Release 下载加速镜像（代理前缀型）。
      * 用法：将原始 `https://github.com/.../releases/download/...` 链接整体拼在
@@ -45,14 +54,25 @@ class ApkDownloadInstaller {
     /**
      * 下载 APK 文件，返回下载进度 Flow。
      *
-     * 自动按 [mirrorPrefixes] + 原地址的顺序尝试，任一成功即止；
-     * 全部失败后才 emit [DownloadState.Error]。
+     * 支持多候选链接（蓝奏云直链优先、GitHub Release 兜底），按传入顺序依次尝试，
+     * 任一成功后即停止。候选会按需扩展：
+     * - GitHub 链接自动追加加速镜像前缀，全部镜像失败后再试官方原地址；
+     * - 蓝奏云直链本身就是国内 CDN，直接下载，**绝不套 GitHub 镜像**。
+     *
+     * 每个候选下载完成后会校验文件是否为合法 APK（ZIP 魔数 + 最小体积），
+     * 防止镜像/CDN 返回的 HTML 错误页被当成 APK 安装导致「安装包损坏」。
      */
-    fun downloadApk(context: Context, downloadUrl: String): Flow<DownloadState> = flow {
+    fun downloadApk(context: Context, downloadUrls: List<String>): Flow<DownloadState> = flow {
         emit(DownloadState.Downloading(0f))
 
         val file = File(context.cacheDir, "pixelplay_update.apk")
-        val candidates = mirrorPrefixes.map { prefix -> prefix + downloadUrl } + downloadUrl
+        val candidates = downloadUrls.flatMap { url ->
+            if (url.startsWith("https://github.com/")) {
+                mirrorPrefixes.map { prefix -> prefix + url } + url
+            } else {
+                listOf(url)
+            }
+        }
 
         var lastError: String? = null
         for ((index, url) in candidates.withIndex()) {
@@ -61,15 +81,22 @@ class ApkDownloadInstaller {
                 Timber.d("APK 下载源 [${index + 1}/${candidates.size}]: $url")
                 connection = (URL(url).openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
-                    connectTimeout = 30000
-                    readTimeout = 60000
-                    addRequestProperty("Accept", "application/octet-stream")
+                    connectTimeout = 20000
+                    readTimeout = 45000
+                    addRequestProperty("User-Agent", USER_AGENT)
+                    addRequestProperty("Accept", "application/octet-stream,application/vnd.android.package-archive,*/*")
                     instanceFollowRedirects = true
                 }
 
                 val responseCode = connection.responseCode
                 if (responseCode !in 200..299) {
                     throw RuntimeException("下载失败: HTTP $responseCode")
+                }
+
+                // 镜像/CDN 可能返回 HTML 错误页而非 APK，直接判为无效源
+                val contentType = connection.contentType.orEmpty()
+                if (contentType.contains("text/html", ignoreCase = true)) {
+                    throw RuntimeException("响应不是 APK（content-type=$contentType）")
                 }
 
                 val totalBytes = connection.contentLengthLong
@@ -99,8 +126,15 @@ class ApkDownloadInstaller {
                     }
                 }
 
+                // 下载完成后校验 APK 合法性，避免把损坏文件交给安装器
+                if (!file.isValidApk()) {
+                    throw RuntimeException("下载的文件不是有效的 APK")
+                }
+
                 emit(DownloadState.Downloaded(file))
                 return@flow
+            } catch (e: CancellationException) {
+                throw e // 协程取消必须向上抛，不能吞掉后继续尝试下一个源
             } catch (e: Exception) {
                 Timber.w(e, "APK 下载源失败 [${index + 1}/${candidates.size}]")
                 lastError = e.message ?: "下载失败"
@@ -112,6 +146,24 @@ class ApkDownloadInstaller {
 
         emit(DownloadState.Error(lastError ?: "下载失败"))
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * 校验下载文件是否像合法的 APK：ZIP 容器魔数（PK\x03\x04）+ 最小体积。
+     */
+    private fun File.isValidApk(): Boolean {
+        if (!exists() || length() < MIN_APK_SIZE_BYTES) return false
+        return try {
+            inputStream().use { input ->
+                val magic = ByteArray(4)
+                input.read(magic) == 4 &&
+                    magic[0] == 0x50.toByte() && magic[1] == 0x4B.toByte() &&
+                    magic[2] == 0x03.toByte() && magic[3] == 0x04.toByte()
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "APK 校验读取失败")
+            false
+        }
+    }
 
     /**
      * 触发系统安装界面。

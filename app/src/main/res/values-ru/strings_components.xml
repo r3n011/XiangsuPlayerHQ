@@ -110,7 +110,7 @@
     <string name="song_info_set_ringtone">Задать как рингтон</string>
     <string name="cd_set_song_as_ringtone">Задать песню как рингтон</string>
     <string name="song_info_tone_picker_title">Использовать песню как</string>
-    <string name="song_info_tone_picker_body">Выберите, куда PixelPlayer установит этот звук.</string>
+    <string name="song_info_tone_picker_body">Выберите, куда XiangsuPlayer установит этот звук.</string>
     <string name="song_info_tone_ringtone_title">Рингтон телефона</string>
     <string name="song_info_tone_ringtone_subtitle">Входящие вызовы</string>
     <string name="song_info_tone_notification_title">Звук уведомлений</string>
@@ -124,7 +124,7 @@
     <string name="song_info_tone_ringtone_label">рингтон</string>
     <string name="song_info_tone_notification_label">звук уведомлений</string>
     <string name="song_info_tone_alarm_label">звук будильника</string>
-    <string name="song_info_ringtone_permission_prompt">Включите изменение системных настроек и вернитесь в PixelPlayer, чтобы завершить автоматически.</string>
+    <string name="song_info_ringtone_permission_prompt">Включите изменение системных настроек и вернитесь в XiangsuPlayer, чтобы завершить автоматически.</string>
     <string name="song_info_ringtone_permission_missing">Изменение системных настроек не включено.</string>
     <string name="song_info_ringtone_success">\"%1$s\" задан как рингтон</string>
     <string name="song_info_ringtone_local_only">Только локальные песни можно использовать как системные звуки.</string>

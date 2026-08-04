@@ -155,7 +155,7 @@ private val CoreMaintainer = Contributor(
     id = "theovilardo",
     displayName = "Theo Vilardo",
     role = "Creator and maintainer",
-    detail = "Building PixelPlayer with direct community feedback.",
+    detail = "Building XiangsuPlayer with direct community feedback.",
     avatarUrl = "https://avatars.githubusercontent.com/u/26845343?v=4",
     iconRes = R.drawable.round_developer_board_24,
     githubUrl = "https://github.com/theovilardo",
@@ -185,7 +185,7 @@ private val PinnedCommunityMembers = listOf(
         id = "colbycabrera",
         displayName = "@ColbyCabrera",
         role = "Early contributor",
-        detail = "Helped shape PixelPlayer in the first stages of the app.",
+        detail = "Helped shape XiangsuPlayer in the first stages of the app.",
         badge = "Early Support",
         iconRes = R.drawable.round_newspaper_24,
         githubUrl = "https://github.com/ColbyCabrera",
@@ -431,9 +431,9 @@ fun AboutScreen(
         }
     }
 
-    fun startApkDownload(url: String) {
+    fun startApkDownload(urls: List<String>) {
         coroutineScope.launch {
-            apkInstaller.downloadApk(context, url).collect { state ->
+            apkInstaller.downloadApk(context, urls).collect { state ->
                 apkDownloadState = state
                 if (state is ApkDownloadInstaller.DownloadState.Downloaded) {
                     apkDownloadState = ApkDownloadInstaller.DownloadState.Installing
@@ -750,8 +750,8 @@ fun AboutScreen(
                     showUpdateDialog = false
                     apkDownloadState = null
                 },
-                onDownload = { url ->
-                    startApkDownload(url)
+                onDownload = { urls ->
+                    startApkDownload(urls)
                 }
             )
         }
@@ -1256,7 +1256,7 @@ private fun ProjectInfoCard(modifier: Modifier = Modifier) {
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "基于 pixel player 开源项目构建的像素播放器",
+                    text = "基于 xiangsu player 开源项目构建的像素播放器",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

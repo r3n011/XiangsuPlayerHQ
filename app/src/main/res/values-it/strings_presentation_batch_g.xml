@@ -182,7 +182,7 @@
     <string name="presentation_batch_g_artist_group_by_album_artist">Raggruppa per album artist</string>
     <string name="presentation_batch_g_artist_group_by_album_artist_sub">Mostra album di collaborazione sotto l\'artista principale</string>
     <string name="presentation_batch_g_artist_info_title">Informazioni parsing multi-artista</string>
-    <string name="presentation_batch_g_artist_info_body">PixelPlayer divide i tag artista usando delimitatori carattere (/, ;, &amp;) e delimitatori parola (feat., ft., vs., x). I delimitatori parola corrispondono senza distinzione tra maiuscole e minuscole.
+    <string name="presentation_batch_g_artist_info_body">XiangsuPlayer divide i tag artista usando delimitatori carattere (/, ;, &amp;) e delimitatori parola (feat., ft., vs., x). I delimitatori parola corrispondono senza distinzione tra maiuscole e minuscole.
 
 "Estrai artisti dal titolo" rileva pattern come (feat. Artista) nei titoli dei brani.
 
@@ -266,9 +266,9 @@ La barra rovesciata (\) può essere usata per sfuggire ai delimitatori carattere
     <string name="presentation_batch_g_playstore_open">Apri Play Store</string>
     <string name="presentation_batch_g_playstore_continue_beta">Continua beta</string>
     <string name="presentation_batch_g_playstore_link_pending">Il link Play Store sarà abilitato dalla configurazione GitHub.</string>
-    <string name="presentation_batch_g_playstore_title">PixelPlayer è ora disponibile su Google Play</string>
+    <string name="presentation_batch_g_playstore_title">XiangsuPlayer è ora disponibile su Google Play</string>
     <string name="presentation_batch_g_playstore_body">Usa il canale stabile su Google Play per gli aggiornamenti di rilascio mentre manteniamo attive le build beta.</string>
-    <string name="presentation_batch_g_playstore_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_playstore_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_playstore_release_announcement">Annuncio di rilascio</string>
     <string name="presentation_batch_g_playstore_coming_soon">In arrivo</string>
     <string name="presentation_batch_g_genre_sort_title">Ordina e riproduci</string>
@@ -287,7 +287,7 @@ La barra rovesciata (\) può essere usata per sfuggire ai delimitatori carattere
     <string name="presentation_batch_g_presets_cd_rename">Rinomina</string>
     <string name="presentation_batch_g_presets_cd_delete">Elimina</string>
     <string name="presentation_batch_g_beta_sheet_version">Beta 0.6.0</string>
-    <string name="presentation_batch_g_beta_sheet_welcome_title">Benvenuto in PixelPlayer 0.6.0-beta</string>
+    <string name="presentation_batch_g_beta_sheet_welcome_title">Benvenuto in XiangsuPlayer 0.6.0-beta</string>
     <string name="presentation_batch_g_beta_sheet_welcome_body">Questa beta è ora focalizzata su stabilità, prestazioni e riproduzione cross-dispositivo, con nuove integrazioni importanti.</string>
     <string name="presentation_batch_g_beta_sheet_expect_title">Cosa aspettarsi</string>
     <string name="presentation_batch_g_beta_sheet_expect_1">Uso quotidiano più veloce: avvio, navigazione e interazioni con il player più fluidi in tutta l\'app.</string>
@@ -310,7 +310,7 @@ La barra rovesciata (\) può essere usata per sfuggire ai delimitatori carattere
     <string name="presentation_batch_g_album_sel_queue_hint">Coda + riproduzione rispetta l\'ordine della tua selezione.</string>
     <string name="presentation_batch_g_album_sel_limit">Limite: %1$d album per selezione.</string>
     <string name="presentation_batch_g_album_sel_add_queue_play">Aggiungi alla coda e riproduci</string>
-    <string name="presentation_batch_g_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_app_tagline">Lettore musicale</string>
     <string name="presentation_batch_g_brick_high">HIGH %1$d</string>
     <string name="presentation_batch_g_brick_cd_close">Chiudi</string>
@@ -360,7 +360,7 @@ La barra rovesciata (\) può essere usata per sfuggire ai delimitatori carattere
     <string name="presentation_batch_g_cast_playing">In riproduzione</string>
     <string name="presentation_batch_g_cast_paused">In pausa</string>
     <string name="presentation_batch_g_cast_perm_title">Preparati a connetterti</string>
-    <string name="presentation_batch_g_cast_perm_body">Consenti a PixelPlayer di vedere i tuoi dispositivi nelle vicinanze e la Wi-Fi attuale per mantenere sincronizzati cast, audio Bluetooth e altoparlanti.</string>
+    <string name="presentation_batch_g_cast_perm_body">Consenti a XiangsuPlayer di vedere i tuoi dispositivi nelle vicinanze e la Wi-Fi attuale per mantenere sincronizzati cast, audio Bluetooth e altoparlanti.</string>
     <string name="presentation_batch_g_cast_perm_nearby_title">Dispositivi nelle vicinanze</string>
     <string name="presentation_batch_g_cast_perm_nearby_desc">Necessario per leggere e controllare i tuoi dispositivi audio Bluetooth connessi.</string>
     <string name="presentation_batch_g_cast_perm_location_title">Posizione per Wi-Fi</string>

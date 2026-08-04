@@ -195,7 +195,7 @@
     <string name="presentation_batch_g_artist_group_by_album_artist">Group by Album Artist</string>
     <string name="presentation_batch_g_artist_group_by_album_artist_sub">Show collaboration albums under main artist</string>
     <string name="presentation_batch_g_artist_info_title">About Multi-Artist Parsing</string>
-    <string name="presentation_batch_g_artist_info_body">PixelPlayer splits artist tags using character delimiters (/, ;, &amp;) and word delimiters (feat., ft., vs., x). Word delimiters are matched case-insensitively.
+    <string name="presentation_batch_g_artist_info_body">XiangsuPlayer splits artist tags using character delimiters (/, ;, &amp;) and word delimiters (feat., ft., vs., x). Word delimiters are matched case-insensitively.
 
 "Extract Artists from Title" detects patterns like (feat. Artist) in song titles.
 
@@ -280,9 +280,9 @@ Backslash (\) can be used to escape character delimiters.</string>
     <string name="presentation_batch_g_playstore_open">Open Play Store</string>
     <string name="presentation_batch_g_playstore_continue_beta">Continue beta</string>
     <string name="presentation_batch_g_playstore_link_pending">The Play Store link will be enabled from GitHub config.</string>
-    <string name="presentation_batch_g_playstore_title">PixelPlayer is now available on Google Play</string>
+    <string name="presentation_batch_g_playstore_title">XiangsuPlayer is now available on Google Play</string>
     <string name="presentation_batch_g_playstore_body">Use the stable channel on Google Play for release updates while we keep beta builds active.</string>
-    <string name="presentation_batch_g_playstore_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_playstore_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_playstore_release_announcement">Release announcement</string>
     <string name="presentation_batch_g_playstore_coming_soon">Coming soon</string>
     <string name="presentation_batch_g_genre_sort_title">Sort &amp; Play</string>
@@ -301,7 +301,7 @@ Backslash (\) can be used to escape character delimiters.</string>
     <string name="presentation_batch_g_presets_cd_rename">Rename</string>
     <string name="presentation_batch_g_presets_cd_delete">Delete</string>
     <string name="presentation_batch_g_beta_sheet_version">Beta 0.7.0</string>
-    <string name="presentation_batch_g_beta_sheet_welcome_title">Welcome to PixelPlayer 0.7.0-beta</string>
+    <string name="presentation_batch_g_beta_sheet_welcome_title">Welcome to XiangsuPlayer 0.7.0-beta</string>
     <string name="presentation_batch_g_beta_sheet_welcome_body">You\'re using a beta build that may contain bugs, crashes, or experimental features. Help us improve by reporting issues.</string>
     <string name="presentation_batch_g_beta_sheet_expect_title">What to expect</string>
     <string name="presentation_batch_g_beta_sheet_expect_1">Bugs, crashes, or incomplete features may occur unexpectedly.</string>
@@ -318,7 +318,7 @@ Backslash (\) can be used to escape character delimiters.</string>
     <string name="presentation_batch_g_beta_sheet_report_summary">A quick checklist before opening a new issue.</string>
     <string name="presentation_batch_g_beta_sheet_before_title">Before opening an issue</string>
     <string name="presentation_batch_g_beta_sheet_before_1">Search existing open and closed issues to avoid duplicates.</string>
-    <string name="presentation_batch_g_beta_sheet_before_2">Update to the latest PixelPlayer version and confirm the problem still happens.</string>
+    <string name="presentation_batch_g_beta_sheet_before_2">Update to the latest XiangsuPlayer version and confirm the problem still happens.</string>
     <string name="presentation_batch_g_beta_sheet_before_3">Restart the app and confirm the problem persists.</string>
     <string name="presentation_batch_g_beta_sheet_before_4">Try to reproduce it and write down the exact steps.</string>
     <string name="presentation_batch_g_beta_sheet_issue_type_title">Which issue type?</string>
@@ -336,7 +336,7 @@ Backslash (\) can be used to escape character delimiters.</string>
     <string name="presentation_batch_g_beta_sheet_bug_screenshot">Screenshot / video: if available.</string>
     <string name="presentation_batch_g_beta_sheet_bug_logs">Logs / stack trace: if available.</string>
     <string name="presentation_batch_g_beta_sheet_env_title">Environment</string>
-    <string name="presentation_batch_g_beta_sheet_env_version">PixelPlayer version:</string>
+    <string name="presentation_batch_g_beta_sheet_env_version">XiangsuPlayer version:</string>
     <string name="presentation_batch_g_beta_sheet_env_source">Install source: GitHub Release, debug build, nightly build, etc.</string>
     <string name="presentation_batch_g_beta_sheet_env_android">Android version:</string>
     <string name="presentation_batch_g_beta_sheet_env_device">Device model:</string>
@@ -378,7 +378,7 @@ Backslash (\) can be used to escape character delimiters.</string>
     <string name="presentation_batch_g_album_sel_queue_hint">Queue + play respects your selection order.</string>
     <string name="presentation_batch_g_album_sel_limit">Limit: %1$d albums per selection.</string>
     <string name="presentation_batch_g_album_sel_add_queue_play">Add to Queue &amp; Play</string>
-    <string name="presentation_batch_g_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_app_tagline">Music Player</string>
     <string name="presentation_batch_g_brick_high">HIGH %1$d</string>
     <string name="presentation_batch_g_brick_cd_close">Close</string>
@@ -428,7 +428,7 @@ Backslash (\) can be used to escape character delimiters.</string>
     <string name="presentation_batch_g_cast_playing">Playing</string>
     <string name="presentation_batch_g_cast_paused">Paused</string>
     <string name="presentation_batch_g_cast_perm_title">Get ready to connect</string>
-    <string name="presentation_batch_g_cast_perm_body">Allow PixelPlayer to see your nearby devices and current Wi‑Fi so we can keep your cast, Bluetooth audio, and speakers in sync.</string>
+    <string name="presentation_batch_g_cast_perm_body">Allow XiangsuPlayer to see your nearby devices and current Wi‑Fi so we can keep your cast, Bluetooth audio, and speakers in sync.</string>
     <string name="presentation_batch_g_cast_perm_nearby_title">Nearby devices</string>
     <string name="presentation_batch_g_cast_perm_nearby_desc">Needed to read and control your connected Bluetooth audio gear.</string>
     <string name="presentation_batch_g_cast_perm_location_title">Location for Wi‑Fi</string>

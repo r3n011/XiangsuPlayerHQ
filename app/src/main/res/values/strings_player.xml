@@ -12,7 +12,7 @@
 
     <!-- CastBottomSheet -->
     <string name="cast_perm_title">Get ready to connect</string>
-    <string name="cast_perm_body">Allow PixelPlayer to see your nearby devices and current Wi‑Fi so we can keep your cast, Bluetooth audio, and speakers in sync.</string>
+    <string name="cast_perm_body">Allow XiangsuPlayer to see your nearby devices and current Wi‑Fi so we can keep your cast, Bluetooth audio, and speakers in sync.</string>
     <string name="cast_perm_nearby_title">Nearby devices</string>
     <string name="cast_perm_nearby_desc">Needed to read and control your connected Bluetooth audio gear.</string>
     <string name="cast_perm_location_title">Location for Wi‑Fi</string>

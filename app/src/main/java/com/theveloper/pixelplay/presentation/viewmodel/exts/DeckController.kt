@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.presentation.viewmodel.exts
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -15,6 +16,8 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import com.theveloper.pixelplay.data.service.player.HiResSampleRateCapAudioProcessor
 import com.theveloper.pixelplay.data.service.player.SurroundDownmixProcessor
+import com.theveloper.pixelplay.presentation.components.UsbDacWithAudioEngineEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 
 @OptIn(UnstableApi::class)
 class DeckController(
@@ -38,6 +41,27 @@ class DeckController(
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean
             ): AudioSink {
+                // ⚡ AAudio 后端控制：尝试从 Hilt EntryPoint 获取设置，失败则默认 Android O+ 启用
+                val useAaudio = try {
+                    val entryPoint = EntryPointAccessors.fromApplication(
+                        context.applicationContext,
+                        UsbDacWithAudioEngineEntryPoint::class.java
+                    )
+                    entryPoint.audioEngineSettings.aaudioEnabled.value &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                } catch (t: Throwable) {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                }
+                try {
+                    if (!useAaudio) {
+                        System.setProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio", "true")
+                    } else {
+                        System.clearProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio")
+                    }
+                } catch (t: Throwable) {
+                    // ignore
+                }
+
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(false)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)

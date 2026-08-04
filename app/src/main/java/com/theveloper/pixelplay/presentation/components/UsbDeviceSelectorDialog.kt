@@ -276,10 +276,13 @@ private fun UsbDeviceItem(
 }
 
 /**
- * Hilt EntryPoint for UsbDacManager
+ * Hilt EntryPoint for UsbDacManager + AudioEngineSettings
  */
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface UsbDacEntryPoint {
     val usbDacManager: UsbDacManager
+    val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings
 }
+
+typealias UsbDacWithAudioEngineEntryPoint = UsbDacEntryPoint

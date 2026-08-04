@@ -54,7 +54,7 @@ class ControlWidget4x2 : GlanceAppWidget() {
         playerInfo: PlayerInfo,
         context: Context
     ) {
-        val title = playerInfo.songTitle.ifEmpty { "PixelPlayer" }
+        val title = playerInfo.songTitle.ifEmpty { "XiangsuPlayer" }
         val artist = playerInfo.artistName.ifEmpty { "Tap to open" }
         val isPlaying = playerInfo.isPlaying
         val isShuffleEnabled = playerInfo.isShuffleEnabled

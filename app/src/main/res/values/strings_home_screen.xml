@@ -11,7 +11,7 @@
     <!-- BetaInfoBottomSheet -->
     <string name="beta_sheet_version">Beta 0.7.5</string>
     <string name="beta_sheet_letter">β</string>
-    <string name="beta_sheet_welcome_title">Welcome to PixelPlayer 0.7.5-beta</string>
+    <string name="beta_sheet_welcome_title">Welcome to XiangsuPlayer 0.7.5-beta</string>
     <string name="beta_sheet_welcome_body">You\'re using a beta build that may contain bugs, crashes, or experimental features. Help us improve by reporting issues.</string>
     <string name="beta_sheet_expect_title">What to expect</string>
     <string name="beta_sheet_expect_1">Bugs, crashes, or incomplete features may occur unexpectedly.</string>
@@ -28,7 +28,7 @@
     <string name="beta_sheet_report_summary">A quick checklist before opening a new issue.</string>
     <string name="beta_sheet_before_title">Before opening an issue</string>
     <string name="beta_sheet_before_1">Search existing open and closed issues to avoid duplicates.</string>
-    <string name="beta_sheet_before_2">Update to the latest PixelPlayer version and confirm the problem still happens.</string>
+    <string name="beta_sheet_before_2">Update to the latest XiangsuPlayer version and confirm the problem still happens.</string>
     <string name="beta_sheet_before_3">Restart the app and confirm the problem persists.</string>
     <string name="beta_sheet_before_4">Try to reproduce it and write down the exact steps.</string>
     <string name="beta_sheet_issue_type_title">Which issue type?</string>
@@ -46,7 +46,7 @@
     <string name="beta_sheet_bug_screenshot">Screenshot / video: if available.</string>
     <string name="beta_sheet_bug_logs">Logs / stack trace: if available.</string>
     <string name="beta_sheet_env_title">Environment</string>
-    <string name="beta_sheet_env_version">PixelPlayer version:</string>
+    <string name="beta_sheet_env_version">XiangsuPlayer version:</string>
     <string name="beta_sheet_env_source">Install source: GitHub Release, debug build, nightly build, etc.</string>
     <string name="beta_sheet_env_android">Android version:</string>
     <string name="beta_sheet_env_device">Device model:</string>

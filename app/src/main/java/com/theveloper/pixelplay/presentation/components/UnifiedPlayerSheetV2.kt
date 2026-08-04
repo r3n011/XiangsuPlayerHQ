@@ -44,7 +44,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -242,13 +242,12 @@ fun UnifiedPlayerSheetV2(
     val playerThemePreference = playerConfig.playerThemePreference
 
     val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
     val scope = rememberCoroutineScope()
 
     val offsetAnimatable = remember { Animatable(0f) }
-    val screenWidthPx = remember(configuration, density) {
-        with(density) { configuration.screenWidthDp.dp.toPx() }
-    }
+    // 使用真实窗口尺寸：平板小窗/分屏时即使 Configuration 不更新也会正确变化
+    val windowSize = LocalWindowInfo.current.containerSize
+    val screenWidthPx = remember(windowSize) { windowSize.width.toFloat() }
     val dismissThresholdPx = remember(screenWidthPx) { screenWidthPx * 0.4f }
     val swipeDismissProgress by remember(dismissThresholdPx) {
         derivedStateOf {
@@ -257,9 +256,7 @@ fun UnifiedPlayerSheetV2(
         }
     }
 
-    val screenHeightPx = remember(configuration, density) {
-        with(density) { configuration.screenHeightDp.dp.toPx() }
-    }
+    val screenHeightPx = remember(windowSize) { windowSize.height.toFloat() }
     val miniPlayerContentHeightPx = remember { with(density) { MiniPlayerHeight.toPx() } }
 
     val isCastConnecting by playerViewModel.isCastConnecting.collectAsStateWithLifecycle()
@@ -846,7 +843,7 @@ fun UnifiedPlayerSheetV2(
                 queueSheetOffset = queueSheetOffset,
                 queueSheetHeightPx = queueSheetHeightPx,
                 onQueueSheetHeightPxChange = onQueueSheetHeightPxChange,
-                configurationResetKey = configuration,
+                configurationResetKey = windowSize,
                 currentQueueSourceName = currentQueueSourceName,
                 infrequentPlayerState = infrequentPlayerState,
                 playerViewModel = playerViewModel,

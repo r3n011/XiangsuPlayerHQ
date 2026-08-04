@@ -155,7 +155,7 @@ class NeteaseApiService @Inject constructor() {
             .header("Connection", "keep-alive")
             .header("Referer", "https://music.163.com")
             .header("Host", requestUrl.host)
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; XiangsuPlayer) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
 
         if (usePersistedCookies) {
             buildPersistedCookieHeader()?.let { builder.header("Cookie", it) }

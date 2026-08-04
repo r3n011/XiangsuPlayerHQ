@@ -1,11 +1,11 @@
 <resources>
     <string name="app_name">像素播放器</string>
     <string name="app_name_change_title">应用已更名</string>
-    <string name="app_name_change_message">由于商标相关问题，我们已将应用名称从 PixelPlay 更改为 PixelPlayer。继续畅听！</string>
+    <string name="app_name_change_message">由于商标相关问题，我们已将应用名称从 PixelPlay 更改为 XiangsuPlayer。继续畅听！</string>
     <string name="do_not_show_again">不再显示</string>
     <string name="dismiss">关闭</string>
     <string name="all_files_access_title">需要特殊权限</string>
-    <string name="all_files_access_description">要编辑歌曲元数据（.mp3 文件），PixelPlayer 需要访问所有文件的特殊权限。这样我们才能直接修改曲目标签。请在下一页授予此权限以启用元数据编辑。</string>
+    <string name="all_files_access_description">要编辑歌曲元数据（.mp3 文件），XiangsuPlayer 需要访问所有文件的特殊权限。这样我们才能直接修改曲目标签。请在下一页授予此权限以启用元数据编辑。</string>
     <string name="grant_permission_button">授予权限</string>
     <string name="all_files_access_setting">所有文件访问权限</string>
     <string name="error">错误</string>
@@ -86,7 +86,7 @@
     <string name="ai_error_api_key">请在「设置」中为所选 AI 提供商配置有效的 API 密钥。</string>
     <string name="ai_error_generic">AI 错误：%s</string>
     <string name="ai_error_quota">所选 AI 提供商拒绝了该请求，因为账户没有余额或可用配额。</string>
-    <string name="ai_error_model_unavailable">所选 AI 模型已不可用。PixelPlayer 已尝试自动切换到受支持的模型。</string>
+    <string name="ai_error_model_unavailable">所选 AI 模型已不可用。XiangsuPlayer 已尝试自动切换到受支持的模型。</string>
     <string name="ai_no_songs_found">AI 没有根据你的提示找到任何歌曲。</string>
     <string name="ai_prompt_empty">为你的每日合辑写一个想法</string>
     <string name="ai_daily_mix_updated">已使用 AI 更新每日合辑</string>
@@ -124,7 +124,7 @@
     <string name="playlist_share_failed">分享失败：%1$s</string>
     <string name="playlist_none_to_export">没有可导出的播放列表</string>
     <string name="playlist_export_failed">导出失败：%1$s</string>
-    <string name="playlist_export_folder_display">Music/PixelPlayer Exports</string>
+    <string name="playlist_export_folder_display">Music/XiangsuPlayer Exports</string>
     <string name="ai_playlist_gemini_key_required">请在「设置」中配置你的 Gemini API 密钥。</string>
     <string name="error_unknown">未知错误</string>
     <string name="failed_to_play_song_url_resolve">无法播放 %1$s — 无法解析播放地址</string>

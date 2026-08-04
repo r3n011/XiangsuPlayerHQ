@@ -110,7 +110,7 @@
     <string name="song_info_set_ringtone">Jadikan nada dering</string>
     <string name="cd_set_song_as_ringtone">Jadikan lagu sebagai nada dering</string>
     <string name="song_info_tone_picker_title">Gunakan lagu ini sebagai</string>
-    <string name="song_info_tone_picker_body">Pilih tempat PixelPlayer memasang suara ini.</string>
+    <string name="song_info_tone_picker_body">Pilih tempat XiangsuPlayer memasang suara ini.</string>
     <string name="song_info_tone_ringtone_title">Nada dering telepon</string>
     <string name="song_info_tone_ringtone_subtitle">Panggilan masuk</string>
     <string name="song_info_tone_notification_title">Suara notifikasi</string>
@@ -124,7 +124,7 @@
     <string name="song_info_tone_ringtone_label">nada dering</string>
     <string name="song_info_tone_notification_label">suara notifikasi</string>
     <string name="song_info_tone_alarm_label">suara alarm</string>
-    <string name="song_info_ringtone_permission_prompt">Aktifkan Ubah setelan sistem, lalu kembali ke PixelPlayer untuk menyelesaikan otomatis.</string>
+    <string name="song_info_ringtone_permission_prompt">Aktifkan Ubah setelan sistem, lalu kembali ke XiangsuPlayer untuk menyelesaikan otomatis.</string>
     <string name="song_info_ringtone_permission_missing">Ubah setelan sistem belum diaktifkan.</string>
     <string name="song_info_ringtone_success">\"%1$s\" ditetapkan sebagai nada dering</string>
     <string name="song_info_ringtone_local_only">Hanya lagu lokal yang dapat digunakan sebagai suara sistem.</string>

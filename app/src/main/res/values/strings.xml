@@ -1,11 +1,11 @@
 <resources>
     <string name="app_name">像素播放器</string>
     <string name="app_name_change_title">App Name Change</string>
-    <string name="app_name_change_message">We have changed our app\'s name from PixelPlay to PixelPlayer due to a trademark-related issue. Keep playing!</string>
+    <string name="app_name_change_message">We have changed our app\'s name from PixelPlay to XiangsuPlayer due to a trademark-related issue. Keep playing!</string>
     <string name="do_not_show_again">Do not show again</string>
     <string name="dismiss">Dismiss</string>
     <string name="all_files_access_title">Special Permission Required</string>
-    <string name="all_files_access_description">To edit song metadata (.mp3 files), PixelPlayer needs special access to all files. This allows us to modify track tags directly. Please grant this permission on the next screen to enable metadata editing.</string>
+    <string name="all_files_access_description">To edit song metadata (.mp3 files), XiangsuPlayer needs special access to all files. This allows us to modify track tags directly. Please grant this permission on the next screen to enable metadata editing.</string>
     <string name="grant_permission_button">Grant Permission</string>
     <string name="all_files_access_setting">All Files Access</string>
     <string name="error">Error</string>
@@ -76,7 +76,7 @@
     <string name="ai_error_api_key">Please configure a valid API key for the selected AI provider in Settings.</string>
     <string name="ai_error_generic">AI Error: %s</string>
     <string name="ai_error_quota">The selected AI provider rejected the request because the account has no credits or available quota.</string>
-    <string name="ai_error_model_unavailable">The selected AI model is no longer available. PixelPlayer tried to switch to a supported model automatically.</string>
+    <string name="ai_error_model_unavailable">The selected AI model is no longer available. XiangsuPlayer tried to switch to a supported model automatically.</string>
     <string name="ai_no_songs_found">AI couldn\'t find any songs for your prompt.</string>
     <string name="ai_prompt_empty">Write an idea for your Daily Mix</string>
     <string name="ai_daily_mix_updated">Daily Mix updated with AI</string>
@@ -117,7 +117,7 @@
     <string name="playlist_share_failed">Share failed: %1$s</string>
     <string name="playlist_none_to_export">No playlists to export</string>
     <string name="playlist_export_failed">Export failed: %1$s</string>
-    <string name="playlist_export_folder_display">Music/PixelPlayer Exports</string>
+    <string name="playlist_export_folder_display">Music/XiangsuPlayer Exports</string>
     <string name="ai_playlist_gemini_key_required">Please configure your Gemini API key in Settings.</string>
     <string name="error_unknown">Unknown error</string>
     <string name="failed_to_play_song_url_resolve">Failed to play %1$s — unable to resolve streaming URL</string>

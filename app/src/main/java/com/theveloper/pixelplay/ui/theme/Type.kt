@@ -150,6 +150,44 @@ val GoogleSansRounded = FontFamily(
     ),
 )
 
+// Tomato-style Google Sans Flex families for the focus mode screen.
+@OptIn(ExperimentalTextApi::class)
+val GoogleSansFlexNormal = FontFamily(
+    androidx.compose.ui.text.font.Font(
+        resId = R.font.gflex_variable,
+        weight = FontWeight.Normal,
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(400),
+            FontVariation.Setting("ROND", GoogleSansFlexRond)
+        )
+    )
+)
+
+@OptIn(ExperimentalTextApi::class)
+val GoogleSansFlexEmphasized = FontFamily(
+    androidx.compose.ui.text.font.Font(
+        resId = R.font.gflex_variable,
+        weight = FontWeight.Bold,
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(600),
+            FontVariation.Setting("ROND", GoogleSansFlexRond)
+        )
+    )
+)
+
+@OptIn(ExperimentalTextApi::class)
+val GoogleSansFlexTopBarTitle = FontFamily(
+    androidx.compose.ui.text.font.Font(
+        resId = R.font.gflex_variable,
+        weight = FontWeight.Black,
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(900),
+            FontVariation.width(112.5f),
+            FontVariation.Setting("ROND", 35f)
+        )
+    )
+)
+
 /**
  * 歌词字体选项 — 名称 → FontFamily 的映射。
  * "DEFAULT" → 跟随应用主题（Google Sans Rounded）。

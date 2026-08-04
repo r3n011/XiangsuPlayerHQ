@@ -170,7 +170,7 @@
     <string name="auth_gdrive_connect_subtitle">Reproduce música directamente desde tu Google Drive</string>
     <string name="auth_gdrive_connect_title">Conectar Google Drive</string>
     <string name="auth_gdrive_connected_toast">¡Google Drive conectado!</string>
-    <string name="auth_gdrive_create_action">Crear \"PixelPlayer Music\"</string>
+    <string name="auth_gdrive_create_action">Crear \"XiangsuPlayer Music\"</string>
     <string name="auth_gdrive_create_subtitle">Crea una carpeta nueva aquí para tu música</string>
     <string name="auth_gdrive_empty_msg">No hay carpetas aquí</string>
     <string name="auth_gdrive_open_cd">Abrir carpeta</string>
@@ -204,7 +204,7 @@
     <string name="auth_netease_http_error">HTTP %1$d al cargar NetEase.</string>
     <string name="auth_netease_incomplete_error">Aún no se detectó el inicio de sesión. Completa NetEase antes de pulsar Hecho.</string>
     <string name="auth_netease_login_title">Iniciar sesión en NetEase Music</string>
-    <string name="auth_netease_security_msg">Nota de seguridad: tu contraseña solo se introduce en las páginas web de NetEase. PixelPlayer guarda las cookies de sesión (MUSIC_U) para sincronizar tu biblioteca.</string>
+    <string name="auth_netease_security_msg">Nota de seguridad: tu contraseña solo se introduce en las páginas web de NetEase. XiangsuPlayer guarda las cookies de sesión (MUSIC_U) para sincronizar tu biblioteca.</string>
     <string name="auth_netease_title">NetEase Music</string>
 
     <!-- QQ Music Web Login -->
@@ -213,6 +213,6 @@
     <string name="auth_qq_http_error">HTTP %1$d al cargar QQ Music.</string>
     <string name="auth_qq_incomplete_error">Aún no se detectó el inicio de sesión. Completa QQ Music antes de pulsar Hecho.</string>
     <string name="auth_qq_login_title">Iniciar sesión en QQ Music</string>
-    <string name="auth_qq_security_msg">Nota de seguridad: tu contraseña solo se introduce en las páginas web de QQ Music. PixelPlayer guarda las cookies de sesión para sincronizar tu biblioteca.</string>
+    <string name="auth_qq_security_msg">Nota de seguridad: tu contraseña solo se introduce en las páginas web de QQ Music. XiangsuPlayer guarda las cookies de sesión para sincronizar tu biblioteca.</string>
     <string name="auth_qq_title">QQ Music</string>
 </resources>

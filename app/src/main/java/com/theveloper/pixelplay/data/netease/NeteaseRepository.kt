@@ -513,7 +513,9 @@ class NeteaseRepository @Inject constructor(
 
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                val qualityFallbacks = linkedSetOf(quality, "higher", "standard")
+                // 首选音质失败自动回退：首选 → exhigh → higher → standard
+                // （如首选 lossless 失败会直接回退到 exhigh 320k，而不是跳级到 standard）
+                val qualityFallbacks = linkedSetOf(quality, "exhigh", "higher", "standard")
                 var lastFailure: String? = null
 
                 for (level in qualityFallbacks) {
@@ -610,18 +612,24 @@ class NeteaseRepository @Inject constructor(
                 "cover" to songCover
             )
 
-            // 质量映射：exhigh/higher -> "320k"，standard -> "128k"
-            val lxQuality = when (quality) {
-                "exhigh", "higher" -> "320k"
-                else -> "128k"
+            // 质量映射：根据用户首选音质选择脚本支持的音质参数。
+            // 脚本（落雪 userApi）支持 24bit / flac / 320k / 192k / 128k，
+            // 且脚本内部会按 selectQuality 自动选择最接近的可用音质并多链路回退，
+            // 所以只需按顺序尝试：首选 → 320k → 192k → 128k
+            val lxQualities = when (quality) {
+                "lossless", "hires", "flac", "24bit" -> listOf("flac", "24bit", "320k", "192k", "128k")
+                "exhigh", "higher" -> listOf("320k", "192k", "128k")
+                else -> listOf("128k")
             }
 
-            // 先尝试 320k，失败回落到 128k
-            val url320 = runCatching { lxJsEngine.getPlayUrl("wy", songInfo, "320k") }.getOrNull()
-            if (!url320.isNullOrBlank()) return url320
-
-            val url128 = runCatching { lxJsEngine.getPlayUrl("wy", songInfo, "128k") }.getOrNull()
-            if (!url128.isNullOrBlank()) return url128
+            // 依次尝试各音质级别，命中即返回
+            for (lxQuality in lxQualities) {
+                val url = runCatching { lxJsEngine.getPlayUrl("wy", songInfo, lxQuality) }.getOrNull()
+                if (!url.isNullOrBlank()) {
+                    Timber.d("LxJsEngine resolved full URL for songId=$songId at quality=$lxQuality")
+                    return url
+                }
+            }
 
             Timber.d("LxJsEngine returned null for songId=$songId")
             null

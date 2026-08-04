@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">PixelPlayer</string>
+    <string name="app_name">XiangsuPlayer</string>
     <string name="app_name_change_title">Endring av app-navn</string>
-    <string name="app_name_change_message">Vi har endret appens navn fra PixelPlay til PixelPlayer på grunn av et varemerkeproblem. Fortsett spillingen!</string>
+    <string name="app_name_change_message">Vi har endret appens navn fra PixelPlay til XiangsuPlayer på grunn av et varemerkeproblem. Fortsett spillingen!</string>
     <string name="do_not_show_again">Ikke vis igjen</string>
     <string name="dismiss">Lukk</string>
     <string name="all_files_access_title">Spesiell tillatelse kreves</string>
-    <string name="all_files_access_description">For å redigere sang-metadata (.mp3-filer) trenger PixelPlayer spesiell tilgang til alle filer. Dette lar oss endre spor-tagger direkte. Vennligst gi denne tillatelsen på neste skjerm for å aktivere redigering av metadata.</string>
+    <string name="all_files_access_description">For å redigere sang-metadata (.mp3-filer) trenger XiangsuPlayer spesiell tilgang til alle filer. Dette lar oss endre spor-tagger direkte. Vennligst gi denne tillatelsen på neste skjerm for å aktivere redigering av metadata.</string>
     <string name="grant_permission_button">Gi tillatelse</string>
     <string name="all_files_access_setting">Tilgang til alle filer</string>
     <string name="error">Feil</string>
@@ -86,7 +86,7 @@
     <string name="ai_error_api_key">Vennligst konfigurer en gyldig API-nøkkel for den valgte AI-leverandøren i innstillinger.</string>
     <string name="ai_error_generic">AI-feil: %s</string>
     <string name="ai_error_quota">Den valgte AI-leverandøren avviste forespørselen fordi kontoen mangler kreditt eller tilgjengelig kvote.</string>
-    <string name="ai_error_model_unavailable">Den valgte AI-modellen er ikke lenger tilgjengelig. PixelPlayer prøvde å bytte til en støttet modell automatisk.</string>
+    <string name="ai_error_model_unavailable">Den valgte AI-modellen er ikke lenger tilgjengelig. XiangsuPlayer prøvde å bytte til en støttet modell automatisk.</string>
     <string name="ai_no_songs_found">AI kunne ikke finne noen sanger for forespørselen din.</string>
     <string name="ai_prompt_empty">Skriv en idé for din Daily Mix</string>
     <string name="ai_daily_mix_updated">Daily Mix oppdatert med AI</string>
@@ -124,7 +124,7 @@
     <string name="playlist_share_failed">Deling feilet: %1$s</string>
     <string name="playlist_none_to_export">Ingen spillelister å eksportere</string>
     <string name="playlist_export_failed">Eksport feilet: %1$s</string>
-    <string name="playlist_export_folder_display">Musikk/PixelPlayer Exports</string>
+    <string name="playlist_export_folder_display">Musikk/XiangsuPlayer Exports</string>
     <string name="ai_playlist_gemini_key_required">Vennligst konfigurer din Gemini API-nøkkel i innstillinger.</string>
     <string name="error_unknown">Ukjent feil</string>
 

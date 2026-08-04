@@ -155,7 +155,7 @@
     <string name="song_info_set_sound_as_long">Establecer como sonido</string>
     <string name="song_info_cd_set_sound_as">Elige cómo usar esta canción como sonido del sistema</string>
     <string name="song_info_tone_picker_title">Usar esta canción como</string>
-    <string name="song_info_tone_picker_body">Elige dónde debe instalar PixelPlayer este sonido.</string>
+    <string name="song_info_tone_picker_body">Elige dónde debe instalar XiangsuPlayer este sonido.</string>
     <string name="song_info_tone_ringtone_title">Tono de llamada del teléfono</string>
     <string name="song_info_tone_ringtone_subtitle">Llamadas entrantes</string>
     <string name="song_info_tone_notification_title">Sonido de notificación</string>
@@ -169,7 +169,7 @@
     <string name="song_info_tone_ringtone_label">tono de llamada</string>
     <string name="song_info_tone_notification_label">sonido de notificación</string>
     <string name="song_info_tone_alarm_label">sonido de alarma</string>
-    <string name="song_info_ringtone_permission_prompt">Habilita Modificar ajustes del sistema, luego regresa a PixelPlayer to finalizar automáticamente.</string>
+    <string name="song_info_ringtone_permission_prompt">Habilita Modificar ajustes del sistema, luego regresa a XiangsuPlayer to finalizar automáticamente.</string>
     <string name="song_info_ringtone_permission_missing">No se habilitó Modificar ajustes del sistema.</string>
     <string name="song_info_ringtone_success">Se ha establecido \"%1$s\" como tu tono de llamada</string>
     <string name="song_info_ringtone_local_only">Solo se pueden usar canciones locales como tono de llamada.</string>
@@ -497,7 +497,7 @@
     <string name="playlist_view_model_share_failed">Error al compartir: %1$s</string>
     <string name="playlist_view_model_none_to_export">No hay listas para exportar</string>
     <string name="playlist_view_model_export_failed">Error al exportar: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/PixelPlayer Exports</string>
+    <string name="playlist_view_model_export_folder_display">Music/XiangsuPlayer Exports</string>
     <string name="playlist_view_model_ai_gemini_key_required">Por favor configure su clave API de Gemini en Ajustes.</string>
     <string name="playlist_view_model_restored_toast">Lista restaurada</string>
     <plurals name="playlist_view_model_sharing_message">
@@ -557,7 +557,7 @@
     <string name="ai_state_error_api_key">Por favor, configure una clave API válida para el proveedor de IA seleccionado en Ajustes.</string>
     <string name="ai_state_error_generic">Error de IA: %s</string>
     <string name="ai_state_error_quota">El proveedor de IA seleccionado rechazó la solicitud porque la cuenta no tiene créditos o cuota disponible.</string>
-    <string name="ai_state_error_model_unavailable">El modelo de IA seleccionado ya no está disponible. PixelPlayer intentó cambiar a un modelo compatible automáticamente.</string>
+    <string name="ai_state_error_model_unavailable">El modelo de IA seleccionado ya no está disponible. XiangsuPlayer intentó cambiar a un modelo compatible automáticamente.</string>
     <string name="ai_state_no_songs_found">La IA no pudo encontrar ninguna canción para tu prompt.</string>
     <string name="ai_state_prompt_empty">Escribe una idea para tu Daily Mix</string>
     <string name="ai_state_daily_mix_updated">Daily Mix actualizado con IA</string>

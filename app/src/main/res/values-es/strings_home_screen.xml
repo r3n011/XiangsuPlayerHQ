@@ -11,7 +11,7 @@
     <!-- BetaInfoBottomSheet -->
     <string name="beta_sheet_version">Beta 0.7.5</string>
     <string name="beta_sheet_letter">β</string>
-    <string name="beta_sheet_welcome_title">Bienvenido a PixelPlayer 0.7.5-beta</string>
+    <string name="beta_sheet_welcome_title">Bienvenido a XiangsuPlayer 0.7.5-beta</string>
     <string name="beta_sheet_welcome_body">Estás usando una versión beta que puede contener errores, fallos o funciones experimentales. Ayúdanos a mejorar informando de los problemas.</string>
     <string name="beta_sheet_expect_title">Qué esperar</string>
     <string name="beta_sheet_expect_1">Pueden ocurrir errores, fallos o funciones incompletas de forma inesperada.</string>
@@ -28,7 +28,7 @@
     <string name="beta_sheet_report_summary">Una lista de comprobación rápida antes de abrir un nuevo problema.</string>
     <string name="beta_sheet_before_title">Antes de abrir un problema</string>
     <string name="beta_sheet_before_1">Busca en los problemas abiertos y cerrados existentes para evitar duplicados.</string>
-    <string name="beta_sheet_before_2">Actualiza a la última versión de PixelPlayer y confirma que el problema sigue ocurriendo.</string>
+    <string name="beta_sheet_before_2">Actualiza a la última versión de XiangsuPlayer y confirma que el problema sigue ocurriendo.</string>
     <string name="beta_sheet_before_3">Reinicia la aplicación y confirma que el problema persiste.</string>
     <string name="beta_sheet_before_4">Intenta reproducirlo y escribe los pasos exactos.</string>
     <string name="beta_sheet_issue_type_title">¿Qué tipo de problema?</string>
@@ -46,7 +46,7 @@
     <string name="beta_sheet_bug_screenshot">Captura de pantalla / vídeo: si está disponible.</string>
     <string name="beta_sheet_bug_logs">Registros / pila de llamadas: si está disponible.</string>
     <string name="beta_sheet_env_title">Entorno</string>
-    <string name="beta_sheet_env_version">Versión de PixelPlayer:</string>
+    <string name="beta_sheet_env_version">Versión de XiangsuPlayer:</string>
     <string name="beta_sheet_env_source">Origen de la instalación: GitHub Release, compilación de depuración, compilación nocturna, etc.</string>
     <string name="beta_sheet_env_android">Versión de Android:</string>
     <string name="beta_sheet_env_device">Modelo de dispositivo:</string>

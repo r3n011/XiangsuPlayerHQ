@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">PixelPlayer</string>
+    <string name="app_name">XiangsuPlayer</string>
     <string name="app_name_change_title">Cambio de nombre de la app</string>
-    <string name="app_name_change_message">Hemos cambiado el nombre de nuestra app de PixelPlay a PixelPlayer debido a un problema de marca registrada. ¡Sigue reproduciendo!</string>
+    <string name="app_name_change_message">Hemos cambiado el nombre de nuestra app de PixelPlay a XiangsuPlayer debido a un problema de marca registrada. ¡Sigue reproduciendo!</string>
     <string name="do_not_show_again">No volver a mostrar</string>
     <string name="dismiss">Descartar</string>
     <string name="all_files_access_title">Permiso especial requerido</string>
-    <string name="all_files_access_description">Para poder editar los metadatos de tus canciones (archivos .mp3), PixelPlayer necesita un permiso especial de acceso a todos los archivos. Esto nos permitirá modificar las etiquetas de tus pistas directamente. Por favor, concede este permiso en la siguiente pantalla para habilitar la edición de metadatos.</string>
+    <string name="all_files_access_description">Para poder editar los metadatos de tus canciones (archivos .mp3), XiangsuPlayer necesita un permiso especial de acceso a todos los archivos. Esto nos permitirá modificar las etiquetas de tus pistas directamente. Por favor, concede este permiso en la siguiente pantalla para habilitar la edición de metadatos.</string>
     <string name="grant_permission_button">Conceder permiso</string>
     <string name="all_files_access_setting">Acceso a todos los archivos</string>
     <string name="error">Error</string>
@@ -73,7 +73,7 @@
     <string name="ai_error_api_key">Por favor, configura una clave de API válida para el proveedor de IA seleccionado en Ajustes.</string>
     <string name="ai_error_generic">Error de IA: %s</string>
     <string name="ai_error_quota">El proveedor de IA rechazó la solicitud porque la cuenta no tiene créditos ni cuota disponible.</string>
-    <string name="ai_error_model_unavailable">El modelo de IA seleccionado ya no está disponible. PixelPlayer intentó cambiar automáticamente a un modelo compatible.</string>
+    <string name="ai_error_model_unavailable">El modelo de IA seleccionado ya no está disponible. XiangsuPlayer intentó cambiar automáticamente a un modelo compatible.</string>
     <string name="ai_no_songs_found">La IA no pudo encontrar canciones para tu búsqueda.</string>
     <string name="ai_prompt_empty">Escribe una idea para tu Mix Diario</string>
     <string name="ai_daily_mix_updated">Mix Diario actualizado con IA</string>

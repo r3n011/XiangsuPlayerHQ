@@ -411,9 +411,9 @@
         name="setcat_trigger_crash_subtitle"
     >Simulasikan crash untuk menguji sistem pelaporan crash.</string>
     <string name="setcat_application">Aplikasi</string>
-    <string name="setcat_about_pixelplayer_title">Tentang PixelPlayer</string>
+    <string name="setcat_about_xiangsuplayer_title">Tentang XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >Versi aplikasi, kredit, dan lainnya.</string>
 
     <string name="backup_summary_none">Tidak ada bagian yang dipilih.</string>
@@ -508,7 +508,7 @@
     >Regenerasi statistik dimulai</string>
     <string
         name="backup_file_name_format"
-    >PixelPlayer_Cadangan_%1$d.pxpl</string>
+    >XiangsuPlayer_Cadangan_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"

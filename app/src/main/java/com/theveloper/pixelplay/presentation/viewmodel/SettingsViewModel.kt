@@ -85,6 +85,8 @@ data class SettingsUiState(
     val hiFiModeDeviceSupported: Boolean = true,
     val usbExclusiveModeEnabled: Boolean = false,
     val currentUsbDeviceName: String? = null,
+    val aaudioEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O,
+    val usbOutputBitDepthBits: Int = 32,
     val musicQuality: MusicQuality = MusicQuality.HIGH,
     val crossfadeDuration: Int = 2000,
     val persistentShuffleEnabled: Boolean = false,
@@ -187,6 +189,8 @@ private sealed interface SettingsUiUpdate {
         val hiFiModeEnabled: Boolean,
         val usbExclusiveModeEnabled: Boolean,
         val currentUsbDeviceName: String?,
+        val aaudioEnabled: Boolean,
+        val usbOutputBitDepthBits: Int,
         val musicQuality: MusicQuality,
         val crossfadeDuration: Int,
         val persistentShuffleEnabled: Boolean,
@@ -464,6 +468,8 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.hiFiModeEnabledFlow,
                 audioEngineSettings.usbExclusiveModeEnabled,
                 audioEngineSettings.currentUsbDeviceName,
+                audioEngineSettings.aaudioEnabled,
+                audioEngineSettings.usbOutputBitDepth,
                 userPreferencesRepository.musicQualityFlow,
                 userPreferencesRepository.crossfadeDurationFlow,
                 userPreferencesRepository.persistentShuffleEnabledFlow,
@@ -492,24 +498,26 @@ class SettingsViewModel @Inject constructor(
                     hiFiModeEnabled = values[5] as Boolean,
                     usbExclusiveModeEnabled = values[6] as Boolean,
                     currentUsbDeviceName = values[7] as String?,
-                    musicQuality = values[8] as MusicQuality,
-                    crossfadeDuration = values[9] as Int,
-                    persistentShuffleEnabled = values[10] as Boolean,
-                    folderBackGestureNavigation = values[11] as Boolean,
-                    lyricsSourcePreference = values[12] as LyricsSourcePreference,
-                    autoScanLrcFiles = values[13] as Boolean,
-                    bluetoothLyricsEnabled = values[14] as Boolean,
-                    lyricsFontSize = values[15] as String,
-                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[16] as Set<String>),
-                    hapticsEnabled = values[17] as Boolean,
-                    immersiveLyricsEnabled = values[18] as Boolean,
-                    immersiveLyricsTimeout = values[19] as Long,
-                    animatedLyricsBlurEnabled = values[20] as Boolean,
-                    animatedLyricsBlurStrength = values[21] as Float,
-                    disableBlurAllOver = values[22] as Boolean,
-                    navBarBlurEnabled = values[23] as Boolean,
-                    showScrollbar = values[24] as Boolean,
-                    showLyricsTrackInfo = values[25] as Boolean
+                    aaudioEnabled = values[8] as Boolean,
+                    usbOutputBitDepthBits = (values[9] as com.theveloper.pixelplay.data.service.audioengine.UsbOutputBitDepth).bits,
+                    musicQuality = values[10] as MusicQuality,
+                    crossfadeDuration = values[11] as Int,
+                    persistentShuffleEnabled = values[12] as Boolean,
+                    folderBackGestureNavigation = values[13] as Boolean,
+                    lyricsSourcePreference = values[14] as LyricsSourcePreference,
+                    autoScanLrcFiles = values[15] as Boolean,
+                    bluetoothLyricsEnabled = values[16] as Boolean,
+                    lyricsFontSize = values[17] as String,
+                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[18] as Set<String>),
+                    hapticsEnabled = values[19] as Boolean,
+                    immersiveLyricsEnabled = values[20] as Boolean,
+                    immersiveLyricsTimeout = values[21] as Long,
+                    animatedLyricsBlurEnabled = values[22] as Boolean,
+                    animatedLyricsBlurStrength = values[23] as Float,
+                    disableBlurAllOver = values[24] as Boolean,
+                    navBarBlurEnabled = values[25] as Boolean,
+                    showScrollbar = values[26] as Boolean,
+                    showLyricsTrackInfo = values[27] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -522,6 +530,8 @@ class SettingsViewModel @Inject constructor(
                         hiFiModeEnabled = update.hiFiModeEnabled,
                         usbExclusiveModeEnabled = update.usbExclusiveModeEnabled,
                         currentUsbDeviceName = update.currentUsbDeviceName,
+                        aaudioEnabled = update.aaudioEnabled,
+                        usbOutputBitDepthBits = update.usbOutputBitDepthBits,
                         musicQuality = update.musicQuality,
                         crossfadeDuration = update.crossfadeDuration,
                         persistentShuffleEnabled = update.persistentShuffleEnabled,
@@ -946,6 +956,14 @@ class SettingsViewModel @Inject constructor(
             audioEngineSettings.setUsbExclusiveModeEnabled(false)
             audioEngineSettings.setUsbExclusiveModeEnabled(true)
         }
+    }
+
+    fun setAaudioEnabled(enabled: Boolean) {
+        audioEngineSettings.setAaudioEnabled(enabled)
+    }
+
+    fun setUsbOutputBitDepth(bits: Int) {
+        audioEngineSettings.setUsbOutputBitDepth(bits)
     }
 
     fun setMusicQuality(quality: MusicQuality) {

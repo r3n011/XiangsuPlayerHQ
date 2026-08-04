@@ -415,9 +415,9 @@
         name="setcat_trigger_crash_subtitle"
     >Simuler et krasj for å teste rapporteringssystemet.</string>
     <string name="setcat_application">Applikasjon</string>
-    <string name="setcat_about_pixelplayer_title">Om PixelPlayer</string>
+    <string name="setcat_about_xiangsuplayer_title">Om XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >App-versjon, bidragsytere med mer.</string>
 
     <string name="backup_summary_none">Ingen seksjoner valgt.</string>
@@ -502,7 +502,7 @@
     >Regenerering av statistikk startet</string>
     <string
         name="backup_file_name_format"
-    >PixelPlayer_Sikkerhetskopi_%1$d.pxpl</string>
+    >XiangsuPlayer_Sikkerhetskopi_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"

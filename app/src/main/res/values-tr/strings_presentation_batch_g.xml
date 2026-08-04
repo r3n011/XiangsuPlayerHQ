@@ -190,7 +190,7 @@
     <string name="presentation_batch_g_artist_group_by_album_artist">Albüm Sanatçısına Göre Grupla</string>
     <string name="presentation_batch_g_artist_group_by_album_artist_sub">İşbirliği albümlerini ana sanatçı altında göster</string>
     <string name="presentation_batch_g_artist_info_title">Çoklu Sanatçı Ayrıştırma Hakkında</string>
-    <string name="presentation_batch_g_artist_info_body">PixelPlayer, sanatçı etiketlerini karakter sınırlayıcılar (/, ;, &amp;) ve kelime sınırlayıcılar (feat., ft., vs., x) kullanarak böler. Kelime sınırlayıcılar büyük/küçük harf duyarsız eşleştirilir.
+    <string name="presentation_batch_g_artist_info_body">XiangsuPlayer, sanatçı etiketlerini karakter sınırlayıcılar (/, ;, &amp;) ve kelime sınırlayıcılar (feat., ft., vs., x) kullanarak böler. Kelime sınırlayıcılar büyük/küçük harf duyarsız eşleştirilir.
 
 "Başlıktan Sanatçıları Çıkar", şarkı başlıklarındaki (feat. Sanatçı) gibi kalıpları algılar.
 
@@ -275,9 +275,9 @@ Karakter sınırlayıcılardan kaçmak için ters eğik çizgi (\) kullanılabil
     <string name="presentation_batch_g_playstore_open">Play Store\'u Aç</string>
     <string name="presentation_batch_g_playstore_continue_beta">Beta\'ya devam et</string>
     <string name="presentation_batch_g_playstore_link_pending">Play Store bağlantısı GitHub yapılandırmasından etkinleştirilecek.</string>
-    <string name="presentation_batch_g_playstore_title">PixelPlayer artık Google Play\'de mevcut</string>
+    <string name="presentation_batch_g_playstore_title">XiangsuPlayer artık Google Play\'de mevcut</string>
     <string name="presentation_batch_g_playstore_body">Beta yapılarını aktif tutarken sürüm güncellemeleri için Google Play\'deki stabil kanalı kullanın.</string>
-    <string name="presentation_batch_g_playstore_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_playstore_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_playstore_release_announcement">Sürüm duyurusu</string>
     <string name="presentation_batch_g_playstore_coming_soon">Çok yakında</string>
     <string name="presentation_batch_g_genre_sort_title">Sırala &amp; Oynat</string>
@@ -296,7 +296,7 @@ Karakter sınırlayıcılardan kaçmak için ters eğik çizgi (\) kullanılabil
     <string name="presentation_batch_g_presets_cd_rename">Yeniden adlandır</string>
     <string name="presentation_batch_g_presets_cd_delete">Sil</string>
     <string name="presentation_batch_g_beta_sheet_version">Beta 0.7.0</string>
-    <string name="presentation_batch_g_beta_sheet_welcome_title">PixelPlayer 0.7.0-beta\'ya Hoş Geldiniz</string>
+    <string name="presentation_batch_g_beta_sheet_welcome_title">XiangsuPlayer 0.7.0-beta\'ya Hoş Geldiniz</string>
     <string name="presentation_batch_g_beta_sheet_welcome_body">Hata, çökme veya deneysel özellikler içerebilecek bir beta yapısı kullanıyorsunuz. Sorunları bildirerek geliştirmemize yardımcı olun.</string>
     <string name="presentation_batch_g_beta_sheet_expect_title">Ne beklemeli</string>
     <string name="presentation_batch_g_beta_sheet_expect_1">Beklenmedik hatalar, çökmeler veya tamamlanmamış özellikler olabilir.</string>
@@ -313,7 +313,7 @@ Karakter sınırlayıcılardan kaçmak için ters eğik çizgi (\) kullanılabil
     <string name="presentation_batch_g_beta_sheet_report_summary">Yeni bir sorun açmadan önce hızlı kontrol listesi.</string>
     <string name="presentation_batch_g_beta_sheet_before_title">Sorun açmadan önce</string>
     <string name="presentation_batch_g_beta_sheet_before_1">Tekrarlamamak için mevcut açık ve kapalı sorunları arayın.</string>
-    <string name="presentation_batch_g_beta_sheet_before_2">En son PixelPlayer sürümüne güncelleyin ve sorunun devam ettiğini onaylayın.</string>
+    <string name="presentation_batch_g_beta_sheet_before_2">En son XiangsuPlayer sürümüne güncelleyin ve sorunun devam ettiğini onaylayın.</string>
     <string name="presentation_batch_g_beta_sheet_before_3">Uygulamayı yeniden başlatın ve sorunun devam ettiğini onaylayın.</string>
     <string name="presentation_batch_g_beta_sheet_before_4">Yeniden oluşturmaya çalışın ve tam adımları not alın.</string>
     <string name="presentation_batch_g_beta_sheet_issue_type_title">Hangi sorun türü?</string>
@@ -331,7 +331,7 @@ Karakter sınırlayıcılardan kaçmak için ters eğik çizgi (\) kullanılabil
     <string name="presentation_batch_g_beta_sheet_bug_screenshot">Ekran görüntüsü / video: varsa.</string>
     <string name="presentation_batch_g_beta_sheet_bug_logs">Günlükler / yığın izi: varsa.</string>
     <string name="presentation_batch_g_beta_sheet_env_title">Ortam</string>
-    <string name="presentation_batch_g_beta_sheet_env_version">PixelPlayer sürümü:</string>
+    <string name="presentation_batch_g_beta_sheet_env_version">XiangsuPlayer sürümü:</string>
     <string name="presentation_batch_g_beta_sheet_env_source">Kurulum kaynağı: GitHub sürümü, hata ayıklama yapısı, gecelik yapı vb.</string>
     <string name="presentation_batch_g_beta_sheet_env_android">Android sürümü:</string>
     <string name="presentation_batch_g_beta_sheet_env_device">Cihaz modeli:</string>
@@ -373,7 +373,7 @@ Karakter sınırlayıcılardan kaçmak için ters eğik çizgi (\) kullanılabil
     <string name="presentation_batch_g_album_sel_queue_hint">Kuyruğa ekle ve oynat, seçim sıranıza göre davranır.</string>
     <string name="presentation_batch_g_album_sel_limit">Sınır: seçim başına %1$d albüm.</string>
     <string name="presentation_batch_g_album_sel_add_queue_play">Kuyruğa Ekle &amp; Oynat</string>
-    <string name="presentation_batch_g_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_app_tagline">Müzik Çalar</string>
     <string name="presentation_batch_g_brick_high">EN YÜKSEK %1$d</string>
     <string name="presentation_batch_g_brick_cd_close">Kapat</string>
@@ -423,7 +423,7 @@ Karakter sınırlayıcılardan kaçmak için ters eğik çizgi (\) kullanılabil
     <string name="presentation_batch_g_cast_playing">Çalıyor</string>
     <string name="presentation_batch_g_cast_paused">Duraklatıldı</string>
     <string name="presentation_batch_g_cast_perm_title">Bağlanmaya hazır olun</string>
-    <string name="presentation_batch_g_cast_perm_body">PixelPlayer\'ın yakındaki cihazlarınızı ve mevcut Wi‑Fi\'nizi görmesine izin verin; böylece yayın, Bluetooth sesi ve hoparlörleriniz senkronize kalabilir.</string>
+    <string name="presentation_batch_g_cast_perm_body">XiangsuPlayer\'ın yakındaki cihazlarınızı ve mevcut Wi‑Fi\'nizi görmesine izin verin; böylece yayın, Bluetooth sesi ve hoparlörleriniz senkronize kalabilir.</string>
     <string name="presentation_batch_g_cast_perm_nearby_title">Yakındaki cihazlar</string>
     <string name="presentation_batch_g_cast_perm_nearby_desc">Bağlı Bluetooth ses cihazlarınızı okumak ve kontrol etmek için gerekli.</string>
     <string name="presentation_batch_g_cast_perm_location_title">Wi‑Fi için Konum</string>

@@ -1105,12 +1105,6 @@ class PlayerViewModel @Inject constructor(
     private val _trackVolume = MutableStateFlow(1.0f)
     val trackVolume: StateFlow<Float> = _trackVolume.asStateFlow()
 
-    // 学习钟（Focus Timer）状态 —— 由 ViewModel 持有，确保切歌时不丢失
-    val focusTimerState = com.theveloper.pixelplay.presentation.focusmode.FocusTimerState()
-    private val _isInFocusMode = MutableStateFlow(false)
-    val isInFocusMode: StateFlow<Boolean> = _isInFocusMode.asStateFlow()
-    fun setFocusMode(enabled: Boolean) { _isInFocusMode.value = enabled }
-
 
     @Inject
     lateinit var mediaMapper: com.theveloper.pixelplay.data.media.MediaMapper
@@ -3708,6 +3702,12 @@ class PlayerViewModel @Inject constructor(
     // 尝试为漫游歌曲获取最新的播放 URL。成功后替换播放队列中对应
     // MediaItem，并更新 UI state 中的 Song 对象。失败时静默忽略
     // （当前 URL 可能仍然有效，或等到播放时再由错误处理逻辑介入）。
+    private suspend fun preferredNeteaseQuality(): String = try {
+        userPreferencesRepository.musicQualityFlow.first().neteaseLevel
+    } catch (_: Exception) {
+        "exhigh"
+    }
+
     private suspend fun refreshRoamingSongUrl(song: Song) {
         val neteaseId = song.neteaseId ?: return
         val currentIndex = mediaController?.currentMediaItemIndex
@@ -3715,7 +3715,7 @@ class PlayerViewModel @Inject constructor(
         if (currentIndex < 0) return
 
         val newUrl = try {
-            neteaseRepository.getSongUrl(neteaseId).getOrNull()
+            neteaseRepository.getSongUrl(neteaseId, preferredNeteaseQuality()).getOrNull()
                 ?: run {
                     try {
                         lxJsEngine.ready()
@@ -4023,7 +4023,7 @@ class PlayerViewModel @Inject constructor(
                 viewModelScope.launch {
                     val neteaseId = currentSongObj.neteaseId
                     val newUrl = try {
-                        neteaseRepository.getSongUrl(neteaseId).getOrNull()
+                        neteaseRepository.getSongUrl(neteaseId, preferredNeteaseQuality()).getOrNull()
                             ?: run {
                                 try {
                                     lxJsEngine.ready()
@@ -5704,12 +5704,8 @@ class PlayerViewModel @Inject constructor(
                 val playAction = {
                     dualPlayerEngine.cancelNext()
                     // 广播电台：提前进入流式模式（禁用 audio offload，规避 HAL 杂音）
-                    dualPlayerEngine.updateStreamingModeFor(id)
-                    val enginePlayer = dualPlayerEngine.masterPlayer
-
-                    enginePlayer.setMediaItem(mediaItem, 0L)
-                    enginePlayer.prepare()
-                    enginePlayer.play()
+                    // 启动时音量淡入，消除 AudioTrack 创建/切换瞬间的爆音
+                    dualPlayerEngine.playStreaming(mediaItem, id)
                     _playerUiState.update { it.copy(isLoadingInitialSongs = false) }
                 }
 
@@ -5845,7 +5841,7 @@ class PlayerViewModel @Inject constructor(
                 val neteaseResults = kotlinx.coroutines.coroutineScope {
                     details.map { detail ->
                         async(Dispatchers.IO) {
-                            val url = neteaseRepository.getSongUrl(detail.id).getOrNull()
+                            val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
                             detail.id to url
                         }
                     }.awaitAll()
@@ -6273,7 +6269,7 @@ class PlayerViewModel @Inject constructor(
                 val neteaseResults = kotlinx.coroutines.coroutineScope {
                     uniqueDetails.map { detail ->
                         async(Dispatchers.IO) {
-                            val url = neteaseRepository.getSongUrl(detail.id).getOrNull()
+                            val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
                             detail.id to url
                         }
                     }.awaitAll()

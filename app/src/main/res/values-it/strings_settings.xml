@@ -412,10 +412,10 @@
     >Simula un crash per testare il sistema di segnalazione crash.</string>
     <string name="setcat_application">Applicazione</string>
     <string
-        name="setcat_about_pixelplayer_title"
-    >Informazioni su PixelPlayer</string>
+        name="setcat_about_xiangsuplayer_title"
+    >Informazioni su XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >Versione app, crediti e altro.</string>
 
     <string name="backup_summary_none">Nessuna sezione selezionata.</string>
@@ -506,7 +506,7 @@
     <string
         name="toast_stats_regeneration_started"
     >Rigenerazione statistiche avviata</string>
-    <string name="backup_file_name_format">PixelPlayer_Backup_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Backup_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"

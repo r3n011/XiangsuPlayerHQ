@@ -1,6 +1,9 @@
 package com.theveloper.pixelplay.data.netease
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,7 +28,16 @@ class PersonalFmApi @Inject constructor() {
 
     private companion object {
         private const val TAG = "PersonalFmApi"
-        private const val BASE_URL = "https://ncmapi.btwoa.com"
+        // 网易云 API 多代理列表：请求时并行竞速，返回第一个数据正确的结果，
+        // 单个代理超时/失效不会导致整体失败
+        private val NCM_PROXIES = listOf(
+            "https://ncmapi.btwoa.com",
+            "http://www.young1024.com:666",
+            "https://zm.wwoyun.cn",
+            "https://music.mcseekeri.com"
+        )
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 14; XiangsuPlayer) AppleWebKit/537.36"
     }
 
     /**
@@ -41,50 +53,33 @@ class PersonalFmApi @Inject constructor() {
                 // Cookie 放在标准 HTTP 请求头 Cookie 字段中，而非 URL 参数
                 // 这是网易云 NeteaseMusic API 的标准做法，能正确识别用户身份、
                 // 听歌偏好以及每日推荐 / VIP 歌曲信息
-                val url = "$BASE_URL/personal_fm?timestamp=$timestamp"
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                    .addHeader("Cookie", cookie)
-                    .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = raceGetJson(
+                    tag = "personal_fm",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/personal_fm?timestamp=$timestamp"
                     }
-                    val body = response.body?.string() ?: return@withContext Result.failure(
-                        Exception("Empty response")
-                    )
-                    Timber.d("$TAG: personal_fm response length: ${body.length}")
+                ) { r ->
+                    val dataArray = r.optJSONArray("data")
+                    dataArray != null && dataArray.length() > 0
+                } ?: return@withContext Result.failure(Exception("所有代理请求均失败"))
 
-                    val root = JSONObject(body)
-                    if (root.optInt("code", 200) != 200) {
-                        return@withContext Result.failure(
-                            Exception("API error: code=${root.optInt("code")}")
-                        )
+                val dataArray = root.optJSONArray("data")
+                val songIds = mutableListOf<Long>()
+                for (i in 0 until dataArray.length()) {
+                    val songObj = dataArray.optJSONObject(i) ?: continue
+                    val songId = songObj.optLong("id", -1L)
+                    if (songId > 0) {
+                        songIds.add(songId)
                     }
-
-                    val dataArray = root.optJSONArray("data")
-                        ?: return@withContext Result.failure(Exception("No data in response"))
-
-                    val songIds = mutableListOf<Long>()
-                    for (i in 0 until dataArray.length()) {
-                        val songObj = dataArray.optJSONObject(i) ?: continue
-                        val songId = songObj.optLong("id", -1L)
-                        if (songId > 0) {
-                            songIds.add(songId)
-                        }
-                    }
-
-                    if (songIds.isEmpty()) {
-                        return@withContext Result.failure(Exception("No song IDs in response"))
-                    }
-
-                    Timber.d("$TAG: Got ${songIds.size} song recommendations")
-                    Result.success(songIds)
                 }
+
+                if (songIds.isEmpty()) {
+                    return@withContext Result.failure(Exception("No song IDs in response"))
+                }
+
+                Timber.d("$TAG: Got ${songIds.size} song recommendations")
+                Result.success(songIds)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: fetchPersonalFmRecommendations failed")
                 Result.failure(t)
@@ -105,38 +100,19 @@ class PersonalFmApi @Inject constructor() {
                 Timber.d("$TAG: Fetching song details for ${songIds.size} songs (cookie via header: ${!cookie.isNullOrBlank()})")
                 val idsParam = songIds.joinToString(",")
                 val timestamp = System.currentTimeMillis()
-                val url = "$BASE_URL/song/detail?ids=$idsParam&timestamp=$timestamp"
-                val requestBuilder = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                // 如果有 cookie，则放在请求头中，让接口能识别用户身份
-                // （VIP 歌曲、已收藏标记等信息依赖正确的用户 cookie）
-                if (!cookie.isNullOrBlank()) {
-                    requestBuilder.addHeader("Cookie", cookie)
-                }
-                val request = requestBuilder.build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = raceGetJson(
+                    tag = "song/detail",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/song/detail?ids=$idsParam&timestamp=$timestamp"
                     }
-                    val body = response.body?.string() ?: return@withContext Result.failure(
-                        Exception("Empty response")
-                    )
+                ) { r ->
+                    r.optJSONArray("songs")?.length() ?: 0 > 0
+                } ?: return@withContext Result.failure(Exception("所有代理请求均失败"))
 
-                    val root = JSONObject(body)
-                    if (root.optInt("code", 200) != 200) {
-                        return@withContext Result.failure(
-                            Exception("API error: code=${root.optInt("code")}")
-                        )
-                    }
+                val songsArray = root.optJSONArray("songs")
 
-                    val songsArray = root.optJSONArray("songs")
-                        ?: return@withContext Result.failure(Exception("No songs in response"))
-
-                    val details = mutableListOf<PersonalFmSongDetail>()
+                val details = mutableListOf<PersonalFmSongDetail>()
                     for (i in 0 until songsArray.length()) {
                         val songObj = songsArray.optJSONObject(i) ?: continue
                         val name = songObj.optString("name", "Unknown")
@@ -177,7 +153,6 @@ class PersonalFmApi @Inject constructor() {
 
                     Timber.d("$TAG: Got ${details.size} song details")
                     Result.success(details)
-                }
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: fetchSongDetails failed")
                 Result.failure(t)
@@ -201,28 +176,16 @@ class PersonalFmApi @Inject constructor() {
             try {
                 Timber.d("$TAG: likeSong id=$neteaseSongId like=$like")
                 val timestamp = System.currentTimeMillis()
-                val url = "$BASE_URL/like?id=$neteaseSongId&like=$like&timestamp=$timestamp"
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                    .addHeader("Cookie", cookie)
-                    .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure<Boolean>(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = postWithFallback(
+                    tag = "like",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/like?id=$neteaseSongId&like=$like&timestamp=$timestamp"
                     }
-                    val body = response.body?.string()
-                        ?: return@withContext Result.failure<Boolean>(Exception("Empty response"))
-
-                    val root = JSONObject(body)
-                    val code = root.optInt("code", 200)
-                    val success = code == 200
-                    Timber.d("$TAG: likeSong id=$neteaseSongId like=$like code=$code success=$success")
-                    Result.success(success)
-                }
+                )
+                val success = root != null
+                Timber.d("$TAG: likeSong id=$neteaseSongId like=$like success=$success")
+                Result.success(success)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: likeSong failed id=$neteaseSongId")
                 Result.failure(t)
@@ -251,28 +214,16 @@ class PersonalFmApi @Inject constructor() {
             try {
                 Timber.d("$TAG: sendComment type=$type id=$id content=${content.take(20)}")
                 val encodedContent = java.net.URLEncoder.encode(content, "UTF-8")
-                val url = "$BASE_URL/comment?t=1&type=$type&id=$id&content=$encodedContent"
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                    .addHeader("Cookie", cookie)
-                    .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure<Boolean>(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = postWithFallback(
+                    tag = "comment/send",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/comment?t=1&type=$type&id=$id&content=$encodedContent"
                     }
-                    val body = response.body?.string()
-                        ?: return@withContext Result.failure<Boolean>(Exception("Empty response"))
-
-                    val root = JSONObject(body)
-                    val code = root.optInt("code", 200)
-                    val success = code == 200
-                    Timber.d("$TAG: sendComment type=$type id=$id code=$code success=$success")
-                    Result.success(success)
-                }
+                )
+                val success = root != null
+                Timber.d("$TAG: sendComment type=$type id=$id success=$success")
+                Result.success(success)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: sendComment failed type=$type id=$id")
                 Result.failure(t)
@@ -296,28 +247,16 @@ class PersonalFmApi @Inject constructor() {
             }
             try {
                 Timber.d("$TAG: deleteComment type=$type id=$id commentId=$commentId")
-                val url = "$BASE_URL/comment?t=0&type=$type&id=$id&commentId=$commentId"
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                    .addHeader("Cookie", cookie)
-                    .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure<Boolean>(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = postWithFallback(
+                    tag = "comment/delete",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/comment?t=0&type=$type&id=$id&commentId=$commentId"
                     }
-                    val body = response.body?.string()
-                        ?: return@withContext Result.failure<Boolean>(Exception("Empty response"))
-
-                    val root = JSONObject(body)
-                    val code = root.optInt("code", 200)
-                    val success = code == 200
-                    Timber.d("$TAG: deleteComment type=$type id=$id commentId=$commentId code=$code success=$success")
-                    Result.success(success)
-                }
+                )
+                val success = root != null
+                Timber.d("$TAG: deleteComment type=$type id=$id commentId=$commentId success=$success")
+                Result.success(success)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: deleteComment failed type=$type id=$id commentId=$commentId")
                 Result.failure(t)
@@ -343,28 +282,16 @@ class PersonalFmApi @Inject constructor() {
             try {
                 val likeInt = if (like) 1 else 0
                 Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like")
-                val url = "$BASE_URL/comment/like?id=$id&cid=$cid&t=$likeInt&type=$type"
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                    .addHeader("Cookie", cookie)
-                    .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure<Boolean>(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = postWithFallback(
+                    tag = "comment/like",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/comment/like?id=$id&cid=$cid&t=$likeInt&type=$type"
                     }
-                    val body = response.body?.string()
-                        ?: return@withContext Result.failure<Boolean>(Exception("Empty response"))
-
-                    val root = JSONObject(body)
-                    val code = root.optInt("code", 200)
-                    val success = code == 200
-                    Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like code=$code success=$success")
-                    Result.success(success)
-                }
+                )
+                val success = root != null
+                Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like success=$success")
+                Result.success(success)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: likeComment failed type=$type id=$id cid=$cid")
                 Result.failure(t)
@@ -390,33 +317,29 @@ class PersonalFmApi @Inject constructor() {
             try {
                 val timestamp = System.currentTimeMillis()
                 Timber.d("$TAG: Fetching artist songs for artistId=$artistId")
-                val url = "$BASE_URL/artist/songs?id=$artistId&order=$order&limit=$limit&offset=$offset&timestamp=$timestamp"
-                val requestBuilder = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                if (!cookie.isNullOrBlank()) {
-                    requestBuilder.addHeader("Cookie", cookie)
-                }
-                val request = requestBuilder.build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = raceGetJson(
+                    tag = "artist/songs",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/artist/songs?id=$artistId&order=$order&limit=$limit&offset=$offset&timestamp=$timestamp"
                     }
-                    val body = response.body?.string() ?: return@withContext Result.failure(
-                        Exception("Empty response")
-                    )
+                ) { r ->
+                    // 校验第一首歌第一作者 id 与请求歌手一致，避免部分代理返回错误的缓存数据
+                    val firstArId = r.optJSONArray("songs")
+                        ?.optJSONObject(0)
+                        ?.optJSONArray("ar")
+                        ?.optJSONObject(0)
+                        ?.optLong("id", 0L) ?: 0L
+                    firstArId <= 0L || firstArId == artistId
+                } ?: return@withContext Result.failure(Exception("所有代理请求均失败"))
 
-                    val root = JSONObject(body)
-                    Timber.d("$TAG: /artist/songs response keys: ${root.keys().asSequence().toList()}")
+                Timber.d("$TAG: /artist/songs response keys: ${root.keys().asSequence().toList()}")
 
-                    // 尝试从 songs 字段获取，若不存在则尝试 hotSongs
-                    val total = root.optInt("total", 0)
-                    val songsArray = root.optJSONArray("songs")
-                        ?: root.optJSONArray("hotSongs")
-                        ?: return@withContext Result.success(Pair(emptyList(), total))
+                // 尝试从 songs 字段获取，若不存在则尝试 hotSongs
+                val total = root.optInt("total", 0)
+                val songsArray = root.optJSONArray("songs")
+                    ?: root.optJSONArray("hotSongs")
+                    ?: return@withContext Result.success(Pair(emptyList(), total))
 
                     val songs = mutableListOf<NeteaseArtistSong>()
                     for (i in 0 until songsArray.length()) {
@@ -465,7 +388,6 @@ class PersonalFmApi @Inject constructor() {
 
                     Timber.d("$TAG: Got ${songs.size} artist songs (total=$total) for artistId=$artistId")
                     Result.success(Pair(songs, total))
-                }
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: fetchArtistSongs failed for artistId=$artistId")
                 Result.failure(t)
@@ -488,27 +410,15 @@ class PersonalFmApi @Inject constructor() {
             try {
                 val timestamp = System.currentTimeMillis()
                 Timber.d("$TAG: Fetching artist albums for artistId=$artistId")
-                val url = "$BASE_URL/artist/album?id=$artistId&limit=$limit&offset=$offset&timestamp=$timestamp"
-                val requestBuilder = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                if (!cookie.isNullOrBlank()) {
-                    requestBuilder.addHeader("Cookie", cookie)
-                }
-                val request = requestBuilder.build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = raceGetJson(
+                    tag = "artist/album",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/artist/album?id=$artistId&limit=$limit&offset=$offset&timestamp=$timestamp"
                     }
-                    val body = response.body?.string() ?: return@withContext Result.failure(
-                        Exception("Empty response")
-                    )
+                ) ?: return@withContext Result.failure(Exception("所有代理请求均失败"))
 
-                    val root = JSONObject(body)
-                    Timber.d("$TAG: /artist/album response keys: ${root.keys().asSequence().toList()}")
+                Timber.d("$TAG: /artist/album response keys: ${root.keys().asSequence().toList()}")
 
                     val total = root.optInt("hotAlbumsSize",
                         root.optJSONObject("artist")?.optInt("albumSize", 0) ?: 0
@@ -540,7 +450,6 @@ class PersonalFmApi @Inject constructor() {
 
                     Timber.d("$TAG: Got ${albums.size} artist albums (total=$total) for artistId=$artistId")
                     Result.success(Pair(albums, total))
-                }
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: fetchArtistAlbums failed for artistId=$artistId")
                 Result.failure(t)
@@ -561,30 +470,22 @@ class PersonalFmApi @Inject constructor() {
             try {
                 val timestamp = System.currentTimeMillis()
                 Timber.d("$TAG: Fetching album detail for albumId=$albumId")
-                val url = "$BASE_URL/album?id=$albumId&timestamp=$timestamp"
-                val requestBuilder = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                if (!cookie.isNullOrBlank()) {
-                    requestBuilder.addHeader("Cookie", cookie)
-                }
-                val request = requestBuilder.build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
+                val root = raceGetJson(
+                    tag = "album",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/album?id=$albumId&timestamp=$timestamp"
                     }
-                    val body = response.body?.string() ?: return@withContext Result.failure(
-                        Exception("Empty response")
-                    )
+                ) { r ->
+                    // 校验返回专辑 id 与请求一致，避免代理返回错误的缓存数据
+                    val idInResponse = r.optJSONObject("album")?.optLong("id", 0L) ?: 0L
+                    idInResponse <= 0L || idInResponse == albumId
+                } ?: return@withContext Result.failure(Exception("所有代理请求均失败"))
 
-                    val root = JSONObject(body)
-                    Timber.d("$TAG: /album response keys: ${root.keys().asSequence().toList()}")
+                Timber.d("$TAG: /album response keys: ${root.keys().asSequence().toList()}")
 
-                    // 尝试从 album 字段获取专辑信息
-                    val albumObj: JSONObject? = root.optJSONObject("album")
+                // 尝试从 album 字段获取专辑信息
+                val albumObj: JSONObject? = root.optJSONObject("album")
                     val albumName = albumObj?.optString("name", "Unknown Album") ?: "Unknown Album"
                     val albumPic = albumObj?.optString("picUrl") ?: ""
                     val albumPublishTime = albumObj?.optLong("publishTime", 0L) ?: 0L
@@ -656,12 +557,108 @@ class PersonalFmApi @Inject constructor() {
                             songs = songs
                         )
                     )
-                }
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: fetchAlbumDetail failed for albumId=$albumId")
                 Result.failure(t)
             }
         }
+    }
+
+    /**
+     * 多代理竞速请求：并行请求所有网易云 API 代理，
+     * 返回第一个 HTTP 成功且数据通过校验的 JSONObject；全部失败返回 null。
+     * 校验失败的代理（如返回错误的缓存数据）会被忽略，继续等待其余代理。
+     */
+    private suspend fun raceGetJson(
+        tag: String,
+        cookie: String?,
+        buildUrl: (String) -> String,
+        isValid: (JSONObject) -> Boolean = { true }
+    ): JSONObject? = withContext(Dispatchers.IO) {
+        val deferreds = NCM_PROXIES.map { base ->
+            async {
+                try {
+                    val url = buildUrl(base)
+                    val builder = Request.Builder()
+                        .url(url)
+                        .header("User-Agent", USER_AGENT)
+                    if (!cookie.isNullOrBlank()) {
+                        builder.addHeader("Cookie", cookie)
+                    }
+                    client.newCall(builder.build()).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            Timber.w("$TAG: $tag HTTP ${response.code} @ $base")
+                            return@use null
+                        }
+                        val body = response.body?.string()
+                        if (body.isNullOrBlank()) {
+                            Timber.w("$TAG: $tag 空响应 @ $base")
+                            return@use null
+                        }
+                        val root = JSONObject(body)
+                        if (root.optInt("code", 200) != 200) null else root
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    Timber.w(t, "$TAG: $tag 请求异常 @ $base")
+                    null
+                }
+            }
+        }
+        var remaining = deferreds
+        while (remaining.isNotEmpty()) {
+            val result = select<JSONObject?> { remaining.forEach { it.onAwait { value -> value } } }
+            if (result != null && isValid(result)) return@withContext result
+            remaining = remaining.filterNot { it.isCompleted }
+        }
+        Timber.w("$TAG: $tag 所有代理请求均失败或数据无效")
+        null
+    }
+
+    /**
+     * 写操作串行回退：依次尝试每个代理（不使用并行竞速，避免写操作被重复执行），
+     * 返回第一个 HTTP 成功且 code==200 的 JSONObject；全部失败返回 null。
+     */
+    private suspend fun postWithFallback(
+        tag: String,
+        cookie: String,
+        buildUrl: (String) -> String
+    ): JSONObject? = withContext(Dispatchers.IO) {
+        for (base in NCM_PROXIES) {
+            try {
+                val url = buildUrl(base)
+                val builder = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", USER_AGENT)
+                if (cookie.isNotBlank()) {
+                    builder.addHeader("Cookie", cookie)
+                }
+                client.newCall(builder.build()).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Timber.w("$TAG: $tag HTTP ${response.code} @ $base")
+                        return@use null
+                    }
+                    val body = response.body?.string()
+                    if (body.isNullOrBlank()) {
+                        Timber.w("$TAG: $tag 空响应 @ $base")
+                        return@use null
+                    }
+                    val root = JSONObject(body)
+                    if (root.optInt("code", 200) != 200) {
+                        Timber.w("$TAG: $tag code=${root.optInt("code")} @ $base")
+                        return@use null
+                    }
+                    return@withContext root
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Timber.w(t, "$TAG: $tag 请求异常 @ $base")
+            }
+        }
+        Timber.w("$TAG: $tag 所有代理请求均失败")
+        null
     }
 
     /**
@@ -676,35 +673,35 @@ class PersonalFmApi @Inject constructor() {
                 val timestamp = System.currentTimeMillis()
                 Timber.d("$TAG: Fetching artist info for artistId=$artistId")
 
-                // 优先尝试 /artist/detail 接口（更专业，信息更丰富）
-                val detailUrl = "$BASE_URL/artist/detail?id=$artistId&timestamp=$timestamp"
-                val requestBuilder = Request.Builder()
-                    .url(detailUrl)
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                if (!cookie.isNullOrBlank()) {
-                    requestBuilder.addHeader("Cookie", cookie)
+                // 优先尝试 /artist/detail 接口（更专业，信息更丰富），多代理竞速
+                val root = raceGetJson(
+                    tag = "artist/detail",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/artist/detail?id=$artistId&timestamp=$timestamp"
+                    }
+                ) { r ->
+                    // 校验返回的歌手 id 与请求一致，避免部分代理返回错误的缓存数据
+                    val idInResponse = r.optJSONObject("data")?.optJSONObject("artist")?.optLong("id", 0L)
+                        ?: r.optJSONObject("artist")?.optLong("id", 0L)
+                        ?: 0L
+                    idInResponse <= 0L || idInResponse == artistId
                 }
-                val request = requestBuilder.build()
 
-                client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val body = response.body?.string()
-                        if (!body.isNullOrBlank()) {
-                            val root = JSONObject(body)
-                            if (root.optInt("code", 200) == 200) {
-                                val dataObj = root.optJSONObject("data")
-                                val artistObj = dataObj?.optJSONObject("artist")
-                                    ?: root.optJSONObject("artist")
-                                fun normalizeUrl(raw: String): String {
-                                    return when {
-                                        raw.startsWith("//") -> "https:$raw"
-                                        raw.startsWith("/") -> "https://music.163.com$raw"
-                                        raw.isNotBlank() -> raw
-                                        else -> ""
-                                    }
+                if (root != null) {
+                            val dataObj = root.optJSONObject("data")
+                            val artistObj = dataObj?.optJSONObject("artist")
+                                ?: root.optJSONObject("artist")
+                            fun normalizeUrl(raw: String): String {
+                                return when {
+                                    raw.startsWith("//") -> "https:$raw"
+                                    raw.startsWith("/") -> "https://music.163.com$raw"
+                                    raw.isNotBlank() -> raw
+                                    else -> ""
                                 }
+                            }
 
-                                if (artistObj != null) {
+                            if (artistObj != null) {
                                     val name = artistObj.optString("name", "Unknown Artist")
                                     val userObj = dataObj?.optJSONObject("user")
 
@@ -782,40 +779,31 @@ class PersonalFmApi @Inject constructor() {
                                     return@withContext Result.success(detail)
                                 }
                             }
-                        }
-                    }
-                }
 
-                // 回退：使用 /artist/songs 接口
+                // 回退：使用 /artist/songs 接口，多代理竞速
                 Timber.d("$TAG: /artist/detail failed, falling back to /artist/songs")
-                val fallbackUrl = "$BASE_URL/artist/songs?id=$artistId&limit=1&timestamp=$timestamp"
-                val fallbackRequestBuilder = Request.Builder()
-                    .url(fallbackUrl)
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; PixelPlayer) AppleWebKit/537.36")
-                if (!cookie.isNullOrBlank()) {
-                    fallbackRequestBuilder.addHeader("Cookie", cookie)
+                val fallbackRoot = raceGetJson(
+                    tag = "artist/songs-fallback",
+                    cookie = cookie,
+                    buildUrl = { base ->
+                        "$base/artist/songs?id=$artistId&limit=1&timestamp=$timestamp"
+                    }
+                ) { r ->
+                    // 校验第一首歌第一作者 id 与请求歌手一致
+                    val firstArId = r.optJSONArray("songs")
+                        ?.optJSONObject(0)
+                        ?.optJSONArray("ar")
+                        ?.optJSONObject(0)
+                        ?.optLong("id", 0L) ?: 0L
+                    firstArId <= 0L || firstArId == artistId
                 }
-                val fallbackRequest = fallbackRequestBuilder.build()
+                if (fallbackRoot == null) {
+                    return@withContext Result.failure(Exception("所有代理请求均失败"))
+                }
 
-                client.newCall(fallbackRequest).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure(
-                            Exception("HTTP ${response.code}: ${response.message}")
-                        )
-                    }
-                    val body = response.body?.string() ?: return@withContext Result.failure(
-                        Exception("Empty response")
-                    )
-
-                    val root = JSONObject(body)
-                    val code = root.optInt("code", 200)
-                    if (code != 200) {
-                        return@withContext Result.failure(Exception("API error: code=$code"))
-                    }
-
-                    // 尝试从 artist 字段获取，若不存在则从第一首歌的 ar 数组提取
-                    val artistObj = root.optJSONObject("artist")
-                        ?: root.optJSONObject("data")?.optJSONObject("artist")
+                // 尝试从 artist 字段获取，若不存在则从第一首歌的 ar 数组提取
+                val artistObj = fallbackRoot.optJSONObject("artist")
+                    ?: fallbackRoot.optJSONObject("data")?.optJSONObject("artist")
 
                     fun normalizeUrlFallback(raw: String): String {
                         return when {
@@ -844,7 +832,7 @@ class PersonalFmApi @Inject constructor() {
                         )
                     } else {
                         // 回退：从 songs 数组的第一首歌曲的 ar 字段提取歌手名
-                        val songsArray = root.optJSONArray("songs")
+                        val songsArray = fallbackRoot.optJSONArray("songs")
                         if (songsArray != null && songsArray.length() > 0) {
                             val firstSong = songsArray.optJSONObject(0)
                             val arArray = firstSong?.optJSONArray("ar")
@@ -862,7 +850,6 @@ class PersonalFmApi @Inject constructor() {
                             Result.failure(Exception("No artist info in response"))
                         }
                     }
-                }
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: fetchArtistInfo failed for artistId=$artistId")
                 Result.failure(t)

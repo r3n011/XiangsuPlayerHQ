@@ -2,7 +2,7 @@
 <resources>
     <!-- Navigation / misc -->
     <string name="nav_error_genre_id_missing">错误：缺少流派 ID</string>
-    <string name="easter_egg_thank_you">感谢你使用 PixelPlayer！</string>
+    <string name="easter_egg_thank_you">感谢你使用 XiangsuPlayer！</string>
 
     <!-- Word delimiter config -->
     <string name="word_delimiter_section_title">当前单词分隔符</string>
@@ -99,22 +99,22 @@
     <string name="setup_excluded_folders_description">默认会扫描所有文件夹。选择你希望在构建媒体库时忽略的位置。</string>
     <string name="setup_choose_folders_ignore">选择要忽略的文件夹</string>
     <string name="setup_permission_media_title">媒体权限</string>
-    <string name="setup_permission_media_description">PixelPlayer 需要访问你的音频文件才能构建音乐媒体库。</string>
+    <string name="setup_permission_media_description">XiangsuPlayer 需要访问你的音频文件才能构建音乐媒体库。</string>
     <string name="setup_permission_granted">权限已授予</string>
     <string name="setup_grant_media_permission">授予媒体权限</string>
     <string name="setup_permission_notifications_title">通知</string>
     <string name="setup_permission_notifications_description">启用通知后，你可以在锁屏和通知栏中控制音乐播放。</string>
     <string name="setup_enable_notifications">启用通知</string>
     <string name="setup_permission_alarms_title">闹钟与提醒</string>
-    <string name="setup_permission_alarms_description">可选但推荐。如果你使用睡眠定时器并希望 PixelPlayer 能准时停止播放，就需要此权限。</string>
+    <string name="setup_permission_alarms_description">可选但推荐。如果你使用睡眠定时器并希望 XiangsuPlayer 能准时停止播放，就需要此权限。</string>
     <string name="setup_grant_permission_generic">授予权限</string>
     <string name="setup_backup_have_title">你有备份吗？</string>
-    <string name="setup_backup_have_description">如果你已有 PixelPlayer 备份，现在就可恢复，并跳过此设备上后续的大部分设置。</string>
+    <string name="setup_backup_have_description">如果你已有 XiangsuPlayer 备份，现在就可恢复，并跳过此设备上后续的大部分设置。</string>
     <string name="setup_inspecting_backup">正在检查备份</string>
     <string name="setup_restoring_backup">正在恢复备份</string>
     <string name="setup_import_backup">导入备份</string>
     <string name="setup_theme_dark_title">深色</string>
-    <string name="setup_theme_dark_description">PixelPlayer 默认的 Material 3 深色外观。</string>
+    <string name="setup_theme_dark_description">XiangsuPlayer 默认的 Material 3 深色外观。</string>
     <string name="setup_theme_light_title">浅色</string>
     <string name="setup_theme_light_description">整个应用更明亮的 Material 3 外观。</string>
     <string name="setup_theme_follow_title">跟随系统</string>
@@ -123,7 +123,7 @@
     <string name="setup_compact_mode_tab_hint">使用标准标签栏</string>
     <string name="setup_preview_songs_label">歌曲</string>
     <string name="setup_battery_optimization_title">电池优化</string>
-    <string name="setup_battery_optimization_description">某些 Android 设备会激进地杀掉后台应用。为 PixelPlayer 关闭电池优化，可防止播放被意外中断。</string>
+    <string name="setup_battery_optimization_description">某些 Android 设备会激进地杀掉后台应用。为 XiangsuPlayer 关闭电池优化，可防止播放被意外中断。</string>
     <string name="setup_disable_battery_optimization">关闭优化</string>
     <string name="setup_nav_floating_pill_description">带圆角的悬浮胶囊</string>
     <string name="setup_nav_full_width_description">标准全宽栏</string>
@@ -135,7 +135,7 @@
     <!-- Home / detail shared -->
     <string name="home_your_mix_title">你的\n精选辑</string>
     <string name="home_empty_placeholder_title">尚无可展示的数据</string>
-    <string name="home_empty_placeholder_subtitle">PixelPlayer 找到曲目或从某个来源同步后，此处就将生成你的精选辑。</string>
+    <string name="home_empty_placeholder_subtitle">XiangsuPlayer 找到曲目或从某个来源同步后，此处就将生成你的精选辑。</string>
     <string name="home_empty_placeholder_refresh">刷新</string>
     <string name="cd_shuffle_play">随机播放</string>
     <string name="cd_album_art_for_title">%1$s 的专辑封面</string>
@@ -157,7 +157,7 @@
     <string name="crash_report_stack_preview_label">堆栈跟踪（预览）：</string>
     <string name="crash_report_clipboard_label">崩溃日志</string>
     <string name="toast_crash_log_copied">崩溃日志已复制到剪贴板</string>
-    <string name="crash_report_share_subject">PixelPlayer 崩溃报告</string>
+    <string name="crash_report_share_subject">XiangsuPlayer 崩溃报告</string>
     <string name="crash_report_share_chooser">分享崩溃报告</string>
     <string name="action_copy">复制</string>
     <string name="action_share">分享</string>
@@ -182,13 +182,13 @@
 
     <!-- About -->
     <string name="about_no_contributors">当前未找到贡献者。请稍后重试。</string>
-    <string name="about_app_name">PixelPlayer</string>
+    <string name="about_app_name">XiangsuPlayer</string>
     <string name="about_tagline">由社区共同打造的开源音乐播放器。</string>
     <string name="about_version_format">版本 v%1$s</string>
     <string name="about_contributions_format">%1$d 次贡献</string>
     <string name="screen_about">关于</string>
     <string name="about_maintainer_title">维护者</string>
-    <string name="about_maintainer_subtitle">PixelPlayer 背后的那个人。</string>
+    <string name="about_maintainer_subtitle">XiangsuPlayer 背后的那个人。</string>
     <string name="about_spotlight_title">社区聚焦</string>
     <string name="about_spotlight_subtitle">表彰带来重大影响的协作者。</string>
     <string name="about_contributors_section_title">开源贡献者</string>
@@ -270,29 +270,6 @@
     <string name="third_party_notices_title">第三方声明</string>
     <string name="third_party_notices_close">关闭</string>
     
-    <!-- 专注模式 -->
-    <string name="focus_timer_title">专注学习</string>
-    <string name="focus_timer_subtitle">设置你的番茄钟时间</string>
-    <string name="focus_timer_study_title">学习时间</string>
-    <string name="focus_timer_study_subtitle">专注工作的时间</string>
-    <string name="focus_timer_break_title">休息时间</string>
-    <string name="focus_timer_break_subtitle">放松的时间</string>
-    <string name="focus_timer_cancel">取消</string>
-    <string name="focus_timer_start">开始专注</string>
-    <string name="focus_timer_minutes_format">%1$d 分钟</string>
-    <string name="focus_timer_study_preset">学习时间</string>
-    <string name="focus_timer_break_preset">休息时间</string>
-    <string name="focus_mode_title">专注模式</string>
-    <string name="focus_mode_end">结束</string>
-    <string name="focus_mode_completed_cycles_format">已完成 %1$d 轮</string>
-    <string name="focus_mode_studying">专注学习中</string>
-    <string name="focus_mode_break">休息放松中</string>
-    <string name="focus_mode_paused">已暂停</string>
-    <string name="focus_mode_ready">准备开始</string>
-    <string name="focus_mode_study_duration_format">%1$d分钟专注</string>
-    <string name="focus_mode_break_duration_format">%1$d分钟休息</string>
-    <string name="focus_mode_tap_to_start">点击开始</string>
-    <string name="focus_mode_not_playing">未在播放</string>
     <string name="content_description_exit">退出</string>
     <string name="content_description_previous">上一曲</string>
     <string name="content_description_play_pause">播放/暂停</string>
@@ -312,9 +289,11 @@
     <string name="discover_sheet_title">发现</string>
     <string name="discover_roaming_subtitle">收听网易云漫游，为你随机推荐歌曲</string>
     <string name="discover_radio_subtitle">收听全球网络广播电台</string>
-    <string name="radio_live_playing">直播电台</string>
-    <string name="radio_connecting">连接中…</string>
     <string name="radio_recommendations">热门电台</string>
+    <string name="radio_favorite">收藏</string>
+    <string name="radio_unfavorite">取消收藏</string>
+    <string name="radio_favorite_confirm">收藏该电台？</string>
+    <string name="radio_unfavorite_confirm">取消收藏该电台？</string>
     <string name="cd_back">返回</string>
     <string name="cd_radio_open">广播</string>
 </resources>

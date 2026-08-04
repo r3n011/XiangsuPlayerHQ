@@ -2,7 +2,6 @@ package com.theveloper.pixelplay.presentation.components.player
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.Configuration
 import android.net.Uri
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.presentation.components.CommentSheet
@@ -12,15 +11,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -41,6 +38,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -89,8 +87,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -145,11 +144,7 @@ import com.theveloper.pixelplay.presentation.components.subcomps.FetchLyricsDial
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
-import com.theveloper.pixelplay.presentation.viewmodel.RadioMode
 import com.theveloper.pixelplay.presentation.viewmodel.RadioViewModel
-import com.theveloper.pixelplay.presentation.focusmode.FocusModeScreen
-import com.theveloper.pixelplay.presentation.focusmode.FocusTimerSetupDialog
-import com.theveloper.pixelplay.presentation.focusmode.FocusTimerState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat
@@ -278,11 +273,6 @@ fun FullPlayerContent(
     var showArtistPicker by rememberSaveable { mutableStateOf(false) }
     var showCommentSheet by remember { mutableStateOf(false) }
 
-    // 学习钟状态 —— 从 playerViewModel 读取，确保切歌时不丢失
-    val focusTimerState = playerViewModel.focusTimerState
-    val isInFocusMode by playerViewModel.isInFocusMode.collectAsStateWithLifecycle()
-    var showFocusSetupDialog by remember { mutableStateOf(false) }
-    
     val lyricsSearchUiState by playerViewModel.lyricsSearchUiState.collectAsStateWithLifecycle()
 
     // Single subscription — replaces 11 independent collectAsStateWithLifecycle calls.
@@ -496,8 +486,11 @@ fun FullPlayerContent(
         label = "OnTertiaryFixed"
     )
 
-    val isLandscape =
-        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    // 按窗口实际宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机模式。
+    // 使用 LocalWindowInfo（真实窗口尺寸）而非 Configuration，避免部分平板 ROM
+    // 在分屏/小窗时不更新 Configuration 导致布局不切换
+    // 1:1（width == height）也按平板/横屏布局处理，避免竖屏电台封面与按钮遮挡
+    val isLandscape = with(LocalWindowInfo.current.containerSize) { width >= height }
 
 
     // Lógica para el botón de Lyrics en el reproductor expandido
@@ -703,8 +696,8 @@ fun FullPlayerContent(
             // 广播电台为实时流：无可拖动进度，显示热门电台推荐（可快速切换）
             RadioRecommendationSection(
                 currentSongId = song.id,
-                isPlayingProvider = isPlayingProvider,
                 onBaseColor = playerOnBaseColor,
+                baseColor = LocalMaterialTheme.current.primaryContainer,
                 onStationClick = { station ->
                     playerViewModel.playUrl(
                         url = station.streamUrl,
@@ -739,8 +732,9 @@ fun FullPlayerContent(
     }
 
     val controlsSection: @Composable () -> Unit = {
-        val downloadInfo = currentSong?.let { song ->
-            playerViewModel.getDownloadInfo(song.id)
+        val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
+        val downloadInfo = remember(currentSong?.id, downloads) {
+            currentSong?.let { song -> downloads.find { it.songId == song.id } }
         }
         val isOnlineSong = currentSong?.let { playerViewModel.isOnlineSong(it) } == true
         FullPlayerControlsSection(
@@ -802,10 +796,7 @@ fun FullPlayerContent(
             chipContentColor = playerAccentColor,
             onQueueClick = onSongMetadataQueueClick,
             onArtistClick = onSongMetadataArtistClick,
-            isPlayingProvider = isPlayingProvider,
-            focusTimerState = focusTimerState,
-            onShowFocusSetup = remember {{ showFocusSetupDialog = true }},
-            onEnterFocusMode = remember {{ playerViewModel.setFocusMode(true) }}
+            isPlayingProvider = isPlayingProvider
         )
     }
 
@@ -831,16 +822,13 @@ fun FullPlayerContent(
             chipContentColor = playerAccentColor,
             onQueueClick = onSongMetadataQueueClick,
             onArtistClick = onSongMetadataArtistClick,
-            isPlayingProvider = isPlayingProvider,
-            focusTimerState = focusTimerState,
-            onShowFocusSetup = remember {{ showFocusSetupDialog = true }},
-            onEnterFocusMode = remember {{ playerViewModel.setFocusMode(true) }}
+            isPlayingProvider = isPlayingProvider
         )
     }
 
     Scaffold(
         containerColor = Color.Transparent,
-        modifier = Modifier.pointerInput(currentSheetState, queueGestureBottomExclusionPx) {
+        modifier = Modifier.pointerInput(currentSheetState, queueGestureBottomExclusionPx, isRadioPlayback) {
             val queueDragActivationThresholdPx = 4.dp.toPx()
             val quickFlickVelocityThreshold = -520f
 
@@ -849,7 +837,8 @@ fun FullPlayerContent(
                 // Check condition AFTER the down event occurs
                 val isFullyExpanded = currentSheetState == PlayerSheetState.EXPANDED && expansionFractionProvider() >= 0.99f
 
-                if (!isFullyExpanded) {
+                if (!isFullyExpanded || isRadioPlayback) {
+                    // 广播电台为实时流，没有播放列表：上滑不进入队列
                     return@awaitEachGesture
                 }
 
@@ -1092,59 +1081,32 @@ fun FullPlayerContent(
                                 }
                             }
 
-                            // Focus Mode Button
-                            Box(
-                                modifier = Modifier
-                                    .size(height = 42.dp, width = 50.dp)
-                                    .clip(
-                                        RoundedCornerShape(
-                                            topStart = 50.dp,
-                                            topEnd = 50.dp,
-                                            bottomStart = 50.dp,
-                                            bottomEnd = 50.dp
+                            // Queue Button（广播电台播放时不显示：实时流没有播放列表）
+                            if (!isRadioPlayback) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(height = 42.dp, width = 50.dp)
+                                        .clip(
+                                            RoundedCornerShape(
+                                                topStart = 6.dp,
+                                                topEnd = 50.dp,
+                                                bottomStart = 6.dp,
+                                                bottomEnd = 50.dp
+                                            )
                                         )
+                                        .background(playerOnAccentColor.copy(alpha = 0.7f))
+                                        .clickable {
+                                            showSongInfoBottomSheet = true
+                                            onShowQueueClicked()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.rounded_queue_music_24),
+                                        contentDescription = stringResource(R.string.presentation_batch_g_player_cd_queue),
+                                        tint = playerAccentColor
                                     )
-                                    .background(playerOnAccentColor.copy(alpha = 0.7f))
-                                    .clickable {
-                                        if (focusTimerState.currentPhase == com.theveloper.pixelplay.presentation.focusmode.FocusPhase.IDLE) {
-                                            showFocusSetupDialog = true
-                                        } else {
-                                            playerViewModel.setFocusMode(true)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.rounded_schedule_24),
-                                    contentDescription = "Focus mode",
-                                    tint = playerAccentColor
-                                )
-                            }
-
-                            // Queue Button
-                            Box(
-                                modifier = Modifier
-                                    .size(height = 42.dp, width = 50.dp)
-                                    .clip(
-                                        RoundedCornerShape(
-                                            topStart = 6.dp,
-                                            topEnd = 50.dp,
-                                            bottomStart = 6.dp,
-                                            bottomEnd = 50.dp
-                                        )
-                                    )
-                                    .background(playerOnAccentColor.copy(alpha = 0.7f))
-                                    .clickable {
-                                        showSongInfoBottomSheet = true
-                                        onShowQueueClicked()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.rounded_queue_music_24),
-                                    contentDescription = stringResource(R.string.presentation_batch_g_player_cd_queue),
-                                    tint = playerAccentColor
-                                )
+                                }
                             }
                         }
                     }
@@ -1171,7 +1133,8 @@ fun FullPlayerContent(
                     albumCoverSection = albumCoverSection,
                     songMetadataSection = landscapeSongMetadataSection,
                     playerProgressSection = playerProgressSection,
-                    controlsSection = controlsSection
+                    controlsSection = controlsSection,
+                    isRadioPlayback = isRadioPlayback
                 )
             } else {
                 FullPlayerPortraitContent(
@@ -1179,7 +1142,8 @@ fun FullPlayerContent(
                     albumCoverSection = albumCoverSection,
                     songMetadataSection = portraitSongMetadataSection,
                     playerProgressSection = playerProgressSection,
-                    controlsSection = controlsSection
+                    controlsSection = controlsSection,
+                    isRadioPlayback = isRadioPlayback
                 )
             }
         }
@@ -1278,56 +1242,6 @@ fun FullPlayerContent(
                 showArtistPicker = false
             }
         )
-    }
-
-    // 学习钟设置对话框
-    if (showFocusSetupDialog) {
-        FocusTimerSetupDialog(
-            onDismiss = { showFocusSetupDialog = false },
-            onConfirm = { studyMin, breakMin ->
-                focusTimerState.resetWithConfig(studyMin, breakMin)
-                focusTimerState.start()
-                showFocusSetupDialog = false
-                playerViewModel.setFocusMode(true)
-            }
-        )
-    }
-
-    // 专注模式全屏界面
-    AnimatedVisibility(
-        visible = isInFocusMode,
-        enter = fadeIn(animationSpec = tween(200)) +
-                slideInVertically(
-                    initialOffsetY = { it / 8 },
-                    animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
-                ),
-        exit = fadeOut(animationSpec = tween(200)) +
-                slideOutVertically(
-                    targetOffsetY = { it / 8 },
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
-                )
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            FocusModeScreen(
-                currentSong = currentSong,
-                currentPositionMs = currentPositionProvider(),
-                totalDurationMs = totalDurationProvider(),
-                isPlaying = isPlayingProvider(),
-                timerState = focusTimerState,
-                onPlayPause = onPlayPause,
-                onNext = onNext,
-                onPrevious = onPrevious,
-                onSeek = onSeek,
-                onExit = { playerViewModel.setFocusMode(false) },
-                onStopTimer = {
-                    focusTimerState.stop()
-                    playerViewModel.setFocusMode(false)
-                }
-            )
-        }
     }
 }
 
@@ -1501,15 +1415,19 @@ private fun FullPlayerControlsSection(
         applyPlaceholderDelayOnClose = loadingTweaks.applyPlaceholdersOnClose,
         switchOnDragRelease = loadingTweaks.switchOnDragRelease,
         isSheetDragGestureActive = isSheetDragGestureActive,
-        sharedBoundsModifier = Modifier.fillMaxWidth().height(180.dp),
+        // 广播时播放/暂停已移入底部行，控制区仅剩一行（56dp），无需保留 180dp 固定高度，
+        // 否则会留出大片空白（表现为“推荐区与播放控制距离太大”）并挤压推荐区空间
+        sharedBoundsModifier = Modifier
+            .fillMaxWidth()
+            .height(if (isRadioPlayback) 56.dp else 180.dp),
         expansionFractionProvider = expansionFractionProvider,
         isExpandedOverride = currentSheetState == PlayerSheetState.EXPANDED,
         normalStartThreshold = 0.42f,
         delayAppearThreshold = loadingTweaks.contentAppearThresholdPercent / 100f,
         delayCloseThreshold = 1f - (loadingTweaks.contentCloseThresholdPercent / 100f),
         placeholder = {
-            if (loadingTweaks.transparentPlaceholders) {
-                Box(Modifier.fillMaxWidth().height(180.dp))
+            if (loadingTweaks.transparentPlaceholders || isRadioPlayback) {
+                Box(Modifier.fillMaxWidth().height(if (isRadioPlayback) 56.dp else 180.dp))
             } else {
                 ControlsPlaceholder(placeholderColor, placeholderOnColor)
             }
@@ -1520,15 +1438,8 @@ private fun FullPlayerControlsSection(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            if (isRadioPlayback) {
-                // 广播电台实时流：仅保留居中的播放/暂停按钮（上一首/下一首无意义）
-                RadioPlaybackButton(
-                    isPlayingProvider = isPlayingProvider,
-                    onPlayPause = onPlayPause,
-                    containerColor = transportPlayPauseColors.container,
-                    contentColor = transportPlayPauseColors.content
-                )
-            } else {
+            // 广播电台实时流：播放/暂停按钮已移到底部行的收藏按钮右侧
+            if (!isRadioPlayback) {
                 AnimatedPlaybackControls(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1569,6 +1480,11 @@ private fun FullPlayerControlsSection(
                 isDownloadComplete = isDownloadComplete,
                 isDownloadFailed = isDownloadFailed,
                 isRadioPlayback = isRadioPlayback,
+                showRadioPlayPause = isRadioPlayback,
+                radioIsPlayingProvider = isPlayingProvider,
+                onRadioPlayPause = onPlayPause,
+                radioPlayPauseColor = transportPlayPauseColors.container,
+                radioPlayPauseContentColor = transportPlayPauseColors.content,
                 surfaceContainerLowest = surfaceContainerLowest,
                 onSurface = onSurface,
                 primaryFixed = primaryFixed,
@@ -1710,10 +1626,7 @@ private fun FullPlayerSongMetadataSection(
     chipContentColor: Color,
     onQueueClick: () -> Unit,
     onArtistClick: () -> Unit,
-    isPlayingProvider: () -> Boolean = { true },
-    focusTimerState: com.theveloper.pixelplay.presentation.focusmode.FocusTimerState? = null,
-    onShowFocusSetup: () -> Unit = { },
-    onEnterFocusMode: () -> Unit = { }
+    isPlayingProvider: () -> Boolean = { true }
 ) {
     val shouldDelay = loadingTweaks.delayAll || loadingTweaks.delaySongMetadata
 
@@ -1761,10 +1674,7 @@ private fun FullPlayerSongMetadataSection(
             showQueueButton = isLandscape,
             onClickQueue = onQueueClick,
             onClickArtist = onArtistClick,
-            isPlayingProvider = isPlayingProvider,
-            onShowFocusSetup = onShowFocusSetup,
-            focusTimerState = focusTimerState,
-            onEnterFocusMode = onEnterFocusMode
+            isPlayingProvider = isPlayingProvider
         )
     }
 }
@@ -1776,13 +1686,50 @@ private fun FullPlayerPortraitContent(
     songMetadataSection: @Composable () -> Unit,
     playerProgressSection: @Composable () -> Unit,
     controlsSection: @Composable () -> Unit,
-    downloadSection: @Composable () -> Unit = {}
+    downloadSection: @Composable () -> Unit = {},
+    isRadioPlayback: Boolean = false
 ) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
     ) {
+        if (isRadioPlayback) {
+            // 电台动态布局：封面占满剩余空间（保持正方形），底部信息/直播指示/控制自适应高度。
+            // 手机、平板竖屏/横屏都按可用空间伸缩，不会溢出、不留大片空白。
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 封面：weight 占满剩余空间，正方形居中
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    albumCoverSection(
+                        Modifier
+                            .fillMaxSize()
+                            .aspectRatio(1f)
+                    )
+                }
+                // 底部：信息 + 直播指示 + 控制按钮，自适应高度
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    songMetadataSection()
+                    playerProgressSection()
+                    Spacer(Modifier.height(4.dp))
+                    controlsSection()
+                }
+            }
+        } else {
         val totalHeight = maxHeight
         val totalWidth = maxWidth
         
@@ -1865,6 +1812,7 @@ private fun FullPlayerPortraitContent(
                 }
             }
         }
+        } // end else (普通歌曲布局)
     }
 }
 
@@ -1875,38 +1823,61 @@ private fun FullPlayerLandscapeContent(
     songMetadataSection: @Composable () -> Unit,
     playerProgressSection: @Composable () -> Unit,
     controlsSection: @Composable () -> Unit,
-    downloadSection: @Composable () -> Unit = {}
+    downloadSection: @Composable () -> Unit = {},
+    isRadioPlayback: Boolean = false
 ) {
-    Row(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .padding(
-                horizontal = 24.dp,
-                vertical = 0.dp
-            ),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center
     ) {
-        albumCoverSection(
-            Modifier
-                .fillMaxHeight()
-                .weight(1f)
-        )
-        Spacer(Modifier.width(9.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(1f)
-                .padding(
-                    horizontal = 0.dp,
-                    vertical = 0.dp
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-            songMetadataSection()
-            playerProgressSection()
-            controlsSection()
+        if (isRadioPlayback) {
+            // 电台播放器精简布局：上面封面，下面信息 + 收藏 + 暂停（无热门电台列表）
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                albumCoverSection(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+                songMetadataSection()
+                controlsSection()
+            }
+        } else {
+            val spacing = 9.dp
+            // 左右两栏各占一半宽度；左侧封面为正方形，
+            // 边长 = min(单栏宽度, 行高)。右侧所有内容高度不得超过该边长。
+            val coverWidth = (maxWidth - spacing) / 2
+            val coverSize = minOf(coverWidth, maxHeight)
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                albumCoverSection(
+                    Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                )
+                Spacer(Modifier.width(spacing))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .height(coverSize),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    songMetadataSection()
+                    playerProgressSection()
+                    controlsSection()
+                }
+            }
         }
     }
 }
@@ -1932,9 +1903,6 @@ private fun SongMetadataDisplaySection(
     currentQueueSourceName: String,
     modifier: Modifier = Modifier,
     isPlayingProvider: () -> Boolean = { true },
-    onShowFocusSetup: () -> Unit = { },
-    focusTimerState: com.theveloper.pixelplay.presentation.focusmode.FocusTimerState? = null,
-    onEnterFocusMode: () -> Unit = { },
     isRadioPlayback: Boolean = false
 ) {
     Row(
@@ -2073,36 +2041,6 @@ private fun SongMetadataDisplaySection(
                         )
                     }
                 }
-                // 学习钟入口按钮（横屏/平板模式下显示，与其他按钮风格一致）
-                if (focusTimerState != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(height = 42.dp, width = 50.dp)
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = 6.dp,
-                                    topEnd = 6.dp,
-                                    bottomStart = 6.dp,
-                                    bottomEnd = 6.dp
-                                )
-                            )
-                            .background(chipColor)
-                            .clickable {
-                                if (focusTimerState.currentPhase == com.theveloper.pixelplay.presentation.focusmode.FocusPhase.IDLE) {
-                                    onShowFocusSetup()
-                                } else {
-                                    onEnterFocusMode()
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.rounded_schedule_24),
-                            contentDescription = "Focus mode",
-                            tint = chipContentColor
-                        )
-                    }
-                }
                 if (!isRadioPlayback) {
                     Box(
                         modifier = Modifier
@@ -2126,26 +2064,29 @@ private fun SongMetadataDisplaySection(
                         )
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .size(height = 42.dp, width = 50.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = 6.dp,
-                                topEnd = 50.dp,
-                                bottomStart = 6.dp,
-                                bottomEnd = 50.dp
+                // 播放列表按钮（广播电台播放时不显示：实时流没有播放列表）
+                if (!isRadioPlayback) {
+                    Box(
+                        modifier = Modifier
+                            .size(height = 42.dp, width = 50.dp)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 6.dp,
+                                    topEnd = 50.dp,
+                                    bottomStart = 6.dp,
+                                    bottomEnd = 50.dp
+                                )
                             )
+                            .background(chipColor)
+                            .clickable { onClickQueue() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_queue_music_24),
+                            contentDescription = stringResource(R.string.presentation_batch_g_player_cd_queue),
+                            tint = chipContentColor
                         )
-                        .background(chipColor)
-                        .clickable { onClickQueue() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_queue_music_24),
-                        contentDescription = stringResource(R.string.presentation_batch_g_player_cd_queue),
-                        tint = chipContentColor
-                    )
+                    }
                 }
             }
         } else {
@@ -3303,6 +3244,11 @@ private fun BottomToggleRow(
     isDownloadComplete: Boolean,
     isDownloadFailed: Boolean,
     isRadioPlayback: Boolean = false,
+    showRadioPlayPause: Boolean = false,
+    radioIsPlayingProvider: () -> Boolean = { true },
+    onRadioPlayPause: () -> Unit = {},
+    radioPlayPauseColor: Color = Color.Unspecified,
+    radioPlayPauseContentColor: Color = Color.Unspecified,
     surfaceContainerLowest: Color,
     onSurface: Color,
     primaryFixed: Color,
@@ -3432,6 +3378,22 @@ private fun BottomToggleRow(
                 iconId = if (isFavorite) R.drawable.round_favorite_24 else R.drawable.rounded_favorite_24,
                 contentDesc = "Favorito"
             )
+            // 广播电台播放/暂停按钮：放在收藏按钮右侧（上一首/下一首无意义，播放器实时流仅此控制）
+            if (showRadioPlayPause) {
+                val radioIsPlaying = radioIsPlayingProvider()
+                ToggleSegmentButton(
+                    modifier = commonModifier,
+                    active = radioIsPlaying,
+                    activeColor = radioPlayPauseColor,
+                    activeCornerRadius = rowCorners,
+                    activeContentColor = radioPlayPauseContentColor,
+                    inactiveColor = radioPlayPauseColor,
+                    inactiveContentColor = radioPlayPauseContentColor,
+                    onClick = onRadioPlayPause,
+                    iconId = if (radioIsPlaying) R.drawable.rounded_pause_24 else R.drawable.rounded_play_arrow_24,
+                    contentDesc = stringResource(R.string.mashup_cd_play_pause)
+                )
+            }
         }
     }
 }
@@ -3439,79 +3401,92 @@ private fun BottomToggleRow(
 // ─── 广播电台实时流专用组件 ─────────────────────────────────────────────
 
 /**
- * 广播电台播放时的热门电台推荐区（替代直播状态指示）。
- * 展示横向滚动的热门电台卡片，点击即可切换电台；
- * 热门电台数据尚未加载完成时回退到直播状态指示。
+ * 广播电台播放时的热门电台推荐区。
+ * 展示热门电台卡片，点击即可切换电台；仅横屏（右侧布局）显示，
+ * 竖屏/数据未加载时不显示任何指示（红点/播放中已移除）。
  */
 @Composable
 private fun RadioRecommendationSection(
     currentSongId: String,
-    isPlayingProvider: () -> Boolean,
     onBaseColor: Color,
+    baseColor: Color,
     onStationClick: (RadioStation) -> Unit
 ) {
     val radioViewModel: RadioViewModel = hiltViewModel()
     val uiState by radioViewModel.uiState.collectAsStateWithLifecycle()
-    // 平板模式（或横屏）时竖向排列，手机上横向滚动
-    val isTabletOrLandscape = LocalConfiguration.current.screenWidthDp >= 600
-    // 仅展示热门（TOP）模式的电台，过滤掉当前正在播放的电台
-    val topStations = uiState.stations.takeIf { uiState.mode == RadioMode.TOP }
+    // 进入推荐区时确保热门电台数据已加载（播放器可直接打开，无需先经过电台主页）
+    LaunchedEffect(Unit) {
+        if (uiState.topStations.isEmpty()) radioViewModel.loadTopStations()
+    }
+    // 始终使用独立的热门电台列表（与当前列表模式无关），过滤掉当前正在播放的电台
+    val topStations = uiState.topStations
     val recommendations = remember(topStations, currentSongId) {
         topStations
-            ?.filter { currentSongId != "radio://${it.stationUuid}" }
-            ?.take(20)
-            ?: emptyList()
+            .filter { currentSongId != "radio://${it.stationUuid}" }
+            .take(20)
     }
+    // 仅横屏（右侧布局）显示热门电台列表；竖屏（手机或平板）不显示任何指示。
+    // 按真实窗口宽高比判定：平板小窗变窄时自动回到竖屏（手机）形态；
+    // 1:1（width == height）按横屏处理，与全屏播放器布局保持一致
+    val isLandscapeOrientation =
+        with(LocalWindowInfo.current.containerSize) { width >= height }
 
-    if (!isTabletOrLandscape || recommendations.isEmpty()) {
-        // 手机模式不显示热门电台推荐（仅平板/横屏展示）；或尚未加载到热门电台：显示直播状态
-        RadioLiveProgressIndicator(
-            isPlayingProvider = isPlayingProvider,
-            onBaseColor = onBaseColor
-        )
-        return
-    }
+    if (!isLandscapeOrientation || recommendations.isEmpty()) return
 
-    Column(
+    // 横屏：热门电台列表放入深色圆角容器（不透明实色，由播放器取色主色加深得到，遵循播放器取色）
+    val panelColor = lerpColor(baseColor, Color.Black, 0.45f)
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = if (isTabletOrLandscape) 252.dp else 84.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .fillMaxHeight(),
+        // 圆角与控制区（BottomToggleRow 60dp）同步，视觉一致
+        shape = RoundedCornerShape(35.dp),
+        color = panelColor
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Radio,
-                contentDescription = null,
-                tint = onBaseColor.copy(alpha = 0.7f),
-                modifier = Modifier.size(14.dp)
-            )
-            Text(
-                text = stringResource(R.string.radio_recommendations),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.4.sp,
-                color = onBaseColor.copy(alpha = 0.75f)
-            )
-        }
-        // 平板/横屏：媒体库风格列表（圆形封面 + 副标题 + 播放指示），取色跟随播放器
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            items(
-                items = recommendations.take(10),
-                key = { it.stationUuid }
-            ) { station ->
-                RadioSuggestionCard(
-                    station = station,
-                    isPlaying = currentSongId == "radio://${station.stationUuid}",
-                    onBaseColor = onBaseColor,
-                    onClick = { onStationClick(station) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Radio,
+                    contentDescription = null,
+                    tint = onBaseColor.copy(alpha = 0.7f),
+                    modifier = Modifier.size(14.dp)
                 )
+                Text(
+                    text = stringResource(R.string.radio_recommendations),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.4.sp,
+                    color = onBaseColor.copy(alpha = 0.75f)
+                )
+            }
+            // 平板/横屏：媒体库风格列表（圆形封面 + 副标题 + 播放指示），取色跟随播放器
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                items(
+                    items = recommendations.take(10),
+                    key = { it.stationUuid }
+                ) { station ->
+                    RadioSuggestionCard(
+                        station = station,
+                        isPlaying = currentSongId == "radio://${station.stationUuid}",
+                        onBaseColor = onBaseColor,
+                        onClick = { onStationClick(station) }
+                    )
+                }
             }
         }
     }
@@ -3519,7 +3494,7 @@ private fun RadioRecommendationSection(
 
 /**
  * 广播播放器中的热门电台推荐卡片。
- * 模仿媒体库音乐列表：圆形封面 + 标题/副标题 + 播放指示；
+ * 与电台主页列表一致的显示效果：卡片式背景 + 方形圆角封面（播放时变圆）+ 播放高亮；
  * 颜色跟随播放器取色（onBaseColor），而非应用主题色。
  */
 @Composable
@@ -3529,111 +3504,81 @@ private fun RadioSuggestionCard(
     onBaseColor: Color,
     onClick: () -> Unit
 ) {
-    Row(
+    val transition = updateTransition(isPlaying, label = "RadioSuggestionCardTransition")
+    val highlightProgress by transition.animateFloat(
+        transitionSpec = { tween(durationMillis = 400) },
+        label = "highlightProgress"
+    ) { if (it) 1f else 0f }
+    val animatedCornerRadius = lerp(22.dp, 50.dp, highlightProgress)
+    val animatedAlbumCornerRadius = lerp(10.dp, 50.dp, highlightProgress)
+    val surfaceShape = RoundedCornerShape(animatedCornerRadius)
+    val albumShape = RoundedCornerShape(animatedAlbumCornerRadius)
+
+    val baseContainerColor = onBaseColor.copy(alpha = 0.08f)
+    val containerColor = lerpColor(baseContainerColor, onBaseColor.copy(alpha = 0.16f), highlightProgress)
+    val contentColor = lerpColor(onBaseColor.copy(alpha = 0.9f), onBaseColor, highlightProgress)
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // 封面：电台 logo，缺失时显示收音机占位图标
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(onBaseColor.copy(alpha = 0.08f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (station.favicon.isNotBlank()) {
-                SmartImage(
-                    model = station.favicon,
-                    contentDescription = station.name,
-                    contentScale = ContentScale.Crop,
-                    shape = CircleShape,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Rounded.Radio,
-                    contentDescription = null,
-                    tint = onBaseColor.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = station.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isPlaying) FontWeight.SemiBold else FontWeight.Medium,
-                color = if (isPlaying) onBaseColor else onBaseColor.copy(alpha = 0.9f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = station.subtitle(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = onBaseColor.copy(alpha = 0.55f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        if (isPlaying) {
-            Spacer(Modifier.width(8.dp))
-            PlayingEqIcon(color = onBaseColor, isPlaying = true)
-        }
-    }
-}
-
-/**
- * 广播电台播放时的直播状态指示（替代可拖动的进度条）。
- * 实时流没有可 seek 的时间轴，只展示 LIVE 直播状态。
- */
-@Composable
-private fun RadioLiveProgressIndicator(
-    isPlayingProvider: () -> Boolean,
-    onBaseColor: Color
-) {
-    val isPlaying = isPlayingProvider()
-    val infiniteTransition = rememberInfiniteTransition(label = "radioLivePulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "radioLivePulseAlpha"
-    )
-    val dotColor = if (isPlaying) Color(0xFFE53935) else onBaseColor.copy(alpha = 0.35f)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(40.dp),
-        contentAlignment = Alignment.Center
+            .clip(surfaceShape)
+            .clickable(onClick = onClick),
+        shape = surfaceShape,
+        color = containerColor
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // 封面：电台 logo，缺失时显示收音机占位图标
             Box(
                 modifier = Modifier
-                    .size(10.dp)
-                    .graphicsLayer { alpha = pulseAlpha }
-                    .background(dotColor, CircleShape)
-            )
-            Text(
-                text = stringResource(
-                    if (isPlaying) R.string.radio_live_playing else R.string.radio_connecting
-                ),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.5.sp,
-                color = onBaseColor.copy(alpha = if (isPlaying) 1f else 0.55f)
-            )
+                    .size(44.dp)
+                    .background(onBaseColor.copy(alpha = 0.08f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (station.favicon.isNotBlank()) {
+                    SmartImage(
+                        model = station.favicon,
+                        contentDescription = station.name,
+                        contentScale = ContentScale.Crop,
+                        shape = albumShape,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Radio,
+                        contentDescription = null,
+                        tint = onBaseColor.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isPlaying) FontWeight.SemiBold else FontWeight.Medium,
+                    color = contentColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = station.subtitle(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = onBaseColor.copy(alpha = 0.55f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (isPlaying) {
+                Spacer(Modifier.width(8.dp))
+                PlayingEqIcon(color = onBaseColor, isPlaying = true)
+            }
         }
     }
 }
@@ -3670,44 +3615,5 @@ private fun RadioLiveBadge(
                 color = chipContentColor
             )
         }
-    }
-}
-
-/**
- * 广播电台专用的居中播放/暂停按钮（无上一首/下一首）。
- */
-@Composable
-private fun RadioPlaybackButton(
-    isPlayingProvider: () -> Boolean,
-    onPlayPause: () -> Unit,
-    containerColor: Color,
-    contentColor: Color
-) {
-    FilledIconButton(
-        onClick = onPlayPause,
-        modifier = Modifier.size(72.dp),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
-        shape = AbsoluteSmoothCornerShape(
-            cornerRadiusTL = 60.dp,
-            smoothnessAsPercentTR = 60,
-            cornerRadiusBR = 60.dp,
-            smoothnessAsPercentTL = 60,
-            cornerRadiusBL = 60.dp,
-            smoothnessAsPercentBR = 60,
-            cornerRadiusTR = 60.dp,
-            smoothnessAsPercentBL = 60
-        )
-    ) {
-        Icon(
-            painter = painterResource(
-                if (isPlayingProvider()) R.drawable.rounded_pause_24
-                else R.drawable.rounded_play_arrow_24
-            ),
-            contentDescription = stringResource(R.string.mashup_cd_play_pause),
-            modifier = Modifier.size(36.dp)
-        )
     }
 }

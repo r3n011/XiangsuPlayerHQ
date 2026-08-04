@@ -16,6 +16,8 @@ import javax.inject.Inject
 
 data class RadioUiState(
     val stations: List<RadioStation> = emptyList(),
+    // 始终保留的热门电台列表（与当前列表模式无关），供播放器推荐区使用
+    val topStations: List<RadioStation> = emptyList(),
     val countries: List<RadioCountry> = emptyList(),
     val loading: Boolean = false,
     val error: String? = null,
@@ -58,12 +60,16 @@ class RadioViewModel @Inject constructor(
 
     fun loadTopStations() {
         loadJob?.cancel()
-        _uiState.value = _uiState.value.copy(loading = true, error = null, mode = RadioMode.TOP, query = "")
+        // 清除国家筛选状态，确保“热门”chip 恢复选中（选中条件为 countryCode == null）
+        _uiState.value = _uiState.value.copy(
+            loading = true, error = null, mode = RadioMode.TOP, query = "", countryCode = null
+        )
         loadJob = viewModelScope.launch {
             try {
                 val stations = api.getTopStations(limit = 60)
                 _uiState.value = _uiState.value.copy(
                     stations = stations,
+                    topStations = stations,
                     loading = false,
                     error = if (stations.isEmpty()) "无法连接到广播服务器" else null
                 )

@@ -2,7 +2,7 @@
 <resources>
     <!-- Navigation / misc -->
     <string name="nav_error_genre_id_missing">Kesalahan: ID Genre hilang</string>
-    <string name="easter_egg_thank_you">Terima kasih telah menggunakan PixelPlayer!</string>
+    <string name="easter_egg_thank_you">Terima kasih telah menggunakan XiangsuPlayer!</string>
 
     <!-- Word delimiter config -->
     <string name="word_delimiter_section_title">Pemisah Kata Saat Ini</string>
@@ -96,22 +96,22 @@
     <string name="setup_excluded_folders_description">Semua folder dipindai secara default. Pilih lokasi mana pun yang ingin Anda abaikan saat membangun pustaka.</string>
     <string name="setup_choose_folders_ignore">Pilih folder untuk diabaikan</string>
     <string name="setup_permission_media_title">Izin Media</string>
-    <string name="setup_permission_media_description">PixelPlayer memerlukan akses ke file audio Anda untuk membangun pustaka musik Anda.</string>
+    <string name="setup_permission_media_description">XiangsuPlayer memerlukan akses ke file audio Anda untuk membangun pustaka musik Anda.</string>
     <string name="setup_permission_granted">Izin Diberikan</string>
     <string name="setup_grant_media_permission">Berikan Izin Media</string>
     <string name="setup_permission_notifications_title">Notifikasi</string>
     <string name="setup_permission_notifications_description">Aktifkan notifikasi untuk mengontrol musik Anda dari layar kunci dan panel notifikasi.</string>
     <string name="setup_enable_notifications">Aktifkan Notifikasi</string>
     <string name="setup_permission_alarms_title">Alarm &amp; Pengingat</string>
-    <string name="setup_permission_alarms_description">Opsional, tetapi direkomendasikan jika Anda menggunakan Timer Tidur dan ingin PixelPlayer berhenti memutar tepat waktu.</string>
+    <string name="setup_permission_alarms_description">Opsional, tetapi direkomendasikan jika Anda menggunakan Timer Tidur dan ingin XiangsuPlayer berhenti memutar tepat waktu.</string>
     <string name="setup_grant_permission_generic">Berikan Izin</string>
     <string name="setup_backup_have_title">Apakah Anda memiliki cadangan?</string>
-    <string name="setup_backup_have_description">Jika Anda sudah memiliki cadangan PixelPlayer, pulihkan sekarang dan lewati sebagian besar penyiapan yang tersisa di perangkat ini.</string>
+    <string name="setup_backup_have_description">Jika Anda sudah memiliki cadangan XiangsuPlayer, pulihkan sekarang dan lewati sebagian besar penyiapan yang tersisa di perangkat ini.</string>
     <string name="setup_inspecting_backup">Memeriksa cadangan</string>
     <string name="setup_restoring_backup">Memulihkan cadangan</string>
     <string name="setup_import_backup">Impor cadangan</string>
     <string name="setup_theme_dark_title">Gelap</string>
-    <string name="setup_theme_dark_description">Tampilan gelap Material 3 default untuk PixelPlayer.</string>
+    <string name="setup_theme_dark_description">Tampilan gelap Material 3 default untuk XiangsuPlayer.</string>
     <string name="setup_theme_light_title">Terang</string>
     <string name="setup_theme_light_description">Tampilan Material 3 yang lebih cerah di seluruh aplikasi.</string>
     <string name="setup_theme_follow_title">Ikuti sistem</string>
@@ -120,7 +120,7 @@
     <string name="setup_compact_mode_tab_hint">Menggunakan baris tab standar</string>
     <string name="setup_preview_songs_label">Lagu</string>
     <string name="setup_battery_optimization_title">Optimalisasi Baterai</string>
-    <string name="setup_battery_optimization_description">Beberapa perangkat Android secara agresif mematikan aplikasi latar belakang. Nonaktifkan optimalisasi baterai untuk PixelPlayer untuk mencegah gangguan pemutaran yang tidak terduga.</string>
+    <string name="setup_battery_optimization_description">Beberapa perangkat Android secara agresif mematikan aplikasi latar belakang. Nonaktifkan optimalisasi baterai untuk XiangsuPlayer untuk mencegah gangguan pemutaran yang tidak terduga.</string>
     <string name="setup_disable_battery_optimization">Nonaktifkan Optimalisasi</string>
     <string name="setup_nav_floating_pill_description">Pil melayang dengan sudut membulat</string>
     <string name="setup_nav_full_width_description">Bilah lebar penuh standar</string>
@@ -131,7 +131,7 @@
 
     <!-- Home / detail shared -->
     <string name="home_your_mix_title">Your\nMix</string>
-    <string name="home_empty_placeholder_subtitle">Mix Anda akan muncul di sini saat PixelPlayer menemukan lagu atau menyinkronkan sumber.</string>
+    <string name="home_empty_placeholder_subtitle">Mix Anda akan muncul di sini saat XiangsuPlayer menemukan lagu atau menyinkronkan sumber.</string>
     <string name="home_empty_placeholder_refresh">Refresh</string>
     <string name="cd_shuffle_play">Putar Acak</string>
     <string name="cd_album_art_for_title">Sampul album untuk %1$s</string>
@@ -153,7 +153,7 @@
     <string name="crash_report_stack_preview_label">Stack trace (pratinjau):</string>
     <string name="crash_report_clipboard_label">Log crash</string>
     <string name="toast_crash_log_copied">Log crash disalin ke papan klip</string>
-    <string name="crash_report_share_subject">Laporan crash PixelPlayer</string>
+    <string name="crash_report_share_subject">Laporan crash XiangsuPlayer</string>
     <string name="crash_report_share_chooser">Bagikan laporan crash</string>
     <string name="action_copy">Salin</string>
     <string name="action_share">Bagikan</string>
@@ -178,13 +178,13 @@
 
     <!-- About -->
     <string name="about_no_contributors">Tidak ditemukan kontributor saat ini. Silakan coba lagi nanti.</string>
-    <string name="about_app_name">PixelPlayer</string>
+    <string name="about_app_name">XiangsuPlayer</string>
     <string name="about_tagline">Pemutar musik open source yang dibangun bersama komunitasnya.</string>
     <string name="about_version_format">Versi v%1$s</string>
     <string name="about_contributions_format">%1$d kontrib.</string>
     <string name="screen_about">Tentang</string>
     <string name="about_maintainer_title">Pemelihara</string>
-    <string name="about_maintainer_subtitle">Orang di balik PixelPlayer.</string>
+    <string name="about_maintainer_subtitle">Orang di balik XiangsuPlayer.</string>
     <string name="about_spotlight_title">Sorotan komunitas</string>
     <string name="about_spotlight_subtitle">Penghargaan untuk kolaborator dengan dampak besar.</string>
     <string name="about_contributors_section_title">Kontributor open source</string>

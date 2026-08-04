@@ -12,6 +12,20 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
+enum class UsbOutputBitDepth(val bits: Int, val bytesPerSample: Int) {
+    BITS_16(16, 2),
+    BITS_24(24, 3),
+    BITS_32(32, 4);
+
+    companion object {
+        fun fromBits(bits: Int): UsbOutputBitDepth = when (bits) {
+            24 -> BITS_24
+            32 -> BITS_32
+            else -> BITS_16
+        }
+    }
+}
+
 @Singleton
 class AudioEngineSettings @Inject constructor(
     private val usbDacManager: UsbDacManager
@@ -40,6 +54,13 @@ class AudioEngineSettings @Inject constructor(
     private val _currentUsbDeviceName = MutableStateFlow<String?>(null)
     private val _selectedUsbDevice = MutableStateFlow<UsbDeviceInfo?>(null)
 
+    // AAudio 低延迟后端：Android O 及以上 Media3 DefaultAudioSink 默认优先使用 AAudio，
+    // 此开关用于向 UI 暴露当前状态，并在必要时退回到 AudioTrack 兼容路径。
+    private val _aaudioEnabled = MutableStateFlow(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+
+    // USB 独占输出位深：16/24/32-bit
+    private val _usbOutputBitDepth = MutableStateFlow(UsbOutputBitDepth.BITS_32)
+
     val replayGainEnabled: StateFlow<Boolean> = _replayGainEnabled.asStateFlow()
     val replayGainUseAlbumGain: StateFlow<Boolean> = _replayGainUseAlbumGain.asStateFlow()
     val replayGainPreamp: StateFlow<Float> = _replayGainPreamp.asStateFlow()
@@ -62,6 +83,8 @@ class AudioEngineSettings @Inject constructor(
 
     val usbExclusiveModeEnabled: StateFlow<Boolean> = _usbExclusiveModeEnabled.asStateFlow()
     val currentUsbDeviceName: StateFlow<String?> = _currentUsbDeviceName.asStateFlow()
+    val aaudioEnabled: StateFlow<Boolean> = _aaudioEnabled.asStateFlow()
+    val usbOutputBitDepth: StateFlow<UsbOutputBitDepth> = _usbOutputBitDepth.asStateFlow()
 
     fun setReplayGainEnabled(enabled: Boolean) {
         _replayGainEnabled.value = enabled
@@ -155,5 +178,21 @@ class AudioEngineSettings @Inject constructor(
 
     fun getSelectedUsbDevice(): UsbDeviceInfo? {
         return _selectedUsbDevice.value
+    }
+
+    fun setAaudioEnabled(enabled: Boolean) {
+        _aaudioEnabled.value = if (enabled) {
+            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+        } else {
+            false
+        }
+    }
+
+    fun setUsbOutputBitDepth(bits: Int) {
+        _usbOutputBitDepth.value = UsbOutputBitDepth.fromBits(bits)
+    }
+
+    fun setUsbOutputBitDepthEnum(depth: UsbOutputBitDepth) {
+        _usbOutputBitDepth.value = depth
     }
 }

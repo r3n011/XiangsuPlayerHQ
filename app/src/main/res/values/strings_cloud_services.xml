@@ -170,7 +170,7 @@
     <string name="auth_gdrive_connect_subtitle">Stream music files directly from your Google Drive</string>
     <string name="auth_gdrive_connect_title">Connect Google Drive</string>
     <string name="auth_gdrive_connected_toast">Google Drive connected!</string>
-    <string name="auth_gdrive_create_action">Create \"PixelPlayer Music\"</string>
+    <string name="auth_gdrive_create_action">Create \"XiangsuPlayer Music\"</string>
     <string name="auth_gdrive_create_subtitle">Create a new folder here for your music</string>
     <string name="auth_gdrive_empty_msg">No folders here</string>
     <string name="auth_gdrive_open_cd">Open folder</string>
@@ -204,7 +204,7 @@
     <string name="auth_netease_http_error">HTTP %1$d while loading NetEase.</string>
     <string name="auth_netease_incomplete_error">Login not detected yet. Complete NetEase login before pressing Done.</string>
     <string name="auth_netease_login_title">Login to NetEase Music</string>
-    <string name="auth_netease_security_msg">Security note: your password is entered only in NetEase web pages. PixelPlayer stores session cookies (MUSIC_U) to sync your library.</string>
+    <string name="auth_netease_security_msg">Security note: your password is entered only in NetEase web pages. XiangsuPlayer stores session cookies (MUSIC_U) to sync your library.</string>
     <string name="auth_netease_title">NetEase Music</string>
 
     <!-- QQ Music Web Login -->
@@ -213,6 +213,6 @@
     <string name="auth_qq_http_error">HTTP %1$d while loading QQ Music.</string>
     <string name="auth_qq_incomplete_error">Login not detected yet. Complete QQ Music login before pressing Done.</string>
     <string name="auth_qq_login_title">Login to QQ Music</string>
-    <string name="auth_qq_security_msg">Security note: your password is entered only in QQ Music web pages. PixelPlayer stores session cookies to sync your library.</string>
+    <string name="auth_qq_security_msg">Security note: your password is entered only in QQ Music web pages. XiangsuPlayer stores session cookies to sync your library.</string>
     <string name="auth_qq_title">QQ Music</string>
 </resources>

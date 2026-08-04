@@ -582,6 +582,129 @@ class SongMetadataEditor(
         }
     }
 
+    /**
+     * 为下载的音频文件写入基础标签（标题/歌手/专辑/歌词/封面）。
+     * 与 [editSongMetadata] 不同，此方法不需要 MediaStore id 与写权限申请，
+     * 直接操作文件路径，用于下载完成后自动补全元数据（下载文件还未入库）。
+     * @param filePath 音频文件绝对路径
+     * @return 是否写入成功
+     */
+    suspend fun writeDownloadedFileTags(
+        filePath: String,
+        title: String,
+        artist: String,
+        album: String,
+        albumArtist: String? = null,
+        lyrics: String? = null,
+        coverArtUpdate: CoverArtUpdate? = null
+    ): Boolean = withContext(Dispatchers.IO) {
+        val file = File(filePath)
+        if (!file.exists()) {
+            Timber.tag(TAG).w("writeDownloadedFileTags: file not found: $filePath")
+            return@withContext false
+        }
+        try {
+            val extension = file.extension.lowercase(Locale.ROOT)
+            val detected = detectContainerFormat(filePath)
+            val effectiveExt = if (detected != DetectedContainer.UNKNOWN) detected.canonicalExtension else extension
+            val isHighResFlac = detected == DetectedContainer.FLAC &&
+                isProblematicFlacFile(filePath) is FlacAnalysisResult.Problematic
+            val useVorbisJavaPrimary = effectiveExt == "opus"
+            val useJAudioTaggerPrimary = effectiveExt in setOf("wav", "ogg") || isHighResFlac
+
+            val runPipeline: (String) -> Boolean = { path ->
+                if (useVorbisJavaPrimary) {
+                    updateFileMetadataWithVorbisJava(
+                        filePath = path,
+                        newTitle = title,
+                        newArtist = artist,
+                        newAlbum = album,
+                        newAlbumArtist = albumArtist,
+                        newComposer = null,
+                        newGenre = "",
+                        newLyrics = lyrics ?: "",
+                        newTrackNumber = 0,
+                        newDiscNumber = null,
+                        coverArtUpdate = coverArtUpdate
+                    )
+                } else if (useJAudioTaggerPrimary) {
+                    updateFileMetadataWithJAudioTagger(
+                        filePath = path,
+                        newTitle = title,
+                        newArtist = artist,
+                        newAlbum = album,
+                        newAlbumArtist = albumArtist,
+                        newComposer = null,
+                        newGenre = "",
+                        newLyrics = lyrics ?: "",
+                        newTrackNumber = 0,
+                        newDiscNumber = null,
+                        coverArtUpdate = coverArtUpdate
+                    )
+                } else {
+                    val tagLibSuccess = updateFileMetadataWithTagLib(
+                        filePath = path,
+                        newTitle = title,
+                        newArtist = artist,
+                        newAlbum = album,
+                        newAlbumArtist = albumArtist,
+                        newComposer = null,
+                        newGenre = "",
+                        newLyrics = lyrics ?: "",
+                        newTrackNumber = 0,
+                        newDiscNumber = null,
+                        coverArtUpdate = coverArtUpdate
+                    )
+                    if (!tagLibSuccess) {
+                        updateFileMetadataWithJAudioTagger(
+                            filePath = path,
+                            newTitle = title,
+                            newArtist = artist,
+                            newAlbum = album,
+                            newAlbumArtist = albumArtist,
+                            newComposer = null,
+                            newGenre = "",
+                            newLyrics = lyrics ?: "",
+                            newTrackNumber = 0,
+                            newDiscNumber = null,
+                            coverArtUpdate = coverArtUpdate
+                        )
+                    } else true
+                }
+            }
+
+            // 通过临时文件写入后复制回原文件，避免直接修改下载中的文件
+            val tempFile = File(
+                context.cacheDir,
+                "download_tags_${System.nanoTime()}.$effectiveExt"
+            )
+            try {
+                file.inputStream().use { input ->
+                    FileOutputStream(tempFile).use { out -> input.copyTo(out) }
+                }
+                val writeOk = runPipeline(tempFile.absolutePath)
+                if (writeOk) {
+                    file.inputStream().use { input ->
+                        FileOutputStream(file, false).use { out ->
+                            input.copyTo(out)
+                            out.fd.sync()
+                        }
+                    }
+                    Timber.tag(TAG).d("writeDownloadedFileTags: SUCCESS - $filePath")
+                    true
+                } else {
+                    Timber.tag(TAG).w("writeDownloadedFileTags: tag write failed - $filePath")
+                    false
+                }
+            } finally {
+                tempFile.delete()
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "writeDownloadedFileTags failed: $filePath")
+            false
+        }
+    }
+
 
     /**
      * FLAC files with high sample rates (>96kHz) or bit depths (>24bit) can cause issues with TagLib.

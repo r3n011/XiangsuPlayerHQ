@@ -423,9 +423,9 @@
         name="setcat_trigger_crash_subtitle"
     >Simular un fallo para probar el informe de errores.</string>
     <string name="setcat_application">Aplicación</string>
-    <string name="setcat_about_pixelplayer_title">Acerca de PixelPlayer</string>
+    <string name="setcat_about_xiangsuplayer_title">Acerca de XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >Versión, créditos y más.</string>
 
     <string name="backup_summary_none">Ninguna sección seleccionada.</string>
@@ -522,7 +522,7 @@
     <string
         name="toast_stats_regeneration_started"
     >Regeneración de estadísticas iniciada</string>
-    <string name="backup_file_name_format">PixelPlayer_Copia_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Copia_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"

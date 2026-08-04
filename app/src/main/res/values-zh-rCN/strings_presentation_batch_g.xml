@@ -154,7 +154,7 @@
     <string name="device_capabilities_report_copy">复制</string>
     <string name="device_capabilities_report_share">分享</string>
     <string name="device_capabilities_report_copied">报告已复制到剪贴板</string>
-    <string name="device_capabilities_report_share_title">PixelPlayer 性能报告</string>
+    <string name="device_capabilities_report_share_title">XiangsuPlayer 性能报告</string>
     <string name="device_capabilities_advanced_diagnostics_title">高级性能诊断</string>
     <string name="device_capabilities_advanced_diagnostics_description">默认关闭。记录简短的卡顿时间线，供测试版排查问题使用。</string>
     <string name="device_capabilities_advanced_diagnostics_expires">有效期至 %1$s</string>
@@ -195,7 +195,7 @@
     <string name="presentation_batch_g_artist_group_by_album_artist">按专辑艺术家分组</string>
     <string name="presentation_batch_g_artist_group_by_album_artist_sub">将合作专辑显示在主艺术家名下</string>
     <string name="presentation_batch_g_artist_info_title">关于多艺术家解析</string>
-    <string name="presentation_batch_g_artist_info_body">PixelPlayer 会使用字符分隔符（/、;、&amp;）和单词分隔符（feat.、ft.、vs.、x）拆分艺术家标签。单词分隔符匹配时不区分大小写。
+    <string name="presentation_batch_g_artist_info_body">XiangsuPlayer 会使用字符分隔符（/、;、&amp;）和单词分隔符（feat.、ft.、vs.、x）拆分艺术家标签。单词分隔符匹配时不区分大小写。
 
 「从标题提取艺术家」会检测歌曲标题中类似（feat. Artist）的模式。
 
@@ -280,9 +280,9 @@
     <string name="presentation_batch_g_playstore_open">打开 Play 商店</string>
     <string name="presentation_batch_g_playstore_continue_beta">继续使用测试版</string>
     <string name="presentation_batch_g_playstore_link_pending">Play 商店链接将通过 GitHub 配置启用。</string>
-    <string name="presentation_batch_g_playstore_title">PixelPlayer 现已上架 Google Play</string>
+    <string name="presentation_batch_g_playstore_title">XiangsuPlayer 现已上架 Google Play</string>
     <string name="presentation_batch_g_playstore_body">你可以在 Google Play 的稳定渠道获取正式版更新，同时我们仍会继续提供测试版构建。</string>
-    <string name="presentation_batch_g_playstore_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_playstore_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_playstore_release_announcement">发布公告</string>
     <string name="presentation_batch_g_playstore_coming_soon">即将推出</string>
     <string name="presentation_batch_g_genre_sort_title">排序与播放</string>
@@ -301,7 +301,7 @@
     <string name="presentation_batch_g_presets_cd_rename">重命名</string>
     <string name="presentation_batch_g_presets_cd_delete">删除</string>
     <string name="presentation_batch_g_beta_sheet_version">测试版 0.6.0</string>
-    <string name="presentation_batch_g_beta_sheet_welcome_title">欢迎使用 PixelPlayer 0.6.0-beta</string>
+    <string name="presentation_batch_g_beta_sheet_welcome_title">欢迎使用 XiangsuPlayer 0.6.0-beta</string>
     <string name="presentation_batch_g_beta_sheet_welcome_body">这个测试版现已聚焦于稳定性、性能和跨设备播放，同时带来多项重要的新集成。</string>
     <string name="presentation_batch_g_beta_sheet_expect_title">你可以期待什么</string>
     <string name="presentation_batch_g_beta_sheet_expect_1">日常使用更快：应用启动、导航和播放器交互都更加流畅。</string>
@@ -318,7 +318,7 @@
     <string name="presentation_batch_g_beta_sheet_report_summary">开启新议题前的快速检查清单。</string>
     <string name="presentation_batch_g_beta_sheet_before_title">开启一个新的议题前</string>
     <string name="presentation_batch_g_beta_sheet_before_1">搜索现有已开启或已关闭的议题，避免重复提交。</string>
-    <string name="presentation_batch_g_beta_sheet_before_2">更新至最新版 PixelPlayer 然后确认问题是否依然存在。</string>
+    <string name="presentation_batch_g_beta_sheet_before_2">更新至最新版 XiangsuPlayer 然后确认问题是否依然存在。</string>
     <string name="presentation_batch_g_beta_sheet_before_3">重启应用然后确认问题是否依然存在。</string>
     <string name="presentation_batch_g_beta_sheet_before_4">试着复现问题并记录准确的复现步骤。</string>
     <string name="presentation_batch_g_beta_sheet_issue_type_title">哪种议题类型？</string>
@@ -336,7 +336,7 @@
     <string name="presentation_batch_g_beta_sheet_bug_screenshot">截图或录屏：如果可用。</string>
     <string name="presentation_batch_g_beta_sheet_bug_logs">日志或堆栈跟踪：如果可用。</string>
     <string name="presentation_batch_g_beta_sheet_env_title">环境</string>
-    <string name="presentation_batch_g_beta_sheet_env_version">PixelPlayer 版本：</string>
+    <string name="presentation_batch_g_beta_sheet_env_version">XiangsuPlayer 版本：</string>
     <string name="presentation_batch_g_beta_sheet_env_source">安装来源：GitHub 发行版、debug 构建版、每夜测试版等。</string>
     <string name="presentation_batch_g_beta_sheet_env_android">Android 系统版本：</string>
     <string name="presentation_batch_g_beta_sheet_env_device">设备型号：</string>
@@ -378,7 +378,7 @@
     <string name="presentation_batch_g_album_sel_queue_hint">加入队列并播放会遵循你的选择顺序。</string>
     <string name="presentation_batch_g_album_sel_limit">限制：每次最多选择 %1$d 张专辑。</string>
     <string name="presentation_batch_g_album_sel_add_queue_play">加入队列并播放</string>
-    <string name="presentation_batch_g_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_app_tagline">音乐播放器</string>
     <string name="presentation_batch_g_brick_high">最高 %1$d</string>
     <string name="presentation_batch_g_brick_cd_close">关闭</string>
@@ -428,7 +428,7 @@
     <string name="presentation_batch_g_cast_playing">播放中</string>
     <string name="presentation_batch_g_cast_paused">已暂停</string>
     <string name="presentation_batch_g_cast_perm_title">准备连接</string>
-    <string name="presentation_batch_g_cast_perm_body">允许 PixelPlayer 查看附近设备和当前 Wi‑Fi，以便让投放、蓝牙音频和扬声器保持同步。</string>
+    <string name="presentation_batch_g_cast_perm_body">允许 XiangsuPlayer 查看附近设备和当前 Wi‑Fi，以便让投放、蓝牙音频和扬声器保持同步。</string>
     <string name="presentation_batch_g_cast_perm_nearby_title">附近设备</string>
     <string name="presentation_batch_g_cast_perm_nearby_desc">用于读取并控制已连接的蓝牙音频设备。</string>
     <string name="presentation_batch_g_cast_perm_location_title">用于 Wi‑Fi 的位置信息</string>

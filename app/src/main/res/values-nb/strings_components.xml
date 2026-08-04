@@ -110,7 +110,7 @@
     <string name="song_info_set_ringtone">Bruk som ringetone</string>
     <string name="cd_set_song_as_ringtone">Bruk sang som ringetone</string>
     <string name="song_info_tone_picker_title">Bruk denne sangen som</string>
-    <string name="song_info_tone_picker_body">Velg hvor PixelPlayer skal installere denne lyden.</string>
+    <string name="song_info_tone_picker_body">Velg hvor XiangsuPlayer skal installere denne lyden.</string>
     <string name="song_info_tone_ringtone_title">Ringetone</string>
     <string name="song_info_tone_ringtone_subtitle">Innkommende anrop</string>
     <string name="song_info_tone_notification_title">Varsellyd</string>
@@ -124,7 +124,7 @@
     <string name="song_info_tone_ringtone_label">ringetone</string>
     <string name="song_info_tone_notification_label">varsellyd</string>
     <string name="song_info_tone_alarm_label">alarmlyd</string>
-    <string name="song_info_ringtone_permission_prompt">Aktiver Endre systeminnstillinger, og gå tilbake til PixelPlayer for å fullføre automatisk.</string>
+    <string name="song_info_ringtone_permission_prompt">Aktiver Endre systeminnstillinger, og gå tilbake til XiangsuPlayer for å fullføre automatisk.</string>
     <string name="song_info_ringtone_permission_missing">Endre systeminnstillinger ble ikke aktivert.</string>
     <string name="song_info_ringtone_success">\"%1$s\" er brukt som ringetone</string>
     <string name="song_info_ringtone_local_only">Bare lokale sanger kan brukes som systemlyder.</string>

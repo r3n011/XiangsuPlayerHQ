@@ -1,20 +1,27 @@
 package com.theveloper.pixelplay.data.service.http
 
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
 import androidx.documentfile.provider.DocumentFile
-import com.theveloper.pixelplay.data.netease.NeteaseRepository
-import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
-import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
-import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.media.CoverArtUpdate
+import com.theveloper.pixelplay.data.media.SongMetadataEditor
+import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
+import com.theveloper.pixelplay.data.netease.NeteaseRepository
+import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
+import com.theveloper.pixelplay.data.repository.LyricsRepository
+import com.theveloper.pixelplay.utils.LyricsUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,7 +39,9 @@ class MusicDownloadService @Inject constructor(
     private val neteaseRepository: javax.inject.Provider<NeteaseRepository>,
     private val qqMusicRepository: javax.inject.Provider<QqMusicRepository>,
     private val navidromeRepository: javax.inject.Provider<NavidromeRepository>,
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val songMetadataEditor: SongMetadataEditor,
+    private val lyricsRepository: LyricsRepository
 ) {
 
     data class DownloadInfo(
@@ -85,6 +94,9 @@ class MusicDownloadService @Inject constructor(
 
             if (result) {
                 updateDownloadStatus(songId, song.title, song.displayArtist, 100f, true, false, outputPath)
+                // 下载完成后自动补全元数据：写音频标签（标题/歌手/专辑/封面/歌词）、
+                // 生成同目录 .lrc 歌词文件并刷新 MediaStore
+                enrichDownloadedFile(song, outputPath)
                 outputPath
             } else {
                 updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, true, null)
@@ -100,7 +112,13 @@ class MusicDownloadService @Inject constructor(
     private suspend fun getStreamUrl(song: Song): String? {
         return when {
             song.neteaseId != null -> {
-                neteaseRepository.get().getSongUrl(song.neteaseId).getOrNull()
+                // 使用用户设置的首选音质（无损耗 FLAC 等），API 内部失败会自动回退
+                val quality = try {
+                    userPreferencesRepository.musicQualityFlow.first().neteaseLevel
+                } catch (_: Exception) {
+                    "exhigh"
+                }
+                neteaseRepository.get().getSongUrl(song.neteaseId, quality).getOrNull()
             }
             song.qqMusicMid != null -> {
                 qqMusicRepository.get().getSongUrl(song.qqMusicMid).getOrNull()
@@ -209,6 +227,115 @@ class MusicDownloadService @Inject constructor(
 
     fun removeDownload(songId: String) {
         _downloads.value = _downloads.value.filterNot { it.songId == songId }
+    }
+
+    /**
+     * 下载完成后自动补全元数据：
+     * 1. 从在线封面 URL 下载封面图
+     * 2. 从 LyricsRepository 获取歌词（网易云/LRCLIB/AMLLDB）
+     * 3. 把标题/歌手/专辑/歌词/封面写入音频文件标签
+     * 4. 在音频文件同目录生成 .lrc 歌词文件
+     * 5. 刷新 MediaStore 让系统收录下载的文件
+     * 任何一步失败都不会影响下载本身，仅记录日志。
+     */
+    private suspend fun enrichDownloadedFile(song: Song, outputPath: String) {
+        try {
+            // 1. 下载封面（仅远程 URL）
+            val coverArt = song.albumArtUriString
+                ?.takeIf {
+                    it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true)
+                }
+                ?.let { downloadCoverArt(it) }
+
+            // 2. 获取歌词
+            var lrcText: String? = null
+            try {
+                val lyrics = lyricsRepository.getLyrics(
+                    song,
+                    sourcePreference = LyricsSourcePreference.API_FIRST,
+                    forceRefresh = true
+                )
+                if (lyrics != null) {
+                    val text = LyricsUtils.toLrcString(lyrics)
+                    if (text.isNotBlank()) lrcText = text
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "MusicDownloadService: 歌词获取失败 songId=${song.id}")
+            }
+
+            // 3. 写音频标签（SAF content:// 路径无法直接改文件，跳过）
+            if (!outputPath.startsWith("content://")) {
+                val ok = songMetadataEditor.writeDownloadedFileTags(
+                    filePath = outputPath,
+                    title = song.title,
+                    artist = song.displayArtist,
+                    album = song.album,
+                    albumArtist = song.albumArtist,
+                    lyrics = lrcText,
+                    coverArtUpdate = coverArt
+                )
+                Timber.d("MusicDownloadService: 元数据补全 ${if (ok) "成功" else "失败"} songId=${song.id}")
+            } else {
+                Timber.d("MusicDownloadService: SAF 路径跳过标签写入 songId=${song.id}")
+            }
+
+            // 4. 写 .lrc 歌词文件
+            if (lrcText != null) {
+                writeLrcFile(outputPath, lrcText)
+            }
+
+            // 5. 刷新 MediaStore 让系统识别新下载的文件
+            if (!outputPath.startsWith("content://")) {
+                MediaScannerConnection.scanFile(context, arrayOf(outputPath), null, null)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "MusicDownloadService: enrichDownloadedFile failed songId=${song.id}")
+        }
+    }
+
+    private suspend fun downloadCoverArt(url: String): CoverArtUpdate? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0")
+                .get()
+                .build()
+            okHttpClient.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    Timber.w("MusicDownloadService: 封面下载 HTTP ${resp.code}")
+                    return@use null
+                }
+                val body = resp.body ?: return@use null
+                val mime = body.contentType()?.toString() ?: "image/jpeg"
+                val bytes = body.bytes()
+                if (bytes.isEmpty()) null else CoverArtUpdate(bytes = bytes, mimeType = mime)
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "MusicDownloadService: 封面下载失败 $url")
+            null
+        }
+    }
+
+    private suspend fun writeLrcFile(audioPath: String, lrcContent: String) {
+        try {
+            if (audioPath.startsWith("content://")) {
+                // SAF 目录：在父目录创建同名 .lrc
+                val parentDoc = DocumentFile.fromSingleUri(context, Uri.parse(audioPath))?.parentFile
+                val lrcName = audioPath.substringAfterLast('/').substringBeforeLast('.') + ".lrc"
+                if (parentDoc != null) {
+                    parentDoc.createFile("text/x-lrc", lrcName)?.let { doc ->
+                        context.contentResolver.openOutputStream(doc.uri)?.use { out ->
+                            out.write(lrcContent.toByteArray(Charsets.UTF_8))
+                        }
+                    }
+                }
+            } else {
+                val lrcFile = File(audioPath.substringBeforeLast('.') + ".lrc")
+                lrcFile.writeText(lrcContent, Charsets.UTF_8)
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "MusicDownloadService: .lrc 写入失败 $audioPath")
+        }
     }
 
     private fun sanitizeFileName(name: String): String {

@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">PixelPlayer</string>
+    <string name="app_name">XiangsuPlayer</string>
     <string name="app_name_change_title">Uygulama Adı Değişikliği</string>
-    <string name="app_name_change_message">Ticari marka kaynaklı bir sorun nedeniyle uygulamamızın adını PixelPlay\'den PixelPlayer olarak değiştirdik. Keyifli dinlemeler!</string>
+    <string name="app_name_change_message">Ticari marka kaynaklı bir sorun nedeniyle uygulamamızın adını PixelPlay\'den XiangsuPlayer olarak değiştirdik. Keyifli dinlemeler!</string>
     <string name="do_not_show_again">Bir daha gösterme</string>
     <string name="dismiss">Kapat</string>
     <string name="all_files_access_title">Özel İzin Gerekiyor</string>
-    <string name="all_files_access_description">Şarkı meta verilerini (.mp3 dosyalarını) düzenlemek için PixelPlayer\'ın tüm dosyalara özel erişim sağlaması gerekir. Bu, parça etiketlerini doğrudan değiştirmemize olanak tanır. Meta veri düzenlemeyi etkinleştirmek için lütfen sonraki ekranda bu izni verin.</string>
+    <string name="all_files_access_description">Şarkı meta verilerini (.mp3 dosyalarını) düzenlemek için XiangsuPlayer\'ın tüm dosyalara özel erişim sağlaması gerekir. Bu, parça etiketlerini doğrudan değiştirmemize olanak tanır. Meta veri düzenlemeyi etkinleştirmek için lütfen sonraki ekranda bu izni verin.</string>
     <string name="grant_permission_button">İzin Ver</string>
     <string name="all_files_access_setting">Tüm Dosyalara Erişim</string>
     <string name="error">Hata</string>
@@ -86,7 +86,7 @@
     <string name="ai_error_api_key">Lütfen seçilen Yapay Zeka sağlayıcısı için Ayarlar\'da geçerli bir API anahtarı yapılandırın.</string>
     <string name="ai_error_generic">YZ Hatası: %s</string>
     <string name="ai_error_quota">Seçilen YZ sağlayıcısı, hesapta kredi veya kullanılabilir kota bulunmadığı için isteği reddetti.</string>
-    <string name="ai_error_model_unavailable">Seçilen YZ modeli artık kullanılabilir değil. PixelPlayer otomatik olarak desteklenen bir modele geçiş yapmayı denedi.</string>
+    <string name="ai_error_model_unavailable">Seçilen YZ modeli artık kullanılabilir değil. XiangsuPlayer otomatik olarak desteklenen bir modele geçiş yapmayı denedi.</string>
     <string name="ai_no_songs_found">YZ, komutunuz için herhangi bir şarkı bulamadı.</string>
     <string name="ai_prompt_empty">Günlük Miksiniz için bir fikir yazın</string>
     <string name="ai_daily_mix_updated">Günlük Miks YZ ile güncellendi</string>
@@ -131,7 +131,7 @@
     <string name="playlist_share_failed">Paylaşım başarısız oldu: %1$s</string>
     <string name="playlist_none_to_export">Dışa aktarılacak çalma listesi yok</string>
     <string name="playlist_export_failed">Dışa aktarma başarısız oldu: %1$s</string>
-    <string name="playlist_export_folder_display">Müzik/PixelPlayer Aktarımları</string>
+    <string name="playlist_export_folder_display">Müzik/XiangsuPlayer Aktarımları</string>
     <string name="ai_playlist_gemini_key_required">Lütfen Ayarlar\'da Gemini API anahtarınızı yapılandırın.</string>
     <string name="error_unknown">Bilinmeyen hata</string>
 

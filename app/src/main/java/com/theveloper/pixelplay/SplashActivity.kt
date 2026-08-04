@@ -63,7 +63,7 @@ class SplashActivity : AppCompatActivity() {
             }
 
             val title = TextView(this).apply {
-                text = "PixelPlayer"
+                text = "XiangsuPlayer"
                 setTextColor(foregroundColor)
                 textSize = 32f
                 typeface = Typeface.SANS_SERIF

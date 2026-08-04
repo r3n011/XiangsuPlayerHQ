@@ -4,7 +4,7 @@
     <string
         name="nav_error_genre_id_missing"
     >Erreur : ID de genre manquant</string>
-    <string name="easter_egg_thank_you">Merci d\'utiliser PixelPlayer !</string>
+    <string name="easter_egg_thank_you">Merci d\'utiliser XiangsuPlayer !</string>
 
     <!-- Word delimiter config -->
     <string
@@ -176,7 +176,7 @@
     <string name="setup_permission_media_title">Autorisation média</string>
     <string
         name="setup_permission_media_description"
-    >PixelPlayer a besoin d\'accéder à vos fichiers audio pour construire votre bibliothèque musicale.</string>
+    >XiangsuPlayer a besoin d\'accéder à vos fichiers audio pour construire votre bibliothèque musicale.</string>
     <string name="setup_permission_granted">Autorisation accordée</string>
     <string
         name="setup_grant_media_permission"
@@ -189,21 +189,21 @@
     <string name="setup_permission_alarms_title">Alarmes et rappels</string>
     <string
         name="setup_permission_alarms_description"
-    >Facultatif, mais recommandé si vous utilisez le Minuteur de veille et que vous voulez que PixelPlayer arrête la lecture exactement à l\'heure.</string>
+    >Facultatif, mais recommandé si vous utilisez le Minuteur de veille et que vous voulez que XiangsuPlayer arrête la lecture exactement à l\'heure.</string>
     <string
         name="setup_grant_permission_generic"
     >Accorder l\'autorisation</string>
     <string name="setup_backup_have_title">Avez-vous une sauvegarde ?</string>
     <string
         name="setup_backup_have_description"
-    >Si vous avez déjà une sauvegarde PixelPlayer, restaurez-la maintenant pour passer la majeure partie de la configuration restante.</string>
+    >Si vous avez déjà une sauvegarde XiangsuPlayer, restaurez-la maintenant pour passer la majeure partie de la configuration restante.</string>
     <string name="setup_inspecting_backup">Inspection de la sauvegarde</string>
     <string name="setup_restoring_backup">Restauration de la sauvegarde</string>
     <string name="setup_import_backup">Importer une sauvegarde</string>
     <string name="setup_theme_dark_title">Sombre</string>
     <string
         name="setup_theme_dark_description"
-    >L\'apparence sombre par défaut de Material 3 pour PixelPlayer.</string>
+    >L\'apparence sombre par défaut de Material 3 pour XiangsuPlayer.</string>
     <string name="setup_theme_light_title">Clair</string>
     <string
         name="setup_theme_light_description"
@@ -224,7 +224,7 @@
     >Optimisation de la batterie</string>
     <string
         name="setup_battery_optimization_description"
-    >Certains appareils Android ferment agressivement les applications en arrière-plan. Désactivez l\'optimisation de la batterie pour PixelPlayer afin d\'éviter les interruptions de lecture inattendues.</string>
+    >Certains appareils Android ferment agressivement les applications en arrière-plan. Désactivez l\'optimisation de la batterie pour XiangsuPlayer afin d\'éviter les interruptions de lecture inattendues.</string>
     <string
         name="setup_disable_battery_optimization"
     >Désactiver l\'optimisation</string>
@@ -273,7 +273,7 @@
     >Journal d\'erreur copié dans le presse-papiers</string>
     <string
         name="crash_report_share_subject"
-    >Rapport d\'erreur PixelPlayer</string>
+    >Rapport d\'erreur XiangsuPlayer</string>
     <string
         name="crash_report_share_chooser"
     >Partager le rapport d\'erreur</string>
@@ -308,7 +308,7 @@
     <string
         name="about_no_contributors"
     >Aucun contributeur trouvé pour le moment. Veuillez réessayer plus tard.</string>
-    <string name="about_app_name">PixelPlayer</string>
+    <string name="about_app_name">XiangsuPlayer</string>
     <string
         name="about_tagline"
     >Lecteur de musique open source construit avec sa communauté.</string>
@@ -318,7 +318,7 @@
     <string name="about_maintainer_title">Mainteneur</string>
     <string
         name="about_maintainer_subtitle"
-    >La personne derrière PixelPlayer.</string>
+    >La personne derrière XiangsuPlayer.</string>
     <string
         name="about_spotlight_title"
     >Coup de projecteur sur la communauté</string>

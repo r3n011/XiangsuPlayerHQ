@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -98,9 +100,12 @@ fun EnhancedSongListItem(
     selectionIndex: Int? = null,
     isSelectionMode: Boolean = false,
     showMoreOptionsButton: Boolean = true,
+    showFavoriteButton: Boolean = false,
+    isFavorite: Boolean = false,
     isRadio: Boolean = false,
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
+    onFavoriteClick: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val albumArtTargetSizePx = with(LocalDensity.current) { albumArtSize.roundToPx() }
@@ -376,7 +381,7 @@ fun EnhancedSongListItem(
                 }
                 
                 val showPlayingIndicator = isCurrentSong && !isSelectionMode
-                val showTrailingAction = showMoreOptionsButton && !isSelectionMode
+                val showTrailingAction = (showMoreOptionsButton || showFavoriteButton) && !isSelectionMode
 
                 if (showPlayingIndicator) {
                      PlayingEqIcon(
@@ -393,21 +398,43 @@ fun EnhancedSongListItem(
                 }
 
                 if (showTrailingAction) {
-                    FilledIconButton(
-                        onClick = { onMoreOptionsClick(song) },
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = mvContentColor,
-                            contentColor = mvContainerColor
-                        ),
-                        modifier = Modifier
-                            .size(36.dp)
-                            .padding(end = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.MoreVert,
-                            contentDescription = stringResource(R.string.presentation_batch_g_list_cd_more_for_title, song.title),
-                            modifier = Modifier.size(24.dp)
-                        )
+                    if (showFavoriteButton) {
+                        FilledIconButton(
+                            onClick = onFavoriteClick,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = mvContentColor,
+                                contentColor = mvContainerColor
+                            ),
+                            modifier = Modifier
+                                .size(36.dp)
+                                .padding(end = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = stringResource(
+                                    if (isFavorite) R.string.radio_unfavorite else R.string.radio_favorite
+                                ),
+                                tint = if (isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    } else {
+                        FilledIconButton(
+                            onClick = { onMoreOptionsClick(song) },
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = mvContentColor,
+                                contentColor = mvContainerColor
+                            ),
+                            modifier = Modifier
+                                .size(36.dp)
+                                .padding(end = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = stringResource(R.string.presentation_batch_g_list_cd_more_for_title, song.title),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }

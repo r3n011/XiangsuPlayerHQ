@@ -110,7 +110,7 @@
     <string name="song_info_set_ringtone">Imposta come suoneria</string>
     <string name="cd_set_song_as_ringtone">Imposta brano come suoneria</string>
     <string name="song_info_tone_picker_title">Usa questo brano come</string>
-    <string name="song_info_tone_picker_body">Scegli dove PixelPlayer deve installare questo suono.</string>
+    <string name="song_info_tone_picker_body">Scegli dove XiangsuPlayer deve installare questo suono.</string>
     <string name="song_info_tone_ringtone_title">Suoneria telefono</string>
     <string name="song_info_tone_ringtone_subtitle">Chiamate in arrivo</string>
     <string name="song_info_tone_notification_title">Suono notifiche</string>
@@ -124,7 +124,7 @@
     <string name="song_info_tone_ringtone_label">suoneria</string>
     <string name="song_info_tone_notification_label">suono notifiche</string>
     <string name="song_info_tone_alarm_label">suono sveglia</string>
-    <string name="song_info_ringtone_permission_prompt">Attiva Modifica impostazioni di sistema, poi torna a PixelPlayer per completare automaticamente.</string>
+    <string name="song_info_ringtone_permission_prompt">Attiva Modifica impostazioni di sistema, poi torna a XiangsuPlayer per completare automaticamente.</string>
     <string name="song_info_ringtone_permission_missing">Modifica impostazioni di sistema non attivata.</string>
     <string name="song_info_ringtone_success">\"%1$s\" impostato come suoneria</string>
     <string name="song_info_ringtone_local_only">Solo i brani locali possono essere usati come suoni di sistema.</string>

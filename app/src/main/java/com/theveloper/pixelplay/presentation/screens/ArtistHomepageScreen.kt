@@ -1,9 +1,10 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +13,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -30,6 +34,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MusicNote
@@ -37,7 +43,10 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
@@ -46,8 +55,13 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,8 +76,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -72,6 +88,7 @@ import androidx.navigation.NavController
 import timber.log.Timber
 import coil.compose.AsyncImage
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHeight
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
@@ -80,10 +97,25 @@ import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 import com.theveloper.pixelplay.presentation.viewmodel.ArtistAlbumSection
 import com.theveloper.pixelplay.presentation.viewmodel.ArtistHomepageViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
+import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemeProcessor
 import com.theveloper.pixelplay.presentation.viewmodel.FavoriteArtistViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.MainActivity
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import dev.chrisbanes.haze.hazeSource
+
+/**
+ * Hilt EntryPoint：获取封面取色处理器（歌手页专辑卡片按各自封面取色）
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ArtistHomepageColorEntryPoint {
+    fun colorSchemeProcessor(): ColorSchemeProcessor
+}
 
 @Composable
 fun ArtistHomepageScreen(
@@ -95,14 +127,25 @@ fun ArtistHomepageScreen(
     viewModel: ArtistHomepageViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     // ⚡ 收藏歌手
     val favoriteArtistViewModel: FavoriteArtistViewModel = hiltViewModel()
     val favoriteArtistIds by favoriteArtistViewModel.favoriteIds.collectAsStateWithLifecycle()
     val isArtistFavorite = favoriteArtistIds.contains(artistId)
 
+    // 封面取色处理器：专辑列表每个卡片从自己的封面取色
+    val context = LocalContext.current
+    val colorSchemeProcessor = remember(context) {
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ArtistHomepageColorEntryPoint::class.java
+        )
+        entryPoint.colorSchemeProcessor()
+    }
+    val albumPaletteStyle by playerViewModel.albumArtPaletteStyle.collectAsStateWithLifecycle()
+
     var showSongInfoSheet by remember { mutableStateOf(false) }
+    var showSongSortSheet by remember { mutableStateOf(false) }
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
 
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -297,9 +340,11 @@ fun ArtistHomepageScreen(
             else -> {
                 LazyColumn(
                     state = lazyListState,
-                    modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeSource(MainActivity.LocalHazeState.current),
                     contentPadding = PaddingValues(bottom = bottomBarHeightDp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 透明 Spacer：留出背景图可见区域
                     item(key = "background_spacer") {
@@ -317,7 +362,16 @@ fun ArtistHomepageScreen(
                             alias = uiState.alias,
                             tags = uiState.tags,
                             songCount = uiState.songCount,
-                            albumCount = uiState.albumCount
+                            albumCount = uiState.albumCount,
+                            isFavorite = isArtistFavorite,
+                            onFavoriteClick = {
+                                favoriteArtistViewModel.toggleFavorite(
+                                    id = artistId,
+                                    name = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                                    avatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
+                                    alias = uiState.alias.joinToString(" / ")
+                                )
+                            }
                         )
                     }
 
@@ -405,84 +459,66 @@ fun ArtistHomepageScreen(
                         }
                     }
 
-                    // ⚡ 收藏歌手按钮
-                    item(key = "favorite_artist_button") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            FilledTonalButton(
-                                onClick = {
-                                    favoriteArtistViewModel.toggleFavorite(
-                                        id = artistId,
-                                        name = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
-                                        avatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
-                                        alias = uiState.alias.joinToString(" / ")
-                                    )
-                                },
-                                shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = if (isArtistFavorite) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    }
-                                ),
-                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isArtistFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                    contentDescription = stringResource(
-                                        if (isArtistFavorite) R.string.cd_unfavorite_artist else R.string.cd_favorite_artist
-                                    ),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text(
-                                    text = if (isArtistFavorite) "已收藏" else "收藏歌手",
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-
-                    // 歌曲 / 专辑 切换标题
+                    // 歌曲 / 专辑 切换标题（模仿媒体库 PrimaryScrollableTabRow）
                     item(key = "songs_albums_tabs") {
+                        val tabs = listOf(
+                            "歌曲" to "songs",
+                            "专辑" to "albums"
+                        )
+                        val selectedTabIndex = remember(uiState.selectedTab) {
+                            tabs.indexOfFirst { it.second == uiState.selectedTab }.coerceAtLeast(0)
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            val tabIcon = if (uiState.selectedTab == "songs") Icons.Rounded.MusicNote else Icons.Rounded.Album
-                            Icon(
-                                imageVector = tabIcon,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.size(8.dp))
-                            // 歌曲 / 专辑 切换按钮
-                            FilterChip(
-                                selected = uiState.selectedTab == "songs",
-                                onClick = { viewModel.selectTab("songs") },
-                                label = {
+                            PrimaryScrollableTabRow(
+                                selectedTabIndex = selectedTabIndex,
+                                containerColor = Color.Transparent,
+                                edgePadding = 0.dp,
+                                indicator = {},
+                                divider = {},
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                tabs.forEachIndexed { index, (label, code) ->
+                                    TabAnimation(
+                                        index = index,
+                                        title = code,
+                                        selectedIndex = selectedTabIndex,
+                                        onClick = { viewModel.selectTab(code) }
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 排序选择（仅在歌曲 tab 时显示，模仿媒体库底部弹窗）
+                            if (uiState.selectedTab == "songs" && (uiState.songs.isNotEmpty() || uiState.isLoading)) {
+                                TextButton(
+                                    onClick = { showSongSortSheet = true },
+                                    modifier = Modifier.height(40.dp)
+                                ) {
                                     Text(
-                                        text = if (uiState.order == "hot") "热门歌曲" else "最新歌曲"
+                                        text = if (uiState.order == "hot") "热门" else "最新",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Medium
                                     )
-                                },
-                                colors = FilterChipDefaults.filterChipColors()
-                            )
-                            Spacer(Modifier.size(6.dp))
-                            FilterChip(
-                                selected = uiState.selectedTab == "albums",
-                                onClick = { viewModel.selectTab("albums") },
-                                label = { Text("专辑") },
-                                colors = FilterChipDefaults.filterChipColors()
-                            )
-                            Spacer(Modifier.size(8.dp))
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
                             Text(
                                 text = if (uiState.selectedTab == "songs")
                                     "${uiState.songs.size}/${uiState.songCount}"
@@ -491,52 +527,32 @@ fun ArtistHomepageScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(Modifier.weight(1f))
-                            // 排序切换（仅在歌曲 tab 时显示）
-                            if (uiState.selectedTab == "songs" && (uiState.songs.isNotEmpty() || uiState.isLoading)) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    FilterChip(
-                                        selected = uiState.order == "hot",
-                                        onClick = { viewModel.changeOrder("hot", playerViewModel.neteaseCookie) },
-                                        label = { Text("热门") },
-                                        colors = FilterChipDefaults.filterChipColors()
-                                    )
-                                    FilterChip(
-                                        selected = uiState.order == "time",
-                                        onClick = { viewModel.changeOrder("time", playerViewModel.neteaseCookie) },
-                                        label = { Text("最新") },
-                                        colors = FilterChipDefaults.filterChipColors()
-                                    )
-                                }
-                            }
                         }
                     }
 
                     // 根据 tab 显示歌曲列表或专辑列表
                     if (uiState.selectedTab == "songs") {
-                        items(uiState.songs, key = { it.id }) { song ->
-                        EnhancedSongListItem(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            song = song,
-                            isCurrentSong = stablePlayerState.currentSong?.id == song.id,
-                            isPlaying = stablePlayerState.currentSong?.id == song.id && stablePlayerState.isPlaying,
-                            onClick = {
-                                playerViewModel.showAndPlaySong(
-                                    song,
-                                    uiState.songs,
-                                    uiState.artistName.ifBlank { "歌手歌曲" },
-                                    isVoluntaryPlay = false
-                                )
-                            },
-                            onMoreOptionsClick = {
-                                playerViewModel.selectSongForInfo(song)
-                                showSongInfoSheet = true
+                        if (uiState.songs.isEmpty() && uiState.isInitialLoading) {
+                            item(key = "songs_loading") {
+                                ArtistHomepageLoadingHint(modifier = Modifier.fillMaxWidth())
                             }
-                        )
-                    }
+                        }
+                        items(uiState.songs, key = { it.id }) { song ->
+                            LibraryPlaybackAwareSongItem(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                song = song,
+                                playerViewModel = playerViewModel,
+                                onMoreOptionsClick = { playerViewModel.selectSongForInfo(song) },
+                                onClick = {
+                                    playerViewModel.showAndPlaySong(
+                                        song,
+                                        uiState.songs,
+                                        uiState.artistName.ifBlank { "歌手歌曲" },
+                                        isVoluntaryPlay = false
+                                    )
+                                }
+                            )
+                        }
 
                     // 加载更多 / 已全部加载
                     item(key = "load_more") {
@@ -585,9 +601,17 @@ fun ArtistHomepageScreen(
                     }
                     
                     if (uiState.selectedTab == "albums") {
+                        if (uiState.albums.isEmpty() && uiState.isInitialLoading) {
+                            item(key = "albums_loading") {
+                                ArtistHomepageLoadingHint(modifier = Modifier.fillMaxWidth())
+                            }
+                        }
                         items(uiState.albums, key = { it.albumId }) { album ->
                             ArtistAlbumCard(
+                                modifier = Modifier.padding(horizontal = 12.dp),
                                 album = album,
+                                colorSchemeProcessor = colorSchemeProcessor,
+                                paletteStyle = albumPaletteStyle,
                                 onClick = {
                                     navController.navigateSafely(
                                         Screen.AlbumDetail.createRoute(album.albumId)
@@ -694,6 +718,64 @@ fun ArtistHomepageScreen(
                     )
                 )
         )
+
+        // 歌曲排序底部弹窗（模仿媒体库排序 sheet）
+        if (showSongSortSheet) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            val sortOptions = listOf("hot" to "热门歌曲", "time" to "最新歌曲")
+            ModalBottomSheet(
+                onDismissRequest = { showSongSortSheet = false },
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "排序方式",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    sortOptions.forEach { (code, label) ->
+                        val isSelected = uiState.order == code
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    viewModel.changeOrder(code, playerViewModel.neteaseCookie)
+                                    showSongSortSheet = false
+                                },
+                            color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
+                                )
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = null
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -707,7 +789,9 @@ private fun ArtistHomepageHeader(
     alias: List<String>,
     tags: List<String>,
     songCount: Int,
-    albumCount: Int
+    albumCount: Int,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -715,53 +799,105 @@ private fun ArtistHomepageHeader(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 头像（圆形）
-        if (artistAvatar.isNotBlank()) {
-            androidx.compose.material3.Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(160.dp)
-            ) {
-                AsyncImage(
-                    model = artistAvatar,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(160.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop,
-                    placeholder = null,
-                    error = null
-                )
-            }
-        } else {
-            androidx.compose.material3.Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(160.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+        // 头像（圆形）+ 右下角收藏按钮
+        Box(contentAlignment = Alignment.BottomEnd) {
+            if (artistAvatar.isNotBlank()) {
+                androidx.compose.material3.Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(160.dp)
                 ) {
-                    Icon(
-                        Icons.Rounded.MusicNote,
+                    AsyncImage(
+                        model = artistAvatar,
                         contentDescription = null,
-                        modifier = Modifier.size(70.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier
+                            .size(160.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        placeholder = null,
+                        error = null
                     )
                 }
+            } else {
+                androidx.compose.material3.Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(160.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            modifier = Modifier.size(70.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            FilledIconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier
+                    .size(44.dp)
+                    .offset(x = 4.dp, y = 4.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = if (isFavorite) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                    contentColor = if (isFavorite) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = stringResource(
+                        if (isFavorite) R.string.cd_unfavorite_artist else R.string.cd_favorite_artist
+                    ),
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // 歌手名
-        Text(
-            text = artistName,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        // 歌手名 + 网易云音乐来源标识
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = artistName,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // 网易云图标：红色圆底 + 白色云朵，标识该歌手来自网易云音乐
+            Box(
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFEC4141)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Cloud,
+                    contentDescription = "网易云音乐",
+                    modifier = Modifier.size(12.dp),
+                    tint = Color.White
+                )
+            }
+        }
 
         // 认证标识（图片标识）
         if (identityImages.isNotEmpty()) {
@@ -851,73 +987,147 @@ private fun ArtistHomepageHeader(
 
 @Composable
 private fun ArtistAlbumCard(
+    modifier: Modifier = Modifier,
     album: com.theveloper.pixelplay.presentation.viewmodel.NeteaseArtistAlbumSection,
+    colorSchemeProcessor: ColorSchemeProcessor,
+    paletteStyle: AlbumArtPaletteStyle,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    val cardCornerRadius = 16.dp
+    val cardShape = RoundedCornerShape(cardCornerRadius)
+    val isDarkTheme = isSystemInDarkTheme()
+
+    // 从该专辑自己的封面异步取色（生成明/暗两套配色）
+    var albumScheme by remember { mutableStateOf<ColorSchemePair?>(null) }
+    LaunchedEffect(album.coverUrl, paletteStyle) {
         if (album.coverUrl.isNotBlank()) {
-            AsyncImage(
-                model = album.coverUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(56.dp)
-            ) {
+            runCatching {
+                colorSchemeProcessor.getOrGenerateColorScheme(album.coverUrl, paletteStyle)
+            }.onSuccess { albumScheme = it }
+                .onFailure { Timber.w(it, "专辑封面取色失败: ${album.coverUrl}") }
+        }
+    }
+    val cardScheme = if (isDarkTheme) albumScheme?.dark else albumScheme?.light
+    // 取色完成前回退到全局主题色，完成后整卡切换为该专辑封面的配色
+    val gradientBaseColor = cardScheme?.primaryContainer ?: MaterialTheme.colorScheme.primaryContainer
+    val onGradientColor = cardScheme?.onPrimaryContainer ?: MaterialTheme.colorScheme.onPrimaryContainer
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(88.dp)
+            .clip(cardShape)
+            .clickable(onClick = onClick),
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = gradientBaseColor.copy(alpha = 0.3f))
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                // LEFT: Album Art
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .fillMaxHeight()
                 ) {
-                    Icon(
-                        Icons.Rounded.Album,
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    if (album.coverUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = album.coverUrl,
+                            contentDescription = album.title,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Album,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Gradient Overlay
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        gradientBaseColor
+                                    )
+                                )
+                            )
                     )
+                }
+
+                // MIDDLE: Solid Background
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(gradientBaseColor)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = album.title,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                            color = onGradientColor,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        val yearText = if (album.year != null) "${album.year}" else ""
+                        val countText = if (album.songCount > 0) "${album.songCount} 首" else ""
+                        val metaText = listOf(yearText, countText)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" · ")
+
+                        if (metaText.isNotBlank()) {
+                            Text(
+                                text = metaText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = onGradientColor.copy(alpha = 0.85f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+}
 
-        Spacer(Modifier.size(12.dp))
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = album.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2
-            )
-
-            val yearText = if (album.year != null) "${album.year}" else ""
-            val countText = if (album.songCount > 0) "${album.songCount} 首" else ""
-            val metaText = listOf(yearText, countText)
-                .filter { it.isNotBlank() }
-                .joinToString(" · ")
-
-            if (metaText.isNotBlank()) {
-                Text(
-                    text = metaText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+/**
+ * 歌手主页数据加载中的提示（首屏异步加载歌曲/专辑期间显示）。
+ */
+@Composable
+private fun ArtistHomepageLoadingHint(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        ContainedLoadingIndicator()
+        Text(
+            text = "加载中…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

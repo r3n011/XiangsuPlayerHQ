@@ -1,6 +1,9 @@
 package com.theveloper.pixelplay.data.lx
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -14,15 +17,62 @@ import javax.inject.Singleton
 class LxSearchApi @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
-    // 网易云官方风格搜索 API（由 btwoa 提供的 NeteaseCloudMusicApi 接口）
-    // https://ncmapi.btwoa.com/search?keywords=关键字&type=1&limit=20&offset=0
-    private val SEARCH_API_BASE = "https://ncmapi.btwoa.com/search"
-
     // vkeys API 获取封面（备用）
     private val COVER_API_BASE = "https://api.vkeys.cn/v2/music/netease"
 
-    // 网易云评论 / 用户详情 / 歌词 API （由 btwoa 提供的接口）
-    private val COMMENT_API_BASE = "https://ncmapi.btwoa.com"
+    // 网易云 API 多代理列表：请求时并行竞速，返回第一个数据正确的结果，
+    // 单个代理超时/失效不会导致整体失败
+    private val NCM_PROXIES = listOf(
+        "https://ncmapi.btwoa.com",
+        "http://www.young1024.com:666",
+        "https://zm.wwoyun.cn",
+        "https://music.mcseekeri.com"
+    )
+
+    /**
+     * 多代理竞速请求：并行请求所有网易云 API 代理，
+     * 返回第一个 HTTP 成功且 code==200 的 JSONObject；全部失败返回 null。
+     */
+    private suspend fun raceGetJson(
+        tag: String,
+        buildUrl: (String) -> String
+    ): JSONObject? = withContext(Dispatchers.IO) {
+        val deferreds = NCM_PROXIES.map { base ->
+            async {
+                try {
+                    val url = buildUrl(base)
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "Mozilla/5.0")
+                        .get()
+                        .build()
+                    okHttpClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            Timber.w("$tag HTTP ${response.code} @ $base")
+                            return@use null
+                        }
+                        val body = response.body?.string()
+                        if (body.isNullOrBlank()) return@use null
+                        val root = JSONObject(body)
+                        if (root.optInt("code", -1) != 200) null else root
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    Timber.w(t, "$tag 请求异常 @ $base")
+                    null
+                }
+            }
+        }
+        var remaining = deferreds
+        while (remaining.isNotEmpty()) {
+            val result = select<JSONObject?> { remaining.forEach { it.onAwait { value -> value } } }
+            if (result != null) return@withContext result
+            remaining = remaining.filterNot { it.isCompleted }
+        }
+        Timber.w("$tag 所有代理请求均失败")
+        null
+    }
 
     /**
      * 使用 btwoa 提供的 NeteaseCloudMusicApi 搜索接口，支持真正的 limit/offset 分页。
@@ -38,22 +88,10 @@ class LxSearchApi @Inject constructor(
             try {
                 val encodedKeyword = URLEncoder.encode(keyword, "UTF-8")
                 val offset = (page - 1) * pageSize
-                val url = "$SEARCH_API_BASE?keywords=$encodedKeyword&type=1&limit=$pageSize&offset=$offset"
-                val request = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "Mozilla/5.0")
-                    .get()
-                    .build()
-
-                val response = okHttpClient.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    Timber.e("搜索API请求失败: ${response.code}")
-                    return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
-                }
-
-                val body = response.body?.string()
-                    ?: return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
-                parseSearchResponse(body, pageSize, offset)
+                val root = raceGetJson(tag = "search") { base ->
+                    "$base/search?keywords=$encodedKeyword&type=1&limit=$pageSize&offset=$offset"
+                } ?: return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+                parseSearchResponse(root.toString(), pageSize, offset)
             } catch (e: Exception) {
                 Timber.e(e, "搜索API请求异常")
                 LxSearchResult(list = emptyList(), isEnd = true, total = 0)
@@ -167,22 +205,9 @@ class LxSearchApi @Inject constructor(
     suspend fun getSongCoverFromDetail(songId: String): String? = withContext(Dispatchers.IO) {
         if (songId.isBlank()) return@withContext null
         try {
-            val url = "$COMMENT_API_BASE/song/detail?ids=$songId"
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0")
-                .get()
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            if (!response.isSuccessful) {
-                Timber.e("获取封面(detail)失败: ${response.code}")
-                return@withContext null
-            }
-
-            val body = response.body?.string() ?: return@withContext null
-            val obj = JSONObject(body)
-            if (obj.optInt("code", -1) != 200) return@withContext null
+            val obj = raceGetJson(tag = "song/detail-cover") { base ->
+                "$base/song/detail?ids=$songId"
+            } ?: return@withContext null
 
             val songs = obj.optJSONArray("songs") ?: return@withContext null
             val song = songs.optJSONObject(0) ?: return@withContext null
@@ -204,19 +229,9 @@ class LxSearchApi @Inject constructor(
         if (songIds.isEmpty()) return@withContext emptyMap()
         try {
             val idsParam = songIds.joinToString(",")
-            val url = "$COMMENT_API_BASE/song/detail?ids=$idsParam"
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0")
-                .get()
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            if (!response.isSuccessful) return@withContext emptyMap()
-
-            val body = response.body?.string() ?: return@withContext emptyMap()
-            val obj = JSONObject(body)
-            if (obj.optInt("code", -1) != 200) return@withContext emptyMap()
+            val obj = raceGetJson(tag = "song/detail-batch") { base ->
+                "$base/song/detail?ids=$idsParam"
+            } ?: return@withContext emptyMap()
 
             val songs = obj.optJSONArray("songs") ?: return@withContext emptyMap()
             val result = HashMap<String, String>(songs.length())
@@ -252,34 +267,10 @@ class LxSearchApi @Inject constructor(
         before: Long? = null
     ): NeteaseCommentResult = withContext(Dispatchers.IO) {        if (songId.isBlank()) return@withContext NeteaseCommentResult()
         try {
-            val urlBuilder = StringBuilder("$COMMENT_API_BASE/comment/music")
-                .append("?id=").append(songId)
-                .append("&limit=").append(limit)
-                .append("&offset=").append(offset)
-            if (before != null && before > 0L) {
-                urlBuilder.append("&before=").append(before)
-            }
-            val url = urlBuilder.toString()
-
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0")
-                .get()
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            if (!response.isSuccessful) {
-                Timber.e("获取评论失败: ${response.code}")
-                return@withContext NeteaseCommentResult()
-            }
-
-            val body = response.body?.string() ?: return@withContext NeteaseCommentResult()
-            val rawObj = JSONObject(body)
-
-            if (rawObj.optInt("code", -1) != 200) {
-                Timber.e("评论接口返回错误: ${rawObj.optString("message")}")
-                return@withContext NeteaseCommentResult()
-            }
+            val beforeParam = if (before != null && before > 0L) "&before=$before" else ""
+            val rawObj = raceGetJson(tag = "comment/music") { base ->
+                "$base/comment/music?id=$songId&limit=$limit&offset=$offset$beforeParam"
+            } ?: return@withContext NeteaseCommentResult()
 
             // 某些封装后端会把数据放在 data 字段里；如果存在则从 data 中读取，否则直接从根读取
             val dataWrapper = rawObj.optJSONObject("data")
@@ -340,26 +331,9 @@ class LxSearchApi @Inject constructor(
     suspend fun getUserDetail(uid: Long): NeteaseUserDetail? = withContext(Dispatchers.IO) {
         if (uid <= 0L) return@withContext null
         try {
-            val url = "$COMMENT_API_BASE/user/detail?uid=$uid"
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0")
-                .get()
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            if (!response.isSuccessful) {
-                Timber.e("获取用户详情失败: ${response.code}")
-                return@withContext null
-            }
-
-            val body = response.body?.string() ?: return@withContext null
-            val obj = JSONObject(body)
-
-            if (obj.optInt("code", -1) != 200) {
-                Timber.e("用户详情接口返回错误: ${obj.optString("message")}")
-                return@withContext null
-            }
+            val obj = raceGetJson(tag = "user/detail") { base ->
+                "$base/user/detail?uid=$uid"
+            } ?: return@withContext null
 
             val data = obj.optJSONObject("data") ?: return@withContext null
             val profile = data.optJSONObject("profile") ?: return@withContext null
@@ -387,21 +361,9 @@ class LxSearchApi @Inject constructor(
     suspend fun getLyric(songId: String): String? = withContext(Dispatchers.IO) {
         if (songId.isBlank()) return@withContext null
         try {
-            val url = "$COMMENT_API_BASE/lyric?id=$songId"
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0")
-                .get()
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            if (!response.isSuccessful) {
-                Timber.e("获取歌词失败: ${response.code}")
-                return@withContext null
-            }
-
-            val body = response.body?.string() ?: return@withContext null
-            val obj = JSONObject(body)
+            val obj = raceGetJson(tag = "lyric") { base ->
+                "$base/lyric?id=$songId"
+            } ?: return@withContext null
 
             // 兼容两种结构：{code, lrc:{lyric:"..."}}；或外层带有 data:{...}
             val root = obj.optJSONObject("data") ?: obj
@@ -637,22 +599,10 @@ class LxSearchApi @Inject constructor(
             try {
                 val encodedKeyword = URLEncoder.encode(keyword, "UTF-8")
                 val offset = (page - 1) * pageSize
-                val url = "$SEARCH_API_BASE?keywords=$encodedKeyword&type=100&limit=$pageSize&offset=$offset"
-                val request = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "Mozilla/5.0")
-                    .get()
-                    .build()
-
-                val response = okHttpClient.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    Timber.e("歌手搜索API请求失败: ${response.code}")
-                    return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
-                }
-
-                val body = response.body?.string()
-                    ?: return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
-                parseArtistSearchResponse(body, pageSize, offset)
+                val root = raceGetJson(tag = "search-artist") { base ->
+                    "$base/search?keywords=$encodedKeyword&type=100&limit=$pageSize&offset=$offset"
+                } ?: return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                parseArtistSearchResponse(root.toString(), pageSize, offset)
             } catch (e: Exception) {
                 Timber.e(e, "歌手搜索API请求异常")
                 LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)

@@ -207,8 +207,7 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import android.content.res.Configuration
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 
 
 @Immutable
@@ -767,8 +766,10 @@ class MainActivity : ComponentActivity() {
     private fun MainUI(playerViewModel: PlayerViewModel, navController: NavHostController) {
         Trace.beginSection("MainActivity.MainUI")
 
-        val configuration = LocalConfiguration.current
-        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        // 按窗口实际宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机模式。
+        // 使用 LocalWindowInfo（真实窗口尺寸）而非 Configuration，避免部分平板 ROM
+        // 在分屏/小窗时不更新 Configuration 导致布局不切换
+        val isLandscape = with(LocalWindowInfo.current.containerSize) { width > height }
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
         val centerNavButtonMode by userPreferencesRepository.centerNavButtonModeFlow.collectAsStateWithLifecycle(initialValue = CenterNavButtonMode.DISCOVER)
         // 发现模式弹窗：让用户选择进入「漫游」或「电台」
@@ -838,6 +839,7 @@ class MainActivity : ComponentActivity() {
                 Screen.GenreDetail.route,
                 Screen.AlbumDetail.route,
                 Screen.ArtistDetail.route,
+                Screen.ArtistHomepage.route,
                 Screen.DJSpace.route,
                 Screen.NavBarCrRad.route,
                 Screen.Radio.route,
@@ -1200,7 +1202,12 @@ class MainActivity : ComponentActivity() {
                 val collapsedClipHeight = remember(
                     showPlayerContentInitially,
                     shouldHideMiniPlayer,
-                    currentRoute
+                    currentRoute,
+                    // ⚠️ 手机/平板模式切换或窗口尺寸变化时必须重新计算：
+                    // miniPlayerBottomMarginDp 依赖 isLandscape，若用旧值，播放器 Surface
+                    // 会覆盖到底部导航栏上方，拦截触摸导致导航栏无法点击
+                    miniPlayerBottomMarginDp,
+                    containerHeight
                 ) {
                     val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
                             currentRoute !in setOf(Screen.NavBarCrRad.route)

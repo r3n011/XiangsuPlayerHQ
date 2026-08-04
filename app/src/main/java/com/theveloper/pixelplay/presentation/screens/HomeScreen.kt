@@ -25,8 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalConfiguration
-import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.foundation.lazy.LazyColumn
 import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
@@ -352,8 +351,9 @@ fun HomeScreen(
     }
 
     // Drawer state for sidebar
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    // 按真实窗口宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机样式。
+    // 使用 LocalWindowInfo（真实窗口尺寸）而非 Configuration，避免平板 ROM 分屏时不更新
+    val isLandscape = with(LocalWindowInfo.current.containerSize) { width > height }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val shouldShowCleanInstallDisclaimer =

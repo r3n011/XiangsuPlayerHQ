@@ -143,6 +143,11 @@ import com.theveloper.pixelplay.data.model.FolderSource
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.StorageFilter
+import com.theveloper.pixelplay.data.netease.NeteaseArtistAvatarResolver
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.resolveMainScreenBottomGradientHeight
@@ -3703,6 +3708,37 @@ fun AlbumGridItemRedesigned(
     }
 }
 
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface LibraryArtistAvatarEntryPoint {
+    fun neteaseArtistAvatarResolver(): NeteaseArtistAvatarResolver
+}
+
+/**
+ * 解析媒体库艺术家头像：
+ * - 已有本地/自定义头像（effectiveImageUrl）时直接返回；
+ * - 网易云在线艺术家没有头像时，按歌手名异步查询网易云头像并缓存回数据库。
+ */
+@Composable
+private fun rememberNeteaseArtistAvatar(artist: Artist): String? {
+    val effective = artist.effectiveImageUrl
+    if (!effective.isNullOrEmpty()) return effective
+    if (!NeteaseArtistAvatarResolver.isNeteaseCloudArtistId(artist.id)) return null
+
+    val context = LocalContext.current
+    val resolver = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            LibraryArtistAvatarEntryPoint::class.java
+        ).neteaseArtistAvatarResolver()
+    }
+    var resolved by remember(artist.id) { mutableStateOf<String?>(null) }
+    LaunchedEffect(artist.id, artist.name) {
+        resolved = resolver.resolveAvatarUrl(artist.id, artist.name)
+    }
+    return resolved
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun ArtistListItem(artist: Artist, onClick: () -> Unit, isLoading: Boolean = false) {
@@ -3745,10 +3781,11 @@ fun ArtistListItem(artist: Artist, onClick: () -> Unit, isLoading: Boolean = fal
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (!artist.effectiveImageUrl.isNullOrEmpty()) {
+                    val avatarUrl = rememberNeteaseArtistAvatar(artist)
+                    if (!avatarUrl.isNullOrEmpty()) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data(artist.effectiveImageUrl)
+                                .data(avatarUrl)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = artist.name,

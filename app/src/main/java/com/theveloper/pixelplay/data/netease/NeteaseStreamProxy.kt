@@ -1,7 +1,9 @@
 package com.theveloper.pixelplay.data.netease
 
+import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.stream.CloudStreamProxy
 import com.theveloper.pixelplay.data.stream.CloudStreamSecurity
+import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,6 +17,7 @@ import javax.inject.Singleton
 @Singleton
 class NeteaseStreamProxy @Inject constructor(
     private val repository: NeteaseRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     okHttpClient: OkHttpClient
 ) : CloudStreamProxy<Long>(okHttpClient) {
 
@@ -38,8 +41,14 @@ class NeteaseStreamProxy @Inject constructor(
 
     override fun formatIdForUrl(id: Long): String = id.toString()
 
-    override suspend fun resolveStreamUrl(id: Long): String? =
-        repository.getSongUrl(id).getOrNull()
+    override suspend fun resolveStreamUrl(id: Long): String? {
+        val quality = try {
+            userPreferencesRepository.musicQualityFlow.first().neteaseLevel
+        } catch (_: Exception) {
+            "exhigh"
+        }
+        return repository.getSongUrl(id, quality).getOrNull()
+    }
 
     fun resolveNeteaseUri(uriString: String): String? = resolveUri(uriString)
 }

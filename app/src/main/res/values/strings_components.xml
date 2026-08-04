@@ -124,6 +124,14 @@
     <string name="playlist_picker_add_songs_title">Add %1$d songs to…</string>
     <string name="playlist_picker_select_playlists">Select playlists</string>
     <string name="search_playlists_hint">Search for playlists…</string>
+    <string name="search_filter_all">All</string>
+    <string name="search_filter_songs">Songs</string>
+    <string name="search_filter_albums">Albums</string>
+    <string name="search_filter_artists">Artists</string>
+    <string name="search_filter_playlists">Playlists</string>
+    <string name="search_filter_online">Netease</string>
+    <string name="search_filter_kuwo">Kuwo</string>
+    <string name="search_filter_bilibili">Bilibili</string>
 
     <string name="cd_export_all">Export all</string>
     <string name="cd_merge_all">Merge all</string>

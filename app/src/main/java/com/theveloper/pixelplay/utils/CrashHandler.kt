@@ -24,7 +24,7 @@ data class CrashLogData(
      */
     fun getFullLog(): String {
         return buildString {
-            appendLine("=== PixelPlayer Crash Report ===")
+            appendLine("=== XiangsuPlayer Crash Report ===")
             appendLine("Date: $formattedDate")
             appendLine("Exception: $exceptionMessage")
             appendLine()
@@ -119,7 +119,7 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
             val exceptionMessage = throwable.message ?: throwable.javaClass.simpleName
 
             val log = buildString {
-                appendLine("===== PIXELPLAYER CRASH REPORT =====")
+                appendLine("===== XIANGSUPLAYER CRASH REPORT =====")
                 appendLine("Timestamp: $formattedDate")
                 appendLine("Build Type: ${android.os.Build.TYPE}")
                 appendLine("Device: ${android.os.Build.MODEL}")

@@ -377,9 +377,9 @@
         name="setcat_trigger_crash_subtitle"
     >크래시 보고 시스템을 테스트하기 위해 크래시를 시뮬레이션합니다.</string>
     <string name="setcat_application">애플리케이션</string>
-    <string name="setcat_about_pixelplayer_title">PixelPlayer 정보</string>
+    <string name="setcat_about_xiangsuplayer_title">XiangsuPlayer 정보</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >앱 버전, 제작진 등.</string>
 
     <string name="backup_summary_none">선택된 섹션이 없습니다.</string>
@@ -466,7 +466,7 @@
         name="dialog_regenerate_stats_body"
     >통계 캐시를 지우고 데이터베이스 기록에서 다시 계산하도록 합니다.</string>
     <string name="toast_stats_regeneration_started">통계 재생성 시작됨</string>
-    <string name="backup_file_name_format">PixelPlayer_Backup_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Backup_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"

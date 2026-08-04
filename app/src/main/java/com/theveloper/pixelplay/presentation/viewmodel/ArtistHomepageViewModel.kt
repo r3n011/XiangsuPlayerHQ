@@ -8,6 +8,8 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.netease.NeteaseArtistSong
 import com.theveloper.pixelplay.data.netease.PersonalFmApi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +34,7 @@ data class ArtistHomepageUiState(
     val songCount: Int = 0,
     val albumCount: Int = 0,
     val isLoading: Boolean = true,
+    val isInitialLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val isLoadingMoreAlbums: Boolean = false,
     val error: String? = null,
@@ -86,79 +89,95 @@ class ArtistHomepageViewModel @Inject constructor(
         Timber.d("ArtistHomepage: Loading data for artistId=$artistId")
 
         viewModelScope.launch(Dispatchers.IO) {
+            // 立即进入页面：头部先用导航传入的兜底名称/头像渲染，
+            // 背景图/头像等图片均异步加载，不阻塞进入，加载完成后自动刷新；
+            // isInitialLoading 标记首屏数据仍在后台加载，供页面显示「加载中」提示
+            _uiState.value = ArtistHomepageUiState(
+                artistId = artistId,
+                isLoading = false,
+                isInitialLoading = true
+            )
+
             try {
-                // 1. 加载歌手基本信息（含背景图、认证、简介、标签等）
-                val infoResult = api.fetchArtistInfo(artistId, neteaseCookie)
-                val artistDetail = infoResult.getOrNull()
-                infoResult.exceptionOrNull()?.let {
-                    Timber.w(it, "ArtistHomepage: fetchArtistInfo warning")
-                }
-
-                // 2. 加载歌手歌曲（第一页）
                 val currentOrder = _uiState.value.order
-                val songsResult = api.fetchArtistSongs(artistId, currentOrder, pageSize, 0, neteaseCookie)
-                val songList: List<Song> = songsResult.getOrNull()?.first
-                    ?.map { it.toSong() }
-                    ?: emptyList()
-                val songTotal = songsResult.getOrNull()?.second ?: songList.size
-                songsResult.exceptionOrNull()?.let {
-                    Timber.e(it, "ArtistHomepage: fetchArtistSongs failed")
-                }
 
-                // 3. 加载歌手专辑列表
-                val albumsResult = api.fetchArtistAlbums(artistId, 30, 0, neteaseCookie)
-                val albumSections: List<NeteaseArtistAlbumSection> = albumsResult.getOrNull()?.first
-                    ?.map { album ->
-                        NeteaseArtistAlbumSection(
-                            albumId = album.id,
-                            title = album.name,
-                            coverUrl = album.picUrl,
-                            year = if (album.publishTime > 0) {
-                                val cal = java.util.Calendar.getInstance()
-                                cal.timeInMillis = album.publishTime
-                                cal.get(java.util.Calendar.YEAR)
-                            } else null,
-                            songCount = album.size
-                        )
+                // 并行加载：歌手基本信息 / 歌曲第一页 / 专辑列表，任一完成后立即更新对应区域
+                coroutineScope {
+                    val infoDeferred = async { api.fetchArtistInfo(artistId, neteaseCookie) }
+                    val songsDeferred = async { api.fetchArtistSongs(artistId, currentOrder, pageSize, 0, neteaseCookie) }
+                    val albumsDeferred = async { api.fetchArtistAlbums(artistId, 30, 0, neteaseCookie) }
+
+                    // 1. 歌手基本信息（含背景图、认证、简介、标签等）
+                    val infoResult = infoDeferred.await()
+                    val artistDetail = infoResult.getOrNull()
+                    infoResult.exceptionOrNull()?.let {
+                        Timber.w(it, "ArtistHomepage: fetchArtistInfo warning")
                     }
-                    ?: emptyList()
-                val albumTotal = albumsResult.getOrNull()?.second ?: albumSections.size
-                albumsResult.exceptionOrNull()?.let {
-                    Timber.w(it, "ArtistHomepage: fetchArtistAlbums warning")
+                    _uiState.value = _uiState.value.copy(
+                        artistName = artistDetail?.name?.ifBlank { _uiState.value.artistName }
+                            ?: _uiState.value.artistName,
+                        artistAvatar = artistDetail?.avatarUrl ?: _uiState.value.artistAvatar,
+                        backgroundUrl = artistDetail?.backgroundUrl ?: "",
+                        identifyTag = artistDetail?.identifyTag ?: "",
+                        identityImages = artistDetail?.identityImages ?: emptyList(),
+                        briefDesc = artistDetail?.briefDesc ?: "",
+                        alias = artistDetail?.alias ?: emptyList(),
+                        tags = artistDetail?.tags ?: emptyList()
+                    )
+
+                    // 2. 歌手歌曲（第一页）
+                    val songsResult = songsDeferred.await()
+                    val songList: List<Song> = songsResult.getOrNull()?.first
+                        ?.map { it.toSong() }
+                        ?: emptyList()
+                    val songTotal = songsResult.getOrNull()?.second ?: songList.size
+                    songsResult.exceptionOrNull()?.let {
+                        Timber.e(it, "ArtistHomepage: fetchArtistSongs failed")
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        songs = songList,
+                        songCount = songTotal,
+                        offset = songList.size,
+                        hasMore = songList.size < songTotal
+                    )
+
+                    // 3. 歌手专辑列表
+                    val albumsResult = albumsDeferred.await()
+                    val albumSections: List<NeteaseArtistAlbumSection> = albumsResult.getOrNull()?.first
+                        ?.map { album ->
+                            NeteaseArtistAlbumSection(
+                                albumId = album.id,
+                                title = album.name,
+                                coverUrl = album.picUrl,
+                                year = if (album.publishTime > 0) {
+                                    val cal = java.util.Calendar.getInstance()
+                                    cal.timeInMillis = album.publishTime
+                                    cal.get(java.util.Calendar.YEAR)
+                                } else null,
+                                songCount = album.size
+                            )
+                        }
+                        ?: emptyList()
+                    val albumTotal = albumsResult.getOrNull()?.second ?: albumSections.size
+                    albumsResult.exceptionOrNull()?.let {
+                        Timber.w(it, "ArtistHomepage: fetchArtistAlbums warning")
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        albums = albumSections,
+                        albumCount = albumTotal,
+                        albumOffset = albumSections.size,
+                        albumHasMore = albumSections.size < albumTotal
+                    )
+
+                    Timber.d("ArtistHomepage: Loaded ${songList.size}/$songTotal songs, ${albumSections.size} albums for artistId=$artistId order=$currentOrder")
                 }
 
-                _uiState.value = ArtistHomepageUiState(
-                    artistId = artistId,
-                    artistName = artistDetail?.name?.ifEmpty { albumSections.firstOrNull()?.title ?: "未知歌手" }
-                        ?: (albumSections.firstOrNull()?.title ?: "未知歌手"),
-                    artistAvatar = artistDetail?.avatarUrl ?: "",
-                    backgroundUrl = artistDetail?.backgroundUrl ?: "",
-                    identifyTag = artistDetail?.identifyTag ?: "",
-                    identityImages = artistDetail?.identityImages ?: emptyList(),
-                    briefDesc = artistDetail?.briefDesc ?: "",
-                    alias = artistDetail?.alias ?: emptyList(),
-                    tags = artistDetail?.tags ?: emptyList(),
-                    songs = songList,
-                    albums = albumSections,
-                    songCount = songTotal,
-                    albumCount = albumTotal,
-                    isLoading = false,
-                    isLoadingMore = false,
-                    isLoadingMoreAlbums = false,
-                    order = currentOrder,
-                    offset = songList.size,
-                    albumOffset = albumSections.size,
-                    hasMore = songList.size < songTotal,
-                    albumHasMore = albumSections.size < albumTotal
-                )
-
-                Timber.d("ArtistHomepage: Loaded ${songList.size}/$songTotal songs, ${albumSections.size} albums for artistId=$artistId order=$currentOrder")
+                // 首屏三类数据（信息/歌曲/专辑）均已加载完成，结束「加载中」提示
+                _uiState.value = _uiState.value.copy(isInitialLoading = false)
             } catch (t: Throwable) {
                 Timber.e(t, "ArtistHomepage: Unexpected error loading artistId=$artistId")
-                _uiState.value = ArtistHomepageUiState(
-                    artistId = artistId,
-                    error = "加载失败: ${t.message}",
-                    isLoading = false
+                _uiState.value = _uiState.value.copy(
+                    error = "加载失败: ${t.message}"
                 )
             }
         }
@@ -167,6 +186,11 @@ class ArtistHomepageViewModel @Inject constructor(
     fun loadMoreSongs(neteaseCookie: String? = null) {
         val currentState = _uiState.value
         if (currentState.isLoading || currentState.isLoadingMore || !currentState.hasMore || currentState.artistId <= 0L) {
+            return
+        }
+        // 首屏歌曲尚未加载完成（offset==0 且列表为空）时跳过自动加载更多，
+        // 避免与后台并行加载的首屏请求重复
+        if (currentState.offset == 0 && currentState.songs.isEmpty()) {
             return
         }
 

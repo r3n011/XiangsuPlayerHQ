@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_error_genre_id_missing">Hata: Tür kimliği (Genre ID) eksik</string>
-    <string name="easter_egg_thank_you">PixelPlayer\'ı kullandığınız için teşekkür ederiz!</string>
+    <string name="easter_egg_thank_you">XiangsuPlayer\'ı kullandığınız için teşekkür ederiz!</string>
 
     <string name="word_delimiter_section_title">Mevcut Kelime Sınırlayıcılar</string>
     <string name="word_delimiter_section_subtitle">Bu anahtar kelimeler, etraflarında boşluk olduğunda sanatçı isimlerini böler. Büyük/küçük harf duyarsız olarak eşleştirilir. Kaldırmak için dokunun.</string>
@@ -89,22 +89,22 @@
     <string name="setup_excluded_folders_description">Varsayılan olarak tüm klasörler taranır. Kitaplığınızı oluştururken yok sayılmasını istediğiniz konumları seçin.</string>
     <string name="setup_choose_folders_ignore">Yok sayılacak klasörleri seçin</string>
     <string name="setup_permission_media_title">Medya İzni</string>
-    <string name="setup_permission_media_description">PixelPlayer\'ın müzik kitaplığınızı oluşturabilmesi için ses dosyalarınıza erişmesi gerekir.</string>
+    <string name="setup_permission_media_description">XiangsuPlayer\'ın müzik kitaplığınızı oluşturabilmesi için ses dosyalarınıza erişmesi gerekir.</string>
     <string name="setup_permission_granted">İzin Verildi</string>
     <string name="setup_grant_media_permission">Medya İzni Ver</string>
     <string name="setup_permission_notifications_title">Bildirimler</string>
     <string name="setup_permission_notifications_description">Müziğinizi kilit ekranından ve bildirim panelinden kontrol edebilmek için bildirimleri etkinleştirin.</string>
     <string name="setup_enable_notifications">Bildirimleri Etkinleştir</string>
     <string name="setup_permission_alarms_title">Alarmlar ve Hatırlatıcılar</string>
-    <string name="setup_permission_alarms_description">İsteğe bağlıdır, ancak Uyku Zamanlayıcısı kullanıyorsanız ve PixelPlayer\'ın oynatmayı tam zamanında durdurmasını istiyorsanız önerilir.</string>
+    <string name="setup_permission_alarms_description">İsteğe bağlıdır, ancak Uyku Zamanlayıcısı kullanıyorsanız ve XiangsuPlayer\'ın oynatmayı tam zamanında durdurmasını istiyorsanız önerilir.</string>
     <string name="setup_grant_permission_generic">İzin Ver</string>
     <string name="setup_backup_have_title">Yedeğiniz var mı?</string>
-    <string name="setup_backup_have_description">Zaten bir PixelPlayer yedeğiniz varsa, şimdi geri yükleyin ve bu cihazdaki kalan kurulum adımlarının çoğunu atlayın.</string>
+    <string name="setup_backup_have_description">Zaten bir XiangsuPlayer yedeğiniz varsa, şimdi geri yükleyin ve bu cihazdaki kalan kurulum adımlarının çoğunu atlayın.</string>
     <string name="setup_inspecting_backup">Yedek inceleniyor</string>
     <string name="setup_restoring_backup">Yedek geri yükleniyor</string>
     <string name="setup_import_backup">Yedeği içe aktar</string>
     <string name="setup_theme_dark_title">Koyu</string>
-    <string name="setup_theme_dark_description">PixelPlayer için varsayılan Material 3 koyu görünümü.</string>
+    <string name="setup_theme_dark_description">XiangsuPlayer için varsayılan Material 3 koyu görünümü.</string>
     <string name="setup_theme_light_title">Açık</string>
     <string name="setup_theme_light_description">Uygulama genelinde daha parlak bir Material 3 görünümü.</string>
     <string name="setup_theme_follow_title">Sistemi takip et</string>
@@ -113,7 +113,7 @@
     <string name="setup_compact_mode_tab_hint">Standart sekme satırı kullanılıyor</string>
     <string name="setup_preview_songs_label">Şarkılar</string>
     <string name="setup_battery_optimization_title">Pil Optimizasyonu</string>
-    <string name="setup_battery_optimization_description">Bazı Android cihazlar arka plan uygulamalarını agresif bir şekilde kapatır. Beklenmedik oynatma kesintilerini önlemek için PixelPlayer için pil optimizasyonunu devre dışı bırakın.</string>
+    <string name="setup_battery_optimization_description">Bazı Android cihazlar arka plan uygulamalarını agresif bir şekilde kapatır. Beklenmedik oynatma kesintilerini önlemek için XiangsuPlayer için pil optimizasyonunu devre dışı bırakın.</string>
     <string name="setup_disable_battery_optimization">Optimizasyonu Devre Dışı Bırak</string>
     <string name="setup_nav_floating_pill_description">Yuvarlatılmış köşeli duran hap (floating pill)</string>
     <string name="setup_nav_full_width_description">Standart tam genişlikte çubuk</string>
@@ -123,7 +123,7 @@
 
     <string name="home_your_mix_title">Sizin\nMiksiniz</string>
     <string name="home_empty_placeholder_title">Henüz gösterilecek veri yok</string>
-    <string name="home_empty_placeholder_subtitle">PixelPlayer şarkı bulduğunda veya bir kaynak senkronize ettiğinde miksiniz burada görünecektir.</string>
+    <string name="home_empty_placeholder_subtitle">XiangsuPlayer şarkı bulduğunda veya bir kaynak senkronize ettiğinde miksiniz burada görünecektir.</string>
     <string name="home_empty_placeholder_refresh">Yenile</string>
     <string name="cd_shuffle_play">Karışık Çal</string>
     <string name="cd_album_art_for_title">%1$s için albüm kapağı</string>
@@ -144,7 +144,7 @@
     <string name="crash_report_stack_preview_label">Yığın izi (önizleme):</string>
     <string name="crash_report_clipboard_label">Çökme günlüğü</string>
     <string name="toast_crash_log_copied">Çökme günlüğü panoya kopyalandı</string>
-    <string name="crash_report_share_subject">PixelPlayer çökme raporu</string>
+    <string name="crash_report_share_subject">XiangsuPlayer çökme raporu</string>
     <string name="crash_report_share_chooser">Çökme raporunu paylaş</string>
     <string name="action_copy">Kopyala</string>
     <string name="action_share">Paylaş</string>
@@ -166,13 +166,13 @@
     <string name="no_genres_available">Mevcut tür yok.</string>
 
     <string name="about_no_contributors">Şu anda katkıda bulunan bulunamadı. Lütfen daha sonra tekrar deneyin.</string>
-    <string name="about_app_name">PixelPlayer</string>
+    <string name="about_app_name">XiangsuPlayer</string>
     <string name="about_tagline">Topluluğuyla birlikte geliştirilen açık kaynaklı müzik çalar.</string>
     <string name="about_version_format">Sürüm v%1$s</string>
     <string name="about_contributions_format">%1$d katkı</string>
     <string name="screen_about">Hakkında</string>
     <string name="about_maintainer_title">Geliştirici / Sorumlu</string>
-    <string name="about_maintainer_subtitle">PixelPlayer\'ın arkasındaki kişi.</string>
+    <string name="about_maintainer_subtitle">XiangsuPlayer\'ın arkasındaki kişi.</string>
     <string name="about_spotlight_title">Topluluk odağı</string>
     <string name="about_spotlight_subtitle">Büyük etkisi olan iş ortaklarına teşekkür ve tanınma.</string>
     <string name="about_contributors_section_title">Açık kaynak katkıda bulunanlar</string>

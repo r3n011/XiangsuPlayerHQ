@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Web login security notes (QQ / NetEase) -->
-    <string name="auth_web_login_security_note_qq">Güvenlik notu: Şifreniz yalnızca QQ Müzik web sayfalarında girilir. PixelPlayer, kitaplığınızı eşitlemek için oturum çerezlerini saklar.</string>
-    <string name="auth_web_login_security_note_netease">Güvenlik notu: Şifreniz yalnızca NetEase web sayfalarında girilir. PixelPlayer, kitaplığınızı eşitlemek için oturum çerezlerini (MUSIC_U) saklar.</string>
+    <string name="auth_web_login_security_note_qq">Güvenlik notu: Şifreniz yalnızca QQ Müzik web sayfalarında girilir. XiangsuPlayer, kitaplığınızı eşitlemek için oturum çerezlerini saklar.</string>
+    <string name="auth_web_login_security_note_netease">Güvenlik notu: Şifreniz yalnızca NetEase web sayfalarında girilir. XiangsuPlayer, kitaplığınızı eşitlemek için oturum çerezlerini (MUSIC_U) saklar.</string>
     <string name="auth_error_read_qq_cookies_failed">QQ Müzik çerezleri okunamadı: %1$s</string>
     <string name="auth_error_read_netease_cookies_failed">NetEase çerezleri okunamadı: %1$s</string>
 
@@ -13,7 +13,7 @@
     <string name="auth_gdrive_sign_in_with_google">Google ile oturum açın</string>
     <string name="auth_gdrive_select_music_folder_title">Bir müzik klasörü seçin</string>
     <string name="auth_gdrive_select_music_folder_subtitle">Müzik kaynağınız olarak kullanmak için bir klasör seçin veya oluşturun</string>
-    <string name="auth_gdrive_create_pixelplay_music_title">\"PixelPlayer Music\" Oluştur</string>
+    <string name="auth_gdrive_create_pixelplay_music_title">\"XiangsuPlayer Music\" Oluştur</string>
     <string name="auth_gdrive_create_folder_here_hint">Müzikleriniz için burada yeni bir klasör oluşturun</string>
     <string name="auth_gdrive_no_folders_here">Burada klasör bulunmuyor</string>
     <string name="auth_gdrive_use_this_folder">Kullan</string>

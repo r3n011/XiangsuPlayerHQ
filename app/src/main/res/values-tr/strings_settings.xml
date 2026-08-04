@@ -389,9 +389,9 @@
         name="setcat_trigger_crash_subtitle"
     >Çökme raporlama sistemini test etmek için bir çökme simüle edin.</string>
     <string name="setcat_application">Uygulama</string>
-    <string name="setcat_about_pixelplayer_title">PixelPlayer Hakkında</string>
+    <string name="setcat_about_xiangsuplayer_title">XiangsuPlayer Hakkında</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >Uygulama sürümü, katkıda bulunanlar ve daha fazlası.</string>
 
     <string name="backup_summary_none">Hiçbir bölüm seçilmedi.</string>
@@ -476,7 +476,7 @@
     <string
         name="toast_stats_regeneration_started"
     >İstatistikleri yeniden oluşturma işlemi başlatıldı</string>
-    <string name="backup_file_name_format">PixelPlayer_Yedek_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Yedek_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"

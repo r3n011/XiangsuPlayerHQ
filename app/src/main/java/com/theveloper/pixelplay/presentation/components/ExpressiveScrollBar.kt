@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlin.math.abs
 
 private data class ScrollMetrics(
     val progress: Float,
@@ -249,7 +248,6 @@ fun ExpressiveScrollBar(
         var pendingScrollIndex by remember(listState, gridState) { mutableIntStateOf(-1) }
         var retainedDragLabel by remember(listState, gridState) { mutableStateOf<String?>(null) }
         val displayedProgress = remember(listState, gridState) { Animatable(0f) }
-        var hasSyncedDisplayedProgress by remember(listState, gridState) { mutableStateOf(false) }
 
         val primaryColor = MaterialTheme.colorScheme.primary
         val surfaceVariantColor = MaterialTheme.colorScheme.secondaryContainer
@@ -272,8 +270,6 @@ fun ExpressiveScrollBar(
         val density = LocalDensity.current
         val constraintsMaxWidth = maxWidth
         val constraintsMaxHeight = maxHeight
-        val coarseJumpThresholdPx = with(density) { 16.dp.toPx() }
-        val smoothJumpMinDistancePx = with(density) { 10.dp.toPx() }
 
         fun getScrollStats(): ScrollMetrics {
             val totalItemsCount: Int
@@ -451,45 +447,18 @@ fun ExpressiveScrollBar(
         LaunchedEffect(listState, gridState, constraintsMaxHeight, minHeight, isDragging) {
             if (isDragging) return@LaunchedEffect
 
+            // 直接跟随：每次布局/滚动状态变化都立即把指示器吸附到目标进度。
+            // 不使用 distinctUntilChanged + animateTo 的平滑跳转，避免在快速/连续滚动时
+            // 出现右侧进度条“卡住不跟随”的问题（动画竞态导致状态同步中断/被丢弃）
             snapshotFlow { getScrollStats() }
-                .distinctUntilChanged()
-                .collectLatest { stats ->
-                    val targetProgress = stats.progress
-                    if (!hasSyncedDisplayedProgress) {
-                        displayedProgress.snapTo(targetProgress)
-                        hasSyncedDisplayedProgress = true
-                    } else {
-                        val sourceIsScrolling =
-                            listState?.isScrollInProgress == true ||
-                                gridState?.isScrollInProgress == true
-                        val handleDeltaPx =
-                            abs(targetProgress - displayedProgress.value) * stats.scrollableHeight
-                        val estimatedStepPx =
-                            stats.scrollableHeight / stats.maxScrollIndex.coerceAtLeast(1).toFloat()
-                        val shouldSmoothJump =
-                            !sourceIsScrolling &&
-                                estimatedStepPx >= coarseJumpThresholdPx &&
-                                handleDeltaPx >= smoothJumpMinDistancePx
-
-                        if (shouldSmoothJump) {
-                            displayedProgress.animateTo(
-                                targetValue = targetProgress,
-                                animationSpec = tween(
-                                    durationMillis = 70,
-                                    easing = FastOutSlowInEasing
-                                )
-                            )
-                        } else {
-                            displayedProgress.snapTo(targetProgress)
-                        }
-                    }
+                .collect { stats ->
+                    displayedProgress.snapTo(stats.progress)
                 }
         }
 
         LaunchedEffect(isDragging, dragProgress) {
             if (isDragging && dragProgress >= 0f) {
                 displayedProgress.snapTo(dragProgress)
-                hasSyncedDisplayedProgress = true
             }
         }
 

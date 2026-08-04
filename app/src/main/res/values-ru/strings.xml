@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PixelPlayer</string>
+    <string name="app_name">XiangsuPlayer</string>
     <string name="app_name_change_title">Изменение названия приложения</string>
-    <string name="app_name_change_message">Мы изменили название нашего приложения с PixelPlay на PixelPlayer из-за проблем с товарным знаком. Приятного прослушивания!</string>
+    <string name="app_name_change_message">Мы изменили название нашего приложения с PixelPlay на XiangsuPlayer из-за проблем с товарным знаком. Приятного прослушивания!</string>
     <string name="do_not_show_again">Больше не показывать</string>
     <string name="dismiss">Скрыть</string>
     <string name="all_files_access_title">Требуется специальное разрешение</string>
-    <string name="all_files_access_description">Для редактирования метаданных песен (файлов .mp3) PixelPlayer требуется специальный доступ ко всем файлам. Это позволяет нам напрямую изменять теги треков. Пожалуйста, предоставьте это разрешение на следующем экране, чтобы включить редактирование метаданных.</string>
+    <string name="all_files_access_description">Для редактирования метаданных песен (файлов .mp3) XiangsuPlayer требуется специальный доступ ко всем файлам. Это позволяет нам напрямую изменять теги треков. Пожалуйста, предоставьте это разрешение на следующем экране, чтобы включить редактирование метаданных.</string>
     <string name="grant_permission_button">Предоставить разрешение</string>
     <string name="all_files_access_setting">Доступ ко всем файлам</string>
     <string name="error">Ошибка</string>
@@ -87,7 +87,7 @@
     <string name="ai_error_api_key">Пожалуйста, настройте действительный API-ключ для выбранного поставщика ИИ в Настройках.</string>
     <string name="ai_error_generic">Ошибка ИИ: %s</string>
     <string name="ai_error_quota">Выбранный поставщик ИИ отклонил запрос, так как на аккаунте нет средств или доступной квоты.</string>
-    <string name="ai_error_model_unavailable">Выбранная модель ИИ больше не доступна. PixelPlayer попытался автоматически переключиться на поддерживаемую модель.</string>
+    <string name="ai_error_model_unavailable">Выбранная модель ИИ больше не доступна. XiangsuPlayer попытался автоматически переключиться на поддерживаемую модель.</string>
     <string name="ai_no_songs_found">ИИ не удалось найти песни по вашему запросу.</string>
     <string name="ai_prompt_empty">Напишите идею для вашего Daily Mix</string>
     <string name="ai_daily_mix_updated">Daily Mix обновлен с помощью ИИ</string>
@@ -132,7 +132,7 @@
     <string name="playlist_share_failed">Ошибка отправки: %1$s</string>
     <string name="playlist_none_to_export">Нет плейлистов для экспорта</string>
     <string name="playlist_export_failed">Ошибка экспорта: %1$s</string>
-    <string name="playlist_export_folder_display">Music/PixelPlayer Exports</string>
+    <string name="playlist_export_folder_display">Music/XiangsuPlayer Exports</string>
     <string name="ai_playlist_gemini_key_required">Пожалуйста, настройте ваш API-ключ Gemini в Настройках.</string>
     <string name="error_unknown">Неизвестная ошибка</string>
 

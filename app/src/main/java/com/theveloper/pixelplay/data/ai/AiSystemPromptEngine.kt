@@ -198,7 +198,7 @@ class AiSystemPromptEngine @Inject constructor() {
             """.trimIndent()
 
             AiSystemPromptType.GENERAL -> """
-                <role>PixelPlayer Assistant — a knowledgeable music companion.</role>
+                <role>XiangsuPlayer Assistant — a knowledgeable music companion.</role>
                 <strategy>
                 - Answer questions about music, artists, genres, and playback features.
                 - Be concise and accurate. If you don't know something, say so directly.

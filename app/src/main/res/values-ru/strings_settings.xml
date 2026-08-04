@@ -406,9 +406,9 @@
         name="setcat_trigger_crash_subtitle"
     >Симуляция сбоя для проверки системы отчетов.</string>
     <string name="setcat_application">Приложение</string>
-    <string name="setcat_about_pixelplayer_title">О PixelPlayer</string>
+    <string name="setcat_about_xiangsuplayer_title">О XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >Версия приложения, авторы и др.</string>
 
     <string name="backup_summary_none">Разделы не выбраны.</string>
@@ -497,7 +497,7 @@
     <string
         name="toast_stats_regeneration_started"
     >Обновление статистики запущено</string>
-    <string name="backup_file_name_format">PixelPlayer_Backup_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Backup_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"

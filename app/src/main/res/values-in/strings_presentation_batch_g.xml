@@ -182,7 +182,7 @@
     <string name="presentation_batch_g_artist_group_by_album_artist">Kelompokkan berdasarkan Artis Album</string>
     <string name="presentation_batch_g_artist_group_by_album_artist_sub">Tampilkan album kolaborasi di bawah artis utama</string>
     <string name="presentation_batch_g_artist_info_title">Tentang Penguraian Multi-Artis</string>
-    <string name="presentation_batch_g_artist_info_body">PixelPlayer membagi tag artis menggunakan pemisah karakter (/, ;, &amp;) dan pemisah kata (feat., ft., vs., x). Pemisah kata dicocokkan tanpa membedakan huruf besar-kecil.
+    <string name="presentation_batch_g_artist_info_body">XiangsuPlayer membagi tag artis menggunakan pemisah karakter (/, ;, &amp;) dan pemisah kata (feat., ft., vs., x). Pemisah kata dicocokkan tanpa membedakan huruf besar-kecil.
 \n\n"Ekstrak Artis dari Judul" mendeteksi pola seperti (feat. Artis) dalam judul lagu.
 \n\nBackslash (\\) dapat digunakan untuk mengabaikan pemisah karakter.</string>
     <string name="presentation_batch_g_artist_example_arrow"> → </string>
@@ -265,9 +265,9 @@
     <string name="presentation_batch_g_playstore_open">Buka Play Store</string>
     <string name="presentation_batch_g_playstore_continue_beta">Lanjutkan beta</string>
     <string name="presentation_batch_g_playstore_link_pending">Tautan Play Store akan diaktifkan dari konfigurasi GitHub.</string>
-    <string name="presentation_batch_g_playstore_title">PixelPlayer kini tersedia di Google Play</string>
+    <string name="presentation_batch_g_playstore_title">XiangsuPlayer kini tersedia di Google Play</string>
     <string name="presentation_batch_g_playstore_body">Gunakan saluran stabil di Google Play untuk pembaruan rilis sementara kami tetap mengaktifkan build beta.</string>
-    <string name="presentation_batch_g_playstore_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_playstore_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_playstore_release_announcement">Pengumuman rilis</string>
     <string name="presentation_batch_g_playstore_coming_soon">Segera hadir</string>
     <string name="presentation_batch_g_genre_sort_title">Urutkan &amp; Putar</string>
@@ -286,7 +286,7 @@
     <string name="presentation_batch_g_presets_cd_rename">Ubah nama</string>
     <string name="presentation_batch_g_presets_cd_delete">Hapus</string>
     <string name="presentation_batch_g_beta_sheet_version">Beta 0.7.0</string>
-    <string name="presentation_batch_g_beta_sheet_welcome_title">Selamat datang di PixelPlayer 0.7.0-beta</string>
+    <string name="presentation_batch_g_beta_sheet_welcome_title">Selamat datang di XiangsuPlayer 0.7.0-beta</string>
     <string name="presentation_batch_g_beta_sheet_welcome_body">Anda menggunakan versi beta yang mungkin berisi bug, crash, atau fitur eksperimental. Bantu kami meningkatkannya dengan melaporkan masalah.</string>
     <string name="presentation_batch_g_beta_sheet_expect_title">Yang perlu diharapkan</string>
     <string name="presentation_batch_g_beta_sheet_expect_1">Bug, crash, atau fitur yang belum selesai dapat terjadi sewaktu-waktu.</string>
@@ -302,7 +302,7 @@
     <string name="presentation_batch_g_beta_sheet_report_summary">Checklist singkat sebelum membuat issue baru.</string>
     <string name="presentation_batch_g_beta_sheet_before_title">Sebelum membuat issue</string>
     <string name="presentation_batch_g_beta_sheet_before_1">Cari issue terbuka dan tertutup yang sudah ada untuk menghindari duplikat.</string>
-    <string name="presentation_batch_g_beta_sheet_before_2">Perbarui ke versi PixelPlayer terbaru dan pastikan masalah masih terjadi.</string>
+    <string name="presentation_batch_g_beta_sheet_before_2">Perbarui ke versi XiangsuPlayer terbaru dan pastikan masalah masih terjadi.</string>
     <string name="presentation_batch_g_beta_sheet_before_3">Mulai ulang aplikasi dan pastikan masalah tetap terjadi.</string>
     <string name="presentation_batch_g_beta_sheet_before_4">Coba reproduksi masalah dan catat langkah-langkahnya secara jelas.</string>
     <string name="presentation_batch_g_beta_sheet_issue_type_title">Jenis issue apa?</string>
@@ -320,7 +320,7 @@
     <string name="presentation_batch_g_beta_sheet_bug_screenshot">Screenshot / video: jika tersedia.</string>
     <string name="presentation_batch_g_beta_sheet_bug_logs">Log / stack trace: jika tersedia.</string>
     <string name="presentation_batch_g_beta_sheet_env_title">Lingkungan</string>
-    <string name="presentation_batch_g_beta_sheet_env_version">Versi PixelPlayer:</string>
+    <string name="presentation_batch_g_beta_sheet_env_version">Versi XiangsuPlayer:</string>
     <string name="presentation_batch_g_beta_sheet_env_source">Sumber instalasi: GitHub Release, debug build, nightly build, dll.</string>
     <string name="presentation_batch_g_beta_sheet_env_android">Versi Android:</string>
     <string name="presentation_batch_g_beta_sheet_env_device">Model perangkat:</string>
@@ -362,7 +362,7 @@
     <string name="presentation_batch_g_album_sel_queue_hint">Antrekan + putar menghormati urutan pilihan Anda.</string>
     <string name="presentation_batch_g_album_sel_limit">Batas: %1$d album per pilihan.</string>
     <string name="presentation_batch_g_album_sel_add_queue_play">Tambah ke Antrean &amp; Putar</string>
-    <string name="presentation_batch_g_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_app_tagline">Pemutar Musik</string>
     <string name="presentation_batch_g_brick_high">TERTINGGI %1$d</string>
     <string name="presentation_batch_g_brick_cd_close">Tutup</string>
@@ -412,7 +412,7 @@
     <string name="presentation_batch_g_cast_playing">Memutar</string>
     <string name="presentation_batch_g_cast_paused">Dijeda</string>
     <string name="presentation_batch_g_cast_perm_title">Bersiaplah untuk terhubung</string>
-    <string name="presentation_batch_g_cast_perm_body">Izinkan PixelPlayer untuk melihat perangkat terdekat dan Wi‑Fi saat ini agar kami dapat menjaga sinkronisasi cast, audio Bluetooth, dan speaker Anda.</string>
+    <string name="presentation_batch_g_cast_perm_body">Izinkan XiangsuPlayer untuk melihat perangkat terdekat dan Wi‑Fi saat ini agar kami dapat menjaga sinkronisasi cast, audio Bluetooth, dan speaker Anda.</string>
     <string name="presentation_batch_g_cast_perm_nearby_title">Perangkat terdekat</string>
     <string name="presentation_batch_g_cast_perm_nearby_desc">Diperlukan untuk membaca dan mengontrol perangkat audio Bluetooth Anda yang terhubung.</string>
     <string name="presentation_batch_g_cast_perm_location_title">Lokasi untuk Wi‑Fi</string>

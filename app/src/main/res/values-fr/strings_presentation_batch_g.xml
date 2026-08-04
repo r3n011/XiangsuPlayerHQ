@@ -182,7 +182,7 @@
     <string name="presentation_batch_g_artist_group_by_album_artist">Grouper par artiste de l\'album</string>
     <string name="presentation_batch_g_artist_group_by_album_artist_sub">Afficher les albums de collaboration sous l\'artiste principal</string>
     <string name="presentation_batch_g_artist_info_title">À propos de l\'analyse multi-artistes</string>
-    <string name="presentation_batch_g_artist_info_body">PixelPlayer sépare les tags d\'artistes en utilisant des délimiteurs de caractères (/, ;, &amp;) et des délimiteurs de mots (feat., ft., vs., x). Les délimiteurs de mots sont reconnus sans distinction de casse.\n\n\"Extraire les artistes du titre\" détecte les motifs comme (feat. Artiste) dans les titres de chansons.\n\nL\'antislash (\\) peut être utilisé pour échapper les délimiteurs de caractères.</string>
+    <string name="presentation_batch_g_artist_info_body">XiangsuPlayer sépare les tags d\'artistes en utilisant des délimiteurs de caractères (/, ;, &amp;) et des délimiteurs de mots (feat., ft., vs., x). Les délimiteurs de mots sont reconnus sans distinction de casse.\n\n\"Extraire les artistes du titre\" détecte les motifs comme (feat. Artiste) dans les titres de chansons.\n\nL\'antislash (\\) peut être utilisé pour échapper les délimiteurs de caractères.</string>
     <string name="presentation_batch_g_artist_example_arrow"> → </string>
     <string name="presentation_batch_g_artist_examples_title">Exemples</string>
     <string name="presentation_batch_g_artist_ex_1_in">\"Artiste1/Artiste2\"</string>
@@ -262,9 +262,9 @@
     <string name="presentation_batch_g_playstore_open">Ouvrir le Play Store</string>
     <string name="presentation_batch_g_playstore_continue_beta">Continuer la bêta</string>
     <string name="presentation_batch_g_playstore_link_pending">Le lien Play Store sera activé depuis la config GitHub.</string>
-    <string name="presentation_batch_g_playstore_title">PixelPlayer est maintenant disponible sur Google Play</string>
+    <string name="presentation_batch_g_playstore_title">XiangsuPlayer est maintenant disponible sur Google Play</string>
     <string name="presentation_batch_g_playstore_body">Utilisez le canal stable sur Google Play pour les mises à jour de release tout en gardant les builds bêta actives.</string>
-    <string name="presentation_batch_g_playstore_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_playstore_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_playstore_release_announcement">Annonce de sortie</string>
     <string name="presentation_batch_g_playstore_coming_soon">Bientôt disponible</string>
     <string name="presentation_batch_g_genre_sort_title">Trier &amp; Lire</string>
@@ -283,7 +283,7 @@
     <string name="presentation_batch_g_presets_cd_rename">Renommer</string>
     <string name="presentation_batch_g_presets_cd_delete">Supprimer</string>
     <string name="presentation_batch_g_beta_sheet_version">Bêta 0.6.0</string>
-    <string name="presentation_batch_g_beta_sheet_welcome_title">Bienvenue dans PixelPlayer 0.6.0-bêta</string>
+    <string name="presentation_batch_g_beta_sheet_welcome_title">Bienvenue dans XiangsuPlayer 0.6.0-bêta</string>
     <string name="presentation_batch_g_beta_sheet_welcome_body">Cette bêta se concentre désormais sur la stabilité, les performances et la lecture multi-appareils tout en intégrant de nouvelles fonctionnalités majeures.</string>
     <string name="presentation_batch_g_beta_sheet_expect_title">À attendre</string>
     <string name="presentation_batch_g_beta_sheet_expect_1">Utilisation quotidienne plus rapide : démarrage, navigation et interactions avec le lecteur plus fluides dans toute l\'application.</string>
@@ -306,7 +306,7 @@
     <string name="presentation_batch_g_album_sel_queue_hint">File d\'attente + lecture respecte l\'ordre de votre sélection.</string>
     <string name="presentation_batch_g_album_sel_limit">Limite : %1$d albums par sélection.</string>
     <string name="presentation_batch_g_album_sel_add_queue_play">Ajouter à la file d\'attente &amp; Lire</string>
-    <string name="presentation_batch_g_app_name">PixelPlayer</string>
+    <string name="presentation_batch_g_app_name">XiangsuPlayer</string>
     <string name="presentation_batch_g_app_tagline">Lecteur de musique</string>
     <string name="presentation_batch_g_brick_high">MEILLEUR %1$d</string>
     <string name="presentation_batch_g_brick_cd_close">Fermer</string>
@@ -356,7 +356,7 @@
     <string name="presentation_batch_g_cast_playing">En cours de lecture</string>
     <string name="presentation_batch_g_cast_paused">En pause</string>
     <string name="presentation_batch_g_cast_perm_title">Prêt à se connecter</string>
-    <string name="presentation_batch_g_cast_perm_body">Autorisez PixelPlayer à voir vos appareils proches et votre Wi-Fi actuel pour synchroniser votre diffusion, audio Bluetooth et haut-parleurs.</string>
+    <string name="presentation_batch_g_cast_perm_body">Autorisez XiangsuPlayer à voir vos appareils proches et votre Wi-Fi actuel pour synchroniser votre diffusion, audio Bluetooth et haut-parleurs.</string>
     <string name="presentation_batch_g_cast_perm_nearby_title">Appareils proches</string>
     <string name="presentation_batch_g_cast_perm_nearby_desc">Nécessaire pour lire et contrôler votre équipement audio Bluetooth connecté.</string>
     <string name="presentation_batch_g_cast_perm_location_title">Localisation pour le Wi-Fi</string>

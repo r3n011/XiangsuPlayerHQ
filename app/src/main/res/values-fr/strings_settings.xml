@@ -220,8 +220,8 @@
     <string name="setcat_trigger_crash_title">Déclencher un crash de test</string>
     <string name="setcat_trigger_crash_subtitle">Simuler un crash pour tester le système de rapport.</string>
     <string name="setcat_application">Application</string>
-    <string name="setcat_about_pixelplayer_title">À propos de PixelPlayer</string>
-    <string name="setcat_about_pixelplayer_subtitle">Version de l\'application, crédits, etc.</string>
+    <string name="setcat_about_xiangsuplayer_title">À propos de XiangsuPlayer</string>
+    <string name="setcat_about_xiangsuplayer_subtitle">Version de l\'application, crédits, etc.</string>
 
     <!-- Dialogues de Sauvegarde -->
     <string name="backup_summary_none">Aucune section sélectionnée.</string>
@@ -239,7 +239,7 @@
     <string name="backup_dialog_restoring">Restauration de la sauvegarde</string>
     <string name="backup_step_format">Étape %1$d sur %2$d</string>
     <string name="backup_entries_will_replace">%1$d entrées · Remplaceront les données actuelles</string>
-    <string name="backup_file_name_format">PixelPlayer_Backup_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Backup_%1$d.pxpl</string>
     <string name="setcat_select_export">Sélectionner et exporter</string>
     <string name="setcat_select_restore">Sélectionner et restaurer</string>
     <string name="backup_history_modules_line">%1$d modules · v%2$s · schéma v%3$d</string>

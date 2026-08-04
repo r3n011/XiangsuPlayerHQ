@@ -260,8 +260,20 @@
     <string name="usb_device_selector_connecting">正在连接 USB DAC…</string>
     <string name="usb_device_selector_connection_failed">连接 USB DAC 失败</string>
     <string name="usb_device_selector_permission_required">需要 USB 权限</string>
-    <string name="usb_device_selector_permission_message">PixelPlayer 需要访问你的 USB DAC 以启用独占模式。</string>
+    <string name="usb_device_selector_permission_message">XiangsuPlayer 需要访问你的 USB DAC 以启用独占模式。</string>
     <string name="usb_device_selector_select_device">选择 USB DAC 设备</string>
+    <string name="usb_exclusive_toast_activated">USB 独占已激活：%s</string>
+    <string name="usb_exclusive_toast_activate_failed">激活 USB 独占模式失败，请检查设备权限后重试。</string>
+    <string name="setcat_aaudio_title">AAudio 低延迟音频后端</string>
+    <string name="setcat_aaudio_subtitle_on">使用 AAudio 后端，提升音质并降低延迟。</string>
+    <string name="setcat_aaudio_subtitle_off">默认系统音频后端 (AudioTrack)。开启 AAudio 获得更高音质输出。</string>
+    <string name="setcat_usb_bit_depth_title">USB 输出位深</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16-bit（标准，兼容性最好）</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24-bit（高解析，推荐）</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32-bit（最高保真，仅 USB DAC）</string>
+    <string name="usb_bit_depth_16">16-bit</string>
+    <string name="usb_bit_depth_24">24-bit</string>
+    <string name="usb_bit_depth_32">32-bit</string>
     <string name="setcat_persistent_shuffle_title">持久随机播放</string>
     <string
         name="setcat_persistent_shuffle_subtitle"
@@ -377,9 +389,9 @@
         name="setcat_trigger_crash_subtitle"
     >模拟一次崩溃，以测试崩溃报告系统。</string>
     <string name="setcat_application">应用</string>
-    <string name="setcat_about_pixelplayer_title">关于 PixelPlayer</string>
+    <string name="setcat_about_xiangsuplayer_title">关于 XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >应用版本、鸣谢等信息。</string>
 
     <string name="backup_summary_none">未选择任何部分。</string>
@@ -454,7 +466,7 @@
         name="dialog_regenerate_stats_body"
     >这将清除统计缓存，并根据数据库历史强制重新计算。</string>
     <string name="toast_stats_regeneration_started">统计重新生成已开始</string>
-    <string name="backup_file_name_format">PixelPlayer_Backup_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Backup_%1$d.pxpl</string>
 
     <string name="setcat_regenerate_daily_mix_action">重新生成每日合辑</string>
     <string name="setcat_regenerate_stats_action">重新生成统计</string>
@@ -554,6 +566,10 @@
     <!-- Download Settings -->
     <string name="setcat_download_settings">下载设置</string>
     <string name="setcat_download_path_title">下载路径</string>
+    <string name="setcat_netease_quality_title">网易云首选音质</string>
+    <string name="music_quality_flac">无损 (FLAC)</string>
+    <string name="music_quality_high">高品 (320kbps)</string>
+    <string name="music_quality_standard">标准 (128kbps)</string>
     <string name="setcat_download_progress_title">下载进度</string>
     <string name="setcat_download_complete">下载完成</string>
     <string name="setcat_download_failed">下载失败</string>

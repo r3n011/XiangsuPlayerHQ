@@ -304,8 +304,20 @@
     <string name="usb_device_selector_connecting">Connecting to USB DAC…</string>
     <string name="usb_device_selector_connection_failed">Failed to connect to USB DAC</string>
     <string name="usb_device_selector_permission_required">USB permission required</string>
-    <string name="usb_device_selector_permission_message">PixelPlayer needs access to your USB DAC to enable exclusive mode.</string>
+    <string name="usb_device_selector_permission_message">XiangsuPlayer needs access to your USB DAC to enable exclusive mode.</string>
     <string name="usb_device_selector_select_device">Select USB DAC device</string>
+    <string name="usb_exclusive_toast_activated">USB exclusive activated: %s</string>
+    <string name="usb_exclusive_toast_activate_failed">Failed to activate USB exclusive mode. Check device permission and try again.</string>
+    <string name="setcat_aaudio_title">AAudio Low-Latency Backend</string>
+    <string name="setcat_aaudio_subtitle_on">Using AAudio for improved audio fidelity and lower latency.</string>
+    <string name="setcat_aaudio_subtitle_off">Default system audio backend (AudioTrack). Enable AAudio for higher quality output.</string>
+    <string name="setcat_usb_bit_depth_title">USB Output Bit Depth</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, widely compatible)</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (high-resolution, recommended)</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (highest fidelity, USB DAC only)</string>
+    <string name="usb_bit_depth_16">16-bit</string>
+    <string name="usb_bit_depth_24">24-bit</string>
+    <string name="usb_bit_depth_32">32-bit</string>
     <string name="setcat_persistent_shuffle_title">Persistent Shuffle</string>
     <string
         name="setcat_persistent_shuffle_subtitle"
@@ -470,9 +482,9 @@
         name="setcat_trigger_crash_subtitle"
     >Simulate a crash to test the crash reporting system.</string>
     <string name="setcat_application">Application</string>
-    <string name="setcat_about_pixelplayer_title">About PixelPlayer</string>
+    <string name="setcat_about_xiangsuplayer_title">About XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >App version, credits, and more.</string>
 
     <string name="backup_summary_none">No sections selected.</string>
@@ -492,7 +504,7 @@
     <string name="backup_format_pxpl_title">PixelPlay (.pxpl)</string>
     <string name="backup_format_pxpl_desc">Original format with all data types</string>
     <string name="backup_format_external_title">External (.pxpbak)</string>
-    <string name="backup_format_external_desc">Compatible with other PixelPlayer versions</string>
+    <string name="backup_format_external_desc">Compatible with other XiangsuPlayer versions</string>
     <string
         name="backup_sections_selected_format"
     >%1$d of %2$d sections selected</string>
@@ -562,7 +574,7 @@
     <string
         name="toast_stats_regeneration_started"
     >Stats regeneration started</string>
-    <string name="backup_file_name_format">PixelPlayer_Backup_%1$d.pxpl</string>
+    <string name="backup_file_name_format">XiangsuPlayer_Backup_%1$d.pxpl</string>
 
     <string
         name="setcat_regenerate_daily_mix_action"
@@ -633,6 +645,7 @@
     <string name="music_quality_flac">Lossless (FLAC)</string>
     <string name="music_quality_high">High (320kbps)</string>
     <string name="music_quality_standard">Standard (128kbps)</string>
+    <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
 
     <!-- Dot Device -->
     <string name="dot_device_settings_title">Dot 墨水屏设置</string>

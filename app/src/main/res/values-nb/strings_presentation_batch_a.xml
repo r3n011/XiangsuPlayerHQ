@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Web login security notes (QQ / NetEase) -->
-    <string name="auth_web_login_security_note_qq">Sikkerhetsmerknad: passordet ditt tastes kun inn på QQ Musics nettsider. PixelPlayer lagrer sesjonsinformasjon for å synkronisere biblioteket ditt.</string>
-    <string name="auth_web_login_security_note_netease">Sikkerhetsmerknad: passordet ditt tastes kun inn på NetEase sine nettsider. PixelPlayer lagrer sesjonsinformasjon (MUSIC_U) for å synkronisere biblioteket ditt.</string>
+    <string name="auth_web_login_security_note_qq">Sikkerhetsmerknad: passordet ditt tastes kun inn på QQ Musics nettsider. XiangsuPlayer lagrer sesjonsinformasjon for å synkronisere biblioteket ditt.</string>
+    <string name="auth_web_login_security_note_netease">Sikkerhetsmerknad: passordet ditt tastes kun inn på NetEase sine nettsider. XiangsuPlayer lagrer sesjonsinformasjon (MUSIC_U) for å synkronisere biblioteket ditt.</string>
     <string name="auth_error_read_qq_cookies_failed">Kunne ikke lese QQ Music-informasjonskapsler: %1$s</string>
     <string name="auth_error_read_netease_cookies_failed">Kunne ikke lese NetEase-informasjonskapsler: %1$s</string>
 
@@ -13,7 +13,7 @@
     <string name="auth_gdrive_sign_in_with_google">Logg inn med Google</string>
     <string name="auth_gdrive_select_music_folder_title">Velg en musikkmappe</string>
     <string name="auth_gdrive_select_music_folder_subtitle">Velg eller opprett en mappe som skal brukes som musikkilde</string>
-    <string name="auth_gdrive_create_pixelplay_music_title">Opprett \"PixelPlayer Music\"</string>
+    <string name="auth_gdrive_create_pixelplay_music_title">Opprett \"XiangsuPlayer Music\"</string>
     <string name="auth_gdrive_create_folder_here_hint">Opprett en ny mappe for musikken din her</string>
     <string name="auth_gdrive_no_folders_here">Ingen mapper her</string>
     <string name="auth_gdrive_use_this_folder">Bruk</string>

@@ -16,7 +16,7 @@ import javax.inject.Singleton
 /**
  * AI 偏好设置仓库（多 Provider）
  *
- * 以原版（PixelPlayer-masteryuanban）的多 Provider 实现为基础，
+ * 以原版（XiangsuPlayer-masteryuanban）的多 Provider 实现为基础，
  * 同时保留当前项目附加的自动化开关（AI 推荐卡片 / 自动歌单 / Web Remote 等）。
  */
 @Singleton

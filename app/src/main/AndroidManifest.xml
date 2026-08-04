@@ -174,19 +174,8 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
 
-        <!-- USB 设备连接广播接收器 -->
-        <receiver
-            android:name=".data.service.usb.UsbConnectionReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
-            </intent-filter>
-            <!-- USB 设备连接时弹出权限请求 -->
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/usb_device_filter" />
-        </receiver>
+        <!-- USB 设备连接广播接收器由 MusicService 动态注册（支持 Hilt 注入），无需静态声明 -->
+
 
         <receiver
             android:name=".ui.glancewidget.PixelPlayGlanceWidgetReceiver"

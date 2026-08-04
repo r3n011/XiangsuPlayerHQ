@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">PixelPlayer</string>
+    <string name="app_name">XiangsuPlayer</string>
     <string name="app_name_change_title">Perubahan Nama Aplikasi</string>
-    <string name="app_name_change_message">Kami telah mengubah nama aplikasi kami dari PixelPlay menjadi PixelPlayer karena masalah terkait merek dagang. Teruslah mendengarkan!</string>
+    <string name="app_name_change_message">Kami telah mengubah nama aplikasi kami dari PixelPlay menjadi XiangsuPlayer karena masalah terkait merek dagang. Teruslah mendengarkan!</string>
     <string name="do_not_show_again">Jangan tampilkan lagi</string>
     <string name="dismiss">Tutup</string>
     <string name="all_files_access_title">Izin Khusus Diperlukan</string>
-    <string name="all_files_access_description">Untuk mengedit metadata lagu (file .mp3), PixelPlayer memerlukan akses khusus ke semua file. Ini memungkinkan kami untuk mengubah tag lagu secara langsung. Mohon berikan izin ini di layar berikutnya untuk mengaktifkan pengeditan metadata.</string>
+    <string name="all_files_access_description">Untuk mengedit metadata lagu (file .mp3), XiangsuPlayer memerlukan akses khusus ke semua file. Ini memungkinkan kami untuk mengubah tag lagu secara langsung. Mohon berikan izin ini di layar berikutnya untuk mengaktifkan pengeditan metadata.</string>
     <string name="grant_permission_button">Berikan Izin</string>
     <string name="all_files_access_setting">Akses Semua File</string>
     <string name="error">Kesalahan</string>
@@ -83,7 +83,7 @@
     <string name="ai_error_api_key">Silakan konfigurasi API key yang valid untuk penyedia AI yang dipilih di Pengaturan.</string>
     <string name="ai_error_generic">Kesalahan AI: %s</string>
     <string name="ai_error_quota">Penyedia AI yang dipilih menolak permintaan karena akun tidak memiliki kredit atau kuota yang tersedia.</string>
-    <string name="ai_error_model_unavailable">Model AI yang dipilih tidak lagi tersedia. PixelPlayer mencoba beralih ke model yang didukung secara otomatis.</string>
+    <string name="ai_error_model_unavailable">Model AI yang dipilih tidak lagi tersedia. XiangsuPlayer mencoba beralih ke model yang didukung secara otomatis.</string>
     <string name="ai_no_songs_found">AI tidak dapat menemukan lagu apa pun untuk permintaan Anda.</string>
     <string name="ai_prompt_empty">Tulis ide untuk Daily Mix Anda</string>
     <string name="ai_daily_mix_updated">Daily Mix diperbarui dengan AI</string>
@@ -121,7 +121,7 @@
     <string name="playlist_share_failed">Gagal berbagi: %1$s</string>
     <string name="playlist_none_to_export">Tidak ada playlist untuk diekspor</string>
     <string name="playlist_export_failed">Gagal mengekspor: %1$s</string>
-    <string name="playlist_export_folder_display">Musik/Ekspor PixelPlayer</string>
+    <string name="playlist_export_folder_display">Musik/Ekspor XiangsuPlayer</string>
     <string name="ai_playlist_gemini_key_required">Silakan konfigurasi API key Gemini Anda di Pengaturan.</string>
     <string name="error_unknown">Kesalahan tidak dikenal</string>
 

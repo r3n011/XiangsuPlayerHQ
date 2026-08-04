@@ -110,7 +110,7 @@
     <string name="song_info_set_ringtone">Als Klingelton festlegen</string>
     <string name="cd_set_song_as_ringtone">Song als Klingelton festlegen</string>
     <string name="song_info_tone_picker_title">Diesen Song verwenden als</string>
-    <string name="song_info_tone_picker_body">Wähle, wo PixelPlayer diesen Sound installieren soll.</string>
+    <string name="song_info_tone_picker_body">Wähle, wo XiangsuPlayer diesen Sound installieren soll.</string>
     <string name="song_info_tone_ringtone_title">Telefonklingelton</string>
     <string name="song_info_tone_ringtone_subtitle">Eingehende Anrufe</string>
     <string name="song_info_tone_notification_title">Benachrichtigungston</string>
@@ -124,7 +124,7 @@
     <string name="song_info_tone_ringtone_label">Klingelton</string>
     <string name="song_info_tone_notification_label">Benachrichtigungston</string>
     <string name="song_info_tone_alarm_label">Weckton</string>
-    <string name="song_info_ringtone_permission_prompt">Aktiviere Systemeinstellungen ändern und kehre zu PixelPlayer zurück, um automatisch fortzufahren.</string>
+    <string name="song_info_ringtone_permission_prompt">Aktiviere Systemeinstellungen ändern und kehre zu XiangsuPlayer zurück, um automatisch fortzufahren.</string>
     <string name="song_info_ringtone_permission_missing">Systemeinstellungen ändern wurde nicht aktiviert.</string>
     <string name="song_info_ringtone_success">\"%1$s\" wurde als Klingelton festgelegt</string>
     <string name="song_info_ringtone_local_only">Nur lokale Songs können als Systemsounds verwendet werden.</string>

@@ -668,6 +668,8 @@ class DualPlayerEngine @Inject constructor(
                             delay(800)
                             runCatching {
                                 if (!::playerA.isInitialized) return@runCatching
+                                val mediaId = playerA.currentMediaItem?.mediaId.orEmpty()
+                                fadeInVolume(playerA, mediaId)
                                 playerA.seekToDefaultPosition()
                                 playerA.prepare()
                                 playerA.play()
@@ -1350,6 +1352,9 @@ class DualPlayerEngine @Inject constructor(
      * to prevent memory pressure when both players co-exist during a crossfade.
      * [bufferForPlaybackMs] is set to ExoPlayer's documented default of 2 500 ms on both
      * tiers — the previous value of 5 000 ms doubled first-audio latency with no benefit.
+     * [bufferForPlaybackAfterRebufferMs] is raised to 7 000 ms so that after a buffer
+     * underrun (common with network radio streams under jitter) playback resumes only
+     * once a comfortable margin is re-buffered, reducing recovery-time clicks/pops.
      */
     private fun buildAdaptiveLoadControl(): DefaultLoadControl {
         val isLowRam = (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
@@ -1368,7 +1373,7 @@ class DualPlayerEngine @Inject constructor(
                     /* minBufferMs                      */ 15_000,
                     /* maxBufferMs                      */ 30_000,
                     /* bufferForPlaybackMs              */  2_500,
-                    /* bufferForPlaybackAfterRebufferMs */  5_000
+                    /* bufferForPlaybackAfterRebufferMs */  7_000
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
@@ -1378,7 +1383,7 @@ class DualPlayerEngine @Inject constructor(
                     /* minBufferMs                      */ 30_000,
                     /* maxBufferMs                      */ 60_000,
                     /* bufferForPlaybackMs              */  2_500,
-                    /* bufferForPlaybackAfterRebufferMs */  5_000
+                    /* bufferForPlaybackAfterRebufferMs */  7_000
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
@@ -1401,6 +1406,21 @@ class DualPlayerEngine @Inject constructor(
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean
             ): AudioSink {
+                // ⚡ AAudio 后端控制：
+                // Media3 DefaultAudioSink 在 Android O+ 默认优先使用 AAudio，
+                // 当 Settings 关闭 AAudio 时，设置系统属性强制 Media3 退回 AudioTrack。
+                val useAaudio = audioEngineSettings.aaudioEnabled.value &&
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                try {
+                    if (!useAaudio) {
+                        System.setProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio", "true")
+                    } else {
+                        System.clearProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio")
+                    }
+                } catch (t: Throwable) {
+                    Timber.w(t, "Failed to configure AAudio system property")
+                }
+
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiFiModeEnabled)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
@@ -1651,6 +1671,43 @@ class DualPlayerEngine @Inject constructor(
             "Streaming mode: %s (audio offload enabled=%s)",
             isStreaming, audioOffloadEnabled && !isStreaming
         )
+    }
+
+    /**
+     * 播放网络直播流/在线媒体（playUrl 统一入口）。
+     * 提前进入流式模式（禁用 audio offload，规避 HAL 杂音）；
+     * 播放前先 stop 立即释放旧流，避免切台瞬间新旧流叠加的爆音；
+     * 启动时音量淡入，消除 AudioTrack 创建/切换瞬间的爆音（咔哒声）。
+     */
+    fun playStreaming(mediaItem: MediaItem, mediaId: String) {
+        updateStreamingModeFor(mediaId)
+        val player = masterPlayer
+        if (player.playbackState != Player.STATE_IDLE) {
+            player.stop()
+        }
+        player.setMediaItem(mediaItem, 0L)
+        player.prepare()
+        if (mediaId.startsWith("radio://")) {
+            fadeInVolume(player, mediaId)
+        }
+        player.play()
+    }
+
+    /** 音量淡入：从 0 渐变到 1，约 160ms，掩盖 AudioTrack 启动/重连时的瞬时爆音 */
+    private fun fadeInVolume(player: Player, mediaId: String) {
+        player.volume = 0f
+        scope.launch(Dispatchers.Main) {
+            val startMs = SystemClock.uptimeMillis()
+            while (true) {
+                // 播放期间切台：放弃本次淡入，不干扰新流的淡入
+                if (player.currentMediaItem?.mediaId != mediaId) return@launch
+                if (player.volume >= 1f) break
+                val progress = ((SystemClock.uptimeMillis() - startMs) / 160f).coerceIn(0f, 1f)
+                player.volume = progress
+                delay(16)
+            }
+            player.volume = 1f
+        }
     }
 
     private fun applyStreamingOffloadPreference() {

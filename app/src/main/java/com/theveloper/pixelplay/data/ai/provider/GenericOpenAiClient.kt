@@ -97,7 +97,7 @@ class GenericOpenAiClient(
             
             if (providerName.equals("OpenRouter", ignoreCase = true)) {
                 requestBuilder.addHeader("HTTP-Referer", "https://github.com/theovilardo/PixelPlayer")
-                requestBuilder.addHeader("X-Title", "PixelPlayer")
+                requestBuilder.addHeader("X-Title", "XiangsuPlayer")
             }
 
             val request = requestBuilder.post(body).build()

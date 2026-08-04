@@ -399,9 +399,9 @@
         name="setcat_trigger_crash_subtitle"
     >Crash simulieren, um das Absturz-Reporting zu testen.</string>
     <string name="setcat_application">App</string>
-    <string name="setcat_about_pixelplayer_title">Über PixelPlayer</string>
+    <string name="setcat_about_xiangsuplayer_title">Über XiangsuPlayer</string>
     <string
-        name="setcat_about_pixelplayer_subtitle"
+        name="setcat_about_xiangsuplayer_subtitle"
     >Version, Credits und mehr.</string>
 
     <string name="backup_summary_none">Keine Bereiche ausgewählt.</string>

@@ -12,7 +12,7 @@
 
     <!-- CastBottomSheet -->
     <string name="cast_perm_title">Prepárate para conectar</string>
-    <string name="cast_perm_body">Permite que PixelPlayer vea tus dispositivos cercanos y tu Wi‑Fi actual para que podamos mantener sincronizados tu transmisión, el audio Bluetooth y los altavoces.</string>
+    <string name="cast_perm_body">Permite que XiangsuPlayer vea tus dispositivos cercanos y tu Wi‑Fi actual para que podamos mantener sincronizados tu transmisión, el audio Bluetooth y los altavoces.</string>
     <string name="cast_perm_nearby_title">Dispositivos cercanos</string>
     <string name="cast_perm_nearby_desc">Necesario para leer y controlar tus dispositivos de audio Bluetooth conectados.</string>
     <string name="cast_perm_location_title">Ubicación para Wi‑Fi</string>
