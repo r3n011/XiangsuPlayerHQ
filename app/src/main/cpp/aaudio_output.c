@@ -60,7 +60,7 @@ static aaudio_output *get_handle(JNIEnv *env, jlong handle) {
 }
 
 /* 将整块字节按 volume 缩放（float 直接乘，I16 乘后截断） */
-static void scale_samples(Byte_t *data, int32_t bytes, int bytes_per_frame,
+static void scale_samples(uint8_t *data, int32_t bytes, int bytes_per_frame,
                           float volume) {
     int i;
     if (bytes_per_frame == 4) { /* float32 */
@@ -107,8 +107,7 @@ Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_native
     /* 音乐播放：不追求极低延迟，让系统选择稳定的大缓冲 deepbuffer 通道 */
     AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_NONE);
     AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
-    AAudioStreamBuilder_setUsage(builder, AAUDIO_USAGE_MEDIA);
-    AAudioStreamBuilder_setContentType(builder, AAUDIO_CONTENT_TYPE_MUSIC);
+    /* setUsage/setContentType 为 API 28 引入，且默认值即为 MEDIA/MUSIC，无需设置 */
 
     rc = AAudioStreamBuilder_openStream(builder, &stream);
     AAudioStreamBuilder_delete(builder);
@@ -127,7 +126,22 @@ Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_native
     out->sample_rate = AAudioStream_getSampleRate(stream);
     out->channels = AAudioStream_getChannelCount(stream);
     out->format = AAudioStream_getFormat(stream);
-    out->bytes_per_frame = AAudioStream_getBytesPerFrame(stream);
+    /* NDK 28 头文件已移除 AAudioStream_getBytesPerFrame，按格式计算：
+     * I16=2 字节/样本，FLOAT/I32=4 字节/样本，I24_PACKED=3 字节/样本。 */
+    out->bytes_per_frame = AAudioStream_getSamplesPerFrame(stream);
+    switch (out->format) {
+        case AAUDIO_FORMAT_PCM_FLOAT:
+        case AAUDIO_FORMAT_PCM_I32:
+            out->bytes_per_frame *= 4;
+            break;
+        case AAUDIO_FORMAT_PCM_I24_PACKED:
+            out->bytes_per_frame *= 3;
+            break;
+        case AAUDIO_FORMAT_PCM_I16:
+        default:
+            out->bytes_per_frame *= 2;
+            break;
+    }
     out->flush_base_frames = 0;
     out->started = 0;
 
@@ -162,7 +176,8 @@ Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_native
     aaudio_output *out = get_handle(env, handle);
     if (!out || !out->stream) return -1;
     if (!out->started) return 0;
-    aaudio_result_t rc = AAudioStream_pause(out->stream);
+    /* NDK 28 头文件只保留异步版 requestPause + waitForStateChange */
+    aaudio_result_t rc = AAudioStream_requestPause(out->stream);
     if (rc == AAUDIO_OK) {
         aaudio_stream_state_t cur = AAudioStream_getState(out->stream);
         wait_for_state(out->stream, cur, AAUDIO_STREAM_STATE_PAUSED);
@@ -177,15 +192,20 @@ Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_native
     (void) env; (void) clazz;
     aaudio_output *out = get_handle(env, handle);
     if (!out || !out->stream) return -1;
-    /* flush 仅对非运行态有效：先 pause 再 flush */
-    aaudio_result_t rc = AAudioStream_pause(out->stream);
+    /* flush 仅对非运行态有效：先 requestPause 等 PAUSED 再 requestFlush。
+     * NDK 28 头文件只保留异步版 request* + waitForStateChange。 */
+    aaudio_result_t rc = AAudioStream_requestPause(out->stream);
     if (rc != AAUDIO_OK && rc != AAUDIO_ERROR_INVALID_STATE) {
-        LOGE("nativeFlush: pause failed: %d", rc);
+        LOGE("nativeFlush: requestPause failed: %d", rc);
         return rc;
     }
     aaudio_stream_state_t cur = AAudioStream_getState(out->stream);
     wait_for_state(out->stream, cur, AAUDIO_STREAM_STATE_PAUSED);
-    rc = AAudioStream_flush(out->stream);
+    rc = AAudioStream_requestFlush(out->stream);
+    if (rc == AAUDIO_OK) {
+        cur = AAudioStream_getState(out->stream);
+        wait_for_state(out->stream, cur, AAUDIO_STREAM_STATE_FLUSHED);
+    }
     out->started = 0;
     /* flush 后 framesRead 会继续增长，记录基准使位置从 0 起算 */
     out->flush_base_frames = AAudioStream_getFramesRead(out->stream);
@@ -252,7 +272,7 @@ Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_native
 
     /* 音量缩放（volume != 1.0 时原位缩放，写入前完成） */
     if (out->volume != 1.0f) {
-        scale_samples((Byte_t *) (bytes + offset), frames * bytes_per_frame,
+        scale_samples((uint8_t *) (bytes + offset), frames * bytes_per_frame,
                       bytes_per_frame, out->volume);
     }
 

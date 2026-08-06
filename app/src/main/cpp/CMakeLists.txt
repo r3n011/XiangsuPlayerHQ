@@ -84,9 +84,14 @@ add_library(
         aaudio_output.c
 )
 
-# 头文件按构建平台(android-23)把 API 26+ 函数标记 unavailable，
-# 覆盖 __ANDROID_API__=26 使其可用（仅影响本 target 编译期）。
-target_compile_definitions(aaudio_output PRIVATE __ANDROID_API__=26)
+# 头文件按构建平台(android-23)把 API 26+ 函数标记 unavailable。
+# 注意：NDK 的 bionic availability 守卫判断的是 __ANDROID_MIN_SDK_VERSION__
+# （来自 --target=...android23 尾缀），单纯 -D__ANDROID_API__=26 无效——
+# 编译器内置宏会覆盖命令行定义，AAudio 仍被标记为 strict unavailable。
+# 正确做法：用 -target 把本 target 的编译目标尾缀覆盖为 android26，
+# 使 __ANDROID_API__ 与 __ANDROID_MIN_SDK_VERSION__ 均为 26，
+# 可用性守卫通过、无告警。仅影响本 target 编译期，不影响其它库与链接。
+target_compile_options(aaudio_output PRIVATE "--target=${AAUDIO_TRIPLE}26")
 
 target_link_libraries(
         aaudio_output
