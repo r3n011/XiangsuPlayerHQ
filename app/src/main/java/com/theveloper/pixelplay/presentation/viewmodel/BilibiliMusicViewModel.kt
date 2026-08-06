@@ -25,6 +25,8 @@ data class BilibiliUiState(
     val isLoadingMore: Boolean = false,
     val progress: Float? = null,
     val progressLabel: String? = null,
+    /** 正在解析播放链接的视频 id（搜索页在歌曲名称右侧显示加载提示用） */
+    val loadingSongId: String? = null,
 )
 
 @HiltViewModel
@@ -134,7 +136,8 @@ class BilibiliMusicViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(
                     progress = 0.1f,
-                    progressLabel = "获取视频信息…"
+                    progressLabel = "获取视频信息…",
+                    loadingSongId = song.id
                 )
 
                 var cidToUse = song.cid
@@ -169,12 +172,11 @@ class BilibiliMusicViewModel @Inject constructor(
                     progress = 0.5f,
                     progressLabel = "解析音频流…"
                 )
-
                 Timber.d("Getting play URL: aid=$aidToUse, cid=$cidToUse, bvid=$bvidToUse")
                 val url = searchApi.getPlayUrl(aidToUse, cidToUse, bvidToUse)
 
                 withContext(Dispatchers.Main) {
-                    _uiState.value = _uiState.value.copy(progress = null, progressLabel = null)
+                    _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
                     if (url == null) {
                         _uiState.value = _uiState.value.copy(error = "无法获取播放链接，请换一首")
                         return@withContext
@@ -195,7 +197,7 @@ class BilibiliMusicViewModel @Inject constructor(
             } catch (t: Throwable) {
                 Timber.e(t, "Bilibili playSong exception")
                 _uiState.value = _uiState.value.copy(
-                    progress = null, progressLabel = null,
+                    progress = null, progressLabel = null, loadingSongId = null,
                     error = "播放失败: ${t.message ?: t.javaClass.simpleName}"
                 )
             }

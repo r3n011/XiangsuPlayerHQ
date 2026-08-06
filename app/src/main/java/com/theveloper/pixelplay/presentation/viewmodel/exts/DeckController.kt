@@ -41,28 +41,24 @@ class DeckController(
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean
             ): AudioSink {
-                // ⚡ AAudio 后端控制：尝试从 Hilt EntryPoint 获取设置，失败则默认 Android O+ 启用
+                // ⚡ AAudio 后端：Media3 1.10.1 已移除内置 AAudio 支持，
+                // 开关开启且 Android O+ 时注入自定义 AAudio AudioOutputProvider，
+                // 否则回退系统 AudioTrack。
+                // ⚠ 冲突规避：USB 独占激活时回退 AudioTrack（AAudio 的 setPreferredDevice
+                // 是 no-op，无法路由到 USB DAC，且 libusb forceClaim 会断开占用 USB 接口的流）。
                 val useAaudio = try {
                     val entryPoint = EntryPointAccessors.fromApplication(
                         context.applicationContext,
                         UsbDacWithAudioEngineEntryPoint::class.java
                     )
-                    entryPoint.audioEngineSettings.aaudioEnabled.value &&
+                    val settings = entryPoint.audioEngineSettings
+                    settings.aaudioEnabled.value &&
+                            !settings.usbExclusiveModeEnabled.value &&
                             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 } catch (t: Throwable) {
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    false
                 }
-                try {
-                    if (!useAaudio) {
-                        System.setProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio", "true")
-                    } else {
-                        System.clearProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio")
-                    }
-                } catch (t: Throwable) {
-                    // ignore
-                }
-
-                return DefaultAudioSink.Builder(context)
+                val builder = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(false)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
                     .setAudioProcessorChain(
@@ -71,7 +67,12 @@ class DeckController(
                             SurroundDownmixProcessor()
                         )
                     )
-                    .build()
+                if (useAaudio) {
+                    builder.setAudioOutputProvider(
+                        com.theveloper.pixelplay.data.service.audioengine.AaudioAudioOutputProvider()
+                    )
+                }
+                return builder.build()
             }
 
             override fun buildVideoRenderers(

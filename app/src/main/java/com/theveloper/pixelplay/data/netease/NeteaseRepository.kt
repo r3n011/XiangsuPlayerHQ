@@ -561,7 +561,21 @@ class NeteaseRepository @Inject constructor(
                     // 未知 level（如自定义脚本值）按首选优先，再接标准回退链
                     linkedSetOf(quality, "exhigh", "higher", "standard")
                 }
+
+                // 各音质级别的最低期望比特率（bps）。
+                // 服务端返回的 br 低于此值时视为"被降级"（典型场景：非会员/未登录账号
+                // 无论请求什么 level 都只返回 128k 完整 URL），此时不能直接接受，
+                // 否则全链路音质会被悄悄压到 128k。
+                val minBrForLevel = mapOf(
+                    "standard" to 128_000,
+                    "higher" to 192_000,
+                    "exhigh" to 320_000,
+                    "lossless" to 320_000,
+                    "hires" to 320_000
+                )
                 var lastFailure: String? = null
+                // 记录被服务端降级的 URL，作为最终兜底（至少能播放）
+                var degradedUrl: String? = null
 
                 for (level in qualityFallbacks) {
                     val raw = requestSongUrl(songId, level)
@@ -586,6 +600,21 @@ class NeteaseRepository @Inject constructor(
                         val isPreviewUrl = hasFreeTrial || (reportedDuration > 0 && reportedDuration < 45000) ||
                                 (br > 0 && size > 0 && size < br * 30 / 8) // 简单估算：如果大小 <30秒音频，视为预览
                         if (!isPreviewUrl) {
+                            // ⚡ br 校验：返回比特率低于该音质最低期望 → 视为被服务端降级，
+                            // 不直接接受，继续下一级 / 最终交给 LxJsEngine 尝试高音质
+                            val minBr = minBrForLevel[level]
+                            if (minBr != null && br > 0 && br < minBr) {
+                                Timber.w("Netease songId=$songId level=$level downgraded to br=$br (<$minBr)")
+                                lastFailure = "Downgraded to $br at level=$level"
+                                if (degradedUrl == null) degradedUrl = url
+                                continue
+                            }
+                            // standard 且此前已发生降级：128k 也匹配但说明账号拿不到高音质，
+                            // 不再直接接受，交由 LxJsEngine 尝试（音源可能提供 320k/无损）
+                            if (degradedUrl != null && level == "standard") {
+                                lastFailure = "All preferred levels downgraded"
+                                break
+                            }
                             Timber.d("Resolved Netease URL for songId=$songId with level=$level")
                             return@runCatching url
                         }
@@ -604,6 +633,12 @@ class NeteaseRepository @Inject constructor(
                 if (lxUrl != null) {
                     Timber.d("LxJsEngine resolved full URL for songId=$songId")
                     return@runCatching lxUrl
+                }
+
+                // Lx 引擎不可用时，退回之前被服务端降级的 URL（至少能播放）
+                degradedUrl?.let {
+                    Timber.w("Netease songId=$songId falling back to downgraded URL")
+                    return@runCatching it
                 }
 
                 throw Exception("No URL available for song $songId ($lastFailure)")

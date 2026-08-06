@@ -189,6 +189,25 @@ class LxJsEngine @Inject constructor(
     }
 
     fun isReady(): Boolean = inited && instances.isNotEmpty()
+
+    /**
+     * 等待引擎就绪：引擎尚未加载时先触发 [ready] 加载，最多等待 [timeoutMs]。
+     * 解决"第一下播放就走官方 API"的问题——首次播放时落雪还在初始化，
+     * 这里会多等几秒让落雪就绪，而不是立刻回退官方。
+     * @return 就绪返回 true；超时仍未就绪返回 false（由调用方决定兜底）
+     */
+    suspend fun awaitReady(timeoutMs: Long = 15_000): Boolean {
+        if (isReady()) return true
+        // 触发一次加载（ready() 内部有 mutex 保护，多个协程同时调用只加载一次）
+        runCatching { ready() }
+        if (isReady()) return true
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (!isReady() && System.currentTimeMillis() < deadline) {
+            delay(150)
+        }
+        return isReady()
+    }
+
     fun getSources(): Map<String, LxSourceInfo> = sources
 
     /** 聚合版本显示：单脚本返回脚本名/版本，多脚本用 " + " 连接 */
@@ -250,7 +269,7 @@ class LxJsEngine @Inject constructor(
     // ── 对外 API ──────────────────────────────────────────────────────────
 
     suspend fun search(keyword: String, source: String, page: Int = 1, pagesize: Int = 30): LxSearchResult {
-        ensureReady()
+        if (!awaitReady()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
         val info = mapOf(
             "keyword" to keyword,
             "page" to page,
@@ -268,7 +287,11 @@ class LxJsEngine @Inject constructor(
     }
 
     suspend fun getPlayUrl(source: String, songInfo: Map<String, Any?>, quality: String = "128k"): String? {
-        ensureReady()
+        // 引擎未就绪时等待就绪（不抛异常），保证"第一下播放"也走落雪
+        if (!awaitReady()) {
+            Log.w(TAG, "getPlayUrl: engine not ready after await, return null")
+            return null
+        }
         val info = mapOf("musicInfo" to songInfo, "type" to quality)
         val targets = sourceIndex[source] ?: return null
         val startTime = System.currentTimeMillis()
@@ -288,10 +311,6 @@ class LxJsEngine @Inject constructor(
         }
         Log.d(TAG, "getPlayUrl $source/$quality all scripts failed")
         return null
-    }
-
-    private fun ensureReady() {
-        if (!inited || instances.isEmpty()) throw IllegalStateException("LxJsEngine not ready. Call ready() first.")
     }
 
     // ── 引擎调用（非阻塞：evaluate 触发后挂起等待，JS 线程空闲可处理其它请求） ──

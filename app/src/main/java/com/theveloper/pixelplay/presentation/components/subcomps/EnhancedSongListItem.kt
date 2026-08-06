@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -103,6 +104,12 @@ fun EnhancedSongListItem(
     showFavoriteButton: Boolean = false,
     isFavorite: Boolean = false,
     isRadio: Boolean = false,
+    /**
+     * 正在解析播放链接（搜索页吊起播放）时在歌曲名称右侧显示加载提示，
+     * 样式与媒体库下拉刷新指示器一致（主色小圆环 + 步骤文字）。
+     */
+    showLoading: Boolean = false,
+    loadingLabel: String? = null,
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
     onFavoriteClick: () -> Unit = {},
@@ -346,7 +353,8 @@ fun EnhancedSongListItem(
                         )
 
                     } else {
-                        // 广播电台在歌名右侧显示收音机小图标（封面仍显示电台 logo）
+                        // 广播电台在歌名右侧显示收音机小图标（封面仍显示电台 logo）；
+                        // 正在解析播放链接时在歌名右侧显示下拉刷新样式的小圆环 + 步骤文字
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -368,6 +376,24 @@ fun EnhancedSongListItem(
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
+                            if (showLoading) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = loadingLabel ?: "获取音源…",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
@@ -380,8 +406,8 @@ fun EnhancedSongListItem(
                     )
                 }
                 
-                val showPlayingIndicator = isCurrentSong && !isSelectionMode
-                val showTrailingAction = (showMoreOptionsButton || showFavoriteButton) && !isSelectionMode
+                val showPlayingIndicator = isCurrentSong && !isSelectionMode && !showLoading
+                val showTrailingAction = (showMoreOptionsButton || showFavoriteButton) && !isSelectionMode && !showLoading
 
                 if (showPlayingIndicator) {
                      PlayingEqIcon(

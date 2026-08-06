@@ -75,8 +75,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -890,22 +892,15 @@ private fun ArtistHomepageHeader(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // 网易云图标：红色圆底 + 白色云朵，标识该歌手来自网易云音乐
-            Box(
+            // 网易云图标：使用网易云音乐官方 logo（与账户设置中一致），标识该歌手来自网易云音乐
+            Image(
+                painter = painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_),
+                contentDescription = "网易云音乐",
                 modifier = Modifier
                     .padding(start = 8.dp)
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFEC4141)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Cloud,
-                    contentDescription = "网易云音乐",
-                    modifier = Modifier.size(12.dp),
-                    tint = Color.White
-                )
-            }
+                    .size(18.dp),
+                contentScale = ContentScale.Fit
+            )
         }
 
         // 认证标识（图片标识）

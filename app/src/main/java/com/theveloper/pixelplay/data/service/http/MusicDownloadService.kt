@@ -1,9 +1,19 @@
 package com.theveloper.pixelplay.data.service.http
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.documentfile.provider.DocumentFile
 import com.theveloper.pixelplay.data.media.CoverArtUpdate
 import com.theveloper.pixelplay.data.media.SongMetadataEditor
@@ -16,12 +26,15 @@ import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.utils.LyricsUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,6 +57,11 @@ class MusicDownloadService @Inject constructor(
     private val lyricsRepository: LyricsRepository
 ) {
 
+    companion object {
+        private const val DOWNLOAD_CHANNEL_ID = "pixelplay_download_channel"
+        private const val DOWNLOAD_NOTIFICATION_ID_BASE = 3000
+    }
+
     data class DownloadInfo(
         val songId: String,
         val title: String,
@@ -57,12 +75,53 @@ class MusicDownloadService @Inject constructor(
     private val _downloads = MutableStateFlow<List<DownloadInfo>>(emptyList())
     val downloads: StateFlow<List<DownloadInfo>> = _downloads.asStateFlow()
 
+    // 应用级作用域：下载在后台独立协程中执行，不占主线程、
+    // 不随播放页 ViewModel 销毁而中断（关闭播放页/切到后台仍能继续下载）。
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val notificationManager: NotificationManager? by lazy {
+        context.getSystemService(NotificationManager::class.java)
+    }
+
+    init {
+        createDownloadChannel()
+    }
+
+    private fun createDownloadChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                DOWNLOAD_CHANNEL_ID,
+                "歌曲下载",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply { setShowBadge(false) }
+            notificationManager?.createNotificationChannel(channel)
+        }
+    }
+
+    fun isDownloading(songId: String): Boolean =
+        _downloads.value.any { it.songId == songId && !it.isComplete && !it.isFailed }
+
+    /**
+     * 后台启动下载（非挂起）：在应用级作用域中执行，立即返回。
+     * [preferredUrl] 为播放链路已解析好的真实流 URL，可绕过网易云 API 限速与落雪引擎，
+     * 避免与播放争抢资源。下载结果通过 [downloads] StateFlow 与 [onFinished] 回调暴露。
+     */
+    fun startDownload(song: Song, preferredUrl: String? = null, onFinished: ((Boolean) -> Unit)? = null) {
+        val songId = song.id
+        if (isDownloading(songId)) return
+        appScope.launch {
+            val success = downloadSong(song, preferredUrl) != null
+            mainHandler.post { onFinished?.invoke(success) }
+        }
+    }
+
     fun isOnlineSong(song: Song): Boolean {
         return song.neteaseId != null || song.qqMusicMid != null || song.navidromeId != null || 
                song.gdriveFileId != null || song.telegramFileId != null
     }
 
-    suspend fun downloadSong(song: Song): String? {
+    suspend fun downloadSong(song: Song, preferredUrl: String? = null): String? {
         return try {
             val songId = song.id
             val existing = _downloads.value.find { it.songId == songId }
@@ -70,12 +129,17 @@ class MusicDownloadService @Inject constructor(
                 return existing.filePath
             }
 
+            val notificationId = DOWNLOAD_NOTIFICATION_ID_BASE + (songId.hashCode() and 0x7FFFFFFF) % 1000
             updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, false, null)
+            showDownloadNotification(notificationId, song.title, 0f, isDone = false)
 
-            val streamUrl = getStreamUrl(song)
+            // 优先使用播放链路已解析的 URL，其次才走 getStreamUrl（官方 API + 落雪引擎）
+            val streamUrl = preferredUrl?.takeIf { it.startsWith("http", ignoreCase = true) }
+                ?: getStreamUrl(song)
             if (streamUrl.isNullOrEmpty()) {
                 Timber.w("MusicDownloadService: No stream URL available for songId=$songId")
                 updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, true, null)
+                showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
                 return null
             }
 
@@ -85,27 +149,86 @@ class MusicDownloadService @Inject constructor(
             if (outputPath == null) {
                 Timber.w("MusicDownloadService: Cannot determine output path")
                 updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, true, null)
+                showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
                 return null
             }
 
             val result = downloadFileWithProgress(streamUrl, outputPath) { progress ->
                 updateDownloadStatus(songId, song.title, song.displayArtist, progress, false, false, null)
+                showDownloadNotification(notificationId, song.title, progress, isDone = false)
             }
 
             if (result) {
                 updateDownloadStatus(songId, song.title, song.displayArtist, 100f, true, false, outputPath)
+                showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true)
                 // 下载完成后自动补全元数据：写音频标签（标题/歌手/专辑/封面/歌词）、
                 // 生成同目录 .lrc 歌词文件并刷新 MediaStore
                 enrichDownloadedFile(song, outputPath)
                 outputPath
             } else {
                 updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, true, null)
+                showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
                 null
             }
         } catch (e: Exception) {
             Timber.e(e, "MusicDownloadService: Failed to download songId=${song.id}")
             updateDownloadStatus(song.id, song.title, song.displayArtist, 0f, false, true, null)
+            val notificationId = DOWNLOAD_NOTIFICATION_ID_BASE + (song.id.hashCode() and 0x7FFFFFFF) % 1000
+            showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
             null
+        }
+    }
+
+    /** 在通知栏展示下载进度（进行中/完成/失败），完成后几秒自动清除 */
+    private fun showDownloadNotification(
+        notificationId: Int,
+        title: String,
+        progress: Float,
+        isDone: Boolean,
+        success: Boolean = true
+    ) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) return
+
+            val builder = NotificationCompat.Builder(context, DOWNLOAD_CHANNEL_ID)
+                .setSmallIcon(com.theveloper.pixelplay.R.drawable.monochrome_player)
+                .setContentTitle(title)
+                .setOnlyAlertOnce(true)
+                .setOngoing(!isDone)
+
+            if (isDone) {
+                builder
+                    .setContentText(if (success) "下载完成" else "下载失败")
+                    .setAutoCancel(true)
+            } else {
+                val pct = progress.toInt().coerceIn(0, 100)
+                builder
+                    .setContentText("下载中 $pct%")
+                    .setProgress(100, pct, progress <= 0f)
+                // 点击通知回到播放页
+                val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                if (openAppIntent != null) {
+                    builder.setContentIntent(
+                        PendingIntent.getActivity(
+                            context,
+                            notificationId,
+                            openAppIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                    )
+                }
+            }
+
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+            if (isDone) {
+                mainHandler.postDelayed({
+                    runCatching { NotificationManagerCompat.from(context).cancel(notificationId) }
+                }, 4000)
+            }
+        } catch (t: Throwable) {
+            Timber.w(t, "MusicDownloadService: 通知展示失败")
         }
     }
 

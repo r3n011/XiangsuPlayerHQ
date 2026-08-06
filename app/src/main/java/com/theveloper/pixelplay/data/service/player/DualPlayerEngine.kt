@@ -1319,6 +1319,83 @@ class DualPlayerEngine @Inject constructor(
             mediaItemRetryCount[mediaId] = retries + 1
             Timber.tag("DualPlayerEngine").w("Playback error for $mediaId (non-proxy). errorCode=${error.errorCode}")
 
+            // 漫游歌曲（roaming_ 前缀）播放的是落雪返回的带签名临时直链，会过期失效。
+            // 失效后对同一 URL 重试必然再次失败 → 走到 MAX_RETRIES 就"自动跳歌"。
+            // 因此报错后先重新走落雪引擎取一条新链接并原地重放，取不到才交给后续逻辑。
+            if (mediaId.startsWith("roaming_") && retries < MAX_RETRIES_PER_ITEM - 1) {
+                val numericId = mediaId.removePrefix("roaming_").toLongOrNull()
+                if (numericId != null) {
+                    val wasPlayingBefore = wasPlaying
+                    scope.launch(Dispatchers.Main) {
+                        val freshUrl = withContext(Dispatchers.IO) {
+                            try {
+                                val songMap = mapOf<String, Any?>(
+                                    "id" to numericId.toString(),
+                                    "vid" to numericId.toString(),
+                                    "songmid" to numericId.toString(),
+                                    "hash" to numericId.toString(),
+                                    "source" to "wy"
+                                )
+                                val chain = when (musicQualityLxValue) {
+                                    "24bit" -> listOf("24bit", "flac", "320k", "128k")
+                                    "flac" -> listOf("flac", "24bit", "320k", "128k")
+                                    "320k" -> listOf("320k", "128k")
+                                    "128k" -> listOf("128k")
+                                    else -> listOf(musicQualityLxValue, "320k", "128k")
+                                }
+                                var url: String? = null
+                                for (q in chain) {
+                                    if (!url.isNullOrBlank()) break
+                                    url = lxJsEngine.getPlayUrl("wy", songMap, q)
+                                }
+                                url
+                            } catch (t: Throwable) {
+                                Timber.tag("DualPlayerEngine").w(t, "Roaming re-resolve failed for $mediaId")
+                                null
+                            }
+                        }
+                        if (freshUrl.isNullOrBlank() || !::playerA.isInitialized) {
+                            if (freshUrl.isNullOrBlank()) {
+                                // 重新解析也失败 → 跳到下一首（与重试耗尽行为一致）
+                                runCatching {
+                                    if (player.hasNextMediaItem()) {
+                                        player.seekToNextMediaItem()
+                                        player.prepare()
+                                        if (wasPlayingBefore) player.playWhenReady = true
+                                    }
+                                }
+                            }
+                            return@launch
+                        }
+                        if (playerA.currentMediaItem?.mediaId != mediaId) return@launch
+                        try {
+                            val currentIndex = player.currentMediaItemIndex
+                            val currentPosition = player.currentPosition
+                            val newItem = player.currentMediaItem
+                                ?.buildUpon()?.setUri(freshUrl)?.build()
+                            if (newItem != null) {
+                                player.stop()
+                                player.clearMediaItems()
+                                val snapshot = ensureQueueSnapshot().map { item ->
+                                    if (item.mediaId == mediaId) newItem else item
+                                }
+                                if (snapshot.isNotEmpty()) {
+                                    player.setMediaItems(snapshot, currentIndex, currentPosition)
+                                    player.prepare()
+                                    if (wasPlayingBefore) player.playWhenReady = true
+                                    Timber.tag("DualPlayerEngine").d(
+                                        "Roaming: re-resolved fresh URL and re-prepared $mediaId"
+                                    )
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("DualPlayerEngine").w(e, "Roaming re-resolve re-prepare failed for $mediaId")
+                        }
+                    }
+                    return
+                }
+            }
+
             // 广播电台重试机制：http(s) 直播流断流/失败时按退避策略自动重连
             if (mediaId.startsWith("radio://")) {
                 val backoffMs = listOf(1_000L, 3_000L, 6_000L)[retries.coerceAtMost(2)]
@@ -1407,22 +1484,17 @@ class DualPlayerEngine @Inject constructor(
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean
             ): AudioSink {
-                // ⚡ AAudio 后端控制：
-                // Media3 DefaultAudioSink 在 Android O+ 默认优先使用 AAudio，
-                // 当 Settings 关闭 AAudio 时，设置系统属性强制 Media3 退回 AudioTrack。
+                // ⚡ AAudio 后端：Media3 1.10.1 已移除内置 AAudio 支持，
+                // 开关开启且 Android O+ 时注入自定义 AAudio AudioOutputProvider，
+                // 否则回退系统 AudioTrack。USB 独占镜像在 AudioProcessor 层，不受影响。
+                // ⚠ 冲突规避：USB 独占激活时回退 AudioTrack —— AAudio 的 setPreferredDevice
+                // 是 no-op，无法跟随 MusicService 把输出路由到 USB DAC；且 libusb forceClaim
+                // 会踢掉占用 USB 接口的 AAudio 流（AAUDIO_ERROR_DISCONNECTED）。独占模式依赖
+                // AudioTrack 的优选设备路由，故此处必须禁用 AAudio 后端。
                 val useAaudio = audioEngineSettings.aaudioEnabled.value &&
+                        !audioEngineSettings.usbExclusiveModeEnabled.value &&
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                try {
-                    if (!useAaudio) {
-                        System.setProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio", "true")
-                    } else {
-                        System.clearProperty("androidx.media3.exoplayer.audio.DefaultAudioSink.disableAAudio")
-                    }
-                } catch (t: Throwable) {
-                    Timber.w(t, "Failed to configure AAudio system property")
-                }
-
-                return DefaultAudioSink.Builder(context)
+                val builder = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiFiModeEnabled)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
                     .setAudioProcessorChain(
@@ -1437,7 +1509,12 @@ class DualPlayerEngine @Inject constructor(
                             com.theveloper.pixelplay.data.service.audioengine.UsbExclusiveAudioProcessor()
                         )
                     )
-                    .build()
+                if (useAaudio) {
+                    builder.setAudioOutputProvider(
+                        com.theveloper.pixelplay.data.service.audioengine.AaudioAudioOutputProvider()
+                    )
+                }
+                return builder.build()
             }
 
             override fun buildVideoRenderers(
@@ -1827,6 +1904,51 @@ class DualPlayerEngine @Inject constructor(
     }
 
     private suspend fun resolveNeteaseUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
+        // ★: 媒体库/播放列表中的网易云歌曲（netease://{id}）播放时同样走落雪引擎优先，
+        // 且遵守用户音质设置；官方 neteaseStreamProxy 仅在落雪失败后兜底。
+        val songId = uriString.removePrefix("netease://")
+        val numericId = songId.toLongOrNull()
+        if (numericId != null && numericId > 0) {
+            try {
+                // 等待落雪引擎就绪（首次播放引擎可能还在初始化，多等几秒避免直接回退官方 128k）
+                if (lxJsEngine.awaitReady(15_000)) {
+                    // 落雪播放只需平台 + 歌曲 ID（songmid/id），无需歌名/歌手
+                    val songMap = mapOf<String, Any?>(
+                        "id" to songId,
+                        "vid" to songId,
+                        "songmid" to songId,
+                        "hash" to songId,
+                        "source" to "wy"
+                    )
+                    // 按用户音质向下递减尝试（24bit→flac→320k→128k；128k 不抬音质）
+                    val chain = when (musicQualityLxValue) {
+                        "24bit" -> listOf("24bit", "flac", "320k", "128k")
+                        "flac" -> listOf("flac", "24bit", "320k", "128k")
+                        "320k" -> listOf("320k", "128k")
+                        "128k" -> listOf("128k")
+                        else -> listOf(musicQualityLxValue, "320k", "128k")
+                    }
+                    var lxUrl: String? = null
+                    for (q in chain) {
+                        if (lxUrl != null) break
+                        lxUrl = runCatching { lxJsEngine.getPlayUrl("wy", songMap, q) }.getOrNull()
+                    }
+                    if (lxUrl != null) {
+                        android.util.Log.d(
+                            "DualPlayerEngine",
+                            "resolveNeteaseUri: lx engine hit for $songId (quality=$musicQualityLxValue)"
+                        )
+                        return@withContext Uri.parse(lxUrl)
+                    }
+                    android.util.Log.w("DualPlayerEngine", "resolveNeteaseUri: lx engine FAILED for $songId -> 官方兜底")
+                } else {
+                    android.util.Log.w("DualPlayerEngine", "resolveNeteaseUri: 等待落雪引擎就绪超时(15s) for $songId -> 官方兜底")
+                }
+            } catch (t: Throwable) {
+                android.util.Log.w("DualPlayerEngine", "resolveNeteaseUri: lx engine failed for $songId: ${t.message}")
+            }
+        }
+        // 落雪失败 → 官方 neteaseStreamProxy 兜底
         if (!neteaseStreamProxy.ensureReady(5_000L)) return@withContext null
         neteaseStreamProxy.resolveNeteaseUri(uriString)?.let { Uri.parse(it) }
     }
@@ -1905,37 +2027,20 @@ class DualPlayerEngine @Inject constructor(
                 "resolveCloudLxUri: savedSource=$savedSource targetSources=$targetSources song=${songMap["name"]}"
             )
 
-            if (!lxJsEngine.isReady()) {
-                val loaded = runCatching { lxJsEngine.ready() }.getOrDefault(false)
-                if (!loaded) return@withContext null
+            // 等待落雪引擎就绪（首次播放引擎可能还在初始化，多等几秒避免直接失败）
+            if (!lxJsEngine.awaitReady(15_000)) {
+                android.util.Log.w("DualPlayerEngine", "resolveCloudLxUri: 等待落雪引擎就绪超时(15s)")
+                return@withContext null
             }
 
-            // ★: 如果 ID 是纯数字且音源为 "wy"（网易云），
-            // 优先走 neteaseStreamProxy → NeteaseRepository.getSongUrl，
-            // 通过官方 API 获取 m701.music.126.net 等可播放链接，
-            // 避免 lxJsEngine 返回的 175.27.166.236/wy/wy.php?... 404。
+            // ★: 网易云歌曲（纯数字 id + source=wy）落雪引擎优先（音质更高），
+            // 官方 neteaseStreamProxy 仅在落雪全部失败后兜底。
             val rawId = songMap["id"]?.toString() ?: ""
             val neteaseSongId = rawId.toLongOrNull()
             val isNeteaseSource = neteaseSongId != null && neteaseSongId > 0 &&
                     (savedSource == "" || savedSource == "wy")
-            if (isNeteaseSource && neteaseSongId != null) {
-                if (neteaseStreamProxy.ensureReady(5_000L)) {
-                    val proxyUrl = neteaseStreamProxy.resolveNeteaseUri("netease://$neteaseSongId")
-                    if (!proxyUrl.isNullOrBlank()) {
-                        android.util.Log.d(
-                            "DualPlayerEngine",
-                            "resolveCloudLxUri: resolved via neteaseStreamProxy for song $neteaseSongId"
-                        )
-                        return@withContext Uri.parse(proxyUrl)
-                    }
-                }
-                android.util.Log.w(
-                    "DualPlayerEngine",
-                    "resolveCloudLxUri: neteaseStreamProxy unavailable, falling back to lxJsEngine"
-                )
-            }
 
-            // 按音源优先级 + 音质优先级 尝试获取播放链接
+            // 按音源优先级 + 音质优先级 尝试获取播放链接（落雪优先）
             // 内置源（tx/kg/mg/kw）走官方播放接口并遵守音质设置；
             // 其余源（含 wy）走 Lx JS 引擎，同样优先使用用户选择的音质。
             var url: String? = null
@@ -1965,6 +2070,25 @@ class DualPlayerEngine @Inject constructor(
                 if (url != null) {
                     android.util.Log.d("DualPlayerEngine", "resolveCloudLxUri: got url from source=$source")
                     break
+                }
+            }
+
+            // 落雪全失败且为网易云歌曲 → 官方 neteaseStreamProxy 兜底
+            if (url == null && isNeteaseSource && neteaseSongId != null) {
+                if (neteaseStreamProxy.ensureReady(5_000L)) {
+                    val proxyUrl = neteaseStreamProxy.resolveNeteaseUri("netease://$neteaseSongId")
+                    if (!proxyUrl.isNullOrBlank()) {
+                        android.util.Log.d(
+                            "DualPlayerEngine",
+                            "resolveCloudLxUri: resolved via neteaseStreamProxy fallback for song $neteaseSongId"
+                        )
+                        url = proxyUrl
+                    }
+                } else {
+                    android.util.Log.w(
+                        "DualPlayerEngine",
+                        "resolveCloudLxUri: neteaseStreamProxy unavailable for fallback"
+                    )
                 }
             }
 
@@ -2013,6 +2137,18 @@ class DualPlayerEngine @Inject constructor(
         if (scheme !in CLOUD_PROXY_SCHEMES) return mediaItem
         val resolvedUri = resolveCloudUri(uri)
         return if (resolvedUri == uri) mediaItem else mediaItem.buildUpon().setUri(resolvedUri).build()
+    }
+
+    /**
+     * 读取当前播放已解析出的真实流 URL（数据源层/播放链路上已写入 resolvedUriCache）。
+     * 供音质元数据探测（采样率/码率）使用：mediaItem 的 URI 是 netease:// 等自定义 scheme，
+     * 直接用它对网络流探测必然失败；只有这里缓存的真实 http(s) URL 才能抓到流头。
+     * 未解析或缓存值不是网络流时返回 null。
+     */
+    fun getResolvedStreamUri(uri: Uri): Uri? {
+        val cached = resolvedUriCache.get(uri.toString()) ?: return null
+        val scheme = cached.scheme?.lowercase()
+        return if (scheme == "http" || scheme == "https") cached else null
     }
 
     suspend fun prepareNext(target: TransitionTarget, startPositionMs: Long = 0L) {

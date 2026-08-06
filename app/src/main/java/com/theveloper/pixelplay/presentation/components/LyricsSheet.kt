@@ -98,11 +98,16 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.layout.onSizeChanged
 
 import com.theveloper.pixelplay.data.model.SyncedLine
 import com.theveloper.pixelplay.data.model.SyncedWord
@@ -385,7 +390,8 @@ fun LyricsSheet(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val activityWindow = remember(view) { (view.context as? android.app.Activity)?.window }
 
-    // Hide the status bar for a fully immersive lyrics screen; restore on exit.
+    // Hide the status bar AND the bottom navigation bar (三大金刚键/手势小条) for a
+    // fully immersive lyrics screen; restore both on exit.
     DisposableEffect(Unit) {
         val window = activityWindow
         val insetsController = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
@@ -395,7 +401,10 @@ fun LyricsSheet(
         insetsController?.let {
             it.systemBarsBehavior =
                 androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            it.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+            it.hide(
+                androidx.core.view.WindowInsetsCompat.Type.statusBars() or
+                    androidx.core.view.WindowInsetsCompat.Type.navigationBars()
+            )
         }
         onDispose {
             if (window != null) {
@@ -403,7 +412,10 @@ fun LyricsSheet(
                 window.attributes = window.attributes.apply { flags = previousFlags }
             }
             insetsController?.let {
-                it.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                it.show(
+                    androidx.core.view.WindowInsetsCompat.Type.statusBars() or
+                        androidx.core.view.WindowInsetsCompat.Type.navigationBars()
+                )
                 previousSystemBarsBehavior?.let { behavior ->
                     it.systemBarsBehavior = behavior
                 }
@@ -1318,6 +1330,8 @@ fun SyncedLyricsList(
     footer: LazyListScope.() -> Unit = {}
 ) {
     val density = LocalDensity.current
+    // 共享一个 TextMeasurer 给所有歌词行，避免每行单独创建（流畅度优化）
+    val sharedTextMeasurer = rememberTextMeasurer()
     val playbackPosition by playbackPositionFlow.collectAsStateWithLifecycle()
     val position = remember(playbackPosition, lyricsSyncOffset, positionOverrideMs) {
         positionOverrideMs ?: (playbackPosition + lyricsSyncOffset).coerceAtLeast(0L)
@@ -1514,6 +1528,7 @@ fun SyncedLyricsList(
                             showRomanization = showRomanization,
                             accentColor = accentColor,
                             style = textStyle,
+                            textMeasurer = sharedTextMeasurer,
                             modifier = parallaxModifier
                                 .fillMaxWidth()
                                 .testTag("synced_line_${line.time}"),
@@ -1567,10 +1582,26 @@ fun LyricLineRow(
     showRomanization: Boolean = true,
     accentColor: Color,
     style: TextStyle,
+    textMeasurer: TextMeasurer? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val sanitizedLine = remember(line.line) { sanitizeLyricLineText(line.line) }
+
+    // ── 防裁切：放大歌词后自动判断是否超出容器宽度，超出则智能换行 ──
+    var containerWidthPx by remember { mutableIntStateOf(0) }
+    // 复用父级共享的 TextMeasurer；单独使用时才自行创建
+    val measurer = textMeasurer ?: rememberTextMeasurer()
+    // 高亮行会被放大（useAnimatedLyrics 时 active scale≈1.1），为其预留放大余量，
+    // 换行后即使放大 1.15 倍也不会超出容器，彻底避免裁切
+    val activeScale = if (useAnimatedLyrics && distanceFromCurrent == 0) 1.15f else 1f
+    val availableWidthPx =
+        if (containerWidthPx > 0) (containerWidthPx / activeScale).toInt() else Int.MAX_VALUE
+    val wrappedLine = remember(sanitizedLine, style, availableWidthPx) {
+        if (availableWidthPx == Int.MAX_VALUE) sanitizedLine
+        else wrapLyricLineToFit(sanitizedLine, style, measurer, availableWidthPx)
+    }
+
     val sanitizedWords = remember(line.words) {
         line.words?.let(::sanitizeSyncedWords)
     }
@@ -1747,6 +1778,7 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
+                .onSizeChanged { containerWidthPx = it.width }
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
@@ -1755,7 +1787,7 @@ fun LyricLineRow(
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = boxAlignment) {
                 // Invisible bold text to reserve layout space and prevent reflow
                 Text(
-                    text = sanitizedLine,
+                    text = wrappedLine,
                     style = style,
                     color = Color.Transparent,
                     fontWeight = FontWeight.Bold,
@@ -1764,7 +1796,7 @@ fun LyricLineRow(
                     overflow = TextOverflow.Visible
                 )
                 Text(
-                    text = sanitizedLine,
+                    text = wrappedLine,
                     style = style,
                     color = lineColor,
                     fontWeight = if (isCurrentLine) FontWeight.Bold else FontWeight.Normal,
@@ -1776,7 +1808,8 @@ fun LyricLineRow(
 
             if (showRomanization && !romanizationText.isNullOrBlank()) {
                 Text(
-                    text = romanizationText,
+                    text = if (availableWidthPx == Int.MAX_VALUE) romanizationText
+                    else wrapLyricLineToFit(romanizationText, secondaryStyle, measurer, availableWidthPx),
                     style = secondaryStyle,
                     color = romanizationColor,
                     textAlign = textAlign,
@@ -1788,7 +1821,8 @@ fun LyricLineRow(
 
             if (showTranslation && !translationText.isNullOrBlank()) {
                 Text(
-                    text = translationText,
+                    text = if (availableWidthPx == Int.MAX_VALUE) translationText
+                    else wrapLyricLineToFit(translationText, secondaryStyle, measurer, availableWidthPx),
                     style = secondaryStyle,
                     color = translationColor,
                     textAlign = textAlign,
@@ -1813,6 +1847,7 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
+                .onSizeChanged { containerWidthPx = it.width }
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
@@ -1846,25 +1881,113 @@ fun LyricLineRow(
 
             if (showRomanization && !romanizationText.isNullOrBlank()) {
                 Text(
-                    text = romanizationText,
+                    text = if (availableWidthPx == Int.MAX_VALUE) romanizationText
+                    else wrapLyricLineToFit(romanizationText, secondaryStyle, measurer, availableWidthPx),
                     style = secondaryStyle,
                     color = romanizationColor,
                     textAlign = textAlign,
+                    softWrap = true,
+                    overflow = TextOverflow.Visible,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
             if (showTranslation && !translationText.isNullOrBlank()) {
                 Text(
-                    text = translationText,
+                    text = if (availableWidthPx == Int.MAX_VALUE) translationText
+                    else wrapLyricLineToFit(translationText, secondaryStyle, measurer, availableWidthPx),
                     style = secondaryStyle,
                     color = translationColor,
                     textAlign = textAlign,
+                    softWrap = true,
+                    overflow = TextOverflow.Visible,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
         }
     }
+}
+
+/**
+ * 歌词防裁切：若单行宽度超过 [maxWidthPx] 则在该字符前插入换行。
+ * 换行后 Text 使用 softWrap=true 多行显示，行高随内容自适应，绝不裁切。
+ *
+ * 流畅度优化：
+ * 1. 快速路径：先只测一次整行，若未超宽直接返回原文（大多数行不超宽，避免逐字符测量）
+ * 2. 进程级 LRU 缓存：按 (行文本+宽度+样式) 缓存换行结果，滚动重建行时直接命中
+ */
+private val lyricWrapCache = object {
+    private val maxEntries = 600
+    private val map = object : LinkedHashMap<String, String>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
+            size > maxEntries
+    }
+    private val lock = Any()
+
+    fun get(key: String): String? = synchronized(lock) { map[key] }
+    fun put(key: String, value: String) {
+        synchronized(lock) { map[key] = value }
+    }
+}
+
+private fun wrapLyricLineToFit(
+    line: String,
+    style: TextStyle,
+    textMeasurer: TextMeasurer,
+    maxWidthPx: Int
+): String {
+    if (line.isBlank() || maxWidthPx <= 0) return line
+
+    // 缓存 key：行文本 + 宽度 + 样式关键属性（字体大小/字重/字体）
+    val styleKey = "${style.fontSize?.value ?: 0}_${style.fontWeight?.weight ?: 0}_${style.fontFamily}"
+    val cacheKey = "$maxWidthPx|$styleKey|$line"
+    lyricWrapCache.get(cacheKey)?.let { return it }
+
+    // 快速路径：先只测一次整行，未超宽直接返回（避免逐字符测量）
+    val fullWidth = try {
+        textMeasurer.measure(
+            text = AnnotatedString(line),
+            style = style,
+            maxLines = 1,
+            overflow = TextOverflow.Clip
+        ).size.width
+    } catch (t: Throwable) {
+        return line
+    }
+    if (fullWidth <= maxWidthPx) {
+        lyricWrapCache.put(cacheKey, line)
+        return line
+    }
+
+    // 慢路径：整行超宽，逐字符累积测量并断行
+    val sb = StringBuilder(line.length + 8)
+    var current = ""
+    for (ch in line) {
+        val test = current + ch
+        val w = try {
+            textMeasurer.measure(
+                text = AnnotatedString(test),
+                style = style,
+                maxLines = 1,
+                overflow = TextOverflow.Clip
+            ).size.width
+        } catch (t: Throwable) {
+            // 测量异常时退回原文本，交由 softWrap 自动处理
+            lyricWrapCache.put(cacheKey, line)
+            return line
+        }
+        if (w > maxWidthPx && current.isNotEmpty()) {
+            // 断行点：若该字符是空格/标点且当前行以它们结尾，则吞掉该分隔符
+            sb.append(current.trimEnd(' ', '\t')).append('\n')
+            current = if (ch.isWhitespace() || ch in "，。！？、；：,.!?;:") "" else ch.toString()
+        } else {
+            current = test
+        }
+    }
+    sb.append(current)
+    val result = sb.toString()
+    lyricWrapCache.put(cacheKey, result)
+    return result
 }
 
 @Composable

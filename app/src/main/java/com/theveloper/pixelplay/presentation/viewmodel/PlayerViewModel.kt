@@ -22,6 +22,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import android.content.Context
 import android.content.Intent
@@ -205,7 +206,15 @@ data class PlaybackAudioMetadata(
     val bitrate: Int? = null,
     val sampleRate: Int? = null,
     val channelCount: Int? = null,
-    val bitDepth: Int? = null
+    val bitDepth: Int? = null,
+    /**
+     * 已确定的音质标签（如 "320 kbps • MP3 · 44.1 kHz"）。
+     *
+     * 保存在 ViewModel 层，UI 直接读取：FullPlayer 内容因展开/折叠被回收再重组时，
+     * 本地 remember 状态会丢失导致音质标签消失，此字段可跨 UI 重组存活。
+     * 采用"不降级"规则：完整标签（带码率/采样率）一旦出现，后续不完整标签不覆盖。
+     */
+    val displayLabel: String? = null
 )
 
 private data class SortOptionsSnapshot(
@@ -2684,8 +2693,9 @@ class PlayerViewModel @Inject constructor(
         playlistId: String? = null,
         indexInQueue: Int? = null
     ) {
-        // 广播电台（含收藏中持久化的电台）：实时流无法进普通队列，直接走 playUrl
-        if (song.isRadioStation) {
+        // 广播电台（含收藏中持久化的电台）：实时流无法进普通队列，直接走 playUrl。
+        // 漫游歌曲（id 以 roaming_ 开头）是普通歌曲，不走此分支，避免误判为电台播放器。
+        if (song.isRadioStation && !song.id.startsWith("roaming_")) {
             playUrl(
                 url = song.contentUriString,
                 title = song.title,
@@ -3245,7 +3255,11 @@ class PlayerViewModel @Inject constructor(
         metadataProbeJob?.cancel()
         metadataProbeJob = null
         metadataProbeMediaId = null
-        _playbackAudioMetadata.value = PlaybackAudioMetadata()
+        // 保留已确定的音质标签：IDLE/空队列时 currentSong 仍保留在界面上，
+        // 标签应跨元数据重置与 UI 重组存活，避免打开歌词/切界面后标签消失。
+        _playbackAudioMetadata.value = PlaybackAudioMetadata(
+            displayLabel = _playbackAudioMetadata.value.displayLabel
+        )
     }
 
     private fun preparePlaybackAudioMetadataForMedia(mediaId: String?) {
@@ -3264,6 +3278,45 @@ class PlayerViewModel @Inject constructor(
             C.ENCODING_PCM_FLOAT -> 32
             else -> null
         }
+    }
+
+    /**
+     * 由 mimeType/码率/采样率构建音质标签，与 FullPlayerContent.formatAudioMetaLabel 保持一致。
+     */
+    private fun buildPlaybackMetaLabel(mimeType: String?, bitrate: Int?, sampleRate: Int?): String? {
+        val formatLabel = com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat(mimeType)
+            .takeIf { it != "-" }
+            ?.uppercase(Locale.getDefault())
+        val parts = buildList {
+            sampleRate?.takeIf { it > 0 }?.let {
+                add(String.format(Locale.US, "%.1f kHz", it / 1000.0))
+            }
+            bitrate?.takeIf { it > 0 }?.let { bitrateValue ->
+                val kbpsLabel = "${bitrateValue / 1000} kbps"
+                if (formatLabel != null) {
+                    add("$kbpsLabel \u2022 $formatLabel")
+                } else {
+                    add(kbpsLabel)
+                }
+            } ?: formatLabel?.let { add(it) }
+        }
+        return parts.takeIf { it.isNotEmpty() }?.joinToString(" \u2022 ")
+    }
+
+    /**
+     * 按"不降级"规则决定最终展示的音质标签：
+     * 带码率/采样率的完整标签一旦出现即固定；不完整标签只在尚无标签时使用，
+     * 避免探针完成前的过渡标签（如裸 "MP3"）覆盖已确定的完整标签。
+     */
+    private fun decidePlaybackMetaDisplayLabel(
+        rawLabel: String?,
+        metadata: PlaybackAudioMetadata,
+        previousLabel: String?
+    ): String? = when {
+        rawLabel.isNullOrBlank() -> previousLabel
+        metadata.bitrate != null || metadata.sampleRate != null -> rawLabel
+        previousLabel == null -> rawLabel
+        else -> previousLabel
     }
 
     private fun refreshPlaybackAudioMetadata(player: Player, tracks: Tracks = player.currentTracks) {
@@ -3285,6 +3338,10 @@ class PlayerViewModel @Inject constructor(
                 }
                 .firstOrNull()
 
+            // 解码器输出的当前音频格式：MP3 等网络流在 tracks 里可能缺 bitrate/sampleRate，
+            // 从解码输出回退补全，保证音质标签始终有采样率/位深
+            val decoderFormat = runCatching { (player as? ExoPlayer)?.audioFormat }.getOrNull()
+
             val current = _playbackAudioMetadata.value.takeIf { it.mediaId == mediaId }
             val metadata = PlaybackAudioMetadata(
                 mediaId = mediaId,
@@ -3294,13 +3351,27 @@ class PlayerViewModel @Inject constructor(
                 bitrate = selectedAudioFormat?.bitrate?.takeIf { it > 0 }
                     ?: current?.bitrate,
                 sampleRate = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }
+                    ?: decoderFormat?.sampleRate?.takeIf { it > 0 }
                     ?: current?.sampleRate,
-                channelCount = selectedAudioFormat?.channelCount?.takeIf { it > 0 } ?: current?.channelCount,
-                bitDepth = selectedAudioFormat?.pcmEncoding?.let(::extractBitDepthFromPcmEncoding) ?: current?.bitDepth
+                channelCount = selectedAudioFormat?.channelCount?.takeIf { it > 0 }
+                    ?: decoderFormat?.channelCount?.takeIf { it > 0 }
+                    ?: current?.channelCount,
+                bitDepth = selectedAudioFormat?.pcmEncoding?.let(::extractBitDepthFromPcmEncoding)
+                    ?: decoderFormat?.pcmEncoding?.let(::extractBitDepthFromPcmEncoding)
+                    ?: current?.bitDepth
             )
 
-            _playbackAudioMetadata.value = metadata
-            maybeProbeMissingPlaybackAudioMetadata(player, metadata)
+            // 计算并持久化音质标签（"不降级"规则），跨 UI 重组存活
+            val resolvedMetadata = metadata.copy(
+                displayLabel = decidePlaybackMetaDisplayLabel(
+                    rawLabel = buildPlaybackMetaLabel(metadata.mimeType, metadata.bitrate, metadata.sampleRate),
+                    metadata = metadata,
+                    previousLabel = current?.displayLabel
+                )
+            )
+
+            _playbackAudioMetadata.value = resolvedMetadata
+            maybeProbeMissingPlaybackAudioMetadata(player, resolvedMetadata)
         }.onFailure { throwable ->
             Timber.w(throwable, "Failed to refresh playback audio metadata")
         }
@@ -3315,14 +3386,39 @@ class PlayerViewModel @Inject constructor(
 
         val mediaItem = player.currentMediaItem ?: return
         val mediaId = mediaItem.mediaId
-        val uri = mediaItem.localConfiguration?.uri ?: return
+        val rawUri = mediaItem.localConfiguration?.uri ?: return
+        val scheme = rawUri.scheme?.lowercase()
 
         if (metadataProbeMediaId == mediaId && metadataProbeJob?.isActive == true) return
 
         metadataProbeJob?.cancel()
         metadataProbeMediaId = mediaId
+        // 时长需在主线程读取（Player 只能在主线程访问），供"总大小÷时长"估算码率
+        val durationMs = runCatching { player.duration }.getOrDefault(0L).takeIf { it > 0 }
         metadataProbeJob = viewModelScope.launch(Dispatchers.IO) {
-            val probedMetadata = runCatching {
+            // mediaItem 的 URI 是 netease:// 等自定义 scheme，MediaMetadataRetriever 和
+            // 流头解析都打不到真实流。从 DualPlayerEngine 缓存取已解析的真实 http(s) URL；
+            // 播放刚开始时可能还没解析完成，等待重试。本地文件直接交给 MediaMetadataRetriever。
+            val isCloudScheme = scheme in setOf(
+                "netease", "cloud", "qqmusic", "navidrome", "jellyfin", "gdrive", "telegram", "bilibili"
+            )
+            var uri = rawUri
+            if (isCloudScheme) {
+                var resolved: android.net.Uri? = null
+                repeat(3) {
+                    resolved = dualPlayerEngine.getResolvedStreamUri(rawUri)
+                    if (resolved != null) return@repeat
+                    delay(1000)
+                }
+                if (resolved == null && scheme == "netease") {
+                    // 播放链路缓存里没有（如进程重启后队列尚未加载），直接走落雪取新链接探测
+                    resolved = resolveFreshNeteaseUriForProbe(rawUri)
+                }
+                uri = resolved ?: return@launch
+            }
+
+            // 1) MediaMetadataRetriever 探测（本地/网络均可）
+            var probedMetadata = runCatching {
                 val retriever = MediaMetadataRetriever()
                 try {
                     retriever.setDataSource(context, uri)
@@ -3348,17 +3444,208 @@ class PlayerViewModel @Inject constructor(
                 } finally {
                     retriever.release()
                 }
-            }.getOrNull() ?: return@launch
+            }.getOrNull()
+
+            // 2) 网络流兜底：一次 Range 请求解析 MP3 帧头（精确码率/采样率），
+            //    无 MP3 帧时用 Content-Range 总大小÷时长估算码率（FLAC/WAV 等同样适用）
+            if ((probedMetadata?.bitrate == null || probedMetadata?.sampleRate == null) &&
+                probedMetadata?.mimeType?.contains("mpeg", ignoreCase = true) != false
+            ) {
+                val info = probeStreamInfo(uri)
+                if (info != null) {
+                    val fallbackBitrate = info.bitrate ?: durationMs?.let { dur ->
+                        info.totalBytes?.takeIf { it > 0 }?.let { size ->
+                            (size * 8_000L / dur).toInt().takeIf { it > 0 }
+                        }
+                    }
+                    val fallbackSampleRate = info.sampleRate
+                    if (fallbackBitrate != null || fallbackSampleRate != null || info.mimeType != null) {
+                        probedMetadata = probedMetadata?.copy(
+                            mimeType = probedMetadata.mimeType ?: info.mimeType,
+                            bitrate = probedMetadata.bitrate ?: fallbackBitrate,
+                            sampleRate = probedMetadata.sampleRate ?: fallbackSampleRate
+                        ) ?: PlaybackAudioMetadata(
+                            mediaId = mediaId,
+                            mimeType = info.mimeType,
+                            bitrate = fallbackBitrate,
+                            sampleRate = fallbackSampleRate
+                        )
+                    }
+                }
+            }
+            if (probedMetadata == null) return@launch
 
             _playbackAudioMetadata.update { current ->
                 val isSameMediaItem = current.mediaId == mediaId
                 if (!isSameMediaItem) return@update current
-                current.copy(
+                val merged = current.copy(
                     mimeType = current.mimeType ?: probedMetadata.mimeType,
                     bitrate = current.bitrate ?: probedMetadata.bitrate,
                     sampleRate = current.sampleRate ?: probedMetadata.sampleRate
                 )
+                // 探针补全后重新计算音质标签（完整标签即可覆盖过渡标签）
+                merged.copy(
+                    displayLabel = decidePlaybackMetaDisplayLabel(
+                        rawLabel = buildPlaybackMetaLabel(merged.mimeType, merged.bitrate, merged.sampleRate),
+                        metadata = merged,
+                        previousLabel = current.displayLabel
+                    )
+                )
             }
+        }
+    }
+
+    /**
+     * 播放链路 resolvedUriCache 为空时（进程重启/暂停未加载等），直接用落雪引擎
+     * 按音质链取一条新播放链接供探测，保证音质标签在重开播放器后也能拿到采样率/码率。
+     */
+    private suspend fun resolveFreshNeteaseUriForProbe(rawUri: android.net.Uri): android.net.Uri? {
+        val idStr = rawUri.host
+            ?: rawUri.toString().removePrefix("netease://").substringBefore('?')
+        val numericId = idStr.toLongOrNull() ?: return null
+        return try {
+            val songMap = mapOf<String, Any?>(
+                "id" to idStr,
+                "vid" to idStr,
+                "songmid" to idStr,
+                "hash" to idStr,
+                "source" to "wy"
+            )
+            val quality = preferredLxQuality()
+            val chain = when (quality) {
+                "24bit" -> listOf("24bit", "flac", "320k", "128k")
+                "flac" -> listOf("flac", "24bit", "320k", "128k")
+                "320k" -> listOf("320k", "128k")
+                "128k" -> listOf("128k")
+                else -> listOf(quality, "320k", "128k")
+            }
+            var url: String? = null
+            for (q in chain) {
+                if (!url.isNullOrBlank()) break
+                url = lxJsEngine.getPlayUrl("wy", songMap, q)
+            }
+            url?.takeIf { it.startsWith("http") }?.let { android.net.Uri.parse(it) }
+        } catch (t: Throwable) {
+            Timber.w(t, "resolveFreshNeteaseUriForProbe 失败")
+            null
+        }
+    }
+
+    /** 单次流探测结果：MP3 帧头精确码率/采样率 + Content-Range 总大小 + 魔数嗅探 mimeType */
+    private class StreamProbeInfo(
+        val mimeType: String?,
+        val totalBytes: Long?,
+        val bitrate: Int?,
+        val sampleRate: Int?
+    )
+
+    /**
+     * 抓取网络流头部（Range 请求前 4KB），解析 MP3 帧同步字拿精确码率/采样率；
+     * 同时从 Content-Range 头部拿流总大小（供总大小÷时长估算码率），并嗅探容器魔数。
+     * 返回 null 仅表示网络请求失败；拿不到 MP3 帧时 bitrate/sampleRate 为 null 但 totalBytes 有效。
+     */
+    private fun probeStreamInfo(uri: android.net.Uri): StreamProbeInfo? {
+        return try {
+            val scheme = uri.scheme
+            if (scheme != "http" && scheme != "https") return null
+            val conn = (java.net.URL(uri.toString()).openConnection() as java.net.HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 4000
+                readTimeout = 4000
+                setRequestProperty("Range", "bytes=0-4095")
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                setRequestProperty("Referer", "https://music.163.com/")
+                setRequestProperty("Accept", "*/*")
+                instanceFollowRedirects = true
+            }
+            val code = conn.responseCode
+            var totalBytes: Long? = null
+            if (code == 206) {
+                // Content-Range: bytes 0-4095/12345678 → 总大小（未知时为 *）
+                conn.getHeaderField("Content-Range")?.let { cr ->
+                    val slash = cr.lastIndexOf('/')
+                    if (slash >= 0) {
+                        totalBytes = cr.substring(slash + 1).trim().toLongOrNull()?.takeIf { it > 0 }
+                    }
+                }
+            } else if (code == 200) {
+                conn.getHeaderField("Content-Length")?.toLongOrNull()?.takeIf { it > 0 }?.let {
+                    totalBytes = it
+                }
+            }
+            val head = if (code == 200 || code == 206) {
+                ByteArray(4096).let { buf ->
+                    var total = 0
+                    try {
+                        conn.inputStream.use { ins ->
+                            while (total < buf.size) {
+                                val n = ins.read(buf, total, buf.size - total)
+                                if (n < 0) break
+                                total += n
+                            }
+                        }
+                    } catch (_: Throwable) {}
+                    buf.copyOf(total)
+                }
+            } else {
+                null
+            }
+            conn.disconnect()
+            if (head == null || head.size < 4) {
+                return StreamProbeInfo(null, totalBytes, null, null)
+            }
+
+            val sniffedMime = when {
+                (head[0].toInt() and 0xFF) == 0x66 && (head[1].toInt() and 0xFF) == 0x4C &&
+                    (head[2].toInt() and 0xFF) == 0x61 && (head[3].toInt() and 0xFF) == 0x43 -> "audio/flac"
+                (head[0].toInt() and 0xFF) == 0x52 && (head[1].toInt() and 0xFF) == 0x49 &&
+                    (head[2].toInt() and 0xFF) == 0x46 && (head[3].toInt() and 0xFF) == 0x46 -> "audio/wav"
+                else -> null
+            }
+
+            // 跳过 ID3v2 标签头（其内部数据可能包含伪帧同步字）
+            var scanStart = 0
+            if (head.size >= 10 && (head[0].toInt() and 0xFF) == 0x49 &&
+                (head[1].toInt() and 0xFF) == 0x44 && (head[2].toInt() and 0xFF) == 0x33
+            ) {
+                val tagSize = ((head[6].toInt() and 0x7F) shl 21) or
+                    ((head[7].toInt() and 0x7F) shl 14) or
+                    ((head[8].toInt() and 0x7F) shl 7) or
+                    (head[9].toInt() and 0x7F)
+                scanStart = tagSize + 10
+            }
+
+            // MP3 帧头：FF Ex（sync）version(2b) layer(2b) 保护(1b) bitrateIdx(4b) sampleIdx(2b) ...
+            for (i in scanStart until head.size - 4) {
+                val b0 = head[i].toInt() and 0xFF
+                val b1 = head[i + 1].toInt() and 0xFF
+                if (b0 != 0xFF || (b1 and 0xE0) != 0xE0) continue
+                val version = (b1 ushr 3) and 0x03 // 3=MPEG1 2=MPEG2 0=MPEG2.5
+                val layer = (b1 ushr 1) and 0x03    // 1=Layer III (MP3)
+                val b2 = head[i + 2].toInt() and 0xFF
+                val bitrateIdx = (b2 ushr 4) and 0x0F
+                val sampleIdx = (b2 ushr 2) and 0x03
+                if (version == 1 || layer != 1 || bitrateIdx == 0 || bitrateIdx == 15 || sampleIdx == 3) continue
+
+                val kbpsTable = if (version == 3) {
+                    intArrayOf(0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0)
+                } else {
+                    intArrayOf(0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0)
+                }
+                val rateTable = when (version) {
+                    3 -> intArrayOf(44100, 48000, 32000)
+                    2 -> intArrayOf(22050, 24000, 16000)
+                    else -> intArrayOf(11025, 12000, 8000)
+                }
+                val bitrateKbps = kbpsTable[bitrateIdx]
+                if (bitrateKbps <= 0) return StreamProbeInfo("audio/mpeg", totalBytes, null, null)
+                Timber.d("probeStreamInfo: %d kbps @ %d Hz (totalBytes=%s)", bitrateKbps, rateTable[sampleIdx], totalBytes)
+                return StreamProbeInfo("audio/mpeg", totalBytes, bitrateKbps * 1000, rateTable[sampleIdx])
+            }
+            StreamProbeInfo(sniffedMime, totalBytes, null, null)
+        } catch (t: Throwable) {
+            Timber.w(t, "probeStreamInfo 失败")
+            null
         }
     }
 
@@ -3723,37 +4010,36 @@ class PlayerViewModel @Inject constructor(
         if (currentIndex < 0) return
 
         val newUrl = try {
-            neteaseRepository.getSongUrl(neteaseId, preferredNeteaseQuality()).getOrNull()
-                ?: run {
-                    try {
-                        lxJsEngine.ready()
-                        val songIdStr = neteaseId.toString()
-                        val songTitle = song.title
-                        val songArtist = song.displayArtist
-                        val songAlbum = song.album
-                        val songCover = song.albumArtUriString
-                        val songInfo = mapOf<String, Any?>(
-                            "id" to songIdStr,
-                            "vid" to songIdStr,
-                            "songmid" to songIdStr,
-                            "hash" to songIdStr,
-                            "name" to songTitle,
-                            "singer" to songArtist,
-                            "artists" to songArtist,
-                            "album" to songAlbum,
-                            "albumName" to songAlbum,
-                            "duration" to song.duration,
-                            "pic" to songCover,
-                            "cover" to songCover
-                        )
-                        lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
-                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
-                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
-                    } catch (t: Throwable) {
-                        Timber.w(t, "RoamingRestore: lxJsEngine failed for song=${song.title}")
-                        null
-                    }
-                }
+            // 网易云在线歌曲：落雪引擎优先（音质更高），官方 API 仅作兜底
+            val lxUrl = try {
+                lxJsEngine.ready()
+                val songIdStr = neteaseId.toString()
+                val songTitle = song.title
+                val songArtist = song.displayArtist
+                val songAlbum = song.album
+                val songCover = song.albumArtUriString
+                val songInfo = mapOf<String, Any?>(
+                    "id" to songIdStr,
+                    "vid" to songIdStr,
+                    "songmid" to songIdStr,
+                    "hash" to songIdStr,
+                    "name" to songTitle,
+                    "singer" to songArtist,
+                    "artists" to songArtist,
+                    "album" to songAlbum,
+                    "albumName" to songAlbum,
+                    "duration" to song.duration,
+                    "pic" to songCover,
+                    "cover" to songCover
+                )
+                lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                    ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                    ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+            } catch (t: Throwable) {
+                Timber.w(t, "RoamingRestore: lxJsEngine failed for song=${song.title}")
+                null
+            }
+            lxUrl ?: neteaseRepository.getSongUrl(neteaseId, preferredNeteaseQuality()).getOrNull()
         } catch (t: Throwable) {
             Timber.w(t, "RoamingRestore: refresh url failed for song=${song.title}")
             null
@@ -4032,34 +4318,33 @@ class PlayerViewModel @Inject constructor(
                 viewModelScope.launch {
                     val neteaseId = currentSongObj.neteaseId
                     val newUrl = try {
-                        neteaseRepository.getSongUrl(neteaseId, preferredNeteaseQuality()).getOrNull()
-                            ?: run {
-                                try {
-                                    lxJsEngine.ready()
-                                    val songIdStr = neteaseId.toString()
-                                    val songTitle = currentSongObj.title
-                                    val songArtist = currentSongObj.displayArtist
-                                    val songAlbum = currentSongObj.album
-                                    val songCover = currentSongObj.albumArtUriString
-                                    val songInfo = mapOf<String, Any?>(
-                                        "id" to songIdStr,
-                                        "vid" to songIdStr,
-                                        "songmid" to songIdStr,
-                                        "hash" to songIdStr,
-                                        "name" to songTitle,
-                                        "singer" to songArtist,
-                                        "artists" to songArtist,
-                                        "album" to songAlbum,
-                                        "albumName" to songAlbum,
-                                        "duration" to currentSongObj.duration,
-                                        "pic" to songCover,
-                                        "cover" to songCover
-                                    )
-                                    lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
-                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
-                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
-                                } catch (_: Throwable) { null }
-                            }
+                        // 网易云在线歌曲：落雪引擎优先，官方 API 仅作兜底
+                        val lxUrl = try {
+                            lxJsEngine.ready()
+                            val songIdStr = neteaseId.toString()
+                            val songTitle = currentSongObj.title
+                            val songArtist = currentSongObj.displayArtist
+                            val songAlbum = currentSongObj.album
+                            val songCover = currentSongObj.albumArtUriString
+                            val songInfo = mapOf<String, Any?>(
+                                "id" to songIdStr,
+                                "vid" to songIdStr,
+                                "songmid" to songIdStr,
+                                "hash" to songIdStr,
+                                "name" to songTitle,
+                                "singer" to songArtist,
+                                "artists" to songArtist,
+                                "album" to songAlbum,
+                                "albumName" to songAlbum,
+                                "duration" to currentSongObj.duration,
+                                "pic" to songCover,
+                                "cover" to songCover
+                            )
+                            lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                                ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                        } catch (_: Throwable) { null }
+                        lxUrl ?: neteaseRepository.getSongUrl(neteaseId, preferredNeteaseQuality()).getOrNull()
                     } catch (_: Throwable) { null }
 
                     if (newUrl.isNullOrBlank()) {
@@ -4949,13 +5234,27 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun downloadSong(song: Song) {
-        viewModelScope.launch {
-            val result = musicDownloadServiceProvider.get().downloadSong(song)
-            if (result != null) {
-                android.widget.Toast.makeText(context, "下载完成: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
-            } else {
-                android.widget.Toast.makeText(context, "下载失败: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
+        // 优先复用播放链路已解析的真实流 URL（正在播放/刚播过的歌曲）：
+        // 完全绕过网易云 API 限速锁与落雪 JS 引擎，下载不抢占播放资源。
+        // 无缓存时回落官方 API + 落雪引擎正常解析。
+        val cachedUrl = runCatching {
+            val contentUri = song.contentUriString
+            if (contentUri.isBlank()) null
+            else {
+                val uri = android.net.Uri.parse(contentUri)
+                when (uri.scheme?.lowercase()) {
+                    "http", "https" -> uri.toString()
+                    "netease", "cloud", "qqmusic", "navidrome", "jellyfin", "gdrive", "telegram", "bilibili" ->
+                        dualPlayerEngine.getResolvedStreamUri(uri)?.toString()
+                    else -> null
+                }
             }
+        }.getOrNull()
+
+        musicDownloadServiceProvider.get().startDownload(song, cachedUrl) { success ->
+            _toastEvents.tryEmit(
+                if (success) "下载完成: ${song.title}" else "下载失败: ${song.title}"
+            )
         }
     }
 
@@ -5857,80 +6156,78 @@ class PlayerViewModel @Inject constructor(
 
                 Timber.d("startRoamingMode: Got ${details.size} details, VIP=${details.count { it.isVip }}")
 
-                // 3. 先对**所有歌曲**统一尝试 neteaseRepository.getSongUrl
-                //    （不区分 VIP/免费，VIP 歌曲也可能获取到 30s 试听或有效 URL）
+                // 3. 先对**所有歌曲**统一尝试落雪 lxJsEngine（网易云在线歌曲落雪优先，音质更高）
                 val songUrlMap = mutableMapOf<Long, String>()
-                val neteaseResults = kotlinx.coroutines.coroutineScope {
-                    details.map { detail ->
-                        async(Dispatchers.IO) {
-                            val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
-                            detail.id to url
-                        }
-                    }.awaitAll()
+                val lxReady = try {
+                    lxJsEngine.ready()
+                } catch (t: Throwable) {
+                    Timber.w(t, "startRoamingMode: lxJsEngine.ready() failed")
+                    false
                 }
-                for ((id, url) in neteaseResults) {
-                    if (url != null && url.isNotBlank()) {
-                        songUrlMap[id] = url
+                if (lxReady) {
+                    Timber.d("startRoamingMode: Trying lxJsEngine for ${details.size} songs")
+                    val lxResults = kotlinx.coroutines.coroutineScope {
+                        details.map { detail ->
+                            async(Dispatchers.IO) {
+                                val songIdStr = detail.id.toString()
+                                val songTitle = detail.name
+                                val songArtist = detail.artistString
+                                val songAlbum = detail.albumName
+                                val songCover = detail.albumPic
+                                val songInfo = mapOf<String, Any?>(
+                                    "id" to songIdStr,
+                                    "vid" to songIdStr,
+                                    "songmid" to songIdStr,
+                                    "hash" to songIdStr,
+                                    "name" to songTitle,
+                                    "singer" to songArtist,
+                                    "artists" to songArtist,
+                                    "album" to songAlbum,
+                                    "albumName" to songAlbum,
+                                    "duration" to detail.duration,
+                                    "pic" to songCover,
+                                    "cover" to songCover
+                                )
+                                val url = try {
+                                    lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                                } catch (t: Throwable) {
+                                    Timber.w(t, "startRoamingMode: lxJsEngine.getPlayUrl failed for song=${detail.id}")
+                                    null
+                                }
+                                detail.id to url
+                            }
+                        }.awaitAll()
                     }
+                    for ((id, url) in lxResults) {
+                        if (url != null && url.isNotBlank()) {
+                            songUrlMap[id] = url
+                        }
+                    }
+                    Timber.d("startRoamingMode: lxJsEngine resolved ${songUrlMap.size}/${details.size} songs")
+                } else {
+                    Timber.w("startRoamingMode: lxJsEngine not ready")
                 }
 
-                Timber.d("startRoamingMode: Netease resolved ${songUrlMap.size}/${details.size} songs")
-
-                // 4. 对 neteaseRepository 失败的歌曲，尝试 lxJsEngine（如果可用）
+                // 4. 落雪未解析的歌曲用官方 neteaseRepository 兜底
                 val unresolvedDetails = details.filter { it.id !in songUrlMap }
                 if (unresolvedDetails.isNotEmpty()) {
-                    val lxReady = try {
-                        lxJsEngine.ready()
-                    } catch (t: Throwable) {
-                        Timber.w(t, "startRoamingMode: lxJsEngine.ready() failed")
-                        false
-                    }
-
-                    if (lxReady) {
-                        Timber.d("startRoamingMode: Trying lxJsEngine for ${unresolvedDetails.size} unresolved songs")
-                        val lxResults = kotlinx.coroutines.coroutineScope {
-                            unresolvedDetails.map { detail ->
-                                async(Dispatchers.IO) {
-                                    val songIdStr = detail.id.toString()
-                                    val songTitle = detail.name
-                                    val songArtist = detail.artistString
-                                    val songAlbum = detail.albumName
-                                    val songCover = detail.albumPic
-                                    val songInfo = mapOf<String, Any?>(
-                                        "id" to songIdStr,
-                                        "vid" to songIdStr,
-                                        "songmid" to songIdStr,
-                                        "hash" to songIdStr,
-                                        "name" to songTitle,
-                                        "singer" to songArtist,
-                                        "artists" to songArtist,
-                                        "album" to songAlbum,
-                                        "albumName" to songAlbum,
-                                        "duration" to detail.duration,
-                                        "pic" to songCover,
-                                        "cover" to songCover
-                                    )
-                                    val url = try {
-                                        lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
-                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
-                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
-                                    } catch (t: Throwable) {
-                                        Timber.w(t, "startRoamingMode: lxJsEngine.getPlayUrl failed for song=${detail.id}")
-                                        null
-                                    }
-                                    detail.id to url
-                                }
-                            }.awaitAll()
-                        }
-                        for ((id, url) in lxResults) {
-                            if (url != null && url.isNotBlank()) {
-                                songUrlMap[id] = url
+                    Timber.d("startRoamingMode: Trying neteaseRepository for ${unresolvedDetails.size} unresolved songs")
+                    val neteaseResults = kotlinx.coroutines.coroutineScope {
+                        unresolvedDetails.map { detail ->
+                            async(Dispatchers.IO) {
+                                val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
+                                detail.id to url
                             }
-                        }
-                        Timber.d("startRoamingMode: lxJsEngine resolved additional ${lxResults.count { (_, u) -> !u.isNullOrBlank() }} songs")
-                    } else {
-                        Timber.w("startRoamingMode: lxJsEngine not ready, ${unresolvedDetails.size} songs may be VIP-only")
+                        }.awaitAll()
                     }
+                    for ((id, url) in neteaseResults) {
+                        if (url != null && url.isNotBlank()) {
+                            songUrlMap[id] = url
+                        }
+                    }
+                    Timber.d("startRoamingMode: neteaseRepository resolved additional ${neteaseResults.count { (_, u) -> !u.isNullOrBlank() }} songs")
                 }
 
                 // 5. 过滤出有 URL 的歌曲，按原始推荐顺序播放
@@ -6288,78 +6585,78 @@ class PlayerViewModel @Inject constructor(
                     }
                 }
 
-                // 1. 先对**所有歌曲**统一尝试 neteaseRepository.getSongUrl
+                // 1. 先对**所有歌曲**统一尝试落雪 lxJsEngine（网易云在线歌曲落雪优先，音质更高）
                 val songUrlMap = mutableMapOf<Long, String>()
-                val neteaseResults = kotlinx.coroutines.coroutineScope {
-                    uniqueDetails.map { detail ->
-                        async(Dispatchers.IO) {
-                            val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
-                            detail.id to url
-                        }
-                    }.awaitAll()
+                val lxReady = try {
+                    lxJsEngine.ready()
+                } catch (t: Throwable) {
+                    Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.ready() failed")
+                    false
                 }
-                for ((id, url) in neteaseResults) {
-                    if (url != null && url.isNotBlank()) {
-                        songUrlMap[id] = url
+                if (lxReady) {
+                    Timber.d("loadMoreRoamingSongs: Trying lxJsEngine for ${uniqueDetails.size} songs")
+                    val lxResults = kotlinx.coroutines.coroutineScope {
+                        uniqueDetails.map { detail ->
+                            async(Dispatchers.IO) {
+                                val songIdStr = detail.id.toString()
+                                val songTitle = detail.name
+                                val songArtist = detail.artistString
+                                val songAlbum = detail.albumName
+                                val songCover = detail.albumPic
+                                val songInfo = mapOf<String, Any?>(
+                                    "id" to songIdStr,
+                                    "vid" to songIdStr,
+                                    "songmid" to songIdStr,
+                                    "hash" to songIdStr,
+                                    "name" to songTitle,
+                                    "singer" to songArtist,
+                                    "artists" to songArtist,
+                                    "album" to songAlbum,
+                                    "albumName" to songAlbum,
+                                    "duration" to detail.duration,
+                                    "pic" to songCover,
+                                    "cover" to songCover
+                                )
+                                val url = try {
+                                    lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+                                } catch (t: Throwable) {
+                                    Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.getPlayUrl failed for song=${detail.id}")
+                                    null
+                                }
+                                detail.id to url
+                            }
+                        }.awaitAll()
                     }
+                    for ((id, url) in lxResults) {
+                        if (url != null && url.isNotBlank()) {
+                            songUrlMap[id] = url
+                        }
+                    }
+                    Timber.d("loadMoreRoamingSongs: lxJsEngine resolved ${songUrlMap.size}/${uniqueDetails.size} songs")
+                } else {
+                    Timber.w("loadMoreRoamingSongs: lxJsEngine not ready")
                 }
 
-                Timber.d("loadMoreRoamingSongs: Netease resolved ${songUrlMap.size}/${uniqueDetails.size} songs")
-
-                // 2. 对 neteaseRepository 失败的歌曲，尝试 lxJsEngine（如果可用）
+                // 2. 落雪未解析的歌曲用官方 neteaseRepository 兜底
                 val unresolvedDetails = uniqueDetails.filter { it.id !in songUrlMap }
                 if (unresolvedDetails.isNotEmpty()) {
-                    val lxReady = try {
-                        lxJsEngine.ready()
-                    } catch (t: Throwable) {
-                        Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.ready() failed")
-                        false
-                    }
-
-                    if (lxReady) {
-                        Timber.d("loadMoreRoamingSongs: Trying lxJsEngine for ${unresolvedDetails.size} unresolved songs")
-                        val lxResults = kotlinx.coroutines.coroutineScope {
-                            unresolvedDetails.map { detail ->
-                                async(Dispatchers.IO) {
-                                    val songIdStr = detail.id.toString()
-                                    val songTitle = detail.name
-                                    val songArtist = detail.artistString
-                                    val songAlbum = detail.albumName
-                                    val songCover = detail.albumPic
-                                    val songInfo = mapOf<String, Any?>(
-                                        "id" to songIdStr,
-                                        "vid" to songIdStr,
-                                        "songmid" to songIdStr,
-                                        "hash" to songIdStr,
-                                        "name" to songTitle,
-                                        "singer" to songArtist,
-                                        "artists" to songArtist,
-                                        "album" to songAlbum,
-                                        "albumName" to songAlbum,
-                                        "duration" to detail.duration,
-                                        "pic" to songCover,
-                                        "cover" to songCover
-                                    )
-                                    val url = try {
-                                        lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
-                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
-                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
-                                    } catch (t: Throwable) {
-                                        Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.getPlayUrl failed for song=${detail.id}")
-                                        null
-                                    }
-                                    detail.id to url
-                                }
-                            }.awaitAll()
-                        }
-                        for ((id, url) in lxResults) {
-                            if (url != null && url.isNotBlank()) {
-                                songUrlMap[id] = url
+                    Timber.d("loadMoreRoamingSongs: Trying neteaseRepository for ${unresolvedDetails.size} unresolved songs")
+                    val neteaseResults = kotlinx.coroutines.coroutineScope {
+                        unresolvedDetails.map { detail ->
+                            async(Dispatchers.IO) {
+                                val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
+                                detail.id to url
                             }
-                        }
-                    } else {
-                        Timber.w("loadMoreRoamingSongs: lxJsEngine not ready, ${unresolvedDetails.size} songs may be VIP-only")
+                        }.awaitAll()
                     }
+                    for ((id, url) in neteaseResults) {
+                        if (url != null && url.isNotBlank()) {
+                            songUrlMap[id] = url
+                        }
+                    }
+                    Timber.d("loadMoreRoamingSongs: neteaseRepository resolved additional ${neteaseResults.count { (_, u) -> !u.isNullOrBlank() }} songs")
                 }
 
                 // 3. 过滤出有 URL 的歌曲，按原始推荐顺序，取前 count 首

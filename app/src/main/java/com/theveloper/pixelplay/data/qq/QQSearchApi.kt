@@ -50,6 +50,8 @@ class QQSearchApi @Inject constructor() {
         val id: Long,
         /** 酷我 rid (MUSIC_xxx)，用作去重/缓存 */
         val rid: String,
+        /** QQ 音乐 songmid（官方 zzcSign 搜索时填充，用于落雪 tx 音源直连播放） */
+        val songmid: String = "",
         val title: String,
         val album: String,
         val singer: String,

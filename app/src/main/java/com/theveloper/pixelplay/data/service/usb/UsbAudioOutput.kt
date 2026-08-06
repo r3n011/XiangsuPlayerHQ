@@ -30,8 +30,21 @@ object UsbAudioOutput {
     private external fun nativeStop(): Boolean
     private external fun nativeClose(): Boolean
     private external fun nativeIsActive(): Boolean
+    private external fun nativeGetSampleRate(): Int
 
     fun isActive(): Boolean = active
+
+    /**
+     * 获取 DAC 的时钟采样率（Hz）。
+     * 由 native 层解析 UAC FORMAT_TYPE 描述符得到；未激活或解析失败返回 0，
+     * 调用方回退到 48000。
+     */
+    fun getSampleRate(): Int = try {
+        nativeGetSampleRate()
+    } catch (t: Throwable) {
+        Timber.w(t, "$TAG: nativeGetSampleRate 异常")
+        0
+    }
 
     /** 使用 UsbDeviceConnection 的文件描述符启动 USB 音频输出 */
     fun start(fd: Int): Boolean {

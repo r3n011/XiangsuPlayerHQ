@@ -75,6 +75,9 @@ data class Song(
     val isRadioStation: Boolean
         get() {
             if (id.startsWith("radio://")) return true
+            // 漫游歌曲虽然 contentUriString 也是 http(s) 直链（path 相同），但它是普通歌曲，
+            // 不是电台，必须排除，否则漫游切歌会被误判为电台播放器
+            if (id.startsWith("roaming_")) return false
             val contentUri = contentUriString
             val isHttpUri = contentUri.startsWith("http://", ignoreCase = true) ||
                 contentUri.startsWith("https://", ignoreCase = true)

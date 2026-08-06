@@ -48,6 +48,8 @@ data class LxUiState(
     val initing: Boolean = false,
     val progress: Float? = null,
     val progressLabel: String? = null,
+    /** 正在解析播放链接的歌曲 id（搜索页在歌曲名称右侧显示加载提示用） */
+    val loadingSongId: String? = null,
     // ⚡ 分页相关字段
     val isEnd: Boolean = true,
     val isLoadingMore: Boolean = false,
@@ -426,7 +428,7 @@ class LxMusicViewModel @Inject constructor(
 
     /**
      * 按所选音源搜索（模仿落雪原版单源搜索方案）：
-     * - wy / all（默认）：网易云官方搜索 API（原版，保持不动）
+     * - wy / all（默认）：网易云官方搜索 API（原版，保持不动；仅播放走落雪）
      * - tx / kg / mg（内置源）：落雪同款官方搜索（不依赖 JS，QQ音乐/酷狗/咪咕）
      * - 其他落雪音源：走 JS 引擎 engine.search 搜索该源，不支持搜索时返回空结果
      */
@@ -491,7 +493,8 @@ class LxMusicViewModel @Inject constructor(
                 android.util.Log.d("LxPlaySong", "Song name: ${song.name}, singer: ${song.singer}, id: ${song.id}, cover: ${song.pic}")
                 _uiState.value = _uiState.value.copy(
                     progress = 0.2f,
-                    progressLabel = "获取播放链接…"
+                    progressLabel = "获取播放链接…",
+                    loadingSongId = song.id
                 )
                 val songMap = song.toInfoMap()
                 val availableSources = runCatching {
@@ -518,6 +521,7 @@ class LxMusicViewModel @Inject constructor(
                         } ?: ""
                 } else song.pic
 
+                _uiState.value = _uiState.value.copy(progressLabel = "正在解析音源…")
                 val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
                     // 网易云直接走落雪 JS 引擎播放，不经网易云 API 取试听 URL
                     val preferredQuality = try {
@@ -526,11 +530,7 @@ class LxMusicViewModel @Inject constructor(
                         com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
                     }
                     android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=${preferredQuality.lxValue})")
-                    engine.getPlayUrl("wy", songMap, preferredQuality.lxValue)
-                        ?: engine.getPlayUrl("wy", songMap, "24bit")
-                        ?: engine.getPlayUrl("wy", songMap, "flac")
-                        ?: engine.getPlayUrl("wy", songMap, "320k")
-                        ?: engine.getPlayUrl("wy", songMap, "128k")
+                    resolvePlayUrlWithQualityChain("wy", songMap, preferredQuality.lxValue)
                 } else if (builtInSourceSearchApi.isSupported(targetSource)) {
                     // 内置源（QQ音乐/酷狗/咪咕）：官方播放接口 + 溯音酷我兜底
                     val preferredQuality = try {
@@ -546,11 +546,11 @@ class LxMusicViewModel @Inject constructor(
                     } catch (_: Exception) {
                         com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
                     }
-                    engine.getPlayUrl(targetSource, songMap, preferredQuality.lxValue)
-                        ?: engine.getPlayUrl(targetSource, songMap, "320k")
-                        ?: engine.getPlayUrl(targetSource, songMap, "128k")
+                    resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality.lxValue)
                 }
                 android.util.Log.d("LxPlaySong", "Resolved URL: $url, cover: $coverToUse")
+
+                _uiState.value = _uiState.value.copy(progressLabel = "正在打开播放器…")
 
                 // ── 将歌曲保存到数据库，使用返回的真实 song id
                 // 同时将成功获取 URL 的音源保存到 songInfo.source，
@@ -569,7 +569,7 @@ class LxMusicViewModel @Inject constructor(
                 android.util.Log.d("LxPlaySong", "Saved song ID: $savedSongId, source: $targetSource")
 
                 withContext(Dispatchers.Main) {
-                    _uiState.value = _uiState.value.copy(progress = null, progressLabel = null)
+                    _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
                     if (url == null) {
                         android.util.Log.w("LxPlaySong", "URL is null, showing error")
                         _uiState.value = _uiState.value.copy(error = "无法获取播放链接，请换一首或换音源")
@@ -582,11 +582,40 @@ class LxMusicViewModel @Inject constructor(
             } catch (t: Throwable) {
                 android.util.Log.e("LxPlaySong", "Error: ${t.message}", t)
                 _uiState.value = _uiState.value.copy(
-                    progress = null, progressLabel = null,
+                    progress = null, progressLabel = null, loadingSongId = null,
                     error = "播放失败: ${t.message ?: t.javaClass.simpleName}"
                 )
             }
         }
+    }
+
+    /**
+     * 按用户选择的音质**向下递减**尝试落雪播放链接，严格遵守音质设置：
+     * - 24bit → 24bit → flac → 320k → 128k
+     * - flac  → flac → 24bit → 320k → 128k
+     * - 320k  → 320k → 128k
+     * - 128k  → 128k（不自动抬音质，避免用户选 128k 却被拉到高音质）
+     */
+    private suspend fun resolvePlayUrlWithQualityChain(
+        source: String,
+        songMap: Map<String, Any?>,
+        preferred: String
+    ): String? {
+        val chain = when (preferred) {
+            "24bit" -> listOf("24bit", "flac", "320k", "128k")
+            "flac" -> listOf("flac", "24bit", "320k", "128k")
+            "320k" -> listOf("320k", "128k")
+            "128k" -> listOf("128k")
+            else -> listOf(preferred, "320k", "128k")
+        }
+        for (q in chain) {
+            val url = engine.getPlayUrl(source, songMap, q)
+            if (!url.isNullOrBlank()) {
+                android.util.Log.d("LxPlaySong", "quality chain hit: $source/$q")
+                return url
+            }
+        }
+        return null
     }
 
     // ── Favorite support for cloud songs ─────────────────────────────────────

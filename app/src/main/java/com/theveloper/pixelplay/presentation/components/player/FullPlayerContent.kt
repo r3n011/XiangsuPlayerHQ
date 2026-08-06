@@ -715,6 +715,7 @@ fun FullPlayerContent(
                 playbackMetadataMimeType = playbackAudioMetadata.mimeType,
                 playbackMetadataBitrate = playbackAudioMetadata.bitrate,
                 playbackMetadataSampleRate = playbackAudioMetadata.sampleRate,
+                playbackMetadataDisplayLabel = playbackAudioMetadata.displayLabel,
                 currentPositionProvider = currentPositionProvider,
                 totalDurationValue = totalDurationValue,
                 showPlayerFileInfo = showPlayerFileInfo,
@@ -1510,6 +1511,7 @@ private fun FullPlayerProgressSection(
     playbackMetadataMimeType: String?,
     playbackMetadataBitrate: Int?,
     playbackMetadataSampleRate: Int?,
+    playbackMetadataDisplayLabel: String?,
     currentPositionProvider: () -> Long,
     totalDurationValue: Long,
     showPlayerFileInfo: Boolean,
@@ -1548,6 +1550,8 @@ private fun FullPlayerProgressSection(
         audioMimeType = audioMimeType,
         audioBitrate = audioBitrate,
         audioSampleRate = audioSampleRate,
+        // 持久化标签仅在属于当前歌曲时使用，避免切歌后短暂显示上一首的音质标签
+        persistedAudioMetaLabel = if (isMetadataForCurrentSong) playbackMetadataDisplayLabel else null,
         showAudioFileInfo = showPlayerFileInfo,
         onSeek = onSeek,
         expansionFractionProvider = expansionFractionProvider,
@@ -2256,6 +2260,7 @@ private fun PlayerProgressBarSection(
     audioMimeType: String?,
     audioBitrate: Int?,
     audioSampleRate: Int?,
+    persistedAudioMetaLabel: String?,
     showAudioFileInfo: Boolean,
     onSeek: (Long) -> Unit,
     expansionFractionProvider: () -> Float,
@@ -2302,15 +2307,13 @@ private fun PlayerProgressBarSection(
             null
         }
     }
-    var displayAudioMetaLabel by remember(songId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(songId, audioMetaLabel, showAudioFileInfo) {
-        if (!showAudioFileInfo) {
-            displayAudioMetaLabel = null
-        } else if (!audioMetaLabel.isNullOrBlank()) {
-            displayAudioMetaLabel = audioMetaLabel
-        }
-        // audioMetaLabel 短暂为空（metadata 刷新中 bitrate/sampleRate 暂缺）时，
-        // 保留上一次的音质信息，避免标签显示一下又消失；换歌时 remember(songId) 已重置。
+    // 优先使用 ViewModel 层持久化的音质标签：它跨 UI 重组存活（打开歌词界面/展开折叠
+    // 会回收 PlayerProgressBarSection 的本地 remember 状态），且带"不降级"保护。
+    // 探针尚未完成时回退到由 song/元数据即时计算的标签，保证标签始终可见。
+    val displayAudioMetaLabel = if (showAudioFileInfo) {
+        persistedAudioMetaLabel?.takeIf { it.isNotBlank() } ?: audioMetaLabel
+    } else {
+        null
     }
     val durationForCalc = displayDurationValue.coerceAtLeast(1L)
     
@@ -3334,12 +3337,13 @@ private fun BottomToggleRow(
             if (isOnlineSong) {
                 Box(modifier = commonModifier) {
                     if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed) {
+                        // 进度条：先按比例定宽再画背景（顺序不能反，否则 background 全宽导致看不到进度）
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxHeight()
+                                .fillMaxWidth((downloadProgress / 100f).coerceIn(0f, 1f))
                                 .clip(AbsoluteSmoothCornerShape(cornerRadiusBL = rowCorners, smoothnessAsPercentTR = 60, cornerRadiusBR = rowCorners, smoothnessAsPercentBL = 60, cornerRadiusTL = rowCorners, smoothnessAsPercentBR = 60, cornerRadiusTR = rowCorners, smoothnessAsPercentTL = 60))
                                 .background(primaryFixed)
-                                .fillMaxWidth(downloadProgress / 100f)
                                 .align(Alignment.CenterStart)
                         )
                     }

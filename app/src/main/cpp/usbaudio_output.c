@@ -57,6 +57,13 @@ static int g_interface_num = 0;   /* 音频流接口号 */
 static int g_altsetting = 0;      /* 选中的 alternate setting */
 static volatile int g_running = 0;
 
+/* DAC 时钟信息（由 UAC FORMAT_TYPE 描述符解析）：
+ * 采样率不匹配是 USB 独占输出"咔咔杂音/无声"的根本原因，
+ * 播放数据必须先重采样到 g_dac_rate 再写入，与 DAC 时钟对齐。 */
+static int g_dac_rate = 0;        /* DAC 采样率（Hz），解析失败回退 0 */
+static int g_dac_channels = 2;    /* bNrChannels */
+static int g_dac_bps = 2;         /* bSubframeSize */
+
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t g_events_thread = (pthread_t) 0;
@@ -106,6 +113,84 @@ static void *events_thread_func(void *arg) {
     }
     LOGD("events_thread: quit");
     return NULL;
+}
+
+/* 标准采样率表（用于 wMaxPacketSize 反推采样率兜底） */
+static const int kStdRates[] = {
+    44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000
+};
+
+/*
+ * 解析 UAC1 AudioStreaming 接口的 FORMAT_TYPE I 类特定描述符，
+ * 得到声道数 / 子帧字节数 / 采样频率，作为 USB 输出的时钟基准。
+ *
+ * desc->extra 中依次排列 CS_INTERFACE 描述符：
+ *   bLength bDescriptorType(0x24=CS_INTERFACE)
+ *   bDescriptorSubtype(0x02=FORMAT_TYPE) bFormatType(0x01=Type I)
+ *   bNrChannels bSubframeSize bBitResolution bSamFreqType tSamFreq[3*N]
+ */
+static void parse_stream_format(const struct libusb_interface_descriptor *desc) {
+    int pos = 0;
+    g_dac_rate = 0;
+    while (pos + 2 <= desc->extra_length) {
+        const unsigned char *d = desc->extra + pos;
+        int blen = d[0];
+        if (blen < 2 || pos + blen > desc->extra_length) break;
+        if (d[1] == 0x24 && d[2] == 0x02 && d[3] == 0x01 && blen >= 8) {
+            g_dac_channels = d[4];
+            g_dac_bps = d[5];
+            int freq_type = d[7];
+            if (freq_type > 0 && blen >= 8 + 3 * freq_type) {
+                /* 取最高频率（与"最大包长 alt"一致，DAC 时钟锁定在此频率） */
+                const unsigned char *f = d + 8 + 3 * (freq_type - 1);
+                g_dac_rate = (f[0]) | (f[1] << 8) | (f[2] << 16);
+            }
+            LOGD("stream format: ch=%d subframe=%d bitRes=%d freqType=%d rate=%d",
+                 g_dac_channels, g_dac_bps, d[6], freq_type, g_dac_rate);
+        }
+        pos += blen;
+    }
+
+    /* 兜底：由包长反推采样率。全速 1ms 帧 → R*ch*bps/1000；高速 125us 微帧 → R*ch*bps/8000 */
+    if (g_dac_rate <= 0 && g_dac_channels > 0 && g_dac_bps > 0) {
+        int i;
+        for (i = 0; i < (int)(sizeof(kStdRates) / sizeof(kStdRates[0])); i++) {
+            int r = kStdRates[i];
+            if ((int)((long)r * g_dac_channels * g_dac_bps / 1000) == g_packet_size ||
+                (int)((long)r * g_dac_channels * g_dac_bps / 8000) == g_packet_size) {
+                g_dac_rate = r;
+                break;
+            }
+        }
+    }
+    if (g_dac_rate <= 0) g_dac_rate = 48000;
+    LOGD("DAC clock rate = %d Hz (ch=%d bps=%d)", g_dac_rate, g_dac_channels, g_dac_bps);
+}
+
+/*
+ * 通过 UAC 采样频率控制(SET_CUR) 把 DAC 时钟锁定到解析出的采样率（尽力而为）。
+ * 固定采样率的廉价 DAC 会忽略此请求，此时采样率由 alt setting 决定，
+ * 而解析出的 g_dac_rate 与包长一致，数据重采样后仍能对齐。
+ */
+static void send_sampling_freq_cur(int rate) {
+    unsigned char data[3];
+    int rc;
+    if (!g_devh || rate <= 0) return;
+    data[0] = (unsigned char)(rate & 0xFF);
+    data[1] = (unsigned char)((rate >> 8) & 0xFF);
+    data[2] = (unsigned char)((rate >> 16) & 0xFF);
+    rc = libusb_control_transfer(g_devh,
+            0x21,       /* HOST_TO_DEVICE | CLASS | INTERFACE */
+            0x01,       /* SET_CUR */
+            0x0100,     /* CS=0x01 SAM_FREQ_CONTROL, CN=0x00 */
+            (uint16_t) g_interface_num,
+            data, 3, 500);
+    if (rc < 0) {
+        LOGD("SET_CUR sampling freq %d failed: %s (固定采样率 DAC，忽略)",
+             rate, libusb_error_name(rc));
+    } else {
+        LOGD("SET_CUR sampling freq = %d Hz", rate);
+    }
 }
 
 /*
@@ -172,6 +257,22 @@ static int find_iso_out_endpoint(libusb_device *dev) {
         g_altsetting    = best_alt;
         LOGD("Found ISO OUT (preferred alt!=0): ep=%02xh pkt=%d iface=%d alt=%d",
              g_ep_out, g_packet_size, g_interface_num, g_altsetting);
+        /* 解析选中 alt 的 FORMAT_TYPE 描述符，获取 DAC 时钟采样率 */
+        {
+            struct libusb_config_descriptor *cfg = NULL;
+            if (libusb_get_active_config_descriptor(dev, &cfg) == 0) {
+                int i;
+                for (i = 0; i < (int) cfg->bNumInterfaces; i++) {
+                    const struct libusb_interface *intf = &cfg->interface[i];
+                    if (intf->num_altsetting > g_altsetting &&
+                        intf->altsetting[g_altsetting].bInterfaceNumber == g_interface_num) {
+                        parse_stream_format(&intf->altsetting[g_altsetting]);
+                        break;
+                    }
+                }
+                libusb_free_config_descriptor(cfg);
+            }
+        }
         return 0;
     }
     if (fallback_ep >= 0) {
@@ -181,6 +282,21 @@ static int find_iso_out_endpoint(libusb_device *dev) {
         g_altsetting    = fallback_alt;
         LOGD("Found ISO OUT (fallback alt=0): ep=%02xh pkt=%d iface=%d alt=%d",
              g_ep_out, g_packet_size, g_interface_num, g_altsetting);
+        {
+            struct libusb_config_descriptor *cfg = NULL;
+            if (libusb_get_active_config_descriptor(dev, &cfg) == 0) {
+                int i;
+                for (i = 0; i < (int) cfg->bNumInterfaces; i++) {
+                    const struct libusb_interface *intf = &cfg->interface[i];
+                    if (intf->num_altsetting > g_altsetting &&
+                        intf->altsetting[g_altsetting].bInterfaceNumber == g_interface_num) {
+                        parse_stream_format(&intf->altsetting[g_altsetting]);
+                        break;
+                    }
+                }
+                libusb_free_config_descriptor(cfg);
+            }
+        }
         return 0;
     }
     LOGE("find_iso_out_endpoint: no ISO OUT endpoint (device may not be an audio DAC)");
@@ -249,6 +365,9 @@ Java_com_theveloper_pixelplay_data_service_usb_UsbAudioOutput_nativeSetup(
             g_altsetting = 0;
         }
     }
+
+    /* 把 DAC 时钟锁定到解析出的采样率（尽力而为，固定采样率 DAC 会忽略） */
+    send_sampling_freq_cur(g_dac_rate);
 
     /* 预分配等时 transfer 池 */
     for (i = 0; i < MAX_TRANSFERS; i++) {
@@ -367,6 +486,14 @@ Java_com_theveloper_pixelplay_data_service_usb_UsbAudioOutput_nativeIsActive(
     return g_running ? JNI_TRUE : JNI_FALSE;
 }
 
+/* 返回 DAC 时钟采样率（Hz），Java 层据此把 PCM 重采样到匹配采样率 */
+JNIEXPORT jint JNICALL
+Java_com_theveloper_pixelplay_data_service_usb_UsbAudioOutput_nativeGetSampleRate(
+        JNIEnv *env, jobject thiz) {
+    (void) env; (void) thiz;
+    return (jint) g_dac_rate;
+}
+
 static void native_stop_internal(JNIEnv *env, jobject thiz) {
     int i;
     (void) env; (void) thiz;
@@ -425,6 +552,9 @@ static void native_stop_internal(JNIEnv *env, jobject thiz) {
     g_packet_size = 0;
     g_interface_num = 0;
     g_altsetting = 0;
+    g_dac_rate = 0;
+    g_dac_channels = 2;
+    g_dac_bps = 2;
 
     pthread_mutex_lock(&g_lock);
     pthread_cond_broadcast(&g_cond);

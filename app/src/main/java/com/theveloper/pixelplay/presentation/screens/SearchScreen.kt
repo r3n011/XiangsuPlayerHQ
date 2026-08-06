@@ -528,7 +528,9 @@ fun SearchScreen(
                                             colorScheme = colorScheme,
                                             onLoadMore = { lxViewModel.loadMore() },
                                             currentPlayingSongId = stablePlayerState.currentSong?.id,
-                                            isPlaying = stablePlayerState.isPlaying
+                                            isPlaying = stablePlayerState.isPlaying,
+                                            loadingSongId = onlineSearchState.loadingSongId,
+                                            loadingStep = onlineSearchState.progressLabel
                                         )
                                     } else {
                                         OnlineArtistResults(
@@ -580,7 +582,9 @@ fun SearchScreen(
                                     colorScheme = colorScheme,
                                     onLoadMore = { lxViewModel.loadMore() },
                                     currentPlayingSongId = stablePlayerState.currentSong?.id,
-                                    isPlaying = stablePlayerState.isPlaying
+                                    isPlaying = stablePlayerState.isPlaying,
+                                    loadingSongId = onlineSearchState.loadingSongId,
+                                    loadingStep = onlineSearchState.progressLabel
                                 )
                             } else if (mode == "qq") {
                                 QQSearchResults(
@@ -612,7 +616,9 @@ fun SearchScreen(
                                     stableIdFn = { song -> bilibiliViewModel.getStableSongId(song) },
                                     onLoadMore = { bilibiliViewModel.loadMore() },
                                     currentPlayingSongId = stablePlayerState.currentSong?.id,
-                                    isPlaying = stablePlayerState.isPlaying
+                                    isPlaying = stablePlayerState.isPlaying,
+                                    loadingSongId = bilibiliViewModel.uiState.value.loadingSongId,
+                                    loadingStep = bilibiliViewModel.uiState.value.progressLabel
                                 )
                             } else if (isEmpty as Boolean) {
                                 EmptySearchResults(
@@ -1454,12 +1460,16 @@ private fun OnlineSearchResults(
     searchQuery: String,
     onPlaySong: (LxSongInfo) -> Unit,
     favoriteIds: Set<String> = emptySet(),
-    onToggleFavorite: (LxSongInfo) -> Unit = {},
+    onToggleFavorite: ((LxSongInfo) -> Unit)? = null,
     stableIdFn: (LxSongInfo) -> String = { "" },
     colorScheme: androidx.compose.material3.ColorScheme,
     onLoadMore: () -> Unit = {},
     currentPlayingSongId: String? = null,
     isPlaying: Boolean = false,
+    /** 正在解析播放链接的歌曲 id（在该歌曲名称右侧显示加载提示） */
+    loadingSongId: String? = null,
+    /** 当前加载步骤文字（如「正在解析音源…」） */
+    loadingStep: String? = null,
     /** 当前搜索的源名称，用于"正在搜索 xx…"提示（避免非网易云音源也显示网易云） */
     searchSourceLabel: String = "网易云音乐"
 ) {
@@ -1573,11 +1583,12 @@ private fun OnlineSearchResults(
                             song.albumName.ifBlank { null }
                         ).joinToString(" · "),
                         coverUrl = song.pic.takeIf { it.isNotBlank() },
-                        quality = null,
                         isFavorite = favoriteIds.contains(stableIdFn(song)),
-                        onToggleFavorite = { onToggleFavorite(song) },
+                        onToggleFavorite = onToggleFavorite?.let { fav -> { fav(song) } },
                         isPlaying = isPlaying,
                         isCurrentSong = currentPlayingSongId == stableIdFn(song),
+                        showLoading = song.id == loadingSongId,
+                        loadingLabel = loadingStep,
                         onClick = { onPlaySong(song) }
                     )
                 }
@@ -1918,118 +1929,52 @@ private fun UnifiedOnlineArtistItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UnifiedOnlineSongItem(
     title: String,
     subtitle: String,
     coverUrl: String?,
-    quality: String?,
     isFavorite: Boolean,
     onToggleFavorite: (() -> Unit)?,
     isPlaying: Boolean,
     isCurrentSong: Boolean,
+    showLoading: Boolean = false,
+    loadingLabel: String? = null,
     onClick: () -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
-    val isHighlighted = isCurrentSong
-
-    androidx.compose.material3.Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp)),
-        shape = RoundedCornerShape(22.dp),
-        color = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 13.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .padding(end = 14.dp)
-                    .clip(RoundedCornerShape(if (isHighlighted) 50.dp else 10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!coverUrl.isNullOrBlank()) {
-                    SmartImage(
-                        model = coverUrl,
-                        contentDescription = null,
-                        targetSize = SmartImageListTargetSize,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                if (isHighlighted) {
-                    AutoScrollingText(
-                        text = title.ifBlank { "未知歌曲" },
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                        gradientEdgeColor = if (isHighlighted) colors.primaryContainer else colors.surfaceContainerLow,
-                    )
-                } else {
-                    Text(
-                        text = title.ifBlank { "未知歌曲" },
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = (if (isHighlighted) colors.onPrimaryContainer else colors.onSurface).copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (!quality.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = quality,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.primary
-                    )
-                }
-            }
-            if (isHighlighted) {
-                PlayingEqIcon(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(width = 18.dp, height = 16.dp),
-                    color = if (isHighlighted) colors.onPrimaryContainer else colors.onSurface,
-                    isPlaying = isPlaying
-                )
-            } else if (onToggleFavorite != null) {
-                IconButton(
-                    onClick = onToggleFavorite,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = if (isFavorite) "取消收藏" else "收藏",
-                        tint = if (isFavorite) colors.primary else colors.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        }
+    // 与搜索界面「歌曲」标签下结果完全一致的显示效果（EnhancedSongListItem）
+    // 封面统一为正方形（高亮时变圆形），播放中显示 EQ 动画图标，收藏走右侧按钮
+    val song = remember(title, subtitle, coverUrl) {
+        Song(
+            id = "online",
+            title = title.ifBlank { "未知歌曲" },
+            artist = subtitle.ifBlank { "未知歌手" },
+            artistId = -1L,
+            album = "",
+            albumId = -1L,
+            path = "cloud://online",
+            contentUriString = "cloud://online",
+            albumArtUriString = coverUrl,
+            duration = 0L,
+            mimeType = "audio/*",
+            bitrate = null,
+            sampleRate = null
+        )
     }
+    EnhancedSongListItem(
+        song = song,
+        isPlaying = isPlaying,
+        isCurrentSong = isCurrentSong,
+        albumArtSize = 50.dp,
+        showMoreOptionsButton = false,
+        showFavoriteButton = false, // 搜索页不显示收藏按钮
+        isFavorite = isFavorite,
+        showLoading = showLoading,
+        loadingLabel = loadingLabel,
+        onMoreOptionsClick = {},
+        onFavoriteClick = onToggleFavorite ?: {},
+        onClick = onClick
+    )
 }
 
 // ── QQ 音乐搜索结果组件 ──────────────────────────────────────────────
@@ -2144,7 +2089,6 @@ private fun QQSearchResults(
                             song.album.ifBlank { null }
                         ).joinToString(" · "),
                         coverUrl = song.cover.takeIf { it.isNotBlank() },
-                        quality = song.quality.takeIf { it.isNotBlank() },
                         isFavorite = false,
                         onToggleFavorite = null,
                         isPlaying = isPlaying,
@@ -2216,7 +2160,11 @@ private fun BilibiliSearchResults(
     stableIdFn: (com.theveloper.pixelplay.data.bilibili.BilibiliSongInfo) -> String,
     onLoadMore: () -> Unit,
     currentPlayingSongId: String? = null,
-    isPlaying: Boolean = false
+    isPlaying: Boolean = false,
+    /** 正在解析播放链接的视频 id（在该歌曲名称右侧显示加载提示） */
+    loadingSongId: String? = null,
+    /** 当前加载步骤文字（如「解析音频流…」） */
+    loadingStep: String? = null
 ) {
     val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
     when {
@@ -2317,11 +2265,12 @@ private fun BilibiliSearchResults(
                             song.albumName.ifBlank { null }
                         ).joinToString(" · "),
                         coverUrl = song.pic.takeIf { it.isNotBlank() },
-                        quality = null,
                         isFavorite = false,
                         onToggleFavorite = null,
                         isPlaying = isPlaying,
                         isCurrentSong = currentPlayingSongId == stableIdFn(song),
+                        showLoading = song.id == loadingSongId,
+                        loadingLabel = loadingStep,
                         onClick = { onPlaySong(song) }
                     )
                 }

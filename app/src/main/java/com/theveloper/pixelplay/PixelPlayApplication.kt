@@ -15,6 +15,7 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnosticsController
+import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.repository.ArtistImageRepository
 import com.theveloper.pixelplay.data.telegram.TelegramRepository
 import com.theveloper.pixelplay.presentation.viewmodel.LibraryStateHolder
@@ -71,6 +72,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
 
     @Inject
     lateinit var advancedPerformanceDiagnosticsController: dagger.Lazy<AdvancedPerformanceDiagnosticsController>
+
+    @Inject
+    lateinit var lxJsEngine: dagger.Lazy<LxJsEngine>
 
     private val startupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -156,6 +160,19 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 net.moriafly.ncm.NcmApi.install(this)
             } catch (t: Throwable) {
                 android.util.Log.e("PixelPlay", "Failed to init NcmApi: ${t.message}")
+            }
+
+            // ⚡ 落雪 JS 引擎预加载：应用启动即后台初始化音源脚本，
+            // 保证首次搜索/播放立即可用（无需等用户进入搜索页才开始加载）
+            try {
+                startupScope.launch {
+                    runCatching { lxJsEngine.get().awaitReady(25_000) }
+                        .onFailure { t ->
+                            android.util.Log.e("PixelPlay", "Failed to preload LxJsEngine: ${t.message}")
+                        }
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("PixelPlay", "Failed to schedule LxJsEngine preload: ${t.message}")
             }
 
             // Notification channel (for foreground music playback service)
