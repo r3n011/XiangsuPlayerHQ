@@ -51,8 +51,10 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -73,6 +75,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -161,6 +164,7 @@ fun HomeScreen(
     val favoriteArtistViewModel: FavoriteArtistViewModel = hiltViewModel()
     val favoriteArtists by favoriteArtistViewModel.artists.collectAsStateWithLifecycle()
     val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    val isNeteaseLoggedIn by neteaseViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
     val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
     val isCarModeEnabled by remember(settingsViewModel.uiState) {
@@ -301,6 +305,7 @@ fun HomeScreen(
     var showOptionsBottomSheet by remember { mutableStateOf(false) }
     var showBetaInfoBottomSheet by remember { mutableStateOf(false) }
     var showStreamingProviderSheet by remember { mutableStateOf(false) }
+    var showNeteaseLoginRequiredDialog by remember { mutableStateOf(false) }
     var cleanInstallDisclaimerDismissedThisSession by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     val betaSheetState = rememberModalBottomSheetState()
@@ -458,7 +463,13 @@ fun HomeScreen(
                         CarModeQuickActionsCard(
                             modifier = Modifier.padding(horizontal = 16.dp),
                             onSearchClick = { navController.navigateSafely(Screen.Search.route) },
-                            onRoamingClick = { playerViewModel.startRoamingMode() },
+                            onRoamingClick = {
+                                if (isNeteaseLoggedIn) {
+                                    playerViewModel.startRoamingMode()
+                                } else {
+                                    showNeteaseLoginRequiredDialog = true
+                                }
+                            },
                             onLibraryClick = { navController.navigateSafely(Screen.Library.route) },
                             onSettingsClick = { navController.navigateSafely(Screen.Settings.route) }
                         )
@@ -643,7 +654,8 @@ fun HomeScreen(
                                                 navController.navigateSafely(
                                                     Screen.ArtistHomepage.createRoute(artist.id)
                                                 )
-                                            }
+                                            },
+                                            isTabletMode = true
                                         )
                                     }
                                 }
@@ -749,7 +761,7 @@ fun HomeScreen(
                         }
                     }
 
-                    // ⚡ 收藏的歌手卡片
+                    // ⚡ 收藏的歌手卡片（平板：自动换行上下滑动；手机：横向滑动不变）
                     if (favoriteArtists.isNotEmpty()) {
                         item(
                             key = "favorite_artists_section",
@@ -761,7 +773,8 @@ fun HomeScreen(
                                     navController.navigateSafely(
                                         Screen.ArtistHomepage.createRoute(artist.id)
                                     )
-                                }
+                                },
+                                isTabletMode = LocalConfiguration.current.screenWidthDp >= 600
                             )
                         }
                     }
@@ -882,6 +895,28 @@ fun HomeScreen(
             isJellyfinLoggedIn = isJellyfinLoggedIn,
             onNavigateToJellyfinDashboard = {
                 navController.navigateSafely(Screen.JellyfinDashboard.route)
+            }
+        )
+    }
+    if (showNeteaseLoginRequiredDialog) {
+        AlertDialog(
+            onDismissRequest = { showNeteaseLoginRequiredDialog = false },
+            title = { Text("需要登录网易云") },
+            text = { Text("漫游模式需要登录网易云账号后才能使用，是否前往登录？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showNeteaseLoginRequiredDialog = false
+                        navController.navigateSafely(Screen.NeteaseDashboard.route)
+                    }
+                ) {
+                    Text("去登录")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNeteaseLoginRequiredDialog = false }) {
+                    Text("取消")
+                }
             }
         )
     }

@@ -567,6 +567,7 @@
     <string name="setcat_download_settings">下载设置</string>
     <string name="setcat_download_path_title">下载路径</string>
     <string name="setcat_netease_quality_title">网易云首选音质</string>
+    <string name="music_quality_hires">24bit Hi-Res</string>
     <string name="music_quality_flac">无损 (FLAC)</string>
     <string name="music_quality_high">高品 (320kbps)</string>
     <string name="music_quality_standard">标准 (128kbps)</string>
@@ -639,6 +640,32 @@
     <string name="settings_search_keyword_album_art">专辑封面</string>
     <string name="settings_search_keyword_scan">扫描</string>
     <string name="settings_search_keyword_min_duration">最小时长</string>
+    <string name="settings_search_keyword_ai">AI</string>
+    <string name="settings_search_keyword_model">模型</string>
+    <string name="settings_search_keyword_token">令牌</string>
+    <string name="settings_search_keyword_recommendation">推荐</string>
+    <string name="settings_search_keyword_remote">远程</string>
+    <string name="settings_search_keyword_immersive_lyrics">沉浸式歌词</string>
+    <string name="settings_search_keyword_auto_hide">自动隐藏</string>
+    <string name="settings_search_keyword_replaygain">重放增益</string>
+    <string name="settings_search_keyword_cast">投射</string>
+    <string name="settings_search_keyword_usb">USB</string>
+    <string name="settings_search_keyword_aaudio">AAudio</string>
+    <string name="settings_search_keyword_car_mode">车载模式</string>
+    <string name="settings_search_keyword_transcode">转码</string>
+    <string name="settings_search_keyword_download">下载</string>
+    <string name="settings_search_keyword_daily_mix">每日合辑</string>
+    <string name="settings_search_keyword_stats">统计</string>
+    <string name="settings_search_keyword_palette">调色板</string>
+    <string name="settings_search_keyword_now_playing">正在播放</string>
+    <string name="settings_search_keyword_compact">紧凑</string>
+    <string name="settings_search_keyword_excluded">排除目录</string>
+    <string name="settings_search_keyword_battery">电池</string>
+    <string name="settings_search_keyword_background">后台播放</string>
+    <string name="settings_search_keyword_filter">过滤</string>
+    <string name="settings_search_keyword_maintenance">维护</string>
+    <string name="settings_search_keyword_diagnostics">诊断</string>
+    <string name="settings_search_keyword_collage">拼贴</string>
     
     <!-- 设置搜索界面 -->
     <string name="settings_search_placeholder">搜索设置</string>

@@ -645,6 +645,7 @@ class MusicRepositoryImpl @Inject constructor(
                 SearchFilterType.ONLINE -> flowOf(emptyList())
                 SearchFilterType.KUWO_MUSIC -> flowOf(emptyList())
                 SearchFilterType.BILIBILI_MUSIC -> flowOf(emptyList())
+                SearchFilterType.LX_MUSIC -> flowOf(emptyList())
             }
         }.flowOn(Dispatchers.Default)
     }
@@ -932,7 +933,12 @@ class MusicRepositoryImpl @Inject constructor(
             albumId = albumId,
             contentUriString = contentUri,
             albumArtUriString = songInfo.pic.ifBlank { null },
-            duration = songInfo.duration,
+            // 内置源（tx/kg/mg/kw）LxSongInfo.duration 是秒；网易云等为毫秒；数据库统一毫秒
+            duration = if (songInfo.source in setOf("tx", "kg", "mg", "kw")) {
+                songInfo.duration * 1000L
+            } else {
+                songInfo.duration
+            },
             genre = null,
             filePath = contentUri,
             parentDirectoryPath = "cloud",

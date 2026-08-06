@@ -1,10 +1,15 @@
 package com.theveloper.pixelplay.data.lx
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import net.moriafly.ncm.NcmApi
+import net.moriafly.ncm.NcmJson
+import net.moriafly.ncm.ncmBool
+import net.moriafly.ncm.ncmInt
+import net.moriafly.ncm.ncmList
+import net.moriafly.ncm.ncmLong
+import net.moriafly.ncm.ncmObj
+import net.moriafly.ncm.ncmString
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -20,62 +25,25 @@ class LxSearchApi @Inject constructor(
     // vkeys API 获取封面（备用）
     private val COVER_API_BASE = "https://api.vkeys.cn/v2/music/netease"
 
-    // 网易云 API 多代理列表：请求时并行竞速，返回第一个数据正确的结果，
-    // 单个代理超时/失效不会导致整体失败
-    private val NCM_PROXIES = listOf(
-        "https://ncmapi.btwoa.com",
-        "http://www.young1024.com:666",
-        "https://zm.wwoyun.cn",
-        "https://music.mcseekeri.com"
-    )
+    // 备用搜索 API：内置 NCM（官方加密 weapi）返回 405 操作频繁时使用
+    private val BTWOA_API_BASE = "https://ncmapi.btwoa.com"
 
     /**
-     * 多代理竞速请求：并行请求所有网易云 API 代理，
-     * 返回第一个 HTTP 成功且 code==200 的 JSONObject；全部失败返回 null。
+     * 将 NcmApi（本地 SDK）返回的 Map 转为 JSONObject，便于复用现有解析逻辑。
+     * NcmApi 直接请求网易云官方加密接口，不依赖任何外部代理服务器。
      */
-    private suspend fun raceGetJson(
-        tag: String,
-        buildUrl: (String) -> String
-    ): JSONObject? = withContext(Dispatchers.IO) {
-        val deferreds = NCM_PROXIES.map { base ->
-            async {
-                try {
-                    val url = buildUrl(base)
-                    val request = Request.Builder()
-                        .url(url)
-                        .header("User-Agent", "Mozilla/5.0")
-                        .get()
-                        .build()
-                    okHttpClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            Timber.w("$tag HTTP ${response.code} @ $base")
-                            return@use null
-                        }
-                        val body = response.body?.string()
-                        if (body.isNullOrBlank()) return@use null
-                        val root = JSONObject(body)
-                        if (root.optInt("code", -1) != 200) null else root
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (t: Throwable) {
-                    Timber.w(t, "$tag 请求异常 @ $base")
-                    null
-                }
-            }
+    private fun ncmMapToJson(map: Map<String, Any?>?): JSONObject? {
+        if (map == null) return null
+        return try {
+            JSONObject(NcmJson.toJsonString(map))
+        } catch (t: Throwable) {
+            Timber.w(t, "NcmApi 响应转 JSON 失败")
+            null
         }
-        var remaining = deferreds
-        while (remaining.isNotEmpty()) {
-            val result = select<JSONObject?> { remaining.forEach { it.onAwait { value -> value } } }
-            if (result != null) return@withContext result
-            remaining = remaining.filterNot { it.isCompleted }
-        }
-        Timber.w("$tag 所有代理请求均失败")
-        null
     }
 
     /**
-     * 使用 btwoa 提供的 NeteaseCloudMusicApi 搜索接口，支持真正的 limit/offset 分页。
+     * 网易云单曲搜索（本地 SDK 直连官方加密接口，无需外部代理），支持真正的 limit/offset 分页。
      * - limit: 单页返回数量，默认 20
      * - offset: 偏移量，从 0 开始，例如第 2 页 offset = limit
      */
@@ -86,12 +54,38 @@ class LxSearchApi @Inject constructor(
 
         return withContext(Dispatchers.IO) {
             try {
-                val encodedKeyword = URLEncoder.encode(keyword, "UTF-8")
                 val offset = (page - 1) * pageSize
-                val root = raceGetJson(tag = "search") { base ->
-                    "$base/search?keywords=$encodedKeyword&type=1&limit=$pageSize&offset=$offset"
-                } ?: return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
-                parseSearchResponse(root.toString(), pageSize, offset)
+                val map = NcmApi.search(keyword, type = 1, limit = pageSize, offset = offset).getOrNull()
+                if (map != null) {
+                    val code = (map["code"] as? Number)?.toInt() ?: 200
+                    if (code != 405) {
+                        val root = ncmMapToJson(map)
+                            ?: return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+                        return@withContext parseSearchResponse(root.toString(), pageSize, offset)
+                    }
+                    // code == 405（操作频繁/被风控）→ 走 btwoa 备用 API
+                    Timber.w("内置 NCM 搜索返回 405 操作频繁，切换 btwoa 备用 API 搜索: $keyword")
+                } else {
+                    Timber.w("内置 NCM 搜索失败，切换 btwoa 备用 API 搜索: $keyword")
+                }
+
+                // 备用搜索 API：https://ncmapi.btwoa.com/cloudsearch（与官方 cloudsearch 返回格式一致）
+                val url = "$BTWOA_API_BASE/cloudsearch?keywords=${URLEncoder.encode(keyword, "UTF-8")}" +
+                        "&limit=$pageSize&offset=$offset&type=1"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .get()
+                    .build()
+
+                val response = okHttpClient.newCall(request).execute()
+                val body = response.body?.string()
+                response.close()
+                if (!response.isSuccessful || body.isNullOrBlank()) {
+                    Timber.e("btwoa 备用搜索失败: HTTP ${response.code}")
+                    return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+                parseSearchResponse(body, pageSize, offset)
             } catch (e: Exception) {
                 Timber.e(e, "搜索API请求异常")
                 LxSearchResult(list = emptyList(), isEnd = true, total = 0)
@@ -196,8 +190,7 @@ class LxSearchApi @Inject constructor(
     }
 
     /**
-     * 调用网易云歌曲详情 API 获取封面链接。
-     * 接口：`https://ncmapi.btwoa.com/song/detail?ids=<songId>`
+     * 调用网易云歌曲详情 API 获取封面链接（本地 SDK 直连官方加密接口）。
      * 返回 JSON 中 songs[0].al.picUrl 即为封面直链。
      * @param songId 网易云歌曲 ID（纯数字字符串）
      * @return 封面 URL，获取失败返回 null
@@ -205,9 +198,8 @@ class LxSearchApi @Inject constructor(
     suspend fun getSongCoverFromDetail(songId: String): String? = withContext(Dispatchers.IO) {
         if (songId.isBlank()) return@withContext null
         try {
-            val obj = raceGetJson(tag = "song/detail-cover") { base ->
-                "$base/song/detail?ids=$songId"
-            } ?: return@withContext null
+            val map = NcmApi.songDetail(listOf(songId)).getOrNull() ?: return@withContext null
+            val obj = ncmMapToJson(map) ?: return@withContext null
 
             val songs = obj.optJSONArray("songs") ?: return@withContext null
             val song = songs.optJSONObject(0) ?: return@withContext null
@@ -226,30 +218,64 @@ class LxSearchApi @Inject constructor(
      * @return Map<songId, coverUrl>，仅包含成功获取封面的条目
      */
     suspend fun batchGetSongCovers(songIds: List<String>): Map<String, String> = withContext(Dispatchers.IO) {
-        if (songIds.isEmpty()) return@withContext emptyMap()
-        try {
-            val idsParam = songIds.joinToString(",")
-            val obj = raceGetJson(tag = "song/detail-batch") { base ->
-                "$base/song/detail?ids=$idsParam"
-            } ?: return@withContext emptyMap()
-
-            val songs = obj.optJSONArray("songs") ?: return@withContext emptyMap()
-            val result = HashMap<String, String>(songs.length())
-            for (i in 0 until songs.length()) {
-                val song = songs.optJSONObject(i) ?: continue
-                val id = song.optLong("id").toString()
-                val al = song.optJSONObject("al") ?: song.optJSONObject("album")
-                val picUrl = al?.optString("picUrl", "")?.trim()?.replace("`", "")
-                if (id.isNotBlank() && !picUrl.isNullOrBlank()) {
-                    result[id] = picUrl
-                }
-            }
-            result
-        } catch (e: Exception) {
-            Timber.e(e, "批量获取封面异常")
-            emptyMap()
-        }
+        batchGetSongDetails(songIds)
+            .mapValues { it.value.albumPic }
+            .filterValues { it.isNotBlank() }
     }
+
+    /**
+     * 批量获取歌曲详情（一次请求，/api/v3/song/detail）。
+     * 返回完整歌曲信息（标题/歌手/专辑/封面/时长），用于歌手页等
+     * 接口不返回歌手与专辑字段时补全数据。
+     * @param songIds 歌曲 ID 列表
+     * @return Map<songId, NeteaseSongDetailInfo>，仅包含成功获取详情的条目
+     */
+    suspend fun batchGetSongDetails(songIds: List<String>): Map<String, NeteaseSongDetailInfo> =
+        withContext(Dispatchers.IO) {
+            if (songIds.isEmpty()) return@withContext emptyMap()
+            try {
+                val map = NcmApi.songDetail(songIds).getOrNull() ?: return@withContext emptyMap()
+                val obj = ncmMapToJson(map) ?: return@withContext emptyMap()
+
+                val songs = obj.optJSONArray("songs") ?: return@withContext emptyMap()
+                val result = HashMap<String, NeteaseSongDetailInfo>(songs.length())
+                for (i in 0 until songs.length()) {
+                    val song = songs.optJSONObject(i) ?: continue
+                    val id = song.optLong("id")
+                    if (id <= 0) continue
+
+                    val artists = mutableListOf<String>()
+                    val artistIds = mutableListOf<Long>()
+                    val arArray = song.optJSONArray("ar") ?: song.optJSONArray("artists")
+                    if (arArray != null) {
+                        for (j in 0 until arArray.length()) {
+                            val ar = arArray.optJSONObject(j) ?: continue
+                            ar.optString("name")?.takeIf { it.isNotBlank() }?.let { artists.add(it) }
+                            val aid = ar.optLong("id")
+                            if (aid > 0) artistIds.add(aid)
+                        }
+                    }
+
+                    val al = song.optJSONObject("al") ?: song.optJSONObject("album")
+                    val albumName = al?.optString("name", "") ?: ""
+                    val picUrl = al?.optString("picUrl", "")?.trim()?.replace("`", "") ?: ""
+
+                    result[id.toString()] = NeteaseSongDetailInfo(
+                        id = id,
+                        title = song.optString("name", ""),
+                        artists = artists,
+                        artistIds = artistIds,
+                        albumName = albumName,
+                        albumPic = picUrl,
+                        duration = song.optLong("dt", 0L)
+                    )
+                }
+                result
+            } catch (e: Exception) {
+                Timber.e(e, "批量获取歌曲详情异常")
+                emptyMap()
+            }
+        }
 
     // ─── 评论 / 用户详情 ────────────────────────────────────────────────────────
 
@@ -267,56 +293,37 @@ class LxSearchApi @Inject constructor(
         before: Long? = null
     ): NeteaseCommentResult = withContext(Dispatchers.IO) {        if (songId.isBlank()) return@withContext NeteaseCommentResult()
         try {
-            val beforeParam = if (before != null && before > 0L) "&before=$before" else ""
-            val rawObj = raceGetJson(tag = "comment/music") { base ->
-                "$base/comment/music?id=$songId&limit=$limit&offset=$offset$beforeParam"
-            } ?: return@withContext NeteaseCommentResult()
+            val map = NcmApi.full.commentMusic(
+                id = songId,
+                limit = limit,
+                offset = offset,
+                beforeTime = before ?: 0L,
+            ).getOrNull() ?: return@withContext NeteaseCommentResult()
 
-            // 某些封装后端会把数据放在 data 字段里；如果存在则从 data 中读取，否则直接从根读取
-            val dataWrapper = rawObj.optJSONObject("data")
-            val obj = dataWrapper ?: rawObj
-
-            // 解析热门评论
+            // 本地 SDK 返回结构：{code, hotComments:[...], comments:[...], totalCount, hasMore, time}
             val hotComments = mutableListOf<NeteaseComment>()
-            val hotCommentsArr = obj.optJSONArray("hotComments")
-            if (hotCommentsArr != null) {
-                for (i in 0 until hotCommentsArr.length()) {
-                    val c = hotCommentsArr.optJSONObject(i) ?: continue
-                    hotComments.add(parseComment(c))
-                }
+            map.ncmList("hotComments").forEach { item ->
+                (item as? Map<*, *>)?.let { hotComments.add(parseCommentFromMap(it)) }
             }
 
-            // 解析普通评论
             val comments = mutableListOf<NeteaseComment>()
-            val commentsArr = obj.optJSONArray("comments")
-            if (commentsArr != null) {
-                for (i in 0 until commentsArr.length()) {
-                    val c = commentsArr.optJSONObject(i) ?: continue
-                    comments.add(parseComment(c))
-                }
+            map.ncmList("comments").forEach { item ->
+                (item as? Map<*, *>)?.let { comments.add(parseCommentFromMap(it)) }
             }
 
-            // hasMore 默认为 true 以便分页继续加载；只有服务器明确返回 false 时才停止
-            val rawHasMore = obj.opt("more") ?: obj.opt("hasMore")
-            val hasMore = when (rawHasMore) {
-                is Boolean -> rawHasMore
-                is Number -> rawHasMore.toInt() == 1
-                is String -> rawHasMore.equals("true", ignoreCase = true) || rawHasMore == "1"
-                else -> comments.isNotEmpty()
-            }
+            val hasMore = map.ncmBool("hasMore", comments.isNotEmpty())
 
-            // 游标：最后一条评论的 time（用于超过 5000 条时的 before 参数）
             val cursor = if (comments.isNotEmpty()) {
                 comments.last().time
             } else {
-                obj.optLong("time", 0L)
+                map.ncmLong("time", 0L)
             }
 
             NeteaseCommentResult(
                 comments = comments,
                 hotComments = hotComments,
                 hasMore = hasMore,
-                totalCount = obj.optInt("totalCount", 0),
+                totalCount = map.ncmInt("totalCount", 0),
                 cursor = cursor
             )
         } catch (e: Exception) {
@@ -331,19 +338,16 @@ class LxSearchApi @Inject constructor(
     suspend fun getUserDetail(uid: Long): NeteaseUserDetail? = withContext(Dispatchers.IO) {
         if (uid <= 0L) return@withContext null
         try {
-            val obj = raceGetJson(tag = "user/detail") { base ->
-                "$base/user/detail?uid=$uid"
-            } ?: return@withContext null
-
-            val data = obj.optJSONObject("data") ?: return@withContext null
-            val profile = data.optJSONObject("profile") ?: return@withContext null
+            val map = NcmApi.full.userDetail(uid.toString()).getOrNull() ?: return@withContext null
+            val profile = map.ncmObj("profile")
+            if (profile.isEmpty()) return@withContext null
 
             NeteaseUserDetail(
-                userId = profile.optLong("userId", uid),
-                nickname = profile.optString("nickname", ""),
-                avatarUrl = profile.optString("avatarUrl", ""),
-                signature = profile.optString("signature", ""),
-                description = profile.optString("description", "")
+                userId = profile.ncmLong("userId", uid),
+                nickname = profile.ncmString("nickname"),
+                avatarUrl = profile.ncmString("avatarUrl"),
+                signature = profile.ncmString("signature"),
+                description = profile.ncmString("description")
             )
         } catch (e: Exception) {
             Timber.e(e, "获取用户详情异常")
@@ -354,26 +358,16 @@ class LxSearchApi @Inject constructor(
     // ─── 歌词 ────────────────────────────────────────────────────────
 
     /**
-     * 通过网易云歌曲 id 获取 LRC 歌词。
-     * 接口：`https://ncmapi.btwoa.com/lyric?id=<songId>`
+     * 通过网易云歌曲 id 获取 LRC 歌词（本地 SDK 直连官方加密接口）。
      * 返回：LRC 原文（包含时间戳），如果没有则返回 null。
      */
     suspend fun getLyric(songId: String): String? = withContext(Dispatchers.IO) {
         if (songId.isBlank()) return@withContext null
         try {
-            val obj = raceGetJson(tag = "lyric") { base ->
-                "$base/lyric?id=$songId"
-            } ?: return@withContext null
+            val map = NcmApi.full.songLyric(songId).getOrNull() ?: return@withContext null
 
-            // 兼容两种结构：{code, lrc:{lyric:"..."}}；或外层带有 data:{...}
-            val root = obj.optJSONObject("data") ?: obj
-
-            val lrcObj = root.optJSONObject("lrc")
-            val lrcText = lrcObj?.optString("lyric")?.takeIf { it.isNotBlank() }
-
-            // 同时获取翻译歌词
-            val tlyricObj = root.optJSONObject("tlyric")
-            val tlyricText = tlyricObj?.optString("lyric")?.takeIf { it.isNotBlank() }
+            val lrcText = map.ncmObj("lrc").ncmString("lyric").takeIf { it.isNotBlank() }
+            val tlyricText = map.ncmObj("tlyric").ncmString("lyric").takeIf { it.isNotBlank() }
 
             // 场景1：原文 + 翻译都有 -> 按时间戳合并返回
             if (lrcText != null && tlyricText != null) {
@@ -388,7 +382,7 @@ class LxSearchApi @Inject constructor(
             if (tlyricText != null) return@withContext tlyricText
 
             // 场景4：klyric 等其他字段作为终极兜底
-            val klyric = root.optJSONObject("klyric")?.optString("lyric").orEmpty()
+            val klyric = map.ncmObj("klyric").ncmString("lyric")
             if (klyric.isNotBlank()) return@withContext klyric
 
             return@withContext null
@@ -585,8 +579,7 @@ class LxSearchApi @Inject constructor(
     }
 
     /**
-     * 网易云歌手搜索（type=100）。
-     * 接口：`https://ncmapi.btwoa.com/search?keywords=<关键字>&type=100&limit=20&offset=0`
+     * 网易云歌手搜索（type=100，本地 SDK 直连官方加密接口）。
      * 返回 JSON 中 result.artists 数组，每项包含 id / name / alias / picUrl。
      * 支持真正的 limit/offset 分页。
      */
@@ -597,12 +590,38 @@ class LxSearchApi @Inject constructor(
 
         return withContext(Dispatchers.IO) {
             try {
-                val encodedKeyword = URLEncoder.encode(keyword, "UTF-8")
                 val offset = (page - 1) * pageSize
-                val root = raceGetJson(tag = "search-artist") { base ->
-                    "$base/search?keywords=$encodedKeyword&type=100&limit=$pageSize&offset=$offset"
-                } ?: return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
-                parseArtistSearchResponse(root.toString(), pageSize, offset)
+                val map = NcmApi.search(keyword, type = 100, limit = pageSize, offset = offset).getOrNull()
+                if (map != null) {
+                    val code = (map["code"] as? Number)?.toInt() ?: 200
+                    if (code != 405) {
+                        val root = ncmMapToJson(map)
+                            ?: return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                        return@withContext parseArtistSearchResponse(root.toString(), pageSize, offset)
+                    }
+                    // code == 405（操作频繁/被风控）→ 走 btwoa 备用 API
+                    Timber.w("内置 NCM 歌手搜索返回 405 操作频繁，切换 btwoa 备用 API 搜索: $keyword")
+                } else {
+                    Timber.w("内置 NCM 歌手搜索失败，切换 btwoa 备用 API 搜索: $keyword")
+                }
+
+                // 备用搜索 API：https://ncmapi.btwoa.com/cloudsearch（与官方 cloudsearch 返回格式一致）
+                val url = "$BTWOA_API_BASE/cloudsearch?keywords=${URLEncoder.encode(keyword, "UTF-8")}" +
+                        "&limit=$pageSize&offset=$offset&type=100"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .get()
+                    .build()
+
+                val response = okHttpClient.newCall(request).execute()
+                val body = response.body?.string()
+                response.close()
+                if (!response.isSuccessful || body.isNullOrBlank()) {
+                    Timber.e("btwoa 备用歌手搜索失败: HTTP ${response.code}")
+                    return@withContext LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+                parseArtistSearchResponse(body, pageSize, offset)
             } catch (e: Exception) {
                 Timber.e(e, "歌手搜索API请求异常")
                 LxArtistSearchResult(list = emptyList(), isEnd = true, total = 0)
@@ -669,7 +688,8 @@ class LxSearchApi @Inject constructor(
         val id = obj.optString("id", "")
         val name = obj.optString("name", "未知歌曲")
 
-        val artists = obj.optJSONArray("artists")
+        // 兼容两种响应结构：web 端 artists/album（cloudsearch），移动端 ar/al（search/get 老接口）
+        val artists = obj.optJSONArray("artists") ?: obj.optJSONArray("ar")
         val singer = if (artists != null) {
             buildString {
                 for (i in 0 until artists.length()) {
@@ -684,11 +704,12 @@ class LxSearchApi @Inject constructor(
             "未知歌手"
         }
 
-        val album = obj.optJSONObject("album")
+        val album = obj.optJSONObject("album") ?: obj.optJSONObject("al")
         val albumName = album?.optString("name", "") ?: ""
         val pic = album?.optString("picUrl", "")?.trim()?.replace("`", "") ?: ""
 
-        val duration = obj.optLong("duration", 0L)
+        val duration = obj.optLong("duration", 0L).takeIf { it > 0L }
+            ?: obj.optLong("dt", 0L)
 
         return LxSongInfo(
             id = id,
@@ -702,22 +723,35 @@ class LxSearchApi @Inject constructor(
         )
     }
 
-    private fun parseComment(obj: JSONObject): NeteaseComment {
-        val userObj = obj.optJSONObject("user")
+    /** 从 NcmApi（Map 结构）解析单条评论 */
+    private fun parseCommentFromMap(obj: Map<*, *>): NeteaseComment {
+        val m = obj as? Map<String, Any?> ?: return NeteaseComment()
+        val userMap = m.ncmObj("user")
         val user = NeteaseCommentUser(
-            userId = userObj?.optLong("userId", 0L) ?: 0L,
-            nickname = userObj?.optString("nickname", "") ?: "",
-            avatarUrl = userObj?.optString("avatarUrl", "") ?: ""
+            userId = userMap.ncmLong("userId", 0L),
+            nickname = userMap.ncmString("nickname"),
+            avatarUrl = userMap.ncmString("avatarUrl")
         )
 
         return NeteaseComment(
-            commentId = obj.optLong("commentId", 0L),
-            content = obj.optString("content", ""),
-            time = obj.optLong("time", 0L),
-            timeStr = obj.optString("timeStr", ""),
-            likedCount = obj.optInt("likedCount", 0),
-            liked = obj.optBoolean("liked", false),
+            commentId = m.ncmLong("commentId", 0L),
+            content = m.ncmString("content"),
+            time = m.ncmLong("time", 0L),
+            timeStr = m.ncmString("timeStr"),
+            likedCount = m.ncmInt("likedCount", 0),
+            liked = m.ncmBool("liked", false),
             user = user
         )
     }
 }
+
+/** 网易云歌曲详情信息（/api/v3/song/detail），用于补全不返回歌手/专辑字段的接口数据。 */
+data class NeteaseSongDetailInfo(
+    val id: Long,
+    val title: String,
+    val artists: List<String>,
+    val artistIds: List<Long>,
+    val albumName: String,
+    val albumPic: String,
+    val duration: Long
+)

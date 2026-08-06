@@ -51,6 +51,20 @@ data class LxSourceInfo(
     val qualitys: List<String> = emptyList()
 )
 
+/**
+ * 单个 JS 音源脚本的头部简介（从 /*! ... */ 注释块解析）。
+ */
+data class LxScriptInfo(
+    val fileName: String = "",
+    val name: String = "",
+    val description: String = "",
+    val version: String = "",
+    val author: String = "",
+    val homepage: String = "",
+    val lastUpdate: String = "",
+    val md5: String = ""
+)
+
 @Serializable
 data class LxLyricResult(
     val lyric: String = ""

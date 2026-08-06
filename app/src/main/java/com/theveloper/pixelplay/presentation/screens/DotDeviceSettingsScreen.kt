@@ -211,7 +211,8 @@ fun DotDeviceSettingsScreen(
             collapseFraction = collapseFraction,
             headerHeight = currentTopBarHeightDp,
             onBackClick = onBackClick,
-            subtitle = "推送内容到墨水屏设备"
+            subtitle = "推送内容到墨水屏设备",
+            fadeSubtitleOnCollapse = false
         )
     }
 }

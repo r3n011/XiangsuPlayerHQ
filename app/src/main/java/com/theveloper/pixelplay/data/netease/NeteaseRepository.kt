@@ -61,6 +61,10 @@ class NeteaseRepository @Inject constructor(
         private const val NETEASE_PLAYLIST_PAGE_SIZE = 50
         private const val NETEASE_SONG_DETAIL_BATCH_SIZE = 500
         private const val NETEASE_MAX_PLAYLIST_PAGES = 200
+
+        // 进入媒体库自动同步的节流间隔：1 小时内不重复全量同步，避免触发网易云 405 风控
+        private const val AUTO_SYNC_INTERVAL_MS = 60 * 60 * 1000L
+        private const val KEY_LAST_AUTO_SYNC = "netease_last_auto_sync_time"
     }
 
     private val prefs: SharedPreferences = try {
@@ -89,6 +93,9 @@ class NeteaseRepository @Inject constructor(
     @Volatile
     private var lastGlobalSongUrlRequestAtMs = 0L
     private val globalSongUrlRequestIntervalMs = 1100L
+
+    // 媒体库自动同步互斥锁：防止快速进出媒体库时并发全量同步重复写库
+    private val autoSyncMutex = Mutex()
 
     init {
         // Auto-load saved cookies on creation so API client is ready
@@ -443,6 +450,37 @@ class NeteaseRepository @Inject constructor(
         }
     }
 
+    /**
+     * 进入媒体库时自动同步网易云歌单（含歌曲）。
+     *
+     * - 未登录 → 跳过（返回 success(null)）
+     * - 距上次成功全量同步 < AUTO_SYNC_INTERVAL_MS（1 小时）→ 跳过，避免频繁请求触发 405 风控
+     * - 否则 → 全量同步：歌单列表 + 每个歌单的歌曲，并生成媒体库 NETEASE 源播放列表
+     *
+     * @return success(null) 表示跳过；success(BulkSyncResult) 表示本次同步结果；failure 表示同步失败
+     */
+    suspend fun autoSyncOnLibraryEntry(): Result<BulkSyncResult?> {
+        if (!isLoggedIn) {
+            Timber.d("autoSyncOnLibraryEntry: not logged in, skipping")
+            return Result.success(null)
+        }
+        return autoSyncMutex.withLock {
+            val now = System.currentTimeMillis()
+            val lastSync = prefs.getLong(KEY_LAST_AUTO_SYNC, 0L)
+            if (now - lastSync < AUTO_SYNC_INTERVAL_MS) {
+                Timber.d("autoSyncOnLibraryEntry: throttled (last sync ${(now - lastSync) / 1000}s ago)")
+                return@withLock Result.success(null)
+            }
+            Timber.d("autoSyncOnLibraryEntry: starting full sync")
+            syncAllPlaylistsAndSongs().also { result ->
+                // 仅成功同步后记录时间，失败则下次进入媒体库时重试
+                if (result.isSuccess) {
+                    prefs.edit().putLong(KEY_LAST_AUTO_SYNC, System.currentTimeMillis()).apply()
+                }
+            }
+        }
+    }
+
     fun getPlaylists(): Flow<List<NeteasePlaylistEntity>> = dao.getAllPlaylists()
 
     fun getPlaylistSongs(playlistId: Long): Flow<List<Song>> {
@@ -513,9 +551,16 @@ class NeteaseRepository @Inject constructor(
 
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                // 首选音质失败自动回退：首选 → exhigh → higher → standard
-                // （如首选 lossless 失败会直接回退到 exhigh 320k，而不是跳级到 standard）
-                val qualityFallbacks = linkedSetOf(quality, "exhigh", "higher", "standard")
+                // 首选音质失败按等级阶梯回退：hires → lossless → exhigh → higher → standard
+                // （如首选 hires 失败会先尝试 lossless，而不是直接跳级到 exhigh 320k）
+                val qualityLadder = listOf("hires", "lossless", "exhigh", "higher", "standard")
+                val startIndex = qualityLadder.indexOf(quality)
+                val qualityFallbacks = if (startIndex >= 0) {
+                    linkedSetOf<String>().apply { addAll(qualityLadder.drop(startIndex)) }
+                } else {
+                    // 未知 level（如自定义脚本值）按首选优先，再接标准回退链
+                    linkedSetOf(quality, "exhigh", "higher", "standard")
+                }
                 var lastFailure: String? = null
 
                 for (level in qualityFallbacks) {
@@ -788,7 +833,7 @@ class NeteaseRepository @Inject constructor(
             album = album?.optString("name", "Unknown Album") ?: "Unknown Album",
             albumId = album?.optLong("id") ?: -1L,
             duration = track.optLong("dt"),
-            albumArtUrl = album?.optString("picUrl"),
+            albumArtUrl = normalizeRemoteImageUrl(album?.optString("picUrl")),
             mimeType = "audio/mpeg",
             bitrate = null,
             dateAdded = track.optLong("publishTime", System.currentTimeMillis())
@@ -819,7 +864,7 @@ class NeteaseRepository @Inject constructor(
             albumId = album?.optLong("id") ?: -1L,
             path = "",
             contentUriString = "netease://$neteaseId",
-            albumArtUriString = album?.optString("picUrl"),
+            albumArtUriString = normalizeRemoteImageUrl(album?.optString("picUrl")),
             duration = track.optLong("dt"),
             mimeType = "audio/mpeg",
             bitrate = null,
@@ -1030,4 +1075,22 @@ class NeteaseRepository @Inject constructor(
 
     private fun jsonToMap(json: String): Map<String, String> =
         CloudMusicUtils.jsonToMap(json)
+}
+
+/**
+ * 清洗远程图片 URL（与搜索页 LxSongInfo.pic 的清洗逻辑保持一致）：
+ * - 去除首尾空白与反引号
+ * - 协议相对地址 // 补全为 https://
+ * - 明文 http:// 升级为 https://（Android 默认禁止明文流量，网易云 CDN 均支持 https）
+ * 非 HTTP(S) 地址（content://、navidrome_cover:// 等）原样返回。
+ */
+fun normalizeRemoteImageUrl(raw: String?): String? {
+    if (raw.isNullOrBlank()) return null
+    val cleaned = raw.trim().replace("`", "")
+    if (cleaned.isBlank()) return null
+    return when {
+        cleaned.startsWith("//") -> "https:$cleaned"
+        cleaned.startsWith("http://") -> "https:" + cleaned.removePrefix("http:")
+        else -> cleaned
+    }
 }

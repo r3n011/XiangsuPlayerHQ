@@ -2,6 +2,11 @@
 
 package com.theveloper.pixelplay.presentation.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -105,6 +110,16 @@ fun RadioScreen(
     var showCountrySheet by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
 
+    // 返回时：若正在搜索，先清空搜索框（国家标签区展开回移），再返回
+    BackHandler(enabled = keyword.isNotBlank()) {
+        keyword = ""
+        viewModel.loadTopStations()
+    }
+
+    // ⚡ 搜索时国家标签区整体收缩为 0，列表容器（遮罩）布局上移补位；
+    // 清空搜索内容时展开回移，不会留下空白。
+    val isSearching = keyword.isNotBlank()
+
     // 与媒体库一致的背景设计：顶部 primaryContainer 半透明色块 + 渐变背景
     val isDarkTheme = isSystemInDarkTheme()
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -159,13 +174,26 @@ fun RadioScreen(
                     }
                 )
 
-                // 国家筛选：使用与媒体库一致的主标签样式（热门 + 常用国家 + 更多）
-                RadioCountryTabs(
-                    selectedCode = uiState.countryCode,
-                    onAllClick = { viewModel.loadTopStations() },
-                    onCountryClick = { code, name -> viewModel.loadCountry(code, name) },
-                    onMoreClick = { showCountrySheet = true }
-                )
+                // 国家筛选：使用与媒体库一致的主标签样式（热门 + 常用国家 + 更多）。
+                // 搜索时整块（含间距）收缩为 0，列表容器自然上移补位；清空后展开回移。
+                AnimatedVisibility(
+                    visible = !isSearching,
+                    enter = expandVertically(animationSpec = tween(260), expandFrom = Alignment.Top),
+                    exit = shrinkVertically(animationSpec = tween(260), shrinkTowards = Alignment.Top)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            RadioCountryTabs(
+                                selectedCode = uiState.countryCode,
+                                onAllClick = { viewModel.loadTopStations() },
+                                onCountryClick = { code, name -> viewModel.loadCountry(code, name) },
+                                onMoreClick = { showCountrySheet = true }
+                            )
+                        }
+                        // 国家标签与列表容器（遮罩）之间的间距，搜索时随整块一起收缩
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
             }
 
             // 电台列表：与媒体库一致的圆角容器（纯色），内部边缘套一圈遮罩，

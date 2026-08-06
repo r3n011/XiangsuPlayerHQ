@@ -151,6 +151,13 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 android.util.Log.e("PixelPlay", "Failed to init Timber: ${t.message}")
             }
 
+            // 网易云本地 SDK 初始化（App 进程内直接调官方接口，无需外部代理服务器）
+            try {
+                net.moriafly.ncm.NcmApi.install(this)
+            } catch (t: Throwable) {
+                android.util.Log.e("PixelPlay", "Failed to init NcmApi: ${t.message}")
+            }
+
             // Notification channel (for foreground music playback service)
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

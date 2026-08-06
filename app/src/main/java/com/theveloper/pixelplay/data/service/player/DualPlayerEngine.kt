@@ -227,6 +227,7 @@ class DualPlayerEngine @Inject constructor(
     private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder,
     private val okHttpClient: okhttp3.OkHttpClient,
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
+    private val builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
     private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
     private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
     private val audioProcessorProvider: AudioProcessorProvider,
@@ -1935,12 +1936,32 @@ class DualPlayerEngine @Inject constructor(
             }
 
             // 按音源优先级 + 音质优先级 尝试获取播放链接
+            // 内置源（tx/kg/mg/kw）走官方播放接口并遵守音质设置；
+            // 其余源（含 wy）走 Lx JS 引擎，同样优先使用用户选择的音质。
             var url: String? = null
             for (source in targetSources) {
                 if (url != null) break
-                url = lxJsEngine.getPlayUrl(source, songMap, musicQualityLxValue)
-                    ?: lxJsEngine.getPlayUrl(source, songMap, "320k")
-                    ?: lxJsEngine.getPlayUrl(source, songMap, "128k")
+                url = if (builtInSourceSearchApi.isSupported(source)) {
+                    val lxSongInfo = com.theveloper.pixelplay.data.lx.LxSongInfo(
+                        id = songMap["id"]?.toString() ?: "",
+                        songmid = songMap["songmid"]?.toString() ?: "",
+                        hash = songMap["hash"]?.toString() ?: "",
+                        name = songMap["name"]?.toString() ?: "",
+                        singer = songMap["singer"]?.toString() ?: "",
+                        albumName = songMap["albumName"]?.toString() ?: "",
+                        duration = (songMap["duration"] as? Number)?.toLong() ?: 0L,
+                        pic = songMap["pic"]?.toString() ?: "",
+                        source = source
+                    )
+                    builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, musicQualityLxValue)
+                        ?: lxJsEngine.getPlayUrl(source, songMap, musicQualityLxValue)
+                        ?: lxJsEngine.getPlayUrl(source, songMap, "320k")
+                        ?: lxJsEngine.getPlayUrl(source, songMap, "128k")
+                } else {
+                    lxJsEngine.getPlayUrl(source, songMap, musicQualityLxValue)
+                        ?: lxJsEngine.getPlayUrl(source, songMap, "320k")
+                        ?: lxJsEngine.getPlayUrl(source, songMap, "128k")
+                }
                 if (url != null) {
                     android.util.Log.d("DualPlayerEngine", "resolveCloudLxUri: got url from source=$source")
                     break

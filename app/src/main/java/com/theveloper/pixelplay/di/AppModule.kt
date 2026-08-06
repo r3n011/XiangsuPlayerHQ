@@ -331,14 +331,16 @@ object AppModule {
         lrcLibApiService: LrcLibApiService,
         lyricsDao: LyricsDao,
         okHttpClient: OkHttpClient,
-        lxSearchApi: LxSearchApi
+        lxSearchApi: LxSearchApi,
+        builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
     ): LyricsRepository {
         return LyricsRepositoryImpl(
             context = context,
             lrcLibApiService = lrcLibApiService,
             lyricsDao = lyricsDao,
             okHttpClient = okHttpClient,
-            lxSearchApi = lxSearchApi
+            lxSearchApi = lxSearchApi,
+            builtInSourceSearchApi = builtInSourceSearchApi
         )
     }
 

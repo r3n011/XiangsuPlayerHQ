@@ -73,6 +73,35 @@ class NeteaseDashboardViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 进入媒体库时的自动同步入口（节流 + 防重入）。
+     * 内部由 repository 判断登录状态与上次同步间隔：
+     * - 未登录 / 1 小时内已同步 → 跳过
+     * - 否则全量同步歌单列表 + 歌曲
+     */
+    fun autoSyncOnLibraryEntry() {
+        if (_isSyncing.value) return
+        viewModelScope.launch {
+            _isSyncing.value = true
+            val result = repository.autoSyncOnLibraryEntry()
+            result.fold(
+                onSuccess = { summary ->
+                    _syncMessage.value = if (summary != null) {
+                        if (summary.failedPlaylistCount == 0) {
+                            "Synced ${summary.playlistCount} playlists, ${summary.syncedSongCount} songs"
+                        } else {
+                            "Synced ${summary.playlistCount} playlists, ${summary.syncedSongCount} songs (${summary.failedPlaylistCount} failed)"
+                        }
+                    } else {
+                        null // 节流跳过，不显示提示
+                    }
+                },
+                onFailure = { _syncMessage.value = "Sync failed: ${it.message}" }
+            )
+            _isSyncing.value = false
+        }
+    }
+
     fun syncPlaylistSongs(playlistId: Long) {
         viewModelScope.launch {
             _isSyncing.value = true

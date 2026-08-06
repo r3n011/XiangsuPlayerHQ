@@ -153,10 +153,16 @@ fun ArtistHomepageScreen(
 
     val lazyListState = rememberLazyListState()
 
-    // 自动加载更多歌曲
+    // 自动加载更多（歌曲/专辑均滚动到底部自动加载）
     val shouldLoadMore by remember {
         derivedStateOf {
-            if (uiState.isLoading || uiState.isLoadingMore || !uiState.hasMore) {
+            val isAlbumsTab = uiState.selectedTab == "albums"
+            val guard = if (isAlbumsTab) {
+                uiState.isLoading || uiState.isLoadingMoreAlbums || !uiState.albumHasMore
+            } else {
+                uiState.isLoading || uiState.isLoadingMore || !uiState.hasMore
+            }
+            if (guard) {
                 false
             } else {
                 val lastVisibleItemIndex = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
@@ -166,9 +172,12 @@ fun ArtistHomepageScreen(
         }
     }
 
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore && uiState.selectedTab == "songs") {
-            viewModel.loadMoreSongs(playerViewModel.neteaseCookie)
+    LaunchedEffect(shouldLoadMore, uiState.selectedTab) {
+        if (shouldLoadMore) {
+            when (uiState.selectedTab) {
+                "albums" -> viewModel.loadMoreAlbums(playerViewModel.neteaseCookie)
+                else -> viewModel.loadMoreSongs(playerViewModel.neteaseCookie)
+            }
         }
     }
 

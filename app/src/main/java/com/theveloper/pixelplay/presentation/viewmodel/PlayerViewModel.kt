@@ -2464,7 +2464,8 @@ class PlayerViewModel @Inject constructor(
                                 "pic" to songCover,
                                 "cover" to songCover
                             )
-                            lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                            lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                                ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
                                 ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
                         }
                     } catch (t: Throwable) {
@@ -3708,6 +3709,13 @@ class PlayerViewModel @Inject constructor(
         "exhigh"
     }
 
+    /** 用户选择的音质（落雪 JS 引擎用值：24bit/flac/320k/128k），读取失败回退 320k */
+    private suspend fun preferredLxQuality(): String = try {
+        userPreferencesRepository.musicQualityFlow.first().lxValue
+    } catch (_: Exception) {
+        "320k"
+    }
+
     private suspend fun refreshRoamingSongUrl(song: Song) {
         val neteaseId = song.neteaseId ?: return
         val currentIndex = mediaController?.currentMediaItemIndex
@@ -3738,7 +3746,8 @@ class PlayerViewModel @Inject constructor(
                             "pic" to songCover,
                             "cover" to songCover
                         )
-                        lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                        lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
                             ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
                     } catch (t: Throwable) {
                         Timber.w(t, "RoamingRestore: lxJsEngine failed for song=${song.title}")
@@ -4046,7 +4055,8 @@ class PlayerViewModel @Inject constructor(
                                         "pic" to songCover,
                                         "cover" to songCover
                                     )
-                                    lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                    lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
                                         ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
                                 } catch (_: Throwable) { null }
                             }
@@ -4861,15 +4871,22 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * 同步网易云红心状态（仅当用户已登录且歌曲有 neteaseId 时生效）
+     * 同步网易云红心状态（已登录且歌曲有 neteaseId 时生效）
      */
     private suspend fun syncNeteaseLike(song: Song, isFavorite: Boolean) {
         val neteaseId = song.neteaseId ?: return
-        if (!neteaseRepository.isLoggedIn) {
+        // 登录态：设置页登录（NeteaseApiService）或内置 SDK 会话（NcmSession）任一即认为已登录
+        val sessionLogin = net.moriafly.ncm.NcmSession.INSTANCE?.isLogin == true
+        if (!neteaseRepository.isLoggedIn && !sessionLogin) {
             _toastEvents.emit("请先在设置中登录网易云账户以同步红心")
             return
         }
-        val cookie = neteaseRepository.getCookieString()
+        // cookie 优先取设置页登录的完整 cookie；没有则用内置 SDK 会话拼接兜底
+        var cookie = neteaseRepository.getCookieString()
+        if (cookie.isBlank()) {
+            cookie = net.moriafly.ncm.NcmSession.INSTANCE?.cookies?.entries
+                ?.joinToString("; ") { "${it.key}=${it.value}" } ?: ""
+        }
         if (cookie.isBlank()) {
             _toastEvents.emit("Cookie 获取失败，请重新登录")
             return
@@ -4880,8 +4897,13 @@ class PlayerViewModel @Inject constructor(
                 like = isFavorite,
                 cookie = cookie
             )
-            result.onFailure { err ->
+            result.onSuccess { ok ->
+                if (!ok) {
+                    _toastEvents.emit("同步网易云红心失败，请检查登录状态")
+                }
+            }.onFailure { err ->
                 Timber.e(err, "syncNeteaseLike: failed for song=$neteaseId isFavorite=$isFavorite")
+                _toastEvents.emit("同步网易云红心失败：${err.message}")
             }
         }
     }
@@ -5889,7 +5911,8 @@ class PlayerViewModel @Inject constructor(
                                         "cover" to songCover
                                     )
                                     val url = try {
-                                        lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                        lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
                                             ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
                                     } catch (t: Throwable) {
                                         Timber.w(t, "startRoamingMode: lxJsEngine.getPlayUrl failed for song=${detail.id}")
@@ -6104,7 +6127,8 @@ class PlayerViewModel @Inject constructor(
                 )
 
                 val fullUrl: String? = try {
-                    lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                    lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
                         ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
                 } catch (t: Throwable) {
                     Timber.w(t, "RoamingVIP: lxJsEngine.getPlayUrl failed for '$songId'")
@@ -6317,7 +6341,8 @@ class PlayerViewModel @Inject constructor(
                                         "cover" to songCover
                                     )
                                     val url = try {
-                                        lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                                        lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                                            ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
                                             ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
                                     } catch (t: Throwable) {
                                         Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.getPlayUrl failed for song=${detail.id}")
@@ -6524,6 +6549,37 @@ class PlayerViewModel @Inject constructor(
 
     fun observeSongs(songIds: List<String>): Flow<List<Song>> {
         return musicRepository.getSongsByIds(songIds)
+            .map { songs -> fillMissingNeteaseCovers(songs) }
+    }
+
+    // 已尝试过补全封面的网易云 song id（避免每次 observe 都重复请求歌曲详情）
+    private val neteaseCoverFillAttempted = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * 与网易云搜索页同款"通过歌曲详情 API 逐个补全封面"逻辑：
+     * 数据库中的网易云歌曲若缺失封面（albumArtUriString 为空/空白），
+     * 批量调用歌曲详情接口补齐 https 封面 URL，并统一清洗。
+     */
+    suspend fun fillMissingNeteaseCovers(songs: List<Song>): List<Song> = withContext(Dispatchers.IO) {
+        if (songs.isEmpty()) return@withContext songs
+        val missing = songs.filter { song ->
+            song.neteaseId != null &&
+                song.albumArtUriString.isNullOrBlank() &&
+                song.neteaseId.toString() !in neteaseCoverFillAttempted
+        }
+        if (missing.isEmpty()) return@withContext songs
+        val ids = missing.mapNotNull { it.neteaseId?.toString() }
+        neteaseCoverFillAttempted.addAll(ids)
+        val covers = runCatching {
+            lxSearchApi.batchGetSongCovers(ids)
+        }.getOrDefault(emptyMap())
+        if (covers.isEmpty()) return@withContext songs
+        songs.map { song ->
+            val id = song.neteaseId?.toString()
+            if (id != null && song.albumArtUriString.isNullOrBlank() && covers.containsKey(id)) {
+                song.copy(albumArtUriString = covers[id])
+            } else song
+        }
     }
 
     fun searchSongs(query: String): Flow<List<Song>> {

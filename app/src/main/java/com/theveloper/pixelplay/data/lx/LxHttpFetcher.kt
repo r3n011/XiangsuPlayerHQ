@@ -5,7 +5,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Headers.Companion.toHeaders
-import okhttp3.HttpUrl.Companion.toHttpUrl
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,11 +25,17 @@ object LxHttpFetcher {
             .build()
     }
 
+    /**
+     * 发起 HTTP 请求。
+     * @param body 请求体：String 原样发送；Map 会被 JSON 序列化（对齐参考项目 request.js 的行为）
+     * @param form 表单参数：以 x-www-form-urlencoded 编码后作为请求体
+     */
     suspend fun request(
         url: String,
         method: String = "GET",
         headers: Map<String, String> = emptyMap(),
-        body: String? = null,
+        body: Any? = null,
+        form: Map<String, String>? = null,
         timeoutMs: Long = 15000
     ): LxHttpResponse = withContext(Dispatchers.IO) {
         try {
@@ -43,14 +49,26 @@ object LxHttpFetcher {
                 .url(url)
                 .headers(realHeaders.toHeaders())
 
-            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
             val req = when (method.uppercase()) {
-                "POST" -> {
-                    val rb = (body ?: "{}").toRequestBody(mediaType)
-                    builder.post(rb).build()
+                "POST", "PUT", "DELETE" -> {
+                    val bodyStr: String = when {
+                        form != null -> form.entries.joinToString("&") { (k, v) ->
+                            URLEncoder.encode(k, "UTF-8") + "=" + URLEncoder.encode(v, "UTF-8")
+                        }
+                        body is String -> body
+                        body != null -> body.toString()
+                        else -> ""
+                    }
+                    val mediaType = (realHeaders["Content-Type"] ?: "application/json; charset=utf-8")
+                        .toMediaTypeOrNull()
+                    val rb = if (bodyStr.isEmpty() && method.equals("DELETE", ignoreCase = true)) null
+                    else bodyStr.toRequestBody(mediaType)
+                    when (method.uppercase()) {
+                        "POST" -> builder.post(rb ?: "".toRequestBody(null)).build()
+                        "PUT" -> builder.put(rb ?: "".toRequestBody(null)).build()
+                        else -> if (rb != null) builder.delete(rb).build() else builder.delete().build()
+                    }
                 }
-                "PUT" -> builder.put((body ?: "{}").toRequestBody(mediaType)).build()
-                "DELETE" -> if (body != null) builder.delete(body.toRequestBody(mediaType)).build() else builder.delete().build()
                 else -> builder.get().build()
             }
 
@@ -59,8 +77,11 @@ object LxHttpFetcher {
                 val headerMap = resp.headers.toMap()
                 LxHttpResponse(
                     statusCode = resp.code,
+                    statusMessage = resp.message,
                     headers = headerMap,
-                    body = bodyStr
+                    body = bodyStr,
+                    url = resp.request.url.toString(),
+                    ok = resp.isSuccessful
                 )
             }
         } catch (t: Throwable) {
@@ -76,7 +97,10 @@ object LxHttpFetcher {
 
 data class LxHttpResponse(
     val statusCode: Int,
-    val headers: Map<String, String>,
-    val body: String,
+    val statusMessage: String = "",
+    val headers: Map<String, String> = emptyMap(),
+    val body: String = "",
+    val url: String = "",
+    val ok: Boolean = false,
     val error: String? = null
 )

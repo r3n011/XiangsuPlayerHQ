@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.model.ArtistRef
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.netease.NeteaseArtistSong
 import com.theveloper.pixelplay.data.netease.PersonalFmApi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -57,7 +58,8 @@ data class NeteaseArtistAlbumSection(
 
 @HiltViewModel
 class ArtistHomepageViewModel @Inject constructor(
-    private val api: PersonalFmApi
+    private val api: PersonalFmApi,
+    private val lxSearchApi: LxSearchApi
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArtistHomepageUiState(isLoading = true))
@@ -127,9 +129,9 @@ class ArtistHomepageViewModel @Inject constructor(
 
                     // 2. 歌手歌曲（第一页）
                     val songsResult = songsDeferred.await()
-                    val songList: List<Song> = songsResult.getOrNull()?.first
-                        ?.map { it.toSong() }
-                        ?: emptyList()
+                    val songList: List<Song> = fillMissingSongDetails(
+                        songsResult.getOrNull()?.first?.map { it.toSong() } ?: emptyList()
+                    )
                     val songTotal = songsResult.getOrNull()?.second ?: songList.size
                     songsResult.exceptionOrNull()?.let {
                         Timber.e(it, "ArtistHomepage: fetchArtistSongs failed")
@@ -205,9 +207,9 @@ class ArtistHomepageViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val songsResult = api.fetchArtistSongs(artistId, currentOrder, pageSize, currentOffset, neteaseCookie)
-                val newSongs: List<Song> = songsResult.getOrNull()?.first
-                    ?.map { it.toSong() }
-                    ?: emptyList()
+                val newSongs: List<Song> = fillMissingSongDetails(
+                    songsResult.getOrNull()?.first?.map { it.toSong() } ?: emptyList()
+                )
                 val songTotal = songsResult.getOrNull()?.second ?: (currentOffset + newSongs.size)
 
                 val allSongs = currentState.songs + newSongs
@@ -287,6 +289,50 @@ class ArtistHomepageViewModel @Inject constructor(
         _uiState.value = currentState.copy(selectedTab = tab)
     }
 
+    /**
+     * 歌手热门歌曲接口（/api/v1/artist/songs）通常不返回歌手/专辑/封面字段，
+     * 对缺失信息的歌曲按歌曲详情接口（/api/v3/song/detail）批量补全，
+     * 与网易云搜索页封面加载方式一致。
+     */
+    private suspend fun fillMissingSongDetails(songs: List<Song>): List<Song> {
+        if (songs.isEmpty()) return songs
+        val missing = songs.filter { song ->
+            song.albumArtUriString.isNullOrBlank() ||
+                song.album.isBlank() ||
+                song.artist.isBlank() || song.artist == "Unknown Artist"
+        }
+        if (missing.isEmpty()) return songs
+        val details = runCatching {
+            lxSearchApi.batchGetSongDetails(missing.mapNotNull { it.neteaseId?.toString() })
+        }.getOrDefault(emptyMap())
+        if (details.isEmpty()) return songs
+        return songs.map { song ->
+            val id = song.neteaseId?.toString() ?: return@map song
+            val detail = details[id] ?: return@map song
+            val artistRefs = detail.artists.mapIndexed { index, name ->
+                ArtistRef(
+                    id = detail.artistIds.getOrNull(index) ?: 0L,
+                    name = name,
+                    isPrimary = index == 0
+                )
+            }
+            song.copy(
+                albumArtUriString = if (song.albumArtUriString.isNullOrBlank()) {
+                    detail.albumPic.ifBlank { song.albumArtUriString }
+                } else song.albumArtUriString,
+                album = if (song.album.isBlank()) {
+                    detail.albumName.ifBlank { song.album }
+                } else song.album,
+                artist = if (song.artist.isBlank() || song.artist == "Unknown Artist") {
+                    detail.artists.joinToString(", ").ifBlank { song.artist }
+                } else song.artist,
+                artists = if (song.artists.isEmpty()) artistRefs else song.artists,
+                artistId = if (song.artistId <= 0L) detail.artistIds.firstOrNull() ?: 0L else song.artistId,
+                duration = if (song.duration <= 0) detail.duration else song.duration
+            )
+        }
+    }
+
     fun changeOrder(newOrder: String, neteaseCookie: String? = null) {
         val currentState = _uiState.value
         if (currentState.order == newOrder || currentState.artistId <= 0L) {
@@ -307,9 +353,9 @@ class ArtistHomepageViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val songsResult = api.fetchArtistSongs(artistId, newOrder, pageSize, 0, neteaseCookie)
-                val songList: List<Song> = songsResult.getOrNull()?.first
-                    ?.map { it.toSong() }
-                    ?: emptyList()
+                val songList: List<Song> = fillMissingSongDetails(
+                    songsResult.getOrNull()?.first?.map { it.toSong() } ?: emptyList()
+                )
                 val songTotal = songsResult.getOrNull()?.second ?: songList.size
 
                 _uiState.value = currentState.copy(

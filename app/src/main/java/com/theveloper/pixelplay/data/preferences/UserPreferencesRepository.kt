@@ -72,6 +72,7 @@ enum class AlbumArtQuality(val maxSize: Int, val label: String) {
 }
 
 enum class MusicQuality(val lxValue: String, val neteaseLevel: String, val labelResId: Int) {
+    HIRES("24bit", "hires", R.string.music_quality_hires),
     FLAC("flac", "lossless", R.string.music_quality_flac),
     HIGH("320k", "exhigh", R.string.music_quality_high),
     STANDARD("128k", "standard", R.string.music_quality_standard)

@@ -37,6 +37,7 @@ import coil.size.Size // Import Coil's Size
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.netease.normalizeRemoteImageUrl
 
 val SmartImageCompactListTargetSize = Size(96, 96)
 val SmartImageListTargetSize = Size(128, 128)
@@ -92,22 +93,32 @@ fun SmartImage(
         return
     }
 
+    // 仅对远程 http(s) URL 做统一清洗（trim / 去反引号 / http→https），
+    // 本地 content://、file://、navidrome_cover:// 等地址原样保留。
+    val effectiveModel = remember(model) {
+        when {
+            model is String && (model.startsWith("http://") || model.startsWith("https://") || model.startsWith("//")) ->
+                normalizeRemoteImageUrl(model) ?: model
+            else -> model
+        }
+    }
+
     val request = remember(
         context,
-        model,
+        effectiveModel,
         crossfadeDurationMillis,
         useDiskCache,
         useMemoryCache,
         allowHardware,
         requestTargetSize
     ) {
-        if (model is ImageRequest) {
-            model.newBuilder(context)
+        if (effectiveModel is ImageRequest) {
+            effectiveModel.newBuilder(context)
                 .size(requestTargetSize)
                 .build()
         } else {
             ImageRequest.Builder(context)
-                .data(model)
+                .data(effectiveModel)
                 .crossfade(crossfadeDurationMillis)
                 .diskCachePolicy(if (useDiskCache) CachePolicy.ENABLED else CachePolicy.DISABLED)
                 .memoryCachePolicy(if (useMemoryCache) CachePolicy.ENABLED else CachePolicy.DISABLED)

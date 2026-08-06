@@ -768,17 +768,11 @@ private fun CommentRow(
     onDelete: () -> Unit = {},
     showDivider: Boolean = true
 ) {
-    androidx.compose.material3.Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(10.dp))
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.Top
         ) {
             // —— leading：头像 ——
@@ -918,6 +912,15 @@ private fun CommentRow(
                     }
                 }
             }
+        }
+
+        // 评论之间用细线分割，与头像起始对齐（16dp 外边距 + 40dp 头像 + 16dp 间距）
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 72.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
         }
     }
 }

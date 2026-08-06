@@ -145,6 +145,7 @@
     <string name="device_capabilities_format_unsupported">No decoder reported</string>
     <string name="device_capabilities_format_hardware">Hardware decoder</string>
     <string name="device_capabilities_format_software">Software decoder</string>
+    <string name="device_capabilities_format_custom_decoder">PixelPlayer in-house DSD decoder</string>
     <string name="device_capabilities_format_offload">Offload</string>
     <string name="device_capabilities_format_library_count">%1$d in library</string>
     <string name="device_capabilities_report_title">Performance report</string>

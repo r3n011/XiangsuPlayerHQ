@@ -108,7 +108,7 @@ fun LxMusicScreen(
                     IconButton(onClick = { viewModel.showInfo = true }) {
                         Icon(Icons.Filled.Info, null)
                     }
-                    IconButton(onClick = { viewModel.removeJs() }) {
+                    IconButton(onClick = { viewModel.removeAllJs() }) {
                         Icon(Icons.Filled.DeleteOutline, null)
                     }
                 }
@@ -292,9 +292,9 @@ private fun SourceChipsRow(state: LxUiState, viewModel: LxMusicViewModel) {
         var expanded by remember { mutableStateOf(false) }
         Box {
             FilterChip(
-                selected = state.selectedSource == "all",
-                onClick = { viewModel.selectedSource = "all"; expanded = false },
-                label = { Text(stringResourceSafe(R.string.lx_source_all, "全部")) }
+                selected = state.selectedSource == "wy",
+                onClick = { viewModel.selectedSource = "wy"; expanded = false },
+                label = { Text(stringResourceSafe(R.string.lx_source_all, "网易云")) }
             )
         }
         state.sources.entries.take(8).forEach { (key, info) ->

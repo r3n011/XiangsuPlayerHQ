@@ -87,6 +87,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -468,12 +470,10 @@ fun LibraryScreen(
     val syncManager = playerViewModel.syncManager
     var isRefreshing by remember { mutableStateOf(false) }
 
-    // 网易云自动同步：登录状态下自动同步播放列表
-    val isNeteaseLoggedIn by neteaseDashboardViewModel.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
-    LaunchedEffect(isNeteaseLoggedIn) {
-        if (isNeteaseLoggedIn) {
-            neteaseDashboardViewModel.syncPlaylists()
-        }
+    // 网易云自动同步：进入媒体库（页面可见）时自动同步歌单列表 + 歌曲。
+    // 内部带 1 小时节流与登录检查，避免频繁请求触发网易云 405 风控。
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        neteaseDashboardViewModel.autoSyncOnLibraryEntry()
     }
     // The pull-to-refresh spinner is reserved for user gestures. Automatic sync
     // and long-running refresh work move through the slim linear indicator under

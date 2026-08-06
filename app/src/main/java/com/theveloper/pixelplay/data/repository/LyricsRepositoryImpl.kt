@@ -11,7 +11,9 @@ import androidx.core.net.toUri
 import com.google.gson.Gson
 import com.kyant.taglib.TagLib
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
 import com.theveloper.pixelplay.data.database.MusicDao
+import com.theveloper.pixelplay.data.lx.LxSongInfo
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.SyncedLine
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -116,7 +118,8 @@ class LyricsRepositoryImpl @Inject constructor(
     private val lrcLibApiService: LrcLibApiService,
     private val lyricsDao: com.theveloper.pixelplay.data.database.LyricsDao,
     private val okHttpClient: OkHttpClient,
-    private val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi
+    private val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi,
+    private val builtInSourceSearchApi: BuiltInSourceSearchApi
 ) : LyricsRepository {
 
 
@@ -445,6 +448,72 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     /**
+     * 内置源（酷我/QQ/酷狗/咪咕）歌词：解析 cloud://lx/ JSON 里的 source，走 BuiltInSourceSearchApi。
+     * 失败返回 null，由上层走 Netease API / LRCLIB 兜底。
+     */
+    private suspend fun fetchLyricsFromBuiltInSource(song: Song): Lyrics? {
+        val source = parseCloudLxSource(song) ?: return null
+        if (!builtInSourceSearchApi.isSupported(source)) return null
+
+        val songInfo = parseCloudLxSongInfo(song) ?: return null
+        val raw = builtInSourceSearchApi.getLyric(source, songInfo).getOrNull() ?: return null
+        val parsed = LyricsUtils.parseLyrics(raw)
+        return parsed.takeIf { it.isValid() }?.copy(areFromRemote = true)
+    }
+
+    /** 从 cloud://lx/{json} 解析出 source 字段，非 cloud://lx 返回 null */
+    private fun parseCloudLxSource(song: Song): String? {
+        val info = parseCloudLxSongInfo(song) ?: return null
+        return info.source.takeIf { it.isNotBlank() }
+    }
+
+    /** 解析 cloud://lx/{urlencoded json} 为 LxSongInfo，供内置源歌词/搜索使用 */
+    private fun parseCloudLxSongInfo(song: Song): LxSongInfo? {
+        val uri = song.contentUriString
+        if (!uri.startsWith("cloud://lx/", ignoreCase = true)) return null
+        val encoded = uri.substringAfter("cloud://lx/")
+        return runCatching {
+            val jsonStr = java.net.URLDecoder.decode(encoded, "UTF-8")
+            val obj = org.json.JSONObject(jsonStr)
+            LxSongInfo(
+                id = obj.optString("id", ""),
+                songmid = obj.optString("songmid", ""),
+                hash = obj.optString("hash", ""),
+                name = obj.optString("name", ""),
+                singer = obj.optString("singer", ""),
+                albumName = obj.optString("album", ""),
+                duration = obj.optLong("duration", 0L),
+                pic = obj.optString("pic", ""),
+                source = obj.optString("source", "")
+            )
+        }.getOrNull()
+    }
+
+    private fun builtInSourceTag(song: Song): String =
+        parseCloudLxSource(song) ?: "unknown"
+
+    /** Lyrics → 原始 LRC 文本（用于落库/缓存，格式与 fetchFromRemote 内 ncm 转换一致） */
+    private fun lyricsToLrc(lyrics: Lyrics): String {
+        if (!lyrics.synced.isNullOrEmpty()) {
+            return lyrics.synced.joinToString("\n") { line ->
+                val ms = line.time.toLong()
+                val totalSec = ms / 1000L
+                val minutes = totalSec / 60
+                val sec = totalSec % 60
+                val centi = (ms % 1000) / 10
+                val timestamp = "[%02d:%02d.%02d]".format(minutes, sec, centi)
+                val mainLine = "$timestamp${line.line}"
+                if (!line.translation.isNullOrBlank()) {
+                    "$mainLine\n$timestamp${line.translation}"
+                } else {
+                    mainLine
+                }
+            }
+        }
+        return lyrics.plain?.joinToString("\n").orEmpty()
+    }
+
+    /**
      * Fetches lyrics from LRCLIB API with rate limiting (matching Rhythm).
      * For Netease songs: try Netease API → AMLLDB → LRCLIB search strategies.
      * For local songs: try JSON cache → LRCLIB search strategies.
@@ -453,6 +522,16 @@ class LyricsRepositoryImpl @Inject constructor(
         val isNetease = isNeteaseSong(song)
         val isCloudLx = song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
         val usedNeteaseSpecific = isNetease || isCloudLx
+
+        // 内置源（酷我/QQ/酷狗/咪咕）歌词优先：对齐落雪 musicSdk 的 lyric 实现
+        if (isCloudLx) {
+            val builtInLyrics = fetchLyricsFromBuiltInSource(song)
+            if (builtInLyrics != null) {
+                Log.d(TAG, "===== LOADED LYRICS FROM BUILT-IN SOURCE (${builtInSourceTag(song)}) =====")
+                saveLocalLyricsJson(song, builtInLyrics)
+                return@withContext builtInLyrics
+            }
+        }
 
         if (usedNeteaseSpecific) {
             val cachedJson = loadLocalLyricsJson(song)
@@ -1346,6 +1425,18 @@ class LyricsRepositoryImpl @Inject constructor(
                         "Skipping remote lyrics fetch because stored lyrics already exist for: ${song.title}"
                     )
                     return@withContext Result.success(stored)
+                }
+            }
+
+            // 内置源（酷我/QQ/酷狗/咪咕）歌词优先：对齐落雪 musicSdk 的 lyric 实现
+            if (song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)) {
+                val builtInLyrics = fetchLyricsFromBuiltInSource(song)
+                if (builtInLyrics != null) {
+                    val rawLrc = lyricsToLrc(builtInLyrics)
+                    lyricsCache.put(cacheKey, builtInLyrics)
+                    saveLocalLyricsJson(song, builtInLyrics)
+                    LogUtils.d(this@LyricsRepositoryImpl, "Fetched built-in source lyrics for: ${song.title}")
+                    return@withContext Result.success(Pair(builtInLyrics, rawLrc))
                 }
             }
 

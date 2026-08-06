@@ -1109,11 +1109,13 @@ private fun FormatSupportTile(
 ) {
     val statusColor = when {
         !format.isDecoderAvailable -> MaterialTheme.colorScheme.errorContainer
+        format.isCustomDecoderSupported -> MaterialTheme.colorScheme.tertiaryContainer
         format.isHardwareAccelerated -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.tertiaryContainer
     }
     val statusContentColor = when {
         !format.isDecoderAvailable -> MaterialTheme.colorScheme.onErrorContainer
+        format.isCustomDecoderSupported -> MaterialTheme.colorScheme.onTertiaryContainer
         format.isHardwareAccelerated -> MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onTertiaryContainer
     }
@@ -1148,7 +1150,11 @@ private fun FormatSupportTile(
                     color = statusColor
                 ) {
                     Icon(
-                        imageVector = if (format.isDecoderAvailable) Icons.Rounded.CheckCircle else Icons.Rounded.ErrorOutline,
+                        imageVector = when {
+                            !format.isDecoderAvailable -> Icons.Rounded.ErrorOutline
+                            format.isCustomDecoderSupported -> Icons.Rounded.Memory
+                            else -> Icons.Rounded.CheckCircle
+                        },
                         contentDescription = null,
                         tint = statusContentColor,
                         modifier = Modifier
@@ -1160,6 +1166,7 @@ private fun FormatSupportTile(
             Text(
                 text = when {
                     !format.isDecoderAvailable -> stringResource(R.string.device_capabilities_format_unsupported)
+                    format.isCustomDecoderSupported -> stringResource(R.string.device_capabilities_format_custom_decoder)
                     format.isHardwareAccelerated -> stringResource(R.string.device_capabilities_format_hardware)
                     else -> stringResource(R.string.device_capabilities_format_software)
                 },

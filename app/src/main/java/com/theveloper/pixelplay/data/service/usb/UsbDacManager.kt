@@ -44,6 +44,9 @@ class UsbDacManager @Inject constructor(
         // vendor-specific 接口类：部分 USB DAC 未声明标准音频类接口，而是使用自定义类
         private const val USB_CLASS_VENDOR_SPECIFIC = 0xFF
 
+        // 音频数据接口类：部分 DAC 的 streaming 接口声明为 0x02 而非标准 Audio 0x01
+        private const val USB_CLASS_AUDIO_DATA = 0x02
+
         // 支持的音频采样率
         val SUPPORTED_SAMPLE_RATES = listOf(
             44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000
@@ -84,6 +87,10 @@ class UsbDacManager @Inject constructor(
     private var pendingPermissionCallback: ((Boolean) -> Unit)? = null
     private var pendingPermissionDeviceName: String? = null
 
+    // 权限结果接收器注册状态（统一在 applicationContext 上注册/反注册）
+    @Volatile
+    private var permissionReceiverRegistered = false
+
     private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getParcelableExtra(name, T::class.java)
@@ -92,20 +99,65 @@ class UsbDacManager @Inject constructor(
             getParcelableExtra(name) as? T
         }
 
+    /**
+     * 注册权限结果接收器。
+     *
+     * ⚡ 关键：USB 权限结果广播由 system_server（UsbService）发送，属于其他进程。
+     * Android 13+ 若用 RECEIVER_NOT_EXPORTED 注册则永远收不到系统广播，
+     * 表现为"权限弹窗点了没反应 / 授权后回调不触发"。
+     * 必须用 RECEIVER_EXPORTED 才能收到系统进程发出的授权结果广播。
+     * 为防外部应用伪造，onReceive 中会校验设备名与请求时一致。
+     */
+    private fun registerPermissionReceiver(context: Context) {
+        if (permissionReceiverRegistered) return
+        val filter = IntentFilter(ACTION_USB_PERMISSION)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(permissionResultReceiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                context.registerReceiver(permissionResultReceiver, filter)
+            }
+            permissionReceiverRegistered = true
+            Timber.d("$TAG: USB permission receiver registered (exported=${Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU})")
+        } catch (e: Exception) {
+            Timber.w(e, "$TAG: Failed to register USB permission receiver")
+            permissionReceiverRegistered = false
+        }
+    }
+
+    /** 反注册权限结果接收器（幂等，未注册时静默忽略） */
+    private fun unregisterPermissionReceiver(context: Context) {
+        if (!permissionReceiverRegistered) return
+        try {
+            context.unregisterReceiver(permissionResultReceiver)
+        } catch (_: IllegalArgumentException) {
+            // 未注册，忽略
+        }
+        permissionReceiverRegistered = false
+    }
+
     /** 动态注册的 USB 权限结果接收器（接收 UsbManager.requestPermission 的系统授权广播） */
     private val permissionResultReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != ACTION_USB_PERMISSION) return
             val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
             val device = intent.getParcelableExtraCompat<UsbDevice>(UsbManager.EXTRA_DEVICE)
+            // 校验是否与本次请求的设备一致，防止伪造广播串台
+            val requestedName = pendingPermissionDeviceName
+            if (requestedName != null && device != null && device.deviceName != requestedName) {
+                Timber.w("$TAG: Permission result for unexpected device ${device.deviceName}, ignoring")
+                return
+            }
+            val callback = pendingPermissionCallback
+            pendingPermissionCallback = null
+            pendingPermissionDeviceName = null
             try {
                 context.unregisterReceiver(this)
             } catch (_: IllegalArgumentException) {
                 // 已反注册，忽略
             }
-            val callback = pendingPermissionCallback
-            pendingPermissionCallback = null
-            pendingPermissionDeviceName = null
+            permissionReceiverRegistered = false
             Timber.d("$TAG: USB permission result granted=$granted for ${device?.deviceName}")
             callback?.invoke(granted)
         }
@@ -125,9 +177,15 @@ class UsbDacManager @Inject constructor(
         return withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val devices = manager.deviceList
+                Timber.d("$TAG: deviceList size=${devices.size}")
                 val audioDevices = mutableListOf<UsbDeviceInfo>()
 
                 for ((name, device) in devices) {
+                    val ifaceDesc = (0 until device.interfaceCount).joinToString(", ") { i ->
+                        val itf = device.getInterface(i)
+                        "iface${itf.id}(class=0x${itf.interfaceClass.toString(16)})"
+                    }
+                    Timber.d("$TAG: USB device: $name vid=0x${device.vendorId.toString(16)} pid=0x${device.productId.toString(16)} ifaces=[$ifaceDesc] hasPermission=${manager.hasPermission(device)}")
                     val isAudio = isUsbAudioDevice(device)
                     if (isAudio) {
                         val info = UsbDeviceInfo(
@@ -160,14 +218,15 @@ class UsbDacManager @Inject constructor(
     /**
      * 判断是否是 USB 音频设备
      *
-     * 标准 USB 音频类 (0x01) 之外，还需兼容 vendor-specific (0xFF) 接口：
-     * 部分 USB DAC / 声卡芯片（如部分国产 DAC）未声明标准音频类接口。
+     * 标准 USB 音频类 (0x01) 之外，还需兼容：
+     * - 音频数据类 (0x02)：部分 DAC 的 streaming 接口
+     * - vendor-specific (0xFF)：部分 USB DAC / 声卡芯片未声明标准音频类接口
      */
     private fun isUsbAudioDevice(device: UsbDevice): Boolean {
         for (i in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(i)
             val clazz = usbInterface.interfaceClass
-            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == USB_CLASS_VENDOR_SPECIFIC) {
+            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == USB_CLASS_AUDIO_DATA || clazz == USB_CLASS_VENDOR_SPECIFIC) {
                 return true
             }
         }
@@ -193,13 +252,13 @@ class UsbDacManager @Inject constructor(
     }
 
     /**
-     * 请求 USB 设备权限
+     * 请求 USB 设备权限（Activity 上下文版）
      *
-     * 通过 PendingIntent + 动态注册广播接收器发起系统权限对话框，
-     * 参考 moriafly/AndroidUsbAudio 示例（UsbManager.requestPermission + 权限广播）。
-     * 注意：必须在 UI 线程（Activity/可组合项）调用。
+     * ⚡ 必须使用 Activity 上下文调用 UsbManager.requestPermission，
+     * 否则部分设备 / Android 版本上系统授权对话框不会弹出（表现为"连权限申请弹窗都没有"）。
+     * 参考 moriafly/AndroidUsbAudio：权限请求在 Activity（onCreate）中发起。
      */
-    fun requestPermission(deviceName: String, callback: (Boolean) -> Unit) {
+    fun requestPermission(context: Context, deviceName: String, callback: (Boolean) -> Unit) {
         val manager = usbManager ?: run {
             callback(false)
             return
@@ -220,17 +279,15 @@ class UsbDacManager @Inject constructor(
         pendingPermissionCallback = callback
         pendingPermissionDeviceName = deviceName
 
-        // 动态注册权限结果接收器（保证 PendingIntent 广播能被本进程接收）
-        val filter = IntentFilter(ACTION_USB_PERMISSION)
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(permissionResultReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                @Suppress("UnspecifiedRegisterReceiverFlag")
-                context.registerReceiver(permissionResultReceiver, filter)
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "$TAG: Failed to register USB permission receiver")
+        // 统一在 applicationContext 上注册接收器：
+        // 1) 接收器是单例成员，若在 Activity / Service 不同 context 间反复 unregister+register，
+        //    会出现"Receiver not registered"或重复注册异常导致权限请求静默失败；
+        // 2) 注册必须导出（RECEIVER_EXPORTED），否则收不到 system_server 发来的授权广播。
+        val appContext = context.applicationContext ?: context
+        unregisterPermissionReceiver(appContext)
+        registerPermissionReceiver(appContext)
+        if (!permissionReceiverRegistered) {
+            Timber.e("$TAG: USB permission receiver not registered, aborting permission request")
             pendingPermissionCallback = null
             pendingPermissionDeviceName = null
             callback(false)
@@ -238,27 +295,42 @@ class UsbDacManager @Inject constructor(
         }
 
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         } else {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
         val pendingIntent = PendingIntent.getBroadcast(
-            context,
+            appContext,
             (device.deviceId and 0xFFFF).toInt(),
             Intent(ACTION_USB_PERMISSION),
             flags
         )
 
-        Timber.d("$TAG: Requesting USB permission for $deviceName")
-        manager.requestPermission(device, pendingIntent)
+        Timber.d("$TAG: Requesting USB permission for $deviceName via ${context.javaClass.simpleName}")
+        try {
+            manager.requestPermission(device, pendingIntent)
+        } catch (e: Exception) {
+            Timber.e(e, "$TAG: requestPermission threw for $deviceName")
+            pendingPermissionCallback = null
+            pendingPermissionDeviceName = null
+            callback(false)
+        }
     }
 
     /**
-     * 请求权限并激活 USB DAC 独占模式
+     * 请求 USB 设备权限（Application 上下文版，保留给 Service / 设置开关回退使用）
+     */
+    fun requestPermission(deviceName: String, callback: (Boolean) -> Unit) {
+        requestPermission(context, deviceName, callback)
+    }
+
+    /**
+     * 请求权限并激活 USB DAC 独占模式（Activity 上下文版）
      *
      * 无权限时先拉起系统授权对话框，授权成功后自动激活；失败则回调 false。
      */
     fun requestAndActivateExclusiveMode(
+        context: Context,
         deviceInfo: UsbDeviceInfo,
         onResult: (Boolean) -> Unit
     ) {
@@ -280,7 +352,7 @@ class UsbDacManager @Inject constructor(
             return
         }
 
-        requestPermission(deviceInfo.deviceName) { granted ->
+        requestPermission(context, deviceInfo.deviceName) { granted ->
             if (granted) {
                 Timber.i("$TAG: USB permission granted, activating exclusive mode")
                 CoroutineScope(Dispatchers.IO).launch {
@@ -292,6 +364,16 @@ class UsbDacManager @Inject constructor(
                 onResult(false)
             }
         }
+    }
+
+    /**
+     * 请求权限并激活 USB DAC 独占模式（Application 上下文版，保留给 Service 使用）
+     */
+    fun requestAndActivateExclusiveMode(
+        deviceInfo: UsbDeviceInfo,
+        onResult: (Boolean) -> Unit
+    ) {
+        requestAndActivateExclusiveMode(context, deviceInfo, onResult)
     }
 
     /**
@@ -442,14 +524,14 @@ class UsbDacManager @Inject constructor(
     }
 
     /**
-     * 获取 USB 音频接口列表（标准音频类 + vendor-specific）
+     * 获取 USB 音频接口列表（标准音频类 + 音频数据类 + vendor-specific）
      */
     private fun getAudioInterfaces(device: UsbDevice): List<UsbInterface> {
         val interfaces = mutableListOf<UsbInterface>()
         for (i in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(i)
             val clazz = usbInterface.interfaceClass
-            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == USB_CLASS_VENDOR_SPECIFIC) {
+            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == USB_CLASS_AUDIO_DATA || clazz == USB_CLASS_VENDOR_SPECIFIC) {
                 interfaces.add(usbInterface)
             }
         }

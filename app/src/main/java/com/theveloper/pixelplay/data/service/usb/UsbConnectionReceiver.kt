@@ -8,6 +8,7 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.util.Log
+import com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +21,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class UsbConnectionReceiver @Inject constructor(
-    private val usbDacManager: UsbDacManager
+    private val usbDacManager: UsbDacManager,
+    private val audioEngineSettings: AudioEngineSettings
 ) : BroadcastReceiver() {
 
     companion object {
@@ -34,6 +36,16 @@ class UsbConnectionReceiver @Inject constructor(
                 if (device != null && isAudioDevice(device)) {
                     Log.d(TAG, "USB audio device attached: ${device.deviceName}")
                     usbDacManager.handleDeviceAttached()
+                    // ⚡ 若 USB 独占模式已开启且已选中设备，自动请求权限并激活（参考 AndroidUsbAudio 插入即授权）
+                    // 系统可能已通过 device_filter 插入授权授予权限，hasPermission 为 true 时直接激活无需弹窗
+                    if (audioEngineSettings.usbExclusiveModeEnabled.value) {
+                        val selected = audioEngineSettings.getSelectedUsbDevice()
+                        if (selected != null && !usbDacManager.exclusiveModeActive.value) {
+                            usbDacManager.requestAndActivateExclusiveMode(selected) { success ->
+                                Log.d(TAG, "Auto-activate USB exclusive on attach: success=$success")
+                            }
+                        }
+                    }
                 }
             }
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
@@ -49,8 +61,8 @@ class UsbConnectionReceiver @Inject constructor(
     private fun isAudioDevice(device: UsbDevice): Boolean {
         for (i in 0 until device.interfaceCount) {
             val clazz = device.getInterface(i).interfaceClass
-            // 标准音频类 (0x01) 或 vendor-specific (0xFF，部分 USB DAC)
-            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == 0xFF) {
+            // 标准音频类 (0x01)、音频数据类 (0x02) 或 vendor-specific (0xFF，部分 USB DAC)
+            if (clazz == UsbConstants.USB_CLASS_AUDIO || clazz == 0x02 || clazz == 0xFF) {
                 return true
             }
         }

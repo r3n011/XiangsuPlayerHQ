@@ -193,7 +193,7 @@ private fun DailyMixCard(
     modifier: Modifier = Modifier
 ) {
     val headerSongs = songs.take(3).toImmutableList()
-    val visibleSongs = songs.take(4).toImmutableList()
+    val visibleSongs = songs.take(5).toImmutableList()
     val cornerRadius = 28.dp
     Card(
         shape = AbsoluteSmoothCornerShape(

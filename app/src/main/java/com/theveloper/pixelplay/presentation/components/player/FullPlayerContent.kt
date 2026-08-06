@@ -1217,13 +1217,18 @@ fun FullPlayerContent(
     ) {
         // 从歌曲对象中解析出网易云/在线源的歌曲 ID
         val resolvedSongId = remember(song) { resolveCommentSongId(song) }
+        // cookie 优先取设置页登录的完整 cookie；为空时用内置 SDK 会话拼接兜底
+        val commentCookie = playerViewModel.neteaseCookie.ifBlank {
+            net.moriafly.ncm.NcmSession.INSTANCE?.cookies?.entries
+                ?.joinToString("; ") { "${it.key}=${it.value}" }
+        }?.takeIf { it.isNotBlank() }
         CommentSheet(
             songId = resolvedSongId,
             songTitle = song.title,
             songArtist = song.displayArtist,
             api = playerViewModel.lxSearchApi,
             personalFmApi = playerViewModel.personalFmApi,
-            cookie = playerViewModel.neteaseCookie.ifBlank { null },
+            cookie = commentCookie,
             currentUserId = playerViewModel.neteaseUserId,
             colorScheme = LocalMaterialTheme.current,
             onBackClick = { showCommentSheet = false }
@@ -1905,6 +1910,8 @@ private fun SongMetadataDisplaySection(
     isPlayingProvider: () -> Boolean = { true },
     isRadioPlayback: Boolean = false
 ) {
+    // 评论依赖网易云接口（加载/发送），非网易云歌曲（本地/其它在线源）不显示评论按钮
+    val canShowComment = song?.let { resolveCommentSongId(it).isNotBlank() } ?: false
     Row(
         modifier
             .fillMaxWidth()
@@ -2041,7 +2048,7 @@ private fun SongMetadataDisplaySection(
                         )
                     }
                 }
-                if (!isRadioPlayback) {
+                if (!isRadioPlayback && canShowComment) {
                     Box(
                         modifier = Modifier
                             .size(height = 42.dp, width = 50.dp)
@@ -2133,19 +2140,21 @@ private fun SongMetadataDisplaySection(
                             contentDescription = stringResource(R.string.presentation_batch_g_player_cd_lyrics)
                         )
                     }
-                    FilledIconButton(
-                        modifier = Modifier
-                            .size(width = 48.dp, height = 48.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = chipColor,
-                            contentColor = chipContentColor
-                        ),
-                        onClick = onClickComment,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.rounded_circle_notifications_24),
-                            contentDescription = "Comments"
-                        )
+                    if (canShowComment) {
+                        FilledIconButton(
+                            modifier = Modifier
+                                .size(width = 48.dp, height = 48.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = chipColor,
+                                contentColor = chipContentColor
+                            ),
+                            onClick = onClickComment,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.rounded_circle_notifications_24),
+                                contentDescription = "Comments"
+                            )
+                        }
                     }
                 }
             }
@@ -2174,11 +2183,11 @@ private fun formatAudioMetaLabel(mimeType: String?, bitrate: Int?, sampleRate: I
 
 /**
  * 根据 Song 提取可用于调用网易云评论接口的歌曲 ID。
- * 优先级：
- * 1) song.neteaseId (若来源为网易云官方)
+ * 仅网易云来源的歌曲可显示评论（评论依赖网易云接口）：
+ * 1) song.neteaseId (来源为网易云官方/漫游)
  * 2) "netease://xxx" 格式 contentUri 的后半部分
- * 3) "cloud://lx/{json}" 中 JSON 自带的 id 字段 (在线音源)
- * 4) song.id 的纯数字部分（兜底）
+ * 3) "cloud://lx/{json}" 中 JSON 自带的 id 字段 —— 仅当 source 为 "wy"（或未记录，默认网易云）时
+ * 其它来源（本地文件、tx/kg/mg/kw 等在线源）一律返回空串，不显示评论按钮。
  */
 private fun resolveCommentSongId(song: Song): String {
     // 1) 优先使用 neteaseId
@@ -2209,7 +2218,8 @@ private fun resolveCommentSongId(song: Song): String {
             }
         }
 
-        // 3) cloud://lx/{urlEncoded JSON} —— 从 JSON 里读取 id 字段
+        // 3) cloud://lx/{urlEncoded JSON} —— 仅网易云音源（source 为空或 "wy"）才取 id，
+        //    其它在线源（tx/kg/mg/kw 等）的 id 是它们自己的歌曲 ID，评论接口不适用。
         if (contentUri.startsWith("cloud://lx/", ignoreCase = true)) {
             val tail = contentUri.removePrefix("cloud://lx/")
             val jsonText = try {
@@ -2220,31 +2230,18 @@ private fun resolveCommentSongId(song: Song): String {
             if (!jsonText.isNullOrBlank()) {
                 try {
                     val obj = org.json.JSONObject(jsonText)
-                    val rawId = obj.optString("id", "").trim()
-                    if (rawId.isNotBlank() && rawId.toLongOrNull() != null) {
-                        return rawId
+                    val source = obj.optString("source", "").trim()
+                    if (source.isBlank() || source == "wy") {
+                        val rawId = obj.optString("id", "").trim()
+                        if (rawId.isNotBlank() && rawId.toLongOrNull() != null) {
+                            return rawId
+                        }
                     }
                 } catch (_: Throwable) {
-                    // 忽略解析异常，继续兜底
+                    // 忽略解析异常
                 }
             }
         }
-
-        // 4) 兜底：直接使用 contentUri 中第一段纯数字
-        val fallback = contentUri
-            .split("/", "?", "&")
-            .firstOrNull { part ->
-                part.all { it.isDigit() } && part.isNotEmpty()
-            }
-        if (!fallback.isNullOrBlank()) {
-            return fallback
-        }
-    }
-
-    // 5) song.id 本身可能就是数字
-    val fromId = song.id.toLongOrNull()
-    if (fromId != null && fromId > 0L) {
-        return fromId.toString()
     }
 
     return ""
@@ -2311,10 +2308,9 @@ private fun PlayerProgressBarSection(
             displayAudioMetaLabel = null
         } else if (!audioMetaLabel.isNullOrBlank()) {
             displayAudioMetaLabel = audioMetaLabel
-        } else {
-            kotlinx.coroutines.delay(500)
-            displayAudioMetaLabel = null
         }
+        // audioMetaLabel 短暂为空（metadata 刷新中 bitrate/sampleRate 暂缺）时，
+        // 保留上一次的音质信息，避免标签显示一下又消失；换歌时 remember(songId) 已重置。
     }
     val durationForCalc = displayDurationValue.coerceAtLeast(1L)
     

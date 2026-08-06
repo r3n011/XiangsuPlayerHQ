@@ -177,7 +177,6 @@ import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
-import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.model.Song
@@ -251,7 +250,6 @@ fun SettingsCategoryScreen(
     var showClearLyricsDialog by remember { mutableStateOf(false) }
     var showRebuildDatabaseWarning by remember { mutableStateOf(false) }
     var showDownloadPathDialog by remember { mutableStateOf(false) }
-    var showNeteaseQualityDialog by remember { mutableStateOf(false) }
     var downloadPathOptions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var showRegenerateDailyMixDialog by remember { mutableStateOf(false) }
     var showRegenerateStatsDialog by remember { mutableStateOf(false) }
@@ -926,7 +924,11 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_lyrics_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
-                                if (uiState.immersiveLyricsEnabled) {
+                                AnimatedVisibility(
+                                    visible = uiState.immersiveLyricsEnabled,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
                                     ThemeSelectorItem(
                                         label = stringResource(R.string.setcat_auto_hide_delay_label),
                                         description = stringResource(R.string.setcat_auto_hide_delay_desc),
@@ -1097,7 +1099,25 @@ fun SettingsCategoryScreen(
                                     checked = uiState.usbExclusiveModeEnabled,
                                     onCheckedChange = { enabled ->
                                         if (enabled && uiState.currentUsbDeviceName == null) {
-                                            showUsbDeviceSelector = true
+                                            // ⚡ 自动发现 USB 音频设备：找到则直接使用并请求权限激活；
+                                            // 找不到再打开设备选择对话框
+                                            coroutineScope.launch {
+                                                val found = usbDacManager.scanDevices()
+                                                val first = found.firstOrNull()
+                                                if (first != null) {
+                                                    settingsViewModel.selectUsbDevice(first)
+                                                    usbDacManager.requestAndActivateExclusiveMode(context, first) { success ->
+                                                        if (success) {
+                                                            settingsViewModel.setUsbExclusiveModeEnabled(true)
+                                                        } else {
+                                                            settingsViewModel.setUsbExclusiveModeEnabled(false)
+                                                            showUsbDeviceSelector = true
+                                                        }
+                                                    }
+                                                } else {
+                                                    showUsbDeviceSelector = true
+                                                }
+                                            }
                                         } else {
                                             settingsViewModel.setUsbExclusiveModeEnabled(enabled)
                                         }
@@ -1290,17 +1310,6 @@ fun SettingsCategoryScreen(
                                     onClick = {
                                         downloadFolderPicker.launch(null)
                                     }
-                                )
-                                SettingsItem(
-                                    title = stringResource(R.string.setcat_netease_quality_title),
-                                    subtitle = when (uiState.musicQuality) {
-                                        MusicQuality.FLAC -> stringResource(R.string.music_quality_flac)
-                                        MusicQuality.HIGH -> stringResource(R.string.music_quality_high)
-                                        MusicQuality.STANDARD -> stringResource(R.string.music_quality_standard)
-                                    },
-                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
-                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.cd_open), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    onClick = { showNeteaseQualityDialog = true }
                                 )
                             }
                         }
@@ -1787,52 +1796,6 @@ fun SettingsCategoryScreen(
         )
     }
 
-    if (showNeteaseQualityDialog) {
-        AlertDialog(
-            icon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
-            title = { Text(stringResource(R.string.setcat_netease_quality_title)) },
-            onDismissRequest = { showNeteaseQualityDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showNeteaseQualityDialog = false }) {
-                    Text(stringResource(R.string.cancel), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            },
-            text = {
-                Column {
-                    MusicQuality.entries.forEach { quality ->
-                        val label = when (quality) {
-                            MusicQuality.FLAC -> stringResource(R.string.music_quality_flac)
-                            MusicQuality.HIGH -> stringResource(R.string.music_quality_high)
-                            MusicQuality.STANDARD -> stringResource(R.string.music_quality_standard)
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    settingsViewModel.setMusicQuality(quality)
-                                    showNeteaseQualityDialog = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = uiState.musicQuality == quality,
-                                onClick = {
-                                    settingsViewModel.setMusicQuality(quality)
-                                    showNeteaseQualityDialog = false
-                                },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                            Text(label, modifier = Modifier.padding(start = 8.dp))
-                        }
-                    }
-                }
-            }
-        )
-    }
-
     if (showRegenerateDailyMixDialog) {
         val toastDailyMixRegenerationStarted = stringResource(R.string.toast_daily_mix_regeneration_started)
         AlertDialog(
@@ -2007,8 +1970,8 @@ fun SettingsCategoryScreen(
             onDismiss = { showUsbDeviceSelector = false },
             onDeviceSelected = { deviceInfo ->
                 settingsViewModel.selectUsbDevice(deviceInfo)
-                // 选择设备后立刻请求权限并激活独占模式
-                usbDacManager.requestAndActivateExclusiveMode(deviceInfo) { success ->
+                // 选择设备后立刻请求权限并激活独占模式（用 Activity 上下文，确保权限弹窗正常弹出）
+                usbDacManager.requestAndActivateExclusiveMode(context, deviceInfo) { success ->
                     val msg = if (success) {
                         settingsViewModel.setUsbExclusiveModeEnabled(true)
                         String.format(toastUsbActivated, deviceInfo.displayName)

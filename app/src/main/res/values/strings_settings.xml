@@ -642,6 +642,7 @@
     <!-- Music Quality -->
     <string name="music_quality_title">Music Quality</string>
     <string name="music_quality_subtitle">Preferred quality for streaming music. Higher quality uses more bandwidth.</string>
+    <string name="music_quality_hires">Hi-Res (24bit)</string>
     <string name="music_quality_flac">Lossless (FLAC)</string>
     <string name="music_quality_high">High (320kbps)</string>
     <string name="music_quality_standard">Standard (128kbps)</string>
@@ -734,6 +735,32 @@
     <string name="settings_search_keyword_album_art">Album art</string>
     <string name="settings_search_keyword_scan">Scan</string>
     <string name="settings_search_keyword_min_duration">Minimum duration</string>
+    <string name="settings_search_keyword_ai">AI</string>
+    <string name="settings_search_keyword_model">Model</string>
+    <string name="settings_search_keyword_token">Token</string>
+    <string name="settings_search_keyword_recommendation">Recommendation</string>
+    <string name="settings_search_keyword_remote">Remote</string>
+    <string name="settings_search_keyword_immersive_lyrics">Immersive lyrics</string>
+    <string name="settings_search_keyword_auto_hide">Auto-hide</string>
+    <string name="settings_search_keyword_replaygain">ReplayGain</string>
+    <string name="settings_search_keyword_cast">Cast</string>
+    <string name="settings_search_keyword_usb">USB</string>
+    <string name="settings_search_keyword_aaudio">AAudio</string>
+    <string name="settings_search_keyword_car_mode">Car mode</string>
+    <string name="settings_search_keyword_transcode">Transcode</string>
+    <string name="settings_search_keyword_download">Download</string>
+    <string name="settings_search_keyword_daily_mix">Daily mix</string>
+    <string name="settings_search_keyword_stats">Statistics</string>
+    <string name="settings_search_keyword_palette">Palette</string>
+    <string name="settings_search_keyword_now_playing">Now playing</string>
+    <string name="settings_search_keyword_compact">Compact</string>
+    <string name="settings_search_keyword_excluded">Excluded folders</string>
+    <string name="settings_search_keyword_battery">Battery</string>
+    <string name="settings_search_keyword_background">Background playback</string>
+    <string name="settings_search_keyword_filter">Filter</string>
+    <string name="settings_search_keyword_maintenance">Maintenance</string>
+    <string name="settings_search_keyword_diagnostics">Diagnostics</string>
+    <string name="settings_search_keyword_collage">Collage</string>
     
     <!-- Settings Search UI -->
     <string name="settings_search_placeholder">Search settings</string>

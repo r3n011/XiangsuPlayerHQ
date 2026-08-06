@@ -19,6 +19,7 @@ import com.theveloper.pixelplay.data.database.AlbumArtThemeDao
 import com.theveloper.pixelplay.data.database.AlbumArtThemeEntity
 import com.theveloper.pixelplay.data.database.StoredColorSchemeValues
 import com.theveloper.pixelplay.data.database.toComposeColor
+import com.theveloper.pixelplay.data.netease.normalizeRemoteImageUrl
 import com.theveloper.pixelplay.utils.LocalArtworkUri
 import com.theveloper.pixelplay.ui.theme.clearExtractedColorCache
 import com.theveloper.pixelplay.ui.theme.extractSeedColor
@@ -186,11 +187,17 @@ class ColorSchemeProcessor @Inject constructor(
      */
     private suspend fun loadBitmapForColorExtraction(uri: String, skipCache: Boolean): Bitmap? {
         return try {
+            // 远程 URL 统一清洗（trim/去反引号/http→https），与 SmartImage 保持一致
+            val effectiveUri = if (uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("//")) {
+                normalizeRemoteImageUrl(uri) ?: return null
+            } else {
+                uri
+            }
             val cachePolicy = if (skipCache) CachePolicy.DISABLED else CachePolicy.ENABLED
-            val diskCachePolicy = if (LocalArtworkUri.isLocalArtworkUri(uri)) CachePolicy.DISABLED else cachePolicy
+            val diskCachePolicy = if (LocalArtworkUri.isLocalArtworkUri(effectiveUri)) CachePolicy.DISABLED else cachePolicy
             
             val request = ImageRequest.Builder(context)
-                .data(uri)
+                .data(effectiveUri)
                 .allowHardware(false) // Required for pixel access
                 .size(Size(128, 128)) // Small size for fast processing
                 .bitmapConfig(Bitmap.Config.ARGB_8888)

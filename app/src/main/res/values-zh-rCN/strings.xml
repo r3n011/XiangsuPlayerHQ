@@ -305,6 +305,7 @@
     <string name="update_download_body">点击按钮跳转到官网下载最新版本</string>
     <string name="update_dont_show_again">不再提示此版本</string>
     <string name="update_go_download">去下载</string>
+    <string name="update_no_download_source">暂无可用下载源</string>
     <string name="update_check_title">检查更新</string>
     <string name="update_check_subtitle">检查是否有新版本可用</string>
     <string name="update_auto_check_title">自动检查更新</string>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  USB 音频设备过滤规则（用于 AndroidUsbAudio 式插入授权）
+  - class="1"  ：标准 USB 音频类（Audio Class），绝大多数 USB DAC / 声卡
+  - class="255"：厂商自定义类（Vendor-Specific），部分国产 DAC 使用自定义接口
+  - class="14" ：Video 类（部分带视频输出的 USB 设备），兼容参考项目配置
+-->
+<resources>
+    <usb-device class="1" />
+    <usb-device class="255" />
+    <usb-device class="14" />
+</resources>

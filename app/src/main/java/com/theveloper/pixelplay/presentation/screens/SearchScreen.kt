@@ -212,17 +212,26 @@ fun SearchScreen(
     }
 
     // Search debouncing is centralized in SearchStateHolder.
-    LaunchedEffect(searchQuery, currentFilter, onlineSearchTab) {
+    LaunchedEffect(searchQuery, currentFilter, onlineSearchTab, onlineSearchState.selectedSource) {
         when (currentFilter) {
             SearchFilterType.ONLINE -> {
+                // 网易云：固定使用官方搜索（原版不动）
+                // ⚡ 不修改 selectedSource，避免把用户在其他音源上选中的状态悄悄改回网易云
                 if (searchQuery.isNotBlank()) {
                     lxViewModel.keyword = searchQuery
                     // ⚡ 根据子分类选择歌曲搜索或歌手搜索
                     if (onlineSearchTab == 1) {
                         lxViewModel.searchArtists()
                     } else {
-                        lxViewModel.search()
+                        lxViewModel.search(source = "wy")
                     }
+                }
+            }
+            SearchFilterType.LX_MUSIC -> {
+                // 落雪：按主标签栏选中的音源走 JS 引擎搜索
+                if (searchQuery.isNotBlank()) {
+                    lxViewModel.keyword = searchQuery
+                    lxViewModel.search()
                 }
             }
             SearchFilterType.KUWO_MUSIC -> {
@@ -415,8 +424,63 @@ fun SearchScreen(
                             SearchFilterChip(SearchFilterType.ARTISTS, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.PLAYLISTS, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.ONLINE, currentFilter, playerViewModel)
-                            SearchFilterChip(SearchFilterType.KUWO_MUSIC, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.BILIBILI_MUSIC, currentFilter, playerViewModel)
+                            // ⚡ 内置音源（落雪同款官方搜索，不依赖 JS 导入）：酷我/QQ音乐/酷狗/咪咕
+                            LxSourceFilterChip(
+                                sourceKey = "kw",
+                                sourceName = "酷我",
+                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                    onlineSearchState.selectedSource == "kw",
+                                onClick = {
+                                    lxViewModel.selectedSource = "kw"
+                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                }
+                            )
+                            LxSourceFilterChip(
+                                sourceKey = "tx",
+                                sourceName = "QQ音乐",
+                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                    onlineSearchState.selectedSource == "tx",
+                                onClick = {
+                                    lxViewModel.selectedSource = "tx"
+                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                }
+                            )
+                            LxSourceFilterChip(
+                                sourceKey = "kg",
+                                sourceName = "酷狗",
+                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                    onlineSearchState.selectedSource == "kg",
+                                onClick = {
+                                    lxViewModel.selectedSource = "kg"
+                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                }
+                            )
+                            LxSourceFilterChip(
+                                sourceKey = "mg",
+                                sourceName = "咪咕",
+                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                    onlineSearchState.selectedSource == "mg",
+                                onClick = {
+                                    lxViewModel.selectedSource = "mg"
+                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                }
+                            )
+                            // ⚡ 落雪音源：与网易云/酷我/B站同一排标签；只显示支持 musicSearch 的源（对齐落雪逻辑），点击后走 JS 引擎搜索该源
+                            onlineSearchState.sources.entries
+                                .filter { (_, info) -> info.actions.contains("musicSearch") }
+                                .forEach { (key, info) ->
+                                    LxSourceFilterChip(
+                                        sourceKey = key,
+                                        sourceName = info.name.ifBlank { key },
+                                        selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                            onlineSearchState.selectedSource == key,
+                                        onClick = {
+                                            lxViewModel.selectedSource = key
+                                            playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                        }
+                                    )
+                                }
                         }
                         Crossfade(
                             targetState = when {
@@ -426,6 +490,8 @@ fun SearchScreen(
                                     } else {
                                         Triple("online", true, onlineSearchState.searching)
                                     }
+                                currentFilter == SearchFilterType.LX_MUSIC ->
+                                    Triple("lx", true, onlineSearchState.searching)
                                 currentFilter == SearchFilterType.KUWO_MUSIC ->
                                     Triple("qq", true, qqViewModel.uiState.value.searching)
                                 currentFilter == SearchFilterType.BILIBILI_MUSIC ->
@@ -483,6 +549,39 @@ fun SearchScreen(
                                         )
                                     }
                                 }
+                            } else if (mode == "lx") {
+                                // ⚡ 落雪音源搜索结果：直接展示所选音源的搜索结果
+                                val lxSourceLabel = run {
+                                    val key = onlineSearchState.selectedSource
+                                    when (key) {
+                                        "wy" -> "网易云"
+                                        "kw" -> "酷我"
+                                        "tx" -> "QQ音乐"
+                                        "kg" -> "酷狗"
+                                        "mg" -> "咪咕"
+                                        else -> onlineSearchState.sources[key]?.name?.ifBlank { key } ?: "音源"
+                                    }
+                                }
+                                OnlineSearchResults(
+                                    state = onlineSearchState,
+                                    isSearching = isSearching as Boolean,
+                                    searchQuery = searchQuery,
+                                    searchSourceLabel = lxSourceLabel,
+                                    onPlaySong = { song ->
+                                        lxViewModel.playSong(song) { url, name, singer, cover, songId ->
+                                            playerViewModel.playUrl(url, name, singer, cover, songId)
+                                        }
+                                    },
+                                    favoriteIds = favoriteSongIds,
+                                    onToggleFavorite = { song ->
+                                        lxViewModel.toggleFavoriteForSong(song)
+                                    },
+                                    stableIdFn = { song -> lxViewModel.getStableSongId(song) },
+                                    colorScheme = colorScheme,
+                                    onLoadMore = { lxViewModel.loadMore() },
+                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
+                                    isPlaying = stablePlayerState.isPlaying
+                                )
                             } else if (mode == "qq") {
                                 QQSearchResults(
                                     state = qqViewModel.uiState.collectAsStateWithLifecycle().value,
@@ -1276,6 +1375,7 @@ fun SearchFilterChip(
                     SearchFilterType.ONLINE -> stringResource(R.string.search_filter_online)
                     SearchFilterType.KUWO_MUSIC -> stringResource(R.string.search_filter_kuwo)
                     SearchFilterType.BILIBILI_MUSIC -> stringResource(R.string.search_filter_bilibili)
+                    SearchFilterType.LX_MUSIC -> "落雪"
                 }
             )
         },
@@ -1307,6 +1407,46 @@ fun SearchFilterChip(
     )
 }
 
+/** ⚡ 落雪音源过滤标签：与网易云/酷我/B站同一排，点击后切到落雪模式搜索该音源 */
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun LxSourceFilterChip(
+    sourceKey: String,
+    sourceName: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(sourceName) },
+        shape = CircleShape,
+        border = BorderStroke(
+            width = 0.dp,
+            color = Color.Transparent
+        ),
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+        leadingIcon = if (selected) {
+            {
+                Icon(
+                    painter = painterResource(R.drawable.rounded_check_circle_24),
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                )
+            }
+        } else {
+            null
+        }
+    )
+}
+
 @Composable
 private fun OnlineSearchResults(
     state: LxUiState,
@@ -1319,7 +1459,9 @@ private fun OnlineSearchResults(
     colorScheme: androidx.compose.material3.ColorScheme,
     onLoadMore: () -> Unit = {},
     currentPlayingSongId: String? = null,
-    isPlaying: Boolean = false
+    isPlaying: Boolean = false,
+    /** 当前搜索的源名称，用于"正在搜索 xx…"提示（避免非网易云音源也显示网易云） */
+    searchSourceLabel: String = "网易云音乐"
 ) {
     val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
     when {
@@ -1336,7 +1478,7 @@ private fun OnlineSearchResults(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "正在搜索网易云音乐…",
+                        "正在搜索$searchSourceLabel…",
                         color = colorScheme.onSurfaceVariant
                     )
                 }
@@ -1369,7 +1511,7 @@ private fun OnlineSearchResults(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "输入关键词开始搜索网易云音乐",
+                        "输入关键词开始搜索$searchSourceLabel",
                         color = colorScheme.onSurfaceVariant
                     )
                     if (!state.engineReady) {

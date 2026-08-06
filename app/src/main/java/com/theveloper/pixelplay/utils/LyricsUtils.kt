@@ -705,10 +705,13 @@ private fun String.capitalizeFirstLetter(): String {
 object LyricsUtils {
 
     private val LRC_LINE_REGEX = Pattern.compile("^\\[(\\d{2}):(\\d{2})[.:](\\d{2,3})](.*)$")
+    // 酷我等源直接返回 [秒.毫秒]（无冒号）格式：如 [0.0]、[65.43]。
+    // 标准 LRC 时间戳必带冒号（mm:ss.xx），故该格式不会误伤标准 LRC。
+    private val LRC_SECONDS_LINE_REGEX = Pattern.compile("^\\[(\\d{1,3})\\.(\\d{1,3})](.*)$")
     private val LRC_WORD_REGEX = Pattern.compile("<(\\d{2}):(\\d{2})[.:](\\d{2,3})>([^<]*)")
     private val LRC_WORD_TAG_REGEX = Regex("<\\d{2}:\\d{2}[.:]\\d{2,3}>")
     private val LRC_WORD_SPLIT_REGEX = Regex("(?=<\\d{2}:\\d{2}[.:]\\d{2,3}>)")
-    private val LRC_TIMESTAMP_TAG_REGEX = Regex("\\[\\d{1,2}:\\d{2}(?:[.:]\\d{1,3})?]")
+    private val LRC_TIMESTAMP_TAG_REGEX = Regex("\\[(?:\\d{1,2}:\\d{2}(?:[.:]\\d{1,3})?|\\d{1,3}[.:]\\d{1,3})]")
     private val TRANSLATION_CREDIT_REGEX = Regex("^\\s*by\\s*[:：].+", RegexOption.IGNORE_CASE)
     private val LRC_METADATA_PATTERN = Pattern.compile("^\\[[a-zA-Z]+:.*]$")
 
@@ -836,6 +839,18 @@ object LyricsUtils {
                     syncedLines.add(SyncedLine(lineTimestamp.toInt(), text))
                 }
             } else {
+                // 兼容酷我等源直接返回的 [秒.毫秒] 时间戳（无冒号，如 [0.0]、[65.43]）
+                val secondsMatcher = LRC_SECONDS_LINE_REGEX.matcher(line)
+                if (secondsMatcher.matches()) {
+                    isSynced = true
+                    val totalSeconds = secondsMatcher.group(1)?.toLong() ?: 0
+                    val fraction = secondsMatcher.group(2)?.toLong() ?: 0
+                    val textWithTags = stripFormatCharacters(secondsMatcher.group(3)?.trim() ?: "")
+                    val text = stripLrcTimestamps(textWithTags)
+                    val millis = if (secondsMatcher.group(2)?.length == 2) fraction * 10 else fraction
+                    val lineTimestamp = (totalSeconds * 1000 + millis).toInt()
+                    syncedLines.add(SyncedLine(lineTimestamp, text))
+                } else {
                 // Line WITHOUT timestamp
                 val stripped = stripLrcTimestamps(stripFormatCharacters(line))
                 // If the file was already detected as synced and at least one SyncedLine
@@ -859,6 +874,7 @@ object LyricsUtils {
                 } else {
                     // No sync markers found — treat as plain text.
                     plainLines.add(stripped)
+                }
                 }
             }
         }

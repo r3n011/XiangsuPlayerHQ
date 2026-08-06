@@ -1256,7 +1256,7 @@ private fun ProjectInfoCard(modifier: Modifier = Modifier) {
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "基于 xiangsu player 开源项目构建的像素播放器",
+                    text = "基于PixelPlayer 开源项目构建的播放器",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1307,7 +1307,7 @@ private fun QQGroupCard(modifier: Modifier = Modifier) {
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "点击加入群聊【像素播放器用户群】",
+                    text = "点击加入群聊【XiangsuPlayer 用户群】",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

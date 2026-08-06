@@ -145,6 +145,7 @@
     <string name="device_capabilities_format_unsupported">未报告解码器</string>
     <string name="device_capabilities_format_hardware">硬件解码器</string>
     <string name="device_capabilities_format_software">软件解码器</string>
+    <string name="device_capabilities_format_custom_decoder">像素播放器自研 DSD 解码引擎</string>
     <string name="device_capabilities_format_offload">卸载</string>
     <string name="device_capabilities_format_library_count">库中 %1$d 个</string>
     <string name="device_capabilities_report_title">性能报告</string>

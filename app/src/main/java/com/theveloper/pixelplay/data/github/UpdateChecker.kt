@@ -151,37 +151,6 @@ class UpdateChecker @Inject constructor() {
             apkUrl?.let { urls.add(it) }
             return urls
         }
-
-        /**
-         * 从 tag_name 或 versionName 中提取纯数字版本号。
-         * 支持 "v1.2.3"、"1.2.3"、"v1.1.0.4" 等格式。
-         * @return 版本号各段列表（如 [1, 2, 3]），无法解析时返回 null
-         */
-        private fun parseVersionNumber(raw: String): List<Int>? {
-            val cleaned = raw.trim().removePrefix("v").removePrefix("V")
-            val parts = cleaned.split(".")
-            if (parts.isEmpty()) return null
-            val numbers = mutableListOf<Int>()
-            for (part in parts) {
-                val n = part.toIntOrNull() ?: return null
-                numbers.add(n)
-            }
-            return numbers
-        }
-
-        /**
-         * 语义化版本比较。逐段比较数字，短数组用 0 补齐。
-         * @return 正数表示 a 更新，负数表示 b 更新，0 表示相同
-         */
-        private fun compareVersions(a: List<Int>, b: List<Int>): Int {
-            val maxLen = maxOf(a.size, b.size)
-            for (i in 0 until maxLen) {
-                val va = a.getOrElse(i) { 0 }
-                val vb = b.getOrElse(i) { 0 }
-                if (va != vb) return va - vb
-            }
-            return 0
-        }
     }
 
     /**
@@ -204,10 +173,22 @@ class UpdateChecker @Inject constructor() {
                                 Timber.w("蓝奏云中没有找到文件（第 $attempt 次尝试）")
                                 null
                             } else {
-                                // 检查所有文件的版本号是否都与 GitHub 一致
+                                // 版本一致性：蓝奏云文件版本号解析失败视为兼容；
+                                // 解析成功时只要 蓝奏云版本 ≥ GitHub 版本 即视为已同步
+                                // （允许蓝奏云提前发布，避免因版本号格式/位数差异误判为不一致）
                                 val githubVersion = updateInfo.version.removePrefix("v")
+                                val githubNum = parseVersionNumber(githubVersion)
                                 val allSynced = files.all { file ->
-                                    file.versionName == null || file.versionName == githubVersion
+                                    val fv = file.versionName
+                                    if (fv == null) true
+                                    else {
+                                        val fNum = parseVersionNumber(fv)
+                                        if (fNum == null || githubNum == null) {
+                                            fv == updateInfo.version.removePrefix("v")
+                                        } else {
+                                            compareVersions(fNum, githubNum) >= 0
+                                        }
+                                    }
                                 }
 
                                 if (allSynced) {
@@ -254,4 +235,37 @@ class UpdateChecker @Inject constructor() {
             updateInfo.copy(isLanzouSynced = false)
         }
     }
+}
+
+// ─── 版本号工具（文件级，UpdateChecker 与 UpdateInfo 共用） ───────────────────
+
+/**
+ * 从 tag_name 或 versionName 中提取纯数字版本号。
+ * 支持 "v1.2.3"、"1.2.3"、"v1.1.0.4" 等格式。
+ * @return 版本号各段列表（如 [1, 2, 3]），无法解析时返回 null
+ */
+private fun parseVersionNumber(raw: String): List<Int>? {
+    val cleaned = raw.trim().removePrefix("v").removePrefix("V")
+    val parts = cleaned.split(".")
+    if (parts.isEmpty()) return null
+    val numbers = mutableListOf<Int>()
+    for (part in parts) {
+        val n = part.toIntOrNull() ?: return null
+        numbers.add(n)
+    }
+    return numbers
+}
+
+/**
+ * 语义化版本比较。逐段比较数字，短数组用 0 补齐。
+ * @return 正数表示 a 更新，负数表示 b 更新，0 表示相同
+ */
+private fun compareVersions(a: List<Int>, b: List<Int>): Int {
+    val maxLen = maxOf(a.size, b.size)
+    for (i in 0 until maxLen) {
+        val va = a.getOrElse(i) { 0 }
+        val vb = b.getOrElse(i) { 0 }
+        if (va != vb) return va - vb
+    }
+    return 0
 }

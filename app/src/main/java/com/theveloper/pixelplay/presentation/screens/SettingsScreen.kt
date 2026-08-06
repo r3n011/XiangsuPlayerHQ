@@ -74,8 +74,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -133,8 +133,12 @@ fun SettingsScreen(
         onNavigationIconClick: () -> Unit,
         settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 840
+    // 使用真实窗口宽度（LocalWindowInfo）而非 Configuration：
+    // 部分平板在分屏/小窗/旋转时 Configuration 不更新，导致手机/平板模式不切换
+    val windowWidthDp = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.width.toDp()
+    }
+    val isTablet = windowWidthDp >= 840.dp
 
     if (isTablet) {
         TabletSettingsScreen(
@@ -479,7 +483,33 @@ private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
         stringResource(R.string.settings_search_keyword_mixer) to SettingsCategory.EQUALIZER,
         stringResource(R.string.settings_search_keyword_album_art) to SettingsCategory.LIBRARY,
         stringResource(R.string.settings_search_keyword_scan) to SettingsCategory.LIBRARY,
-        stringResource(R.string.settings_search_keyword_min_duration) to SettingsCategory.LIBRARY
+        stringResource(R.string.settings_search_keyword_min_duration) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_ai) to SettingsCategory.AI_INTEGRATION,
+        stringResource(R.string.settings_search_keyword_model) to SettingsCategory.AI_INTEGRATION,
+        stringResource(R.string.settings_search_keyword_token) to SettingsCategory.AI_INTEGRATION,
+        stringResource(R.string.settings_search_keyword_recommendation) to SettingsCategory.AI_INTEGRATION,
+        stringResource(R.string.settings_search_keyword_remote) to SettingsCategory.AI_INTEGRATION,
+        stringResource(R.string.settings_search_keyword_immersive_lyrics) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_auto_hide) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_replaygain) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_cast) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_usb) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_aaudio) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_car_mode) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_transcode) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_download) to SettingsCategory.BEHAVIOR,
+        stringResource(R.string.settings_search_keyword_daily_mix) to SettingsCategory.DEVELOPER,
+        stringResource(R.string.settings_search_keyword_stats) to SettingsCategory.DEVELOPER,
+        stringResource(R.string.settings_search_keyword_maintenance) to SettingsCategory.DEVELOPER,
+        stringResource(R.string.settings_search_keyword_diagnostics) to SettingsCategory.DEVELOPER,
+        stringResource(R.string.settings_search_keyword_palette) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_now_playing) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_compact) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_collage) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_search_keyword_excluded) to SettingsCategory.LIBRARY,
+        stringResource(R.string.settings_search_keyword_battery) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_background) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_filter) to SettingsCategory.LIBRARY
     )
 }
 

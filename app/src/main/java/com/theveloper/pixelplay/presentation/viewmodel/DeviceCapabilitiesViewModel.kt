@@ -73,7 +73,8 @@ data class FormatSupportInfo(
     val isDecoderAvailable: Boolean,
     val isHardwareAccelerated: Boolean,
     val isOffloadSupported: Boolean,
-    val librarySongCount: Int
+    val librarySongCount: Int,
+    val isCustomDecoderSupported: Boolean = false
 )
 
 data class LocalMusicStorageSummary(
@@ -149,6 +150,9 @@ private data class AudioFormatCandidate(
     val mimeType: String,
     val offloadEncoding: Int?
 )
+
+/** PixelPlayer 自研解码器（DffDecoder DSD 解码引擎）负责的 mime 类型。 */
+private const val CUSTOM_DECODER_MIME = "audio/dsd"
 
 @HiltViewModel
 class DeviceCapabilitiesViewModel @Inject constructor(
@@ -418,13 +422,18 @@ class DeviceCapabilitiesViewModel @Inject constructor(
 
         return audioFormatCandidates().map { candidate ->
             val acceptedMimes = compatibleMimeTypes(candidate.mimeType)
+            // DSD 系列（DFF/DSF/DIF）由 PixelPlayer 自研 DSD 解码引擎（DffDecoder）软件解码，
+            // 不依赖系统 MediaCodec，因此恒标记为可用。
+            val isCustomDecoder = candidate.mimeType == CUSTOM_DECODER_MIME
             FormatSupportInfo(
                 label = candidate.label,
                 mimeType = candidate.mimeType,
-                isDecoderAvailable = acceptedMimes.any { isMimeTypeSupported(it, supportedTypes) },
+                isDecoderAvailable = isCustomDecoder ||
+                    acceptedMimes.any { isMimeTypeSupported(it, supportedTypes) },
                 isHardwareAccelerated = acceptedMimes.any { isMimeTypeSupported(it, hardwareTypes) },
                 isOffloadSupported = candidate.label in offloadFormats,
-                librarySongCount = acceptedMimes.sumOf { libraryCountsByMime[it] ?: 0 }
+                librarySongCount = acceptedMimes.sumOf { libraryCountsByMime[it] ?: 0 },
+                isCustomDecoderSupported = isCustomDecoder
             )
         }
     }
@@ -588,6 +597,10 @@ private fun audioFormatCandidates(): List<AudioFormatCandidate> {
         add(AudioFormatCandidate("EVRC", "audio/evrc", null))
         add(AudioFormatCandidate("QCELP", "audio/qcelp", null))
         add(AudioFormatCandidate("IMA-ADPCM", "audio/x-ima-adpcm", null))
+        // DSD 系列：由 PixelPlayer 自研 DSD 解码引擎（DffDecoder）软件解码，无需系统解码器
+        add(AudioFormatCandidate("DFF (DSDIFF)", "audio/dsd", null))
+        add(AudioFormatCandidate("DSF (DSD)", "audio/dsd", null))
+        add(AudioFormatCandidate("DIF (DSD)", "audio/dsd", null))
     }
 }
 
@@ -607,6 +620,7 @@ private fun normalizeMimeType(mimeType: String): String {
         "audio/evrc", "audio/x-evrc" -> "audio/evrc"
         "audio/qcelp", "audio/x-qcelp" -> "audio/qcelp"
         "audio/x-ima-adpcm", "audio/ima-adpcm" -> "audio/x-ima-adpcm"
+        "audio/dsd", "audio/x-dsd", "audio/dff", "audio/x-dff", "audio/dsf", "audio/x-dsf", "audio/x-dif" -> "audio/dsd"
         else -> mime
     }
 }
@@ -628,6 +642,7 @@ private fun compatibleMimeTypes(mimeType: String): Set<String> {
         "audio/evrc" -> setOf("audio/evrc", "audio/x-evrc")
         "audio/qcelp" -> setOf("audio/qcelp", "audio/x-qcelp")
         "audio/x-ima-adpcm" -> setOf("audio/x-ima-adpcm", "audio/ima-adpcm", "audio/raw")
+        "audio/dsd" -> setOf("audio/dsd", "audio/x-dsd", "audio/dff", "audio/x-dff", "audio/dsf", "audio/x-dsf", "audio/x-dif")
         else -> setOf(normalized)
     }
 }

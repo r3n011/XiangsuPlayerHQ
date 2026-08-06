@@ -27,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,9 +51,12 @@ fun UpdateAvailableDialog(
     onDismiss: () -> Unit,
     onDownload: (apkUrls: List<String>) -> Unit
 ) {
-    // 只对比版本号，不区分架构；优先蓝奏云直链，GitHub 作为兜底
-    val downloadUrls = remember(updateInfo) { updateInfo.availableApkUrls() }
-    val downloadUrl = downloadUrls.firstOrNull().orEmpty()
+    // 蓝奏云直链（已同步时可用）+ GitHub 兜底，两个下载源同时展示供用户选择
+    val lanzouUrls = remember(updateInfo) {
+        if (updateInfo.isLanzouSynced) updateInfo.lanzouFiles.map { it.downloadUrl } else emptyList()
+    }
+    val githubUrl = updateInfo.apkUrl
+    val hasAnySource = lanzouUrls.isNotEmpty() || !githubUrl.isNullOrBlank()
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
     val isDownloaded = downloadState is ApkDownloadInstaller.DownloadState.Downloaded
@@ -235,7 +239,7 @@ fun UpdateAvailableDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    val canDownload = !isDownloading && !isInstalling && downloadUrl.isNotBlank()
+                    val canDownload = !isDownloading && !isInstalling && hasAnySource
                     val downloadProgress = (downloadState as? ApkDownloadInstaller.DownloadState.Downloading)?.progress ?: 0f
                     
                     if (isDownloading) {
@@ -268,20 +272,49 @@ fun UpdateAvailableDialog(
                             }
                         }
                     } else {
-                        Button(
-                            onClick = {
-                                if (downloadUrls.isNotEmpty()) onDownload(downloadUrls)
-                            },
-                            shape = actionShape,
-                            enabled = canDownload,
-                            modifier = Modifier.fillMaxWidth()
+                        // 双下载源：蓝奏云（主，国内高速）+ GitHub（备选），同时展示
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text(
-                                text = if (isDownloaded || isInstalling) "安装中" else stringResource(R.string.update_go_download),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                            )
+                            if (lanzouUrls.isNotEmpty()) {
+                                Button(
+                                    onClick = { onDownload(lanzouUrls + listOfNotNull(githubUrl)) },
+                                    shape = actionShape,
+                                    enabled = canDownload,
+                                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                                ) {
+                                    Text(
+                                        text = "蓝奏云下载（国内高速）",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                    )
+                                }
+                            }
+                            if (!githubUrl.isNullOrBlank()) {
+                                OutlinedButton(
+                                    onClick = { onDownload(listOf(githubUrl)) },
+                                    shape = actionShape,
+                                    enabled = canDownload,
+                                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                                ) {
+                                    Text(
+                                        text = "GitHub 下载",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                            if (!lanzouUrls.isNotEmpty() && githubUrl.isNullOrBlank() && !isDownloaded && !isInstalling) {
+                                Text(
+                                    text = stringResource(R.string.update_no_download_source),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                )
+                            }
                         }
                     }
                 }

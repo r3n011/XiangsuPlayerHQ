@@ -8,10 +8,13 @@ import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.lx.LxFileStore
 import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.lx.LxSearchApi
+import com.theveloper.pixelplay.data.lx.LxSearchResult
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import com.theveloper.pixelplay.data.lx.LxArtistInfo
+import com.theveloper.pixelplay.data.lx.LxScriptInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
-import com.theveloper.pixelplay.data.netease.NeteaseRepository
+import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
+import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import timber.log.Timber
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,8 +35,12 @@ data class LxUiState(
     val engineReady: Boolean = false,
     val version: String = "unknown",
     val sources: Map<String, LxSourceInfo> = emptyMap(),
+    /** 已导入的所有 JS 脚本简介列表（多 JS 管理用） */
+    val scriptInfos: List<LxScriptInfo> = emptyList(),
+    /** 在线音源播放音质（24bit / FLAC / 320k / 128k） */
+    val musicQuality: MusicQuality = MusicQuality.HIGH,
     val keyword: String = "",
-    val selectedSource: String = "all",
+    val selectedSource: String = "wy",
     val searching: Boolean = false,
     val results: List<LxSongInfo> = emptyList(),
     val error: String? = null,
@@ -57,8 +64,8 @@ class LxMusicViewModel @Inject constructor(
     private val engine: LxJsEngine,
     private val store: LxFileStore,
     private val searchApi: LxSearchApi,
+    private val builtInSourceSearchApi: BuiltInSourceSearchApi,
     private val musicRepository: MusicRepository,
-    private val neteaseRepository: NeteaseRepository,
     private val userPreferencesRepository: com.theveloper.pixelplay.data.preferences.UserPreferencesRepository,
 ) : AndroidViewModel(app) {
 
@@ -67,7 +74,15 @@ class LxMusicViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            // 首次启动把 assets 内置音源导入用户目录，再初始化引擎
+            store.ensureBundledSources()
             autoInitIfPresent()
+        }
+        // 同步在线音源播放音质
+        viewModelScope.launch {
+            userPreferencesRepository.musicQualityFlow.collect { quality ->
+                _uiState.value = _uiState.value.copy(musicQuality = quality)
+            }
         }
     }
 
@@ -83,13 +98,29 @@ class LxMusicViewModel @Inject constructor(
         set(v) { _uiState.value = _uiState.value.copy(selectedSource = v) }
 
     fun refreshDisplayOnly() {
-        val hasJs = store.exists()
+        val hasJs = store.hasAnyJs()
         _uiState.value = if (hasJs) {
             _uiState.value.copy(engineReady = false, sources = emptyMap(), version = "custom")
         } else {
             _uiState.value.copy(engineReady = false, sources = emptyMap(), version = "none", importError = null)
         }
     }
+
+    /** 设置在线音源播放音质（与设置页数据源一致） */
+    fun setMusicQuality(quality: MusicQuality) {
+        // 立即同步 UI（不等待 DataStore flow 回环，避免点击后无响应）
+        _uiState.value = _uiState.value.copy(musicQuality = quality)
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                userPreferencesRepository.setMusicQuality(quality)
+            }.onFailure {
+                Timber.w(it, "setMusicQuality 持久化失败: $quality")
+            }
+        }
+    }
+
+    private suspend fun loadScriptInfos(): List<LxScriptInfo> =
+        runCatching { engine.scriptInfos() }.getOrDefault(emptyList())
 
     fun ensureEngineStarted() {
         viewModelScope.launch(Dispatchers.IO) { 
@@ -99,15 +130,17 @@ class LxMusicViewModel @Inject constructor(
                     engineReady = true,
                     sources = runCatching { engine.getSources() }.getOrDefault(emptyMap()),
                     version = runCatching { engine.versionName() }.getOrDefault("custom"),
+                    scriptInfos = loadScriptInfos(),
                     initing = false,
                     importError = null
                 )
                 return@launch
             }
-            val hasJs = store.exists()
+            val hasJs = store.hasAnyJs()
             if (!hasJs) {
                 _uiState.value = _uiState.value.copy(
                     initing = false, engineReady = false,
+                    scriptInfos = loadScriptInfos(),
                     importError = "请先导入一个 JS 音源文件（点右上角 +）"
                 )
                 return@launch
@@ -119,6 +152,7 @@ class LxMusicViewModel @Inject constructor(
                 engineReady = ok,
                 sources = if (ok) runCatching { engine.getSources() }.getOrDefault(emptyMap()) else emptyMap(),
                 version = runCatching { engine.versionName() }.getOrDefault("custom"),
+                scriptInfos = loadScriptInfos(),
                 importError = if (!ok) engine.lastError ?: "JS 执行时报错" else null
             )
         }
@@ -131,9 +165,9 @@ class LxMusicViewModel @Inject constructor(
     fun importFromUri(uri: Uri) {
         _uiState.value = _uiState.value.copy(initing = true, importError = null, engineReady = false)
         viewModelScope.launch(Dispatchers.IO) { 
-            val ok = store.writeFromUri(uri)    
-            if (!ok) {
-                _uiState.value = _uiState.value.copy(initing = false, importError = "读取文件失 败")
+            val fileName = store.writeFromUri(uri)
+            if (fileName == null) {
+                _uiState.value = _uiState.value.copy(initing = false, importError = "读取文件失败")
                 return@launch
             }
             val ready = engine.reload()
@@ -142,6 +176,7 @@ class LxMusicViewModel @Inject constructor(
                 engineReady = ready,
                 sources = engine.getSources(),  
                 version = engine.versionName(), 
+                scriptInfos = loadScriptInfos(),
                 importError = if (!ready) engine.lastError ?: "JS 执行时报错" else null
             )
         }
@@ -150,9 +185,9 @@ class LxMusicViewModel @Inject constructor(
     fun importFromUrl(url: String) {
         _uiState.value = _uiState.value.copy(initing = true, importError = null, engineReady = false)
         viewModelScope.launch(Dispatchers.IO) { 
-            val ok = store.writeFromUrl(url)    
-            if (!ok) {
-                _uiState.value = _uiState.value.copy(initing = false, importError = "下载失败 ( 超时或非 JS)")
+            val fileName = store.writeFromUrl(url)
+            if (fileName == null) {
+                _uiState.value = _uiState.value.copy(initing = false, importError = "下载失败 (超时或非 JS)")
                 return@launch
             }
             val ready = engine.reload()
@@ -161,14 +196,38 @@ class LxMusicViewModel @Inject constructor(
                 engineReady = ready,
                 sources = engine.getSources(),  
                 version = engine.versionName(), 
+                scriptInfos = loadScriptInfos(),
                 importError = if (!ready) engine.lastError ?: "JS 执行时报错" else null
             )
         }
     }
 
-    fun removeJs() {
+    /** 删除单个 JS 脚本文件并重新加载引擎 */
+    fun removeJs(fileName: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            store.delete()
+            store.deleteByName(fileName)
+            val remaining = store.hasAnyJs()
+            if (remaining) {
+                val ok = engine.reload()
+                _uiState.value = _uiState.value.copy(
+                    initing = false,
+                    engineReady = ok,
+                    sources = engine.getSources(),
+                    version = engine.versionName(),
+                    scriptInfos = loadScriptInfos(),
+                    importError = if (!ok) engine.lastError ?: "JS 重新加载失败" else null
+                )
+            } else {
+                engine.close()
+                _uiState.value = LxUiState(version = "none")
+            }
+        }
+    }
+
+    /** 删除全部 JS 脚本并关闭引擎 */
+    fun removeAllJs() {
+        viewModelScope.launch(Dispatchers.IO) {
+            store.deleteAll()
             engine.close()
             _uiState.value = LxUiState(version = "none")
         }
@@ -183,6 +242,7 @@ class LxMusicViewModel @Inject constructor(
                 engineReady = ok,
                 sources = engine.getSources(),
                 version = engine.versionName(),
+                scriptInfos = loadScriptInfos(),
                 importError = if (!ok) "JS 重新加载失败" else null
             )
         }
@@ -192,13 +252,17 @@ class LxMusicViewModel @Inject constructor(
     private val _pageSize = 20
     private var _currentPage = 1
     private var _lastKeyword: String? = null
+    /** 最近一次搜索实际使用的音源（供分页加载更多时保持同一音源） */
+    private var _lastSource: String = "wy"
 
-    fun search() {
+    fun search(source: String? = null) {
         val kw = keyword.trim()
         if (kw.isBlank()) return
+        val effectiveSource = source ?: selectedSource
         // ⚡ 新搜索重置分页状态
         _currentPage = 1
         _lastKeyword = kw
+        _lastSource = effectiveSource
         _uiState.value = _uiState.value.copy(
             searching = true,
             error = null,
@@ -208,19 +272,22 @@ class LxMusicViewModel @Inject constructor(
         )
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                if (!engine.isReady()) {
-                    if (!store.exists()) {
-                        _uiState.value = _uiState.value.copy(
-                            searching = false,
-                            error = "请先在设置中导入 JS 音源"
-                        )
-                        return@launch
+                // 网易云/内置音源不依赖 JS 引擎；仅落雪 JS 音源需要先就绪引擎
+                if (effectiveSource != "wy" && !builtInSourceSearchApi.isSupported(effectiveSource)) {
+                    if (!engine.isReady()) {
+                        if (!store.hasAnyJs()) {
+                            _uiState.value = _uiState.value.copy(
+                                searching = false,
+                                error = "请先在设置中导入 JS 音源"
+                            )
+                            return@launch
+                        }
+                        engine.ready()
                     }
-                    engine.ready()
                 }
-                // vkeys 搜索接口一次返回 id / 歌名 / 歌手 / 专辑 / 封面，
-                // 不再单独获取封面，显著提速。
-                val result = searchApi.search(kw, page = 1, pageSize = _pageSize)
+                // wy / all（默认）走网易云官方搜索（原版不动）；
+                // 选中落雪音源时按落雪方案走 JS 引擎搜索。
+                val result = searchBySource(effectiveSource, kw, page = 1, pageSize = _pageSize)
                 _uiState.value = _uiState.value.copy(
                     searching = false,
                     results = result.list,
@@ -258,7 +325,7 @@ class LxMusicViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isLoadingMore = true, error = null)
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val result = searchApi.search(kw, page = nextPage, pageSize = _pageSize)
+                val result = searchBySource(_lastSource, kw, page = nextPage, pageSize = _pageSize)
                 // ⚡ 追加到现有结果列表，使用 LinkedHashSet 去重（避免重复歌曲）
                 val existingIds = _uiState.value.results.mapTo(LinkedHashSet()) { it.id }
                 val newItems = result.list.filterNot { it.id in existingIds }
@@ -358,6 +425,35 @@ class LxMusicViewModel @Inject constructor(
     }
 
     /**
+     * 按所选音源搜索（模仿落雪原版单源搜索方案）：
+     * - wy / all（默认）：网易云官方搜索 API（原版，保持不动）
+     * - tx / kg / mg（内置源）：落雪同款官方搜索（不依赖 JS，QQ音乐/酷狗/咪咕）
+     * - 其他落雪音源：走 JS 引擎 engine.search 搜索该源，不支持搜索时返回空结果
+     */
+    private suspend fun searchBySource(source: String, kw: String, page: Int, pageSize: Int): LxSearchResult {
+        val result = when {
+            // 网易云：保持原版官方搜索，不经过 JS 引擎
+            source == "wy" || source == "all" -> searchApi.search(kw, page = page, pageSize = pageSize)
+            // 内置源：落雪同款官方搜索
+            builtInSourceSearchApi.isSupported(source) -> {
+                val builtIn = builtInSourceSearchApi.search(source, kw, page, pageSize)
+                // 内置源连续失败返回空时（如 QQ 间歇限流），fallback 到 JS 引擎的该源实现，双保险
+                if (builtIn.list.isEmpty() && builtIn.total == 0 && page == 1) {
+                    runCatching { engine.search(kw, source, page, pageSize) }
+                        .getOrNull()
+                        ?.takeIf { it.list.isNotEmpty() } ?: builtIn
+                } else {
+                    builtIn
+                }
+            }
+            // 落雪源：直接走 JS 引擎搜索（不再回退网易云，点击哪个源就搜哪个源）
+            else -> engine.search(kw, source, page, pageSize)
+        }
+        // 统一为每条结果标记音源，供播放时选对音源、UI 提示用
+        return result.copy(list = result.list.map { it.copy(source = source) })
+    }
+
+    /**
      * 批量补充搜索结果中缺失封面的歌曲。
      * 搜索 API 不返回 picUrl，需通过歌曲详情 API 补全。
      */
@@ -398,11 +494,17 @@ class LxMusicViewModel @Inject constructor(
                     progressLabel = "获取播放链接…"
                 )
                 val songMap = song.toInfoMap()
-                val availableSources = engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
-                val targetSource = if (selectedSource != "all" && availableSources.contains(selectedSource)) {
-                    selectedSource
-                } else {
-                    availableSources.firstOrNull() ?: "wy"
+                val availableSources = runCatching {
+                    engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
+                }.getOrDefault(emptyList())
+                // 优先用歌曲自己携带的音源（搜索结果逐条标记），避免切了音源后点播其他源的结果仍走错音源
+                val targetSource = when {
+                    song.source == "wy" -> "wy"
+                    song.source.isNotBlank() &&
+                        (availableSources.contains(song.source) || builtInSourceSearchApi.isSupported(song.source)) -> song.source
+                    selectedSource != "all" &&
+                        (availableSources.contains(selectedSource) || builtInSourceSearchApi.isSupported(selectedSource)) -> selectedSource
+                    else -> availableSources.firstOrNull() ?: "wy"
                 }
                 android.util.Log.d("LxPlaySong", "Target source: $targetSource")
 
@@ -417,31 +519,27 @@ class LxMusicViewModel @Inject constructor(
                 } else song.pic
 
                 val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
-                    val neteaseId = song.id.toLong()
+                    // 网易云直接走落雪 JS 引擎播放，不经网易云 API 取试听 URL
                     val preferredQuality = try {
                         userPreferencesRepository.musicQualityFlow.first()
                     } catch (_: Exception) {
                         com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
                     }
-                    val officialUrl = try {
-                        val res = neteaseRepository.getSongUrl(neteaseId, preferredQuality.neteaseLevel)
-                        res.getOrNull()
-                    } catch (t: Throwable) {
-                        Timber.w(t, "LxPlaySong: Netease official API failed for songId=$neteaseId")
-                        null
+                    android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=${preferredQuality.lxValue})")
+                    engine.getPlayUrl("wy", songMap, preferredQuality.lxValue)
+                        ?: engine.getPlayUrl("wy", songMap, "24bit")
+                        ?: engine.getPlayUrl("wy", songMap, "flac")
+                        ?: engine.getPlayUrl("wy", songMap, "320k")
+                        ?: engine.getPlayUrl("wy", songMap, "128k")
+                } else if (builtInSourceSearchApi.isSupported(targetSource)) {
+                    // 内置源（QQ音乐/酷狗/咪咕）：官方播放接口 + 溯音酷我兜底
+                    val preferredQuality = try {
+                        userPreferencesRepository.musicQualityFlow.first()
+                    } catch (_: Exception) {
+                        com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
                     }
-                    if (!officialUrl.isNullOrBlank()) {
-                        Timber.d("LxPlaySong: Using official Netease URL for '${song.name}' (id=$neteaseId)")
-                        android.util.Log.d("LxPlaySong", "Using official Netease URL for '${song.name}'")
-                        officialUrl
-                    } else {
-                        Timber.d("LxPlaySong: Official API failed, falling back to LxJsEngine for '${song.name}'")
-                        engine.getPlayUrl("wy", songMap, preferredQuality.lxValue)
-                            ?: engine.getPlayUrl("wy", songMap, "24bit")
-                            ?: engine.getPlayUrl("wy", songMap, "flac")
-                            ?: engine.getPlayUrl("wy", songMap, "320k")
-                            ?: engine.getPlayUrl("wy", songMap, "128k")
-                    }
+                    android.util.Log.d("LxPlaySong", "Built-in source $targetSource, preferredQuality=${preferredQuality.name} (${preferredQuality.lxValue})")
+                    builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality.lxValue)
                 } else {
                     val preferredQuality = try {
                         userPreferencesRepository.musicQualityFlow.first()

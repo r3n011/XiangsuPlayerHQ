@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,9 +27,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -36,14 +41,18 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,17 +65,28 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.theveloper.pixelplay.MainActivity
+import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+@Composable
+private fun qualityLabel(quality: MusicQuality): String = when (quality) {
+    MusicQuality.HIRES -> stringResource(R.string.music_quality_hires)
+    MusicQuality.FLAC -> stringResource(R.string.music_quality_flac)
+    MusicQuality.HIGH -> stringResource(R.string.music_quality_high)
+    MusicQuality.STANDARD -> stringResource(R.string.music_quality_standard)
+}
 
 @Composable
 fun CloudMusicSettingsScreen(
@@ -87,6 +107,9 @@ fun CloudMusicSettingsScreen(
     }
 
     var showImportUrl by remember { mutableStateOf(false) }
+    var showQualityDialog by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
+    var expandedScript by remember { mutableStateOf<String?>(null) }
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -202,7 +225,7 @@ fun CloudMusicSettingsScreen(
                                 )
                                 if (state.engineReady) {
                                     Text(
-                                        "版本: ${state.version}",
+                                        "已加载 ${state.scriptInfos.size} 个脚本 · 版本: ${state.version}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
@@ -281,12 +304,166 @@ fun CloudMusicSettingsScreen(
                     }
 
                     OutlinedButton(
-                        onClick = { viewModel.removeJs() },
+                        onClick = { showQualityDialog = true },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Rounded.DeleteOutline, null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.MusicNote, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("移除", style = MaterialTheme.typography.labelLarge)
+                        Text("播放音质", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+
+            item {
+                // 播放音质设置卡片
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showQualityDialog = true }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary)
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "播放音质",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                qualityLabel(state.musicQuality),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            Icons.Rounded.ChevronRight,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    "已导入脚本 (${state.scriptInfos.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            state.scriptInfos.forEach { info ->
+                item(key = info.fileName) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = info.name.ifBlank { info.fileName },
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = buildString {
+                                            append(info.fileName)
+                                            if (info.version.isNotBlank()) {
+                                                append(" · v").append(info.version.removePrefix("v"))
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                IconButton(onClick = { pendingDelete = info.fileName }) {
+                                    Icon(
+                                        Icons.Rounded.DeleteOutline,
+                                        contentDescription = "删除 ${info.fileName}",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+
+                            if (info.description.isNotBlank()) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    info.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = if (expandedScript == info.fileName) Int.MAX_VALUE else 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            if (info.author.isNotBlank() || info.homepage.isNotBlank() ||
+                                info.lastUpdate.isNotBlank() || info.md5.isNotBlank()
+                            ) {
+                                val expanded = expandedScript == info.fileName
+                                TextButton(onClick = {
+                                    expandedScript = if (expanded) null else info.fileName
+                                }) {
+                                    Icon(
+                                        if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                        null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(if (expanded) "收起简介" else "查看简介")
+                                }
+                                if (expanded) {
+                                    listOf(
+                                        "作者" to info.author,
+                                        "主页" to info.homepage,
+                                        "更新时间" to info.lastUpdate,
+                                        "MD5" to info.md5
+                                    ).forEach { (label, value) ->
+                                        if (value.isNotBlank()) {
+                                            Text(
+                                                "$label: $value",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 12.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (state.scriptInfos.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Text(
+                            "尚未导入任何 JS 音源脚本，点上方按钮导入即可同时加载多个音源。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
                     }
                 }
             }
@@ -308,10 +485,11 @@ fun CloudMusicSettingsScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "1. 导入或下载 JS 音源文件（如聚合音源脚本）\n" +
-                                "2. 完成后，在搜索页面选择「在线」标签即可搜索在线音乐\n" +
-                                "3. 搜索结果会自动匹配，点击即可播放\n" +
-                                "4. 启动时会自动加载已导入的 JS 文件",
+                            "1. 可同时导入多个 JS 音源文件（如聚合音源脚本），自动一起生效\n" +
+                                "2. 多个脚本注册同一音源时按加载顺序逐个尝试，直到拿到结果\n" +
+                                "3. 播放音质设置对所有在线音源生效（网易云、内置源、落雪脚本）\n" +
+                                "4. 点每个脚本的「查看简介」可查看作者、主页、更新时间等信息\n" +
+                                "5. 启动时会自动加载已导入的所有 JS 文件",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -325,7 +503,8 @@ fun CloudMusicSettingsScreen(
             collapseFraction = collapseFraction,
             headerHeight = currentTopBarHeightDp,
             onBackClick = onBackClick,
-            subtitle = "管理 JS 音乐源"
+            subtitle = "管理 JS 音乐源",
+            fadeSubtitleOnCollapse = false
         )
     }
 
@@ -353,6 +532,65 @@ fun CloudMusicSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showImportUrl = false }) { Text("取消") }
+            }
+        )
+    }
+
+    if (showQualityDialog) {
+        AlertDialog(
+            icon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
+            title = { Text("播放音质") },
+            onDismissRequest = { showQualityDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showQualityDialog = false }) { Text("取消") }
+            },
+            text = {
+                Column {
+                    MusicQuality.entries.forEach { quality ->
+                        val label = qualityLabel(quality)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setMusicQuality(quality)
+                                    showQualityDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = state.musicQuality == quality,
+                                onClick = {
+                                    viewModel.setMusicQuality(quality)
+                                    showQualityDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Text(label, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    pendingDelete?.let { fileName ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("删除脚本") },
+            text = { Text("确定删除「$fileName」吗？删除后该脚本的音源将不可用。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.removeJs(fileName)
+                        pendingDelete = null
+                    }
+                ) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("取消") }
             }
         )
     }

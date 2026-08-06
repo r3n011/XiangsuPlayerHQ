@@ -33,6 +33,10 @@
         android:maxSdkVersion="30" />
     <!-- USB 独占模式所需权限 -->
     <uses-permission android:name="android.permission.USB_PERMISSION" />
+    <!-- USB Host 功能声明（非必需，允许在无 USB 音频设备的手机/平板上正常安装使用） -->
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
     <!-- For disabling battery optimization -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -83,6 +87,13 @@
                 <action android:name="com.theveloper.pixelplay.action.OPEN_PLAYER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- USB 音频设备插入时拉起应用，用户确认后系统自动授予 USB 权限（参考 AndroidUsbAudio） -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
