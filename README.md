@@ -19,7 +19,7 @@
         <img src="https://img.shields.io/github/downloads/r3n011/XiangsuPlayerHQ/total?logo=github&style=for-the-badge" alt="Total Downloads">
     </a>
     <img src="https://img.shields.io/badge/Android-9%2B-green?style=for-the-badge&logo=android" alt="Android 9+">
-    <img src="https://img.shields.io/badge/Kotlin-100%25-purple?style=for-the-badge&logo=kotlin" alt="Kotlin">
+    
 </p>
 
 ***
