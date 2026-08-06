@@ -174,7 +174,7 @@
 
 ## ☎️ 联系我们
 
-QQ群：1018780180
+QQ群：<a href="https://qm.qq.com/q/31XTTiZqg0">907852088</a>
 
 <p align="center">
    像素播放器团队 制作❤️
