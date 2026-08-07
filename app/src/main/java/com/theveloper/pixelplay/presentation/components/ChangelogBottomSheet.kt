@@ -63,6 +63,7 @@ data class ChangelogVersion(
 
 @Composable
 private fun changelogVersions(): List<ChangelogVersion> = listOf(
+  
     ChangelogVersion(
         version = "0.7.0-beta",
         date = "2026-05-23",

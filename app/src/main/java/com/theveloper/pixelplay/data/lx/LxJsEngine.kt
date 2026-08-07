@@ -8,6 +8,9 @@ import com.whl.quickjs.wrapper.JSCallFunction
 import com.whl.quickjs.wrapper.QuickJSContext
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
@@ -74,6 +77,21 @@ class LxJsEngine @Inject constructor(
     @Volatile private var sourceIndex: Map<String, List<String>> = emptyMap()
     /** 聚合后的音源信息（多脚本同名源后者覆盖，仅用于 UI 展示） */
     @Volatile private var sources: Map<String, LxSourceInfo> = emptyMap()
+
+    // ⚡ 音源临时开关：source -> enabled（仅运行时生效，不持久化；默认全部启用）
+    private val sourceEnabled = ConcurrentHashMap<String, Boolean>()
+    private val _sourceToggles = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val sourceToggles: StateFlow<Map<String, Boolean>> = _sourceToggles.asStateFlow()
+
+    /** 设置某个音源的临时开关状态（false 时该音源的搜索/取链接全部跳过） */
+    fun setSourceEnabled(source: String, enabled: Boolean) {
+        sourceEnabled[source] = enabled
+        _sourceToggles.value = sourceEnabled.toMap()
+        Log.d(TAG, "setSourceEnabled $source -> $enabled")
+    }
+
+    /** 查询某个音源当前是否启用 */
+    fun isSourceEnabled(source: String): Boolean = sourceEnabled[source] ?: true
     /** 当前存活的所有 QuickJS 上下文（销毁时移除，避免对已销毁上下文求值） */
     private val liveCtxs = ConcurrentHashMap.newKeySet<QuickJSContext>()
     /** 当前正在执行的 JS 上下文（用于原生回调定位所属实例） */
@@ -270,6 +288,8 @@ class LxJsEngine @Inject constructor(
 
     suspend fun search(keyword: String, source: String, page: Int = 1, pagesize: Int = 30): LxSearchResult {
         if (!awaitReady()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        // ⚡ 音源临时开关：被禁用的音源直接跳过，不再发起搜索
+        if (!isSourceEnabled(source)) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
         val info = mapOf(
             "keyword" to keyword,
             "page" to page,
@@ -293,6 +313,11 @@ class LxJsEngine @Inject constructor(
             return null
         }
         val info = mapOf("musicInfo" to songInfo, "type" to quality)
+        // ⚡ 音源临时开关：被禁用的音源直接返回 null（不取播放链接）
+        if (!isSourceEnabled(source)) {
+            Log.d(TAG, "getPlayUrl $source skipped (disabled by user)")
+            return null
+        }
         val targets = sourceIndex[source] ?: return null
         val startTime = System.currentTimeMillis()
         for (fileName in targets) {

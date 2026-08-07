@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="changelog_title">Log Perubahan</string>
+    <string name="changelog_view_github">Lihat di GitHub</string>
+    <string name="changelog_sec_improvements">Peningkatan</string>
+    <string name="changelog_sec_fixes">Perbaikan</string>
+    <string name="changelog_sec_whats_new">Apa yang Baru</string>
+    <string name="changelog_sec_added">Ditambahkan</string>
+    <string-array name="changelog_020_added">
+        <item>Dukungan Chromecast untuk memutar audio dari perangkat Anda.</item>
+        <item>Log perubahan dalam aplikasi untuk memberi Anda informasi fitur terbaru.</item>
+        <item>Dukungan untuk file .LRC, baik yang tertanam maupun eksternal.</item>
+        <item>Dukungan lirik offline.</item>
+        <item>Lirik tersinkronisasi (sinkron dengan lagu).</item>
+        <item>Layar baru untuk melihat antrean lengkap.</item>
+        <item>Susun ulang dan hapus lagu dari antrean.</item>
+        <item>Gestur mini-player (geser ke bawah untuk menutup).</item>
+        <item>Menambahkan lebih banyak animasi Material.</item>
+        <item>Pengaturan baru untuk menyesuaikan tampilan dan nuansa.</item>
+        <item>Pengaturan baru untuk membersihkan cache.</item>
+    </string-array>
+    <string-array name="changelog_020_improvements">
+        <item>Desain ulang total antarmuka pengguna.</item>
+        <item>Desain ulang total pemutar.</item>
+        <item>Peningkatan performa di perpustakaan.</item>
+        <item>Peningkatan kecepatan memulai aplikasi.</item>
+        <item>AI kini memberikan hasil yang lebih baik.</item>
+    </string-array>
+    <string-array name="changelog_020_fixes">
+        <item>Memperbaiki berbagai bug di editor tag.</item>
+        <item>Memperbaiki bug di mana notifikasi pemutaran tidak hilang.</item>
+        <item>Memperbaiki beberapa bug yang menyebabkan aplikasi mogok (crash).</item>
+    </string-array>
+    <string-array name="changelog_030_whats_new">
+        <item>Menghadirkan pusat statistik mendengarkan yang lebih lengkap dengan wawasan lebih dalam tentang sesi Anda.</item>
+        <item>Meluncurkan pemutar cepat mengambang untuk membuka dan mempratinjau file lokal secara instan.</item>
+        <item>Menambahkan tab folder dengan navigator bergaya pohon dan tampilan siap playlist.</item>
+    </string-array>
+    <string-array name="changelog_030_improvements">
+        <item>Menyempurnakan UI Material 3 secara menyeluruh untuk pengalaman yang lebih bersih dan kohesif.</item>
+        <item>Pengeditan metadata kini mendukung penggantian sampul album.</item>
+        <item>Memperhalus animasi dan transisi di seluruh aplikasi untuk navigasi yang lebih lancar.</item>
+        <item>Meningkatkan tata letak layar artis dengan detail yang lebih kaya dan polesan.</item>
+        <item>Meningkatkan pembuatan DailyMix dan YourMix dengan pilihan yang lebih cerdas dan beragam.</item>
+        <item>Memperkuat pembuatan playlist AI.</item>
+        <item>Meningkatkan relevansi dan tampilan pencarian untuk penemuan yang lebih cepat.</item>
+        <item>Memperluas dukungan untuk lebih banyak format file audio.</item>
+    </string-array>
+    <string-array name="changelog_030_fixes">
+        <item>Mengatasi masalah metadata agar detail lagu tetap akurat di mana pun.</item>
+        <item>Memulihkan pintasan notifikasi agar dapat kembali ke pemutaran dengan andal.</item>
+    </string-array>
+    <string-array name="changelog_040_improvements">
+        <item>Desain ulang navigasi besar-besaran</item>
+        <item>Penjelajah file baru untuk memilih direktori sumber</item>
+        <item>Fungsionalitas Konektivitas dan casting baru</item>
+        <item>Kontinuitas tanpa hambatan antar perangkat jarak jauh</item>
+        <item>Transisi tanpa jeda antar lagu</item>
+        <item>Kontrol crossfade</item>
+        <item>Fitur Transisi Kustom baru (khusus playlist)</item>
+        <item>Terus memutar setelah aplikasi ditutup</item>
+        <item>Optimasi UI</item>
+        <item>Fitur statistik yang ditingkatkan</item>
+        <item>Kontrol Antrean didesain ulang dengan lebih banyak fitur</item>
+        <item>Dukungan berbagai jenis file yang lebih baik untuk pemutaran dan pengeditan metadata</item>
+        <item>Pengontrol izin yang ditingkatkan</item>
+        <item>Perbaikan bug kecil</item>
+    </string-array>
+    <string-array name="changelog_050_improvements">
+        <item>Pembaruan UI Ekspresif Material 3</item>
+        <item>Equalizer 10-band &amp; Efek</item>
+        <item>Alur Sinkronisasi Perpustakaan Baru</item>
+        <item>Integrasi AI (Model Gemini)</item>
+        <item>Impor/Ekspor Playlist M3U</item>
+        <item>Integrasi Karya Seni Artis Deezer</item>
+        <item>Sampul Playlist Kustom</item>
+        <item>Refaktor Arsitektur Pengaturan</item>
+        <item>Animasi Antrean &amp; Pemutar</item>
+        <item>Profil Baseline &amp; Performa</item>
+        <item>Sistem Lirik Lebih Baik dengan Offset Sinkronisasi</item>
+    </string-array>
+    <string-array name="changelog_050_fixes">
+        <item>Peningkatan Stabilitas Casting</item>
+        <item>Stabilitas Lembar Pemutar</item>
+        <item>Perbaikan Bug Umum &amp; Pembersihan</item>
+    </string-array>
+    <string-array name="changelog_060_whats_new">
+        <item>Dukungan Android Auto kini tersedia untuk pemutaran di dalam mobil.</item>
+        <item>Dukungan Wear OS telah aktif, termasuk kontrol pemutaran dari jam tangan ke ponsel yang lebih baik.</item>
+        <item>Integrasi cloud diperluas dengan peningkatan Telegram, NetEase, QQ Music, dan Google Drive.</item>
+        <item>Lagu yang Baru Diputar dan pemulihan antrean yang persisten menjaga sesi mendengarkan Anda tetap siap.</item>
+        <item>Backup &amp; Restore v3 dan alat manajemen akun kini disertakan.</item>
+        <item>Lirik menjadi lebih cerdas dengan pencarian manual cadangan dan peningkatan penyimpanan.</item>
+    </string-array>
+    <string-array name="changelog_060_improvements">
+        <item>Peningkatan performa besar-besaran di startup, perpustakaan, antrean, dan interaksi pemutar.</item>
+        <item>Tampilan Pemutar, Cast, Lirik, Artis, dan Genre didesain ulang agar lebih lancar digunakan.</item>
+        <item>Alur navigasi dan pencarian lebih andal dengan penanganan rute yang lebih aman.</item>
+        <item>Kompatibilitas pemutaran audio ditingkatkan untuk lebih banyak perangkat dan format.</item>
+        <item>Alur kerja pemilihan ganda diperluas ke lagu, album, dan playlist.</item>
+    </string-array>
+    <string-array name="changelog_060_fixes">
+        <item>Perilaku antrean dan acak kini lebih stabil dan dapat diprediksi.</item>
+        <item>Beberapa kasus tepi pemutaran latar belakang dan casting telah diperbaiki.</item>
+        <item>Masalah crash Sleep Timer, navigasi tab File, dan artis album telah diperbaiki.</item>
+        <item>Pemuatan widget dan stabilitas layanan ditingkatkan untuk mengurangi masalah panas berlebih/memori.</item>
+        <item>Perbaikan bug umum dan polesan UI di seluruh aplikasi.</item>
+    </string-array>
+    <string-array name="changelog_070_whats_new">
+        <item>Wear OS: Transfer musik, pemutaran lokal, sinkronisasi antrean, dan kontrol jarak jauh dari jam tangan.</item>
+        <item>AI: Integrasi Groq AI dan OpenRouter (eksperimental) dengan optimasi token.</item>
+        <item>Cloud: Dukungan Jellyfin ditambahkan.</item>
+        <item>Lirik: Terjemahan tersinkronisasi dengan sakelar khusus, dukungan format LRC Kugou, kustomisasi perataan teks, dan pemuatan jarak jauh yang lebih baik.</item>
+        <item>UI/UX: Mode bilah navigasi ringkas, tema dinamis dari palet sampul album, marquee untuk judul panjang, dan opsi pengurutan baru.</item>
+        <item>Telegram: Dukungan topik asli dan mode tampilan yang ditingkatkan.</item>
+    </string-array>
+    <string-array name="changelog_070_improvements">
+        <item>Mesin Audio: Perombakan total dengan dukungan lebih banyak format (MIDI, ALAC, M4A) dan optimasi decoder.</item>
+        <item>Efisiensi: Pengurangan konsumsi energi drastis, perbaikan panas berlebih, dan optimasi tugas latar belakang (SyncWorker).</item>
+        <item>Database: Optimasi kueri besar-besaran dan cache sampul album yang didesain ulang untuk mencegah kehilangan data.</item>
+        <item>Startup: Waktu pemuatan ditingkatkan melalui optimasi Baseline Profile.</item>
+    </string-array>
+    <string-array name="changelog_070_fixes">
+        <item>Pemutaran: Memperbaiki patah-patah di Opus/MP3, kesalahan ReplayGain saat crossfade, dan masalah startup pada decoder Samsung.</item>
+        <item>Stabilitas: Menghilangkan crash saat startup, navigasi artis, dan perangkat Android 12+.</item>
+        <item>UI: Memperbaiki kedipan sampul album, teks meluap pada aksara non-Latin, dan perilaku bilah navigasi/miniplayer.</item>
+        <item>Keamanan: Memperkuat penanganan kredensial, izin penyimpanan, dan komunikasi server media.</item>
+    </string-array>
+    <string-array name="changelog_070_added">
+        <item>Lokalisasi: Spanyol, Prancis, Rusia, Tionghoa Sederhana, Indonesia, Italia</item>
+    </string-array>
+    <string-array name="changelog_075_whats_new">
+        <item>Integrasi Google Drive dengan manajemen siklus hidup pemutar.</item>
+        <item>Pengeditan metadata lagu secara massal (tag dan sampul album).</item>
+        <item>Terjemahan lirik AI dengan preferensi Wear OS yang dapat disesuaikan.</item>
+        <item>Alat diagnostik lag dan pemilihan ganda di layar Pencarian.</item>
+        <item>Dukungan bahasa Arab &amp; Turki, dengan opsi URL http jaringan lokal yang dilokalkan.</item>
+    </string-array>
+    <string-array name="changelog_075_improvements">
+        <item>Penghematan baterai drastis (audio offload dan gerbang polling UI).</item>
+        <item>Manajemen antrean yang dioptimalkan (penyisipan lebih cepat dan pengindeksan eksplisit).</item>
+        <item>Animasi gerak Ekspresif Material 3 untuk layar transisi.</item>
+        <item>Sinkronisasi perpustakaan direfaktorkan melalui pemindaian yang dibatasi.</item>
+    </string-array>
+    <string-array name="changelog_075_fixes">
+        <item>Mengatasi lag pemutaran patah-patah/meloncat dan masalah buffering.</item>
+        <item>Memperbaiki sinkronisasi penghapusan lagu eksternal dan konsistensi metadata.</item>
+        <item>Memperbaiki masalah memori, crash, dan gangguan tata letak di Wear OS dan ponsel.</item>
+    </string-array>
+</resources>

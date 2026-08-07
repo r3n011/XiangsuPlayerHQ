@@ -37,8 +37,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.media3.common.Timeline
+import com.theveloper.pixelplay.data.netease.DailyRecommendSong
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.netease.PersonalFmApi
+import com.theveloper.pixelplay.data.netease.PersonalFmSongDetail
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
@@ -86,6 +88,7 @@ import com.theveloper.pixelplay.data.service.player.CastPlayer
 import com.theveloper.pixelplay.data.service.http.MediaFileHttpServerService
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
 import com.theveloper.pixelplay.data.worker.SyncManager
+import com.theveloper.pixelplay.presentation.model.collectRecentlyPlayedSongIds
 import com.theveloper.pixelplay.utils.AppShortcutManager
 import com.theveloper.pixelplay.utils.ValidatedLyricsImport
 import com.theveloper.pixelplay.utils.QueueUtils
@@ -289,6 +292,7 @@ class PlayerViewModel @Inject constructor(
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
     private val neteaseRepository: com.theveloper.pixelplay.data.netease.NeteaseRepository,
     val personalFmApi: com.theveloper.pixelplay.data.netease.PersonalFmApi,
+    private val neteaseRecommendApi: com.theveloper.pixelplay.data.netease.NeteaseRecommendApi,
     private val bluetoothLyricsManager: com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager,
     private val dotImageRepositoryProvider: Lazy<com.theveloper.pixelplay.data.repository.DotImageRepository>,
     private val neteaseDownloadService: com.theveloper.pixelplay.data.service.http.NeteaseDownloadService,
@@ -302,6 +306,40 @@ class PlayerViewModel @Inject constructor(
         get() = neteaseRepository.userId
     val isNeteaseLoggedIn: Boolean
         get() = neteaseRepository.isLoggedIn
+    val neteaseLoggedInFlow: StateFlow<Boolean>
+        get() = neteaseRepository.isLoggedInFlow
+
+    // ─── 网易云每日推荐 ──────────────────────────────────────────────────
+    private val _dailyRecommendState =
+        MutableStateFlow<DailyRecommendUiState>(DailyRecommendUiState.Hidden)
+    val dailyRecommendState: StateFlow<DailyRecommendUiState> = _dailyRecommendState.asStateFlow()
+
+    // 每日推荐播放时批量解析播放链接的进度（与搜索页"获取播放链接"动画一致）
+    private val _dailyResolveProgress = MutableStateFlow<Float?>(null)
+    val dailyResolveProgress: StateFlow<Float?> = _dailyResolveProgress.asStateFlow()
+    private val _dailyResolveLabel = MutableStateFlow<String?>(null)
+    val dailyResolveLabel: StateFlow<String?> = _dailyResolveLabel.asStateFlow()
+
+    // ⚡ 当前正在逐首解析播放链接的每日推荐歌曲 id：
+    // 在每日推荐列表的歌曲标题右侧显示"获取播放链接…"加载提示（与搜索页 loadingSongId 一致）
+    private val _dailyResolvingSongId = MutableStateFlow<String?>(null)
+    val dailyResolvingSongId: StateFlow<String?> = _dailyResolvingSongId.asStateFlow()
+
+    // ⚡ 每日推荐逐首懒加载状态（听那首加载哪首）：
+    // dailyQueueDetails: songId -> 网易云歌曲详情（用于解析播放链接）
+    // dailyResolvedSongIds: 已解析出真实播放 URL 的 songId
+    // dailyResolveJobs: 正在解析中的 songId（防止并发重复解析）
+    private val dailyQueueDetails = java.util.concurrent.ConcurrentHashMap<String, PersonalFmSongDetail>()
+    private val dailyResolvedSongIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val dailyResolveJobs = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    /** 上一次每日推荐解析失败的时间戳：连续失败时放慢跳过节奏，避免"马上一首一首跳到最后一首" */
+    private var lastDailyResolveFailureAtMs = 0L
+
+    /** 已加载的每日推荐日期（yyyy-MM-dd），跨天自动失效重新拉取 */
+    private var loadedDailyRecommendDate: String? = null
+
+    /** 漫游歌曲 URL 失效连续重试次数（songId -> count），超过上限顺延下一首 */
+    private val roamingErrorRetryCounts = mutableMapOf<String, Int>()
 
     // ─── 下载进度相关 ────────────────────────────────────────────────────
     val downloads: StateFlow<List<com.theveloper.pixelplay.data.service.http.MusicDownloadService.DownloadInfo>>
@@ -1428,17 +1466,23 @@ class PlayerViewModel @Inject constructor(
 
     val libraryTabsFlow: StateFlow<List<String>> = userPreferencesRepository.libraryTabsOrderFlow
         .map { orderJson ->
-            if (orderJson != null) {
+            val stored = if (orderJson != null) {
                 try {
                     Json.decodeFromString<List<String>>(orderJson)
                 } catch (e: Exception) {
-                    listOf("SONGS", "ALBUMS", "ARTIST", "PLAYLISTS", "FOLDERS", "LIKED")
+                    defaultLibraryTabKeys
                 }
             } else {
-                listOf("SONGS", "ALBUMS", "ARTIST", "PLAYLISTS", "FOLDERS", "LIKED")
+                defaultLibraryTabKeys
             }
+            // 历史 tab 始终展示：老用户已保存的 tab 顺序若缺少 HISTORY 则自动追加到末尾。
+            if ("HISTORY" in stored) stored else stored + "HISTORY"
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("SONGS", "ALBUMS", "ARTIST", "PLAYLISTS", "FOLDERS", "LIKED"))
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            defaultLibraryTabKeys + "HISTORY"
+        )
 
     private val _loadedTabs = MutableStateFlow(emptySet<String>())
     private var lastBlockedDirectories: Set<String>? = null
@@ -1460,6 +1504,7 @@ class PlayerViewModel @Inject constructor(
                     LibraryTabId.PLAYLISTS -> SortOption.PLAYLISTS
                     LibraryTabId.FOLDERS -> SortOption.FOLDERS
                     LibraryTabId.LIKED -> SortOption.LIKED
+                    LibraryTabId.HISTORY -> emptyList()
                 }
             } finally {
                 Trace.endSection()
@@ -1874,6 +1919,27 @@ class PlayerViewModel @Inject constructor(
 
     fun shuffleFavoriteSongs() =
         queueStateHolder.shuffleFavorites(shufflePlaybackCallbacks())
+
+    /**
+     * 媒体库「历史」tab 的随机播放：取最近播放歌曲（去重、按时间倒序）随机播放。
+     */
+    fun shuffleHistorySongs() {
+        val historySongIds = collectRecentlyPlayedSongIds(
+            playbackHistory = playbackHistory.value,
+            maxItems = MAX_PLAYBACK_HISTORY_LIMIT
+        )
+        if (historySongIds.isEmpty()) return
+        viewModelScope.launch {
+            val songs = observeSongs(historySongIds).first()
+            if (songs.isNotEmpty()) {
+                playSongsShuffled(
+                    songsToPlay = songs,
+                    queueName = "History (Shuffled)",
+                    startAtZero = true
+                )
+            }
+        }
+    }
 
     fun shuffleRandomAlbum() =
         queueStateHolder.shuffleRandomAlbum(shufflePlaybackCallbacks())
@@ -3266,7 +3332,25 @@ class PlayerViewModel @Inject constructor(
         metadataProbeJob?.cancel()
         metadataProbeJob = null
         metadataProbeMediaId = null
-        _playbackAudioMetadata.value = PlaybackAudioMetadata(mediaId = mediaId)
+        // 用歌曲自身已知的真实格式预填（本地文件由 MediaStore 扫描提供 FLAC/WAV/APE 等 MIME），
+        // 避免播放开始瞬间 ExoPlayer 尚未就绪时出现"猜测的 MP3"标签一闪而过。
+        // 注意：只在歌曲明确是高保真格式时才预填；在线歌曲（如漫游/每日推荐）Song.mimeType
+        // 写死为 audio/mpeg，忽略预填，交给 ExoPlayer/probe 探测真实格式。
+        val currentSong = playbackStateHolder.stablePlayerState.value.currentSong
+        val knownHiFiMime = currentSong?.mimeType?.takeIf { mime ->
+            mime.contains("flac", ignoreCase = true) || mime.contains("wav", ignoreCase = true) ||
+                mime.contains("ape", ignoreCase = true) || mime.contains("ogg", ignoreCase = true) ||
+                mime.contains("aac", ignoreCase = true) || mime.contains("opus", ignoreCase = true) ||
+                mime.contains("m4a", ignoreCase = true) || mime.contains("alac", ignoreCase = true) ||
+                mime.contains("dsf", ignoreCase = true) || mime.contains("dff", ignoreCase = true) ||
+                mime.contains("dsd", ignoreCase = true)
+        }
+        _playbackAudioMetadata.value = PlaybackAudioMetadata(
+            mediaId = mediaId,
+            mimeType = knownHiFiMime,
+            bitrate = if (knownHiFiMime != null) currentSong?.bitrate?.takeIf { it > 0 } else null,
+            sampleRate = if (knownHiFiMime != null) currentSong?.sampleRate?.takeIf { it > 0 } else null
+        )
     }
 
     private fun extractBitDepthFromPcmEncoding(pcmEncoding: Int): Int? {
@@ -3314,6 +3398,12 @@ class PlayerViewModel @Inject constructor(
         previousLabel: String?
     ): String? = when {
         rawLabel.isNullOrBlank() -> previousLabel
+        // ⚡ 格式回退保护：新标签来自 MP3 猜测（mimeType=audio/mpeg）而此前已确定
+        // 更高保真格式（FLAC/WAV/APE 等，标签中含非 MP3 格式名）时，不降级覆盖。
+        metadata.mimeType?.contains("mpeg", ignoreCase = true) == true &&
+            !previousLabel.isNullOrBlank() &&
+            !previousLabel.contains("MP3", ignoreCase = true) &&
+            Regex("[A-Z]{2,}").containsMatchIn(previousLabel) -> previousLabel
         metadata.bitrate != null || metadata.sampleRate != null -> rawLabel
         previousLabel == null -> rawLabel
         else -> previousLabel
@@ -3600,7 +3690,18 @@ class PlayerViewModel @Inject constructor(
                     (head[2].toInt() and 0xFF) == 0x61 && (head[3].toInt() and 0xFF) == 0x43 -> "audio/flac"
                 (head[0].toInt() and 0xFF) == 0x52 && (head[1].toInt() and 0xFF) == 0x49 &&
                     (head[2].toInt() and 0xFF) == 0x46 && (head[3].toInt() and 0xFF) == 0x46 -> "audio/wav"
+                head.size >= 4 && (head[0].toInt() and 0xFF) == 0x4F && (head[1].toInt() and 0xFF) == 0x67 &&
+                    (head[2].toInt() and 0xFF) == 0x67 && (head[3].toInt() and 0xFF) == 0x53 -> "audio/ogg"
+                head.size >= 4 && (head[0].toInt() and 0xFF) == 0x1A && (head[1].toInt() and 0xFF) == 0x45 &&
+                    (head[2].toInt() and 0xFF) == 0xDF && (head[3].toInt() and 0xFF) == 0xA3 -> "video/x-matroska"
                 else -> null
+            }
+
+            // ⚡ 高保真格式一旦被精确识别，直接返回，不再做 MP3 帧扫描。
+            // FLAC/WAV/Ogg 等二进制数据中可能包含看似 MP3 帧头的伪同步字（FF Ex），
+            // 若继续扫描会把真实格式误判为 MP3，导致音质标签闪成 MP3。
+            if (sniffedMime != null) {
+                return StreamProbeInfo(sniffedMime, totalBytes, null, null)
             }
 
             // 跳过 ID3v2 标签头（其内部数据可能包含伪帧同步字）
@@ -4279,6 +4380,24 @@ class PlayerViewModel @Inject constructor(
                     }
                     startProgressUpdates()
                 }
+                // ⚡ 播放完成（单曲 / 队列末尾）自动暂停：
+                // playUrl / playStreaming 播完单曲后 ExoPlayer 进入 STATE_ENDED，但 playWhenReady
+                // 仍为 true，播放器会在无内容可播的状态下继续尝试推进，进而触发网络/代理错误，
+                // 最终走到 onMediaItemTransition(null) 清空 currentSong → mini player 消失。
+                // 队列末尾且无交叉淡入淡出进行中时，主动 pause() 并保留 currentSong。
+                if (playbackState == Player.STATE_ENDED) {
+                    if (!playerCtrl.hasNextMediaItem() && !dualPlayerEngine.isTransitionRunning()) {
+                        Log.w("PixelPlay_Debug", "  → ENDED: 队列末尾无下一曲，自动暂停（保留 currentSong 防止 mini player 消失）")
+                        playerCtrl.pause()
+                        playbackStateHolder.updateStablePlayerStateIfChanged {
+                            it.copy(
+                                isPlaying = false,
+                                playWhenReady = false
+                            )
+                        }
+                        stopProgressUpdates()
+                    }
+                }
                 if (playbackState == Player.STATE_IDLE && playerCtrl.mediaItemCount == 0) {
                     Log.w("PixelPlay_Debug", "  → IDLE+empty: 清空播放状态（保留 currentSong 防止竞态导致播放器消失）")
                     clearPreparingSongIfMatching()
@@ -4314,6 +4433,23 @@ class PlayerViewModel @Inject constructor(
                 val currentIndex = playerCtrl.currentMediaItemIndex
                 val currentPos = playerCtrl.currentPosition.coerceAtLeast(0L)
 
+                // ⚡ 同一首歌连续失败超过 2 次（URL 反复过期/版权失效）：不再重试，顺延下一首，
+                // 避免漫游播放"卡死"或反复重试导致的异常跳歌观感。
+                val retryCount = roamingErrorRetryCounts[currentSongId] ?: 0
+                roamingErrorRetryCounts[currentSongId] = retryCount + 1
+                if (retryCount >= 2) {
+                    Timber.w("RoamingError: giving up on '${currentSongObj.title}' after repeated failures, skipping to next")
+                    roamingErrorRetryCounts.remove(currentSongId)
+                    viewModelScope.launch {
+                        runCatching {
+                            playerCtrl.seekToNextMediaItem()
+                            playerCtrl.prepare()
+                            playerCtrl.play()
+                        }
+                    }
+                    return
+                }
+
                 Timber.w("RoamingError: playback failed for song=${currentSongObj.title}, attempting URL refresh")
                 viewModelScope.launch {
                     val neteaseId = currentSongObj.neteaseId
@@ -4348,9 +4484,19 @@ class PlayerViewModel @Inject constructor(
                     } catch (_: Throwable) { null }
 
                     if (newUrl.isNullOrBlank()) {
-                        Timber.w("RoamingError: URL refresh failed, giving up")
+                        Timber.w("RoamingError: URL refresh failed, skipping to next song")
+                        // ⚡ 刷新失败：顺延下一首，不再停死在失效歌曲上
+                        roamingErrorRetryCounts.remove(currentSongId)
+                        runCatching {
+                            playerCtrl.seekToNextMediaItem()
+                            playerCtrl.prepare()
+                            playerCtrl.play()
+                        }
                         return@launch
                     }
+
+                    // 刷新成功，重置失败计数
+                    roamingErrorRetryCounts.remove(currentSongId)
 
                     val updatedSong = currentSongObj.copy(path = newUrl, contentUriString = newUrl)
                     val newMediaItem = MediaItemBuilder.build(updatedSong)
@@ -4404,21 +4550,27 @@ class PlayerViewModel @Inject constructor(
                 }
                 Log.w("PixelPlay_Debug", "[onMediaItemTransition] mediaItem=${mediaItem?.mediaId?.take(8)}, reason=$reasonName")
 
-                // ⚡ 漫游模式下的重复歌曲检测：如果是自动切歌（AUTO），且新歌曲与刚播放的歌曲相同，则跳过
+                // ⚡ 漫游模式下的重复歌曲检测：如果是自动切歌（AUTO），
+                // 比较"队列中上一首歌"与"当前首歌"是否相同，相同则跳过当前首。
+                // 修复：不再使用 stablePlayerState.currentSong 作为"刚播完的歌"——
+                // playUrl/切歌流程会先更新 StablePlayerState 再 setMediaItem，transition
+                // 回调时 currentSong 可能已变成新歌，导致"上一首 == 当前首"误判、无故跳歌。
                 if (_isRoamingMode.value && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && mediaItem != null) {
-                    val currentQueue = _playerUiState.value.currentPlaybackQueue
-                    val justPlayedSong = stablePlayerState.value.currentSong
-                    if (justPlayedSong != null && currentQueue.isNotEmpty()) {
+                    val player = dualPlayerEngine.masterPlayer
+                    val currentIdx = player.currentMediaItemIndex
+                    if (currentIdx > 0) {
+                        val prevMedia = player.getMediaItemAt(currentIdx - 1)
+                        val currentQueue = _playerUiState.value.currentPlaybackQueue
+                        val prevSong = currentQueue.find { it.id == prevMedia.mediaId }
+                            ?: resolveSongFromMediaItem(prevMedia)
                         val newSong = currentQueue.find { it.id == mediaItem.mediaId }
                             ?: resolveSongFromMediaItem(mediaItem)
-                        if (newSong != null) {
-                            val justPlayedKey = "${justPlayedSong.title.trim().lowercase()}|${justPlayedSong.displayArtist.trim().lowercase()}"
+                        if (prevSong != null && newSong != null) {
+                            val prevKey = "${prevSong.title.trim().lowercase()}|${prevSong.displayArtist.trim().lowercase()}"
                             val newKey = "${newSong.title.trim().lowercase()}|${newSong.displayArtist.trim().lowercase()}"
-                            if (justPlayedKey == newKey && justPlayedKey.isNotBlank()) {
+                            if (prevKey == newKey && prevKey.isNotBlank()) {
                                 Timber.d("onMediaItemTransition: Auto-skip duplicate song '${newSong.title}' by '${newSong.displayArtist}' in roaming mode")
                                 // 找到接下来第一首不同的歌曲
-                                val player = dualPlayerEngine.masterPlayer
-                                val currentIdx = player.currentMediaItemIndex
                                 var targetIdx = currentIdx + 1
                                 var found = false
                                 val maxSkip = 3
@@ -4428,7 +4580,7 @@ class PlayerViewModel @Inject constructor(
                                     val nextSong = currentQueue.find { it.id == nextMedia.mediaId }
                                     if (nextSong != null) {
                                         val nextKey = "${nextSong.title.trim().lowercase()}|${nextSong.displayArtist.trim().lowercase()}"
-                                        if (nextKey != justPlayedKey) {
+                                        if (nextKey != prevKey) {
                                             found = true
                                             break
                                         } else {
@@ -4481,6 +4633,55 @@ class PlayerViewModel @Inject constructor(
                                 }
                             }
                         }
+                    }
+                }
+
+                // ⚡ 每日推荐逐首懒加载：切到尚未解析出真实 URL 的每日推荐歌曲时，
+                // 暂停并实时走落雪音质链解析（听那首加载哪首），与搜索页一致：解析成功才播放，失败则跳过该歌。
+                if (mediaItem != null && mediaItem.mediaId.startsWith("daily_") &&
+                    mediaItem.mediaId !in dailyResolvedSongIds
+                ) {
+                    val player = dualPlayerEngine.masterPlayer
+                    val songId = mediaItem.mediaId
+                    player.pause()
+                    if (dailyResolveJobs.add(songId)) {
+                        viewModelScope.launch {
+                            try {
+                                // 在列表歌曲标题右侧显示"获取播放链接…"（与搜索页一致）
+                                _dailyResolvingSongId.value = songId
+                                _dailyResolveProgress.value = 0.2f
+                                _dailyResolveLabel.value = "获取播放链接…"
+                                val queue = _playerUiState.value.currentPlaybackQueue
+                                val indexInQueue = queue.indexOfFirst { it.id == songId }
+                                val detail = dailyQueueDetails[songId]
+                                val url = if (detail != null) resolveDailySongUrl(detail) else null
+                                if (!url.isNullOrBlank()) {
+                                    applyDailyResolvedUrl(songId, url, indexInQueue, restartPlayback = true)
+                                } else {
+                                    Timber.w("DailyRecommend: resolve failed for '$songId', skipping")
+                                    // 解析失败：跳过该歌，继续下一首（会再次触发本拦截，逐首尝试）。
+                                    // ⚡ 防连跳：连续失败时放慢节奏（短暂停留），
+                                    // 避免"进入播放器后马上一首一首跳到最后一首"。
+                                    val now = SystemClock.elapsedRealtime()
+                                    if (now - lastDailyResolveFailureAtMs < 2000L) delay(1500L)
+                                    lastDailyResolveFailureAtMs = now
+                                    player.seekToNextMediaItem()
+                                    if (!player.playWhenReady) player.play()
+                                }
+                            } finally {
+                                if (_dailyResolvingSongId.value == songId) _dailyResolvingSongId.value = null
+                                dailyResolveJobs.remove(songId)
+                                _dailyResolveProgress.value = null
+                                _dailyResolveLabel.value = null
+                            }
+                        }
+                    }
+                } else if (mediaItem != null && mediaItem.mediaId.startsWith("daily_")) {
+                    // 已解析过的每日推荐歌曲：若因并发/重复 transition 被 pause，恢复播放
+                    // （占位 URL 也由 DualPlayerEngine 的 netease:// 兜底解析，不会空 URI 崩溃）
+                    val player = dualPlayerEngine.masterPlayer
+                    if (player.playbackState == Player.STATE_READY && !player.playWhenReady) {
+                        player.play()
                     }
                 }
 
@@ -4543,7 +4744,27 @@ class PlayerViewModel @Inject constructor(
                             Log.w("PixelPlay_Debug", "  → 250ms 后已有新歌曲，不解清理 (避免闪烁)")
                             return@launch
                         }
-                        Log.w("PixelPlay_Debug", "  → 250ms 后仍无歌曲，清空 state")
+                        Log.w("PixelPlay_Debug", "  → 250ms 后仍无歌曲，检查是否为自然播放完成")
+                        // ⚡ 自然播放完成（STATE_ENDED + 已暂停）：保留 currentSong，
+                        // 仅清空播放中的动态状态，避免"播放完 mini player 消失"。
+                        if (playerCtrl.playbackState == Player.STATE_ENDED && !playerCtrl.playWhenReady) {
+                            Log.w("PixelPlay_Debug", "  → 自然播放完成：保留 currentSong，仅清空动态状态")
+                            if (!isCastConnecting.value && !isRemotePlaybackActive.value) {
+                                lyricsStateHolder.cancelLoading()
+                                playbackStateHolder.updateStablePlayerStateIfChanged {
+                                    it.copy(
+                                        isPlaying = false,
+                                        playWhenReady = false,
+                                        lyrics = null,
+                                        isLoadingLyrics = false
+                                    )
+                                }
+                                playbackStateHolder.clearCurrentPositionHints()
+                                resetPlaybackAudioMetadata()
+                            }
+                            return@launch
+                        }
+                        Log.w("PixelPlay_Debug", "  → 非自然完成，清空 state")
                         if (!isCastConnecting.value && !isRemotePlaybackActive.value) {
                             lyricsStateHolder.cancelLoading()
                             playbackStateHolder.updateStablePlayerStateIfChanged {
@@ -5047,7 +5268,8 @@ class PlayerViewModel @Inject constructor(
             scheme != "navidrome" &&
             scheme != "jellyfin" &&
             scheme != "gdrive" &&
-            scheme != "cloud"
+            scheme != "cloud" &&
+            scheme != "bilibili"
         ) {
             return mediaItem
         }
@@ -5887,6 +6109,11 @@ class PlayerViewModel @Inject constructor(
                     if (controller.playbackState == Player.STATE_IDLE && controller.mediaItemCount > 0) {
                         controller.prepare()
                     }
+                    // ⚡ 播放完成（ENDED + 已自动暂停）后再次点击播放：从头恢复
+                    if (controller.playbackState == Player.STATE_ENDED) {
+                        controller.seekTo(0L)
+                        controller.prepare()
+                    }
                     controller.play()
                 }
             }
@@ -6048,10 +6275,319 @@ class PlayerViewModel @Inject constructor(
 
     // ─── 漫游模式方法 ───────────────────────────────────────────────────
     companion object {
+        // 播放历史上限（与 PlaybackStatsRepository.MAX_PLAYBACK_HISTORY_LIMIT 保持一致）
+        private const val MAX_PLAYBACK_HISTORY_LIMIT = 5_000
+
+        // 媒体库默认 tab 顺序（历史 tab 会始终追加展示）
+        private val defaultLibraryTabKeys =
+            listOf("SONGS", "ALBUMS", "ARTIST", "PLAYLISTS", "FOLDERS", "LIKED")
+
         // 初始加载：1 首正在播放 + 4 首预加载 = 5 首
         private const val ROAMING_PRELOAD_COUNT = 5
         // 备用批量加载：剩余歌曲少于此数时触发（主要用于快速切歌场景）
         private const val ROAMING_REFRESH_THRESHOLD = 2
+    }
+
+    // ─── 网易云每日推荐 ────────────────────────────────────────────────────
+
+    /** 今日日期（yyyy-MM-dd），用于每日推荐跨天失效判断 */
+    private fun todayDateString(): String {
+        val cal = java.util.Calendar.getInstance()
+        return String.format(
+            java.util.Locale.US,
+            "%04d-%02d-%02d",
+            cal.get(java.util.Calendar.YEAR),
+            cal.get(java.util.Calendar.MONTH) + 1,
+            cal.get(java.util.Calendar.DAY_OF_MONTH)
+        )
+    }
+
+    /**
+     * 刷新网易云每日推荐（仅登录后有效；同一天不会重复请求）。
+     * 媒体库播放列表 tab 每次进入时调用即可，跨天后自动重新拉取。
+     *
+     * @param force 强制重新拉取（忽略当天缓存）
+     */
+    fun refreshDailyRecommend(force: Boolean = false) {
+        if (!neteaseRepository.isLoggedIn) {
+            _dailyRecommendState.value = DailyRecommendUiState.Hidden
+            return
+        }
+        val today = todayDateString()
+        val current = _dailyRecommendState.value
+        if (!force && loadedDailyRecommendDate == today && current is DailyRecommendUiState.Ready) {
+            return
+        }
+        viewModelScope.launch {
+            _dailyRecommendState.value = DailyRecommendUiState.Loading
+            val cookie = neteaseRepository.getCookieString()
+            val result = neteaseRecommendApi.fetchTodayDailyRecommend(cookie)
+            result.onSuccess { daily ->
+                loadedDailyRecommendDate = daily.date.ifBlank { today }
+                _dailyRecommendState.value = DailyRecommendUiState.Ready(
+                    date = daily.date,
+                    songs = daily.songs,
+                    reasons = daily.songs.associate { it.song.id to it.reason }
+                )
+                Timber.d("dailyRecommend: loaded ${daily.songs.size} songs for ${daily.date}")
+            }.onFailure { e ->
+                Timber.e(e, "dailyRecommend: refresh failed")
+                _dailyRecommendState.value = DailyRecommendUiState.Error(
+                    message = e.message ?: "获取每日推荐失败"
+                )
+            }
+        }
+    }
+
+    /**
+     * 播放每日推荐歌曲：解析每首歌的播放地址（落雪音源优先、网易云官方兜底），
+     * 过滤无地址的歌曲后按推荐顺序入队播放，并打开全屏播放器。
+     */
+    fun playDailyRecommend(startIndex: Int = 0, shuffled: Boolean = false) {
+        val state = _dailyRecommendState.value
+        val dailySongs = (state as? DailyRecommendUiState.Ready)?.songs ?: return
+        if (dailySongs.isEmpty()) return
+
+        viewModelScope.launch {
+            cancelPendingFullQueuePlayback()
+            dualPlayerEngine.cancelNext()
+
+            val cookie = neteaseRepository.getCookieString()
+            if (cookie.isBlank()) {
+                _toastEvents.emit("网易云登录已失效，请重新登录")
+                return@launch
+            }
+
+            Timber.d("playDailyRecommend: lazy-resolving ${dailySongs.size} songs")
+
+            // ⚡ 逐首懒加载：不再批量解析全部 URL。
+            // 所有歌曲先以 netease:// 占位入队（engine 兜底，避免空 URI 崩溃），
+            // 播放到哪首才实时解析哪首（听那首加载哪首），与搜索页一致：落雪音质链解析成功才播放。
+            dailyQueueDetails.clear()
+            dailyResolvedSongIds.clear()
+            dailyResolveJobs.clear()
+
+            val orderedSongs = if (shuffled) dailySongs.shuffled() else dailySongs
+            val playStartIndex = if (shuffled) 0 else startIndex.coerceIn(0, orderedSongs.lastIndex)
+
+            val songsToPlay = orderedSongs.map { entry ->
+                buildDailySong(entry.song).also { dailyQueueDetails[it.id] = entry.song }
+            }.toMutableList()
+
+            // 逐首尝试解析启动歌曲（失败顺延下一首，解析成功才播放）
+            var resolvedStartIndex = -1
+            for (i in playStartIndex until songsToPlay.size) {
+                _dailyResolvingSongId.value = songsToPlay[i].id
+                _dailyResolveProgress.value = 0.2f
+                _dailyResolveLabel.value = "获取播放链接…（${i - playStartIndex + 1}/${songsToPlay.size}）"
+                val url = resolveDailySongUrl(orderedSongs[i].song)
+                if (!url.isNullOrBlank()) {
+                    songsToPlay[i] = songsToPlay[i].copy(path = url, contentUriString = url)
+                    dailyResolvedSongIds.add(songsToPlay[i].id)
+                    resolvedStartIndex = i
+                    break
+                }
+            }
+            _dailyResolvingSongId.value = null
+            _dailyResolveProgress.value = null
+            _dailyResolveLabel.value = null
+            if (resolvedStartIndex < 0) {
+                _toastEvents.emit("无法获取每日推荐歌曲播放地址")
+                return@launch
+            }
+
+            val startSong = songsToPlay[resolvedStartIndex]
+
+            // 先为第一首歌准备颜色方案（避免闪烁）
+            beginPreparingSong(startSong)
+
+            // 用标准 MediaItemBuilder 构建完整队列，一次性设置到 masterPlayer
+            val mediaItems = songsToPlay.map { song ->
+                com.theveloper.pixelplay.utils.MediaItemBuilder.build(song)
+            }
+
+            val playAction = {
+                val enginePlayer = dualPlayerEngine.masterPlayer
+                enginePlayer.setMediaItems(mediaItems, resolvedStartIndex, 0L)
+                enginePlayer.prepare()
+                enginePlayer.play()
+            }
+
+            // 如果 mediaController 已就绪，通过它播放（确保状态同步）
+            if (mediaController == null) {
+                pendingPlaybackAction = playAction
+            } else {
+                playAction()
+            }
+
+            // 更新所有状态持有者
+            _playerUiState.update {
+                it.copy(
+                    currentPlaybackQueue = songsToPlay.toPlaybackQueue(),
+                    currentQueueSourceName = "每日推荐",
+                    isLoadingInitialSongs = false
+                )
+            }
+            playbackStateHolder.updateStablePlayerState {
+                it.copy(
+                    currentSong = startSong,
+                    currentMediaItemIndex = resolvedStartIndex,
+                    isPlaying = true,
+                    playWhenReady = true,
+                    totalDuration = startSong.duration.coerceAtLeast(0L),
+                    lyrics = null,
+                    isLoadingLyrics = false
+                )
+            }
+            // ⚡ 与漫游模式同理：先同步设置 currentSong 会让后续 onMediaItemTransition
+            // 的歌词加载被 syncDisplayedMediaItemIfChanged 跳过，需显式加载第一首歌词。
+            loadLyricsForCurrentSong()
+
+            // ⚡ 预解析下一首（听那首加载哪首：当前播放期间后台解析下一首，切歌时无缝）
+            preloadNextDailySong(resolvedStartIndex, songsToPlay)
+
+            _isSheetVisible.value = true
+            _toastEvents.emit("正在播放每日推荐（${songsToPlay.size} 首）")
+        }
+    }
+
+    /**
+     * 构造每日推荐 Song：真实播放 URL 由逐首懒加载动态解析，未解析时以 netease:// 占位
+     * （DualPlayerEngine 能解析 netease:// 兜底，避免空 URI 导致 ExoPlayer 崩溃）。
+     */
+    private fun buildDailySong(detail: PersonalFmSongDetail): Song {
+        val placeholder = "netease://${detail.id}"
+        return Song(
+            id = "daily_${detail.id}",
+            title = detail.name,
+            artist = detail.artistString,
+            artistId = 0L,
+            artists = emptyList(),
+            album = detail.albumName,
+            albumId = 0L,
+            path = placeholder,
+            contentUriString = placeholder,
+            albumArtUriString = detail.albumPic.takeIf { it.isNotBlank() },
+            duration = detail.duration,
+            genre = null,
+            lyrics = null,
+            isFavorite = false,
+            trackNumber = 0,
+            discNumber = null,
+            year = 0,
+            dateAdded = System.currentTimeMillis(),
+            dateModified = 0L,
+            mimeType = null,
+            bitrate = null,
+            sampleRate = null,
+            telegramFileId = null,
+            telegramChatId = null,
+            neteaseId = detail.id,
+            gdriveFileId = null,
+            qqMusicMid = null,
+            navidromeId = null,
+            jellyfinId = null
+        )
+    }
+
+    /**
+     * 解析单首每日推荐歌曲播放 URL：优先走落雪引擎音质链（与搜索页一致），
+     * 落雪失败时用官方网易云接口兜底，最大限度避免"解析失败→链式跳歌"。
+     */
+    private suspend fun resolveDailySongUrl(detail: PersonalFmSongDetail): String? {
+        // 1. 落雪音质链优先（听那首加载哪首，与搜索页一致）
+        if (lxJsEngine.ready()) {
+            val songIdStr = detail.id.toString()
+            val songInfo = mapOf<String, Any?>(
+                "id" to songIdStr,
+                "vid" to songIdStr,
+                "songmid" to songIdStr,
+                "hash" to songIdStr,
+                "name" to detail.name,
+                "singer" to detail.artistString,
+                "artists" to detail.artistString,
+                "album" to detail.albumName,
+                "albumName" to detail.albumName,
+                "duration" to detail.duration,
+                "pic" to detail.albumPic,
+                "cover" to detail.albumPic
+            )
+            val lxUrl = try {
+                lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
+                    ?: lxJsEngine.getPlayUrl("wy", songInfo, "flac")
+                    ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
+                    ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
+            } catch (t: Throwable) {
+                Timber.w(t, "resolveDailySongUrl lx failed for ${detail.id}")
+                null
+            }
+            if (!lxUrl.isNullOrBlank()) return lxUrl
+        } else {
+            Timber.w("resolveDailySongUrl: lx engine not ready for ${detail.id}")
+        }
+
+        // 2. 落雪失败 → 官方网易云兜底（内部自带 hires→lossless→exhigh→… 阶梯回退），
+        // 避免解析失败被链式跳歌跳过（"进入播放器后马上一首一首跳到最后一首"）
+        return runCatching {
+            neteaseRepository.getSongUrl(detail.id, "hires").getOrNull()
+                ?: neteaseRepository.getSongUrl(detail.id, "lossless").getOrNull()
+        }.getOrNull()
+    }
+
+    /**
+     * 预解析每日推荐队列中"当前播放索引的下一首"（听那首加载哪首）。
+     * 解析成功后静默替换 MediaItem，不打断当前播放；若解析完成时用户已切到该首则无缝接管。
+     */
+    private fun preloadNextDailySong(currentIndex: Int, songsToPlay: List<Song>) {
+        val nextIndex = currentIndex + 1
+        if (nextIndex >= songsToPlay.size) return
+        val nextSong = songsToPlay[nextIndex]
+        if (nextSong.id in dailyResolvedSongIds) return
+        if (!dailyResolveJobs.add(nextSong.id)) return  // 已在解析中
+        val detail = dailyQueueDetails[nextSong.id] ?: return
+
+        viewModelScope.launch {
+            try {
+                // 在列表歌曲标题右侧显示"获取播放链接…"（与搜索页一致）
+                _dailyResolvingSongId.value = nextSong.id
+                val url = resolveDailySongUrl(detail)
+                if (!url.isNullOrBlank()) {
+                    applyDailyResolvedUrl(nextSong.id, url, nextIndex, restartPlayback = false)
+                }
+            } finally {
+                if (_dailyResolvingSongId.value == nextSong.id) _dailyResolvingSongId.value = null
+                dailyResolveJobs.remove(nextSong.id)
+            }
+        }
+    }
+
+    /**
+     * 将每日推荐歌曲的占位链接替换为真实播放 URL。
+     * @param restartPlayback true=当前正在播放这首（切歌拦截），替换后从头播放；false=后台预加载，只替换队列项
+     */
+    private fun applyDailyResolvedUrl(songId: String, url: String, indexInQueue: Int, restartPlayback: Boolean) {
+        val controller = mediaController ?: dualPlayerEngine.masterPlayer
+        val targetIndex = if (indexInQueue in 0 until controller.mediaItemCount) indexInQueue else controller.currentMediaItemIndex
+
+        // 更新 UI 队列中的 Song
+        _playerUiState.update {
+            it.copy(currentPlaybackQueue = it.currentPlaybackQueue.map { s ->
+                if (s.id == songId) s.copy(path = url, contentUriString = url) else s
+            }.toImmutableList())
+        }
+        dailyResolvedSongIds.add(songId)
+
+        val updatedSong = _playerUiState.value.currentPlaybackQueue.firstOrNull { it.id == songId } ?: return
+        val newMediaItem = com.theveloper.pixelplay.utils.MediaItemBuilder.build(updatedSong)
+        runCatching {
+            controller.replaceMediaItem(targetIndex, newMediaItem)
+            // 若当前正好播放到这首（用户已切过来/切歌拦截），从头播放真实链接
+            val isCurrent = controller.currentMediaItemIndex == targetIndex
+            if (restartPlayback || isCurrent) {
+                controller.seekTo(targetIndex, 0L)
+                controller.play()
+            }
+        }
     }
 
     /**
@@ -6091,7 +6627,7 @@ class PlayerViewModel @Inject constructor(
                 year = 0,
                 dateAdded = System.currentTimeMillis(),
                 dateModified = 0L,
-                mimeType = "audio/mpeg",
+                mimeType = null,
                 bitrate = null,
                 sampleRate = null,
                 telegramFileId = null,
@@ -6115,7 +6651,6 @@ class PlayerViewModel @Inject constructor(
             dualPlayerEngine.cancelNext()
 
             _isSheetVisible.value = true
-            _sheetState.value = PlayerSheetState.EXPANDED
 
             try {
                 val cookie = neteaseRepository.getCookieString()
@@ -6278,7 +6813,7 @@ class PlayerViewModel @Inject constructor(
                         year = 0,
                         dateAdded = System.currentTimeMillis(),
                         dateModified = 0L,
-                        mimeType = "audio/mpeg",
+                        mimeType = null,
                         bitrate = null,
                         sampleRate = null,
                         telegramFileId = null,
@@ -6358,6 +6893,11 @@ class PlayerViewModel @Inject constructor(
                         isLoadingLyrics = false
                     )
                 }
+                // ⚡ 修复"漫游第一首歌没有歌词"：这里先同步设置了 currentSong，
+                // 之后 MediaController 收到的 onMediaItemTransition 因 songId 与 index
+                // 均未变化会被 syncDisplayedMediaItemIfChanged 跳过（防重复重组），
+                // 导致第一首歌的歌词永远不会触发加载。因此必须显式加载一次。
+                loadLyricsForCurrentSong()
 
             } catch (t: Throwable) {
                 Timber.e(t, "startRoamingMode failed")
@@ -6692,7 +7232,7 @@ class PlayerViewModel @Inject constructor(
                         year = 0,
                         dateAdded = System.currentTimeMillis(),
                         dateModified = 0L,
-                        mimeType = "audio/mpeg",
+                        mimeType = null,
                         bitrate = null,
                         sampleRate = null,
                         telegramFileId = null,
@@ -7454,7 +7994,6 @@ class PlayerViewModel @Inject constructor(
             controller.play()
 
             _isSheetVisible.value = true
-            _sheetState.value = PlayerSheetState.EXPANDED
         }
     }
 
@@ -7590,4 +8129,24 @@ internal fun parsePersistedLyrics(rawLyrics: String?): Lyrics? {
     return parsedLyrics.takeIf {
         !it.synced.isNullOrEmpty() || !it.plain.isNullOrEmpty()
     }
+}
+
+// ─── 网易云每日推荐 UI 状态 ──────────────────────────────────────────────
+
+sealed interface DailyRecommendUiState {
+    /** 未登录或不可用：不展示每日推荐入口 */
+    data object Hidden : DailyRecommendUiState
+
+    /** 正在拉取每日推荐 */
+    data object Loading : DailyRecommendUiState
+
+    /** 每日推荐已就绪 */
+    data class Ready(
+        val date: String,
+        val songs: List<DailyRecommendSong>,
+        val reasons: Map<Long, String> = emptyMap()
+    ) : DailyRecommendUiState
+
+    /** 拉取失败 */
+    data class Error(val message: String) : DailyRecommendUiState
 }

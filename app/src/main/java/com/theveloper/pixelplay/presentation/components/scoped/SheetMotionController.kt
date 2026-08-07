@@ -3,6 +3,8 @@ package com.theveloper.pixelplay.presentation.components.scoped
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -77,11 +79,22 @@ internal class SheetMotionController(
         )
     }
 
+    /**
+     * 导航栏显示/隐藏（或窗口尺寸变化）导致折叠目标位置变化时调用。
+     * 之前用 snapTo 直接跳到新位置，mini player 会"硬切"。
+     * 改为带轻微回弹的弹簧动画，让 mini player 平滑滑到新位置，q 弹不突兀。
+     */
     suspend fun syncToExpansion(collapsedY: Float) {
         val adjustedY = collapsedY + (expandedY - collapsedY) * expansionFraction.value
         if (translationY.value == adjustedY && !translationY.isRunning) return
         mutex.mutate {
-            translationY.snapTo(adjustedY)
+            translationY.animateTo(
+                targetValue = adjustedY,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
         }
     }
 }

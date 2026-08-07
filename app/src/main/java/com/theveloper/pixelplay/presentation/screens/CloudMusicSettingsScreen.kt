@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -46,8 +45,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,6 +58,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -70,23 +69,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.R
-import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-@Composable
-private fun qualityLabel(quality: MusicQuality): String = when (quality) {
-    MusicQuality.HIRES -> stringResource(R.string.music_quality_hires)
-    MusicQuality.FLAC -> stringResource(R.string.music_quality_flac)
-    MusicQuality.HIGH -> stringResource(R.string.music_quality_high)
-    MusicQuality.STANDARD -> stringResource(R.string.music_quality_standard)
-}
 
 @Composable
 fun CloudMusicSettingsScreen(
@@ -107,7 +98,6 @@ fun CloudMusicSettingsScreen(
     }
 
     var showImportUrl by remember { mutableStateOf(false) }
-    var showQualityDialog by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
     var expandedScript by remember { mutableStateOf<String?>(null) }
 
@@ -124,6 +114,9 @@ fun CloudMusicSettingsScreen(
 
     val topBarHeight = remember { Animatable(maxTopBarHeightPx) }
     var collapseFraction by remember { mutableStateOf(0f) }
+
+    // ⚡ 音源临时开关状态（source -> enabled），用于每个脚本的音源管理开关
+    val sourceToggles by viewModel.sourceToggles.collectAsStateWithLifecycle()
 
     LaunchedEffect(topBarHeight.value) {
         collapseFraction = 1f - (
@@ -236,7 +229,10 @@ fun CloudMusicSettingsScreen(
                         if (state.engineReady && state.sources.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                "可用音源: ${state.sources.entries.joinToString(" · ") { it.value.name.ifBlank { it.key } }}",
+                                "可用音源: ${state.sources.entries.joinToString(" · ") {
+                                    val name = it.value.name.ifBlank { it.key }
+                                    if (sourceToggles[it.key] == false) "$name(关)" else name
+                                }}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -302,54 +298,6 @@ fun CloudMusicSettingsScreen(
                         Spacer(Modifier.width(6.dp))
                         Text("重新加载", style = MaterialTheme.typography.labelLarge)
                     }
-
-                    OutlinedButton(
-                        onClick = { showQualityDialog = true },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Rounded.MusicNote, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("播放音质", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-
-            item {
-                // 播放音质设置卡片
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showQualityDialog = true }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary)
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "播放音质",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                qualityLabel(state.musicQuality),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            Icons.Rounded.ChevronRight,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
 
@@ -408,6 +356,41 @@ fun CloudMusicSettingsScreen(
                                     maxLines = if (expandedScript == info.fileName) Int.MAX_VALUE else 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                            }
+
+                            // ⚡ 该脚本注册的音源列表：可临时单独开关每个音源（运行时生效）
+                            val instanceSrcs = viewModel.getInstanceSources(info.fileName)
+                            if (instanceSrcs.isNotEmpty()) {
+                                Spacer(Modifier.height(10.dp))
+                                instanceSrcs.forEach { (key, srcInfo) ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = srcInfo.name.ifBlank { key },
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            if (srcInfo.qualitys.isNotEmpty()) {
+                                                Text(
+                                                    text = srcInfo.qualitys.joinToString(" / "),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        Switch(
+                                            checked = sourceToggles[key] ?: true,
+                                            onCheckedChange = { viewModel.toggleSource(key, it) },
+                                            modifier = Modifier.scale(0.85f)
+                                        )
+                                    }
+                                }
                             }
 
                             if (info.author.isNotBlank() || info.homepage.isNotBlank() ||
@@ -487,9 +470,10 @@ fun CloudMusicSettingsScreen(
                         Text(
                             "1. 可同时导入多个 JS 音源文件（如聚合音源脚本），自动一起生效\n" +
                                 "2. 多个脚本注册同一音源时按加载顺序逐个尝试，直到拿到结果\n" +
-                                "3. 播放音质设置对所有在线音源生效（网易云、内置源、落雪脚本）\n" +
-                                "4. 点每个脚本的「查看简介」可查看作者、主页、更新时间等信息\n" +
-                                "5. 启动时会自动加载已导入的所有 JS 文件",
+                                "3. 每个脚本下方的音源开关可临时单独启用/禁用某个音源（运行时生效，重启恢复）\n" +
+                                "4. 播放音质设置对所有在线音源生效（网易云、内置源、落雪脚本）\n" +
+                                "5. 点每个脚本的「查看简介」可查看作者、主页、更新时间等信息\n" +
+                                "6. 启动时会自动加载已导入的所有 JS 文件",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -532,46 +516,6 @@ fun CloudMusicSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showImportUrl = false }) { Text("取消") }
-            }
-        )
-    }
-
-    if (showQualityDialog) {
-        AlertDialog(
-            icon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
-            title = { Text("播放音质") },
-            onDismissRequest = { showQualityDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showQualityDialog = false }) { Text("取消") }
-            },
-            text = {
-                Column {
-                    MusicQuality.entries.forEach { quality ->
-                        val label = qualityLabel(quality)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.setMusicQuality(quality)
-                                    showQualityDialog = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = state.musicQuality == quality,
-                                onClick = {
-                                    viewModel.setMusicQuality(quality)
-                                    showQualityDialog = false
-                                },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                            Text(label, modifier = Modifier.padding(start = 8.dp))
-                        }
-                    }
-                }
             }
         )
     }

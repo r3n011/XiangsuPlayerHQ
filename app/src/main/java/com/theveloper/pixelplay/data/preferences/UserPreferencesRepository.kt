@@ -72,6 +72,8 @@ enum class AlbumArtQuality(val maxSize: Int, val label: String) {
 }
 
 enum class MusicQuality(val lxValue: String, val neteaseLevel: String, val labelResId: Int) {
+    // lxValue 与内置音源脚本（全豆要）注册的 qualitys 约定保持一致：Hi-Res 为 "24bit"。
+    // 程序按脚本约定传值，脚本内部自行完成音质解析/降级，程序侧不擅自改脚本。
     HIRES("24bit", "hires", R.string.music_quality_hires),
     FLAC("flac", "lossless", R.string.music_quality_flac),
     HIGH("320k", "exhigh", R.string.music_quality_high),
@@ -1278,7 +1280,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
     }
 
     val useAnimatedLyricsFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.USE_ANIMATED_LYRICS] ?: false }
+        pref { it[PreferencesKeys.USE_ANIMATED_LYRICS] ?: true }
 
     suspend fun setUseAnimatedLyrics(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.USE_ANIMATED_LYRICS] = enabled }

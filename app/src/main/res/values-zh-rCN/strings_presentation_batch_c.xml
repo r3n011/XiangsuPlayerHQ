@@ -80,4 +80,14 @@
     <string name="lib_empty_folders_subtitle">包含音乐的内部存储文件夹将显示在这里。</string>
     <string name="lib_empty_playlists_title">暂无播放列表</string>
     <string name="lib_empty_playlists_subtitle">创建你的第一个播放列表以整理媒体库。</string>
+    <string name="lib_empty_history_title">暂无播放历史</string>
+    <string name="lib_empty_history_subtitle">你播放过的歌曲会显示在这里。</string>
+
+    <!-- Daily recommend (NetEase) -->
+    <string name="daily_recommend_title">每日推荐</string>
+    <string name="daily_recommend_subtitle">根据你的口味，每天更新</string>
+    <string name="daily_recommend_songs_count">今日 %1$d 首</string>
+    <string name="daily_recommend_error">每日推荐加载失败</string>
+    <string name="daily_recommend_retry">重试</string>
+    <string name="daily_recommend_play_cd">播放每日推荐</string>
 </resources>

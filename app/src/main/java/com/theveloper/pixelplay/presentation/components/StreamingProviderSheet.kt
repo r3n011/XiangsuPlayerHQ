@@ -108,7 +108,7 @@ fun StreamingProviderSheet(
                         iconPainter = painterResource(R.drawable.telegram),
                         iconTint = Color(0xFF2AABEE),
                         title = "Telegram",
-                        subtitle = "Stream from channels & chats",
+                        subtitle = stringResource(R.string.streaming_provider_telegram_subtitle),
                         shape = providerSegmentItemShape,
                         onClick = {
                             context.startActivity(Intent(context, TelegramLoginActivity::class.java))
@@ -120,7 +120,7 @@ fun StreamingProviderSheet(
                         iconPainter = painterResource(R.drawable.rounded_drive_export_24),
                         iconTint = Color(0xFF4285F4),
                         title = "Google Drive",
-                        subtitle = "Coming soon",
+                        subtitle = stringResource(R.string.streaming_provider_coming_soon),
                         shape = providerSegmentItemShape,
                         enabled = false,
                         onClick = { }
@@ -130,7 +130,11 @@ fun StreamingProviderSheet(
                         iconPainter = painterResource(R.drawable.ic_navidrome_md3),
                         iconTint = Color(0xFFE8A54B),
                         title = "Subsonic",
-                        subtitle = if (isNavidromeLoggedIn) "Connected · Navidrome/Airsonic" else "Connect Navidrome & others",
+                        subtitle = if (isNavidromeLoggedIn) {
+                            stringResource(R.string.streaming_provider_subsonic_connected)
+                        } else {
+                            stringResource(R.string.streaming_provider_subsonic_connect)
+                        },
                         shape = providerSegmentItemShape,
                         isConnected = isNavidromeLoggedIn,
                         onClick = {
@@ -147,7 +151,11 @@ fun StreamingProviderSheet(
                         iconPainter = painterResource(R.drawable.ic_jellyfin),
                         iconTint = Color(0xFF00A4DC),
                         title = "Jellyfin",
-                        subtitle = if (isJellyfinLoggedIn) "Connected" else "Connect your Jellyfin server",
+                        subtitle = if (isJellyfinLoggedIn) {
+                            stringResource(R.string.streaming_provider_connected)
+                        } else {
+                            stringResource(R.string.streaming_provider_jellyfin_connect)
+                        },
                         shape = providerSegmentItemShape,
                         isConnected = isJellyfinLoggedIn,
                         onClick = {
@@ -164,7 +172,11 @@ fun StreamingProviderSheet(
                         iconPainter = painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_),
                         iconTint = Color(0xFFE85959),
                         title = "Netease Music",
-                        subtitle = if (isNeteaseLoggedIn) "Connected" else "Sign in to stream",
+                        subtitle = if (isNeteaseLoggedIn) {
+                            stringResource(R.string.streaming_provider_connected)
+                        } else {
+                            stringResource(R.string.streaming_provider_sign_in_to_stream)
+                        },
                         shape = providerSegmentItemShape,
                         isConnected = isNeteaseLoggedIn,
                         onClick = {
@@ -181,7 +193,11 @@ fun StreamingProviderSheet(
                         iconPainter = painterResource(R.drawable.qq_music),
                         iconTint = Color(0xFF31C27C),
                         title = "QQ Music",
-                        subtitle = if (isQqMusicLoggedIn) "Connected" else "Sign in to stream",
+                        subtitle = if (isQqMusicLoggedIn) {
+                            stringResource(R.string.streaming_provider_connected)
+                        } else {
+                            stringResource(R.string.streaming_provider_sign_in_to_stream)
+                        },
                         shape = providerSegmentItemShape,
                         isConnected = isQqMusicLoggedIn,
                         onClick = {

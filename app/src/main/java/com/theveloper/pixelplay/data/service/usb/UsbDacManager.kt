@@ -11,6 +11,8 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -98,6 +100,21 @@ class UsbDacManager @Inject constructor(
             @Suppress("DEPRECATION")
             getParcelableExtra(name) as? T
         }
+
+    /**
+     * 将回调投递到主线程执行。
+     *
+     * USB 独占模式激活在 IO 线程完成，而调用方传入的 onResult 回调里
+     * 可能包含 Toast / UI 操作（只能在主线程执行），因此统一回主线程回调，
+     * 避免 "Can't toast on a thread that has not called Looper.prepare()" 崩溃。
+     */
+    private fun postOnMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            block()
+        } else {
+            Handler(Looper.getMainLooper()).post(block)
+        }
+    }
 
     /**
      * 注册权限结果接收器。
@@ -347,7 +364,9 @@ class UsbDacManager @Inject constructor(
 
         if (manager.hasPermission(device)) {
             CoroutineScope(Dispatchers.IO).launch {
-                onResult(activateExclusiveMode(deviceInfo))
+                val result = activateExclusiveMode(deviceInfo)
+                // 回调可能包含 Toast / UI 操作，必须回到主线程执行
+                postOnMain { onResult(result) }
             }
             return
         }
@@ -356,7 +375,9 @@ class UsbDacManager @Inject constructor(
             if (granted) {
                 Timber.i("$TAG: USB permission granted, activating exclusive mode")
                 CoroutineScope(Dispatchers.IO).launch {
-                    onResult(activateExclusiveMode(deviceInfo))
+                    val result = activateExclusiveMode(deviceInfo)
+                    // 回调可能包含 Toast / UI 操作，必须回到主线程执行
+                    postOnMain { onResult(result) }
                 }
             } else {
                 Timber.e("$TAG: USB permission denied for ${deviceInfo.deviceName}")

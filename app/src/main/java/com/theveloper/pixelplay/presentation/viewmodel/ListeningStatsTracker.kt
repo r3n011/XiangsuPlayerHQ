@@ -314,7 +314,7 @@ class ListeningStatsTracker @Inject constructor(
 
     companion object {
         private val MIN_SESSION_LISTEN_MS = TimeUnit.SECONDS.toMillis(5)
-        private const val MAX_INTERNAL_PLAYBACK_HISTORY_ITEMS = 500
+        private const val MAX_INTERNAL_PLAYBACK_HISTORY_ITEMS = 5_000
     }
 }
 

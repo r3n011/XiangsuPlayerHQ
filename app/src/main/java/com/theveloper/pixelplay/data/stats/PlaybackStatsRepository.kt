@@ -1093,7 +1093,7 @@ class PlaybackStatsRepository @Inject constructor(
     }
 
     companion object {
-        private const val DEFAULT_PLAYBACK_HISTORY_LIMIT = 500
+        private const val DEFAULT_PLAYBACK_HISTORY_LIMIT = 5_000
         private const val MAX_PLAYBACK_HISTORY_LIMIT = 5_000
         private const val MAX_FILE_UPDATE_RETRIES = 3
         private const val UNKNOWN_ARTIST = "Unknown Artist"

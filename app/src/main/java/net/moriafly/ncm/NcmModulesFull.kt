@@ -954,6 +954,11 @@ object NcmModulesFull {
         "/api/v1/discovery/recommend/history/detail",
         mapOf("date" to date)
     )
+    /** 官方每日推荐歌曲接口（当前推荐优先使用） */
+    suspend fun recommendSongs() = rawWeapi(
+        "/api/v3/discovery/recommend/songs",
+        emptyMap()
+    )
     suspend fun listenDataReport(type: Int, data: String) = rawWeapi(
         "/api/listen/data/report",
         mapOf("type" to type, "data" to data)

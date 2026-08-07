@@ -61,6 +61,7 @@
     <string name="tab_playlists">播放列表</string>
     <string name="tab_folders">文件夹</string>
     <string name="tab_liked">收藏</string>
+    <string name="tab_history">历史</string>
     <string name="setup_all_set_title">全部就绪！</string>
     <string name="setup_all_set_body">你已准备好享受音乐。</string>
     <string name="setup_restore_backup_title">恢复备份</string>

@@ -89,6 +89,7 @@ wavySlider = "2.2.0"
 workRuntimeKtx = "2.11.2"
 composeTesting = "1.0.0-alpha03"
 timber = "5.0.1"
+markwon = "4.6.2"
 generativeai = "0.9.0"
 mockk = "1.14.11"
 turbine = "1.2.1"
@@ -213,6 +214,7 @@ tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "te
 tensorflow-lite-select-tf-ops = { module = "org.tensorflow:tensorflow-lite-select-tf-ops", version.ref = "tensorflowLiteSelectTfOpsVersion" }
 tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
+markwon = { module = "io.noties.markwon:core", version.ref = "markwon" }
 wavy-slider = { module = "ir.mahozad.multiplatform:wavy-slider", version.ref = "wavySlider" }
 checker-qual = { group = "org.checkerframework", name = "checker-qual", version.ref = "checkerframework" }
 taglib = { group = "io.github.kyant0", name = "taglib", version.ref = "taglib" }

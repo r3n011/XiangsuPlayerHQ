@@ -117,8 +117,12 @@ class MusicDownloadService @Inject constructor(
     }
 
     fun isOnlineSong(song: Song): Boolean {
-        return song.neteaseId != null || song.qqMusicMid != null || song.navidromeId != null || 
-               song.gdriveFileId != null || song.telegramFileId != null
+        // 只要是在线源（有网易云/QQ/自建库等 ID，或播放地址是 http(s) URL）都算在线，
+        // 下载按钮对所有在线源歌曲显示
+        return song.neteaseId != null || song.qqMusicMid != null || song.navidromeId != null ||
+            song.gdriveFileId != null || song.telegramFileId != null ||
+            song.path?.startsWith("http", ignoreCase = true) == true ||
+            song.contentUriString?.startsWith("http", ignoreCase = true) == true
     }
 
     suspend fun downloadSong(song: Song, preferredUrl: String? = null): String? {

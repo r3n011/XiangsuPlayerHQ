@@ -175,6 +175,11 @@
     <string
         name="setcat_collage_pattern_desc"
     >Choose the shape arrangement for the Your Mix collage.</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
+    <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">Pixel Mosaic</string>
+    <string name="setcat_collage_pattern_stardust_scatter">Stardust Scatter</string>
     <string
         name="setcat_auto_rotate_patterns_title"
     >Auto-Rotate Patterns</string>

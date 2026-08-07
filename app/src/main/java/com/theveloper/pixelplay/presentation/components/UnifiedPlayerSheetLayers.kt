@@ -104,7 +104,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
         ) {
             val miniPlayerZIndex by remember {
                 derivedStateOf {
-                    if (playerContentExpansionFraction.value < 0.5f) 1f else 0f
+                    // 展开动画期间（fraction < 0.72）mini 内容仍在向上飞行，保持置顶不被 full 层盖住
+                    if (playerContentExpansionFraction.value < 0.72f) 1f else 0f
                 }
             }
             Box(
@@ -113,10 +114,14 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     .fillMaxWidth()
                     .height(MiniPlayerHeight)
                     .graphicsLayer {
-                        // Compute miniAlpha in the draw phase from the Animatable,
-                        // avoiding per-frame recomposition during gestures.
-                        alpha = (1f - playerContentExpansionFraction.value * 2f)
-                            .coerceIn(0f, 1f)
+                        // ⚡ 展开动画：封面/歌名/歌手不再原地直接淡出（旧逻辑 alpha=1-f*2，0.5 即消失），
+                        // 而是随展开进度逐渐向上移动到 full player 目标区域，途中轻微缩小，
+                        // 到约 0.75 才完全淡出，形成"内容逐渐移动到目标位置"的连续运动感。
+                        val f = playerContentExpansionFraction.value.coerceIn(0f, 1f)
+                        translationY = -f * 240f
+                        scaleX = lerp(1f, 0.94f, f)
+                        scaleY = lerp(1f, 0.94f, f)
+                        alpha = (1f - f * 1.34f).coerceIn(0f, 1f)
                     }
                     .layout { measurable, constraints ->
                         // 平滑过渡：宽度与偏移随展开进度连续变化，不再分段量化，
@@ -186,7 +191,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
 
             val fullPlayerZIndex by remember {
                 derivedStateOf {
-                    if (playerContentExpansionFraction.value < 0.5f) 0f else 1f
+                    // 与 mini 层同步：mini 内容飞行结束后（fraction >= 0.72）full 层才置顶
+                    if (playerContentExpansionFraction.value < 0.72f) 0f else 1f
                 }
             }
             val fullPlayerOffset by remember {
@@ -219,10 +225,12 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     .graphicsLayer {
                         // Read from FullPlayerVisualState lazy getters in the draw phase;
                         // these read Animatable.value internally → re-draw only, no recomposition.
-                        alpha = fullPlayerVisualState.contentAlpha
-                        translationY = fullPlayerVisualState.translationY
-                        scaleX = fullPlayerScale
-                        scaleY = fullPlayerScale
+                        val fpAlpha = fullPlayerVisualState.contentAlpha
+                        alpha = fpAlpha
+                        // ⚡ 展开动画：full 内容随展开进度从略小尺寸逐渐放大到目标尺寸进入，
+                        // 与 mini 内容（封面/歌名/歌手）向上飞行交接，形成连续放大接管
+                        scaleX = fullPlayerScale * lerp(0.96f, 1f, fpAlpha)
+                        scaleY = fullPlayerScale * lerp(0.96f, 1f, fpAlpha)
                     }
                     .zIndex(fullPlayerZIndex)
                     .offset { fullPlayerOffset }

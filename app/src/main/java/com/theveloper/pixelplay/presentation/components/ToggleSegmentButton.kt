@@ -24,6 +24,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -44,7 +47,11 @@ fun ToggleSegmentButton(
     activeCornerRadius: Dp = 8.dp,
     onClick: () -> Unit,
     iconId: Int,
-    contentDesc: String
+    contentDesc: String,
+    // ⚡ 背景填充进度（0~1）：>0 时在按钮背景上按比例从左到右填充（模仿 mini player 进度条），
+    // 不是改变按钮尺寸，而是绘制填充色
+    progressFill: Float = 0f,
+    progressFillColor: Color = activeContentColor.copy(alpha = 0.35f)
 ) {
     ToggleSegmentButtonContainer(
         modifier = modifier,
@@ -53,7 +60,9 @@ fun ToggleSegmentButton(
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
-        onClick = onClick
+        onClick = onClick,
+        progressFill = progressFill,
+        progressFillColor = progressFillColor
     ) {
         Icon(
             painter = painterResource(iconId),
@@ -182,6 +191,8 @@ private fun ToggleSegmentButtonContainer(
     inactiveColor: Color,
     activeCornerRadius: Dp,
     onClick: () -> Unit,
+    progressFill: Float = 0f,
+    progressFillColor: Color = Color.Transparent,
     content: @Composable () -> Unit
 ) {
     val targetBgColor = if (active) activeColor else inactiveColor
@@ -201,6 +212,20 @@ private fun ToggleSegmentButtonContainer(
             .fillMaxSize()
             .clip(RoundedCornerShape(cornerRadius))
             .background(bgColor)
+            // ⚡ 背景填充进度：模仿 mini player 进度条，在按钮背景上按比例从左到右填充，
+            // 不改变按钮尺寸（旧实现 fillMaxWidth(progress) 会直接拉伸进度区域，显示很怪）
+            .drawWithCache {
+                onDrawBehind {
+                    if (progressFill > 0f) {
+                        val fraction = progressFill.coerceIn(0f, 1f)
+                        drawRect(
+                            color = progressFillColor,
+                            topLeft = Offset.Zero,
+                            size = Size(size.width * fraction, size.height)
+                        )
+                    }
+                }
+            }
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

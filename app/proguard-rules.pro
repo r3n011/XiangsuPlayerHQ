@@ -1,7 +1,12 @@
 # =============================================================================
 # PixelPlayer ProGuard Rules
-# Version: 2.1
-# Last Updated: 2026-07-11
+# Version: 2.2
+# Last Updated: 2026-08-07
+#
+# 体积优化：移除包级全保留（-keep class X.** { *; }）规则。
+# AndroidX / 主流三方库均自带 consumer rules，R8 会自动保留反射所需部分，
+# 全 keep 只会关闭死代码裁剪导致 DEX 膨胀（此前 DEX 高达 32MB）。
+# 仅保留确有反射 / JNI / ServiceLoader 需求的精确规则。
 # =============================================================================
 
 # =============================================================================
@@ -73,42 +78,25 @@
 }
 
 # =============================================================================
-# 三、第三方库规则
+# 三、第三方库规则（仅保留确有反射 / JNI / ServiceLoader 需求的部分）
 # =============================================================================
 
-# AndroidX Core
--keep class androidx.core.** { *; }
--keep class androidx.lifecycle.** { *; }
-
-# Compose
--keep class androidx.compose.** { *; }
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.constraintlayout.compose.** { *; }
-
-# Media3
--keep class androidx.media3.** { *; }
-
-# Network
--keep class retrofit2.** { *; }
--keep class okhttp3.** { *; }
--dontwarn retrofit2.**
--dontwarn okhttp3.**
--dontwarn okio.**
-
-# DI
--keep class dagger.hilt.** { *; }
+# DI：保留 Hilt 生成的组件、工厂与注解成员
 -keep class **_HiltModules* { *; }
 -keep class **_Factory { *; }
+-keep class **_MembersInjector { *; }
 -keepclassmembers class * {
     @dagger.hilt.android.AndroidEntryPoint <fields>;
     @javax.inject.Inject <fields>;
     @javax.inject.Inject <init>(...);
 }
+-keep class dagger.hilt.android.AndroidEntryPoint { *; }
+-keep class dagger.hilt.android.lifecycle.ViewModelInject { *; }
 
-# TDLib
+# TDLib：Java 绑定由 JNI 从 native 反射实例化，必须整包保留
 -keep class org.drinkless.tdlib.** { *; }
 
-# Ktor & Netty
+# Ktor & Netty：引擎/通道工厂经反射创建
 -keep class io.netty.channel.socket.nio.NioServerSocketChannel { public <init>(); }
 -keep class io.netty.channel.socket.nio.NioSocketChannel { public <init>(); }
 -keep class io.netty.channel.epoll.EpollServerSocketChannel { public <init>(); }
@@ -120,13 +108,13 @@
 -dontwarn io.ktor.**
 -dontwarn io.netty.**
 
-# TagLib / JAudioTagger
+# TagLib / JAudioTagger：native 元数据解析
 -keep class com.kyant.taglib.** { *; }
 -dontwarn com.kyant.taglib.**
 -keep class org.jaudiotagger.** { *; }
 -dontwarn org.jaudiotagger.**
 
-# ExoPlayer FFmpeg/MIDI
+# ExoPlayer FFmpeg/MIDI：native 解码器 JNI 反射
 -keep class androidx.media3.decoder.ffmpeg.** { *; }
 -keep class androidx.media3.exoplayer.ffmpeg.** { *; }
 -keep class androidx.media3.decoder.midi.** { *; }
@@ -135,91 +123,29 @@
 -dontwarn com.jsyn.**
 -dontwarn com.softsynth.**
 
-# Kuromoji / Pinyin4J
+# Kuromoji / Pinyin4J：日语歌词分词 / 拼音（词库数据文件不受 R8 裁剪）
 -keep class com.atilika.kuromoji.** { *; }
 -dontwarn com.atilika.kuromoji.**
 -keep class net.sourceforge.pinyin4j.** { *; }
 -dontwarn net.sourceforge.pinyin4j.**
 
-# javax.* APIs
--keep class javax.lang.model.** { *; }
+# javax.sound.sampled：jaudiotagger 音频元数据解析依赖
 -keep class javax.sound.sampled.** { *; }
--keep class com.squareup.javapoet.** { *; }
 
 # JSON.org
 -keep class org.json.** { *; }
 -dontwarn org.json.**
 
-# SLF4J
+# SLF4J：Ktor / Netty 日志门面
 -keep class org.slf4j.** { *; }
 
-# =============================================================================
-# 四、应用核心模块
-# =============================================================================
-
-# Database
--keep class com.theveloper.pixelplay.data.database.** { *; }
--keep class androidx.room.** { *; }
-
-# Backup
--keep class com.theveloper.pixelplay.data.backup.** { *; }
-
-# AI
--keep class com.theveloper.pixelplay.data.ai.** { *; }
-
-# Lyrics
--keep class com.theveloper.pixelplay.data.repository.LyricsRepositoryImpl$LyricsData { *; }
-
-# Preferences
--keep class com.theveloper.pixelplay.data.preferences.PreferenceBackupEntry { *; }
-
-# Telegram
--keep class com.theveloper.pixelplay.data.telegram.TelegramStreamProxy { *; }
-
-# Cast
--keep class com.theveloper.pixelplay.data.service.cast.CastOptionsProvider { *; }
--keep class * implements com.google.android.gms.cast.framework.OptionsProvider
-
-# Glance Widget
--keep class * extends androidx.glance.appwidget.action.ActionCallback { <init>(); }
-
-# =============================================================================
-# 五、Android组件
-# =============================================================================
-
--keep class com.theveloper.pixelplay.PixelPlayApplication { *; }
--keep class com.theveloper.pixelplay.MainActivity { *; }
--keep class com.theveloper.pixelplay.SplashActivity { *; }
-
--keep class * implements android.os.Parcelable {
-    public static final android.os.Parcelable$Creator *;
-}
-
--keepclassmembers enum ** {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
-}
-
--keepclasseswithmembernames class * {
-    native <methods>;
-}
-
-# =============================================================================
-# 六、关键库保护规则
-# =============================================================================
-
-# QuickJS JS引擎
+# QuickJS JS引擎：JNI 反射
 -keep class com.whitestein.jq.** { *; }
 -dontwarn com.whitestein.jq.**
 -keep class org.quickjs.** { *; }
 -dontwarn org.quickjs.**
 
-# Room 数据库
--keep class androidx.room.** { *; }
--keep class com.theveloper.pixelplay.data.database.** { *; }
--keep class com.theveloper.pixelplay.data.database.entities.** { *; }
--keep class com.theveloper.pixelplay.data.database.daos.** { *; }
--keep class com.theveloper.pixelplay.data.database.migrations.** { *; }
+# Room：保留 DAO 注解方法（Room 库自带 consumer rules，无需整包 keep）
 -keepclassmembers class com.theveloper.pixelplay.data.database.** {
     @androidx.room.Query <methods>;
     @androidx.room.Insert <methods>;
@@ -227,73 +153,53 @@
     @androidx.room.Delete <methods>;
 }
 
-# Hilt 注入
--keep class dagger.hilt.android.lifecycle.ViewModelInject { *; }
--keep class dagger.hilt.android.AndroidEntryPoint { *; }
--keep class **_HiltModules { *; }
--keep class **_Factory { *; }
--keep class **_MembersInjector { *; }
--keepclassmembers class * {
-    @dagger.hilt.android.AndroidEntryPoint <init>();
-    @dagger.hilt.android.AndroidEntryPoint class <inner-classes>;
-    @javax.inject.Inject <fields>;
-    @javax.inject.Inject <init>(...);
-    @javax.inject.Singleton <fields>;
-}
-
-# Compose 关键类
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.compose.ui.** { *; }
--keep class androidx.compose.foundation.** { *; }
--keep class androidx.compose.material3.** { *; }
--keep class androidx.compose.animation.** { *; }
--keep class androidx.constraintlayout.compose.** { *; }
--keep class androidx.compose.ui.graphics.** { *; }
--keep class androidx.compose.ui.text.** { *; }
-
-# Compose 注解保护
--keepclassmembers class * {
-    @androidx.compose.runtime.Composable <methods>;
-    @androidx.compose.runtime.Stable <methods>;
-    @androidx.compose.runtime.Immutable <methods>;
-    @androidx.compose.runtime.ReadOnlyComposable <methods>;
-}
-
-# Media3
--keep class androidx.media3.** { *; }
-
-# WorkManager
--keep class androidx.work.** { *; }
+# WorkManager：项目内 Worker 子类
 -keep class com.theveloper.pixelplay.data.service.workers.** { *; }
 -keep class * extends androidx.work.ListenableWorker { *; }
 
-# Glance Widget
--keep class androidx.glance.** { *; }
+# Glance Widget：ActionCallback / GlanceAppWidget 子类
 -keep class com.theveloper.pixelplay.presentation.widgets.** { *; }
 -keep class * extends androidx.glance.appwidget.GlanceAppWidget { *; }
 -keep class * extends androidx.glance.appwidget.action.ActionCallback { <init>(); }
 
-# 数据模型
--keep class com.theveloper.pixelplay.data.model.** { *; }
+# =============================================================================
+# 四、应用核心模块（项目自身类，Gson/序列化/反射敏感，保守保留）
+# =============================================================================
 
-# 搜索 API
+-keep class com.theveloper.pixelplay.data.database.** { *; }
+-keep class com.theveloper.pixelplay.data.database.entities.** { *; }
+-keep class com.theveloper.pixelplay.data.database.daos.** { *; }
+-keep class com.theveloper.pixelplay.data.database.migrations.** { *; }
+-keep class com.theveloper.pixelplay.data.backup.** { *; }
+-keep class com.theveloper.pixelplay.data.ai.** { *; }
+-keep class com.theveloper.pixelplay.data.model.** { *; }
+-keep class com.theveloper.pixelplay.data.repository.LyricsRepositoryImpl$LyricsData { *; }
+-keep class com.theveloper.pixelplay.data.preferences.PreferenceBackupEntry { *; }
+-keep class com.theveloper.pixelplay.data.telegram.TelegramStreamProxy { *; }
+
+# Cast
+-keep class com.theveloper.pixelplay.data.service.cast.CastOptionsProvider { *; }
+-keep class * implements com.google.android.gms.cast.framework.OptionsProvider
+
+# 搜索 API（JS 引擎反射调用）
 -keep class com.theveloper.pixelplay.data.lx.** { *; }
 -keep class com.theveloper.pixelplay.data.qq.** { *; }
 -keep class com.theveloper.pixelplay.data.bilibili.** { *; }
 
-# 网络
--keep class retrofit2.** { *; }
--keep class okhttp3.** { *; }
--keep class com.google.gson.** { *; }
+# =============================================================================
+# 五、Android组件（manifest 引用）
+# =============================================================================
 
-# 安全加密
--keep class androidx.security.crypto.** { *; }
+-keep class com.theveloper.pixelplay.PixelPlayApplication { *; }
+-keep class com.theveloper.pixelplay.MainActivity { *; }
+-keep class com.theveloper.pixelplay.SplashActivity { *; }
 
-# 协程
--keep class kotlinx.coroutines.** { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
 
 # =============================================================================
-# 七、日志优化
+# 六、日志优化
 # =============================================================================
 
 -assumenosideeffects class timber.log.Timber {

@@ -150,6 +150,11 @@
     <string
         name="setcat_collage_pattern_desc"
     >为「你的精选辑」拼贴选择形状排列方式。</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">宇宙漩涡</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">蜂巢律动</string>
+    <string name="setcat_collage_pattern_vinyl_stack">黑胶堆叠</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">像素马赛克</string>
+    <string name="setcat_collage_pattern_stardust_scatter">星尘散落</string>
     <string name="setcat_auto_rotate_patterns_title">自动轮换图案</string>
     <string
         name="setcat_auto_rotate_patterns_subtitle"
@@ -282,6 +287,10 @@
     <string
         name="setcat_show_queue_history_subtitle"
     >在队列中显示之前播放过的歌曲。</string>
+    <string name="setcat_show_lyrics_track_info_title">显示歌词曲目信息</string>
+    <string
+        name="setcat_show_lyrics_track_info_subtitle"
+    >在歌词视图顶部的胶囊栏中显示歌曲标题和歌手。</string>
 
     <!-- Behavior -->
     <string name="setcat_folders">文件夹</string>
@@ -567,6 +576,8 @@
     <string name="setcat_download_settings">下载设置</string>
     <string name="setcat_download_path_title">下载路径</string>
     <string name="setcat_netease_quality_title">网易云首选音质</string>
+    <string name="music_quality_title">播放音质</string>
+    <string name="music_quality_subtitle">在线音源的播放音质偏好，更高音质消耗更多流量。</string>
     <string name="music_quality_hires">24bit Hi-Res</string>
     <string name="music_quality_flac">无损 (FLAC)</string>
     <string name="music_quality_high">高品 (320kbps)</string>

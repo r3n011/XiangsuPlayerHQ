@@ -78,6 +78,9 @@ data class Song(
             // 漫游歌曲虽然 contentUriString 也是 http(s) 直链（path 相同），但它是普通歌曲，
             // 不是电台，必须排除，否则漫游切歌会被误判为电台播放器
             if (id.startsWith("roaming_")) return false
+            // 每日推荐歌曲（id 以 daily_ 开头）解析出的播放直链同样是 http(s) 且 path==contentUriString，
+            // 必须排除，否则每日推荐切歌会被误判为电台、错误切到广播播放器
+            if (id.startsWith("daily_")) return false
             val contentUri = contentUriString
             val isHttpUri = contentUri.startsWith("http://", ignoreCase = true) ||
                 contentUri.startsWith("https://", ignoreCase = true)

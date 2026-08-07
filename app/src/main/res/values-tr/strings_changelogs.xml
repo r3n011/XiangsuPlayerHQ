@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="changelog_title">Değişiklik Günlüğü</string>
+    <string name="changelog_view_github">GitHub\'da Görüntüle</string>
+    <string name="changelog_sec_improvements">İyileştirmeler</string>
+    <string name="changelog_sec_fixes">Düzeltmeler</string>
+    <string name="changelog_sec_whats_new">Yenilikler</string>
+    <string name="changelog_sec_added">Eklendi</string>
+    <string-array name="changelog_020_added">
+        <item>Cihazınızdan ses aktarmak için Chromecast desteği.</item>
+        <item>Sizi en yeni özelliklerden haberdar eden uygulama içi değişiklik günlüğü.</item>
+        <item>Gömülü ve harici .LRC dosyaları için destek.</item>
+        <item>Çevrimdışı şarkı sözü desteği.</item>
+        <item>Senkronize şarkı sözleri (şarkıyla eşzamanlı).</item>
+        <item>Sırayı tam olarak görüntülemek için yeni ekran.</item>
+        <item>Sıradaki şarkıları yeniden sıralama ve kaldırma.</item>
+        <item>Mini oynatıcı hareketleri (kapatmak için aşağı kaydırın).</item>
+        <item>Daha fazla material animasyonu eklendi.</item>
+        <item>Görünümü ve hissi özelleştirmek için yeni ayarlar.</item>
+        <item>Önbelleği temizlemek için yeni ayarlar.</item>
+    </string-array>
+    <string-array name="changelog_020_improvements">
+        <item>Kullanıcı arayüzünün tamamen yeniden tasarımı.</item>
+        <item>Oynatıcının tamamen yeniden tasarımı.</item>
+        <item>Kitaplıkta performans iyileştirmeleri.</item>
+        <item>Uygulama başlatma hızı iyileştirildi.</item>
+        <item>Yapay zeka artık daha iyi sonuçlar veriyor.</item>
+    </string-array>
+    <string-array name="changelog_020_fixes">
+        <item>Etiket düzenleyicide çeşitli hatalar düzeltildi.</item>
+        <item>Çalma bildiriminin temizlenmemesine neden olan hata düzeltildi.</item>
+        <item>Uygulamanın çökmesine neden olan birçok hata düzeltildi.</item>
+    </string-array>
+    <string-array name="changelog_030_whats_new">
+        <item>Oturumlarınız hakkında daha derin içgörüler sunan zengin bir dinleme istatistikleri merkezi eklendi.</item>
+        <item>Yerel dosyaları anında açıp önizlemek için yüzen hızlı oynatıcı yayınlandı.</item>
+        <item>Ağaç tarzı gezgin ve çalma listesine hazır görünüme sahip klasörler sekmesi eklendi.</item>
+    </string-array>
+    <string-array name="changelog_030_improvements">
+        <item>Daha temiz ve uyumlu bir deneyim için genel Material 3 arayüzü iyileştirildi.</item>
+        <item>Meta veri düzenleme artık kapak görseli değişimini destekliyor.</item>
+        <item>Daha akıcı bir gezinme için uygulama genelindeki animasyonlar ve geçişler yumuşatıldı.</item>
+        <item>Daha zengin ayrıntılar ve cilalama ile sanatçı ekranı düzeni geliştirildi.</item>
+        <item>DailyMix ve YourMix üretimi daha akıllı ve çeşitli seçimlerle yükseltildi.</item>
+        <item>Yapay zeka çalma listesi üretimi güçlendirildi.</item>
+        <item>Daha hızlı keşif için arama alaka düzeyi ve sunumu iyileştirildi.</item>
+        <item>Daha geniş bir ses dosyası formatı yelpazesi için destek genişletildi.</item>
+    </string-array>
+    <string-array name="changelog_030_fixes">
+        <item>Şarkı ayrıntılarının her yerde doğru kalması için meta veri sorunları giderildi.</item>
+        <item>Çalmaya güvenilir şekilde geri dönmek için bildirim kısayolları geri getirildi.</item>
+    </string-array>
+    <string-array name="changelog_040_improvements">
+        <item>Büyük gezinme yeniden tasarımı</item>
+        <item>Kaynak dizinleri seçmek için yeni dosya gezgini</item>
+        <item>Yeni bağlantı ve yayın işlevleri</item>
+        <item>Uzak cihazlar arasında kesintisiz süreklilik</item>
+        <item>Şarkılar arasında kesintisiz geçiş</item>
+        <item>Çapraz geçiş kontrolü</item>
+        <item>Yeni Özel Geçişler özelliği (yalnızca çalma listeleri için)</item>
+        <item>Uygulama kapandıktan sonra çalmaya devam et</item>
+        <item>Arayüz optimizasyonları</item>
+        <item>Geliştirilmiş istatistik özelliği</item>
+        <item>Daha fazla özellikle yeniden tasarlanan Sıra kontrolü</item>
+        <item>Çalma ve meta veri düzenleme için farklı dosya türleri desteği iyileştirildi</item>
+        <item>İzin yöneticisi iyileştirildi</item>
+        <item>Küçük hata düzeltmeleri</item>
+    </string-array>
+    <string-array name="changelog_050_improvements">
+        <item>Material 3 Expressive Arayüz Güncellemesi</item>
+        <item>10 Bantlı Ekolayzer ve Efektler</item>
+        <item>Yeni Kitaplık Senkronizasyon Akışı</item>
+        <item>Yapay Zeka Entegrasyonu (Gemini Modelleri)</item>
+        <item>M3U Çalma Listesi İçe/Dışa Aktarma</item>
+        <item>Deezer Sanatçı Görseli Entegrasyonu</item>
+        <item>Özel Çalma Listesi Kapakları</item>
+        <item>Ayarlar Mimarisi Yeniden Yapılandırması</item>
+        <item>Sıra ve Oynatıcı Animasyonları</item>
+        <item>Baseline Profilleri ve Performans</item>
+        <item>Senkron Kaydırmalı Daha İyi Şarkı Sözü Sistemi</item>
+    </string-array>
+    <string-array name="changelog_050_fixes">
+        <item>Yayın Kararlılığı İyileştirmeleri</item>
+        <item>Oynatıcı Sayfası Kararlılığı</item>
+        <item>Genel Hata Düzeltmeleri ve Temizlik</item>
+    </string-array>
+    <string-array name="changelog_060_whats_new">
+        <item>Arabada çalma için Android Auto desteği artık mevcut.</item>
+        <item>Wear OS desteği yayında; saatten telefona daha iyi çalma kontrolleri dahil.</item>
+        <item>Bulut entegrasyonları Telegram, NetEase, QQ Music ve Google Drive iyileştirmeleriyle genişletildi.</item>
+        <item>Son Çalınanlar ve kalıcı sıra geri yükleme, dinleme oturumunuzu hazır tutar.</item>
+        <item>Yedekleme ve Geri Yükleme v3 ile hesap yönetimi araçları artık dahil.</item>
+        <item>Şarkı sözleri, manuel arama yedeği ve depolama iyileştirmeleriyle daha akıllı hale geldi.</item>
+    </string-array>
+    <string-array name="changelog_060_improvements">
+        <item>Başlangıç, kitaplık, sıra ve oynatıcı etkileşimlerinde büyük performans iyileştirmesi.</item>
+        <item>Oynatıcı, Yayın, Şarkı Sözü, Sanatçı ve Tür ekranları daha akıcı kullanım için yeniden tasarlandı.</item>
+        <item>Gezinme ve arama akışları daha güvenli rota yönetimiyle daha güvenilir.</item>
+        <item>Ses çalma uyumluluğu daha fazla cihaz ve format için iyileştirildi.</item>
+        <item>Şarkılar, albümler ve çalma listelerinde çoklu seçim iş akışları genişletildi.</item>
+    </string-array>
+    <string-array name="changelog_060_fixes">
+        <item>Sıra ve karışık çalma davranışı artık daha kararlı ve öngörülebilir.</item>
+        <item>Birçok arka plan çalma ve yayın kenar durumu düzeltildi.</item>
+        <item>Uyku Zamanlayıcısı, Dosyalar sekmesi gezinmesi ve albüm sanatçısı çökme sorunları düzeltildi.</item>
+        <item>Aşırı ısınma/bellek sorunlarını azaltmak için widget yükleme ve hizmet kararlılığı iyileştirildi.</item>
+        <item>Uygulama genelinde genel hata düzeltmeleri ve arayüz cilalaması.</item>
+    </string-array>
+    <string-array name="changelog_070_whats_new">
+        <item>Wear OS: Saatten müzik aktarımı, yerel çalma, sıra senkronizasyonu ve uzaktan kumanda.</item>
+        <item>Yapay Zeka: Groq AI ve OpenRouter (deneysel) entegrasyonu, token optimizasyonu ile.</item>
+        <item>Bulut: Jellyfin desteği eklendi.</item>
+        <item>Şarkı Sözleri: Özel geçişle senkronize çeviri, Kugou LRC formatı desteği, metin hizalama özelleştirmesi ve geliştirilmiş uzak yükleme.</item>
+        <item>Arayüz: Kompakt gezinme çubuğu modu, albüm kapağı paletinden dinamik temalar, uzun başlıklar için kayan yazı ve yeni sıralama seçenekleri.</item>
+        <item>Telegram: Yerel konu desteği ve geliştirilmiş görüntüleme modları.</item>
+    </string-array>
+    <string-array name="changelog_070_improvements">
+        <item>Ses Motoru: Daha fazla format desteği (MIDI, ALAC, M4A) ve kod çözücü optimizasyonu ile kapsamlı yenileme.</item>
+        <item>Verimlilik: Ciddi enerji tüketimi azaltımı, aşırı ısınma düzeltmeleri ve arka plan görev optimizasyonu (SyncWorker).</item>
+        <item>Veritabanı: Büyük sorgu optimizasyonları ve veri kaybını önlemek için yeniden tasarlanan kapak görseli önbelleği.</item>
+        <item>Başlangıç: Baseline Profile optimizasyonu ile iyileştirilmiş yükleme süresi.</item>
+    </string-array>
+    <string-array name="changelog_070_fixes">
+        <item>Çalma: Opus/MP3\'te takılma, çapraz geçişlerde ReplayGain hataları ve Samsung kod çözücülerde başlangıç sorunları düzeltildi.</item>
+        <item>Kararlılık: Başlangıçta, sanatçı gezintisinde ve Android 12+ cihazlarda çökmeler giderildi.</item>
+        <item>Arayüz: Kapak görseli titremesi, Latin alfabesi dışındaki yazılarda metin taşması ve gezinme çubuğu/mini oynatıcı davranışı düzeltildi.</item>
+        <item>Güvenlik: Kimlik bilgisi yönetimi, depolama izinleri ve medya sunucusu iletişimi güçlendirildi.</item>
+    </string-array>
+    <string-array name="changelog_070_added">
+        <item>Yerelleştirme: İspanyolca, Fransızca, Rusça, Basitleştirilmiş Çince, Endonezce, İtalyanca</item>
+    </string-array>
+    <string-array name="changelog_075_whats_new">
+        <item>Oynatıcı yaşam döngüsü yönetimiyle Google Drive entegrasyonu.</item>
+        <item>Toplu şarkı meta veri düzenleme (etiketler ve kapak görseli).</item>
+        <item>Özelleştirilebilir Wear OS tercihleriyle yapay zeka şarkı sözü çevirisi.</item>
+        <item>Gecikme tanılama aracı ve Arama ekranında çoklu seçim.</item>
+        <item>Arapça ve Türkçe desteği, yerelleştirilmiş http URL yerel ağ seçenekleriyle.</item>
+    </string-array>
+    <string-array name="changelog_075_improvements">
+        <item>Ciddi pil tasarrufu (ses boşaltma ve arayüz yoklama kapıları).</item>
+        <item>Optimize edilmiş sıra yönetimi (daha hızlı eklemeler ve açık dizinleme).</item>
+        <item>Geçiş ekranları için Material 3 Expressive hareket animasyonları.</item>
+        <item>Kısıtlanmış tarama ile yeniden yapılandırılan kitaplık senkronizasyonu.</item>
+    </string-array>
+    <string-array name="changelog_075_fixes">
+        <item>Takılma/atlama çalma gecikmeleri ve arabelleğe alma sorunları giderildi.</item>
+        <item>Harici şarkı silme senkronizasyonu ve meta veri tutarlılığı düzeltildi.</item>
+        <item>Wear OS ve telefonda bellek sorunları, çökmeler ve düzen hataları düzeltildi.</item>
+    </string-array>
+</resources>

@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.text.util.LinkMovementMethod
+import android.widget.TextView
 import androidx.annotation.DrawableRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,6 +52,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -102,10 +105,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp as lerpDp
 import androidx.compose.ui.util.lerp as lerpFloat
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
@@ -113,6 +118,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
+import io.noties.markwon.Markwon
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.GitHubContributorService
@@ -160,6 +166,14 @@ private val CoreMaintainer = Contributor(
     iconRes = R.drawable.round_developer_board_24,
     githubUrl = "https://github.com/theovilardo",
     telegramUrl = "https://t.me/thevelopersupport",
+)
+
+/** 本项目维护者（关于页展示） */
+private val AppMaintainers = listOf(
+    "R3n_011",
+    "yzrbz",
+    "想玩小恐龙",
+    "HZX0831",
 )
 
 private val PinnedCommunityMembers = listOf(
@@ -1355,11 +1369,24 @@ private fun MaintainerInfoCard(modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "R3n_011",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    AppMaintainers.forEach { name ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                        ) {
+                            Text(
+                                text = name,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1582,11 +1609,7 @@ private fun ChangelogCard(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    val changelogItems = remember(releaseInfo.releaseNotes) {
-                        parseReleaseNotes(releaseInfo.releaseNotes)
-                    }
-
-                    if (changelogItems.isEmpty()) {
+                    if (releaseInfo.releaseNotes.isBlank()) {
                         Text(
                             text = stringResource(R.string.about_changelog_empty),
                             style = MaterialTheme.typography.bodyMedium,
@@ -1594,46 +1617,34 @@ private fun ChangelogCard(
                             modifier = Modifier.padding(vertical = 4.dp),
                         )
                     } else {
-                        changelogItems.forEach { (prefix, content) ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Text(
-                                    text = prefix,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                )
-                                Text(
-                                    text = content,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
+                        // ⚡ Markdown 渲染：更新日志支持完整 Markdown（标题/列表/粗体/斜体/链接/代码块等），
+                        // 替换原来的逐行手写解析
+                        val markwon = remember { Markwon.create(context) }
+                        val changelogSpannable = remember(releaseInfo.releaseNotes) {
+                            markwon.toMarkdown(releaseInfo.releaseNotes)
                         }
+                        val changelogTextColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+                        val changelogLinkColor = MaterialTheme.colorScheme.primary.toArgb()
+                        AndroidView(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            factory = { ctx ->
+                                TextView(ctx).apply {
+                                    textSize = 14f
+                                    movementMethod = LinkMovementMethod.getInstance()
+                                    highlightColor = android.graphics.Color.TRANSPARENT
+                                }
+                            },
+                            update = { tv ->
+                                tv.setTextColor(changelogTextColor)
+                                tv.setLinkTextColor(changelogLinkColor)
+                                tv.text = changelogSpannable
+                            }
+                        )
                     }
                 }
             }
-        }
-    }
-}
-
-private fun parseReleaseNotes(body: String): List<Pair<String, String>> {
-    val numberedPrefixRegex = Regex("""^\d+[.\)]\s+""")
-    return body.lines().mapNotNull { line ->
-        val trimmed = line.trim()
-        when {
-            trimmed.startsWith("- ") -> "•" to trimmed.substring(2)
-            trimmed.startsWith("* ") -> "•" to trimmed.substring(2)
-            numberedPrefixRegex.containsMatchIn(trimmed) -> {
-                val match = numberedPrefixRegex.find(trimmed)!!.value
-                "•" to trimmed.removePrefix(match)
-            }
-            trimmed.isNotBlank() -> "•" to trimmed
-            else -> null
         }
     }
 }

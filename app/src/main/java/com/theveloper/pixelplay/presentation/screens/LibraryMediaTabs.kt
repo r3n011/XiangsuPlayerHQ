@@ -714,7 +714,8 @@ fun LibraryPlaylistsTab(
     onPlaylistLongPress: (com.theveloper.pixelplay.data.model.Playlist) -> Unit = {},
     onPlaylistSelectionToggle: (com.theveloper.pixelplay.data.model.Playlist) -> Unit = {},
     onPlaylistOptionsClick: () -> Unit = {},
-    onReorder: ((List<String>) -> Unit)? = null
+    onReorder: ((List<String>) -> Unit)? = null,
+    dailyRecommendHeader: (@Composable () -> Unit)? = null
 ) {
     PlaylistContainer(
         playlistUiState = playlistUiState,
@@ -729,7 +730,8 @@ fun LibraryPlaylistsTab(
         selectedPlaylistIds = selectedPlaylistIds,
         onPlaylistLongPress = onPlaylistLongPress,
         onPlaylistSelectionToggle = onPlaylistSelectionToggle,
-        onReorder = onReorder
+        onReorder = onReorder,
+        dailyRecommendHeader = dailyRecommendHeader
     )
 }
 

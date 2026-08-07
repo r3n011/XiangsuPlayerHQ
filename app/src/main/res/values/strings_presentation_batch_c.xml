@@ -52,4 +52,14 @@
     <string name="lib_empty_folders_subtitle">Internal storage folders with music will appear here.</string>
     <string name="lib_empty_playlists_title">No playlists yet</string>
     <string name="lib_empty_playlists_subtitle">Create your first playlist to organize your library.</string>
+    <string name="lib_empty_history_title">No playback history yet</string>
+    <string name="lib_empty_history_subtitle">Songs you play will show up here.</string>
+
+    <!-- Daily recommend (NetEase) -->
+    <string name="daily_recommend_title">Daily Recommend</string>
+    <string name="daily_recommend_subtitle">Personalized picks, updated daily</string>
+    <string name="daily_recommend_songs_count">%1$d songs today</string>
+    <string name="daily_recommend_error">Failed to load daily recommend</string>
+    <string name="daily_recommend_retry">Retry</string>
+    <string name="daily_recommend_play_cd">Play daily recommend</string>
 </resources>

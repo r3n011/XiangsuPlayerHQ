@@ -151,4 +151,13 @@
     <string name="reorder_favorites_sheet_title">Reorder Liked Songs</string>
     <string name="reorder_playlists_sheet_title">Reorder Playlists</string>
     <string name="reorder_folders_sheet_title">Reorder Folders</string>
+
+    <!-- Streaming provider sheet -->
+    <string name="streaming_provider_telegram_subtitle">Stream from channels &amp; chats</string>
+    <string name="streaming_provider_coming_soon">Coming soon</string>
+    <string name="streaming_provider_subsonic_connected">Connected · Navidrome/Airsonic</string>
+    <string name="streaming_provider_subsonic_connect">Connect Navidrome &amp; others</string>
+    <string name="streaming_provider_connected">Connected</string>
+    <string name="streaming_provider_jellyfin_connect">Connect your Jellyfin server</string>
+    <string name="streaming_provider_sign_in_to_stream">Sign in to stream</string>
 </resources>

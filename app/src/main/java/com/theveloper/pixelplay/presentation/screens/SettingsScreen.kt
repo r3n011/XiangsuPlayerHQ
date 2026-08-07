@@ -105,6 +105,11 @@ import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import net.sourceforge.pinyin4j.PinyinHelper
+import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType
+import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat
+import net.sourceforge.pinyin4j.format.HanyuPinyinToneType
+import java.util.Locale
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.screens.SettingsCategoryScreen
@@ -428,6 +433,7 @@ private data class SettingsSearchItem(
 private fun getSettingsCategoryTitles(): Map<String, String> {
     return mapOf(
         SettingsCategory.AI_INTEGRATION.id to stringResource(R.string.settings_search_category_ai_integration),
+        SettingsCategory.WEB_REMOTE.id to stringResource(R.string.settings_category_web_remote_title),
         SettingsCategory.LIBRARY.id to stringResource(R.string.settings_search_category_library),
         SettingsCategory.APPEARANCE.id to stringResource(R.string.settings_search_category_appearance),
         SettingsCategory.PLAYBACK.id to stringResource(R.string.settings_search_category_playback),
@@ -512,6 +518,110 @@ private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
         stringResource(R.string.settings_search_keyword_filter) to SettingsCategory.LIBRARY
     )
 }
+
+/**
+ * 真实设置项标题索引：直接引用各分类详情页中的设置项标题字符串资源，
+ * 使设置搜索能覆盖到所有真实设置项（多语言自动跟随）。
+ */
+@Composable
+private fun getSettingsItemIndex(): List<Pair<String, SettingsCategory>> = listOf(
+    // AI 集成
+    stringResource(R.string.setcat_ai_provider_section) to SettingsCategory.AI_INTEGRATION,
+    stringResource(R.string.setcat_model_selection) to SettingsCategory.AI_INTEGRATION,
+    stringResource(R.string.setcat_safe_token_title) to SettingsCategory.AI_INTEGRATION,
+    stringResource(R.string.setcat_ai_auto_trigger_section) to SettingsCategory.AI_INTEGRATION,
+    stringResource(R.string.setcat_ai_auto_playlist_title) to SettingsCategory.AI_INTEGRATION,
+    stringResource(R.string.setcat_ai_recommendation_section) to SettingsCategory.AI_INTEGRATION,
+    stringResource(R.string.setcat_ai_recommendation_card_title) to SettingsCategory.AI_INTEGRATION,
+    stringResource(R.string.setcat_ai_recommendation_manual_title) to SettingsCategory.AI_INTEGRATION,
+    // 网页遥控
+    stringResource(R.string.setcat_web_remote_section) to SettingsCategory.WEB_REMOTE,
+    stringResource(R.string.setcat_web_remote_enabled_title) to SettingsCategory.WEB_REMOTE,
+    stringResource(R.string.setcat_web_remote_sync_title) to SettingsCategory.WEB_REMOTE,
+    stringResource(R.string.setcat_web_remote_server_status) to SettingsCategory.WEB_REMOTE,
+    stringResource(R.string.setcat_web_remote_server_address) to SettingsCategory.WEB_REMOTE,
+    stringResource(R.string.setcat_web_remote_pin) to SettingsCategory.WEB_REMOTE,
+    // 媒体库
+    stringResource(R.string.setcat_library_structure) to SettingsCategory.LIBRARY,
+    stringResource(R.string.setcat_excluded_directories_title) to SettingsCategory.LIBRARY,
+    stringResource(R.string.setcat_artists_title) to SettingsCategory.LIBRARY,
+    stringResource(R.string.setcat_filtering) to SettingsCategory.LIBRARY,
+    stringResource(R.string.setcat_sync_scanning) to SettingsCategory.LIBRARY,
+    stringResource(R.string.setcat_auto_scan_lrc_title) to SettingsCategory.LIBRARY,
+    stringResource(R.string.setcat_lyrics_management) to SettingsCategory.LIBRARY,
+    stringResource(R.string.setcat_reset_imported_lyrics_title) to SettingsCategory.LIBRARY,
+    // 外观
+    stringResource(R.string.setcat_global_theme) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_smooth_corners_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_disable_blur_all_over_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_show_scrollbar_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_now_playing) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_show_player_file_info_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_album_art_palette_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_home_collage) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_auto_rotate_patterns_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_navigation_bar) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_compact_mode_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_navbar_corner_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_lyrics_screen) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_immersive_lyrics_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_app_navigation_section) to SettingsCategory.APPEARANCE,
+    // 播放
+    stringResource(R.string.setcat_background_playback) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_battery_optimization_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_replaygain_section) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_replaygain_enable_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_cast) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_headphones) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_headphones_resume_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_queue_transitions) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_hifi_mode_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_usb_exclusive_mode_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_aaudio_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_persistent_shuffle_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_show_queue_history_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_show_lyrics_track_info_title) to SettingsCategory.APPEARANCE,
+    stringResource(R.string.setcat_car_mode_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_transcode_cache_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_transcode_auto_cleanup_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_transcode_clear_cache_title) to SettingsCategory.PLAYBACK,
+    // 播放音质（在线音源统一音质）
+    stringResource(R.string.music_quality_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.music_quality_hires) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.music_quality_flac) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.music_quality_high) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.music_quality_standard) to SettingsCategory.PLAYBACK,
+    // 行为
+    stringResource(R.string.setcat_download_settings) to SettingsCategory.BEHAVIOR,
+    stringResource(R.string.setcat_download_path_title) to SettingsCategory.BEHAVIOR,
+    stringResource(R.string.setcat_folders) to SettingsCategory.BEHAVIOR,
+    stringResource(R.string.setcat_folder_back_gesture_title) to SettingsCategory.BEHAVIOR,
+    stringResource(R.string.setcat_player_gestures) to SettingsCategory.BEHAVIOR,
+    stringResource(R.string.setcat_tap_bg_closes_title) to SettingsCategory.BEHAVIOR,
+    stringResource(R.string.setcat_haptics) to SettingsCategory.BEHAVIOR,
+    stringResource(R.string.setcat_haptic_feedback_title) to SettingsCategory.BEHAVIOR,
+    // 备份与恢复
+    stringResource(R.string.setcat_create_backup) to SettingsCategory.BACKUP_RESTORE,
+    stringResource(R.string.setcat_export_backup_title) to SettingsCategory.BACKUP_RESTORE,
+    stringResource(R.string.setcat_restore_backup_section) to SettingsCategory.BACKUP_RESTORE,
+    stringResource(R.string.setcat_import_backup_title) to SettingsCategory.BACKUP_RESTORE,
+    // 开发者
+    stringResource(R.string.setcat_experiments) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_experimental_title) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_test_setup_title) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_maintenance) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_force_daily_mix_title) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_force_stats_title) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_force_palette_title) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_diagnostics) to SettingsCategory.DEVELOPER,
+    stringResource(R.string.setcat_trigger_crash_title) to SettingsCategory.DEVELOPER,
+    // 关于
+    stringResource(R.string.setcat_application) to SettingsCategory.ABOUT,
+    stringResource(R.string.setcat_about_xiangsuplayer_title) to SettingsCategory.ABOUT,
+    // 均衡器 / 设备能力
+    stringResource(R.string.settings_category_equalizer_title) to SettingsCategory.EQUALIZER,
+    stringResource(R.string.settings_category_device_capabilities_title) to SettingsCategory.DEVICE_CAPABILITIES
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -624,48 +734,29 @@ private fun SettingsSearchResults(
 ) {
     val settingsCategoryTitles = getSettingsCategoryTitles()
     val keywordItems = getSettingsKeywordItems()
+    val settingItemIndex = getSettingsItemIndex()
     val categorySubtitle = stringResource(R.string.settings_search_category_subtitle)
     val categorySettingsFormat = stringResource(R.string.settings_search_category_settings_format)
     val noResultsText = stringResource(R.string.settings_search_no_results)
     val resultsCountFormat = stringResource(R.string.settings_search_results_count_format)
 
-    // 构建设置项搜索索引（分类 + 典型设置项）
-    val searchItems = remember(query, settingsCategoryTitles, keywordItems, categorySubtitle, categorySettingsFormat) {
-        val normalizedQuery = query.trim().lowercase()
-        val items = mutableListOf<SettingsSearchItem>()
-
-        // 1. 分类入口
-        SettingsCategory.entries.forEach { category ->
-            val categoryTitle = settingsCategoryTitles[category.id] ?: category.id
-            if (categoryTitle.lowercase().contains(normalizedQuery)) {
-                items.add(
-                    SettingsSearchItem(
-                        title = categoryTitle,
-                        subtitle = categorySubtitle,
-                        categoryTitle = categoryTitle,
-                        onClick = {}
-                    )
-                )
-            }
-        }
-
-        // 2. 常见设置项关键词
-        keywordItems.forEach { (keyword, category) ->
-            if (keyword.lowercase().contains(normalizedQuery) || normalizedQuery in keyword.lowercase()) {
-                val categoryTitle = settingsCategoryTitles[category.id] ?: category.id
-                items.add(
-                    SettingsSearchItem(
-                        title = keyword,
-                        subtitle = categorySettingsFormat.format(categoryTitle),
-                        categoryTitle = categoryTitle,
-                        onClick = {}
-                    )
-                )
-            }
-        }
-
-        // 去重并限制结果数量
-        items.distinctBy { it.title to it.subtitle }.take(20)
+    // 构建设置项搜索索引（分类 + 关键词 + 真实设置项标题，统一模糊匹配并按相关度排序）
+    val searchItems = remember(
+        query,
+        settingsCategoryTitles,
+        keywordItems,
+        settingItemIndex,
+        categorySubtitle,
+        categorySettingsFormat
+    ) {
+        buildSettingsSearchItems(
+            rawQuery = query,
+            categoryTitles = settingsCategoryTitles,
+            keywordItems = keywordItems,
+            settingItemIndex = settingItemIndex,
+            categorySubtitle = categorySubtitle,
+            categorySettingsFormat = categorySettingsFormat
+        )
     }
 
     // 渲染搜索结果
@@ -1324,47 +1415,30 @@ private fun TabletSettingsSearchAndCategories(
 
     val settingsCategoryTitles = getSettingsCategoryTitles()
     val keywordItems = getSettingsKeywordItems()
+    val settingItemIndex = getSettingsItemIndex()
     val categorySubtitle = stringResource(R.string.settings_search_category_subtitle)
     val categorySettingsFormat = stringResource(R.string.settings_search_category_settings_format)
     val searchPlaceholder = stringResource(R.string.settings_search_placeholder)
     val noResultsText = stringResource(R.string.settings_search_no_results)
     val resultsCountFormat = stringResource(R.string.settings_search_results_count_format)
 
-    val searchItems = remember(searchQuery, settingsCategoryTitles, keywordItems, categorySubtitle, categorySettingsFormat) {
+    val searchItems = remember(
+        searchQuery,
+        settingsCategoryTitles,
+        keywordItems,
+        settingItemIndex,
+        categorySubtitle,
+        categorySettingsFormat
+    ) {
         if (searchQuery.isBlank()) return@remember emptyList<SettingsSearchItem>()
-        
-        val normalizedQuery = searchQuery.trim().lowercase()
-        val items = mutableListOf<SettingsSearchItem>()
-
-        SettingsCategory.entries.forEach { category ->
-            val categoryTitle = settingsCategoryTitles[category.id] ?: category.id
-            if (categoryTitle.lowercase().contains(normalizedQuery)) {
-                items.add(
-                    SettingsSearchItem(
-                        title = categoryTitle,
-                        subtitle = categorySubtitle,
-                        categoryTitle = categoryTitle,
-                        onClick = {}
-                    )
-                )
-            }
-        }
-
-        keywordItems.forEach { (keyword, category) ->
-            if (keyword.lowercase().contains(normalizedQuery) || normalizedQuery in keyword.lowercase()) {
-                val categoryTitle = settingsCategoryTitles[category.id] ?: category.id
-                items.add(
-                    SettingsSearchItem(
-                        title = keyword,
-                        subtitle = categorySettingsFormat.format(categoryTitle),
-                        categoryTitle = categoryTitle,
-                        onClick = {}
-                    )
-                )
-            }
-        }
-
-        items.distinctBy { it.title to it.subtitle }.take(20)
+        buildSettingsSearchItems(
+            rawQuery = searchQuery,
+            categoryTitles = settingsCategoryTitles,
+            keywordItems = keywordItems,
+            settingItemIndex = settingItemIndex,
+            categorySubtitle = categorySubtitle,
+            categorySettingsFormat = categorySettingsFormat
+        )
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1702,4 +1776,177 @@ private fun TabletSettingsSearchAndCategories(
             }
         }
     }
+}
+
+// ─── 设置搜索模糊匹配 ─────────────────────────────────────────────────
+
+private val settingsPinyinFormat = HanyuPinyinOutputFormat().apply {
+    caseType = HanyuPinyinCaseType.LOWERCASE
+    toneType = HanyuPinyinToneType.WITHOUT_TONE
+}
+
+/** 规范化：小写、去除空白与标点，便于匹配。 */
+private fun normalizeForSearch(text: String): String =
+    text.lowercase(Locale.ROOT)
+        .replace(Regex("[\\s\\p{Punct}\\u3000-\\u303F\\uFF00-\\uFFEF]+"), "")
+
+/** Levenshtein 编辑距离（用于错字/漏字容错）。 */
+private fun levenshteinDistance(a: String, b: String): Int {
+    val dp = Array(a.length + 1) { IntArray(b.length + 1) }
+    for (i in 0..a.length) dp[i][0] = i
+    for (j in 0..b.length) dp[0][j] = j
+    for (i in 1..a.length) {
+        for (j in 1..b.length) {
+            val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+            dp[i][j] = minOf(
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost
+            )
+        }
+    }
+    return dp[a.length][b.length]
+}
+
+/** 字符顺序匹配：query 中的字符按顺序（可跳字）全部出现在 candidate 中。 */
+private fun isCharSequenceMatch(query: String, candidate: String): Boolean {
+    if (query.isEmpty()) return false
+    var i = 0
+    for (ch in candidate) {
+        if (ch == query[i]) {
+            i++
+            if (i == query.length) return true
+        }
+    }
+    return i == query.length
+}
+
+/** 汉字 → 拼音全拼（无空格、无音调），非汉字保留原字符。 */
+private fun toPinyinFull(text: String): String {
+    val sb = StringBuilder()
+    for (ch in text) {
+        if (ch.code in 0x4E00..0x9FFF) {
+            val pinyin = runCatching {
+                PinyinHelper.toHanyuPinyinStringArray(ch, settingsPinyinFormat)
+            }.getOrNull()?.firstOrNull()
+            sb.append(pinyin ?: ch)
+        } else {
+            sb.append(ch.lowercaseChar())
+        }
+    }
+    return sb.toString()
+}
+
+/** 汉字 → 拼音首字母（简拼），字母原样保留（小写）。 */
+private fun toPinyinInitials(text: String): String {
+    val sb = StringBuilder()
+    for (ch in text) {
+        if (ch.code in 0x4E00..0x9FFF) {
+            val pinyin = runCatching {
+                PinyinHelper.toHanyuPinyinStringArray(ch, settingsPinyinFormat)
+            }.getOrNull()?.firstOrNull()
+            sb.append(pinyin?.firstOrNull() ?: ch)
+        } else if (ch.isLetter() || ch.isDigit()) {
+            sb.append(ch.lowercaseChar())
+        }
+    }
+    return sb.toString()
+}
+
+/**
+ * 模糊匹配评分：返回 > 0 表示命中，数值越高相关度越高。
+ * 匹配层级：完全相等 > 子串（越靠前越高）> 反向包含 > 拼音全拼 > 拼音简拼 >
+ * 字符顺序（跳字）> 编辑距离（错字容错）。
+ */
+private fun fuzzyMatchScore(rawQuery: String, rawCandidate: String): Int {
+    val q = normalizeForSearch(rawQuery)
+    val c = normalizeForSearch(rawCandidate)
+    if (q.isEmpty() || c.isEmpty()) return 0
+    if (q == c) return 1_000
+    val idx = c.indexOf(q)
+    if (idx >= 0) return 800 - idx.coerceAtMost(40) * 5
+    if (q.contains(c)) return 620
+    // 拼音匹配（输入中文转拼音、拼音全拼/简拼对候选做子串与顺序匹配）
+    val qFull = toPinyinFull(rawQuery)
+    val cFull = toPinyinFull(rawCandidate)
+    if (qFull.isNotEmpty() && cFull.contains(qFull)) return 500
+    val qInit = toPinyinInitials(rawQuery)
+    val cInit = toPinyinInitials(rawCandidate)
+    if (qInit.isNotEmpty() && cInit.contains(qInit)) return 450
+    if (isCharSequenceMatch(qFull, cFull)) return 350
+    // 编辑距离容错（仅对较短文本计算，避免长文本性能开销）
+    val maxLen = maxOf(q.length, c.length)
+    if (maxLen <= 12) {
+        val threshold = if (maxLen <= 4) 1 else maxLen / 3
+        val dist = levenshteinDistance(q, c)
+        if (dist in 1..threshold) return 300 - dist * 30
+    }
+    return 0
+}
+
+/**
+ * 构建设置搜索结果：对「分类标题 + 关键词 + 真实设置项标题」统一做模糊匹配，
+ * 按评分降序排序并去重。
+ */
+private fun buildSettingsSearchItems(
+    rawQuery: String,
+    categoryTitles: Map<String, String>,
+    keywordItems: List<Pair<String, SettingsCategory>>,
+    settingItemIndex: List<Pair<String, SettingsCategory>>,
+    categorySubtitle: String,
+    categorySettingsFormat: String
+): List<SettingsSearchItem> {
+    val query = rawQuery.trim()
+    if (query.isEmpty()) return emptyList()
+
+    val scored = mutableListOf<Pair<Int, SettingsSearchItem>>()
+
+    // 1. 分类入口
+    SettingsCategory.entries.forEach { category ->
+        val title = categoryTitles[category.id] ?: category.id
+        val score = fuzzyMatchScore(query, title)
+        if (score > 0) {
+            scored += score to SettingsSearchItem(
+                title = title,
+                subtitle = categorySubtitle,
+                categoryTitle = title,
+                onClick = {}
+            )
+        }
+    }
+
+    // 2. 预定义关键词
+    keywordItems.forEach { (keyword, category) ->
+        val score = fuzzyMatchScore(query, keyword)
+        if (score > 0) {
+            val categoryTitle = categoryTitles[category.id] ?: category.id
+            scored += score to SettingsSearchItem(
+                title = keyword,
+                subtitle = categorySettingsFormat.format(categoryTitle),
+                categoryTitle = categoryTitle,
+                onClick = {}
+            )
+        }
+    }
+
+    // 3. 真实设置项标题
+    settingItemIndex.forEach { (title, category) ->
+        val score = fuzzyMatchScore(query, title)
+        if (score > 0) {
+            val categoryTitle = categoryTitles[category.id] ?: category.id
+            scored += score to SettingsSearchItem(
+                title = title,
+                subtitle = categorySettingsFormat.format(categoryTitle),
+                categoryTitle = categoryTitle,
+                onClick = {}
+            )
+        }
+    }
+
+    // 稳定排序（同分保持插入顺序：分类 > 关键词 > 设置项），去重后限数
+    return scored
+        .sortedByDescending { it.first }
+        .map { it.second }
+        .distinctBy { it.title to it.subtitle }
+        .take(30)
 }

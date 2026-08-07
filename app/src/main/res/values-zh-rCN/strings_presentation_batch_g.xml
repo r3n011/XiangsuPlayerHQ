@@ -614,6 +614,21 @@
         <item>印度尼西亚语</item>
         <item>意大利语</item>
     </string-array>
+    <string-array name="presentation_batch_g_changelog_080_whats_new">
+        <item>歌词：动态歌词模糊效果现已默认开启（可在开发者设置中调整）。</item>
+        <item>墨水屏：在 Dot 墨水屏模式下使用在线音源时，自动隐藏底部导航栏。</item>
+    </string-array>
+    <string-array name="presentation_batch_g_changelog_080_improvements">
+        <item>歌词：修复长歌词在手机端被左右裁切的问题，换行测量更准确。</item>
+        <item>播放器：隐藏底部导航栏时，迷你播放器改为带位移的弹性过渡动画。</item>
+        <item>设备能力：格式计数已包含软件解码的 DFF/DSF/DIF 格式。</item>
+        <item>汉化：补全云端串流页面与外观设置（禁用模糊效果、显示滚动条、拼贴图案、显示歌词曲目信息）的中文翻译。</item>
+        <item>设置："显示歌词曲目信息"选项已迁移至外观设置的歌词分区。</item>
+    </string-array>
+    <string-array name="presentation_batch_g_changelog_080_fixes">
+        <item>修复从其它页面返回主页时列表不在顶部的问题。</item>
+        <item>修复播放历史中 Bilibili 源无法正常播放的问题。</item>
+    </string-array>
     
     <!-- 排序选项显示名称 -->
     <string name="sort_option_custom_order">自定义顺序</string>

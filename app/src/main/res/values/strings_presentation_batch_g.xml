@@ -614,6 +614,21 @@ Backslash (\) can be used to escape character delimiters.</string>
         <item>Indonesian</item>
         <item>Italian</item>
     </string-array>
+    <string-array name="presentation_batch_g_changelog_080_whats_new">
+        <item>Lyrics: The dynamic lyrics blur effect is now enabled by default (adjustable in developer settings).</item>
+        <item>Dot Mode: The bottom navigation bar is now automatically hidden in Dot e-ink mode when using online sources.</item>
+    </string-array>
+    <string-array name="presentation_batch_g_changelog_080_improvements">
+        <item>Lyrics: Fixed long lyric lines being clipped on phone screens with more accurate line-wrap measurement.</item>
+        <item>Player: The mini player now transitions with a springy sliding animation when the bottom bar is hidden.</item>
+        <item>Device capabilities: The format counter now includes the software-decoded DFF/DSF/DIF formats.</item>
+        <item>Localization: Completed Chinese translations for the cloud streaming sheet and appearance settings (disable blur, show scrollbar, collage patterns, show lyrics track info).</item>
+        <item>Settings: Moved the "Show lyrics track info" option into the lyrics section of appearance settings.</item>
+    </string-array>
+    <string-array name="presentation_batch_g_changelog_080_fixes">
+        <item>Fixed the home screen not resetting to the top when returning from other pages.</item>
+        <item>Fixed Bilibili tracks in playback history failing to play.</item>
+    </string-array>
     
     <!-- Sort option display names -->
     <string name="sort_option_custom_order">Custom Order</string>

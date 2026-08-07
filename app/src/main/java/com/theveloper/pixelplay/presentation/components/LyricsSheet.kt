@@ -355,9 +355,9 @@ fun LyricsSheet(
 
     // Read animated lyrics preference internally from DataStore
     val useAnimatedLyricsFlow = remember(context) {
-        context.dataStore.data.map { it[booleanPreferencesKey("use_animated_lyrics")] ?: false }
+        context.dataStore.data.map { it[booleanPreferencesKey("use_animated_lyrics")] ?: true }
     }
-    val useAnimatedLyrics by useAnimatedLyricsFlow.collectAsStateWithLifecycle(initialValue = false)
+    val useAnimatedLyrics by useAnimatedLyricsFlow.collectAsStateWithLifecycle(initialValue = true)
 
     val animatedLyricsBlurEnabledFlow = remember(context) {
         context.dataStore.data.map { it[booleanPreferencesKey("animated_lyrics_blur_enabled")] ?: true }
@@ -1593,8 +1593,9 @@ fun LyricLineRow(
     // 复用父级共享的 TextMeasurer；单独使用时才自行创建
     val measurer = textMeasurer ?: rememberTextMeasurer()
     // 高亮行会被放大（useAnimatedLyrics 时 active scale≈1.1），为其预留放大余量，
-    // 换行后即使放大 1.15 倍也不会超出容器，彻底避免裁切
-    val activeScale = if (useAnimatedLyrics && distanceFromCurrent == 0) 1.15f else 1f
+    // 换行后即使放大 1.1 倍也不会超出容器，彻底避免裁切。
+    // 预算取 1.25（> 实际缩放 1.1），再叠加 Bold 测量，双重保险保证边缘不裁切。
+    val activeScale = if (useAnimatedLyrics && distanceFromCurrent == 0) 1.25f else 1f
     val availableWidthPx =
         if (containerWidthPx > 0) (containerWidthPx / activeScale).toInt() else Int.MAX_VALUE
     val wrappedLine = remember(sanitizedLine, style, availableWidthPx) {
@@ -1778,13 +1779,20 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
-                .onSizeChanged { containerWidthPx = it.width }
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
         ) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = boxAlignment) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // 在真实文字容器上测量可用宽度：之前测量的是含 36dp 左右 padding 的
+                    // 整个 Column，导致 wrapLyricLineToFit 换行预算偏大，长行歌词未换行，
+                    // 高亮放大后左右边缘文字溢出被容器裁切"一点"。
+                    .onSizeChanged { containerWidthPx = it.width },
+                contentAlignment = boxAlignment
+            ) {
                 // Invisible bold text to reserve layout space and prevent reflow
                 Text(
                     text = wrappedLine,
@@ -1847,33 +1855,49 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
-                .onSizeChanged { containerWidthPx = it.width }
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
         ) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = when (lyricsAlignment) {
-                    "center" -> Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)
-                    "right" -> Arrangement.spacedBy(3.dp, Alignment.End)
-                    else -> Arrangement.spacedBy(3.dp, Alignment.Start)
-                },
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // 同普通歌词分支：在真实文字容器上测量，避免含 36dp padding 的
+                    // 外层 Column 导致换行预算偏大，高亮放大后边缘文字溢出被裁切。
+                    .onSizeChanged { containerWidthPx = it.width },
+                contentAlignment = boxAlignment
             ) {
-                sanitizedWordClusters.forEach { cluster ->
-                    cluster.words.forEachIndexed { clusterOffset, word ->
-                        val wordIndex = cluster.startIndex + clusterOffset
-                        key("${line.time}_${word.time}_${word.word}_$wordIndex") {
-                            LyricWordSpan(
-                                word = word,
-                                isHighlighted = isCurrentLine && wordIndex == highlightedWordIndex,
-                                useAnimatedLyrics = useAnimatedLyrics,
-                                style = style,
-                                highlightedColor = accentColor,
-                                unhighlightedColor = unhighlightedColor
-                            )
+                // 词级高亮行放大 1.1 倍前预留 1/1.1 宽度，放大后恰好不超出容器，
+                // 避免 FlowRow 换行后焦点行边缘文字被容器裁切。
+                val flowRowWidthModifier =
+                    if (useAnimatedLyrics && distanceFromCurrent == 0 && containerWidthPx > 0) {
+                        Modifier.width(with(LocalDensity.current) { (containerWidthPx / 1.1f).toDp() })
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
+                FlowRow(
+                    modifier = flowRowWidthModifier,
+                    horizontalArrangement = when (lyricsAlignment) {
+                        "center" -> Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)
+                        "right" -> Arrangement.spacedBy(3.dp, Alignment.End)
+                        else -> Arrangement.spacedBy(3.dp, Alignment.Start)
+                    },
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    sanitizedWordClusters.forEach { cluster ->
+                        cluster.words.forEachIndexed { clusterOffset, word ->
+                            val wordIndex = cluster.startIndex + clusterOffset
+                            key("${line.time}_${word.time}_${word.word}_$wordIndex") {
+                                LyricWordSpan(
+                                    word = word,
+                                    isHighlighted = isCurrentLine && wordIndex == highlightedWordIndex,
+                                    useAnimatedLyrics = useAnimatedLyrics,
+                                    style = style,
+                                    highlightedColor = accentColor,
+                                    unhighlightedColor = unhighlightedColor
+                                )
+                            }
                         }
                     }
                 }
@@ -1943,51 +1967,83 @@ private fun wrapLyricLineToFit(
     val cacheKey = "$maxWidthPx|$styleKey|$line"
     lyricWrapCache.get(cacheKey)?.let { return it }
 
-    // 快速路径：先只测一次整行，未超宽直接返回（避免逐字符测量）
-    val fullWidth = try {
+    // 用加粗样式测量：歌词高亮（焦点）行以 Bold 渲染，若按常规字重预算换行，
+    // Bold 实际渲染更宽，放大后左右边缘就会溢出被容器裁切"一点"。
+    val measureStyle = style.copy(fontWeight = FontWeight.Bold)
+
+    fun measureWidth(text: String): Int = try {
         textMeasurer.measure(
-            text = AnnotatedString(line),
-            style = style,
+            text = AnnotatedString(text),
+            style = measureStyle,
             maxLines = 1,
             overflow = TextOverflow.Clip
         ).size.width
     } catch (t: Throwable) {
-        return line
+        // 测量异常时退回原文本，交由 softWrap 自动处理
+        lyricWrapCache.put(cacheKey, line)
+        Int.MIN_VALUE
     }
+
+    // 快速路径：先只测一次整行，未超宽直接返回
+    val fullWidth = measureWidth(line)
+    if (fullWidth == Int.MIN_VALUE) return line
     if (fullWidth <= maxWidthPx) {
         lyricWrapCache.put(cacheKey, line)
         return line
     }
 
-    // 慢路径：整行超宽，逐字符累积测量并断行
+    // 分词换行：英文/数字按空格成词、中文按标点成块，
+    // 换行点优先落在词/词组边界，而不是逐字符硬断。
+    val tokens = tokenizeLyricForWrapping(line)
     val sb = StringBuilder(line.length + 8)
-    var current = ""
-    for (ch in line) {
-        val test = current + ch
-        val w = try {
-            textMeasurer.measure(
-                text = AnnotatedString(test),
-                style = style,
-                maxLines = 1,
-                overflow = TextOverflow.Clip
-            ).size.width
-        } catch (t: Throwable) {
-            // 测量异常时退回原文本，交由 softWrap 自动处理
-            lyricWrapCache.put(cacheKey, line)
-            return line
+    var currentLine = ""
+    for (token in tokens) {
+        val test = currentLine + token
+        if (measureWidth(test) <= maxWidthPx) {
+            currentLine = test
+            continue
         }
-        if (w > maxWidthPx && current.isNotEmpty()) {
-            // 断行点：若该字符是空格/标点且当前行以它们结尾，则吞掉该分隔符
-            sb.append(current.trimEnd(' ', '\t')).append('\n')
-            current = if (ch.isWhitespace() || ch in "，。！？、；：,.!?;:") "" else ch.toString()
+        // 当前行放不下该词：先输出已有行（吞掉行尾空格/分隔符）
+        if (currentLine.isNotBlank()) {
+            sb.append(currentLine.trimEnd(' ', '\t')).append('\n')
+        }
+        // 单个词仍超宽（无空格的超长中文句/超长单词）：在其内部逐字切分
+        if (measureWidth(token) > maxWidthPx) {
+            var acc = ""
+            for (ch in token) {
+                val t = acc + ch
+                if (measureWidth(t) > maxWidthPx && acc.isNotEmpty()) {
+                    sb.append(acc).append('\n')
+                    acc = ch.toString()
+                } else {
+                    acc = t
+                }
+            }
+            currentLine = acc
         } else {
-            current = test
+            currentLine = token
         }
     }
-    sb.append(current)
+    sb.append(currentLine.trimEnd(' ', '\t'))
     val result = sb.toString()
     lyricWrapCache.put(cacheKey, result)
     return result
+}
+
+/**
+ * 把歌词切成便于按词边界换行的 token：
+ * - 连续的字母/数字/注音符号为一个词（英文按空格自然成词）
+ * - 连续中文为一个块（换行点优先选在标点后，避免把词从中间劈开）
+ * - 标点与空白作为独立 token，行尾会自动吞掉
+ * 若整行没有任何可分词结构，退化为逐字符（保证一定能换行）。
+ */
+private fun tokenizeLyricForWrapping(text: String): List<String> {
+    val tokens = LYRIC_TOKEN_REGEX.findAll(text).map { it.value }.toList()
+    return tokens.ifEmpty { text.map { it.toString() } }
+}
+
+private val LYRIC_TOKEN_REGEX by lazy {
+    Regex("[\\p{L}\\p{N}\\p{M}]+|[\\p{P}\\p{S}]+|\\s+")
 }
 
 @Composable

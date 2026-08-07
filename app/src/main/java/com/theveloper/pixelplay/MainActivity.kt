@@ -841,6 +841,7 @@ class MainActivity : ComponentActivity() {
                 Screen.ArtistDetail.route,
                 Screen.ArtistHomepage.route,
                 Screen.DJSpace.route,
+                Screen.CloudMusicSettings.route,
                 Screen.NavBarCrRad.route,
                 Screen.Radio.route,
                 Screen.About.route,
@@ -852,6 +853,7 @@ class MainActivity : ComponentActivity() {
                 Screen.DelimiterConfig.route,
                 Screen.PaletteStyle.route,
                 Screen.DeviceCapabilities.route,
+                Screen.DotDeviceSettings.route,
                 Screen.EasterEgg.route,
                 Screen.WordDelimiterConfig.route
             )

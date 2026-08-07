@@ -152,7 +152,9 @@ fun HomeScreen(
     qqMusicViewModel: QqMusicDashboardViewModel = hiltViewModel(),
     navidromeViewModel: NavidromeDashboardViewModel = hiltViewModel(),
     jellyfinViewModel: JellyfinDashboardViewModel = hiltViewModel(),
-    onOpenSidebar: () -> Unit
+    onOpenSidebar: () -> Unit,
+    // 从非 Tab 页面返回主页时递增，用于通知主页回到顶部（由导航层维护）
+    homeScrollToTopTrigger: Int = 0
 ) {
     val context = LocalContext.current
     // DETECTAR MODO BENCHMARK
@@ -314,6 +316,9 @@ fun HomeScreen(
 
     val homeStatsOverview by statsViewModel.homeOverview.collectAsStateWithLifecycle()
 
+    // 主页滚动状态用 rememberSaveable 保存：Tab 切换（主页离开组合再回来）时恢复上次
+    // 的滚动位置，避免整页回到顶部造成"重载闪一下"的观感。
+    // 从详情页等非 Tab 页面返回主页时，由 homeScrollToTopTrigger 通知强制回到顶部。
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     val density = LocalDensity.current
     val scrollThresholdPx = remember(density) { with(density) { 180.dp.toPx() } }
@@ -321,38 +326,11 @@ fun HomeScreen(
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > scrollThresholdPx }
     }
 
-    // Persist the scroll position across navigation away/back. The Stats card and other
-    // conditional sections can shift indices while data re-emits when returning, which
-    // would otherwise leave the list scrolled to the wrong place or jump to the top.
-    var savedScrollIndex by rememberSaveable { mutableIntStateOf(0) }
-    var savedScrollOffset by rememberSaveable { mutableIntStateOf(0) }
-    var needsScrollRestore by rememberSaveable { mutableStateOf(false) }
-
-    DisposableEffect(lifecycleOwner, listState) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) {
-                savedScrollIndex = listState.firstVisibleItemIndex
-                savedScrollOffset = listState.firstVisibleItemScrollOffset
-                needsScrollRestore = true
-            }
+    // 从非 Tab 页面（详情页/专辑/设置等）返回主页时，导航层会递增该值，通知主页回到顶部。
+    LaunchedEffect(homeScrollToTopTrigger) {
+        if (homeScrollToTopTrigger > 0) {
+            listState.scrollToItem(0)
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(
-        needsScrollRestore,
-        yourMixSongs.isNotEmpty(),
-        dailyMixSongs.isNotEmpty(),
-        recentlyPlayedSongs.size,
-        homeStatsOverview
-    ) {
-        if (!needsScrollRestore) return@LaunchedEffect
-        val totalItems = listState.layoutInfo.totalItemsCount
-        if (totalItems == 0) return@LaunchedEffect
-        val targetIndex = savedScrollIndex.coerceIn(0, (totalItems - 1).coerceAtLeast(0))
-        listState.scrollToItem(targetIndex, savedScrollOffset)
-        needsScrollRestore = false
     }
 
     // Drawer state for sidebar

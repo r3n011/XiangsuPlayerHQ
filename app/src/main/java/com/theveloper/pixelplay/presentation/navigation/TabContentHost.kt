@@ -93,7 +93,8 @@ internal fun TabScreenContent(
     playerViewModel: PlayerViewModel,
     navController: NavHostController,
     onSearchBarActiveChange: (Boolean) -> Unit = {},
-    onOpenSidebar: () -> Unit = {}
+    onOpenSidebar: () -> Unit = {},
+    homeScrollToTopTrigger: Int = 0
 ) {
     when (route) {
         Screen.Home.route -> {
@@ -102,7 +103,8 @@ internal fun TabScreenContent(
                     navController = navController,
                     paddingValuesParent = paddingValues,
                     playerViewModel = playerViewModel,
-                    onOpenSidebar = onOpenSidebar
+                    onOpenSidebar = onOpenSidebar,
+                    homeScrollToTopTrigger = homeScrollToTopTrigger
                 )
             }
         }

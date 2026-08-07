@@ -108,7 +108,9 @@ const QUALITY_TO_KUWO_BR = {
 const HIRES_QUALITY_SET = new Set(["24bit", "flac", "flac24bit", "hires", "master", "atmos"]);
 
 // 音质优先级（用于选择最接近请求质量的可用音质）
-const QUALITY_PRIORITY = ["flac24bit", "flac", "320k", "192k", "128k"];
+// 注意：必须包含 "24bit"（程序侧 Hi-Res 传的音质值），否则 selectQuality("24bit", ...)
+// 在 QUALITY_PRIORITY 中 indexOf 为 -1，会从最低档 128k 开始匹配，导致 hires 被降级到 128k。
+const QUALITY_PRIORITY = ["24bit", "flac24bit", "flac", "320k", "192k", "128k"];
 
 // URL缓存（简单的Map，按写入顺序淘汰最早条目）
 const urlCache = new Map();
@@ -206,7 +208,7 @@ function normalizeQuality(quality) {
   const q = String(quality || "").toLowerCase();
   if (q === "128k") return "low";
   if (q === "320k") return "standard";
-  if (q === "flac" || q === "flac24bit") return "lossless";
+  if (q === "flac" || q === "flac24bit" || q === "24bit" || q === "hires") return "lossless";
   return "128k";
 }
 
@@ -232,7 +234,7 @@ function selectQuality(requestedQuality, supportedQualities) {
  */
 function qualityToNetease(quality) {
   const q = String(quality || "128k").toLowerCase();
-  if (q === "flac" || q === "flac24bit" || q === "hires" || q === "master" || q === "atmos") return "lossless";
+  if (q === "24bit" || q === "flac" || q === "flac24bit" || q === "hires" || q === "master" || q === "atmos") return "lossless";
   if (q === "320k" || q === "192k") return "exhigh";
   return "standard";
 }

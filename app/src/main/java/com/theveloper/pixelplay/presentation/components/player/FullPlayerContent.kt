@@ -3336,17 +3336,6 @@ private fun BottomToggleRow(
             }
             if (isOnlineSong) {
                 Box(modifier = commonModifier) {
-                    if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed) {
-                        // 进度条：先按比例定宽再画背景（顺序不能反，否则 background 全宽导致看不到进度）
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth((downloadProgress / 100f).coerceIn(0f, 1f))
-                                .clip(AbsoluteSmoothCornerShape(cornerRadiusBL = rowCorners, smoothnessAsPercentTR = 60, cornerRadiusBR = rowCorners, smoothnessAsPercentBL = 60, cornerRadiusTL = rowCorners, smoothnessAsPercentBR = 60, cornerRadiusTR = rowCorners, smoothnessAsPercentTL = 60))
-                                .background(primaryFixed)
-                                .align(Alignment.CenterStart)
-                        )
-                    }
                     ToggleSegmentButton(
                         modifier = Modifier.fillMaxSize(),
                         active = downloadProgress != null || isDownloadComplete,
@@ -3359,10 +3348,14 @@ private fun BottomToggleRow(
                         iconId = when {
                             isDownloadComplete -> R.drawable.rounded_check_circle_24
                             isDownloadFailed -> R.drawable.rounded_close_24
-                            downloadProgress != null -> R.drawable.rounded_download_24
                             else -> R.drawable.rounded_download_24
                         },
-                        contentDesc = "Download"
+                        contentDesc = "Download",
+                        // ⚡ 下载进度：在按钮背景上按比例从左到右填充（模仿 mini player 进度条），
+                        // 而不是把进度区域直接拉伸成定宽色块
+                        progressFill = if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed)
+                            (downloadProgress / 100f).coerceIn(0f, 1f) else 0f,
+                        progressFillColor = onPrimaryFixed.copy(alpha = 0.30f)
                     )
                 }
             }

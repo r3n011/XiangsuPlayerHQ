@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">XiangsuPlayer</string>
+    <string name="app_name">Reproductor Pixel</string>
     <string name="app_name_change_title">Cambio de nombre de la app</string>
     <string name="app_name_change_message">Hemos cambiado el nombre de nuestra app de PixelPlay a XiangsuPlayer debido a un problema de marca registrada. ¡Sigue reproduciendo!</string>
     <string name="do_not_show_again">No volver a mostrar</string>

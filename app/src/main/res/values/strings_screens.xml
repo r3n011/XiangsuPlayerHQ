@@ -61,6 +61,7 @@
     <string name="tab_playlists">Playlists</string>
     <string name="tab_folders">Folders</string>
     <string name="tab_liked">Liked</string>
+    <string name="tab_history">History</string>
     <string name="setup_all_set_title">All Set!</string>
     <string name="setup_all_set_body">You\'re ready to enjoy your music.</string>
     <string name="setup_restore_backup_title">Restore Backup</string>

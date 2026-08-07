@@ -122,7 +122,8 @@ fun PlaylistContainer(
     onPlaylistLongPress: (Playlist) -> Unit = {},
     onPlaylistSelectionToggle: (Playlist) -> Unit = {},
     playlistSelectionStateHolder: PlaylistSelectionStateHolder? = null,
-    onReorder: ((List<String>) -> Unit)? = null
+    onReorder: ((List<String>) -> Unit)? = null,
+    dailyRecommendHeader: (@Composable () -> Unit)? = null
 ) {
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -187,7 +188,8 @@ fun PlaylistContainer(
                     filteredPlaylists = filteredPlaylists,
                     selectedPlaylists = selectedPlaylists,
                     currentSortOption = currentSortOption,
-                    onReorder = onReorder
+                    onReorder = onReorder,
+                    dailyRecommendHeader = dailyRecommendHeader
                 )
             } else {
                 val playlistPullToRefreshState = rememberPullToRefreshState()
@@ -214,7 +216,8 @@ fun PlaylistContainer(
                         selectedPlaylistIds = selectedPlaylistIds,
                         onPlaylistLongPress = onPlaylistLongPress,
                         onPlaylistSelectionToggle = onPlaylistSelectionToggle,
-                        onReorder = onReorder
+                        onReorder = onReorder,
+                        dailyRecommendHeader = dailyRecommendHeader
                     )
                 }
             }
@@ -251,7 +254,8 @@ fun PlaylistItems(
     selectedPlaylistIds: Set<String> = emptySet(),
     onPlaylistLongPress: (Playlist) -> Unit = {},
     onPlaylistSelectionToggle: (Playlist) -> Unit = {},
-    onReorder: ((List<String>) -> Unit)? = null
+    onReorder: ((List<String>) -> Unit)? = null,
+    dailyRecommendHeader: (@Composable () -> Unit)? = null
 ) {
     val hasCurrentSong by remember(playerViewModel) {
         playerViewModel.stablePlayerState
@@ -342,6 +346,11 @@ fun PlaylistItems(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
         ) {
+            if (dailyRecommendHeader != null) {
+                item(key = "daily_recommend_header", contentType = "daily_recommend_header") {
+                    dailyRecommendHeader()
+                }
+            }
             items(displayPlaylists, key = { it.id }) { playlist ->
                 val rememberedOnClick = remember(playlist.id) {
                     {

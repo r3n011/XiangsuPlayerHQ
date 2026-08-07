@@ -203,4 +203,13 @@
     <string name="cd_drag_handle">拖动把手</string>
     <string name="cd_reset">重置</string>
     <string name="action_done">完成</string>
+
+    <!-- 云端串流 provider -->
+    <string name="streaming_provider_telegram_subtitle">从频道和群聊中串流</string>
+    <string name="streaming_provider_coming_soon">即将推出</string>
+    <string name="streaming_provider_subsonic_connected">已连接 · Navidrome/Airsonic</string>
+    <string name="streaming_provider_subsonic_connect">连接 Navidrome 等服务</string>
+    <string name="streaming_provider_connected">已连接</string>
+    <string name="streaming_provider_jellyfin_connect">连接你的 Jellyfin 服务器</string>
+    <string name="streaming_provider_sign_in_to_stream">登录后串流</string>
 </resources>

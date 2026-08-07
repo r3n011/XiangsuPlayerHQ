@@ -93,8 +93,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 38
-        versionName = "1.4.1"
+        versionCode = 39
+        versionName = "1.4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -299,6 +299,9 @@ dependencies {
     implementation(libs.vorbisjava.core)
     implementation(libs.wavy.slider)
     implementation(libs.androidx.graphics.shapes)
+
+    // Markdown 渲染（关于页更新日志等）
+    implementation(libs.markwon)
 
     // Networking & Serialization
     implementation(libs.retrofit)

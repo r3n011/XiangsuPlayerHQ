@@ -14,7 +14,8 @@ enum class LibraryTabId(
     ARTISTS("ARTIST", R.string.tab_artists, SortOption.ArtistNameAZ),
     PLAYLISTS("PLAYLISTS", R.string.tab_playlists, SortOption.PlaylistNameAZ),
     FOLDERS("FOLDERS", R.string.tab_folders, SortOption.FolderNameAZ),
-    LIKED("LIKED", R.string.tab_liked, SortOption.LikedSongDateLiked);
+    LIKED("LIKED", R.string.tab_liked, SortOption.LikedSongDateLiked),
+    HISTORY("HISTORY", R.string.tab_history, SortOption.SongTitleAZ);
 
     companion object {
         fun fromStorageKey(key: String): LibraryTabId =

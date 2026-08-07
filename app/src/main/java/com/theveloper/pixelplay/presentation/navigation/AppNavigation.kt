@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,6 +36,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
@@ -44,6 +46,7 @@ import com.theveloper.pixelplay.presentation.screens.ArtistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistHomepageScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DailyMixScreen
+import com.theveloper.pixelplay.presentation.screens.DailyRecommendScreen
 import com.theveloper.pixelplay.presentation.screens.AiMixScreen
 import com.theveloper.pixelplay.presentation.screens.DotDeviceSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.EditTransitionScreen
@@ -93,6 +96,23 @@ fun AppNavigation(
             .toRoute()
     }
 
+    // 区分"进入主页"的方式：
+    // - Tab 切换（Search/Library/Settings 等 Tab → Home）：保留滚动位置，不触发重载
+    // - 从详情页/专辑等非 Tab 页面返回主页：递增 homeScrollToTopTrigger，主页回到顶部
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentNavRoute = navBackStackEntry?.destination?.route
+    var previousRouteBeforeHome by remember { mutableStateOf<String?>(null) }
+    var homeScrollToTopTrigger by remember { mutableIntStateOf(0) }
+    LaunchedEffect(currentNavRoute) {
+        if (currentNavRoute == Screen.Home.route &&
+            previousRouteBeforeHome != null &&
+            previousRouteBeforeHome !in MainTabRoutes
+        ) {
+            homeScrollToTopTrigger++
+        }
+        previousRouteBeforeHome = currentNavRoute
+    }
+
     startDestination?.let { initialRoute ->
         NavHost(
             navController = navController,
@@ -131,7 +151,8 @@ fun AppNavigation(
                     paddingValues = paddingValues,
                     playerViewModel = playerViewModel,
                     navController = navController,
-                    onOpenSidebar = onOpenSidebar
+                    onOpenSidebar = onOpenSidebar,
+                    homeScrollToTopTrigger = homeScrollToTopTrigger
                 )
             }
             composable(
@@ -353,6 +374,16 @@ fun AppNavigation(
                     DailyMixScreen(
                         mainViewModel = hiltViewModel(),
                         playlistViewModel = hiltViewModel(),
+                        playerViewModel = playerViewModel,
+                        navController = navController,
+                    )
+                }
+            }
+            composable(
+                Screen.DailyRecommendScreen.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    DailyRecommendScreen(
                         playerViewModel = playerViewModel,
                         navController = navController,
                     )
@@ -620,6 +651,15 @@ private fun String.toRoute(): String = when (this) {
     LaunchTab.LIBRARY -> Screen.Library.route
     else -> Screen.Home.route
 }
+
+/** 底部导航栏 / 导航栏对应的 Tab 路由集合，用于区分"Tab 切换"与"从详情页返回主页"。 */
+private val MainTabRoutes: Set<String> = setOf(
+    Screen.Home.route,
+    Screen.Search.route,
+    Screen.Library.route,
+    Screen.Settings.route,
+    Screen.CloudMusicSettings.route
+)
 
 private enum class MainRootDirection {
     FORWARD,

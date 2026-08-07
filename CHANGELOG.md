@@ -1,240 +1,48 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project will be documented in this file.
+## 2026-08-07（开发版）
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### 每日推荐
+- 每日推荐改为**逐首懒加载**：播放时"听那首加载哪首"，每首歌实时走落雪引擎解析播放链接，与搜索页行为一致，不再批量预解析全部歌曲。
+- 加载提示改为在**歌曲列表标题右侧**显示"获取播放链接…"（与搜索页 loadingSongId 一致），移除进度弹窗。
+- 切歌时若下一首尚未解析，会先暂停并实时解析，成功才播放、失败自动跳过。
+- 修复每日推荐切歌被误判为广播播放器的问题（`daily_` 前缀不再被识别为电台）。
 
-## [Unreleased]
+### 音质修复
+- 修复网易云歌曲 Hi-Res（24bit）自动降级到 128kbps 的问题：将脚本中"溯音163"（固定低码率源）从网易云音源链中移到高音质源之后，高音质源优先兜底。
+- 遵循"程序按脚本来"约定：音质值保持脚本注册的 `24bit/flac/320k/192k/128k`，仅调整音源链顺序。
 
-## [1.4.1] - 2026-08-06
+### 更新功能
+- 修复蓝奏云更新下载卡在 0% 的问题：解析接口响应时兼容 gzip 压缩编码（原只按 deflate 解压）。
 
-### Added
-- **AAudio 低延迟音频后端：** 设置新增 AAudio 开关，Android 8+ 时以自定义 AudioOutput 替换 AudioTrack，显著降低播放延迟。
-- **USB 独占 32bit 输出：** 设置新增 USB 位深选项，支持 32bit PCM 直达 USB DAC。
-- **落雪引擎多音源导入：** 在线音源设置支持导入多个落雪 JS 音源并逐源管理/删除，内置 QQ 音乐/酷狗/咪咕官方搜索。
-- **落雪聚合搜索与竞速加载：** 多音源并行竞速获取播放链接（赢者即胜出），显著提升在线歌曲获取速度。
-- **引擎启动预加载：** 应用启动即后台初始化落雪引擎，首次搜索/播放立即可用。
-- **下载通知栏进度：** 在线歌曲下载展示通知栏实时进度，完成/失败自动提醒并几秒后消失；下载优先复用播放链路已解析的 URL，绕过 API 限速。
-- **搜索页加载提示：** 正在解析播放链接的歌曲在行内显示小圆环与步骤文字（获取播放链接…→正在解析音源…→正在打开播放器…）。
-- **网易云歌手主页官方 logo：** 替换原先的自绘云朵图标。
+### 界面动画
+- 优化 mini player 展开动画：封面、歌名、歌手随展开进度**逐渐移动到目标位置**，替代原来的直接淡出，转场更连续。
 
-### Changed
-- **网易云播放链路优化：** 校验返回比特率，非会员账号被服务端静默降级到 128k 时不再直接接受，自动交由落雪引擎尝试高音质；落雪引擎不可用时回退降级 URL 兜底播放。
-- **落雪音质链：** 按用户选择的音质向下递减尝试（24bit→flac→320k→128k；128k 不自动抬音质），严格遵循音质设置。
-- **音质标签持久化：** 音质标签改由 ViewModel 层保存，打开歌词界面、播放器展开折叠后不再丢失。
-- **AAudio 与 USB 独占冲突规避：** USB 独占激活时自动回退 AudioTrack，保证独占路由与 DAC 时钟对齐正常工作。
-- **歌词防裁切：** 歌词放大后自动判断宽度并智能换行（共享 TextMeasurer + 进程级 LRU 缓存，流畅度优化）。
-- **歌词沉浸模式：** 同时隐藏状态栏与底部导航栏（三大金刚键/手势条），返回时恢复。
+### 下载功能
+- 下载按钮对所有**在线源**歌曲显示（只要有 http 播放地址即视为在线源，不再只限于网易云等特定来源）。
+- 下载进度显示改为**背景填充**效果：在下载按钮背景上按进度从左到右填充（模仿 mini player 进度条），不再直接拉伸进度区域。
 
-### Fixed
-- 修复 USB 独占输出未对齐 DAC 时钟采样率导致的咔咔杂音/无声（解析 UAC FORMAT_TYPE 描述符并按需重采样）。
-- 修复打开歌词界面再返回后播放器音质标签消失。
-- 修复 AAudio 后端下 USB 独占路由失效（`setPreferredDevice` no-op）及 libusb forceClaim 断开 AAudio 流的问题。
-- 修复漫游（roaming）歌曲被误判为电台播放器导致切歌异常。
-- 修复网易云非会员账号全链路音质被静默压到 128k。
+### 音源管理
+- 音源管理界面：每个脚本卡片内展示该脚本注册的音源列表（名称、支持的音质档位）。
+- 支持**临时单独开关每个音源**：关闭后该音源的搜索与播放链接获取都会被跳过（运行时生效，重启恢复默认全部开启）。
 
-## [1.3.3] - 2026-08-02
+## 2026-08-04 ~ 2026-08-05
 
-### Added
-- **广播（Radio）功能：** 接入 RadioBrowser 国际电台目录，支持直播电台播放与断线自动退避重试。
-- **广播国家筛选：** 按国家过滤电台列表，列表采用媒体库同款展示样式。
-- **热门电台推荐：** 广播播放器内展示热门电台（手机端横滑、平板端竖向自适应排列）。
-- **广播收藏：** 收藏列表展示电台 Logo/收音机图标，并修复从收藏直接播放广播失败的问题。
-- **导航栏中间按钮三选一：** 新增"发现/漫游/电台"三种模式，发现模式弹出选择面板一键切换漫游或电台；移除旧"显示漫游按钮"开关。
-- **在线歌曲下载：** 歌曲信息弹窗（媒体库省略号菜单）新增下载按钮，仅对在线歌曲显示，支持下载进度/已下载/失败状态展示。
-- **AI 全量移植：** 移植原版 11 个 AI Provider 替换旧实现。
-- **USB 独占播放：** 支持 USB 音频独占输出。
-- **收藏歌手：** 网易云歌手搜索、歌手主页收藏、主页收藏歌手卡片。
+### 在线播放
+- 网易云搜索升级为 10 条线路并行竞速（8 条 NCM 代理 + vkeys + 官方 weapi），先返回非空结果立即生效。
+- 播放解析快路径优化：先抢 128k 标准快路径 + 官方与落雪双端竞速，首字节延迟从 5~15s 降至 1~3s。
+- 实现**边下边播**（CloudStreamProxy）：立即回写响应头、首块 16KB 极小块并逐块 flush，ExoPlayer 拿到头部即开始解码。
+- 电台搜索稳定性加固：镜像扩至 6 条、启用重试、搜索缓存、失败回退上次结果与内置兜底。
+- Lx 引擎多音源导入：可同时加载多个 JS，聚合搜索 + 竞速 URL，音频质量设置迁移到在线音源设置页。
+- 漫游/每日推荐播放优先走落雪引擎，官方接口仅作兜底。
 
-### Changed
-- **广播播放器重设计：** LIVE 徽标、胶囊播放按钮、直播进度指示；播放广播时隐藏歌词、切歌、随机循环等不支持功能。
-- **广播播放优化：** 禁用 audio offload、DSP 全关走无分配透传，消除周期性电流声/打嗝。
-- **学习钟（专注模式）重设计：** 全面 Material 3 化，使用动态取色主题、GoogleSansRounded 字体与玻璃质感，移除旧式进度条。
-- **打包策略：** Release 仅输出 64 位版本；蓝奏云更新下载重试 5 次。
-- **DFF 转码优化：** 两级 FIR 降采样大幅提升转码速度，分块处理避免大文件 OOM。
-
-### Fixed
-- 修复 haze 模糊在软件渲染/部分设备上触发 RenderScript 崩溃（仅在硬件加速且 SDK≥31 时启用模糊，其余退回 Scrim 着色）。
-- 修复网易云搜索封面获取、搜索播放第一首歌无歌词、主页播放歌曲封面取色失败。
-- 修复横滑移除 MiniPlayer 后无法切换界面的问题。
-- 修复无 MiniPlayer 时设置页底部被导航栏遮挡。
-- 修复播放器播放一段时间后消失、返回主页强制刷新、播放器展开内容跳变。
-- 修复广播页 Now Playing 条模糊失效，以及播放广播时 Now Playing 条仍显示进度。
-- 修复平板横屏首页卡片起始位置偏移。
-
-## [0.7.0-beta] - 2026-05-25
-
-### Added
-- **Wear OS:** Music transfer, local playback, queue synchronization, and remote control from the watch.
-- **AI:** Groq AI and OpenRouter (experimental) with token optimization and AI-powered playlist generation.
-- **Cloud & Streaming:** Jellyfin support.
-- Direct song synchronization from server albums in Navidrome.
-- Standardized branding for NetEase Music.
-- **Lyrics:** Synchronized translation with a dedicated toggle and Kugou LRC format support.
-- Text alignment customization and improvements to TTML parsing.
-- Advanced romanization for Japanese characters.
-- **UI/UX:** Redesigned queue sheet and "Recently Played" pills with a dynamic palette.
-- Marquee support for long titles and a compact mode for the navigation bar.
-- New horizontal timeline for monthly statistics and multi-artist support.
-- **Telegram:** Native support for topics, playlist display, and reactive updates.
-
-### Changed
-- **Audio Engine:** Complete overhaul with support for MIDI, improvements to ALAC/M4A/Opus, and decoder optimization (including Samsung-specific decoders).
-- **Energy Efficiency:** Drastically reduced battery consumption and thermal optimization through UI task gates.
-- **Database and Cache:** Massive optimizations to queries, cover art cache controller v3, and support for Scoped Storage.
-- **Startup:** Improved load times through optimized generation of Baseline Profiles.
-- Project license changed from MIT to Proprietary License.
-
-### Fixed
-- **Playback:** Fixed stuttering in Opus/MP3, errors in ReplayGain during crossfades, and flickering during album art changes.
-- **Navigation:** Fixed navigation loops in Telegram and improved screen entry/exit animations.
-- **Stability:** Eliminated crashes on Android 12+, fixed memory leaks (ANRs), and improved exception handling in background services.
-- **Security:** CI hardening, encryption of cloud storage credentials, and media server access control.
-
-### Localization
-- 🇪🇸 **Spanish** | 🇫🇷 **French** | 🇷🇺 **Russian**
-- 🇨🇳 **Simplified Chinese** | 🇮🇩 **Indonesian** | 🇮🇹 **Italian** | 🇩🇪 **German**
-
-## [0.6.0-beta] - 2026-03-05
-
-### Added
-- Added Android Auto support through Media3 `MediaLibraryService`.
-- Added Wear OS companion support, including watch transfer and playback controls.
-- Added cloud provider expansions: Telegram playlist management, NetEase sync improvements, QQ Music integration, Subsonic/Navidrome, and Google Drive streaming (WIP).
-- Added a modernized backup/restore system (v3), account management, and persistent queue restoration.
-- Added smarter lyrics workflows (manual fallback search + storage refactor), Recently Played, and new multi-selection flows (songs/albums/playlists).
-- Added home and UI customization features: collage patterns, quick settings tiles, expressive scrollbar refinements, and new widget styles.
-
-### Changed
-- Reworked player architecture and interaction model (unified player sheet refactors, predictive back handling, gesture tuning).
-- Redesigned key surfaces including Lyrics, Cast, Artist, Genre, and Daily Mix experiences.
-- Refined library/search/navigation behavior with safer navigation APIs and better state restoration.
-- Improved audio compatibility and metadata handling (JAudioTagger fallback, URI handling, surround/noisy behavior).
-- Expanded integration UX across Telegram/NetEase/QQ login and sync flows.
-
-### Fixed
-- Fixed multiple queue/shuffle edge cases (anchored shuffle, start-at-zero shuffle, queue synchronization).
-- Fixed playback interruption behavior when headphones disconnect and resolved foreground service start restrictions.
-- Fixed Cast-related crash cases and improved cast reliability.
-- Fixed Sleep Timer UI issues, files tab navigation, album artist crash, and state-sync regressions in settings/reorder flows.
-- Fixed release build stability (`R8`) and numerous UI polish issues across bottom sheets and controls.
-
-### Performance
-- Reduced recompositions and state overhead across Player, Library, Queue, and detail screens.
-- Improved startup behavior (eliminated blank flash and deferred heavy Telegram native loading off main thread).
-- Optimized folder/genre/artist loading, bottom navigation responsiveness, and gesture fluidity.
-- Reduced CPU/main-thread pressure and improved service/widget runtime efficiency.
-- Reduced APK size using ABI splits, downloadable fonts, and SDK cleanup.
-
-### New Contributors
-- @ThatOneCalculator
-- @ryan7zoom
-- @LarveyOfficial
-- @Dv1101
-- @Sincere-Bhattarai
-
-## [0.5.0-beta] - 2026-01-14
-
-### Added
-- Implemented 10-band Equalizer and effects suite (feat: @theovilardo)
-- Added M3U playlist import/export support (feat/fix: @lostf1sh, @theovilardo)
-- Integrated Deezer API for artist images (feat: @lostf1sh)
-- Added Gemini AI model selection, system prompt settings, and AI playlist entry point (feat: @lostf1sh, @theovilardo)
-- Added sync offset support for lyrics and multi-strategy remote search (feat/fix: @lostf1sh, @theovilardo)
-- Added Baseline Profiles for improved performance (feat/fix: @theovilardo, @google-labs-julesbot)
-- Added support for custom playlist covers
-
-### Changed
-- **Material 3 Expressive UI**: Modernized Settings, Stats, Player, Bottom Sheets, and dialogs (refactor: @theovilardo, @lostf1sh)
-- **Library Sync**: Rebuilt initial sync flow with phase-based progress reporting and linear indicators (feat: @lostf1sh)
-- **Settings Architecture**: Introduced category sub-screens and improved navigation handling (refactor/fix: @theovilardo)
-- **Queue & Player**: Decoupled queue updates from scroll animations, added animated queue scrolling (feat/fix: @lostf1sh, @theovilardo)
-- Improved widget previews and case-insensitive sorting logic (feat/fix: @lostf1sh, @google-labs-julesbot)
-
-### Fixed
-- Fixed casting stability, queue transitions, and reduced latency (fix: @theovilardo)
-- Fixed delayed content rendering and unwanted collapses in Player Sheet (fix/refactor: @theovilardo)
-- Fixed reordering issues in queue
-- General crash fixes and minor UX improvements (fix: @lostf1sh, @theovilardo)
-
-## [0.4.0-beta] - 2025-12-15
-
-### Added
-- Major navigation redesign
-- New file explorer for choosing source directories
-- Landscape mode (thanks to "leave this blank for now")
-- New Connectivity and casting functionalities
-- Seamless continuity between remote devices
-- Gapless transition between songs
-- Crossfade
-- New Custom Transitions feature (only for playlists)
-- Keep playing after closed the app
-- UI Optimizations
-- Improved stats feature
-- Redesigned Queue control with more features
-- Improved different filetypes support for playing and metadata editing
-- Improved permission controller
-- Minor bug fixes
-
-## [0.3.0-beta] - 2025-10-28
-
-### What's new
-- Introduced a richer listening stats hub with deeper insights into your sessions.
-- Launched a floating quick player to instantly open and preview local files.
-- Added a folders tab with a tree-style navigator and playlist-ready view.
-
-### Improvements
-- Refined the overall Material 3 UI for a cleaner and more cohesive experience.
-- Smoothed out animations and transitions across the app for more fluid navigation.
-- Enhanced the artist screen layout with richer details and polish.
-- Upgraded DailyMix and YourMix generation with smarter, more diverse selections.
-- Strengthened the AI assistant to deliver more relevant playback suggestions.
-- Improved search relevance and presentation for faster discovery.
-- Expanded support for a broader range of audio file formats.
-
-### Fixes
-- Resolved metadata quirks so song details stay accurate everywhere.
-- Restored notification shortcuts so they reliably jump back into playback.
-
-## [0.2.0-beta] - 2024-09-15
-
-### Added
-- Chromecast support for casting audio from your device (temporarily disabled).
-- In-app changelog to keep you updated on the latest features.
-- Improved lyrics search
-- Support for .LRC files, both embedded and external.
-- Offline lyrics support.
-- Synchronized lyrics (synced with the song).
-- New screen to view the full queue.
-- Reorder and remove songs from the queue.
-- Mini-player gestures (swipe down to close).
-- Added more material animations.
-- New settings to customize the look and feel.
-- New settings to clear the cache.
-
-### Changed
-- Complete redesign of the user interface.
-- Complete redesign of the player.
-- Performance improvements in the library.
-- Improved application startup speed.
-- The AI now provides better results.
-
-### Fixed
-- Fixed various bugs in the tag editor.
-- Fixed a bug where the playback notification was not clearing.
-- Fixed several bugs that caused the app to crash.
-
-## [0.1.0-beta] - 2024-08-30
-
-### Added
-- Initial beta release of PixelPlayer Music Player.
-- Local music scanning and playback (MP3, FLAC, AAC).
-- Background playback using a foreground service and Media3.
-- Modern UI with Jetpack Compose, Material 3, and Dynamic Color support.
-- Music library organization by songs, albums, and artists.
-- Home screen widget for music control.
-- Real-time audio waveform visualization.
-- Built-in tag editor for song metadata.
-- AI-powered features using Gemini.
-- Smooth in-app permission handling.
+### 本地与系统
+- 内置 JS 只保留"全豆要"聚合音源脚本。
+- 修复漫游模式第一首歌没有歌词的问题。
+- 歌词界面：焦点行两侧不再被裁切，换行按分词处理（英文按空格成词、中文按标点成块）。
+- APK 体积优化：收窄 ProGuard keep + 开启 R8 fullMode，体积 80.5MB → 58.54MB。
+- 修复 USB 独占模式闪退（Toast 线程问题）。
+- 接入 AAudio 提升音质，支持 32bit 输出到 USB 设备，设置页增加对应开关与位深选项。
+- 蓝奏云更新下载：支持暂停/继续/失败重试、前台服务后台更新、通知栏进度显示、5 个国内镜像兜底。
+- 移除学习钟模式（FocusMode）相关功能与代码。
+- 修复部分电台播放报错（补充 HLS 媒体源支持）。

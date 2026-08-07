@@ -110,7 +110,7 @@ data class SettingsUiState(
     val hapticsEnabled: Boolean = true,
     val immersiveLyricsEnabled: Boolean = false,
     val immersiveLyricsTimeout: Long = 4000L,
-    val useAnimatedLyrics: Boolean = false,
+    val useAnimatedLyrics: Boolean = true,
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 2.5f,
     val disableBlurAllOver: Boolean = false,

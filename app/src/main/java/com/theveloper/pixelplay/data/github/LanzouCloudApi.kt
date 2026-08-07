@@ -5,10 +5,13 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.zip.GZIPInputStream
+import java.util.zip.InflaterInputStream
 
 /**
  * 蓝奏云直链解析 API
@@ -375,6 +378,9 @@ class LanzouCloudApi {
                     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
                 )
                 addRequestProperty("Accept-Language", "zh-CN,zh-HK;q=0.9,zh;q=0.8,en;q=0.7")
+                // 蓝奏云 CDN（Tengine/ESA）对下载页、/fn 页强制返回 gzip（即使未请求也会压缩），
+                // 显式声明后由下面按 Content-Encoding 解压，避免正则匹配到压缩乱码
+                addRequestProperty("Accept-Encoding", "gzip, deflate")
                 if (referer != null) addRequestProperty("Referer", referer)
                 if (method == "POST") {
                     doOutput = true
@@ -409,7 +415,15 @@ class LanzouCloudApi {
                     }
                 }
                 lastHost = conn.url.host
-                return stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() } ?: ""
+
+                // 处理压缩响应：HttpURLConnection 不会自动解压 gzip/deflate，必须按 Content-Encoding 手动解压
+                val encoding = conn.getHeaderField("Content-Encoding")?.lowercase() ?: ""
+                val reader: BufferedReader = when {
+                    encoding.contains("gzip") -> GZIPInputStream(stream).bufferedReader(StandardCharsets.UTF_8)
+                    encoding.contains("deflate") -> InflaterInputStream(stream).bufferedReader(StandardCharsets.UTF_8)
+                    else -> stream.bufferedReader(StandardCharsets.UTF_8)
+                }
+                return reader.use { it.readText() }
             } finally {
                 conn.disconnect()
             }

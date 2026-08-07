@@ -1596,6 +1596,10 @@ class DualPlayerEngine @Inject constructor(
                                     telegramRepository.resolveTelegramUri(originalUri)?.first
                                         ?.let { telegramStreamProxy -> Uri.parse(telegramStreamProxy.toString()) }
                                 }
+                                "bilibili" -> {
+                                    // 兜底：历史/通知等路径若未预解析，数据源层重新解析最新播放地址
+                                    resolveBilibiliUri(Uri.parse(originalUri))
+                                }
                                 else -> null
                             }
                         } catch (e: Exception) {

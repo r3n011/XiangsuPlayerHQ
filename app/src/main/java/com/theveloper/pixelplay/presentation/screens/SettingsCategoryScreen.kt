@@ -176,6 +176,7 @@ import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.LaunchTab
+import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
@@ -848,7 +849,7 @@ fun SettingsCategoryScreen(
                                 ThemeSelectorItem(
                                     label = stringResource(R.string.setcat_collage_pattern_label),
                                     description = stringResource(R.string.setcat_collage_pattern_desc),
-                                    options = CollagePattern.entries.associate { it.storageKey to it.label },
+                                    options = CollagePattern.entries.associate { it.storageKey to stringResource(it.labelResId) },
                                     selectedKey = uiState.collagePattern.storageKey,
                                     onSelectionChanged = { key ->
                                         settingsViewModel.setCollagePattern(CollagePattern.fromStorageKey(key))
@@ -943,6 +944,14 @@ fun SettingsCategoryScreen(
                                         leadingIcon = { Icon(Icons.Rounded.Timer, null, tint = MaterialTheme.colorScheme.secondary) }
                                     )
                                 }
+
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_show_lyrics_track_info_title),
+                                    subtitle = stringResource(R.string.setcat_show_lyrics_track_info_subtitle),
+                                    checked = uiState.showLyricsTrackInfo,
+                                    onCheckedChange = { settingsViewModel.setShowLyricsTrackInfo(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_music_note_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
                             }
 
                             SettingsSubsection(
@@ -975,6 +984,22 @@ fun SettingsCategoryScreen(
                             }
                         }
                         SettingsCategory.PLAYBACK -> {
+                            // 播放音质（在线音源统一音质）：置于播放设置顶部
+                            SettingsSubsection(title = stringResource(R.string.music_quality_title)) {
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.music_quality_title),
+                                    description = stringResource(R.string.music_quality_subtitle),
+                                    options = MusicQuality.entries.associate { it.name to stringResource(it.labelResId) },
+                                    selectedKey = uiState.musicQuality.name,
+                                    onSelectionChanged = { key ->
+                                        MusicQuality.entries.find { it.name == key }?.let { quality ->
+                                            settingsViewModel.setMusicQuality(quality)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
                             SettingsSubsection(title = stringResource(R.string.setcat_background_playback)) {
                                 ThemeSelectorItem(
                                     label = stringResource(R.string.setcat_keep_playing_label),
@@ -1183,13 +1208,6 @@ fun SettingsCategoryScreen(
                                     checked = uiState.showQueueHistory,
                                     onCheckedChange = { settingsViewModel.setShowQueueHistory(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_queue_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_show_lyrics_track_info_title),
-                                    subtitle = stringResource(R.string.setcat_show_lyrics_track_info_subtitle),
-                                    checked = uiState.showLyricsTrackInfo,
-                                    onCheckedChange = { settingsViewModel.setShowLyricsTrackInfo(it) },
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_music_note_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                             }
 

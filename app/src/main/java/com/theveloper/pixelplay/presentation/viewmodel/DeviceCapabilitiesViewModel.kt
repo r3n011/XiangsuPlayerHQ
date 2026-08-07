@@ -367,7 +367,10 @@ class DeviceCapabilitiesViewModel @Inject constructor(
         rows: List<DeviceCapabilitySongRow>,
         audioCapabilities: AudioCapabilities
     ): PlaybackCompatibilitySummary {
-        val supportedTypes = audioCapabilities.supportedCodecs.flatMap { it.supportedTypes }.toSet()
+        val supportedTypes = audioCapabilities.supportedCodecs.flatMap { it.supportedTypes }.toSet() +
+            // DSD 系列（DFF/DSF/DIF）由 PixelPlayer 自研 DSD 解码引擎（DffDecoder）软件解码，
+            // 即使系统 MediaCodec 不支持也应计入"可播放"，避免 DFF 歌曲被误判为不支持的格式。
+            CUSTOM_DECODER_MIME
         val localRows = rows.filter { it.sourceType == SourceType.LOCAL }
         var supportedCount = 0
         var unsupportedCount = 0

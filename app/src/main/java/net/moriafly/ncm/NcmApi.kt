@@ -511,6 +511,7 @@ object NcmApi {
         // 每日推荐 / 历史 / 听歌数据
         suspend fun historyRecommendSongs(limit: Int = 100) = NcmApi.runSafely("historyRecommendSongs") { NcmModulesFull.historyRecommendSongs(limit) }
         suspend fun historyRecommendSongsDetail(date: String) = NcmApi.runSafely("historyRecommendSongsDetail") { NcmModulesFull.historyRecommendSongsDetail(date) }
+        suspend fun recommendSongs() = NcmApi.runSafely("recommendSongs") { NcmModulesFull.recommendSongs() }
         suspend fun listenDataReport(type: Int, data: String) = NcmApi.runSafely("listenDataReport") { NcmModulesFull.listenDataReport(type, data) }
         suspend fun listenDataRealtimeReport(actionsJson: String) = NcmApi.runSafely("listenDataRealtimeReport") { NcmModulesFull.listenDataRealtimeReport(actionsJson) }
         suspend fun listenDataTodaySong(start: Long = 0, end: Long = 0) = NcmApi.runSafely("listenDataTodaySong") { NcmModulesFull.listenDataTodaySong(start, end) }

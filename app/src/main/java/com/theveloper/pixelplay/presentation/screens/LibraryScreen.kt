@@ -737,7 +737,8 @@ fun LibraryScreen(
                 LibraryTabId.SONGS,
                 LibraryTabId.LIKED,
                 LibraryTabId.FOLDERS -> isSelectionMode
-                LibraryTabId.ARTISTS -> false
+                LibraryTabId.ARTISTS,
+                LibraryTabId.HISTORY -> false
             }
         }
     }
@@ -773,6 +774,8 @@ fun LibraryScreen(
                     }
 
                     LibraryTabId.ARTISTS -> Unit
+
+                    LibraryTabId.HISTORY -> Unit
                 }
             }
 
@@ -1166,6 +1169,7 @@ fun LibraryScreen(
                             LibraryTabId.PLAYLISTS -> playlistUiState.currentPlaylistSortOption
                             LibraryTabId.LIKED -> playerUiState.currentFavoriteSortOption
                             LibraryTabId.FOLDERS -> playerUiState.currentFolderSortOption
+                            LibraryTabId.HISTORY -> null
                         }
 
                         val showLocateButton = when (currentTabId) {
@@ -1190,6 +1194,7 @@ fun LibraryScreen(
                                     LibraryTabId.PLAYLISTS -> playlistViewModel.sortPlaylists(option)
                                     LibraryTabId.LIKED -> playerViewModel.sortFavoriteSongs(option)
                                     LibraryTabId.FOLDERS -> playerViewModel.sortFolders(option)
+                                    LibraryTabId.HISTORY -> Unit
                                 }
                             }
                         }
@@ -1340,11 +1345,12 @@ fun LibraryScreen(
                                             LibraryTabId.LIKED -> playerViewModel.shuffleFavoriteSongs()
                                             LibraryTabId.ALBUMS -> playerViewModel.shuffleRandomAlbum()
                                             LibraryTabId.ARTISTS -> playerViewModel.shuffleRandomArtist()
+                                            LibraryTabId.HISTORY -> playerViewModel.shuffleHistorySongs()
                                             else -> playerViewModel.shuffleAllSongs()
                                         }
                                     },
                                     iconRotation = iconRotation,
-                                    showSortButton = sanitizedSortOptions.isNotEmpty(),
+                                    showSortButton = currentTabId != LibraryTabId.HISTORY && sanitizedSortOptions.isNotEmpty(),
                                     showLocateButton = showLocateButton,
                                     onSortClick = { playerViewModel.showSortingSheet() },
                                     onLocateClick = { locateAction?.invoke() },
@@ -1703,6 +1709,16 @@ fun LibraryScreen(
                                     }
 
                                     LibraryTabId.PLAYLISTS -> {
+                                        // 网易云每日推荐：仅登录后显示，置于列表顶部
+                                        val isNeteaseLoggedIn by playerViewModel.neteaseLoggedInFlow
+                                            .collectAsStateWithLifecycle(initialValue = playerViewModel.isNeteaseLoggedIn)
+                                        val dailyRecommendState by playerViewModel.dailyRecommendState
+                                            .collectAsStateWithLifecycle()
+                                        LaunchedEffect(isNeteaseLoggedIn) {
+                                            if (isNeteaseLoggedIn) {
+                                                playerViewModel.refreshDailyRecommend()
+                                            }
+                                        }
                                         LibraryPlaylistsTab(
                                             playlistUiState = playlistUiState,
                                             filteredPlaylists = visiblePlaylists,
@@ -1719,6 +1735,17 @@ fun LibraryScreen(
                                             onPlaylistOptionsClick = { showPlaylistMultiSelectionSheet = true },
                                             onReorder = { order ->
                                                 playlistViewModel.setPlaylistsManualOrder(order)
+                                            },
+                                            dailyRecommendHeader = if (isNeteaseLoggedIn) {
+                                                {
+                                                    DailyRecommendCard(
+                                                        state = dailyRecommendState,
+                                                        onPlay = { navController.navigateSafely(Screen.DailyRecommendScreen.route) },
+                                                        onRetry = { playerViewModel.refreshDailyRecommend(force = true) }
+                                                    )
+                                                }
+                                            } else {
+                                                null
                                             }
                                         )
                                     }
@@ -1804,6 +1831,18 @@ fun LibraryScreen(
                                             currentSong = currentSong,
                                             onFoldersReordered = { order ->
                                                 playerViewModel.setLibraryManualOrder(LibraryManualOrderType.FOLDERS, order)
+                                            }
+                                        )
+                                    }
+
+                                    LibraryTabId.HISTORY -> {
+                                        LibraryHistoryTab(
+                                            playerViewModel = playerViewModel,
+                                            bottomBarHeight = bottomBarHeightDp,
+                                            onMoreOptionsClick = stableOnMoreOptionsClick,
+                                            isRefreshing = isRefreshing,
+                                            onRefresh = {
+                                                onRefresh()
                                             }
                                         )
                                     }
@@ -2939,6 +2978,7 @@ private fun LibraryTabId.iconRes(): Int = when (this) {
     LibraryTabId.PLAYLISTS -> R.drawable.rounded_playlist_play_24
     LibraryTabId.FOLDERS -> R.drawable.rounded_folder_24
     LibraryTabId.LIKED -> R.drawable.round_favorite_24
+    LibraryTabId.HISTORY -> R.drawable.rounded_schedule_24
 }
 
 internal fun resolveFolderNavigationDirection(initialPath: String?, targetPath: String?): Int =

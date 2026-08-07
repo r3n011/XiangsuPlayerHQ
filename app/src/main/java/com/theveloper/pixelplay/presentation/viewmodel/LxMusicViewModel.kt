@@ -121,6 +121,19 @@ class LxMusicViewModel @Inject constructor(
         }
     }
 
+    // ⚡ 音源临时开关（运行时生效，不持久化）：
+    // sourceToggles: source -> enabled；UI 可通过 toggleSource 单独启用/禁用每个音源
+    val sourceToggles: StateFlow<Map<String, Boolean>> = engine.sourceToggles
+
+    /** 临时启用/禁用某个音源（禁用后该音源的搜索与播放链接获取都会跳过） */
+    fun toggleSource(source: String, enabled: Boolean) {
+        engine.setSourceEnabled(source, enabled)
+    }
+
+    /** 查询某个 JS 脚本注册了哪些音源（用于音源管理界面展示） */
+    fun getInstanceSources(fileName: String): Map<String, LxSourceInfo> =
+        engine.instanceSources(fileName)
+
     private suspend fun loadScriptInfos(): List<LxScriptInfo> =
         runCatching { engine.scriptInfos() }.getOrDefault(emptyList())
 
