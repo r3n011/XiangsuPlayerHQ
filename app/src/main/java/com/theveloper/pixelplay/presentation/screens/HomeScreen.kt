@@ -166,6 +166,8 @@ fun HomeScreen(
     val favoriteArtistViewModel: FavoriteArtistViewModel = hiltViewModel()
     val favoriteArtists by favoriteArtistViewModel.artists.collectAsStateWithLifecycle()
     val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    // ⚡ 首页顶部留白高度（dp）：设置页「外观 → 主页拼贴」中可调，实时生效
+    val homeTopWhitespaceDp by settingsViewModel.homeTopWhitespaceDp.collectAsStateWithLifecycle()
     val isNeteaseLoggedIn by neteaseViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
     val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
@@ -185,17 +187,28 @@ fun HomeScreen(
     }
     
     // Only collect mix data when needed
+    // ⚡ initialValue 用 StateFlow 当前值而非空列表：离开首页再返回时组合会重建，
+    //    若用空列表作初始值，唱片墙会先消失一帧再出现（闪烁）。
     val dailyMixSongs by remember {
         playerViewModel.dailyMixSongs
-    }.collectAsStateWithLifecycle(initialValue = persistentListOf(), minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED)
-    
+    }.collectAsStateWithLifecycle(
+        initialValue = playerViewModel.dailyMixSongs.value,
+        minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED
+    )
+
     val curatedYourMixSongs by remember {
         playerViewModel.yourMixSongs
-    }.collectAsStateWithLifecycle(initialValue = persistentListOf(), minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED)
-    
+    }.collectAsStateWithLifecycle(
+        initialValue = playerViewModel.yourMixSongs.value,
+        minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED
+    )
+
     val homeMixPreviewSongs by remember {
         playerViewModel.homeMixPreviewSongs
-    }.collectAsStateWithLifecycle(initialValue = persistentListOf(), minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED)
+    }.collectAsStateWithLifecycle(
+        initialValue = playerViewModel.homeMixPreviewSongs.value,
+        minActiveState = androidx.lifecycle.Lifecycle.State.RESUMED
+    )
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val usesFallbackHomeMix = remember(curatedYourMixSongs, dailyMixSongs) {
@@ -354,19 +367,7 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize()
     ) {
     Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                if (!isLandscape) {
-                    val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
-                    HomeGradientTopBar(
-                        onTelegramClick = {
-                            showStreamingProviderSheet = true
-                        },
-                        isScrolled = isScrolledPastThreshold.value,
-                        disableBlurAllOver = disableBlurAllOver
-                    )
-                }
-            }
+            modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
             val layoutDirection = LocalLayoutDirection.current
             LazyColumn(
@@ -377,7 +378,8 @@ fun HomeScreen(
                     .hazeSource(MainActivity.LocalHazeState.current),
                 contentPadding = PaddingValues(
                     start = paddingValuesParent.calculateStartPadding(layoutDirection),
-                    top = innerPadding.calculateTopPadding(),
+                    // ⚡ 首页顶部留白：innerPadding（顶栏+状态栏）+ 用户可调的额外留白高度
+                    top = innerPadding.calculateTopPadding() + homeTopWhitespaceDp.dp,
                     bottom = paddingValuesParent.calculateBottomPadding()
                             + (if (isLandscape) 12.dp else 24.dp) + bottomPadding,
                     end = paddingValuesParent.calculateEndPadding(layoutDirection)
@@ -821,6 +823,21 @@ fun HomeScreen(
                 )
         ) {
 
+        }
+
+        // ⚡ 顶部栏改为悬浮覆盖（不再占用固定 64dp 高度）：顶部留白完全由
+        //    「首页顶部留白」设置控制，设为 0 时内容紧贴状态栏下方，不再有默认大留白。
+        //    必须置于外层 Box 内部：Modifier.align 依赖 BoxScope 接收者。
+        if (!isLandscape) {
+            val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
+            HomeGradientTopBar(
+                onTelegramClick = {
+                    showStreamingProviderSheet = true
+                },
+                isScrolled = isScrolledPastThreshold.value,
+                disableBlurAllOver = disableBlurAllOver,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
     if (showOptionsBottomSheet) {

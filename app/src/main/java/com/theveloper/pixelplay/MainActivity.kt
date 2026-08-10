@@ -835,6 +835,7 @@ class MainActivity : ComponentActivity() {
                 Screen.Accounts.route,
                 Screen.PlaylistDetail.route,
                 Screen.DailyMixScreen.route,
+                Screen.DailyRecommendScreen.route,
                 Screen.RecentlyPlayed.route,
                 Screen.GenreDetail.route,
                 Screen.AlbumDetail.route,
@@ -855,7 +856,8 @@ class MainActivity : ComponentActivity() {
                 Screen.DeviceCapabilities.route,
                 Screen.DotDeviceSettings.route,
                 Screen.EasterEgg.route,
-                Screen.WordDelimiterConfig.route
+                Screen.WordDelimiterConfig.route,
+                Screen.ArtistWhitelistConfig.route
             )
         }
         val isPlayerExpanded by remember {

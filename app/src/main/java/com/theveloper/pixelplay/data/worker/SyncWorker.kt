@@ -154,6 +154,7 @@ constructor(
 
                     val artistDelimiters = userPreferencesRepository.artistDelimitersFlow.first()
                     val artistWordDelimiters = userPreferencesRepository.artistWordDelimitersFlow.first()
+                    val artistSplitWhitelist = userPreferencesRepository.artistSplitWhitelistFlow.first()
                     val extractArtistsFromTitle = userPreferencesRepository.extractArtistsFromTitleFlow.first()
                     val groupByAlbumArtist =
                             userPreferencesRepository.groupByAlbumArtistFlow.first()
@@ -284,6 +285,7 @@ constructor(
                                         songs = songsToInsert,
                                         artistDelimiters = artistDelimiters,
                                         wordDelimiters = artistWordDelimiters,
+                                        protectedNames = artistSplitWhitelist,
                                         extractFromTitle = extractArtistsFromTitle,
                                         groupByAlbumArtist = groupByAlbumArtist,
                                         existingArtistMetadata = existingArtistMetadata,
@@ -477,6 +479,12 @@ constructor(
                         Log.d(TAG, "Skipping Navidrome sync — not logged in.")
                     }
 
+                    // Backfill missing primary artist cross-references so online songs
+                    // saved before the cross-ref write path existed still show up in
+                    // the artist list and artist detail pages.
+                    runCatching { musicDao.backfillMissingSongArtistCrossRefs() }
+                        .onFailure { Log.e(TAG, "Failed to backfill artist cross-refs", it) }
+
                     // Recalculate total
                     val finalTotalSongs = musicDao.getSongCount().first()
 
@@ -522,6 +530,7 @@ constructor(
             songs: List<SongEntity>,
             artistDelimiters: List<String>,
             wordDelimiters: List<String> = emptyList(),
+            protectedNames: Collection<String> = emptyList(),
             extractFromTitle: Boolean = true,
             groupByAlbumArtist: Boolean,
             existingArtistMetadata: Map<Long, Pair<String?, String?>>,
@@ -559,6 +568,7 @@ constructor(
                             title = song.title,
                             artistDelimiters = artistDelimiters,
                             wordDelimiters = wordDelimiters,
+                            protectedNames = protectedNames,
                             extractFromTitle = extractFromTitle
                         )
                     }
@@ -640,7 +650,8 @@ constructor(
                  songs = songsInAlbum,
                  artistNameToId = artistNameToId,
                  artistDelimiters = artistDelimiters,
-                 wordDelimiters = wordDelimiters
+                 wordDelimiters = wordDelimiters,
+                 protectedNames = protectedNames
              )
              val metadataAlbumArtist = songsInAlbum
                  .mapNotNull { song ->
@@ -1035,6 +1046,7 @@ constructor(
         // Phase 2: Identify changed songs and merge with existing data in chunks
         val artistDelimiters = userPreferencesRepository.artistDelimitersFlow.first()
         val artistWordDelimiters = userPreferencesRepository.artistWordDelimitersFlow.first()
+        val artistSplitWhitelist = userPreferencesRepository.artistSplitWhitelistFlow.first()
         val rawSongCount = rawDataList.size
         val songsToProcess = if (isRebuild) {
              rawDataList.toList()
@@ -1106,7 +1118,8 @@ constructor(
                                         localArtistName = localSong.artistName,
                                         mediaStoreArtistName = mediaStoreSong.artistName,
                                         artistDelimiters = artistDelimiters,
-                                        wordDelimiters = artistWordDelimiters
+                                        wordDelimiters = artistWordDelimiters,
+                                        protectedNames = artistSplitWhitelist
                                     ),
                                     albumName = if (localSong.albumName.isNotBlank() && localSong.albumName != mediaStoreSong.albumName) localSong.albumName else mediaStoreSong.albumName,
                                     genre = localSong.genre ?: mediaStoreSong.genre,
@@ -1474,6 +1487,7 @@ constructor(
             val nextArtistId = AtomicLong((musicDao.getMaxArtistId() ?: 0L) + 1)
             val delimiters = userPreferencesRepository.artistDelimitersFlow.first()
             val wordDelims = userPreferencesRepository.artistWordDelimitersFlow.first()
+            val artistSplitWhitelist = userPreferencesRepository.artistSplitWhitelistFlow.first()
 
             val songsToInsert = mutableListOf<SongEntity>()
             val artistsToInsert = mutableMapOf<Long, ArtistEntity>() // Map to dedup by ID
@@ -1533,7 +1547,7 @@ constructor(
                 
                 // 3. Multi-Artist Processing
                 val rawArtistName = if (realArtistName.isBlank()) "Unknown Artist" else realArtistName
-                val splitArtists = rawArtistName.splitArtistsByDelimiters(delimiters, wordDelims)
+                val splitArtists = rawArtistName.splitArtistsByDelimiters(delimiters, wordDelims, artistSplitWhitelist)
                 
                 // Process Primary Artist (First in list)
                 val primaryArtistName = splitArtists.firstOrNull()?.trim() ?: "Unknown Artist"
@@ -1687,7 +1701,7 @@ constructor(
 
             neteaseSongs.forEach { nSong ->
                 val songId = toUnifiedNeteaseSongId(nSong.neteaseId)
-                val artistNames = parseNeteaseArtistNames(nSong.artist)
+                val artistNames = com.theveloper.pixelplay.data.stream.CloudMusicUtils.parseNeteaseArtistNames(nSong.artist)
                 val primaryArtistName = artistNames.firstOrNull() ?: "Unknown Artist"
                 val primaryArtistId = toUnifiedNeteaseArtistId(primaryArtistName)
 
@@ -1786,15 +1800,6 @@ constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to sync Netease data", e)
         }
-    }
-
-    private fun parseNeteaseArtistNames(rawArtist: String): List<String> {
-        if (rawArtist.isBlank()) return listOf("Unknown Artist")
-        val parsed = rawArtist.split(Regex("\\s*[,/&;+、]\\s*"))
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .distinct()
-        return if (parsed.isEmpty()) listOf("Unknown Artist") else parsed
     }
 
     private fun toUnifiedNeteaseSongId(neteaseId: Long): Long {

@@ -1,48 +1,77 @@
-# 更新日志
+# 更新日志 / Changelog
 
-## 2026-08-07（开发版）
+## v1.4.6 (Build 43)
 
-### 每日推荐
-- 每日推荐改为**逐首懒加载**：播放时"听那首加载哪首"，每首歌实时走落雪引擎解析播放链接，与搜索页行为一致，不再批量预解析全部歌曲。
-- 加载提示改为在**歌曲列表标题右侧**显示"获取播放链接…"（与搜索页 loadingSongId 一致），移除进度弹窗。
-- 切歌时若下一首尚未解析，会先暂停并实时解析，成功才播放、失败自动跳过。
-- 修复每日推荐切歌被误判为广播播放器的问题（`daily_` 前缀不再被识别为电台）。
+### 重大修复
 
-### 音质修复
-- 修复网易云歌曲 Hi-Res（24bit）自动降级到 128kbps 的问题：将脚本中"溯音163"（固定低码率源）从网易云音源链中移到高音质源之后，高音质源优先兜底。
-- 遵循"程序按脚本来"约定：音质值保持脚本注册的 `24bit/flac/320k/192k/128k`，仅调整音源链顺序。
+#### 移除 AAudio 自定义输出，恢复原版 AudioTrack 播放链路
+- AAudio 流模型存在 EOS（End-of-Stream）判定缺陷：`nativeStop` 重置 `flush_base_frames` 基准后 `hasPendingData()` 恒为 true，导致 Media3 `DefaultAudioSink` 的 EOS 永不送达，表现为歌曲播放到末尾后秒数回跳 3 秒反复、声音断断续续、无法自动切歌、播放器卡死（`StuckPlayerException`）。
+- 彻底移除 AAudio 输出层，恢复原版 `DefaultAudioSink`（AudioTrack），仅保留 USB 独占模式和漫游显示功能。
+- 涉及文件：`DualPlayerEngine.kt`、`DeckController.kt`、`SettingsCategoryScreen.kt`（移除 AAudio 开关）。
 
-### 更新功能
-- 修复蓝奏云更新下载卡在 0% 的问题：解析接口响应时兼容 gzip 压缩编码（原只按 deflate 解压）。
+#### 列表循环模式修复
+- 去除 AAudio 后，列表循环（repeatMode）恢复正常：歌曲播放完毕后自动播放下一首，不再暂停。
+- `TransitionController` 中的 `simulateNaturalTrackEnd()` 与 `tryRecoverFromError()` 按 repeatMode 正确处理切歌。
 
-### 界面动画
-- 优化 mini player 展开动画：封面、歌名、歌手随展开进度**逐渐移动到目标位置**，替代原来的直接淡出，转场更连续。
+---
 
-### 下载功能
-- 下载按钮对所有**在线源**歌曲显示（只要有 http 播放地址即视为在线源，不再只限于网易云等特定来源）。
-- 下载进度显示改为**背景填充**效果：在下载按钮背景上按进度从左到右填充（模仿 mini player 进度条），不再直接拉伸进度区域。
+### 蓝牙歌词广播全面修复
 
-### 音源管理
-- 音源管理界面：每个脚本卡片内展示该脚本注册的音源列表（名称、支持的音质档位）。
-- 支持**临时单独开关每个音源**：关闭后该音源的搜索与播放链接获取都会被跳过（运行时生效，重启恢复默认全部开启）。
+#### 蓝牙歌词"歌名 ↔ 歌词"闪烁彻底消除
+- **根因**：此前用 `MediaSession.setMediaMetadata()` 推送歌词会触发 `onMediaItemTransition` 回环，导致标题在"真实歌名"和"歌词"之间来回切换。
+- **修复方案**（基于 Media3 1.10.1 源码验证）：
+  - 确认 `Player` / `MediaSession` 均无 `setMediaMetadata` API；`setPlaylistMetadata` 仅更新队列标题，无法广播歌词。
+  - 改用 `player.replaceMediaItem(index, updatedItem)` 推送歌词。ExoPlayer 在 URI 不变（仅改 metadata）时走 `canUpdateMediaItem` 就地更新路径（`TimelineWithUpdatedMediaItem`），**不重建 MediaSource、不触发 `onMediaItemTransition`、不打断/重缓冲音频**。
+  - 新增 `isSelfLyricsTransition` 防回环守卫：兜底 URI 变化等无法就地更新的数据源，避免 `push → transition → setLyrics → push` 无限循环。
+  - 空行不推送（避免在"真实歌名 ↔ 无歌词"之间闪烁）。
+  - 歌词只刷新到歌名位置，艺术家保持不变。
 
-## 2026-08-04 ~ 2026-08-05
+#### 所有播放入口均可广播歌词
+- **问题**：搜索页（QQ 音乐 `qq_xxx`、酷我 `kw_xxx`、B 站 `bili_xxx`）直接播放时 `getSong(songId)` 查不到歌（非 Long id），导致歌词永不加载。
+- **修复**：
+  - 移除 `MusicService.onMediaItemTransition` 中对 `PLAYLIST_CHANGED` reason 的歌词加载跳过逻辑，确保所有切歌路径都能加载歌词。
+  - 新增 `toLyricsFallbackSong()` 兜底：当数据库查不到歌曲时，用 MediaItem 自带元数据（歌名/歌手/封面/时长）临时构造 `Song`，让 `getLyrics` 按歌名+歌手走远程歌词搜索。
+  - 涉及文件：`BluetoothLyricsManager.kt`、`MusicService.kt`。
 
-### 在线播放
-- 网易云搜索升级为 10 条线路并行竞速（8 条 NCM 代理 + vkeys + 官方 weapi），先返回非空结果立即生效。
-- 播放解析快路径优化：先抢 128k 标准快路径 + 官方与落雪双端竞速，首字节延迟从 5~15s 降至 1~3s。
-- 实现**边下边播**（CloudStreamProxy）：立即回写响应头、首块 16KB 极小块并逐块 flush，ExoPlayer 拿到头部即开始解码。
-- 电台搜索稳定性加固：镜像扩至 6 条、启用重试、搜索缓存、失败回退上次结果与内置兜底。
-- Lx 引擎多音源导入：可同时加载多个 JS，聚合搜索 + 竞速 URL，音频质量设置迁移到在线音源设置页。
-- 漫游/每日推荐播放优先走落雪引擎，官方接口仅作兜底。
+---
 
-### 本地与系统
-- 内置 JS 只保留"全豆要"聚合音源脚本。
-- 修复漫游模式第一首歌没有歌词的问题。
-- 歌词界面：焦点行两侧不再被裁切，换行按分词处理（英文按空格成词、中文按标点成块）。
-- APK 体积优化：收窄 ProGuard keep + 开启 R8 fullMode，体积 80.5MB → 58.54MB。
-- 修复 USB 独占模式闪退（Toast 线程问题）。
-- 接入 AAudio 提升音质，支持 32bit 输出到 USB 设备，设置页增加对应开关与位深选项。
-- 蓝奏云更新下载：支持暂停/继续/失败重试、前台服务后台更新、通知栏进度显示、5 个国内镜像兜底。
-- 移除学习钟模式（FocusMode）相关功能与代码。
-- 修复部分电台播放报错（补充 HLS 媒体源支持）。
+### UI 优化
+
+#### 歌词界面挖孔避让
+- 歌词界面上方的歌曲信息栏（`LyricsTrackInfo`）增加 `WindowInsets.safeDrawing` 避让，在有挖孔/刘海的手机上自动下移，不再被遮挡。
+- 涉及文件：`LyricsSheet.kt`。
+
+#### 播放器界面简化
+- 删除歌名右侧的蓝牙设备状态按钮（连接蓝牙设备后出现的那个按钮），仅保留队列按钮。
+- 涉及文件：`FullPlayerContent.kt`。
+
+#### 评论图标更换
+- 播放器界面的歌曲评论图标更换为 Material `rounded_mode_comment_24`（圆形对话气泡样式）。
+- 涉及文件：`FullPlayerContent.kt`、新增 `rounded_mode_comment_24.xml`。
+
+---
+
+### 下载与播放修复
+
+#### 下载歌曲后无法播放
+- **问题**：歌曲下载完成后数据库中的 `path` 字段不会自动更新为本地文件路径，播放时仍走网络解析导致失败。
+- **修复**：播放时优先查询 `MusicDownloadService` 的内存下载记录，命中本地文件时直接使用本地 mp3 文件 URI 构建 `MediaItem` 播放，绕过网络解析。
+- 涉及文件：`PlayerViewModel.kt`（`buildResolvedPlaybackMediaItem`）。
+
+---
+
+### 涉及修改的文件清单
+
+| 文件 | 修改类型 |
+|------|----------|
+| `DualPlayerEngine.kt` | 移除 AAudio 注入，恢复原版 DefaultAudioSink |
+| `DeckController.kt` | 移除 AAudio 注入，清理相关 imports |
+| `SettingsCategoryScreen.kt` | 移除 AAudio 开关 |
+| `BluetoothLyricsManager.kt` | 歌词推送改用 replaceMediaItem 就地更新，新增防回环守卫 |
+| `MusicService.kt` | 蓝牙歌词加载逻辑重构，新增 toLyricsFallbackSong 兜底 |
+| `TransitionController.kt` | 切歌逻辑按 repeatMode 正确处理 |
+| `LyricsSheet.kt` | 挖孔避让 |
+| `FullPlayerContent.kt` | 删除蓝牙按钮，更换评论图标 |
+| `PlayerViewModel.kt` | 下载歌曲本地优先播放 |
+| `rounded_mode_comment_24.xml` | 新增 Material 评论图标资源 |
+| `aaudio_output.c` | 保留但不再被播放链路引用 |

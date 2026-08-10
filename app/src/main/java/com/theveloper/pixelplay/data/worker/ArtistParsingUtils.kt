@@ -8,14 +8,15 @@ internal fun collectArtistNames(
     title: String,
     artistDelimiters: List<String>,
     wordDelimiters: List<String> = emptyList(),
+    protectedNames: Collection<String> = emptyList(),
     extractFromTitle: Boolean = true
 ): List<String> {
-    val splitFromArtist = rawArtistName.splitArtistsByDelimiters(artistDelimiters, wordDelimiters)
+    val splitFromArtist = rawArtistName.splitArtistsByDelimiters(artistDelimiters, wordDelimiters, protectedNames)
     if (!extractFromTitle) {
         return splitFromArtist
     }
 
-    val (_, titleArtists) = title.extractArtistsFromTitle(artistDelimiters, wordDelimiters)
+    val (_, titleArtists) = title.extractArtistsFromTitle(artistDelimiters, wordDelimiters, protectedNames)
     if (titleArtists.isEmpty()) {
         return splitFromArtist
     }
@@ -33,7 +34,8 @@ internal fun choosePreferredArtistName(
     localArtistName: String,
     mediaStoreArtistName: String,
     artistDelimiters: List<String>,
-    wordDelimiters: List<String> = emptyList()
+    wordDelimiters: List<String> = emptyList(),
+    protectedNames: Collection<String> = emptyList()
 ): String {
     val localTrimmed = localArtistName.trim()
     val mediaTrimmed = mediaStoreArtistName.trim()
@@ -41,8 +43,8 @@ internal fun choosePreferredArtistName(
     if (localTrimmed.isBlank()) return mediaStoreArtistName
     if (mediaTrimmed.isBlank()) return localArtistName
 
-    val localArtists = localTrimmed.splitArtistsByDelimiters(artistDelimiters, wordDelimiters)
-    val mediaArtists = mediaTrimmed.splitArtistsByDelimiters(artistDelimiters, wordDelimiters)
+    val localArtists = localTrimmed.splitArtistsByDelimiters(artistDelimiters, wordDelimiters, protectedNames)
+    val mediaArtists = mediaTrimmed.splitArtistsByDelimiters(artistDelimiters, wordDelimiters, protectedNames)
 
     return when {
         mediaArtists.size > localArtists.size -> mediaStoreArtistName

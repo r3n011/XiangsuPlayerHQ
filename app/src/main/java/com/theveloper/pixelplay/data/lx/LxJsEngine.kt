@@ -320,10 +320,13 @@ class LxJsEngine @Inject constructor(
         }
         val targets = sourceIndex[source] ?: return null
         val startTime = System.currentTimeMillis()
+        // ⚡ 单脚本 musicUrl 超时从 60s 降到 20s：某个脚本卡死/超时不应阻塞整条
+        //    音质链与其它脚本。超时后立即尝试下一个脚本/下一个音质，用户点歌
+        //    不会出现长时间"正在解析音源…"。
         for (fileName in targets) {
             val inst = instances[fileName] ?: continue
             val raw = try {
-                withContext(qjsDispatcher) { callJs(inst, "musicUrl", source, info, timeoutMs = 60000) }
+                withContext(qjsDispatcher) { callJs(inst, "musicUrl", source, info, timeoutMs = 20000) }
             } catch (t: Throwable) {
                 Log.e(TAG, "getPlayUrl $source failed (${inst.fileName})", t)
                 null
@@ -334,7 +337,8 @@ class LxJsEngine @Inject constructor(
                 return result
             }
         }
-        Log.d(TAG, "getPlayUrl $source/$quality all scripts failed")
+        val songId = (songInfo["id"] ?: songInfo["songmid"] ?: songInfo["hash"]).toString()
+        Log.w(TAG, "getPlayUrl $source/$quality all scripts failed (songId=$songId, ${System.currentTimeMillis() - startTime}ms)")
         return null
     }
 
@@ -382,7 +386,7 @@ class LxJsEngine @Inject constructor(
 
     private fun processUrlResult(raw: Any?): String? {
         if (raw == null) return null
-        return when (raw) {
+        val url = when (raw) {
             is JSONObject -> raw.optString("url").takeIf { it.isNotBlank() }
                 ?: raw.optString("data").takeIf { it.isNotBlank() }
                 ?: raw.optString("src").takeIf { it.isNotBlank() }
@@ -403,7 +407,18 @@ class LxJsEngine @Inject constructor(
                 }
             }
             else -> raw.toString()
+        } ?: return null
+
+        // ⚡ URL 合法性校验：只接受 http/https 直链。
+        //    脏数据（相对路径 / data: / 空白）直接丢弃，绝不交给播放器，
+        //    否则 ExoPlayer 拿到无效地址会立刻报错 → "播放失败/不支持播放"。
+        val trimmed = url.trim()
+        val lower = trimmed.lowercase()
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
+            return trimmed
         }
+        Log.w(TAG, "getPlayUrl: rejecting non-http URL: ${trimmed.take(80)}")
+        return null
     }
 
     // ── 原生注入与 shim ───────────────────────────────────────────────────

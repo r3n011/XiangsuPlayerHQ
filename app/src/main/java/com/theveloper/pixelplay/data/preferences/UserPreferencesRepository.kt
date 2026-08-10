@@ -142,6 +142,7 @@ class UserPreferencesRepository @Inject constructor(
         val DAILY_MIX_SONG_IDS = stringPreferencesKey("daily_mix_song_ids")
         val YOUR_MIX_SONG_IDS = stringPreferencesKey("your_mix_song_ids")
         val NAV_BAR_CORNER_RADIUS = intPreferencesKey("nav_bar_corner_radius")
+        val HOME_TOP_WHITESPACE_DP = intPreferencesKey("home_top_whitespace_dp")
         val NAV_BAR_STYLE = stringPreferencesKey("nav_bar_style")
         val NAV_BAR_COMPACT_MODE = booleanPreferencesKey("nav_bar_compact_mode")
         val CAROUSEL_STYLE = stringPreferencesKey("carousel_style")
@@ -193,6 +194,7 @@ class UserPreferencesRepository @Inject constructor(
         // Multi-artist
         val ARTIST_DELIMITERS = stringPreferencesKey("artist_delimiters")
         val ARTIST_WORD_DELIMITERS = stringPreferencesKey("artist_word_delimiters")
+        val ARTIST_SPLIT_WHITELIST = stringPreferencesKey("artist_split_whitelist")
         val EXTRACT_ARTISTS_FROM_TITLE = booleanPreferencesKey("extract_artists_from_title")
         val GROUP_BY_ALBUM_ARTIST = booleanPreferencesKey("group_by_album_artist")
         val ARTIST_SETTINGS_RESCAN_REQUIRED =
@@ -263,6 +265,8 @@ class UserPreferencesRepository @Inject constructor(
 
         // Bluetooth lyrics (把歌词推送到已连接的蓝牙 A2DP 设备屏幕上)
         val BLUETOOTH_LYRICS_ENABLED = booleanPreferencesKey("bluetooth_lyrics_enabled")
+        // 对外广播歌词：把系统媒体歌名刷新为当前歌词（应用外显示歌词）
+        val EXTERNAL_LYRICS_BROADCAST_ENABLED = booleanPreferencesKey("external_lyrics_broadcast_enabled")
         val DISABLE_BLUR_ALL_OVER = booleanPreferencesKey("disable_blur_all_over")
         val NAV_BAR_BLUR_ENABLED = booleanPreferencesKey("nav_bar_blur_enabled")
         // View preferences
@@ -576,6 +580,14 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setFullPlayerSwitchOnDragRelease(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.FULL_PLAYER_SWITCH_ON_DRAG_RELEASE] = enabled }
+    }
+
+    /** 首页顶部留白高度（dp），默认 64（对应原顶部栏高度，保持默认观感一致）。 */
+    val homeTopWhitespaceDp: Flow<Int> =
+        pref { it[PreferencesKeys.HOME_TOP_WHITESPACE_DP] ?: 64 }
+
+    suspend fun setHomeTopWhitespaceDp(dp: Int) {
+        dataStore.edit { it[PreferencesKeys.HOME_TOP_WHITESPACE_DP] = dp.coerceIn(0, 200) }
     }
 
     suspend fun setFullPlayerAppearThreshold(thresholdPercent: Int) {
@@ -1189,6 +1201,31 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun resetArtistWordDelimitersToDefault() = setArtistWordDelimiters(DEFAULT_ARTIST_WORD_DELIMITERS)
 
+    // ⚡ 歌手拆分白名单：名单内的歌手名在拆分时整体保留，不会被分隔符误拆
+    //    （例如 "AC/DC"、"Tones & I" 这类自带分隔符的歌手名）。
+    val artistSplitWhitelistFlow: Flow<List<String>> =
+        pref { decodeJsonPref(it, PreferencesKeys.ARTIST_SPLIT_WHITELIST, DEFAULT_ARTIST_SPLIT_WHITELIST) }
+
+    suspend fun setArtistSplitWhitelist(names: List<String>) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ARTIST_SPLIT_WHITELIST] = json.encodeToString(names)
+            preferences[PreferencesKeys.ARTIST_SETTINGS_RESCAN_REQUIRED] = true
+        }
+    }
+
+    suspend fun addArtistSplitWhitelist(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        val current = artistSplitWhitelistFlow.first()
+        if (current.any { it.equals(trimmed, ignoreCase = true) }) return
+        setArtistSplitWhitelist(current + trimmed)
+    }
+
+    suspend fun removeArtistSplitWhitelist(name: String) {
+        val current = artistSplitWhitelistFlow.first()
+        setArtistSplitWhitelist(current.filterNot { it.equals(name, ignoreCase = true) })
+    }
+
     val extractArtistsFromTitleFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.EXTRACT_ARTISTS_FROM_TITLE] ?: true }
 
@@ -1305,6 +1342,14 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setBluetoothLyricsEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.BLUETOOTH_LYRICS_ENABLED] = enabled }
+    }
+
+    // ⚡ 对外广播歌词：开启后系统媒体元数据歌名刷新为当前歌词，应用外（通知栏/锁屏/蓝牙等）显示歌词
+    val externalLyricsBroadcastEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.EXTERNAL_LYRICS_BROADCAST_ENABLED] ?: false }
+
+    suspend fun setExternalLyricsBroadcastEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.EXTERNAL_LYRICS_BROADCAST_ENABLED] = enabled }
     }
 
     // ─── Custom genres ────────────────────────────────────────────────────────
@@ -1778,6 +1823,9 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
             "featuring", "feat.", "feat", "ft.", "ft",
             "vs.", "vs", "versus", "with", "prod.", "prod"
         )
+
+        /** 默认歌手拆分白名单（空）：由用户自行添加名字中带分隔符的歌手。 */
+        val DEFAULT_ARTIST_SPLIT_WHITELIST = listOf<String>()
 
         const val DEFAULT_ALBUM_ART_CACHE_LIMIT_MB = 200
         const val DEFAULT_TRANSCODE_CACHE_LIMIT_MB = 1024

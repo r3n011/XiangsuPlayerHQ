@@ -316,10 +316,17 @@ class UsbDacManager @Inject constructor(
         } else {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
+        // ⚡ Android 14 (API 34+) 禁止用 FLAG_MUTABLE + 隐式 Intent 创建 PendingIntent，
+        //    直接抛 IllegalArgumentException 导致 USB 插入自动激活时崩溃。
+        //    授权广播必须保持 FLAG_MUTABLE（系统会把 EXTRA_DEVICE/EXTRA_PERMISSION_GRANTED
+        //    回填进 Intent），因此通过 setPackage 把 Intent 显式化，既满足系统要求又兼容旧版本。
+        val permissionIntent = Intent(ACTION_USB_PERMISSION).apply {
+            setPackage(appContext.packageName)
+        }
         val pendingIntent = PendingIntent.getBroadcast(
             appContext,
             (device.deviceId and 0xFFFF).toInt(),
-            Intent(ACTION_USB_PERMISSION),
+            permissionIntent,
             flags
         )
 

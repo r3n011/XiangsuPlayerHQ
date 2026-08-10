@@ -156,6 +156,14 @@ abstract class CloudStreamProxy<K : Any>(
         Timber.d("$proxyTag stopped")
     }
 
+    /**
+     * 清空已缓存的流 URL。播放失败重试时调用，避免 15 分钟缓存里
+     * 的失效链接（404/过期）被反复复用导致"间歇性无法播放"。
+     */
+    fun invalidateAll() {
+        urlCache.clear()
+    }
+
     // ─── Overridable Hooks ─────────────────────────────────────────────
 
     /** Extract the raw ID string from a parsed URI. Override for custom URI layouts. */

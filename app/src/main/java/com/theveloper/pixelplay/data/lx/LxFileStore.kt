@@ -35,8 +35,10 @@ class LxFileStore @Inject constructor(
     /**
      * 将 assets 内置音源复制到用户目录并保持与内置版本同步：
      *  1. 首次运行时复制内置 JS（已存在同名文件则跳过，避免覆盖用户导入的版本）；
-     *  2. 之后每次启动比对内置 JS 与用户目录同名文件内容，内置版本升级（内容不一致）时强制覆盖，
-     *     保证"修改后的内置 JS"对已安装用户升级后同样生效。
+     *  2. 之后每次启动比对内置 JS 与用户目录同名文件内容，内置版本升级（内容不一致）时强制覆盖；
+     *     用户目录缺失但"此前从未记录过"的内置文件（新增内置音源）也会补导入，
+     *     保证"修改后的内置 JS / 新增的内置 JS"对已安装用户升级后同样生效；
+     *     已记录过却被用户主动删除的不再恢复。
      * 返回本次实际导入/更新的文件名列表。
      */
     suspend fun ensureBundledSources(): List<String> = withContext(Dispatchers.IO) {
@@ -55,16 +57,24 @@ class LxFileStore @Inject constructor(
                     if (target.exists() && target.length() > 0) continue
                     if (copyBundledToUser(name)) imported.add(name)
                 }
-                bundledDoneFlag.writeText("1")
+                bundledDoneFlag.writeText(names.joinToString("\n"))
             } catch (t: Throwable) {
                 // assets 不存在或读取失败时静默跳过（不阻塞正常功能）
             }
         }
-        // 2. 内置更新检测：内容不一致即视为内置版本升级，强制覆盖（同名内置文件以官方内置为准）
+        // 2. 内置更新检测：同名内置文件内容不一致即视为内置版本升级，强制覆盖；
+        //    用户目录缺失且从未记录过的文件（新增内置音源）也补导入。
+        //    记录名单写入 bundledDoneFlag，后续启动据此区分"新增"与"用户已删除"，避免误恢复。
+        val knownNames = runCatching {
+            bundledDoneFlag.readText().lineSequence().filter { it.isNotBlank() }.toSet()
+        }.getOrDefault(emptySet())
         try {
             for (name in names) {
                 val target = File(dir, name)
-                if (!target.exists() || target.length() == 0L) continue
+                if (!target.exists() || target.length() == 0L) {
+                    if (name !in knownNames && copyBundledToUser(name)) imported.add(name)
+                    continue
+                }
                 val bundledBytes = appContext.assets.open("$bundledAssetDir/$name").use { it.readBytes() }
                 val userBytes = target.readBytes()
                 if (!bundledBytes.contentEquals(userBytes)) {
@@ -75,6 +85,8 @@ class LxFileStore @Inject constructor(
         } catch (t: Throwable) {
             // 内置比对失败静默跳过（不阻塞正常功能）
         }
+        // 写回最新内置名单：下次启动即可识别"用户删除过"的文件，避免误恢复
+        try { bundledDoneFlag.writeText(names.joinToString("\n")) } catch (t: Throwable) {}
         imported
     }
 

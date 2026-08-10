@@ -95,12 +95,13 @@ internal fun resolveAlbumDisplayArtistId(
     songs: List<SongEntity>,
     artistNameToId: Map<String, Long>,
     artistDelimiters: List<String>,
-    wordDelimiters: List<String> = emptyList()
+    wordDelimiters: List<String> = emptyList(),
+    protectedNames: Collection<String> = emptyList()
 ): Long {
     artistNameToId[displayArtist.trim()]?.let { return it }
 
     val primaryArtistName = displayArtist
-        .splitArtistsByDelimiters(artistDelimiters, wordDelimiters)
+        .splitArtistsByDelimiters(artistDelimiters, wordDelimiters, protectedNames)
         .firstOrNull()
         ?.trim()
     if (!primaryArtistName.isNullOrEmpty()) {

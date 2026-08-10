@@ -65,6 +65,63 @@ private data class EnhancedSongAnimationTarget(
     val isSelected: Boolean = false
 )
 
+/**
+ * 平台标识（在线歌曲在歌名右侧显示短文字徽标，本地歌曲不显示）。
+ */
+private data class PlatformBadge(
+    val label: String,
+    val color: Color
+)
+
+private fun resolvePlatformBadge(song: Song): PlatformBadge? {
+    // Telegram 歌曲
+    if (song.telegramFileId != null || song.telegramChatId != null) {
+        return PlatformBadge("tg", Color(0xFF229ED9))
+    }
+    val uri = song.contentUriString
+    return when {
+        uri.startsWith("netease://") -> PlatformBadge("网易", Color(0xFFE0242B))
+        uri.startsWith("qqmusic://") -> PlatformBadge("qq", Color(0xFF31C27C))
+        uri.startsWith("navidrome://") -> PlatformBadge("nav", Color(0xFF2E7CF6))
+        uri.startsWith("jellyfin://") -> PlatformBadge("jf", Color(0xFFFB7299))
+        uri.startsWith("gdrive://") -> PlatformBadge("gd", Color(0xFF229ED9))
+        uri.startsWith("cloud://lx/") -> resolveCloudLxSourceBadge(uri)
+        else -> null
+    }
+}
+
+private fun resolveCloudLxSourceBadge(uri: String): PlatformBadge {
+    return try {
+        val jsonStr = java.net.URLDecoder.decode(uri.removePrefix("cloud://lx/"), "UTF-8")
+        when (org.json.JSONObject(jsonStr).optString("source")) {
+            "tx" -> PlatformBadge("qq", Color(0xFF31C27C))
+            "kg" -> PlatformBadge("酷狗", Color(0xFF2E7CF6))
+            "mg" -> PlatformBadge("酷我", Color(0xFFFF8F00))
+            "bilibili" -> PlatformBadge("b站", Color(0xFFFB7299))
+            "wy" -> PlatformBadge("网易", Color(0xFFE0242B))
+            else -> PlatformBadge("云", Color(0xFF8E8E93))
+        }
+    } catch (_: Exception) {
+        PlatformBadge("云", Color(0xFF8E8E93))
+    }
+}
+
+@Composable
+private fun PlatformBadgeChip(badge: PlatformBadge) {
+    Surface(
+        color = badge.color.copy(alpha = 0.14f),
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            text = badge.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = badge.color,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+        )
+    }
+}
+
 private fun lerpFloat(start: Float, stop: Float, fraction: Float): Float {
     return start + (stop - start) * fraction
 }
@@ -367,6 +424,13 @@ fun EnhancedSongListItem(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false)
                             )
+                            val platformBadge = remember(song.id, song.contentUriString) {
+                                resolvePlatformBadge(song)
+                            }
+                            if (platformBadge != null) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                PlatformBadgeChip(badge = platformBadge)
+                            }
                             if (isRadio) {
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Icon(

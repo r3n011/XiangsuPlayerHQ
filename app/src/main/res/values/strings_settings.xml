@@ -112,6 +112,12 @@
     <string
         name="setcat_reset_imported_lyrics_subtitle"
     >Remove all imported lyrics from the database.</string>
+    <string
+        name="setcat_external_lyrics_broadcast_title"
+    >Broadcast Lyrics Externally</string>
+    <string
+        name="setcat_external_lyrics_broadcast_subtitle"
+    >When enabled, the system media title updates to the current lyric line in real time, showing lyrics outside the app (notification, lock screen, Bluetooth devices). When disabled, the original song title is restored.</string>
 
     <!-- Appearance -->
     <string name="setcat_global_theme">Global Theme</string>
@@ -156,8 +162,18 @@
     <string name="setcat_player_theme_album_art">Album Art</string>
     <string name="setcat_player_theme_custom_palette">Custom Palette</string>
     <string name="setcat_player_theme_dynamic">System Dynamic</string>
-    <string name="setcat_custom_palette_enabled_title">Enable Custom Palette</string>
-    <string name="setcat_custom_palette_enabled_subtitle">Apply custom palette to global theme</string>
+    <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
+    <string
+        name="setcat_custom_palette_enabled_subtitle"
+    >When off, the app follows wallpaper colors. When on, custom colors are used. The player keeps its own album-art colors.</string>
+    <string name="setcat_palette_preview_label">Color Scheme Preview</string>
+    <string name="setcat_palette_custom_title">Custom Color</string>
+    <string name="setcat_palette_live_hint">Live preview</string>
+    <string name="setcat_palette_hue">Hue</string>
+    <string name="setcat_palette_saturation">Saturation</string>
+    <string name="setcat_palette_brightness">Brightness</string>
+    <string name="setcat_palette_cancel">Cancel</string>
+    <string name="setcat_palette_confirm">Confirm</string>
     <string
         name="setcat_show_player_file_info_title"
     >Show player file info</string>
@@ -186,6 +202,11 @@
     <string
         name="setcat_auto_rotate_patterns_subtitle"
     >Cycle through collage patterns each time you visit Home.</string>
+    <string name="setcat_home_top_whitespace_title">Home Top Whitespace</string>
+    <string
+        name="setcat_home_top_whitespace_subtitle"
+    >Adjust the blank space above the Home content.</string>
+    <string name="setcat_home_top_whitespace_value">Current whitespace: %1$d dp</string>
     <string name="setcat_navigation_bar">Navigation Bar</string>
     <string name="setcat_navbar_style_label">NavBar Style</string>
     <string

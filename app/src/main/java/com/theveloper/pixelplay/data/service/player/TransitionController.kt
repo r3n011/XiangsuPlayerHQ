@@ -218,14 +218,34 @@ class TransitionController @Inject constructor(
                 engine.prepareNext(transitionTarget)
 
                 // Wait for the player to report a valid duration.
+                // ⚡ 修复"无法自动下一首"：代理/边下边播流（上游无 Content-Length → chunked）
+                // 的 duration 可能永远是 -1，此前 while 会无限等待 → crossfade 永远不触发、
+                // job 永不结束。改为有限等待（10s），超时即放弃 crossfade 并确保
+                // pauseAtEndOfMediaItems=false，把切歌交还给 ExoPlayer 原生 EOS 自动切换。
                 var duration = player.duration
-                while ((duration == C.TIME_UNSET || duration <= 0) && isActive) {
+                var durationWaitMs = 0L
+                val DURATION_WAIT_TIMEOUT_MS = 10_000L
+                while ((duration == C.TIME_UNSET || duration <= 0) &&
+                    isActive && durationWaitMs < DURATION_WAIT_TIMEOUT_MS
+                ) {
                     delay(500)
+                    durationWaitMs += 500L
                     duration = player.duration
                     Timber.tag("TransitionDebug").v("Waiting for duration... (%d)", duration)
                 }
 
                 if (!isActive) return@collectLatest
+
+                if (duration == C.TIME_UNSET || duration <= 0) {
+                    // 时长未知：无法做 crossfade 时间点规划，放弃手动过渡，
+                    // 交还给播放器原生 EOS 自动切歌（并确保不 pauseAtEnd）。
+                    Timber.tag("TransitionDebug").w(
+                        "Duration still unknown after ${DURATION_WAIT_TIMEOUT_MS}ms — skipping crossfade, relying on native EOS auto-advance."
+                    )
+                    engine.cancelNext()
+                    engine.setPauseAtEndOfMediaItems(false)
+                    return@collectLatest
+                }
 
                 val minFade = 500L
                 val guardWindow = 150L
@@ -261,9 +281,10 @@ class TransitionController @Inject constructor(
                         Timber.tag("TransitionDebug").w("Already past transition point! Triggering immediately.")
                         engine.performTransition(settings.copy(durationMs = adjustedDuration.toInt()))
                     } else {
-                        Timber.tag("TransitionDebug").w("Too close to end (%d ms left). Skipping to avoid glitch.", remaining)
-                        engine.cancelNext()
+                        // 🔍 兜底：已播完暂停（pauseAtEnd），剩余 0 → 直接模拟自然播完切歌
+                        Timber.tag("TransitionDebug").w("Already at track end (0 ms left) — simulating natural track end.")
                         engine.setPauseAtEndOfMediaItems(shouldPause = false)
+                        engine.simulateNaturalTrackEnd()
                     }
                     return@collectLatest
                 }
@@ -272,6 +293,24 @@ class TransitionController @Inject constructor(
                 // within ±125ms of the target — imperceptible for a multi-second overlap, and 5×
                 // fewer wakeups in the last second of every track.
                 while (player.currentPosition < transitionPoint && isActive) {
+                    // 🔍 兜底修复"播完暂停不切歌"：pauseAtEndOfMediaItems=true 时，播放器
+                    // 播完会暂停在曲尾等 crossfade 手动触发。若 crossfade 因故未及时触发
+                    // （调度 job 被重复取消 / 播放器提前播完），立即恢复 pauseAtEnd 并按
+                    // repeatMode 手动切歌，杜绝"isPlaying=false 卡在曲尾"。
+                    // 判据用 playWhenReady=true + !isPlaying 区分"pauseAtEnd 播完暂停"
+                    // 与"用户手动暂停"（手动暂停时 playWhenReady=false），避免误切歌。
+                    if (!player.isPlaying && player.playWhenReady &&
+                        player.playbackState == Player.STATE_READY &&
+                        player.duration > 0 && player.currentPosition >= player.duration - 200L
+                    ) {
+                        Timber.tag("TransitionDebug").w(
+                            "Player paused at track end (pauseAtEnd) before transition fired — " +
+                                "simulating natural track end (repeatMode=${player.repeatMode})."
+                        )
+                        engine.setPauseAtEndOfMediaItems(false)
+                        engine.simulateNaturalTrackEnd()
+                        return@collectLatest
+                    }
                     val remaining = transitionPoint - player.currentPosition
                     val sleep = when {
                         remaining > 5000 -> 1000L
@@ -292,9 +331,11 @@ class TransitionController @Inject constructor(
                         Timber.tag("TransitionDebug").d("FIRING TRANSITION NOW!")
                         engine.performTransition(settings.copy(durationMs = adjustedDuration.toInt()))
                     } else {
-                        Timber.tag("TransitionDebug").w("Too close to end (%d ms left). Skipping to avoid glitch.", remaining)
-                        engine.cancelNext()
+                        // 🔍 兜底：已播完暂停（pauseAtEnd），剩余 0 → 直接模拟自然播完切歌，
+                        // 不再依赖原生 EOS（可能不达），杜绝"播完暂停不切歌"。
+                        Timber.tag("TransitionDebug").w("Already at track end (%d ms left) — simulating natural track end.", remaining)
                         engine.setPauseAtEndOfMediaItems(shouldPause = false)
+                        engine.simulateNaturalTrackEnd()
                     }
                 } else {
                     Timber.tag("TransitionDebug").d("Job cancelled before firing.")

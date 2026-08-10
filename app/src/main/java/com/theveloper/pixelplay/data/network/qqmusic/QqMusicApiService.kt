@@ -85,16 +85,20 @@ class QqMusicApiService @Inject constructor(
 
     /**
      * Get user's playlists (created and collected).
+     *
+     * ⚡ 参数必须与社区验证过的可用格式一致（jsososo/QQMusicApi）：
+     *    `ct=20` 缺失会导致接口返回非 0 code（如 -100），从而整个"同步全部歌单"
+     *    被抛出异常归零为 "Synced 0 playlist, 0 songs"。
      */
     suspend fun getUserPlaylists(start: Int = 0, count: Int = 100): String = withContext(Dispatchers.IO) {
         val uin = extractUin()
         val gtk = getGTK()
-        val ein = (start + count - 1).coerceAtLeast(start)
+        val ein = start + count
         Timber.d("getUserPlaylists: uin=$uin, gtk=$gtk")
         val url = "https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg?" +
                 "format=json&inCharset=utf-8&outCharset=utf-8&notice=0" +
                 "&platform=yqq&needNewCode=1" +
-                "&uin=$uin&g_tk=$gtk&cid=205360956&userid=$uin&reqtype=3&sin=$start&ein=$ein"
+                "&ct=20&uin=$uin&g_tk=$gtk&cid=205360956&userid=$uin&reqtype=3&sin=$start&ein=$ein"
 
         makeGetRequest(url)
     }
@@ -276,6 +280,18 @@ class QqMusicApiService @Inject constructor(
         val directStr = String(data, StandardCharsets.UTF_8).trim()
         if (directStr.startsWith("{") || directStr.startsWith("[")) {
             return directStr
+        }
+
+        // QQ 部分 FCG 接口（如 fcg_get_profile_order_asset.fcg）在 format=json 时
+        // 仍可能返回 JSONP 包装：MusicJsonCallback({...}) / jsonCallback({...}) / callback({...})。
+        // 剥掉包装后再解析，否则 JSONObject 解析抛异常会把整个同步归零。
+        val jsonpMatch = Regex("^\\s*\\w+\\((.*)\\)\\s*$", RegexOption.DOT_MATCHES_ALL).find(directStr)
+        if (jsonpMatch != null) {
+            val inner = jsonpMatch.groupValues[1].trim()
+            if (inner.startsWith("{") || inner.startsWith("[")) {
+                Timber.d("QqMusicApiService: Stripped JSONP wrapper")
+                return inner
+            }
         }
 
         // QQ Music uses a 5-byte prefix (usually \x00\x00\x00\x00\x00) followed by Zlib data

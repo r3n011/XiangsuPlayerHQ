@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
@@ -125,42 +126,54 @@ class ArtistDetailViewModel @Inject constructor(
                         val albumSections = buildAlbumSections(songs)
                         val orderedSongs = albumSections.flatMap { it.songs }
 
-                        // 1) Resolve effective image URL (custom > Deezer, may fetch from API)
-                        val effectiveUrl = try {
-                            artistImageRepository.getEffectiveArtistImageUrl(
-                                artistId = artist.id,
-                                artistName = artist.name
-                            )
-                        } catch (e: Exception) {
-                            Log.w("ArtistDebug", "Failed to resolve effective artist image: ${e.message}")
-                            artist.effectiveImageUrl
-                        }
-
-                        // 2) Pre-warm the color scheme BEFORE emitting isLoading = false.
-                        //    getOrGenerateColorScheme checks the in-memory LRU first (≈0 ms if cached),
-                        //    then the DB cache (fast), and only generates from scratch ~on first visit.
-                        //    Either way, the scheme is ready before the screen first renders.
-                        val newScheme = if (!effectiveUrl.isNullOrBlank()) {
-                            try {
-                                themeStateHolder.getOrGenerateColorScheme(effectiveUrl)
-                            } catch (e: Exception) {
-                                Log.w("ArtistDebug", "Color scheme pre-warm failed: ${e.message}")
-                                null
-                            }
-                        } else null
-
-                        // 3) Atomically publish state + pre-warmed color scheme.
-                        //    Both flows update before the Compose frame runs, so no intermediate null frame.
-                        _artistColorScheme.value = newScheme
+                        // ⚡ DB 数据就绪后立即结束 loading（页面先渲染数据）。
+                        //    头像解析/主题色预热移到后台补全：getEffectiveArtistImageUrl 无缓存时会
+                        //    请求 Deezer API（带网络重试），若阻塞 loading 会导致"打开歌手一直转圈"。
                         _uiState.value = ArtistDetailUiState(
-                            artist = artist.copy(
-                                imageUrl = if (artist.customImageUri.isNullOrBlank()) effectiveUrl else artist.imageUrl
-                            ),
+                            artist = artist,
                             songs = orderedSongs,
                             albumSections = albumSections,
-                            effectiveImageUrl = effectiveUrl,
+                            effectiveImageUrl = artist.effectiveImageUrl,
                             isLoading = false
                         )
+
+                        // 后台补全头像 + 预热主题色（最多等 2.5s，避免网络慢拖住首屏）
+                        viewModelScope.launch {
+                            val effectiveUrl = try {
+                                withTimeoutOrNull(2_500L) {
+                                    artistImageRepository.getEffectiveArtistImageUrl(
+                                        artistId = artist.id,
+                                        artistName = artist.name
+                                    )
+                                } ?: artist.effectiveImageUrl
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Log.w("ArtistDebug", "Failed to resolve effective artist image: ${e.message}")
+                                artist.effectiveImageUrl
+                            }
+
+                            if (effectiveUrl.isNullOrBlank()) return@launch
+
+                            val newScheme = try {
+                                themeStateHolder.getOrGenerateColorScheme(effectiveUrl)
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Log.w("ArtistDebug", "Color scheme pre-warm failed: ${e.message}")
+                                _artistColorScheme.value
+                            }
+
+                            _artistColorScheme.value = newScheme
+                            _uiState.update { state ->
+                                state.copy(
+                                    effectiveImageUrl = effectiveUrl,
+                                    artist = state.artist?.copy(
+                                        imageUrl = if (state.artist?.customImageUri.isNullOrBlank()) effectiveUrl else state.artist.imageUrl
+                                    )
+                                )
+                            }
+                        }
                     }
 
             } catch (e: Exception) {

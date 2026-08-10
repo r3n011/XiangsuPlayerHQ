@@ -72,6 +72,31 @@ class QqMusicDashboardViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 进入媒体库时的自动同步入口（节流 + 防重入）。
+     * 内部由 repository 判断登录状态与上次同步间隔：
+     * - 未登录 / 1 小时内已同步 → 跳过（不显示提示）
+     */
+    fun autoSyncOnLibraryEntry() {
+        if (_syncState.value == SyncState.Syncing) return
+        viewModelScope.launch {
+            repository.autoSyncOnLibraryEntry().fold(
+                onSuccess = { summary ->
+                    if (summary != null) {
+                        val msg = "Synced ${summary.playlistCount} playlists, ${summary.syncedSongCount} songs"
+                        Timber.d("QQ Music auto sync: $msg")
+                        _syncState.value = SyncState.Success(msg)
+                    }
+                    // summary == null（未登录/节流跳过）→ 保持 Idle，不显示提示
+                },
+                onFailure = { error ->
+                    Timber.e(error, "QQ Music auto sync failed")
+                    _syncState.value = SyncState.Error(error.message ?: "Sync failed")
+                }
+            )
+        }
+    }
+
     fun syncPlaylist(playlistId: Long) {
         viewModelScope.launch {
             _syncState.value = SyncState.Syncing

@@ -489,10 +489,10 @@ fun QueueBottomSheet(
             if (fromLocalIndex == toLocalIndex) return@rememberReorderableLazyListState
 
             reorderPreviewOrder = currentOrder.toMutableList().apply {
-                add(toLocalIndex, removeAt(fromLocalIndex))
+                add(toLocalIndex.coerceAtMost(size), removeAt(fromLocalIndex))
             }
             reorderPreviewKeys = currentKeys.toMutableList().apply {
-                add(toLocalIndex, removeAt(fromLocalIndex))
+                add(toLocalIndex.coerceAtMost(size), removeAt(fromLocalIndex))
             }
             if (lastMovedFrom == null) {
                 lastMovedFrom = fromLocalIndex

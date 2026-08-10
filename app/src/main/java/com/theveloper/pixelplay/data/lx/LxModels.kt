@@ -9,6 +9,8 @@ data class LxSongInfo(
     val hash: String = "",
     val name: String = "",
     val singer: String = "",
+    /** 多个歌手时逗号分隔的歌手 ID（与 [singer] 按顺序一一对应），用于 JS 引擎的 musicInfo.artists 数组 */
+    val artistIds: String = "",
     val albumName: String = "",
     val duration: Long = 0L,
     val pic: String = "",

@@ -76,8 +76,13 @@ class LxMusicViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            // 首次启动把 assets 内置音源导入用户目录，再初始化引擎
-            store.ensureBundledSources()
+            // 首次启动把 assets 内置音源导入用户目录，再初始化引擎；
+            // 若本次同步到了新增/更新的内置 JS（如新增的第二个脚本），
+            // 引擎已就绪时必须重载，否则新脚本不会生效（脚本设置里看不到/配不了）。
+            val imported = store.ensureBundledSources()
+            if (imported.isNotEmpty() && engine.isReady()) {
+                engine.reload()
+            }
             autoInitIfPresent()
         }
         // 同步在线音源播放音质
@@ -584,8 +589,8 @@ class LxMusicViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
                     if (url == null) {
-                        android.util.Log.w("LxPlaySong", "URL is null, showing error")
-                        _uiState.value = _uiState.value.copy(error = "无法获取播放链接，请换一首或换音源")
+                        android.util.Log.w("LxPlaySong", "URL is null, showing error (source=$targetSource, song=${song.id})")
+                        _uiState.value = _uiState.value.copy(error = "无法获取播放链接（音源: $targetSource），请换一首或换音源")
                         return@withContext
                     }
                     android.util.Log.d("LxPlaySong", "Calling onOpenPlayer with URL length: ${url.length}, songId: $savedSongId")
@@ -698,18 +703,29 @@ class LxMusicViewModel @Inject constructor(
         return getStableSongId(song).toLong()
     }
 
-    private fun LxSongInfo.toInfoMap(): Map<String, Any?> = mapOf(
-        "id" to id,
-        "vid" to id,
-        "songmid" to (songmid.ifBlank { id }),
-        "hash" to (hash.ifBlank { id }),
-        "name" to name,
-        "singer" to singer,
-        "artists" to singer,
-        "album" to albumName,
-        "albumName" to albumName,
-        "duration" to duration,
-        "cover" to pic,
-        "pic" to pic,
-    )
+    private fun LxSongInfo.toInfoMap(): Map<String, Any?> {
+        // 多歌手支持：singer 是 "、" 连接的显示串；artists/artistIds 按 lx-music
+        // 协议传给 JS 引擎（数组），避免脚本读取 musicInfo.artists 时拿到字符串导致失败
+        val idList = artistIds.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        val nameList = com.theveloper.pixelplay.data.stream.CloudMusicUtils.parseArtistNames(singer)
+        val artistsArray = nameList.mapIndexed { index, name ->
+            mapOf("id" to idList.getOrNull(index).orEmpty(), "name" to name)
+        }
+        return mapOf(
+            "id" to id,
+            "vid" to id,
+            "songmid" to (songmid.ifBlank { id }),
+            "hash" to (hash.ifBlank { id }),
+            "name" to name,
+            "singer" to singer,
+            "artist" to singer,
+            "artists" to artistsArray,
+            "artistIds" to idList,
+            "album" to albumName,
+            "albumName" to albumName,
+            "duration" to duration,
+            "cover" to pic,
+            "pic" to pic,
+        )
+    }
 }

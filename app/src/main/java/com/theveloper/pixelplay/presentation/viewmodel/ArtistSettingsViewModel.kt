@@ -17,6 +17,7 @@ import javax.inject.Inject
 data class ArtistSettingsUiState(
     val artistDelimiters: List<String> = UserPreferencesRepository.DEFAULT_ARTIST_DELIMITERS,
     val wordDelimiters: List<String> = UserPreferencesRepository.DEFAULT_ARTIST_WORD_DELIMITERS,
+    val artistSplitWhitelist: List<String> = UserPreferencesRepository.DEFAULT_ARTIST_SPLIT_WHITELIST,
     val extractArtistsFromTitle: Boolean = true,
     val groupByAlbumArtist: Boolean = false,
     val rescanRequired: Boolean = false,
@@ -49,6 +50,12 @@ class ArtistSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.artistWordDelimitersFlow.collect { delimiters ->
                 _uiState.update { it.copy(wordDelimiters = delimiters) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.artistSplitWhitelistFlow.collect { names ->
+                _uiState.update { it.copy(artistSplitWhitelist = names) }
             }
         }
 
@@ -140,6 +147,29 @@ class ArtistSettingsViewModel @Inject constructor(
     fun resetWordDelimitersToDefault() {
         viewModelScope.launch {
             userPreferencesRepository.resetArtistWordDelimitersToDefault()
+        }
+    }
+
+    // ⚡ 歌手拆分白名单
+    fun addWhitelistName(name: String): Boolean {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return false
+        if (_uiState.value.artistSplitWhitelist.any { it.equals(trimmed, ignoreCase = true) }) return false
+        viewModelScope.launch {
+            userPreferencesRepository.addArtistSplitWhitelist(trimmed)
+        }
+        return true
+    }
+
+    fun removeWhitelistName(name: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.removeArtistSplitWhitelist(name)
+        }
+    }
+
+    fun resetWhitelist() {
+        viewModelScope.launch {
+            userPreferencesRepository.setArtistSplitWhitelist(UserPreferencesRepository.DEFAULT_ARTIST_SPLIT_WHITELIST)
         }
     }
 

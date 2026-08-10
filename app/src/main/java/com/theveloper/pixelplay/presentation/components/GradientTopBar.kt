@@ -110,6 +110,7 @@ fun HomeGradientTopBar(
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
     disableBlurAllOver: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHighest
 
@@ -122,7 +123,7 @@ fun HomeGradientTopBar(
     )
 
     TopAppBar(
-        modifier = Modifier
+        modifier = modifier
             .background(surfaceContainerHigh.copy(alpha = animatedAlpha * 0.4f))
             .then(
                 if (!disableBlurAllOver) {

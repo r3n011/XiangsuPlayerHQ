@@ -59,6 +59,8 @@ class QqMusicRepository @Inject constructor(
         private const val QQ_USER_PLAYLIST_PAGE_SIZE = 100
         private const val QQ_PLAYLIST_SONG_PAGE_SIZE = 1000
         private const val QQ_MAX_PLAYLIST_PAGES = 200
+        private const val KEY_LAST_AUTO_SYNC = "key_last_auto_sync"
+        private const val AUTO_SYNC_INTERVAL_MS = 60 * 60 * 1000L
     }
 
     data class BulkSyncResult(
@@ -89,6 +91,7 @@ class QqMusicRepository @Inject constructor(
     private val lastSongUrlAttemptAtMs = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val songUrlRequestCooldownMs = 1500L
     private val qqSongUrlRequestMutex = Mutex()
+    private val autoSyncMutex = Mutex()
     @Volatile
     private var lastGlobalSongUrlRequestAtMs = 0L
     private val globalSongUrlRequestIntervalMs = 1100L
@@ -359,6 +362,7 @@ class QqMusicRepository @Inject constructor(
                 // Then, fetch collected playlists
                 if (syncType == PlaylistSyncType.COLLECTED || syncType == PlaylistSyncType.ALL) {
                     Timber.d("syncUserPlaylists: fetching collected playlists")
+                    try {
                     while (true) {
                         val raw = api.getUserPlaylists(start = start, count = QQ_USER_PLAYLIST_PAGE_SIZE)
                         Timber.d("syncUserPlaylists: page=$page start=$start response length=${raw.length}")
@@ -401,6 +405,7 @@ class QqMusicRepository @Inject constructor(
                             data.optInt("total", -1),
                             data.optInt("dissnum", -1),
                             data.optInt("totaldissnum", -1),
+                            data.optInt("totaldiss", -1),
                             data.optInt("cdnum", -1),
                             data.optInt("dirnum", -1)
                         )
@@ -419,6 +424,12 @@ class QqMusicRepository @Inject constructor(
                             Timber.w("syncUserPlaylists: reached max page guard ($QQ_MAX_PLAYLIST_PAGES), stopping pagination")
                             break
                         }
+                    }
+                    } catch (e: Exception) {
+                        // ⚡ 收藏歌单接口失败（code!=0 / 解析异常 / 网络错误）时：
+                        // 只记录日志并继续使用已获取的创建歌单，绝不能 throw 让整个
+                        // 同步归零成 "Synced 0 playlist, 0 songs"。
+                        Timber.w(e, "syncUserPlaylists: collected playlists fetch failed, continuing with created-only")
                     }
                 }
 
@@ -555,6 +566,34 @@ class QqMusicRepository @Inject constructor(
                     syncedSongCount = syncedSongCount,
                     failedPlaylistCount = failedPlaylistCount
                 )
+            }
+        }
+    }
+
+    /**
+     * 进入媒体库时的自动同步入口（节流 + 防重入）。
+     * - 未登录 → 跳过（success(null)）
+     * - 距上次成功全量同步 < 1 小时 → 跳过，避免频繁请求
+     * - 否则 → 全量同步歌单列表 + 每首歌单的歌曲，并生成媒体库 QQ Music 源播放列表
+     */
+    suspend fun autoSyncOnLibraryEntry(): Result<BulkSyncResult?> {
+        if (!isLoggedIn) {
+            Timber.d("autoSyncOnLibraryEntry: not logged in, skipping")
+            return Result.success(null)
+        }
+        return autoSyncMutex.withLock {
+            val now = System.currentTimeMillis()
+            val lastSync = prefs.getLong(KEY_LAST_AUTO_SYNC, 0L)
+            if (now - lastSync < AUTO_SYNC_INTERVAL_MS) {
+                Timber.d("autoSyncOnLibraryEntry: throttled (last sync ${(now - lastSync) / 1000}s ago)")
+                return@withLock Result.success(null)
+            }
+            Timber.d("autoSyncOnLibraryEntry: starting full sync")
+            syncAllPlaylistsAndSongs().also { result ->
+                // 仅成功同步后记录时间，失败则下次进入媒体库时重试
+                if (result.isSuccess) {
+                    prefs.edit().putLong(KEY_LAST_AUTO_SYNC, System.currentTimeMillis()).apply()
+                }
             }
         }
     }

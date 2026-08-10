@@ -39,6 +39,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.clickable
@@ -91,10 +93,12 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Science
+import androidx.compose.material.icons.rounded.SpaceBar
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.ViewCarousel
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -121,6 +125,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
@@ -144,6 +149,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -751,6 +757,13 @@ fun SettingsCategoryScreen(
                                     },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_lyrics_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_external_lyrics_broadcast_title),
+                                    subtitle = stringResource(R.string.setcat_external_lyrics_broadcast_subtitle),
+                                    checked = uiState.externalLyricsBroadcastEnabled,
+                                    onCheckedChange = { settingsViewModel.setExternalLyricsBroadcastEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_reset_imported_lyrics_title),
                                     subtitle = stringResource(R.string.setcat_reset_imported_lyrics_subtitle),
@@ -786,6 +799,27 @@ fun SettingsCategoryScreen(
                                     onSelectionChanged = { settingsViewModel.setAppThemeMode(it) },
                                     leadingIcon = { Icon(Icons.Outlined.LightMode, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_custom_palette_enabled_title),
+                                    subtitle = stringResource(R.string.setcat_custom_palette_enabled_subtitle),
+                                    checked = uiState.appPaletteEnabled,
+                                    onCheckedChange = { settingsViewModel.setAppPaletteEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Palette, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
+                                // ⚡ 打开开关后才显示调色盘（动画模仿沉浸式歌词的展开动画）
+                                AnimatedVisibility(
+                                    visible = uiState.appPaletteEnabled,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    AppPalettePicker(
+                                        selectedColor = uiState.customPaletteSeedColor,
+                                        onColorSelected = { settingsViewModel.setCustomPaletteSeedColor(it) }
+                                    )
+                                }
+
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_smooth_corners_title),
                                     subtitle = stringResource(R.string.setcat_smooth_corners_subtitle),
@@ -815,7 +849,6 @@ fun SettingsCategoryScreen(
                                     description = stringResource(R.string.setcat_player_theme_desc),
                                     options = mapOf(
                                         ThemePreference.ALBUM_ART to stringResource(R.string.setcat_player_theme_album_art),
-                                        ThemePreference.CUSTOM_PALETTE to stringResource(R.string.setcat_player_theme_custom_palette),
                                         ThemePreference.DYNAMIC to stringResource(R.string.setcat_player_theme_dynamic)
                                     ),
                                     selectedKey = uiState.playerThemePreference,
@@ -823,12 +856,6 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
-                                if (uiState.playerThemePreference == ThemePreference.CUSTOM_PALETTE) {
-                                    CustomPaletteColorGrid(
-                                        selectedColor = uiState.customPaletteSeedColor,
-                                        onColorSelected = { settingsViewModel.setCustomPaletteSeedColor(it) }
-                                    )
-                                }
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_show_player_file_info_title),
                                     subtitle = stringResource(R.string.setcat_show_player_file_info_subtitle),
@@ -863,6 +890,58 @@ fun SettingsCategoryScreen(
                                     onCheckedChange = { settingsViewModel.setCollageAutoRotate(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_shuffle_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+
+                                // ⚡ 首页顶部留白高度：Slider 实时写入偏好，主页立即生效
+                                val homeTopWhitespaceDp by settingsViewModel.homeTopWhitespaceDp.collectAsStateWithLifecycle()
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.SpaceBar,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.secondary
+                                            )
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = stringResource(R.string.setcat_home_top_whitespace_title),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = stringResource(R.string.setcat_home_top_whitespace_subtitle),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        // ⚡ 实时预览：留白区高度随滑块实时变化
+                                        HomeTopWhitespacePreview(homeTopWhitespaceDp)
+                                        Slider(
+                                            value = homeTopWhitespaceDp.toFloat(),
+                                            onValueChange = { settingsViewModel.setHomeTopWhitespaceDp(it.roundToInt()) },
+                                            valueRange = 0f..160f,
+                                            steps = 16
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.setcat_home_top_whitespace_value, homeTopWhitespaceDp),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_navigation_bar)) {
@@ -996,7 +1075,20 @@ fun SettingsCategoryScreen(
                                             settingsViewModel.setMusicQuality(quality)
                                         }
                                     },
-                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    optionBadge = { key ->
+                                        // 24bit Hi-Res 选项右侧显示 Hi-Res logo
+                                        if (key == MusicQuality.HIRES.name) {
+                                            Image(
+                                                painter = painterResource(R.drawable.hires_audio_logo),
+                                                contentDescription = "Hi-Res",
+                                                modifier = Modifier
+                                                    .padding(end = 8.dp)
+                                                    .size(height = 16.dp, width = 32.dp),
+                                                contentScale = ContentScale.Fit
+                                            )
+                                        }
+                                    }
                                 )
                             }
 
@@ -1154,23 +1246,9 @@ fun SettingsCategoryScreen(
                                     },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
-                                // AAudio 低延迟后端开关（Android O+ 自动启用，可手动关闭以兼容旧设备）
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_aaudio_title),
-                                    subtitle = buildString {
-                                        append(
-                                            if (uiState.aaudioEnabled)
-                                                stringResource(R.string.setcat_aaudio_subtitle_on)
-                                            else
-                                                stringResource(R.string.setcat_aaudio_subtitle_off)
-                                        )
-                                        if (uiState.aaudioEnabled) append(" · AAudio")
-                                    },
-                                    checked = uiState.aaudioEnabled,
-                                    onCheckedChange = { settingsViewModel.setAaudioEnabled(it) },
-                                    enabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O,
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_surround_sound_24), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
+                                // AAudio 低延迟后端已移除：播放输出恢复系统 AudioTrack（见
+                                // DualPlayerEngine.buildAudioSink），AAudio 在曲尾会导致 EOS
+                                // 不达、无法自动切歌，故不再提供该开关。
                                 // USB 输出位深选项（仅在 USB 独占模式启用时可见）
                                 if (uiState.usbExclusiveModeEnabled) {
                                     val bitDepthOptions = mapOf(
@@ -2846,6 +2924,69 @@ private fun ImportFileSelectionDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * 首页顶部留白预览：按当前设置值等比绘制「状态栏 + 留白区 + 首个内容块」示意图。
+ * 拖动滑块时留白区高度实时变化，直观看到主页顶部的留白效果。
+ */
+@Composable
+private fun HomeTopWhitespacePreview(whitespaceDp: Int) {
+    // 留白区最大示意高度（对应设置上限 160dp）
+    val blankHeight = (whitespaceDp.coerceIn(0, 160) / 160f * 96f).dp
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(132.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        // 状态栏
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+        )
+        // 留白区（高度随设置实时变化，带描边以清晰标示空白区域）
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(blankHeight)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        )
+        // 首个内容块示意（标题条 + 拼贴区）
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.42f)
+                    .height(9.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.26f)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+            )
         }
     }
 }

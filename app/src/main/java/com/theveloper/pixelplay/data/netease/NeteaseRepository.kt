@@ -647,6 +647,13 @@ class NeteaseRepository @Inject constructor(
 
         requestDeferred.complete(result)
         inFlightSongUrlRequests.remove(songId, requestDeferred)
+        if (result.isFailure) {
+            // ⚡ 失败后清除冷却记录：播放失败重试（代理 404 → 重新解析 URL）时，
+            // 不应被 cooldown 挡住——否则重试永远立刻失败（throttled），
+            // 网络/API 临时故障时无法自愈，歌曲被跳过或播放中断。
+            // 冷却仅用于抑制"反复成功/高频"请求，失败场景需要放行重试。
+            lastSongUrlAttemptAtMs.remove(songId)
+        }
         return result
     }
 
@@ -930,7 +937,7 @@ class NeteaseRepository @Inject constructor(
 
         neteaseSongs.forEach { neteaseSong ->
             val songId = toUnifiedSongId(neteaseSong.neteaseId)
-            val artistNames = parseArtistNames(neteaseSong.artist)
+            val artistNames = CloudMusicUtils.parseNeteaseArtistNames(neteaseSong.artist)
             val primaryArtistName = artistNames.firstOrNull() ?: "Unknown Artist"
             val primaryArtistId = toUnifiedArtistId(primaryArtistName)
 

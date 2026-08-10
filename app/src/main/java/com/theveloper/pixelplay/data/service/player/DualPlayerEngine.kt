@@ -49,6 +49,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import com.theveloper.pixelplay.data.repository.MusicRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -226,6 +228,7 @@ class DualPlayerEngine @Inject constructor(
     private val telegramCacheManager: com.theveloper.pixelplay.data.telegram.TelegramCacheManager,
     private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder,
     private val okHttpClient: okhttp3.OkHttpClient,
+    private val musicRepository: MusicRepository,
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
     private val builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
     private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
@@ -412,8 +415,29 @@ class DualPlayerEngine @Inject constructor(
                 lastPlayWhenReadyAtMs = SystemClock.elapsedRealtime()
                 requestAudioFocus()
                 scheduleAudioOffloadFallbackIfNeeded(playerA)
+                // ⚡ 恢复播放：若交叉淡入淡出仍在进行，同步恢复辅助播放器，
+                //    否则 incoming 曲目停在暂停态，切歌后会无声。
+                if (transitionRunning) {
+                    playerB?.let { auxiliaryPlayer ->
+                        if (auxiliaryPlayer.playbackState != Player.STATE_IDLE && !auxiliaryPlayer.playWhenReady) {
+                            auxiliaryPlayer.playWhenReady = true
+                            if (!auxiliaryPlayer.isPlaying) auxiliaryPlayer.play()
+                        }
+                    }
+                }
             } else {
                 cancelAudioOffloadFallback()
+                // ⚡ 用户暂停：过渡中的 incoming 播放器必须同步暂停。
+                //    交叉淡入淡出期间点击暂停，若只停 playerA（对外暴露的 master），
+                //    playerB 里的 incoming 曲目仍会继续以淡入音量出声 → 「暂停后还在出声」。
+                if (transitionRunning) {
+                    playerB?.let { auxiliaryPlayer ->
+                        if (auxiliaryPlayer.playWhenReady || auxiliaryPlayer.isPlaying) {
+                            auxiliaryPlayer.playWhenReady = false
+                            auxiliaryPlayer.pause()
+                        }
+                    }
+                }
                 // Keep focus across user pauses so a quick resume doesn't have to re-acquire it.
                 // Focus is abandoned explicitly on AUDIOFOCUS_LOSS and on release(); anything in
                 // between (user pause/play) keeps the request alive to avoid contention races
@@ -533,6 +557,17 @@ class DualPlayerEngine @Inject constructor(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // 🔍 切歌定位日志。reason: 0=UNKNOWN 1=AUTO(自动切歌) 2=SEEK(手动) 3=PLAYLIST_CHANGED(列表变化)
+            // repeat: 0=OFF 1=ONE 2=ALL ; state: 1=IDLE 2=BUFFERING 3=READY 4=ENDED
+            android.util.Log.d(
+                "LxPlayer",
+                "=== 切歌 onMediaItemTransition idx=${playerA.currentMediaItemIndex}/${playerA.mediaItemCount} " +
+                    "reason=$reason title=${mediaItem?.mediaMetadata?.title} " +
+                    "uri=${mediaItem?.localConfiguration?.uri} " +
+                    "pos=${playerA.currentPosition}ms dur=${playerA.duration}ms " +
+                    "state=${playerA.playbackState} repeat=${playerA.repeatMode} " +
+                    "playing=${playerA.isPlaying} pwr=${playerA.playWhenReady} ==="
+            )
             lastMediaItemTransitionAtMs = SystemClock.elapsedRealtime()
             cancelAudioOffloadFallback()
             // 根据当前媒体是否为广播电台流切换流式模式（禁用 audio offload）
@@ -600,6 +635,14 @@ class DualPlayerEngine @Inject constructor(
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            // 🔍 播放状态定位日志。state: 1=IDLE 2=BUFFERING 3=READY 4=ENDED
+            // repeat: 0=OFF 1=ONE 2=ALL。ENDED 说明 EOS 已送达；READY 停滞且 pos≈dur 说明 EOS 不达。
+            android.util.Log.d(
+                "LxPlayer",
+                "=== 播放状态 onPlaybackStateChanged state=$playbackState " +
+                    "idx=${playerA.currentMediaItemIndex} pos=${playerA.currentPosition}ms dur=${playerA.duration}ms " +
+                    "repeat=${playerA.repeatMode} playing=${playerA.isPlaying} pwr=${playerA.playWhenReady} ==="
+            )
             when (playbackState) {
                 Player.STATE_BUFFERING -> {
                     val now = SystemClock.elapsedRealtime()
@@ -659,6 +702,13 @@ class DualPlayerEngine @Inject constructor(
                 Player.STATE_ENDED -> {
                     bufferingStartedAtMs = 0L
                     cancelAudioOffloadFallback()
+                    // 🔍 EOS 已送达（播放器自然播完）。若这里没日志，说明 EOS 从未到达 → 无法自动切歌
+                    android.util.Log.d(
+                        "LxPlayer",
+                        "STATE_ENDED reached: idx=${playerA.currentMediaItemIndex} " +
+                            "pos=${playerA.currentPosition}ms dur=${playerA.duration}ms " +
+                            "repeat=${playerA.repeatMode} next=${playerA.hasNextMediaItem()}"
+                    )
                     // 广播电台直播流可能因服务端主动断开/超时而无错误地进入 ENDED，
                     // 此时自动重新连接，避免播放静默停止。
                     if (streamingModeEnabled &&
@@ -686,6 +736,12 @@ class DualPlayerEngine @Inject constructor(
             newPosition: Player.PositionInfo,
             reason: Int
         ) {
+            // 🔍 位置跳变日志。reason: 0=UNKNOWN 1=SEEK 2=SEEK_ADJUSTMENT 3=INTERNAL 4=AUTO_TRANSITION 5=REMOVE 6=REPEAT 7=AD_INSERTION
+            android.util.Log.d(
+                "LxPlayer",
+                "位置跳变 onPositionDiscontinuity: ${oldPosition.positionMs}ms->${newPosition.positionMs}ms reason=$reason " +
+                    "idx=${playerA.currentMediaItemIndex}/${playerA.mediaItemCount} dur=${playerA.duration}ms"
+            )
             if (reason == Player.DISCONTINUITY_REASON_SEEK ||
                 reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
             ) {
@@ -1022,6 +1078,42 @@ class DualPlayerEngine @Inject constructor(
         )
     }
 
+    /**
+     * 禁用 audio offload（不重建播放器）。
+     * 供"播完卡死看门狗"使用：歌曲已在末尾停滞（offload HAL 未发 EOS），
+     * 直接停用 offload 并应用到现有播放器，避免重播时再次卡死；
+     * 不重建播放器，防止时间线被清空导致 mini player 消失。
+     */
+    fun disableAudioOffloadWithoutRebuild() {
+        if (!audioOffloadEnabled) return
+        if (transitionRunning) {
+            Timber.tag("DualPlayerEngine").w("Skipping offload disable during active transition.")
+            return
+        }
+        audioOffloadEnabled = false
+        val offloadPrefs = TrackSelectionParameters.AudioOffloadPreferences.Builder()
+            .setAudioOffloadMode(TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED)
+            .build()
+        if (::playerA.isInitialized) {
+            runCatching {
+                playerA.trackSelectionParameters = playerA.trackSelectionParameters.buildUpon()
+                    .setAudioOffloadPreferences(offloadPrefs)
+                    .build()
+            }
+        }
+        playerB?.let { aux ->
+            runCatching {
+                aux.trackSelectionParameters = aux.trackSelectionParameters.buildUpon()
+                    .setAudioOffloadPreferences(offloadPrefs)
+                    .build()
+            }
+        }
+        PerformanceMetrics.recordOffloadFallback(
+            "TrackEndWatchdog disabled offload (no rebuild)",
+            SystemClock.elapsedRealtime()
+        )
+    }
+
     private fun rebuildPlayersPreservingMasterState(logMessage: String) {
         cancelAudioOffloadFallback()
         AdvancedPerformanceDiagnostics.recordEventIfEnabled(
@@ -1168,6 +1260,14 @@ class DualPlayerEngine @Inject constructor(
         }
     }
 
+    /** 清空各流媒体代理内部的 URL 缓存（15 分钟 TTL），防止失效直链被反复复用 */
+    private fun invalidateProxyStreamCaches() {
+        runCatching { neteaseStreamProxy.invalidateAll() }
+        runCatching { qqMusicStreamProxy.invalidateAll() }
+        runCatching { navidromeStreamProxy.invalidateAll() }
+        runCatching { jellyfinStreamProxy.invalidateAll() }
+    }
+
     private fun isLocalhostProxyConnectionError(error: androidx.media3.common.PlaybackException): Boolean {
         if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
             error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED) {
@@ -1200,6 +1300,15 @@ class DualPlayerEngine @Inject constructor(
         val failingUri = failingItem.localConfiguration?.uri ?: return
         val failingUriString = failingUri.toString()
 
+        // 🔍 错误恢复定位日志
+        android.util.Log.d(
+            "LxPlayer",
+            "=== 播放错误恢复 tryRecoverFromError: errorCode=${error.errorCode} " +
+                "uri=$failingUriString pos=${player.currentPosition}ms dur=${player.duration}ms " +
+                "state=${player.playbackState} repeat=${player.repeatMode} " +
+                "next=${player.hasNextMediaItem()} wasPlaying=$wasPlaying ==="
+        )
+
         // Track retries per item to prevent infinite loops
         val mediaId = failingItem.mediaId
         val retries = mediaItemRetryCount.getOrDefault(mediaId, 0)
@@ -1228,6 +1337,42 @@ class DualPlayerEngine @Inject constructor(
         // from the saved position on the non-offload PCM path.
         if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_TIMEOUT) {
             mediaItemRetryCount[mediaId] = retries + 1
+            // ⚡ 修复"单曲播完卡死"：歌曲实际已播完，但 offload HAL 未向 ExoPlayer
+            // 发 EOS，播放器停留在 READY + playWhenReady=true、位置不再前进，10s 后
+            // 被 StuckPlayerDetector 抛出 StuckPlayerException。此前恢复逻辑会重建/
+            // 清空播放器时间线 → onMediaItemTransition(null) → PlayerViewModel 清空
+            // currentSong → mini player 消失。队尾且已到末尾时直接视为"自然播完"：
+            // 暂停并保留时间线（不重建播放器），避免 mini player 消失。
+            val durationMs = player.duration
+            val positionMs = player.currentPosition
+            val nearTrackEnd = durationMs > 0 && positionMs >= durationMs - 2000L
+            // ⚡ 修复"无法自动下一首"（治本）：代理/边下边播流时长未知（duration = -1，
+            // 上游无 Content-Length 走 chunked），nearTrackEnd 永远 false → 播完卡死 10s
+            // 后只会走 rebuild → 位置被重置 → "回到歌曲开头"，永远切不了歌。
+            // StuckPlayerException 的本质是位置 10s 无进展 = 播放已结束/彻底卡死，
+            // 此时无论时长是否已知都应按 repeatMode 模拟"自然播完"切歌。
+            val stuckAtUnknownDuration = durationMs <= 0L
+            // ⚡ 修复"开启列表循环仍播完就暂停 / 回到歌曲开头"：只要位置已到曲尾，
+            // 就说明歌曲实际已播完但 EOS 未送达（HAL 未发）→ 直接按 repeatMode
+            // 模拟"自然播完"。此前还要求 atEndOfQueue（!hasNextMediaItem()），但
+            // REPEAT_MODE_ALL 下队尾 hasNextMediaItem() 恒为 true（自动回绕到第一首），
+            // 导致循环模式永远进不了此分支 → 落入 rebuild → 位置被重置 → "回到开头"。
+            if (nearTrackEnd || stuckAtUnknownDuration) {
+                // ⚡ 修复"开启列表循环仍播完就暂停"：歌曲在队尾实际已播完，但 ExoPlayer
+                // 未收到 EOS（HAL 未发）→ 位置冻结 → 10s 后被 StuckPlayerDetector 判死。
+                // 此前的恢复逻辑一律暂停，无视用户开启的列表循环/单曲循环 →
+                // 必须按 repeatMode 模拟"自然播完"后的行为（见 simulateNaturalTrackEnd）：
+                //   REPEAT_MODE_ALL → 跳下一首（队尾自动回到第一首）并继续播放
+                //   REPEAT_MODE_ONE → 从头重播同一首并继续播放
+                //   REPEAT_MODE_OFF → 列表播完，暂停（保留时间线，避免 mini player 消失）
+                Timber.tag("DualPlayerEngine").w(
+                    "StuckPlayerException at track end (mediaId=$mediaId, repeatMode=${player.repeatMode}) — simulating natural completion"
+                )
+                // 确保不因 pauseAtEnd 残留而"播完暂停不切歌"
+                setPauseAtEndOfMediaItems(false)
+                simulateNaturalTrackEnd()
+                return
+            }
             if (audioOffloadEnabled) {
                 Timber.tag("DualPlayerEngine").w(
                     "StuckPlayerException for %s — disabling audio offload and rebuilding player",
@@ -1237,24 +1382,38 @@ class DualPlayerEngine @Inject constructor(
                     reason = "StuckPlayerException: player stuck with no progress (offload HAL stall)"
                 )
             } else {
-                // Offload already disabled but still stuck — re-prepare from saved state
+                // Offload already disabled (e.g. AAudio backend) but still stuck.
+                // ⚡ 此前的 re-prepare 会复用同一条 native 管线（AAudio 流/解析后的 URL），
+                // 对"流已停滞/断连/URL 失效"的场景无法真正恢复 → 改为整体重建播放器：
+                // 全新的 AudioSink（全新 AAudio 流）+ 重新解析 URL + 重放同一队列。
                 Timber.tag("DualPlayerEngine").w(
-                    "StuckPlayerException for %s with offload already disabled — re-preparing",
+                    "StuckPlayerException for %s with offload already disabled — full player rebuild",
                     mediaId
                 )
-                try {
-                    val currentIndex = player.currentMediaItemIndex
-                    val currentPosition = player.currentPosition
-                    player.stop()
-                    player.clearMediaItems()
-                    val snapshot = ensureQueueSnapshot()
-                    if (snapshot.isNotEmpty()) {
-                        player.setMediaItems(snapshot, currentIndex, currentPosition)
-                        player.prepare()
-                        if (wasPlaying) player.playWhenReady = true
+                if (transitionRunning) {
+                    // 过渡中不重建，退化为普通 re-prepare，避免干扰 playerB
+                    try {
+                        val currentIndex = player.currentMediaItemIndex
+                        val currentPosition = player.currentPosition
+                        player.stop()
+                        player.clearMediaItems()
+                        val snapshot = ensureQueueSnapshot()
+                        if (snapshot.isNotEmpty()) {
+                            player.setMediaItems(snapshot, currentIndex, currentPosition)
+                            player.prepare()
+                            if (wasPlaying) player.playWhenReady = true
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag("DualPlayerEngine").w(e, "Re-prepare failed for %s after stuck player", mediaId)
                     }
-                } catch (e: Exception) {
-                    Timber.tag("DualPlayerEngine").w(e, "Re-prepare failed for %s after stuck player", mediaId)
+                } else {
+                    runCatching {
+                        rebuildPlayersPreservingMasterState(
+                            logMessage = "StuckPlayerException: player stuck with no progress (offload disabled) — rebuilt player for $mediaId"
+                        )
+                    }.onFailure { e ->
+                        Timber.tag("DualPlayerEngine").w(e, "Full rebuild failed for %s after stuck player", mediaId)
+                    }
                 }
             }
             return
@@ -1274,6 +1433,7 @@ class DualPlayerEngine @Inject constructor(
             // already has the resolved proxy URL. So invalidate the entire
             // proxy cache and force re-resolution.
             clearAllResolvedCache()
+            invalidateProxyStreamCaches()
 
             // Also reset proxy state so ports are re-detected
             lastKnownNeteasePort = 0
@@ -1290,11 +1450,13 @@ class DualPlayerEngine @Inject constructor(
             val currentIndex = player.currentMediaItemIndex
             val currentPosition = player.currentPosition
             try {
+                // ⚡ 必须先取快照再 stop/clear：clearMediaItems 后时间线为空，
+                //    ensureQueueSnapshot() 会刷新成空列表导致重试落空。
+                val snapshot = ensureQueueSnapshot()
                 player.stop()
                 player.clearMediaItems()
                 // Rebuild the media items from the queue snapshot, so URL
                 // resolution runs again
-                val snapshot = ensureQueueSnapshot()
                 if (snapshot.isNotEmpty()) {
                     player.setMediaItems(snapshot, currentIndex, currentPosition)
                     player.prepare()
@@ -1374,11 +1536,13 @@ class DualPlayerEngine @Inject constructor(
                             val newItem = player.currentMediaItem
                                 ?.buildUpon()?.setUri(freshUrl)?.build()
                             if (newItem != null) {
-                                player.stop()
-                                player.clearMediaItems()
+                                // ⚡ 必须先取快照再 stop/clear：clearMediaItems 后时间线为空，
+                                //    ensureQueueSnapshot() 会刷新成空列表导致重试落空。
                                 val snapshot = ensureQueueSnapshot().map { item ->
                                     if (item.mediaId == mediaId) newItem else item
                                 }
+                                player.stop()
+                                player.clearMediaItems()
                                 if (snapshot.isNotEmpty()) {
                                     player.setMediaItems(snapshot, currentIndex, currentPosition)
                                     player.prepare()
@@ -1419,6 +1583,55 @@ class DualPlayerEngine @Inject constructor(
                         }
                     }
                 }
+            }
+
+            // ⚡ 在线歌曲（落雪搜索/收藏等已保存到数据库的云端歌曲）：
+            //    MediaItem 里是一次性的 http(s) 直链（带签名会过期 / CDN 限流间歇失败），
+            //    对同一条直链重试必然再次失败。从数据库找回可重新解析的
+            //    netease:// / cloud://lx/ URI，重新解析出新鲜直链后原地重放，
+            //    解析不出再交给 MAX_RETRIES 逻辑跳歌。修复"Source error 后歌曲直接停止"。
+            val dbSongId = mediaId.toLongOrNull()
+            if (dbSongId != null && retries < MAX_RETRIES_PER_ITEM - 1) {
+                val wasPlayingBefore = wasPlaying
+                scope.launch(Dispatchers.Main) {
+                    // 重新解析前先清掉代理 15 分钟缓存，避免拿到同一条失效直链
+                    invalidateProxyStreamCaches()
+                    val freshItem = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val dbSong = musicRepository.getSong(dbSongId.toString()).first()
+                            val cloudUri = dbSong?.contentUriString?.takeIf {
+                                it.startsWith("netease://") || it.startsWith("cloud://")
+                            } ?: return@runCatching null
+                            val candidate = failingItem.buildUpon().setUri(Uri.parse(cloudUri)).build()
+                            // resolveMediaItem -> resolveCloudUri：落雪引擎/内置源重新解析一条新直链
+                            resolveMediaItem(candidate)
+                        }.getOrNull()
+                    }
+                    if (freshItem == null) return@launch
+                    if (player.currentMediaItem?.mediaId != mediaId) return@launch
+                    try {
+                        // ⚡ 必须先取快照再 stop/clear：clearMediaItems 后 player 时间线
+                        //    变为空，此时 ensureQueueSnapshot() 会刷新成空列表导致重试落空。
+                        val currentIndex = player.currentMediaItemIndex
+                        val currentPosition = player.currentPosition
+                        val snapshot = ensureQueueSnapshot().map { item ->
+                            if (item.mediaId == mediaId) freshItem else item
+                        }
+                        player.stop()
+                        player.clearMediaItems()
+                        if (snapshot.isNotEmpty()) {
+                            player.setMediaItems(snapshot, currentIndex, currentPosition)
+                            player.prepare()
+                            if (wasPlayingBefore) player.playWhenReady = true
+                            Timber.tag("DualPlayerEngine").d(
+                                "Cloud song: re-resolved fresh URL and re-prepared $mediaId"
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag("DualPlayerEngine").w(e, "Cloud song re-resolve re-prepare failed for $mediaId")
+                    }
+                }
+                return
             }
         }
     }
@@ -1484,17 +1697,12 @@ class DualPlayerEngine @Inject constructor(
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean
             ): AudioSink {
-                // ⚡ AAudio 后端：Media3 1.10.1 已移除内置 AAudio 支持，
-                // 开关开启且 Android O+ 时注入自定义 AAudio AudioOutputProvider，
-                // 否则回退系统 AudioTrack。USB 独占镜像在 AudioProcessor 层，不受影响。
-                // ⚠ 冲突规避：USB 独占激活时回退 AudioTrack —— AAudio 的 setPreferredDevice
-                // 是 no-op，无法跟随 MusicService 把输出路由到 USB DAC；且 libusb forceClaim
-                // 会踢掉占用 USB 接口的 AAudio 流（AAUDIO_ERROR_DISCONNECTED）。独占模式依赖
-                // AudioTrack 的优选设备路由，故此处必须禁用 AAudio 后端。
-                val useAaudio = audioEngineSettings.aaudioEnabled.value &&
-                        !audioEngineSettings.usbExclusiveModeEnabled.value &&
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                val builder = DefaultAudioSink.Builder(context)
+                // ⚡ 恢复原版播放输出：始终使用系统 AudioTrack（Media3 默认后端），
+                // 不再注入自定义 AAudio AudioOutputProvider —— AAudio 后端在播放到
+                // 曲尾时 framesRead 位置基准抖动会导致 hasPendingData() 永远 true、
+                // EOS 永远不达，歌曲播完无法自动切歌（"回跳 3 秒反复 / 不自动下一首"）。
+                // USB 独占在 AudioProcessor 层镜像输出到 DAC，不受输出后端影响。
+                return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiFiModeEnabled)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
                     .setAudioProcessorChain(
@@ -1509,12 +1717,7 @@ class DualPlayerEngine @Inject constructor(
                             com.theveloper.pixelplay.data.service.audioengine.UsbExclusiveAudioProcessor()
                         )
                     )
-                if (useAaudio) {
-                    builder.setAudioOutputProvider(
-                        com.theveloper.pixelplay.data.service.audioengine.AaudioAudioOutputProvider()
-                    )
-                }
-                return builder.build()
+                    .build()
             }
 
             override fun buildVideoRenderers(
@@ -1738,6 +1941,27 @@ class DualPlayerEngine @Inject constructor(
     }
 
     /**
+     * USB 独占模式切换时重建播放器（保持当前曲目与播放状态）。
+     *
+     * ⚡ 独占开关在播放中切换时必须重建播放器，否则无声：
+     *   1. buildAudioSink 的 useAaudio 只在构建时评估。AAudio 后端的
+     *      setPreferredDevice 是 no-op（无法跟随路由到 USB），且 libusb
+     *      forceClaim 会踢掉占用 USB 接口的 AAudio 流（AAUDIO_ERROR_DISCONNECTED）
+     *      → 播放中开启独占 = 系统与 USB 都无声。
+     *   2. AudioTrack 的优选设备路由只在 track 创建时生效；重建后 buildPlayer
+     *      会重新应用 preferredAudioDevice（见 build 尾部），独占激活才有声。
+     */
+    fun rebuildForUsbExclusiveModeChange() {
+        if (!::playerA.isInitialized) {
+            // 播放器尚未构建：无需重建，下次 buildPlayer 会读取最新的
+            // usbExclusiveModeEnabled/aaudioEnabled/preferredAudioDevice
+            Timber.tag("DualPlayerEngine").d("USB exclusive mode changed, player not built yet; skip rebuild")
+            return
+        }
+        rebuildPlayersPreservingMasterState("USB exclusive mode changed")
+    }
+
+    /**
      * 更新流式（广播电台）播放模式。
      *
      * 实时流（如 radio:// 直播电台）在部分设备上启用 audio offload 后，
@@ -1821,6 +2045,54 @@ class DualPlayerEngine @Inject constructor(
         }
     }
 
+    /**
+     * 按当前 repeatMode 模拟"歌曲自然播完"后的行为，用于跨 fade 未及时触发、
+     * EOS 未送达等"播完不自动切歌"场景的兜底：
+     *   REPEAT_MODE_ALL → 跳下一首（队尾自动回绕第一首）并继续播放
+     *   REPEAT_MODE_ONE → 从头重播同一首并继续播放
+     *   REPEAT_MODE_OFF → 有下一首顺播；列表播完则回到开头暂停（保留时间线）
+     */
+    fun simulateNaturalTrackEnd() {
+        if (!::playerA.isInitialized) return
+        val player = playerA
+        Timber.tag("DualPlayerEngine").w(
+            "simulateNaturalTrackEnd: repeatMode=${player.repeatMode} " +
+                "idx=${player.currentMediaItemIndex}/${player.mediaItemCount} next=${player.hasNextMediaItem()}"
+        )
+        runCatching {
+            // 禁用 offload（不重建播放器），避免重播/下一首时再次卡死
+            disableAudioOffloadWithoutRebuild()
+            when (player.repeatMode) {
+                Player.REPEAT_MODE_ALL -> {
+                    if (player.hasNextMediaItem()) {
+                        player.seekToNextMediaItem()
+                    } else {
+                        player.seekToDefaultPosition(0)
+                    }
+                    player.prepare()
+                    player.playWhenReady = true
+                }
+                Player.REPEAT_MODE_ONE -> {
+                    player.seekTo(0L)
+                    player.prepare()
+                    player.playWhenReady = true
+                }
+                else -> {
+                    // 单次播放：有下一首就顺播；列表播完则回到开头暂停（保留时间线）
+                    if (player.hasNextMediaItem()) {
+                        player.seekToNextMediaItem()
+                        player.prepare()
+                        player.playWhenReady = true
+                    } else {
+                        player.seekTo(0L)
+                        player.prepare()
+                        player.playWhenReady = false
+                    }
+                }
+            }
+        }
+    }
+
     fun getNextTransitionTarget(currentMediaItem: MediaItem, repeatMode: Int): TransitionTarget? {
         val snapshot = ensureQueueSnapshot()
         if (snapshot.isEmpty()) return null
@@ -1828,8 +2100,11 @@ class DualPlayerEngine @Inject constructor(
         val currentAbsoluteIndex = resolveCurrentAbsoluteIndex(currentMediaItem, snapshot)
         if (currentAbsoluteIndex == C.INDEX_UNSET) return null
 
+        // ⚡ 列表循环（REPEAT_MODE_ALL）必须 wrap：播完最后一首时 crossfade 预加载第一首，
+        //    否则队尾无过渡目标，列表循环会"不循环"（依赖 ExoPlayer 自身 wrap 但 crossfade 断裂）。
         val targetIndex = when (repeatMode) {
             Player.REPEAT_MODE_ONE -> currentAbsoluteIndex
+            Player.REPEAT_MODE_ALL -> (currentAbsoluteIndex + 1) % snapshot.size
             else -> currentAbsoluteIndex + 1
         }
 
@@ -2004,7 +2279,15 @@ class DualPlayerEngine @Inject constructor(
             songMap["name"] = json.optString("name", "")
             val singerValue = json.optString("singer", "")
             songMap["singer"] = singerValue
-            songMap["artists"] = singerValue
+            // 多歌手支持：artists 必须传数组（{id,name} 对象），
+            // 否则脚本读取 musicInfo.artists 时拿到字符串会解析失败
+            val idList = json.optString("artistIds", "").split(",")
+                .map { it.trim() }.filter { it.isNotBlank() }
+            val nameList = com.theveloper.pixelplay.data.stream.CloudMusicUtils.parseArtistNames(singerValue)
+            songMap["artists"] = nameList.mapIndexed { index, name ->
+                mapOf("id" to idList.getOrNull(index).orEmpty(), "name" to name)
+            }
+            songMap["artistIds"] = idList
             val albumValue = json.optString("album", "")
             songMap["album"] = albumValue
             songMap["albumName"] = albumValue
@@ -2268,6 +2551,11 @@ class DualPlayerEngine @Inject constructor(
             return
         }
 
+        // ⚡ 切换前捕获完整队列：过渡完成后 master 会换成 auxiliary 的（窗口）队列，
+        //    队列 > MAX_AUXILIARY_TIMELINE_ITEMS 时窗口会被截断（后面的歌"消失"），
+        //    且窗口边界的列表循环会错乱。这里先保存完整快照，切换后回填到新 master。
+        val fullSnapshotBeforeSwap = ensureQueueSnapshot()
+
         if (auxiliaryPlayer.playbackState == Player.STATE_IDLE) auxiliaryPlayer.prepare()
         if (auxiliaryPlayer.playbackState == Player.STATE_BUFFERING) {
             if (!awaitPlayerReady(auxiliaryPlayer, 3000L)) {
@@ -2328,6 +2616,34 @@ class DualPlayerEngine @Inject constructor(
 
         onPlayerSwappedListeners.forEach { it(playerA) }
         _activeAudioSessionId.value = playerA.audioSessionId
+
+        // ⚡ 完整队列回填：auxiliary 预加载的是窗口队列（队列 > 200 首时），直接作为新
+        //    master 会导致列表消失 / 列表循环错乱。用切换前保存的完整快照重建新 master
+        //    队列。注意不要 stop()：当前曲目正在播放，stop 会打断输出引发爆音；
+        //    就绪状态下 setMediaItems 会无缝替换队列（当前曲目与进度保持不变）。
+        if (activePlayerUsesWindowedQueue || playerA.mediaItemCount != fullSnapshotBeforeSwap.size) {
+            try {
+                val resolvedTarget = playerA.currentMediaItem
+                val fullItems = fullSnapshotBeforeSwap.map { item ->
+                    if (resolvedTarget != null && item.mediaId == resolvedTarget.mediaId) resolvedTarget else item
+                }
+                val targetAbsIndex = fullItems.indexOfFirst { it.mediaId == resolvedTarget?.mediaId }
+                    .takeIf { it >= 0 } ?: 0
+                val currentPos = playerA.currentPosition
+                playerA.setMediaItems(fullItems, targetAbsIndex, currentPos)
+                if (playerA.playbackState == Player.STATE_IDLE) playerA.prepare()
+                if (playerA.playWhenReady && !playerA.isPlaying) playerA.play()
+                activeWindowStartIndex = 0
+                activePlayerUsesWindowedQueue = false
+                queueSnapshot = fullItems
+                Timber.tag("TransitionDebug").d(
+                    "Backfilled full queue into master (size=%d, index=%d) after windowed transition",
+                    fullItems.size, targetAbsIndex
+                )
+            } catch (e: Exception) {
+                Timber.tag("TransitionDebug").w(e, "Failed to backfill full queue after transition")
+            }
+        }
 
         playerB?.pause()
         playerB?.stop()

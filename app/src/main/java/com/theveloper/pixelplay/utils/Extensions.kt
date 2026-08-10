@@ -57,6 +57,12 @@ private const val ESCAPE_SEQUENCE = "\\\\"
 private const val ESCAPE_PLACEHOLDER = "\u0000ESCAPED\u0000"
 
 /**
+ * Placeholder used internally during parsing to preserve whitelisted artist names
+ * (names that must never be split, e.g. "AC/DC").
+ */
+private const val PROTECTED_PLACEHOLDER = "\u0000PROTECTED\u0000"
+
+/**
  * Default word-based delimiters for splitting multi-artist strings.
  * These are matched case-insensitively with word boundaries.
  */
@@ -64,24 +70,29 @@ val DEFAULT_WORD_DELIMITERS = listOf("featuring", "feat.", "feat", "ft.", "ft", 
 
 /**
  * Splits an artist string by the given character delimiters and word delimiters,
- * respecting escaped delimiters.
+ * respecting escaped delimiters and whitelisted names.
  *
  * @param delimiters List of character delimiter strings to split by (e.g., ["/", ";", ","])
  * @param wordDelimiters List of word-based delimiters to split by (e.g., ["feat.", "ft.", "vs."])
  *        These are matched case-insensitively with surrounding whitespace.
  *        The single-letter "x" is handled specially — only matched when surrounded by spaces.
+ * @param protectedNames Whitelisted artist names that must NEVER be split, even if they
+ *        contain delimiter characters (e.g. "AC/DC", "Tones & I"). Matched case-insensitively
+ *        and the original casing is preserved after splitting.
  * @return List of individual artist names, trimmed and with escaped delimiters restored.
  *         Returns a single-element list with the original string if no splitting occurs.
  *
  * Examples:
  * - "Artist1/Artist2".splitArtistsByDelimiters(listOf("/")) -> ["Artist1", "Artist2"]
  * - "AC\\DC".splitArtistsByDelimiters(listOf("/")) -> ["AC/DC"] (escaped)
+ * - "AC/DC".splitArtistsByDelimiters(listOf("/"), protectedNames = ["AC/DC"]) -> ["AC/DC"]
  * - "Drake feat. Rihanna".splitArtistsByDelimiters(listOf(), listOf("feat.")) -> ["Drake", "Rihanna"]
  * - "Marshmello x Bastille".splitArtistsByDelimiters(listOf(), listOf("x")) -> ["Marshmello", "Bastille"]
  */
 fun String.splitArtistsByDelimiters(
     delimiters: List<String>,
-    wordDelimiters: List<String> = DEFAULT_WORD_DELIMITERS
+    wordDelimiters: List<String> = DEFAULT_WORD_DELIMITERS,
+    protectedNames: Collection<String> = emptyList()
 ): List<String> {
     if ((delimiters.isEmpty() && wordDelimiters.isEmpty()) || this.isBlank()) {
         return listOf(this.trim()).filter { it.isNotEmpty() }
@@ -99,6 +110,27 @@ fun String.splitArtistsByDelimiters(
         val placeholder = "${ESCAPE_PLACEHOLDER}${index}${ESCAPE_PLACEHOLDER}"
         escapedMappings[placeholder] = delimiter
         working = working.replace(escapedDelimiter, placeholder)
+    }
+
+    // ⚡ Protect whitelisted artist names: replace every occurrence with a unique
+    //    placeholder BEFORE splitting, then restore the original (case-preserved)
+    //    text afterwards. This way "AC/DC" never gets split by "/".
+    val protectedMappings = mutableMapOf<String, String>()
+    if (protectedNames.isNotEmpty()) {
+        val sortedProtected = protectedNames
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sortedByDescending { it.length }
+        var protectedIndex = 0
+        for (name in sortedProtected) {
+            val regex = Regex(Regex.escape(name), RegexOption.IGNORE_CASE)
+            working = regex.replace(working) { match ->
+                val placeholder = "${PROTECTED_PLACEHOLDER}${protectedIndex++}${PROTECTED_PLACEHOLDER}"
+                protectedMappings[placeholder] = match.value
+                placeholder
+            }
+        }
     }
 
     // Build combined regex pattern:
@@ -136,12 +168,15 @@ fun String.splitArtistsByDelimiters(
     // Split by combined pattern
     val parts = working.split(regex)
 
-    // Restore escaped delimiters and trim each part
+    // Restore escaped delimiters and whitelisted names, then trim each part
     return parts
         .map { part ->
             var restored = part
             escapedMappings.forEach { (placeholder, delimiter) ->
                 restored = restored.replace(placeholder, delimiter)
+            }
+            protectedMappings.forEach { (placeholder, originalName) ->
+                restored = restored.replace(placeholder, originalName)
             }
             restored.trim()
         }
@@ -159,11 +194,13 @@ fun String.splitArtistsByDelimiters(
  *
  * @param delimiters Character delimiters to further split extracted artist strings
  * @param wordDelimiters Word delimiters to further split extracted artist strings
+ * @param protectedNames Whitelisted artist names that must never be split
  * @return Pair of (cleaned title, list of extracted artist names). Empty list if no artists found.
  */
 fun String.extractArtistsFromTitle(
     delimiters: List<String> = emptyList(),
-    wordDelimiters: List<String> = DEFAULT_WORD_DELIMITERS
+    wordDelimiters: List<String> = DEFAULT_WORD_DELIMITERS,
+    protectedNames: Collection<String> = emptyList()
 ): Pair<String, List<String>> {
     if (this.isBlank()) return this to emptyList()
 
@@ -181,7 +218,7 @@ fun String.extractArtistsFromTitle(
     bracketPattern.findAll(this).forEach { match ->
         val artistString = match.groupValues[1]
         // Split the extracted artist string by delimiters (handles "Artist1 & Artist2" inside parens)
-        val artists = artistString.splitArtistsByDelimiters(delimiters, wordDelimiters)
+        val artists = artistString.splitArtistsByDelimiters(delimiters, wordDelimiters, protectedNames)
         extractedArtists.addAll(artists)
         cleanedTitle = cleanedTitle.replace(match.value, "")
     }

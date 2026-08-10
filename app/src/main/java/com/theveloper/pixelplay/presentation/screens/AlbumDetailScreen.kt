@@ -213,7 +213,9 @@ fun AlbumDetailScreen(
                     onMove = { from, to ->
                         if (!isManualMode) return@rememberReorderableLazyListState
                         localReorderableSongs = localReorderableSongs.toMutableList().apply {
-                            add(to.index, removeAt(from.index))
+                            // ⚡ 库在拖到列表末尾时 to.index 可能超出范围，必须裁剪，否则 add() 越界崩溃
+                            val moved = removeAt(from.index)
+                            add(to.index.coerceAtMost(size), moved)
                         }
                         if (lastMovedFrom == null) {
                             lastMovedFrom = from.index

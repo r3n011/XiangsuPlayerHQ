@@ -208,6 +208,10 @@ class MediaControllerSyncStateHolder @Inject constructor(
                 mediaItems.mapNotNull { mediaItem ->
                     resolveSongFromMediaItem(mediaItem, allSongsById)
                 }
+                    // ⚡ 播放器列表（播放队列）不得出现电台：电台是实时流，不能作为队列项。
+                    //    播放电台时 MediaController timeline 里只有电台，若不剔除就会
+                    //    出现在播放列表中 → 检测到自动剔除。
+                    .filterNot { it.isRadioStation }
             }
 
             if (requestId != lastQueueUpdateRequestId) return@launch

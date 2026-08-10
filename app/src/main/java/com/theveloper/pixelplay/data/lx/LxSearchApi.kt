@@ -703,6 +703,24 @@ class LxSearchApi @Inject constructor(
         } else {
             "未知歌手"
         }
+        // 多个歌手时按顺序收集歌手 ID（逗号分隔，与 singer 一一对应），
+        // 供 JS 引擎 musicInfo.artists 数组使用，避免多歌手歌曲取链接失败
+        val artistIds = if (artists != null) {
+            buildString {
+                for (i in 0 until artists.length()) {
+                    val artistObj = artists.optJSONObject(i)
+                    if (artistObj != null) {
+                        val aid = artistObj.optLong("id", 0L)
+                        if (aid > 0L) {
+                            if (isNotEmpty()) append(",")
+                            append(aid)
+                        }
+                    }
+                }
+            }
+        } else {
+            ""
+        }
 
         val album = obj.optJSONObject("album") ?: obj.optJSONObject("al")
         val albumName = album?.optString("name", "") ?: ""
@@ -717,6 +735,7 @@ class LxSearchApi @Inject constructor(
             hash = id,
             name = name,
             singer = singer,
+            artistIds = artistIds,
             albumName = albumName,
             duration = duration,
             pic = pic

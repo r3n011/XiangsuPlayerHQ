@@ -48,7 +48,9 @@ class LanzouCloudApi {
         val fileName: String,
         val fileSize: String,
         val downloadUrl: String,
-        val versionName: String? = null  // 从文件名解析的版本号
+        val versionName: String? = null,  // 从文件名解析的版本号
+        val cookie: String = "",  // 解析会话的 Cookie（下载直链时必需，否则命中人机验证页）
+        val referer: String = ""  // 下载直链所需的 Referer（蓝奏云分享页）
     )
 
     /**
@@ -142,7 +144,11 @@ class LanzouCloudApi {
                                     fileName = entry.name,
                                     fileSize = entry.size,
                                     downloadUrl = downloadUrl,
-                                    versionName = parseVersionFromFileName(entry.name)
+                                    versionName = parseVersionFromFileName(entry.name),
+                                    // ⚡ 携带解析会话的 Cookie 与 Referer，App 内下载直链时带上，
+                                    //    否则蓝奏云 CDN 直接返回人机验证 HTML 页导致下载失败
+                                    cookie = session.cookiesString(),
+                                    referer = shareUrl
                                 )
                             )
                         }
@@ -352,6 +358,10 @@ class LanzouCloudApi {
         fun setCookie(name: String, value: String) {
             cookies[name] = value
         }
+
+        /** 导出会话 Cookie 字符串（供直链下载使用） */
+        fun cookiesString(): String =
+            cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
 
         fun get(url: String, referer: String? = null): String =
             request("GET", url, null, referer)

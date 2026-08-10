@@ -121,6 +121,27 @@ static const int kStdRates[] = {
 };
 
 /*
+ * 由等时包长反推采样率：包长 = rate*ch*bps/1000（全速 1ms 帧）
+ * 或 rate*ch*bps/8000（高速 125us 微帧）。
+ *
+ * ⚡ 该值优先于 FORMAT_TYPE 解析值：FORMAT_TYPE 可能声明多档频率，
+ * 取"最高频率"时若超过当前 alt 的 wMaxPacketSize 带宽（如声明 96k
+ * 但 alt 包长只够 48k），数据会超带宽被总线丢弃 → 无声。
+ * 以包长反推的采样率为准，保证 rate*ch*bps <= wMaxPacketSize。
+ */
+static int infer_rate_from_packet(void) {
+    int i, r;
+    for (i = 0; i < (int)(sizeof(kStdRates) / sizeof(kStdRates[0])); i++) {
+        r = kStdRates[i];
+        if (g_packet_size == (int)((long)r * g_dac_channels * g_dac_bps / 1000) ||
+            g_packet_size == (int)((long)r * g_dac_channels * g_dac_bps / 8000)) {
+            return r;
+        }
+    }
+    return 0;
+}
+
+/*
  * 解析 UAC1 AudioStreaming 接口的 FORMAT_TYPE I 类特定描述符，
  * 得到声道数 / 子帧字节数 / 采样频率，作为 USB 输出的时钟基准。
  *
@@ -151,17 +172,22 @@ static void parse_stream_format(const struct libusb_interface_descriptor *desc) 
         pos += blen;
     }
 
-    /* 兜底：由包长反推采样率。全速 1ms 帧 → R*ch*bps/1000；高速 125us 微帧 → R*ch*bps/8000 */
-    if (g_dac_rate <= 0 && g_dac_channels > 0 && g_dac_bps > 0) {
-        int i;
-        for (i = 0; i < (int)(sizeof(kStdRates) / sizeof(kStdRates[0])); i++) {
-            int r = kStdRates[i];
-            if ((int)((long)r * g_dac_channels * g_dac_bps / 1000) == g_packet_size ||
-                (int)((long)r * g_dac_channels * g_dac_bps / 8000) == g_packet_size) {
-                g_dac_rate = r;
-                break;
+    /* ⚡ 包长反推优先：FORMAT_TYPE 的"最高频率"可能超出当前 alt 的
+     * wMaxPacketSize 带宽（如声明 96k 但 alt 包长只够 48k），此时数据
+     * 会超带宽被总线丢弃 → 无声。以包长反推的采样率为准。 */
+    {
+        int inferred = infer_rate_from_packet();
+        if (inferred > 0) {
+            if (inferred != g_dac_rate) {
+                LOGD("DAC rate corrected by packet size: %d -> %d", g_dac_rate, inferred);
             }
+            g_dac_rate = inferred;
         }
+    }
+
+    /* 兜底：仍解析不出时由包长反推，最后回退 48000 */
+    if (g_dac_rate <= 0 && g_dac_channels > 0 && g_dac_bps > 0) {
+        g_dac_rate = infer_rate_from_packet();
     }
     if (g_dac_rate <= 0) g_dac_rate = 48000;
     LOGD("DAC clock rate = %d Hz (ch=%d bps=%d)", g_dac_rate, g_dac_channels, g_dac_bps);
@@ -492,6 +518,22 @@ Java_com_theveloper_pixelplay_data_service_usb_UsbAudioOutput_nativeGetSampleRat
         JNIEnv *env, jobject thiz) {
     (void) env; (void) thiz;
     return (jint) g_dac_rate;
+}
+
+/* 返回 DAC 声道数（bNrChannels），Java 层据此归一化声道避免超带宽 */
+JNIEXPORT jint JNICALL
+Java_com_theveloper_pixelplay_data_service_usb_UsbAudioOutput_nativeGetChannels(
+        JNIEnv *env, jobject thiz) {
+    (void) env; (void) thiz;
+    return (jint) g_dac_channels;
+}
+
+/* 返回 DAC 子帧字节数（bSubframeSize），Java 层据此限制打包位深避免超带宽 */
+JNIEXPORT jint JNICALL
+Java_com_theveloper_pixelplay_data_service_usb_UsbAudioOutput_nativeGetSubframeSize(
+        JNIEnv *env, jobject thiz) {
+    (void) env; (void) thiz;
+    return (jint) g_dac_bps;
 }
 
 static void native_stop_internal(JNIEnv *env, jobject thiz) {

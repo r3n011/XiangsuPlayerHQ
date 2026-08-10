@@ -2,7 +2,6 @@ package com.theveloper.pixelplay.presentation.viewmodel.exts
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -16,8 +15,6 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import com.theveloper.pixelplay.data.service.player.HiResSampleRateCapAudioProcessor
 import com.theveloper.pixelplay.data.service.player.SurroundDownmixProcessor
-import com.theveloper.pixelplay.presentation.components.UsbDacWithAudioEngineEntryPoint
-import dagger.hilt.android.EntryPointAccessors
 
 @OptIn(UnstableApi::class)
 class DeckController(
@@ -41,24 +38,9 @@ class DeckController(
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean
             ): AudioSink {
-                // ⚡ AAudio 后端：Media3 1.10.1 已移除内置 AAudio 支持，
-                // 开关开启且 Android O+ 时注入自定义 AAudio AudioOutputProvider，
-                // 否则回退系统 AudioTrack。
-                // ⚠ 冲突规避：USB 独占激活时回退 AudioTrack（AAudio 的 setPreferredDevice
-                // 是 no-op，无法路由到 USB DAC，且 libusb forceClaim 会断开占用 USB 接口的流）。
-                val useAaudio = try {
-                    val entryPoint = EntryPointAccessors.fromApplication(
-                        context.applicationContext,
-                        UsbDacWithAudioEngineEntryPoint::class.java
-                    )
-                    val settings = entryPoint.audioEngineSettings
-                    settings.aaudioEnabled.value &&
-                            !settings.usbExclusiveModeEnabled.value &&
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                } catch (t: Throwable) {
-                    false
-                }
-                val builder = DefaultAudioSink.Builder(context)
+                // ⚡ 恢复原版播放输出：始终使用系统 AudioTrack（Media3 默认后端），
+                // 不再注入自定义 AAudio AudioOutputProvider（曲尾 EOS 不达的根因）。
+                return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(false)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
                     .setAudioProcessorChain(
@@ -67,12 +49,7 @@ class DeckController(
                             SurroundDownmixProcessor()
                         )
                     )
-                if (useAaudio) {
-                    builder.setAudioOutputProvider(
-                        com.theveloper.pixelplay.data.service.audioengine.AaudioAudioOutputProvider()
-                    )
-                }
-                return builder.build()
+                    .build()
             }
 
             override fun buildVideoRenderers(

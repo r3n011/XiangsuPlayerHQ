@@ -6,7 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.text.util.LinkMovementMethod
+import android.text.method.LinkMovementMethod
 import android.widget.TextView
 import androidx.annotation.DrawableRes
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -445,15 +445,26 @@ fun AboutScreen(
         }
     }
 
-    fun startApkDownload(urls: List<String>) {
+    fun startApkDownload(candidates: List<ApkDownloadInstaller.DownloadCandidate>) {
         coroutineScope.launch {
-            apkInstaller.downloadApk(context, urls).collect { state ->
+            apkInstaller.downloadApk(context, candidates).collect { state ->
                 apkDownloadState = state
                 if (state is ApkDownloadInstaller.DownloadState.Downloaded) {
                     apkDownloadState = ApkDownloadInstaller.DownloadState.Installing
                     startInstall(state.file)
                 }
             }
+        }
+    }
+
+    /** 蓝奏云直链被 CDN 人机验证拦截时的兜底：浏览器打开分享页手动下载 */
+    fun openLanzouInBrowser() {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(UpdateChecker.LANZOU_SHARE_URL))
+            context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Timber.e(e, "No browser available")
+            android.widget.Toast.makeText(context, R.string.update_no_browser, android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -764,9 +775,10 @@ fun AboutScreen(
                     showUpdateDialog = false
                     apkDownloadState = null
                 },
-                onDownload = { urls ->
-                    startApkDownload(urls)
-                }
+                onDownload = { candidates ->
+                    startApkDownload(candidates)
+                },
+                onOpenLanzouInBrowser = { openLanzouInBrowser() }
             )
         }
     }

@@ -76,6 +76,11 @@ class LyricsStateHolder @Inject constructor(
     @Volatile
     private var currentTargetSongId: String? = null
 
+    // ⚡ 歌词获取为空时的自动重试（仅针对在线/网易云歌曲，避免歌词界面空白无提示）
+    private var lyricsRetryCount = 0
+    private var lyricsRetrySongId: String? = null
+    private var lyricsRetryJob: Job? = null
+
     // Sync offset per song in milliseconds
     private val _currentSongSyncOffset = MutableStateFlow(0)
     val currentSongSyncOffset: StateFlow<Int> = _currentSongSyncOffset.asStateFlow()
@@ -130,8 +135,14 @@ class LyricsStateHolder @Inject constructor(
      */
     fun loadLyricsForSong(song: Song, sourcePreference: LyricsSourcePreference) {
         loadingJob?.cancel()
+        lyricsRetryJob?.cancel()
         val targetSongId = song.id
         currentTargetSongId = targetSongId
+        // 切歌时重置重试计数
+        if (lyricsRetrySongId != targetSongId) {
+            lyricsRetrySongId = targetSongId
+            lyricsRetryCount = 0
+        }
 
         if (scope == null) {
             android.util.Log.w("LyricsStateHolder", "scope is null, cannot load lyrics for: ${song.title}")
@@ -163,19 +174,62 @@ class LyricsStateHolder @Inject constructor(
                 fetchedLyrics = null
             } finally {
                 if (currentTargetSongId == targetSongId) {
-                    loadCallback?.onLyricsLoadFinished(targetSongId, fetchedLyrics)
-                    
-                    if (fetchedLyrics == null) {
-                        if (isNeteaseSong(song)) {
-                            android.util.Log.d("LyricsStateHolder", "网易云歌曲歌词加载失败，保留加载状态等待重试: ${song.title}")
-                        } else {
-                            android.util.Log.d("LyricsStateHolder", "非网易云歌曲歌词加载失败，自动触发搜索: ${song.title}")
-                            triggerAutoLyricsSearch(song, sourcePreference)
-                        }
-                    }
+                    finishLyricsLoad(song, sourcePreference, targetSongId, fetchedLyrics)
                 }
             }
         }
+    }
+
+    /**
+     * 处理一次歌词加载的收尾：获取为空时自动重试（在线/网易云歌曲），
+     * 否则通知加载完成，并按需触发远程歌词搜索。
+     */
+    private suspend fun finishLyricsLoad(
+        song: Song,
+        sourcePreference: LyricsSourcePreference,
+        targetSongId: String,
+        fetchedLyrics: Lyrics?
+    ) {
+        // ⚡ 歌词获取为空时自动重试（仅在线/网易云歌曲）：
+        //   保持"正在获取歌词"的加载提示，等待后静默重新获取，
+        //   避免歌词界面一片空白且无任何提示、也不会自动恢复。
+        if (fetchedLyrics == null && isNeteaseSong(song) &&
+            lyricsRetryCount < MAX_LYRICS_FETCH_RETRIES
+        ) {
+            lyricsRetryCount++
+            android.util.Log.d("LyricsStateHolder", "歌词获取为空，第 $lyricsRetryCount 次自动重试: ${song.title}")
+            loadCallback?.onLoadingStarted(targetSongId)
+            try {
+                kotlinx.coroutines.delay(LYRICS_RETRY_DELAY_MS)
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                // 歌曲已切换/取消加载：由新歌曲的加载流程接管
+                loadCallback?.onLyricsLoadFinished(targetSongId, null)
+                return
+            }
+            if (currentTargetSongId == targetSongId) {
+                loadLyricsForSong(song, sourcePreference)
+            } else {
+                loadCallback?.onLyricsLoadFinished(targetSongId, null)
+            }
+            return
+        }
+
+        loadCallback?.onLyricsLoadFinished(targetSongId, fetchedLyrics)
+
+        if (fetchedLyrics == null) {
+            if (isNeteaseSong(song)) {
+                android.util.Log.d("LyricsStateHolder", "网易云歌曲歌词加载失败，保留加载状态等待重试: ${song.title}")
+            } else {
+                android.util.Log.d("LyricsStateHolder", "非网易云歌曲歌词加载失败，自动触发搜索: ${song.title}")
+                triggerAutoLyricsSearch(song, sourcePreference)
+            }
+        }
+    }
+
+    private companion object {
+        // 歌词获取为空的自动重试上限与间隔
+        const val MAX_LYRICS_FETCH_RETRIES = 2
+        const val LYRICS_RETRY_DELAY_MS = 3_000L
     }
     
     /**

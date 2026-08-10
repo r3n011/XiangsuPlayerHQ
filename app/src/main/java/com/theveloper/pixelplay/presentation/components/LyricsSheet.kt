@@ -808,38 +808,43 @@ fun LyricsSheet(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                // Dynamic Island style Track Info (Fixed at top center)
+                // 歌曲信息条：与原版一致 —— 悬浮在歌词内容区左上角（黑胶唱片风格圆形药丸），
+                // 背景/文字颜色跟随主题黑白模式（亮色/暗色自动切换）
                 if (showLyricsTrackInfo) {
                     AnimatedContent(
                         targetState = currentSong,
                         transitionSpec = {
-                            (fadeIn(animationSpec = tween(300)) + 
-                             scaleIn(initialScale = 0.9f, animationSpec = tween(300)))
-                            .togetherWith(fadeOut(animationSpec = tween(300)))
+                            (fadeIn(animationSpec = tween(300)) +
+                                scaleIn(initialScale = 0.9f, animationSpec = tween(300)))
+                                .togetherWith(fadeOut(animationSpec = tween(300)))
                         },
                         modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .zIndex(2f),
+                            .align(Alignment.TopStart)
+                            .zIndex(2f)
+                            .wrapContentWidth(),
                         label = "headerAnimation"
                     ) { song ->
-                        if (song != null) {
-                            // 歌曲信息条固定为纯黑背景（不跟随亮色/暗色主题）
-                            LyricsTrackInfo(
-                                song = song,
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .widthIn(max = 360.dp)
-                                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                                    .background(
-                                        color = Color.Black,
-                                        shape = CircleShape
-                                    )
-                                    .animateContentSize(),
-                                backgroundColor = Color.Black,
-                                contentColor = Color.White,
-                                isPlaying = isPlaying
-                            )
-                        }
+                        LyricsTrackInfo(
+                            song = song,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                // ⚡ 避开手机挖孔/刘海：Scaffold contentWindowInsets 为 0（沉浸式
+                                // 歌词背景），悬浮的歌曲信息条默认贴着屏幕顶端会被挖孔遮挡，
+                                // 这里手动按 safeDrawing（状态栏 ∪ 挖孔）内缩，下移到安全区内。
+                                .windowInsetsPadding(WindowInsets.safeDrawing)
+                                .padding(
+                                    top = 4.dp, bottom = 24.dp, start = 18.dp, end = 18.dp
+                                )
+                                .background(
+                                    color = backgroundColor,
+                                    shape = CircleShape
+                                )
+                                .wrapContentWidth(), // ⚡ 旋转屏幕时 animateContentSize 与 AnimatedContent
+                                // 尺寸动画叠加、配合封面异步加载会在 measure 阶段崩溃，故移除宽度动画
+                            backgroundColor = backgroundColor, // Distinct solid background
+                            contentColor = onBackgroundColor,
+                            isPlaying = isPlaying
+                        )
                     }
                 }
 
@@ -847,7 +852,7 @@ fun LyricsSheet(
                     null -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
-                            contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
+                            contentPadding = PaddingValues(top = 110.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
                         ) {
                             item(key = "loader_or_empty") {
                                 Box(
@@ -880,8 +885,8 @@ fun LyricsSheet(
                             SyncedLyricsList(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 24.dp),
-                                contentPadding = PaddingValues(top = 80.dp, bottom = 100.dp),
+                                    .padding(horizontal = 12.dp),
+                                contentPadding = PaddingValues(top = 130.dp, bottom = 100.dp),
                                 lines = synced,
                                 listState = syncedListState,
                                 playbackPositionFlow = playbackPositionFlow,
@@ -1715,11 +1720,12 @@ fun LyricLineRow(
     )
 
     // Animated mode: apply graphicsLayer for scale/alpha transforms (pure draw-phase, no layout)
+    // ⚡ 水平留白与容器 padding(12.dp) 合计约 36.dp/侧，保证歌词占满约 4/5 屏宽
     val baseModifier = if (useAnimatedLyrics && !immersiveMode) {
         when (lyricsAlignment) {
-            "center" -> modifier.padding(horizontal = 36.dp)
-            "right" -> modifier.padding(start = 36.dp)
-            else -> modifier.padding(end = 36.dp)
+            "center" -> modifier.padding(horizontal = 24.dp)
+            "right" -> modifier.padding(start = 24.dp)
+            else -> modifier.padding(end = 24.dp)
         }
     } else {
         modifier
@@ -2384,11 +2390,13 @@ private fun LyricsTrackInfo(
     if (song == null) return
 
     val albumShape = CircleShape
-    
+
+    // 黑胶唱片旋转：播放时匀速旋转，暂停时停在原位
     val currentRotation = remember { Animatable(0f) }
-    
+
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
+            // 8s 一圈，视觉上仍是清晰的"旋转黑胶"，同时降低长听过程中的 Compose 无效重组
             while (true) {
                 currentRotation.animateTo(
                     targetValue = currentRotation.value + 360f,
@@ -2401,35 +2409,34 @@ private fun LyricsTrackInfo(
     }
 
     Row(
-        modifier = modifier
-            .height(56.dp)
-            .padding(horizontal = 12.dp),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         SmartImage(
             model = song.albumArtUriString ?: R.drawable.rounded_album_24,
             shape = albumShape,
             contentDescription = "Cover Art",
             modifier = Modifier
-                .size(44.dp)
+                .size(66.dp)
+                .padding(6.dp)
                 .graphicsLayer {
                     rotationZ = currentRotation.value % 360f
                 }
                 .clip(albumShape),
-            contentScale = ContentScale.Crop,
-            targetSize = SmartImageCompactListTargetSize
+            contentScale = ContentScale.Crop
         )
 
         Column(
             modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 4.dp),
+                .weight(1f, fill = false) // Allow shrinking if content is small
+                .padding(vertical = 6.dp)
+                .padding(end = 6.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = song.title,
-                style = MaterialTheme.typography.titleSmall.copy(
+                style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.SemiBold,
                     color = contentColor,
                 ),
@@ -2438,7 +2445,7 @@ private fun LyricsTrackInfo(
             )
             Text(
                 text = song.displayArtist,
-                style = MaterialTheme.typography.bodySmall.copy(
+                style = MaterialTheme.typography.bodyMedium.copy(
                     color = contentColor.copy(alpha = 0.7f),
                 ),
                 maxLines = 1,
@@ -2448,7 +2455,8 @@ private fun LyricsTrackInfo(
 
         PlayingEqIcon(
             modifier = Modifier
-                .size(width = 16.dp, height = 14.dp),
+                .padding(start = 8.dp, end = 18.dp)
+                .size(width = 18.dp, height = 16.dp),
             color = contentColor,
             isPlaying = isPlaying
         )

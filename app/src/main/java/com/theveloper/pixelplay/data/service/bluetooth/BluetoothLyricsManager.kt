@@ -18,6 +18,7 @@ import android.os.Looper
 import androidx.annotation.RequiresPermission
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import com.theveloper.pixelplay.data.model.Lyrics
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,6 +49,7 @@ import javax.inject.Singleton
  * 3. 推送到蓝牙的策略：仅在"当前歌词行确实变了"时执行 replaceMediaItem，
  *    其余时间只是轻量级地更新内部字段，不碰 player。
  */
+@OptIn(UnstableApi::class)
 @Singleton
 class BluetoothLyricsManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -59,6 +61,11 @@ class BluetoothLyricsManager @Inject constructor(
     private val _featureEnabled = MutableStateFlow(false)
     val featureEnabled: StateFlow<Boolean> = _featureEnabled.asStateFlow()
 
+    // ⚡ 对外广播歌词：开启后不受蓝牙连接限制，直接把系统媒体元数据歌名
+    //    刷新为当前歌词，实现应用外（通知栏/锁屏/蓝牙设备/车载）显示歌词。
+    @Volatile
+    private var externalBroadcastEnabled: Boolean = false
+
     private val _hasBluetoothOutput = MutableStateFlow(detectBluetoothOutputInternal())
     val hasBluetoothOutput: StateFlow<Boolean> = _hasBluetoothOutput.asStateFlow()
 
@@ -68,6 +75,10 @@ class BluetoothLyricsManager @Inject constructor(
     @Volatile private var lyrics: Lyrics? = null
     @Volatile private var currentMediaItem: MediaItem? = null
     @Volatile private var mediaSession: MediaSession? = null
+
+    // 真实的原始歌名（推歌词前捕获）。replaceMediaItem 会把 title 覆盖为歌词，
+    // 空行回退、专辑字段展示、恢复原始元数据时都需要它。
+    @Volatile private var originalTitle: String? = null
 
     @Volatile private var currentPositionMs: Long = 0L
     @Volatile private var isPlaying: Boolean = false
@@ -194,6 +205,20 @@ class BluetoothLyricsManager @Inject constructor(
     }
 
     /**
+     * ⚡ 对外广播歌词开关：由设置项调用。
+     * 开启后无论是否连接蓝牙，都把系统媒体元数据歌名刷新为当前歌词；
+     * 关闭时立即恢复原始歌名。
+     */
+    fun setExternalBroadcastEnabled(enabled: Boolean) {
+        externalBroadcastEnabled = enabled
+        ensurePushJobState()
+        if (!enabled) {
+            pushNow(forceRestoreOriginal = true)
+            _currentLine.value = null
+        }
+    }
+
+    /**
      * 绑定 MediaSession，供后续推送歌词使用。
      */
     fun attachMediaSession(session: MediaSession?) {
@@ -213,10 +238,44 @@ class BluetoothLyricsManager @Inject constructor(
 
     /**
      * 绑定当前播放的 MediaItem。切歌时应调用（主线程 / IO 线程皆可）。
+     *
+     * ⚡ 只在新歌（mediaId 变化）时才重置推送状态并捕获原始歌名：
+     * 我们自己 replaceMediaItem 推歌词会触发 onMediaItemTransition(PLAYLIST_CHANGED)，
+     * 传入的仍是同一首歌（mediaId 不变）—— 若此时重置 lastPushedKey，
+     * 500ms 轮询里"歌词行没变也会 replace 一次"，设备端歌词每 500ms 刷新一次。
      */
     fun setCurrentMediaItem(item: MediaItem?) {
+        val newId = item?.mediaId
+        val oldId = currentMediaItem?.mediaId
         currentMediaItem = item
-        lastPushedKey = null
+        if (newId != oldId) {
+            lastPushedKey = null
+            // 捕获真实的原始歌名：replaceMediaItem 后 base.title 会变成歌词，
+            // 必须记住真正的歌名用于：空行回退 / 专辑字段展示 / 恢复原始元数据。
+            originalTitle = item?.mediaMetadata?.title?.toString()?.takeIf { it.isNotBlank() }
+            // ⚡ 新歌自带真实歌名（引擎 setMediaItem 时会携带），
+            // 无需手动重置媒体元数据 —— 设备端自然从"真实歌名"开始，
+            // 等第一句歌词到达后再 replaceMediaItem 覆盖为歌词。
+        }
+    }
+
+    /**
+     * ⚡ 防回环守卫：判断一次 [Player.Listener.onMediaItemTransition] 是否是由
+     * "我们自己 replaceMediaItem 推歌词" 引起的（同一首歌 mediaId 未变）。
+     *
+     * 正常情况下仅改 metadata 的 replaceMediaItem 会走 ExoPlayer 的就地更新路径
+     * （[canUpdateMediaItem] = true，不重建 MediaSource）→ 不触发 transition。
+     * 但部分数据源（URI 变化等）无法就地更新时会重建 MediaSource 并触发
+     * transition；此守卫让 [MusicService] 跳过"重新加载歌词"，杜绝
+     * push → transition → setLyrics → push 的无限循环。
+     *
+     * ⚠️ 必须在调用 [setCurrentMediaItem] 之前判断（setCurrentMediaItem 会更新
+     * currentMediaItem，导致新旧 mediaId 恒相等）。
+     */
+    fun isSelfLyricsTransition(item: MediaItem?): Boolean {
+        val newId = item?.mediaId
+        val oldId = currentMediaItem?.mediaId
+        return newId != null && newId == oldId
     }
 
     /**
@@ -261,13 +320,16 @@ class BluetoothLyricsManager @Inject constructor(
      * 天然就在主线程上，不需要再 post。
      */
     private fun ensurePushJobState() {
-        val shouldRun = featureEnabled.value && hasBluetoothOutput.value && isPlaying &&
+        // 对外广播（externalBroadcastEnabled）开启时无需蓝牙连接也推送；
+        // 否则仅在蓝牙歌词开关开启且连接了蓝牙输出时推送。
+        val btActive = featureEnabled.value && hasBluetoothOutput.value
+        val shouldRun = (btActive || externalBroadcastEnabled) && isPlaying &&
                 !lyrics?.synced.isNullOrEmpty() && mediaSession != null
 
         if (shouldRun && (pushJob == null || pushJob?.isActive != true)) {
             pushJob?.cancel()
             pushJob = serviceScope.launch {
-                while (featureEnabled.value && hasBluetoothOutput.value && isPlaying) {
+                while ((btActive || externalBroadcastEnabled) && isPlaying) {
                     pushNowInternal(checkPlayerRequired = true, forceRestoreOriginal = false)
                     delay(POLL_INTERVAL_MS)
                 }
@@ -297,15 +359,25 @@ class BluetoothLyricsManager @Inject constructor(
         if (checkPlayerRequired && player == null) return
         if (player == null) return
 
+        // ⚡ 播放中用实时位置：MusicService 只在状态变化时调用 updatePlaybackState，
+        // currentPositionMs 在播放过程中是陈旧的 → 歌词永远停在第一句。
+        // 这里直接读 player.currentPosition（主线程），每次推送都是最新进度。
+        currentPositionMs = player.currentPosition
+
         // --- 先算出想推送的内容（纯计算，不碰 player） ---
         val base = currentMediaItem?.mediaMetadata ?: player.currentMediaItem?.mediaMetadata
-        val originalTitle = base?.title?.toString().orEmpty()
+        // 艺术家/专辑从不被歌词覆盖，直接取当前值即可；歌名会被歌词覆盖，
+        // 因此优先用切歌时捕获的原始歌名（首次推送时懒加载兜底一次）。
         val originalArtist = base?.artist?.toString().orEmpty()
         val originalAlbum = base?.albumTitle?.toString().orEmpty()
+        var realTitle = originalTitle
+        if (realTitle.isNullOrBlank()) {
+            realTitle = base?.title?.toString().orEmpty()
+            if (realTitle.isNotBlank()) originalTitle = realTitle
+        }
 
         val shouldShowLyrics = !forceRestoreOriginal &&
-                featureEnabled.value &&
-                hasBluetoothOutput.value &&
+                (featureEnabled.value && hasBluetoothOutput.value || externalBroadcastEnabled) &&
                 !lyrics?.synced.isNullOrEmpty()
 
         val pushKey: String
@@ -316,20 +388,28 @@ class BluetoothLyricsManager @Inject constructor(
 
         if (shouldShowLyrics) {
             val line = resolveLine(currentPositionMs)
-            val next = resolveNextLine(currentPositionMs)
             lineNow = line
 
-            newTitle = line.takeIf { it.isNotBlank() } ?: originalTitle
-            newArtist = if (next != null && next.isNotBlank()) "→ $next" else originalArtist
-            newAlbum = if (originalTitle.isNotBlank()) originalTitle else originalAlbum
-            // key = 歌曲 id + 当前行，用来判断是否真正需要替换 media item
-            pushKey = "${player.currentMediaItemIndex}_${originalTitle}_$line"
+            // ⚡ 空行（尚未到第一句歌词 / 两句歌词之间的空白段）时不 replace：
+            // 保持设备端当前显示内容不变，避免 title 在"真实歌名 ↔ 歌词"之间
+            // 来回 replace 造成闪烁。
+            if (line.isBlank()) {
+                return
+            }
+
+            // ⚡ 歌词只刷新到"歌名"位置；艺术家保持原样（不显示"→ 下一句"）。
+            // 专辑字段放真实歌名，方便设备端确认当前播放的歌曲。
+            newTitle = line
+            newArtist = originalArtist
+            newAlbum = if (realTitle.isNotBlank()) realTitle else originalAlbum
+            // key = 歌曲 index + 真实歌名 + 当前行：只有行真正变化时才 replace
+            pushKey = "${player.currentMediaItemIndex}_${realTitle}_$line"
         } else {
             lineNow = null
-            newTitle = originalTitle
+            newTitle = realTitle
             newArtist = originalArtist
             newAlbum = originalAlbum
-            pushKey = "${player.currentMediaItemIndex}_RESTORE_$originalTitle"
+            pushKey = "${player.currentMediaItemIndex}_RESTORE_$realTitle"
         }
 
         // --- 若与上次推送的内容相同，直接跳过，完全不改 player ---
@@ -337,7 +417,7 @@ class BluetoothLyricsManager @Inject constructor(
             return
         }
 
-        // --- 行确实变化了：执行一次 replaceMediaItem（加防重入） ---
+        // --- 行确实变化了：覆盖 MediaSession 会话元数据（通知栏/锁屏/蓝牙设备显示歌词） ---
         isPushingNow = true
         try {
             lastPushedKey = pushKey
@@ -351,14 +431,16 @@ class BluetoothLyricsManager @Inject constructor(
                 .setDescription(newTitle)
                 .build()
 
-            val updatedMediaItem = currentItem.buildUpon()
-                .setMediaMetadata(updatedMetadata)
-                .build()
-
-            val windowIndex = player.currentMediaItemIndex
-            if (windowIndex >= 0 && windowIndex < player.mediaItemCount) {
-                player.replaceMediaItem(windowIndex, updatedMediaItem)
-            }
+            // ⚡ 用 player.replaceMediaItem 更新当前条目的元数据（通知栏/锁屏/
+            // 蓝牙设备显示歌词）。Media3 1.10.1 没有 setMediaMetadata API，
+            // 只能替换当前 MediaItem：
+            //   - 仅改 metadata、URI 不变时，ExoPlayer 走 canUpdateMediaItem
+            //     就地更新（TimelineWithUpdatedMediaItem），不重建 MediaSource、
+            //     不触发 onMediaItemTransition（无循环）、不打断/重缓冲音频。
+            //   - 就地更新会触发 onTimelineChanged / onMediaMetadataChanged，
+            //     MusicService 不会因它们重载歌词（重载入口只有 onMediaItemTransition），
+            //     配合 isSelfLyricsTransition 守卫彻底杜绝回环与闪烁。
+            player.replaceMediaItem(player.currentMediaItemIndex, currentItem.buildUpon().setMediaMetadata(updatedMetadata).build())
         } catch (t: Throwable) {
             Timber.tag(TAG).w(t, "Failed to push Bluetooth lyrics")
         } finally {
@@ -431,28 +513,6 @@ class BluetoothLyricsManager @Inject constructor(
             }
         }
         return if (result >= 0) sanitize(lines[result].line) else ""
-    }
-
-    private fun resolveNextLine(positionMs: Long): String? {
-        val lines = lyrics?.synced ?: return null
-        if (lines.isEmpty()) return null
-        val pos = positionMs.toInt()
-        var lo = 0
-        var hi = lines.size - 1
-        var result = -1
-        while (lo <= hi) {
-            val mid = (lo + hi) / 2
-            val line = lines[mid]
-            when {
-                line.time <= pos -> {
-                    result = mid
-                    lo = mid + 1
-                }
-                else -> hi = mid - 1
-            }
-        }
-        val nextIdx = result + 1
-        return if (nextIdx in lines.indices) sanitize(lines[nextIdx].line) else null
     }
 
     private fun sanitize(raw: String?): String {

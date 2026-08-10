@@ -25,6 +25,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -86,6 +87,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.ContentScale
@@ -577,9 +579,20 @@ fun FullPlayerContent(
     val latestSong by rememberUpdatedState(song)
     val latestCurrentSongArtists by rememberUpdatedState(currentSongArtists)
     val latestShowArtistPicker by rememberUpdatedState(showArtistPicker)
+    // 多位歌手选择列表：优先用歌曲自带的 artists（含真实歌手 ID，漫游/在线/收藏歌曲都能用），
+    // 其次用数据库 song_artist_cross_ref 关联（本地媒体）。
+    val pickerArtists = remember(song.id, song.artists, currentSongArtists) {
+        val fromSong = song.artists.filter { it.name.isNotBlank() && it.id != 0L }
+        if (fromSong.size > 1) {
+            fromSong.map { Artist(id = it.id, name = it.name, songCount = 0) }
+        } else {
+            currentSongArtists
+        }
+    }
+    val latestPickerArtists by rememberUpdatedState(pickerArtists)
     val onSongMetadataArtistClick = remember {{
-        val resolvedArtistId = latestCurrentSongArtists.firstOrNull { it.id != 0L && it.id != -1L }?.id ?: latestSong.artistId
-        if (latestCurrentSongArtists.size > 1) {
+        val resolvedArtistId = latestPickerArtists.firstOrNull { it.id != 0L && it.id != -1L }?.id ?: latestSong.artistId
+        if (latestPickerArtists.size > 1) {
             showArtistPicker = true
         } else {
             playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId, latestSong.neteaseId)
@@ -715,6 +728,7 @@ fun FullPlayerContent(
                 playbackMetadataMimeType = playbackAudioMetadata.mimeType,
                 playbackMetadataBitrate = playbackAudioMetadata.bitrate,
                 playbackMetadataSampleRate = playbackAudioMetadata.sampleRate,
+                playbackMetadataBitDepth = playbackAudioMetadata.bitDepth,
                 playbackMetadataDisplayLabel = playbackAudioMetadata.displayLabel,
                 currentPositionProvider = currentPositionProvider,
                 totalDurationValue = totalDurationValue,
@@ -970,117 +984,9 @@ fun FullPlayerContent(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val showCastLabel = isCastConnecting || (isRemotePlaybackActive && selectedRouteName != null)
-                            val isBluetoothActive =
-                                isBluetoothEnabled && !bluetoothName.isNullOrEmpty() && !isRemotePlaybackActive && !isCastConnecting
-                            val castIconPainter = when {
-                                isCastConnecting || isRemotePlaybackActive -> painterResource(R.drawable.rounded_cast_24)
-                                isBluetoothActive -> painterResource(R.drawable.rounded_bluetooth_24)
-                                else -> painterResource(R.drawable.rounded_mobile_speaker_24)
-                            }
-                            val castCornersExpanded = 50.dp
-                            val castCornersCompact = 6.dp
-                            val castTopStart = castCornersExpanded
-                            val castTopEnd by animateDpAsState(
-                                targetValue = if (showCastLabel) castCornersExpanded else castCornersCompact,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
-                            )
-                            val castBottomStart = castCornersExpanded
-                            val castBottomEnd by animateDpAsState(
-                                targetValue = if (showCastLabel) castCornersExpanded else castCornersCompact,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
-                            )
-                            val castContainerColor = playerOnAccentColor.copy(alpha = 0.7f)
-                            Box(
-                                modifier = Modifier
-                                    .height(42.dp)
-                                    .align(Alignment.CenterVertically)
-                                    .animateContentSize(
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessLow
-                                        )
-                                    )
-                                    .widthIn(
-                                        min = 50.dp,
-                                        max = if (showCastLabel) 190.dp else 58.dp
-                                    )
-                                    .clip(
-                                        RoundedCornerShape(
-                                            topStart = castTopStart.coerceAtLeast(0.dp),
-                                            topEnd = castTopEnd.coerceAtLeast(0.dp),
-                                            bottomStart = castBottomStart.coerceAtLeast(0.dp),
-                                            bottomEnd = castBottomEnd.coerceAtLeast(0.dp)
-                                        )
-                                    )
-                                    .background(castContainerColor)
-                                    .clickable { onShowCastClicked() },
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(start = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Start
-                                ) {
-                                    Icon(
-                                        painter = castIconPainter,
-                                        contentDescription = when {
-                                            isCastConnecting || isRemotePlaybackActive -> stringResource(R.string.presentation_batch_g_player_cd_cast)
-                                            isBluetoothActive -> stringResource(R.string.presentation_batch_g_player_cd_bluetooth)
-                                            else -> stringResource(R.string.presentation_batch_g_player_cd_local_playback)
-                                        },
-                                        tint = playerAccentColor
-                                    )
-                                    AnimatedVisibility(visible = showCastLabel) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Spacer(Modifier.width(8.dp))
-                                            AnimatedContent(
-                                                targetState = when {
-                                                    isCastConnecting -> stringResource(R.string.presentation_batch_g_player_connecting)
-                                                    isRemotePlaybackActive && selectedRouteName != null -> selectedRouteName
-                                                    else -> ""
-                                                },
-                                                transitionSpec = {
-                                                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(120))
-                                                },
-                                                label = "castButtonLabel"
-                                            ) { label ->
-                                                Row(
-                                                    modifier = Modifier.padding(end = 16.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                                ) {
-                                                    Text(
-                                                        text = label,
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        color = playerAccentColor,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        modifier = Modifier.weight(1f, fill = false)
-                                                    )
-                                                    AnimatedVisibility(visible = isCastConnecting) {
-                                                        CircularProgressIndicator(
-                                                            modifier = Modifier
-                                                                .size(14.dp),
-                                                            strokeWidth = 2.dp,
-                                                            color = playerAccentColor
-                                                        )
-                                                    }
-                                                    if (isRemotePlaybackActive && !isCastConnecting) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(8.dp)
-                                                                .clip(CircleShape)
-                                                                .background(LocalMaterialTheme.current.onTertiaryContainer)
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            // ⚡ 已按用户要求移除：歌名右侧的设备状态按钮
+                            // （连接蓝牙时显示蓝牙图标；未连接显示扬声器；投屏时显示 cast），
+                            // 其投屏/设备切换入口不再显示。
 
                             // Queue Button（广播电台播放时不显示：实时流没有播放列表）
                             if (!isRadioPlayback) {
@@ -1237,14 +1143,23 @@ fun FullPlayerContent(
     }
 
     val artistPickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    if (showArtistPicker && currentSongArtists.isNotEmpty()) {
+    if (showArtistPicker && pickerArtists.isNotEmpty()) {
         PlayerArtistPickerBottomSheet(
             song = song,
-            artists = currentSongArtists,
+            artists = pickerArtists,
             sheetState = artistPickerSheetState,
             onDismiss = { showArtistPicker = false },
             onArtistClick = { artist ->
-                playerViewModel.triggerArtistNavigationFromPlayer(artist.id, song.neteaseId)
+                // 网易云多歌手：点击哪个歌手就进哪个歌手的主页（artist.id 即该歌手的网易云 ID）。
+                // 统一媒体库歌曲歌手 ID 是名字 hash（负数），透传歌手下标，由 ViewModel 按
+                // 歌曲详情真实 artistIds 解析对应歌手，避免"第二歌手永远跳到第一歌手"。
+                playerViewModel.triggerArtistNavigationFromPlayer(
+                    artistId = artist.id,
+                    songNeteaseId = song.neteaseId,
+                    neteaseArtistId = artist.id.takeIf { song.neteaseId != null && it > 0L },
+                    neteaseArtistIndex = pickerArtists.indexOfFirst { it.name == artist.name }
+                        .takeIf { it >= 0 }
+                )
                 showArtistPicker = false
             }
         )
@@ -1511,6 +1426,7 @@ private fun FullPlayerProgressSection(
     playbackMetadataMimeType: String?,
     playbackMetadataBitrate: Int?,
     playbackMetadataSampleRate: Int?,
+    playbackMetadataBitDepth: Int?,
     playbackMetadataDisplayLabel: String?,
     currentPositionProvider: () -> Long,
     totalDurationValue: Long,
@@ -1541,6 +1457,11 @@ private fun FullPlayerProgressSection(
     } else {
         song.sampleRate
     }
+    val audioBitDepth = if (isMetadataForCurrentSong) {
+        playbackMetadataBitDepth ?: songBitDepthFallback(song)
+    } else {
+        songBitDepthFallback(song)
+    }
 
     PlayerProgressBarSection(
         songId = song.id,
@@ -1550,6 +1471,7 @@ private fun FullPlayerProgressSection(
         audioMimeType = audioMimeType,
         audioBitrate = audioBitrate,
         audioSampleRate = audioSampleRate,
+        audioBitDepth = audioBitDepth,
         // 持久化标签仅在属于当前歌曲时使用，避免切歌后短暂显示上一首的音质标签
         persistedAudioMetaLabel = if (isMetadataForCurrentSong) playbackMetadataDisplayLabel else null,
         showAudioFileInfo = showPlayerFileInfo,
@@ -2069,7 +1991,7 @@ private fun SongMetadataDisplaySection(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.rounded_circle_notifications_24),
+                            painter = painterResource(R.drawable.rounded_mode_comment_24),
                             contentDescription = "Comments",
                             tint = chipContentColor
                         )
@@ -2155,7 +2077,7 @@ private fun SongMetadataDisplaySection(
                             onClick = onClickComment,
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.rounded_circle_notifications_24),
+                                painter = painterResource(R.drawable.rounded_mode_comment_24),
                                 contentDescription = "Comments"
                             )
                         }
@@ -2184,6 +2106,24 @@ private fun formatAudioMetaLabel(mimeType: String?, bitrate: Int?, sampleRate: I
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" \u2022 ")
 }
+
+/** 从歌曲对象推断位深兜底：高采样率/DSD 视为 Hi-Res，无损格式给保守值。 */
+private fun songBitDepthFallback(song: Song): Int? = when {
+    song.mimeType?.contains("dsd", ignoreCase = true) == true ||
+        song.mimeType?.contains("dsf", ignoreCase = true) == true ||
+        song.mimeType?.contains("dff", ignoreCase = true) == true -> 32
+    song.sampleRate != null && song.sampleRate > 48_000 -> 24
+    song.mimeType?.contains("flac", ignoreCase = true) == true ||
+        song.mimeType?.contains("wav", ignoreCase = true) == true ||
+        song.mimeType?.contains("alac", ignoreCase = true) == true -> 16
+    else -> null
+}
+
+/** 音质标签的最后兜底：任何情况下都不让音质信息消失。 */
+private fun songAudioMetaFallbackLabel(mimeType: String?, bitrate: Int?, sampleRate: Int?): String =
+    formatAudioMetaLabel(mimeType, bitrate, sampleRate)
+        ?: mimeTypeToFormat(mimeType).takeIf { it != "-" }?.uppercase(Locale.getDefault())
+        ?: "AUDIO"
 
 /**
  * 根据 Song 提取可用于调用网易云评论接口的歌曲 ID。
@@ -2260,6 +2200,7 @@ private fun PlayerProgressBarSection(
     audioMimeType: String?,
     audioBitrate: Int?,
     audioSampleRate: Int?,
+    audioBitDepth: Int?,
     persistedAudioMetaLabel: String?,
     showAudioFileInfo: Boolean,
     onSeek: (Long) -> Unit,
@@ -2310,11 +2251,25 @@ private fun PlayerProgressBarSection(
     // 优先使用 ViewModel 层持久化的音质标签：它跨 UI 重组存活（打开歌词界面/展开折叠
     // 会回收 PlayerProgressBarSection 的本地 remember 状态），且带"不降级"保护。
     // 探针尚未完成时回退到由 song/元数据即时计算的标签，保证标签始终可见。
+    // ⚡ 本地回退在标签缺失时补一层歌曲级兜底：即使 metadata 与 UI 歌曲短暂错位
+    // （平板宽屏 carousel 滑动/预渲染期间 mediaId 未同步），也不让音质信息消失。
     val displayAudioMetaLabel = if (showAudioFileInfo) {
-        persistedAudioMetaLabel?.takeIf { it.isNotBlank() } ?: audioMetaLabel
+        persistedAudioMetaLabel?.takeIf { it.isNotBlank() }
+            ?: audioMetaLabel
+            ?: songAudioMetaFallbackLabel(audioMimeType, audioBitrate, audioSampleRate)
     } else {
         null
     }
+    // Hi-Res 判定：采样率 > 48 kHz 或位深 >= 24 bit（含 DSD/DSF/DFF 32bit）
+    val isHiResRaw = (audioSampleRate ?: 0) > 48_000 || (audioBitDepth ?: 0) >= 24
+    // ⚡ Hi-Res 稳定性：同一首歌内一旦判定为 Hi-Res 就保持显示（sticky），
+    //    避免元数据探针时序 / mediaId 短暂错位导致标识"闪一下就消失"；
+    //    切歌时 remember(songId) 自动重置重新判定。
+    var isHiResSticky by remember(songId) { mutableStateOf(false) }
+    LaunchedEffect(songId, isHiResRaw) {
+        if (isHiResRaw) isHiResSticky = true
+    }
+    val isHiRes = isHiResRaw || isHiResSticky
     val durationForCalc = displayDurationValue.coerceAtLeast(1L)
     
     // Pass isVisible to rememberSmoothProgress
@@ -2464,6 +2419,7 @@ private fun PlayerProgressBarSection(
                 isVisible = isVisible,
                 textColor = timeTextColor,
                 audioMetaLabel = displayAudioMetaLabel,
+                isHiRes = isHiRes,
                 horizontalTrackInset = progressSectionHorizontalInset
             )
         }
@@ -2516,6 +2472,9 @@ private fun EfficientSlider(
     )
 }
 
+// Hi-Res 认证徽标：由 hires_audio_badge.xml（源自 hires (1).svg）绘制，
+// 调用处通过 ColorFilter.tint 跟随主题自动切换黑白，保证任意背景下可见。
+
 @Composable
 private fun EfficientTimeLabels(
     positionState: androidx.compose.runtime.State<Long>,
@@ -2523,6 +2482,7 @@ private fun EfficientTimeLabels(
     isVisible: Boolean,
     textColor: Color,
     audioMetaLabel: String?,
+    isHiRes: Boolean,
     horizontalTrackInset: Dp
 ) {
     val coarsePositionMs by remember(isVisible, positionState) {
@@ -2573,16 +2533,32 @@ private fun EfficientTimeLabels(
                 color = textColor.copy(alpha = 0.14f),
                 contentColor = textColor.copy(alpha = 0.96f)
             ) {
-                Text(
-                    text = audioMetaLabel,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 11.sp
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                )
+                ) {
+                    Text(
+                        text = audioMetaLabel,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (isHiRes) {
+                        // ⚡ Hi-Res 认证徽标：tint 跟随文字颜色自动切换黑白（深色主题白、浅色主题黑），
+                        //    替代原金色 "Hi-Res" 文字标签与 PNG logo。
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Image(
+                            painter = painterResource(R.drawable.hires_audio_badge),
+                            contentDescription = "Hi-Res",
+                            colorFilter = ColorFilter.tint(textColor),
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(width = 28.dp, height = 12.dp)
+                        )
+                    }
+                }
             }
         }
     }

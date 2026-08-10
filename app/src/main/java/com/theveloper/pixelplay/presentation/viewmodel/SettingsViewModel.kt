@@ -69,6 +69,8 @@ data class SettingsUiState(
     val albumArtPaletteStyle: AlbumArtPaletteStyle = AlbumArtPaletteStyle.default,
     val albumArtColorAccuracy: Int = AlbumArtColorAccuracy.DEFAULT,
     val customPaletteSeedColor: Color = Color(ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_SEED),
+    // ⚡ 应用级调色盘开关：关闭 = 壁纸取色，打开 = 自定义调色盘染色整个应用（播放器内部除外）
+    val appPaletteEnabled: Boolean = false,
     val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
@@ -94,6 +96,8 @@ data class SettingsUiState(
     val lyricsSourcePreference: LyricsSourcePreference = LyricsSourcePreference.EMBEDDED_FIRST,
     val autoScanLrcFiles: Boolean = false,
     val bluetoothLyricsEnabled: Boolean = false,
+    // ⚡ 对外广播歌词：开启后系统媒体歌名实时刷新为当前歌词（应用外显示歌词）
+    val externalLyricsBroadcastEnabled: Boolean = false,
     val lyricsFontSize: String = "DEFAULT",
     val blockedDirectories: Set<String> = emptySet(),
     val availableModels: List<GeminiModel> = emptyList(),
@@ -170,6 +174,7 @@ private sealed interface SettingsUiUpdate {
         val albumArtPaletteStyle: AlbumArtPaletteStyle,
         val albumArtColorAccuracy: Int,
         val customPaletteSeedColor: Color,
+        val appPaletteEnabled: Boolean,
         val mockGenresEnabled: Boolean,
         val navBarCornerRadius: Int,
         val navBarStyle: String,
@@ -198,6 +203,7 @@ private sealed interface SettingsUiUpdate {
         val lyricsSourcePreference: LyricsSourcePreference,
         val autoScanLrcFiles: Boolean,
         val bluetoothLyricsEnabled: Boolean,
+        val externalLyricsBroadcastEnabled: Boolean,
         val lyricsFontSize: String,
         val blockedDirectories: Set<String>,
         val hapticsEnabled: Boolean,
@@ -410,6 +416,7 @@ class SettingsViewModel @Inject constructor(
                 themePreferencesRepository.albumArtPaletteStyleFlow,
                 themePreferencesRepository.albumArtColorAccuracyFlow,
                 themePreferencesRepository.customPaletteSeedColorFlow,
+                themePreferencesRepository.appPaletteEnabledFlow,
                 userPreferencesRepository.mockGenresEnabledFlow,
                 userPreferencesRepository.navBarCornerRadiusFlow,
                 userPreferencesRepository.navBarStyleFlow,
@@ -426,14 +433,15 @@ class SettingsViewModel @Inject constructor(
                     albumArtPaletteStyle = values[3] as AlbumArtPaletteStyle,
                     albumArtColorAccuracy = values[4] as Int,
                     customPaletteSeedColor = Color(values[5] as Int),
-                    mockGenresEnabled = values[6] as Boolean,
-                    navBarCornerRadius = values[7] as Int,
-                    navBarStyle = values[8] as String,
-                    navBarCompactMode = values[9] as Boolean,
-                    libraryNavigationMode = values[10] as String,
-                    carouselStyle = values[11] as String,
-                    launchTab = values[12] as String,
-                    showPlayerFileInfo = values[13] as Boolean
+                    appPaletteEnabled = values[6] as Boolean,
+                    mockGenresEnabled = values[7] as Boolean,
+                    navBarCornerRadius = values[8] as Int,
+                    navBarStyle = values[9] as String,
+                    navBarCompactMode = values[10] as Boolean,
+                    libraryNavigationMode = values[11] as String,
+                    carouselStyle = values[12] as String,
+                    launchTab = values[13] as String,
+                    showPlayerFileInfo = values[14] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -444,6 +452,7 @@ class SettingsViewModel @Inject constructor(
                         albumArtPaletteStyle = update.albumArtPaletteStyle,
                         albumArtColorAccuracy = update.albumArtColorAccuracy,
                         customPaletteSeedColor = update.customPaletteSeedColor,
+                        appPaletteEnabled = update.appPaletteEnabled,
                         mockGenresEnabled = update.mockGenresEnabled,
                         navBarCornerRadius = update.navBarCornerRadius,
                         navBarStyle = update.navBarStyle,
@@ -487,7 +496,8 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.disableBlurAllOverFlow,
                 userPreferencesRepository.navBarBlurEnabledFlow,
                 userPreferencesRepository.showScrollbarFlow,
-                userPreferencesRepository.showLyricsTrackInfoFlow
+                userPreferencesRepository.showLyricsTrackInfoFlow,
+                userPreferencesRepository.externalLyricsBroadcastEnabledFlow
             ) { values ->
                 SettingsUiUpdate.Group2(
                     keepPlayingInBackground = values[0] as Boolean,
@@ -517,7 +527,8 @@ class SettingsViewModel @Inject constructor(
                     disableBlurAllOver = values[24] as Boolean,
                     navBarBlurEnabled = values[25] as Boolean,
                     showScrollbar = values[26] as Boolean,
-                    showLyricsTrackInfo = values[27] as Boolean
+                    showLyricsTrackInfo = values[27] as Boolean,
+                    externalLyricsBroadcastEnabled = values[28] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -549,7 +560,8 @@ class SettingsViewModel @Inject constructor(
                         disableBlurAllOver = update.disableBlurAllOver,
                         navBarBlurEnabled = update.navBarBlurEnabled,
                         showScrollbar = update.showScrollbar,
-                        showLyricsTrackInfo = update.showLyricsTrackInfo
+                        showLyricsTrackInfo = update.showLyricsTrackInfo,
+                        externalLyricsBroadcastEnabled = update.externalLyricsBroadcastEnabled
                     )
                 }
             }
@@ -837,6 +849,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ⚡ 应用级调色盘开关（关闭 = 壁纸取色）
+    fun setAppPaletteEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            themePreferencesRepository.setAppPaletteEnabled(enabled)
+        }
+    }
+
     suspend fun getAlbumArtPalettePreview(
         uriString: String,
         style: AlbumArtPaletteStyle,
@@ -1017,6 +1036,16 @@ class SettingsViewModel @Inject constructor(
     fun setBluetoothLyricsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setBluetoothLyricsEnabled(enabled)
+        }
+    }
+
+    /**
+     * ⚡ 对外广播歌词开关：打开后系统媒体歌名实时刷新为当前歌词，
+     * 应用外（通知栏/锁屏/蓝牙设备/车载）即可显示歌词；关闭则恢复原始歌名。
+     */
+    fun setExternalLyricsBroadcastEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setExternalLyricsBroadcastEnabled(enabled)
         }
     }
 
@@ -1486,6 +1515,16 @@ class SettingsViewModel @Inject constructor(
 
     val tapBackgroundClosesPlayer: StateFlow<Boolean> = userPreferencesRepository.tapBackgroundClosesPlayerFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    /** 首页顶部留白高度（dp），默认 64（对应原顶部栏高度）。 */
+    val homeTopWhitespaceDp: StateFlow<Int> = userPreferencesRepository.homeTopWhitespaceDp
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 64)
+
+    fun setHomeTopWhitespaceDp(dp: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setHomeTopWhitespaceDp(dp)
+        }
+    }
 
     fun setAlbumArtQuality(quality: AlbumArtQuality) {
         viewModelScope.launch {

@@ -46,6 +46,7 @@ import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
 import com.theveloper.pixelplay.data.model.PlayerInfo
 import com.theveloper.pixelplay.data.model.PlaybackQueueItemSnapshot
 import com.theveloper.pixelplay.data.model.PlaybackQueueSnapshot
+import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.EqualizerPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
@@ -132,6 +133,38 @@ suspend fun loadArtworkBytesViaCoil(context: Context, uri: Uri): ByteArray? {
         Timber.tag("MusicService_PixelPlay").w(error, "Artwork read failed via Coil for uri=%s", uri)
         null
     }
+}
+
+/**
+ * ⚡ 用 MediaItem 自带的元数据兜底构造 [Song]。
+ *
+ * 数据库按 songId 查不到歌（搜索页 qq_xxx / kw_xxx / cloud://xxx 等非 Long id，
+ * 或尚未入库的在线歌曲）时使用：只要有 歌名（title），就能让
+ * [com.theveloper.pixelplay.data.repository.MusicRepository.getLyrics]
+ * 按 歌名+歌手 走远程歌词搜索，从而正常广播歌词。
+ */
+private fun MediaItem.toLyricsFallbackSong(): Song? {
+    val title = mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() } ?: return null
+    val artist = mediaMetadata.artist?.toString().orEmpty()
+    val artUri = mediaMetadata.artworkUri?.toString()
+    val durationMs = mediaMetadata.durationMs ?: 0L
+    val uri = localConfiguration?.uri?.toString() ?: mediaId
+    return Song(
+        id = mediaId,
+        title = title,
+        artist = artist.ifBlank { "Unknown Artist" },
+        artistId = 0L,
+        album = mediaMetadata.albumTitle?.toString() ?: "",
+        albumId = 0L,
+        path = uri,
+        contentUriString = uri,
+        albumArtUriString = artUri,
+        duration = durationMs,
+        mimeType = null,
+        bitrate = null,
+        sampleRate = null,
+        neteaseId = mediaId.toLongOrNull()?.takeIf { it > 0 }
+    )
 }
 
 
@@ -241,6 +274,9 @@ class MusicService : MediaLibraryService() {
     private var lastNoisyPauseRealtimeMs = 0L
     private var resumeOnHeadsetReconnectEnabled = false
     private var temporaryForegroundStartedInOnCreate = false
+    // USB 独占"有效状态"追踪：仅当独占+设备组合实际变化时才重建播放器
+    private var lastUsbExclusiveEffective = false
+    private var lastUsbDeviceKey: String? = null
 
     companion object {
         private const val TAG = "MusicService_PixelPlay"
@@ -255,6 +291,10 @@ class MusicService : MediaLibraryService() {
         private const val MEDIA_SESSION_BUTTON_DEBOUNCE_MS = 250L
         private const val DEFERRED_SERVICE_STARTUP_WORK_DELAY_MS = 1_000L
         private const val PAUSED_RESTORE_PREPARE_QUEUE_LIMIT = 50
+        // 恢复播放时允许"解析失败后等待引擎就绪重试"的云端自定义 scheme（对应 netease://、cloud://lx/ 等）
+        private val CLOUD_PLAYBACK_SCHEMES_FOR_RESTORE = setOf(
+            "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "bilibili"
+        )
         private val pendingMediaButtonForegroundStarts = AtomicInteger(0)
 
         private const val APP_PACKAGE_PREFIX = "com.theveloper.pixelplay"
@@ -910,6 +950,12 @@ class MusicService : MediaLibraryService() {
                 bluetoothLyricsManager.setFeatureEnabled(enabled)
             }
         }
+        // ⚡ 对外广播歌词：读取用户偏好并同步到歌词广播管理器
+        serviceScope.launch {
+            userPreferencesRepository.externalLyricsBroadcastEnabledFlow.collect { enabled ->
+                bluetoothLyricsManager.setExternalBroadcastEnabled(enabled)
+            }
+        }
         try {
             bluetoothLyricsManager.start()
         } catch (_: SecurityException) {
@@ -1453,34 +1499,53 @@ class MusicService : MediaLibraryService() {
             // ⚠️ 设计规则：
             //   1. 这里只做"读取歌词 / 设置歌词"，不做 player.replaceMediaItem；
             //      replaceMediaItem 由 pushNowInternal 在主线程执行。
-            //   2. 对 `reason == MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED`
-            //      的事件跳过歌词更新 —— 这种 reason 通常就是我们自己在
-            //      pushNowInternal 里调 replaceMediaItem 触发的，如果再做
-            //      setLyrics 就会形成"切歌 → replace → 切歌 → replace..."的循环。
-            bluetoothLyricsManager.setCurrentMediaItem(mediaItem)
-            val isPlaylistChange = reason ==
-                    androidx.media3.common.Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+            //   2. ⚡ 不再区分 reason（PLAYLIST_CHANGED 也加载歌词）：
+            //      此前跳过 PLAYLIST_CHANGED 是为了防止"replaceMediaItem 推歌词 → 触发
+            //      onMediaItemTransition → 再 setLyrics"的循环。现在推歌词走 ExoPlayer
+            //      就地更新路径（仅改 metadata 不触发 transition），且下方有
+            //      isSelfLyricsTransition 守卫兜底非就地更新场景，循环风险已消除。
+            //      搜索页等界面用 playStreaming 直接 setMediaItem 时 reason 就是
+            //      PLAYLIST_CHANGED，若仍跳过会导致蓝牙歌词为空、无法广播歌词
+            //      —— 必须让所有切歌路径都能加载歌词。
             val songId = mediaItem?.mediaId
-            if (!isPlaylistChange && !songId.isNullOrBlank()) {
+            if (!songId.isNullOrBlank()) {
+                // ⚡ 防回环守卫：必须是 setCurrentMediaItem 之前判断（它会更新
+                // currentMediaItem）。就地更新不触发 transition，此守卫兜底
+                // URI 变化等无法就地更新的数据源，避免 push → transition →
+                // 重新加载歌词 → setLyrics → 再 push 的无限循环。
+                val isSelfPush = bluetoothLyricsManager.isSelfLyricsTransition(mediaItem)
+                bluetoothLyricsManager.setCurrentMediaItem(mediaItem)
+                if (isSelfPush) {
+                    // 同一首歌的歌词推送回环：歌词已在加载/播放中，无需重复加载。
+                    return
+                }
                 // 在主线程读取一次播放位置/播放状态（Media3 要求）
                 val mainPlayer = mediaSession?.player ?: engine.masterPlayer
                 val posMs = mainPlayer.currentPosition
                 val playing = mainPlayer.isPlaying
 
                 serviceScope.launch(Dispatchers.IO) {
-                    val song = runCatching { musicRepository.getSong(songId).first() }.getOrNull()
-                        ?: return@launch
+                    // 1) 优先按 songId 从数据库取歌：本地歌 / 已保存云歌（Long id）能拿到
+                    //    完整的专辑、歌手信息，便于精确匹配歌词。
+                    var song = runCatching { musicRepository.getSong(songId).first() }.getOrNull()
+                    // 2) ⚡ 数据库查不到时的兜底（搜索页直接播放等场景）：
+                    //    songId 可能是 qq_xxx / kw_xxx / cloud://xxx 等非数据库 id，
+                    //    getSong 只会走 telegram 分支并返回 null，导致歌词永不加载、
+                    //    蓝牙无法广播歌词。此时用 MediaItem 自带的元数据（歌名/歌手/
+                    //    封面/时长）临时构造 Song，让 getLyrics 能按 歌名+歌手 远程
+                    //    搜索歌词并正常广播 —— 保证所有播放入口都能广播歌词。
+                    if (song == null) {
+                        song = mediaItem?.toLyricsFallbackSong()
+                    }
+                    if (song == null) return@launch
                     val lyrics = runCatching { musicRepository.getLyrics(song) }.getOrNull()
                     bluetoothLyricsManager.setLyrics(lyrics)
                     bluetoothLyricsManager.updatePlaybackState(posMs, playing)
                     bluetoothLyricsManager.pushNow()
                 }
             } else {
-                // PLAYLIST_CHANGED 或 songId 为空：不清空 lyrics，
-                // 避免把已有的同步歌词丢掉；仅在 songId 为空时清空。
-                if (songId.isNullOrBlank()) {
-                    bluetoothLyricsManager.setLyrics(null)
-                }
+                bluetoothLyricsManager.setCurrentMediaItem(mediaItem)
+                bluetoothLyricsManager.setLyrics(null)
             }
         }
 
@@ -1550,6 +1615,18 @@ class MusicService : MediaLibraryService() {
         listeningStatsTracker.finalizeCurrentSession(forceSynchronousPersistence = true)
         reportNavidromePlayback("stopped")
         stopNavidromePlaybackReporting()
+        // ⚡ 销毁前立即落盘一次播放快照：debounce（1.5s）窗口内服务被杀/退出时，
+        //    播放快照会丢失 → 下次打开播放器无法续播上次的（在线）歌曲。
+        if (!isPlaybackUnloadInProgress && isRestoringPlaybackSnapshot.not()) {
+            runCatching {
+                kotlinx.coroutines.runBlocking {
+                    val snapshot = capturePlaybackSnapshotFromPlayer(playWhenReadyOverride = null)
+                    if (snapshot != null) {
+                        userPreferencesRepository.setPlaybackQueueSnapshot(snapshot)
+                    }
+                }
+            }
+        }
         playbackSnapshotPersistJob?.cancel()
         mediaSessionButtonRefreshJob?.cancel()
         followUpMediaSessionUiRefreshJob?.cancel()
@@ -1629,7 +1706,13 @@ class MusicService : MediaLibraryService() {
     private fun handleUsbDeviceChange() {
         val usbDevice = findUsbAudioDevice()
         audioEngineSettings.setCurrentUsbDeviceName(if (usbDevice != null) "USB Device" else null)
-        if (audioEngineSettings.usbExclusiveModeEnabled.value && usbDevice != null) {
+        val exclusive = audioEngineSettings.usbExclusiveModeEnabled.value && usbDevice != null
+        val deviceKey = if (usbDevice != null) "usb" else null
+        val stateChanged = exclusive != lastUsbExclusiveEffective || deviceKey != lastUsbDeviceKey
+        lastUsbExclusiveEffective = exclusive
+        lastUsbDeviceKey = deviceKey
+
+        if (exclusive) {
             engine.setPreferredAudioDevice(usbDevice)
             Timber.tag(TAG).d("USB exclusive mode: routing to USB device via AudioManager")
             // 如果用户已选中 USB 设备但 native 端未激活，则尝试激活 libusb 独占输出
@@ -1648,6 +1731,17 @@ class MusicService : MediaLibraryService() {
                     runCatching { usbDacManager.deactivateExclusiveMode() }
                 }
             }
+        }
+
+        // ⚡ 播放中切换独占 / USB 设备出现或消失时必须重建播放器：
+        //    - AAudio 后端被 libusb forceClaim 踢掉（AAUDIO_ERROR_DISCONNECTED），
+        //      且 useAaudio 只在 buildAudioSink 构建时评估 → 不重建就永远无声；
+        //    - AudioTrack 的优选设备路由只在 track 创建时生效，重建后才会应用到
+        //      新 AudioTrack。
+        //    仅状态实际变化时重建，避免设备增删回调导致的重建风暴。
+        if (stateChanged) {
+            Timber.tag(TAG).d("USB exclusive effective state changed (exclusive=%s device=%s); rebuilding player", exclusive, deviceKey)
+            engine.rebuildForUsbExclusiveModeChange()
         }
     }
 
@@ -1854,10 +1948,37 @@ class MusicService : MediaLibraryService() {
 
         val preparedItems = restoredItems.toMutableList()
         preparedItems.getOrNull(resolvedIndex)?.let { currentItem ->
-            val resolvedCurrentItem = runCatching { engine.resolveMediaItem(currentItem) }.getOrNull()
+            var resolvedCurrentItem = runCatching { engine.resolveMediaItem(currentItem) }.getOrNull()
+            // ⚡ 在线歌曲（netease:// / cloud://lx/ 等自定义 scheme）冷启动恢复时，
+            //   落雪引擎可能仍在初始化、首次解析容易失败 → 表现为"打开播放器无法续播
+            //   上次的在线歌曲"。等待引擎就绪后重试解析一次，成功则替换为新鲜直链。
+            val rawUri = currentItem.localConfiguration?.uri
+            if ((resolvedCurrentItem == null || resolvedCurrentItem == currentItem) &&
+                rawUri?.scheme in CLOUD_PLAYBACK_SCHEMES_FOR_RESTORE
+            ) {
+                delay(2_000L)
+                resolvedCurrentItem = runCatching { engine.resolveMediaItem(currentItem) }.getOrNull()
+            }
             if (resolvedCurrentItem != null && resolvedCurrentItem != currentItem) {
                 preparedItems[resolvedIndex] = resolvedCurrentItem
             }
+        }
+
+        // 广播电台：实时流无法作为普通队列恢复（会丢失流式播放器模式，
+        // 出现续播电台却不是电台播放器的问题），直接走 playStreaming 流式播放。
+        val currentMediaId = preparedItems.getOrNull(resolvedIndex)?.mediaId
+        if (currentMediaId?.startsWith("radio://") == true) {
+            if (shouldRestorePlaying) {
+                val radioItem = preparedItems[resolvedIndex]
+                withContext(Dispatchers.Main.immediate) {
+                    engine.playStreaming(radioItem, radioItem.mediaId)
+                }
+                Timber.tag(TAG).i("Restored radio stream: mediaId=%s", radioItem.mediaId)
+            } else {
+                Timber.tag(TAG).i("Skipped radio stream restore (background playback disabled)")
+            }
+            schedulePlaybackSnapshotPersist(immediate = true)
+            return
         }
 
         withContext(Dispatchers.Main.immediate) {

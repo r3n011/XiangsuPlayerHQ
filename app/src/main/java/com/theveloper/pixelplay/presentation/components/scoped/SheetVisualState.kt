@@ -146,7 +146,18 @@ internal fun rememberSheetVisualState(
                 }
             }
 
-            calculatedNormally
+            // ⚡ 横向拖拽 mini player（dismiss 手势）时，顶部圆角随拖拽进度平滑增大到 32.dp，
+            //    与底部圆角联动（卡片感）；松手后 offset 回弹动画带动 progress 平滑归零，
+            //    progress=0 时值=collapsedCornerTarget 与常态连续，无瞬跳。
+            if (showPlayerContentArea &&
+                currentSheetContentState == PlayerSheetState.COLLAPSED &&
+                swipeDismissProgress > 0f &&
+                safeFraction < 0.01f
+            ) {
+                lerp(collapsedCornerTarget, 32.dp, swipeDismissProgress)
+            } else {
+                calculatedNormally
+            }
         }
     }
 
@@ -219,10 +230,13 @@ internal fun rememberSheetVisualState(
                     // Landscape: bottom radius always matches top (navBarCornerRadiusDp)
                     navBarCornerRadiusDp
                 } else if (navBarStyle == NavBarStyle.DEFAULT) {
-                    lerp(32.dp, navBarCornerRadiusDp, swipeDismissProgress)
+                    // ⚡ 横向拖拽 mini player：底部圆角从常规值平滑增大到 32.dp（卡片感），
+                    //    松手后 offsetAnimatable 回弹动画带动 swipeDismissProgress 平滑归零，
+                    //    圆角随之平滑恢复，progress=0 时值=navBarCornerRadiusDp 与常态连续，无瞬跳。
+                    lerp(navBarCornerRadiusDp, 32.dp, swipeDismissProgress)
                 } else {
                     val baseCollapsedRadius = if (isNavBarHidden) 32.dp else navBarCornerRadiusDp
-                    lerp(baseCollapsedRadius, navBarCornerRadiusDp, swipeDismissProgress)
+                    lerp(baseCollapsedRadius, 32.dp, swipeDismissProgress)
                 }
             } else {
                 calculatedNormally

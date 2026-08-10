@@ -873,6 +873,7 @@ class MusicRepositoryImpl @Inject constructor(
             put("hash", song.hash)
             put("name", song.name)
             put("singer", song.singer)
+            put("artistIds", song.artistIds)
             put("album", song.albumName)
             put("pic", song.pic)
             put("duration", song.duration)
@@ -885,19 +886,46 @@ class MusicRepositoryImpl @Inject constructor(
 
     override suspend fun saveCloudSong(songInfo: com.theveloper.pixelplay.data.lx.LxSongInfo): Long = withContext(Dispatchers.IO) {
         // Step 1: 使用稳定的 hash 值作为歌曲 ID，确保与 LxMusicViewModel.getStableSongId() 一致
-        val artistId = stablePositiveHash("lx_artist_" + songInfo.singer.ifBlank { "Unknown" })
+        val songArtistName = songInfo.singer.ifBlank { "Unknown Artist" }
+        val neteaseId = songInfo.id.toLongOrNull()
+        val isNeteaseSong = neteaseId != null && neteaseId > 0 &&
+                (songInfo.source == "" || songInfo.source == "wy")
+
+        // ⚡ 网易云歌曲：歌手直接采用网易云返回的数据（singer 按"、"连接、artistIds 按","连接且
+        //    一一对应），不经过 parseArtistNames 的本地暴力分割（[,/&;+、] 会把歌手名里的
+        //    特殊字符误切，导致歌手名与真实 artistIds 错位 → 多歌手时第二歌手跳转到第一歌手主页）。
+        //    非网易云歌曲保持原有本地拆分。
+        val artistNames = if (isNeteaseSong) {
+            com.theveloper.pixelplay.data.stream.CloudMusicUtils.parseNeteaseArtistNames(songArtistName)
+        } else {
+            com.theveloper.pixelplay.data.stream.CloudMusicUtils.parseArtistNames(songArtistName)
+        }
+        val artistIdList = songInfo.artistIds.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        val artistRefs = artistNames.mapIndexed { index, name ->
+            com.theveloper.pixelplay.data.model.ArtistRef(
+                id = artistIdList.getOrNull(index)?.toLongOrNull()
+                    ?: stablePositiveHash("lx_artist_$name"),
+                name = name,
+                isPrimary = index == 0
+            )
+        }
+        val artistId = artistRefs.first().id
         val albumId = stablePositiveHash("lx_album_" + songInfo.albumName.ifBlank { songInfo.name })
         val songId = stablePositiveHash("lx_song_" + songInfo.id + "|" + songInfo.name + "|" + songInfo.singer)
 
         val now = System.currentTimeMillis()
 
-        // Artist
-        val artistEntity = com.theveloper.pixelplay.data.database.ArtistEntity(
-            id = artistId,
-            name = songInfo.singer.ifBlank { "Unknown Artist" },
-            trackCount = 1
+        // Artists: 全部音乐人建实体（insertArtists 会按 ID merge，保留已存在的封面等）
+        musicDao.insertArtists(
+            artistRefs.map { ref ->
+                com.theveloper.pixelplay.data.database.ArtistEntity(
+                    id = ref.id,
+                    name = ref.name,
+                    trackCount = 1,
+                    imageUrl = songInfo.pic.ifBlank { null }
+                )
+            }
         )
-        musicDao.insertArtists(listOf(artistEntity))
 
         // Album
         val albumEntity = com.theveloper.pixelplay.data.database.AlbumEntity(
@@ -915,9 +943,6 @@ class MusicRepositoryImpl @Inject constructor(
         // Song: 如果 ID 是纯数字且 source 为 "wy"（网易云），
         // 使用 netease://{id} 格式走 neteaseStreamProxy 官方 API 获取播放 URL。
         // 否则使用 cloud://lx/{json} 走 lxJsEngine 解析。
-        val neteaseId = songInfo.id.toLongOrNull()
-        val isNeteaseSong = neteaseId != null && neteaseId > 0 &&
-                (songInfo.source == "" || songInfo.source == "wy")
         val contentUri = if (isNeteaseSong) {
             "netease://$neteaseId"
         } else {
@@ -926,7 +951,7 @@ class MusicRepositoryImpl @Inject constructor(
         val songEntity = com.theveloper.pixelplay.data.database.SongEntity(
             id = songId,
             title = songInfo.name,
-            artistName = songInfo.singer.ifBlank { "Unknown Artist" },
+            artistName = songArtistName,
             artistId = artistId,
             albumArtist = songInfo.singer.ifBlank { null },
             albumName = songInfo.albumName.ifBlank { songInfo.name },
@@ -944,9 +969,22 @@ class MusicRepositoryImpl @Inject constructor(
             parentDirectoryPath = "cloud",
             dateAdded = now,
             sourceType = if (isNeteaseSong) com.theveloper.pixelplay.data.database.SourceType.NETEASE
-            else com.theveloper.pixelplay.data.database.SourceType.CLOUD_LX
+            else com.theveloper.pixelplay.data.database.SourceType.CLOUD_LX,
+            // 多歌手支持：拆分成独立音乐人（第一个为主歌手），歌手页/详情按此展示
+            artistsJson = com.theveloper.pixelplay.data.database.serializeArtistRefs(artistRefs)
         )
         musicDao.insertSongs(listOf(songEntity))
+        // 建立 song_artist_cross_ref 关联（音乐人列表与音乐人详情均依赖该联表）：
+        // 全部歌手都建关联，保证多歌手歌曲在每个歌手名下都能找到
+        musicDao.insertSongArtistCrossRefs(
+            artistRefs.map { ref ->
+                com.theveloper.pixelplay.data.database.SongArtistCrossRef(
+                    songId = songId,
+                    artistId = ref.id,
+                    isPrimary = ref.isPrimary
+                )
+            }
+        )
 
         songId
     }
@@ -1077,9 +1115,29 @@ class MusicRepositoryImpl @Inject constructor(
             filePath = contentUri,
             parentDirectoryPath = if (isRadio) "radio" else "cloud",
             dateAdded = now,
-            sourceType = com.theveloper.pixelplay.data.database.SourceType.CLOUD_LX
+            sourceType = com.theveloper.pixelplay.data.database.SourceType.CLOUD_LX,
+            // 写入 artistsJson，保证在线歌曲也能解析出音乐人
+            artistsJson = com.theveloper.pixelplay.data.database.serializeArtistRefs(
+                listOf(
+                    com.theveloper.pixelplay.data.model.ArtistRef(
+                        id = artistId,
+                        name = cleanArtist,
+                        isPrimary = true
+                    )
+                )
+            )
         )
         musicDao.insertSongs(listOf(songEntity))
+        // 建立 song_artist_cross_ref 关联（音乐人列表与音乐人详情均依赖该联表）
+        musicDao.insertSongArtistCrossRefs(
+            listOf(
+                com.theveloper.pixelplay.data.database.SongArtistCrossRef(
+                    songId = songId,
+                    artistId = artistId,
+                    isPrimary = true
+                )
+            )
+        )
 
         songId
     }

@@ -34,7 +34,7 @@ class UpdateChecker @Inject constructor() {
     private val json = Json { ignoreUnknownKeys = true }
     private val lanzouApi = LanzouCloudApi()
 
-    private companion object {
+    companion object {
         const val GITHUB_REPO_OWNER = "r3n011"
         const val GITHUB_REPO_NAME = "XiangsuPlayerHQ"
         

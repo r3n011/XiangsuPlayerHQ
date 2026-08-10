@@ -135,7 +135,11 @@ internal fun UnifiedPlayerQueueLayer(
                                 onQueueSheetHeightPxChange(measuredHeight)
                             }
                         },
-                    queue = currentPlaybackQueue,
+                    // ⚡ 播放器列表（播放队列）不得出现电台：电台是实时流，不能作为队列项。
+                    //    兜底过滤——即使电台因任何路径漏进队列状态，UI 也绝不显示。
+                    queue = remember(currentPlaybackQueue) {
+                        currentPlaybackQueue.filterNot { it.isRadioStation }
+                    },
                     currentQueueSourceName = currentQueueSourceName,
                     currentSongId = infrequentPlayerState.currentSong?.id,
                     currentMediaItemIndex = currentMediaItemIndex,

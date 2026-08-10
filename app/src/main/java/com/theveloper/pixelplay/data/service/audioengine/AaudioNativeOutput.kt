@@ -33,6 +33,9 @@ object AaudioNativeOutput {
     /** 排空后停止。返回 0=成功，负值=错误码。 */
     external fun nativeStop(handle: Long): Int
 
+    /** 播放中停滞自愈：仅重启流（requestStop → requestStart），不重置位置基准。返回 0=成功。 */
+    external fun nativeRestart(handle: Long): Int
+
     /** 释放流。返回 0=成功。 */
     external fun nativeRelease(handle: Long): Int
 

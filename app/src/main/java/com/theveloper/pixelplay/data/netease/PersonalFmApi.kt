@@ -745,10 +745,11 @@ class PersonalFmApi @Inject constructor() {
     }
 
     /**
-     * 通过网易云歌曲 ID 获取主歌手 ID
-     * 调用 /song/detail 接口，从 ar 数组的第一个元素中提取 id
+     * 按网易云歌曲 ID 获取该曲目的完整真实歌手 ID 列表（与网易云返回顺序一致）。
+     * 用于统一媒体库（netease_songs → 统一库）歌曲：其歌手 ID 是名字 hash（负数），
+     * 点击某个歌手时按歌手下标从真实 artistIds 里取对应 ID，避免"永远跳到主歌手"。
      */
-    suspend fun fetchNeteaseArtistId(neteaseSongId: Long, cookie: String? = null): Result<Long> {
+    suspend fun fetchNeteaseArtistIds(neteaseSongId: Long, cookie: String? = null): Result<List<Long>> {
         if (neteaseSongId <= 0) return Result.failure(Exception("Invalid neteaseSongId"))
         return withContext(Dispatchers.IO) {
             try {
@@ -756,13 +757,19 @@ class PersonalFmApi @Inject constructor() {
                 detailsResult.mapCatching { details ->
                     val detail = details.firstOrNull()
                         ?: throw Exception("No song detail found for neteaseSongId=$neteaseSongId")
-                    detail.artistIds.firstOrNull()
-                        ?: throw Exception("No artist id found in song detail")
+                    detail.artistIds
                 }
             } catch (t: Throwable) {
-                Timber.e(t, "$TAG: fetchNeteaseArtistId failed for neteaseSongId=$neteaseSongId")
+                Timber.e(t, "$TAG: fetchNeteaseArtistIds failed for neteaseSongId=$neteaseSongId")
                 Result.failure(t)
             }
+        }
+    }
+
+    suspend fun fetchNeteaseArtistId(neteaseSongId: Long, cookie: String? = null): Result<Long> {
+        return fetchNeteaseArtistIds(neteaseSongId, cookie).mapCatching { ids ->
+            ids.firstOrNull()
+                ?: throw Exception("No artist id found in song detail")
         }
     }
 }

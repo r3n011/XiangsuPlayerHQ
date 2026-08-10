@@ -187,6 +187,7 @@ import com.theveloper.pixelplay.presentation.screens.search.components.GenreTypo
 import com.theveloper.pixelplay.presentation.components.SyncProgressBar
 import com.theveloper.pixelplay.presentation.viewmodel.LibraryViewModel
 import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardViewModel
+import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardViewModel
 import com.theveloper.pixelplay.utils.formatSongCount
 import androidx.paging.compose.collectAsLazyPagingItems
 import android.content.Intent
@@ -458,7 +459,8 @@ fun LibraryScreen(
     playlistViewModel: PlaylistViewModel = hiltViewModel(),
     libraryViewModel: LibraryViewModel = hiltViewModel(),
     songInfoBottomSheetViewModel: SongInfoBottomSheetViewModel = hiltViewModel(),
-    neteaseDashboardViewModel: NeteaseDashboardViewModel = hiltViewModel()
+    neteaseDashboardViewModel: NeteaseDashboardViewModel = hiltViewModel(),
+    qqMusicDashboardViewModel: QqMusicDashboardViewModel = hiltViewModel()
 ) {
     // La recolección de estados de alto nivel se mantiene mínima.
     val context = LocalContext.current // Added context
@@ -474,6 +476,7 @@ fun LibraryScreen(
     // 内部带 1 小时节流与登录检查，避免频繁请求触发网易云 405 风控。
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         neteaseDashboardViewModel.autoSyncOnLibraryEntry()
+        qqMusicDashboardViewModel.autoSyncOnLibraryEntry()
     }
     // The pull-to-refresh spinner is reserved for user gestures. Automatic sync
     // and long-running refresh work move through the slim linear indicator under
@@ -3091,7 +3094,9 @@ fun LibraryFoldersTab(
             onMove = { from, to ->
                 if (!isCustomOrder) return@rememberReorderableLazyListState
                 localItems = localItems.toMutableList().apply {
-                    add(to.index, removeAt(from.index))
+                    // ⚡ 库在拖到列表末尾时 to.index 可能超出范围，必须裁剪，否则 add() 越界崩溃
+                    val moved = removeAt(from.index)
+                    add(to.index.coerceAtMost(size), moved)
                 }.toImmutableList()
                 if (lastMovedFrom == null) {
                     lastMovedFrom = from.index

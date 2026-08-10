@@ -55,6 +55,9 @@ class ThemeStateHolder @Inject constructor(
     private var currentCustomPaletteSeedColor: Int = ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_SEED
     @Volatile
     private var currentCustomPaletteSchemePair: ColorSchemePair? = null
+    // ⚡ 应用级调色盘开关：true = 自定义调色盘染色整个应用（播放器内部除外）；false = 跟随壁纸取色
+    @Volatile
+    private var currentAppPaletteEnabled = false
     // ⚡ 原子目标 URI：确保并发的 extractAndGenerateColorScheme 协程中，只有持有最新
     //   目标 URI 的协程才能更新 state。其他协程（为旧歌曲提取的）完成后直接丢弃。
     @Volatile
@@ -96,14 +99,26 @@ class ThemeStateHolder @Inject constructor(
     private fun resolveActiveSchemeForPreference(preference: String): ColorSchemePair? {
         return when (preference) {
             ThemePreference.ALBUM_ART -> _albumArtThemeState.value.colorSchemePair
-            ThemePreference.CUSTOM_PALETTE -> currentCustomPaletteSchemePair
+            // 旧版兼容：播放器已不再提供自定义调色盘选项，旧值视为封面取色
+            ThemePreference.CUSTOM_PALETTE -> _albumArtThemeState.value.colorSchemePair
             else -> null
         }
     }
 
-    private fun resolveGlobalSchemeForPreference(preference: String): ColorSchemePair? {
-        // 仅自定义调色盘需要覆盖全局主题；封面取色只作用于播放器
-        return if (preference == ThemePreference.CUSTOM_PALETTE) currentCustomPaletteSchemePair else null
+    /**
+     * ⚡ 应用级（全局）配色方案：完全独立于播放器主题。
+     *   打开自定义调色盘 → 用种子色生成的配色方案染色整个应用（播放器内部除外）；
+     *   关闭 → null，应用跟随系统壁纸动态取色。
+     */
+    private fun resolveGlobalScheme(): ColorSchemePair? {
+        return if (currentAppPaletteEnabled) currentCustomPaletteSchemePair else null
+    }
+
+    private fun updateGlobalScheme() {
+        val scheme = resolveGlobalScheme()
+        if (_activeGlobalColorSchemePair.value != scheme) {
+            _activeGlobalColorSchemePair.value = scheme
+        }
     }
 
     private fun updateAlbumArtThemeState(colorSchemePair: ColorSchemePair?, uri: String?) {
@@ -125,7 +140,7 @@ class ThemeStateHolder @Inject constructor(
         _currentAlbumArtColorSchemePair.value = colorSchemePair
         _currentAlbumArtUri.value = uri
         _activePlayerColorSchemePair.value = active
-        _activeGlobalColorSchemePair.value = resolveGlobalSchemeForPreference(currentThemePreference)
+        _activeGlobalColorSchemePair.value = resolveGlobalScheme()
     }
 
     /**
@@ -135,20 +150,33 @@ class ThemeStateHolder @Inject constructor(
         currentThemePreference = preference
         val current = _albumArtThemeState.value
         val active = resolveActiveSchemeForPreference(preference)
-        if (current.activeColorSchemePair != active || _activeGlobalColorSchemePair.value != resolveGlobalSchemeForPreference(preference)) {
+        if (current.activeColorSchemePair != active || _activeGlobalColorSchemePair.value != resolveGlobalScheme()) {
             _albumArtThemeState.value = current.copy(activeColorSchemePair = active)
             _activePlayerColorSchemePair.value = active
-            _activeGlobalColorSchemePair.value = resolveGlobalSchemeForPreference(preference)
+            _activeGlobalColorSchemePair.value = resolveGlobalScheme()
         }
     }
 
     fun initialize(scope: CoroutineScope) {
         this.scope = scope
 
+        // ⚡ 旧版迁移：播放器自定义调色盘 → 应用级调色盘
+        scope.launch {
+            themePreferencesRepository.migrateLegacyPlayerPaletteToAppPalette()
+        }
+
         // ⚡ 缓存主题偏好值，并响应偏好切换
         scope.launch {
             playerThemePreference.collect { pref ->
                 updateActiveSchemeForPreference(pref)
+            }
+        }
+
+        // ⚡ 应用级调色盘开关：只影响全局配色，不影响播放器内部主题
+        scope.launch {
+            themePreferencesRepository.appPaletteEnabledFlow.collect { enabled ->
+                currentAppPaletteEnabled = enabled
+                updateGlobalScheme()
             }
         }
 
@@ -177,8 +205,9 @@ class ThemeStateHolder @Inject constructor(
                     }
                     currentCustomPaletteSchemePair = scheme
 
-                    // 如果当前正在使用自定义调色盘，立即刷新播放器/全局主题
+                    // 刷新播放器主题（若仍使用自定义调色盘）与应用级全局配色
                     updateActiveSchemeForPreference(currentThemePreference)
+                    updateGlobalScheme()
                     updateLavaLampColors(resolveActiveSchemeForPreference(currentThemePreference))
                 }
         }

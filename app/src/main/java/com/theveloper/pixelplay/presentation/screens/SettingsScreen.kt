@@ -1,12 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDp
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -69,7 +64,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -123,6 +117,7 @@ import com.theveloper.pixelplay.presentation.screens.DotDeviceSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.WordDelimiterConfigScreen
+import com.theveloper.pixelplay.presentation.screens.ArtistWhitelistConfigScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
@@ -171,24 +166,6 @@ private fun PhoneSettingsScreen(
         onNavigationIconClick: () -> Unit,
         settingsViewModel: SettingsViewModel
 ) {
-
-    // Animation effects
-    val transitionState = remember { MutableTransitionState(false) }
-    LaunchedEffect(true) { transitionState.targetState = true }
-
-    val transition = rememberTransition(transitionState, label = "SettingsAppearTransition")
-
-    val contentAlpha by
-            transition.animateFloat(
-                    label = "ContentAlpha",
-                    transitionSpec = { tween(durationMillis = 500) }
-            ) { if (it) 1f else 0f }
-
-    val contentOffset by
-            transition.animateDp(
-                    label = "ContentOffset",
-                    transitionSpec = { tween(durationMillis = 400, easing = FastOutSlowInEasing) }
-            ) { if (it) 0.dp else 40.dp }
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -271,10 +248,7 @@ private fun PhoneSettingsScreen(
 
     Box(
             modifier =
-                    Modifier.nestedScroll(nestedScrollConnection).fillMaxSize().graphicsLayer {
-                        alpha = contentAlpha
-                        translationY = contentOffset.toPx()
-                    }
+                    Modifier.nestedScroll(nestedScrollConnection).fillMaxSize()
     ) {
         val currentTopBarHeightDp = with(density) { topBarHeight.value.toDp() }
         LazyColumn(
@@ -1058,6 +1032,9 @@ private fun TabletSettingsScreen(
                 }
                 composable(Screen.WordDelimiterConfig.route) {
                     WordDelimiterConfigScreen(navController = detailNavController)
+                }
+                composable(Screen.ArtistWhitelistConfig.route) {
+                    ArtistWhitelistConfigScreen(navController = detailNavController)
                 }
                 composable(Screen.NavBarCrRad.route) {
                     NavBarCornerRadiusScreen(navController = detailNavController)

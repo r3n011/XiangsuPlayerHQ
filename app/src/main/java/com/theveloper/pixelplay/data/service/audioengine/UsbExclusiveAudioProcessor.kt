@@ -44,6 +44,12 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
     /** USB DAC 时钟采样率：native 层解析 UAC FORMAT_TYPE 得到，写入前先重采样到该速率 */
     private var usbTargetRate = 48000
 
+    /** USB DAC 声道数（bNrChannels）：超过等时包带宽的声道数据会被总线丢弃 */
+    private var usbDacChannels = 2
+
+    /** USB DAC 子帧字节数（bSubframeSize）：等时包容量按此计算，用户位深超过它须降级 */
+    private var usbDacBps = 2
+
     // ── 重采样状态（跨缓冲区保持，保证帧连续性） ──
     private var resampleAcc = 0.0
     private val resampleLast = floatArrayOf(0f, 0f)
@@ -65,13 +71,31 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
         }
     }
 
-    private fun currentBytesPerSample(): Int {
-        return when (getSettings()?.usbOutputBitDepth?.value
+    /**
+     * USB 输出有效字节数/采样：
+     * = min(用户设置的位深, DAC 子帧字节数 bSubframeSize)。
+     *
+     * ⚡ 等时包容量 wMaxPacketSize 是按 DAC 子帧大小计算的（rate*ch*bps/1000）。
+     * 用户位深超过 DAC 支持时，每帧字节数会超出包容量，超出的数据被总线
+     * 丢弃 → 完全无声/爆音。故必须降级到 DAC 子帧大小保证有声。
+     */
+    private fun effectiveBytesPerSample(): Int {
+        val userBps = when (getSettings()?.usbOutputBitDepth?.value
             ?: UsbOutputBitDepth.BITS_32) {
             UsbOutputBitDepth.BITS_16 -> 2
             UsbOutputBitDepth.BITS_24 -> 3
             UsbOutputBitDepth.BITS_32 -> 4
         }
+        val dacBps = usbDacBps.coerceIn(1, 4)
+        if (userBps > dacBps) {
+            Timber.w(
+                TAG,
+                "USB bit depth degraded: user=${userBps}B -> DAC=$dacBps B (超等时包带宽，降级保证有声)"
+            )
+        }
+        // ⚡ 下限 2：若 DAC 子帧解析异常得到 0/1，降级到 2 而不是输出 1 字节/采样
+        //    （1 字节时下方打包器无对应分支 → 输出全零静音，导致完全无声）。
+        return userBps.coerceAtMost(dacBps).coerceAtLeast(2)
     }
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
@@ -112,6 +136,29 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
 
         // USB 独占模式激活时，镜像到 USB DAC
         if (UsbAudioOutput.isActive()) {
+            // ⚡ 采样率/声道/子帧动态适配：configure() 只在播放开始时执行一次，播放中激活
+            //    USB 独占时仍是旧值。若 DAC 时钟/声道/位深与当前不一致 → 无声/杂音。
+            //    每次写入前检测一次并重新对齐（JNI 开销极小）。
+            val dacRate = UsbAudioOutput.getSampleRate()
+            if (dacRate in 8000..384000 && dacRate != usbTargetRate) {
+                Timber.i(
+                    TAG,
+                    "DAC sample rate changed: %d -> %d (re-aligning resampler)",
+                    usbTargetRate, dacRate
+                )
+                usbTargetRate = dacRate
+                resetResampler()
+            }
+            val dacChannels = UsbAudioOutput.getChannels()
+            if (dacChannels in 1..2 && dacChannels != usbDacChannels) {
+                Timber.i(TAG, "DAC channels changed: %d -> %d", usbDacChannels, dacChannels)
+                usbDacChannels = dacChannels
+            }
+            val dacBps = UsbAudioOutput.getSubframeSize()
+            if (dacBps in 1..4 && dacBps != usbDacBps) {
+                Timber.i(TAG, "DAC subframe size changed: %d -> %d", usbDacBps, dacBps)
+                usbDacBps = dacBps
+            }
             val pcm = ByteArray(remaining)
             out.duplicate().get(pcm)
             UsbAudioOutput.writePcm(convertForUsb(pcm))
@@ -149,7 +196,7 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
     // ── 格式转换（按位深 16/24/32-bit，立体声 little-endian 打包） ──
 
     /**
-     * 将输入 PCM 转换为 USB 输出位深（little-endian，固定为立体声输出）。
+     * 将输入 PCM 转换为 USB 输出位深（little-endian，声道数对齐 DAC）。
      *
      * 输入来源：
      *   - HiFi 模式：Float32 系统字节序（通常 little-endian），sample/frame = 4 字节
@@ -157,14 +204,14 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
      *
      * 处理链路：
      *   1. 解码到 [-1,1] 交错 Float 序列（保持原始声道数）
-     *   2. 归一化到立体声（单声道复制，>2ch 取前两声道）
+     *   2. 归一化到 DAC 声道数（单声道取 L/R 平均，立体声保持，>2ch 取前两声道）
      *   3. ⚡ 线性重采样到 DAC 时钟采样率 usbTargetRate —— 关键！
      *      播放数据采样率必须与 DAC 时钟一致，否则字节流速率不匹配，
      *      DAC 会以自身时钟解读数据 → 咔咔咔杂音或完全无声
-     *   4. 按位深打包（16/24/32-bit int LE）
+     *   4. 按有效位深打包（16/24/32-bit int LE，降级到 DAC 子帧大小防超带宽）
      */
     private fun convertForUsb(data: ByteArray): ByteArray {
-        val bytesPerSample = currentBytesPerSample()
+        val bytesPerSample = effectiveBytesPerSample()
 
         // Step 1: 解码到交错 Float 序列
         val samples: FloatArray = if (isFloat) {
@@ -183,30 +230,30 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
             arr
         }
 
-        // Step 2: 归一化到立体声
-        val stereo = when (channelCount) {
-            1 -> {
-                val out = FloatArray(samples.size * 2)
-                for (i in samples.indices) {
-                    out[i * 2] = samples[i]
-                    out[i * 2 + 1] = samples[i]
-                }
-                out
+        // Step 2: 归一化到 DAC 声道数（1ch 单声道取 L/R 平均；2ch 立体声；>2 取前两声道）
+        // ⚡ 单声道 DAC 的等时包容量按 1ch 计算，送立体声会超带宽 → 必须适配声道数。
+        val outCh = if (usbDacChannels in 1..2) usbDacChannels else 2
+        val frameCount = if (channelCount >= 1) samples.size / channelCount else samples.size
+        val stereo = FloatArray(frameCount * outCh)
+        for (i in 0 until frameCount) {
+            val l = when (channelCount) {
+                1 -> samples[i]
+                else -> samples[i * channelCount]
             }
-            2 -> samples
-            else -> { // 5.1/7.1 等：取前两声道（L/R）
-                val frames = samples.size / channelCount
-                val out = FloatArray(frames * 2)
-                for (i in 0 until frames) {
-                    out[i * 2] = samples[i * channelCount]
-                    out[i * 2 + 1] = samples[i * channelCount + 1]
-                }
-                out
+            val r = when (channelCount) {
+                1 -> samples[i]
+                else -> samples[i * channelCount + 1]
+            }
+            if (outCh == 1) {
+                stereo[i] = (l + r) / 2f
+            } else {
+                stereo[i * 2] = l
+                stereo[i * 2 + 1] = r
             }
         }
 
         // Step 3: 重采样到 DAC 时钟采样率
-        val rateMatched = resampleStereo(stereo, sampleRate, usbTargetRate)
+        val rateMatched = resampleStereo(stereo, sampleRate, usbTargetRate, outCh)
 
         // Step 4: 按 bytesPerSample 打包输出
         val outSize = rateMatched.size * bytesPerSample
@@ -258,28 +305,32 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
     }
 
     /**
-     * 交错立体声线性插值重采样。
+     * 交错 PCM 线性插值重采样（按 [channels] 声道处理）。
      * [inRate] == [outRate] 时原样返回（快速路径）。
      * 通过 [resampleAcc]（跨缓冲区保持的采样相位）与 [resampleLast]（上一缓冲区尾帧）
      * 保证相邻缓冲区的帧连续性，避免拼接处产生咔哒声。
      */
-    private fun resampleStereo(input: FloatArray, inRate: Int, outRate: Int): FloatArray {
+    private fun resampleStereo(input: FloatArray, inRate: Int, outRate: Int, channels: Int): FloatArray {
+        val ch = channels.coerceIn(1, 2)
         if (inRate <= 0 || outRate <= 0 || inRate == outRate) return input
         val step = inRate.toDouble() / outRate.toDouble()
-        val frameCount = input.size / 2
+        val frameCount = input.size / ch
         if (frameCount <= 0) return input
-        val outLen = (frameCount / step).toInt() + 1
-        val out = FloatArray(outLen * 2)
+        // 输出帧数 = (frameCount-1)/step + 1：保证最后一个输出帧正好落在最后一帧输入上，
+        // 避免 +1 让每个缓冲块都多出一帧 → 输出速率系统性高于目标 → DAC FIFO 溢出
+        // 丢包 → 播放一段时间后咔咔/无声。
+        val outLen = ((frameCount - 1) / step).toInt() + 1
+        val out = FloatArray(outLen * ch)
         var outIdx = 0
         var inIdx = 0
         var phase = resampleAcc
         while (outIdx < outLen && inIdx < frameCount) {
-            val l0 = if (inIdx == 0) resampleLast[0] else input[(inIdx - 1) * 2]
-            val r0 = if (inIdx == 0) resampleLast[1] else input[(inIdx - 1) * 2 + 1]
-            val l1 = input[inIdx * 2]
-            val r1 = input[inIdx * 2 + 1]
-            out[outIdx++] = l0 + (l1 - l0) * phase.toFloat()
-            out[outIdx++] = r0 + (r1 - r0) * phase.toFloat()
+            for (c in 0 until ch) {
+                val prev = if (inIdx == 0) resampleLast[c] else input[(inIdx - 1) * ch + c]
+                val cur = input[inIdx * ch + c]
+                out[outIdx * ch + c] = prev + (cur - prev) * phase.toFloat()
+            }
+            outIdx++
             phase += step
             while (phase >= 1.0) {
                 phase -= 1.0
@@ -288,8 +339,10 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
         }
         resampleAcc = phase
         if (frameCount > 0) {
-            resampleLast[0] = input[(frameCount - 1) * 2]
-            resampleLast[1] = input[(frameCount - 1) * 2 + 1]
+            resampleLast[0] = input[(frameCount - 1) * ch]
+            if (ch == 2) {
+                resampleLast[1] = input[(frameCount - 1) * ch + 1]
+            }
         }
         return out
     }

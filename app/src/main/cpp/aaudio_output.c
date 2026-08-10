@@ -175,9 +175,32 @@ Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_native
     (void) env; (void) clazz;
     aaudio_output *out = get_handle(env, handle);
     if (!out || !out->stream) return -1;
-    if (!out->started) return 0;
+    /* 按实际流状态判断而不是依赖 out->started：
+     * nativeStart 在途（STARTING/RUNNING 但 out->started 尚未置位）时也必须暂停/停止，
+     * 否则暂停会静默返回、流随后照样 STARTED 出声。 */
+    aaudio_stream_state_t st = AAudioStream_getState(out->stream);
+    if (st == AAUDIO_STREAM_STATE_UNINITIALIZED || st == AAUDIO_STREAM_STATE_UNKNOWN ||
+        st == AAUDIO_STREAM_STATE_OPEN || st == AAUDIO_STREAM_STATE_STOPPING ||
+        st == AAUDIO_STREAM_STATE_STOPPED || st == AAUDIO_STREAM_STATE_CLOSING ||
+        st == AAUDIO_STREAM_STATE_CLOSED || st == AAUDIO_STREAM_STATE_DISCONNECTED) {
+        return 0; /* 未运行 / 已停止 / 已关闭，无需暂停 */
+    }
     /* NDK 28 头文件只保留异步版 requestPause + waitForStateChange */
     aaudio_result_t rc = AAudioStream_requestPause(out->stream);
+    if (rc == AAUDIO_ERROR_INVALID_STATE) {
+        /* 流正处于 STARTING/RESUMING 等无法暂停的状态（写后立即暂停的竞态）：
+         * 回退 requestStop 保证一定静音，否则 pause 静默失败会一直出声。 */
+        rc = AAudioStream_requestStop(out->stream);
+        if (rc == AAUDIO_OK) {
+            aaudio_stream_state_t cur = AAudioStream_getState(out->stream);
+            wait_for_state(out->stream, cur, AAUDIO_STREAM_STATE_STOPPED);
+            out->started = 0;
+        } else {
+            LOGE("nativePause: requestStop fallback failed: %d (%s)",
+                 rc, AAudio_convertResultToText(rc));
+        }
+        return rc;
+    }
     if (rc == AAUDIO_OK) {
         aaudio_stream_state_t cur = AAudioStream_getState(out->stream);
         wait_for_state(out->stream, cur, AAUDIO_STREAM_STATE_PAUSED);
@@ -225,6 +248,48 @@ Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_native
         wait_for_state(out->stream, cur, AAUDIO_STREAM_STATE_STOPPED);
         out->started = 0;
         out->flush_base_frames = AAudioStream_getFramesRead(out->stream);
+    }
+    return rc;
+}
+
+/*
+ * 播放中停滞自愈：仅重启流（requestStop → requestStart），
+ * 不调整 flush_base_frames 基准！
+ *
+ * 关键：DefaultAudioSink 的 writtenFrames 计数不会因我们的重启而清零，
+ * EOS 判定（isEnded = framesRead >= writtenFrames）依赖两者基准一致。
+ * 若在这里重定 flush_base（像 nativeStop 那样），position 会突然相对变小，
+ * hasPendingData 永远为 true → EOS 永远无法送达 → 歌曲播完卡死 10s。
+ * 重启后 framesRead 继续累计，position 保持连续，尾部缓冲被消费后
+ * framesRead 到达 writtenFrames，EOS 正常送达，播放器自动切下一首。
+ */
+JNIEXPORT jint JNICALL
+Java_com_theveloper_pixelplay_data_service_audioengine_AaudioNativeOutput_nativeRestart(
+        JNIEnv *env, jclass clazz, jlong handle) {
+    (void) env; (void) clazz;
+    aaudio_output *out = get_handle(env, handle);
+    if (!out || !out->stream) return -1;
+
+    aaudio_stream_state_t st = AAudioStream_getState(out->stream);
+    if (st != AAUDIO_STREAM_STATE_STOPPED && st != AAUDIO_STREAM_STATE_STOPPING) {
+        aaudio_result_t rc = AAudioStream_requestStop(out->stream);
+        if (rc != AAUDIO_OK && rc != AAUDIO_ERROR_INVALID_STATE) {
+            LOGE("nativeRestart: requestStop failed: %d (%s)", rc, AAudio_convertResultToText(rc));
+            return rc;
+        }
+        if (rc == AAUDIO_OK) {
+            st = AAudioStream_getState(out->stream);
+            wait_for_state(out->stream, st, AAUDIO_STREAM_STATE_STOPPED);
+        }
+    }
+
+    aaudio_result_t rc = AAudioStream_requestStart(out->stream);
+    if (rc == AAUDIO_OK) {
+        st = AAudioStream_getState(out->stream);
+        wait_for_state(out->stream, st, AAUDIO_STREAM_STATE_STARTED);
+        out->started = 1;
+    } else {
+        LOGE("nativeRestart: requestStart failed: %d (%s)", rc, AAudio_convertResultToText(rc));
     }
     return rc;
 }

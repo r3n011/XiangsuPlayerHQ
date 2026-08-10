@@ -15,6 +15,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.zip.GZIPInputStream
 
 /**
  * APK 下载安装管理器
@@ -52,39 +53,57 @@ class ApkDownloadInstaller {
     )
 
     /**
+     * 下载候选：URL + 可选 Cookie/Referer。
+     * 蓝奏云直链必须携带解析会话的 Cookie 与 Referer，否则 CDN 返回人机验证页。
+     */
+    data class DownloadCandidate(
+        val url: String,
+        val cookie: String? = null,
+        val referer: String? = null
+    )
+
+    /**
      * 下载 APK 文件，返回下载进度 Flow。
      *
      * 支持多候选链接（蓝奏云直链优先、GitHub Release 兜底），按传入顺序依次尝试，
      * 任一成功后即停止。候选会按需扩展：
      * - GitHub 链接自动追加加速镜像前缀，全部镜像失败后再试官方原地址；
-     * - 蓝奏云直链本身就是国内 CDN，直接下载，**绝不套 GitHub 镜像**。
+     * - 蓝奏云直链本身就是国内 CDN，直接下载，**绝不套 GitHub 镜像**；
+     *   下载时必须带上解析会话的 Cookie + Referer，否则命中人机验证页。
      *
      * 每个候选下载完成后会校验文件是否为合法 APK（ZIP 魔数 + 最小体积），
      * 防止镜像/CDN 返回的 HTML 错误页被当成 APK 安装导致「安装包损坏」。
      */
-    fun downloadApk(context: Context, downloadUrls: List<String>): Flow<DownloadState> = flow {
+    fun downloadApk(context: Context, candidates: List<DownloadCandidate>): Flow<DownloadState> = flow {
         emit(DownloadState.Downloading(0f))
 
         val file = File(context.cacheDir, "pixelplay_update.apk")
-        val candidates = downloadUrls.flatMap { url ->
-            if (url.startsWith("https://github.com/")) {
-                mirrorPrefixes.map { prefix -> prefix + url } + url
+        val expandedCandidates = candidates.flatMap { candidate ->
+            if (candidate.url.startsWith("https://github.com/")) {
+                mirrorPrefixes.map { prefix -> candidate.copy(url = prefix + candidate.url) } + candidate
             } else {
-                listOf(url)
+                listOf(candidate)
             }
         }
 
         var lastError: String? = null
-        for ((index, url) in candidates.withIndex()) {
+        var triedLanzou = false
+        for ((index, candidate) in expandedCandidates.withIndex()) {
             var connection: HttpURLConnection? = null
             try {
-                Timber.d("APK 下载源 [${index + 1}/${candidates.size}]: $url")
-                connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                triedLanzou = triedLanzou || candidate.cookie != null
+                Timber.d("APK 下载源 [${index + 1}/${expandedCandidates.size}]: ${candidate.url}")
+                connection = (URL(candidate.url).openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
                     connectTimeout = 20000
                     readTimeout = 45000
                     addRequestProperty("User-Agent", USER_AGENT)
                     addRequestProperty("Accept", "application/octet-stream,application/vnd.android.package-archive,*/*")
+                    // ⚡ 蓝奏云 CDN 强制 gzip 压缩响应：声明 identity 避免 APK 被压成乱码；
+                    //    Cookie + Referer 用于绕过 CDN 人机验证页
+                    addRequestProperty("Accept-Encoding", "identity")
+                    candidate.cookie?.let { addRequestProperty("Cookie", it) }
+                    candidate.referer?.let { addRequestProperty("Referer", it) }
                     instanceFollowRedirects = true
                 }
 
@@ -126,6 +145,9 @@ class ApkDownloadInstaller {
                     }
                 }
 
+                // 蓝奏云 CDN 偶发无视 identity 仍返回 gzip 压缩流 → 解压成原始 APK
+                file.decompressIfGzip()
+
                 // 下载完成后校验 APK 合法性，避免把损坏文件交给安装器
                 if (!file.isValidApk()) {
                     throw RuntimeException("下载的文件不是有效的 APK")
@@ -136,16 +158,50 @@ class ApkDownloadInstaller {
             } catch (e: CancellationException) {
                 throw e // 协程取消必须向上抛，不能吞掉后继续尝试下一个源
             } catch (e: Exception) {
-                Timber.w(e, "APK 下载源失败 [${index + 1}/${candidates.size}]")
-                lastError = e.message ?: "下载失败"
+                Timber.w(e, "APK 下载源失败 [${index + 1}/${expandedCandidates.size}]")
+                if (candidate.cookie != null) {
+                    // 蓝奏云直链失败：多为 CDN 人机验证拦截，提示走浏览器而非静默换 GitHub
+                    lastError = "蓝奏云直链被验证拦截，请改用浏览器打开蓝奏云链接下载"
+                } else {
+                    lastError = e.message ?: "下载失败"
+                }
                 file.delete()
             } finally {
                 connection?.disconnect()
             }
         }
 
-        emit(DownloadState.Error(lastError ?: "下载失败"))
+        emit(DownloadState.Error(lastError ?: "下载失败", triedLanzou))
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * 若文件是 gzip 压缩流（魔数 0x1F 0x8B），解压成原始内容后覆盖原文件。
+     * 蓝奏云 CDN 偶发强制 gzip 响应，即使客户端声明了 identity。
+     */
+    private fun File.decompressIfGzip() {
+        if (!exists() || length() < 2) return
+        val head = inputStream().use { input ->
+            val b = ByteArray(2)
+            val read = input.read(b)
+            if (read == 2) b else null
+        } ?: return
+        if (head[0] != 0x1f.toByte() || head[1] != 0x8b.toByte()) return
+
+        val plain = File(parentFile, "pixelplay_update_plain.apk")
+        try {
+            GZIPInputStream(inputStream()).use { gzip ->
+                plain.outputStream().use { gzip.copyTo(it) }
+            }
+            if (plain.isValidApk()) {
+                plain.renameTo(this)
+            } else {
+                plain.delete()
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "gzip 解压失败")
+            plain.delete()
+        }
+    }
 
     /**
      * 校验下载文件是否像合法的 APK：ZIP 容器魔数（PK\x03\x04）+ 最小体积。
@@ -211,6 +267,6 @@ class ApkDownloadInstaller {
         data class Downloading(val progress: Float) : DownloadState()  // progress: 0~1, -1=未知大小
         data class Downloaded(val file: File) : DownloadState()
         object Installing : DownloadState()
-        data class Error(val message: String) : DownloadState()
+        data class Error(val message: String, val isLanzou: Boolean = false) : DownloadState()
     }
 }

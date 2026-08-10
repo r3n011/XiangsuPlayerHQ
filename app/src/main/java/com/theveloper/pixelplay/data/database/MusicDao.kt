@@ -1636,6 +1636,23 @@ interface MusicDao {
     @Query("DELETE FROM artists WHERE NOT EXISTS (SELECT 1 FROM song_artist_cross_ref WHERE song_artist_cross_ref.artist_id = artists.id) AND NOT EXISTS (SELECT 1 FROM songs WHERE songs.artist_id = artists.id)")
     suspend fun deleteOrphanedArtists()
 
+    /**
+     * Backfill missing primary artist cross-references. Some write paths (e.g. old
+     * cloud/Lx songs) saved only the direct artist_id column without a junction row,
+     * which made those artists invisible in the artist list (cross-ref driven).
+     */
+    @Query("""
+        INSERT OR IGNORE INTO song_artist_cross_ref (song_id, artist_id, is_primary)
+        SELECT s.id, s.artist_id, 1
+        FROM songs s
+        WHERE s.artist_id != 0
+          AND NOT EXISTS (
+              SELECT 1 FROM song_artist_cross_ref c
+              WHERE c.song_id = s.id AND c.artist_id = s.artist_id
+          )
+    """)
+    suspend fun backfillMissingSongArtistCrossRefs()
+
     // --- Favorite Operations ---
     @Query("UPDATE songs SET is_favorite = :isFavorite WHERE id = :songId")
     suspend fun setFavoriteStatus(songId: Long, isFavorite: Boolean)
@@ -1805,11 +1822,13 @@ interface MusicDao {
 
     /**
      * Get all songs for a specific artist using the junction table.
+     * Falls back to the direct artist_id column so legacy rows without a
+     * cross-reference (e.g. old cloud/Lx songs) still appear on the artist page.
      */
     @Query("""
-        SELECT songs.* FROM songs
-        INNER JOIN song_artist_cross_ref ON songs.id = song_artist_cross_ref.song_id
-        WHERE song_artist_cross_ref.artist_id = :artistId
+        SELECT DISTINCT songs.* FROM songs
+        LEFT JOIN song_artist_cross_ref ON songs.id = song_artist_cross_ref.song_id
+        WHERE songs.artist_id = :artistId OR song_artist_cross_ref.artist_id = :artistId
         ORDER BY songs.title ASC
     """)
     fun getSongsForArtist(artistId: Long): Flow<List<SongEntity>>
@@ -1818,9 +1837,9 @@ interface MusicDao {
      * Get all songs for a specific artist (one-shot).
      */
     @Query("""
-        SELECT songs.* FROM songs
-        INNER JOIN song_artist_cross_ref ON songs.id = song_artist_cross_ref.song_id
-        WHERE song_artist_cross_ref.artist_id = :artistId
+        SELECT DISTINCT songs.* FROM songs
+        LEFT JOIN song_artist_cross_ref ON songs.id = song_artist_cross_ref.song_id
+        WHERE songs.artist_id = :artistId OR song_artist_cross_ref.artist_id = :artistId
         ORDER BY songs.title ASC
     """)
     suspend fun getSongsForArtistList(artistId: Long): List<SongEntity>

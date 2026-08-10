@@ -262,6 +262,38 @@ fun ArtistSettingsScreen(
                             }
                         )
 
+                        // ⚡ 歌手拆分白名单
+                        SettingsItem(
+                            title = stringResource(R.string.presentation_batch_g_artist_item_whitelist),
+                            subtitle = if (uiState.artistSplitWhitelist.isEmpty()) {
+                                stringResource(R.string.presentation_batch_g_artist_whitelist_none)
+                            } else {
+                                val preview = uiState.artistSplitWhitelist.take(3).joinToString(", ") +
+                                    if (uiState.artistSplitWhitelist.size > 3) "..." else ""
+                                stringResource(
+                                    R.string.presentation_batch_g_artist_whitelist_current_prefix,
+                                    preview
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.ChevronRight,
+                                    contentDescription = stringResource(R.string.presentation_batch_g_artist_cd_configure),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            onClick = {
+                                navController.navigateSafely("artist_whitelist_config")
+                            }
+                        )
+
                         // Extract from title toggle
                         SwitchSettingItem(
                             title = stringResource(R.string.presentation_batch_g_artist_extract_from_title),

@@ -22,6 +22,7 @@
     <string name="lrclib_uri">https://lrclib.net/</string>
     <string name="lyrics_not_found">未找到歌词</string>
     <string name="search_lyrics_online_prompt">要在线搜索歌词吗？</string>
+    <string name="search_lyrics_online">在线搜索歌词</string>
     <string name="lyrics_custom_search_hint">我们无法自动找到歌词。你可以修改标题或艺术家后再手动搜索。</string>
     <string name="failed_to_search_for_lyrics">搜索歌词失败</string>
     <string name="failed_to_fetch_lyrics_from_remote">从远程获取歌词失败</string>
@@ -306,6 +307,7 @@
     <string name="update_dont_show_again">不再提示此版本</string>
     <string name="update_go_download">去下载</string>
     <string name="update_no_download_source">暂无可用下载源</string>
+    <string name="update_no_browser">未找到可用的浏览器</string>
     <string name="update_check_title">检查更新</string>
     <string name="update_check_subtitle">检查是否有新版本可用</string>
     <string name="update_auto_check_title">自动检查更新</string>

@@ -49,20 +49,33 @@ fun UpdateAvailableDialog(
     updateInfo: UpdateChecker.UpdateInfo,
     downloadState: ApkDownloadInstaller.DownloadState?,
     onDismiss: () -> Unit,
-    onDownload: (apkUrls: List<String>) -> Unit
+    onDownload: (List<ApkDownloadInstaller.DownloadCandidate>) -> Unit,
+    onOpenLanzouInBrowser: () -> Unit = {}
 ) {
-    // 蓝奏云直链（已同步时可用）+ GitHub 兜底，两个下载源同时展示供用户选择
-    val lanzouUrls = remember(updateInfo) {
-        if (updateInfo.isLanzouSynced) updateInfo.lanzouFiles.map { it.downloadUrl } else emptyList()
+    // 蓝奏云直链（已同步时可用）+ GitHub 兜底，两个下载源独立展示、互不掺和
+    val lanzouCandidates = remember(updateInfo) {
+        if (updateInfo.isLanzouSynced) {
+            updateInfo.lanzouFiles.map {
+                ApkDownloadInstaller.DownloadCandidate(
+                    url = it.downloadUrl,
+                    cookie = it.cookie.ifBlank { null },
+                    referer = it.referer.ifBlank { null }
+                )
+            }
+        } else {
+            emptyList()
+        }
     }
     val githubUrl = updateInfo.apkUrl
-    val hasAnySource = lanzouUrls.isNotEmpty() || !githubUrl.isNullOrBlank()
+    val hasAnySource = lanzouCandidates.isNotEmpty() || !githubUrl.isNullOrBlank()
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
     val isDownloaded = downloadState is ApkDownloadInstaller.DownloadState.Downloaded
     val isInstalling = downloadState is ApkDownloadInstaller.DownloadState.Installing
     val isError = downloadState is ApkDownloadInstaller.DownloadState.Error
     val errorMessage = (downloadState as? ApkDownloadInstaller.DownloadState.Error)?.message
+    // ⚡ 蓝奏云直链被 CDN 人机验证拦截 → 提示用浏览器打开
+    val isLanzouError = (downloadState as? ApkDownloadInstaller.DownloadState.Error)?.isLanzou == true
 
     val cardShape = AbsoluteSmoothCornerShape(30.dp, 60)
     val blockShape = AbsoluteSmoothCornerShape(22.dp, 60)
@@ -272,14 +285,15 @@ fun UpdateAvailableDialog(
                             }
                         }
                     } else {
-                        // 双下载源：蓝奏云（主，国内高速）+ GitHub（备选），同时展示
+                        // 双下载源：蓝奏云（主，国内高速）+ GitHub（备选），独立展示互不掺和
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            if (lanzouUrls.isNotEmpty()) {
+                            if (lanzouCandidates.isNotEmpty()) {
                                 Button(
-                                    onClick = { onDownload(lanzouUrls + listOfNotNull(githubUrl)) },
+                                    // ⚡ 只传蓝奏云候选，绝不静默追加 GitHub（选蓝奏云就只走蓝奏云）
+                                    onClick = { onDownload(lanzouCandidates) },
                                     shape = actionShape,
                                     enabled = canDownload,
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -294,7 +308,9 @@ fun UpdateAvailableDialog(
                             }
                             if (!githubUrl.isNullOrBlank()) {
                                 OutlinedButton(
-                                    onClick = { onDownload(listOf(githubUrl)) },
+                                    onClick = {
+                                        onDownload(listOf(ApkDownloadInstaller.DownloadCandidate(url = githubUrl)))
+                                    },
                                     shape = actionShape,
                                     enabled = canDownload,
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -306,7 +322,21 @@ fun UpdateAvailableDialog(
                                     )
                                 }
                             }
-                            if (!lanzouUrls.isNotEmpty() && githubUrl.isNullOrBlank() && !isDownloaded && !isInstalling) {
+                            // ⚡ 蓝奏云直链被 CDN 人机验证拦截：提供「浏览器打开」兜底，而不是换 GitHub 源
+                            if (isLanzouError) {
+                                OutlinedButton(
+                                    onClick = onOpenLanzouInBrowser,
+                                    shape = actionShape,
+                                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                                ) {
+                                    Text(
+                                        text = "在浏览器中打开蓝奏云",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                            if (lanzouCandidates.isEmpty() && githubUrl.isNullOrBlank() && !isDownloaded && !isInstalling) {
                                 Text(
                                     text = stringResource(R.string.update_no_download_source),
                                     style = MaterialTheme.typography.bodySmall,

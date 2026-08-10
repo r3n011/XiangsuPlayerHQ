@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.presentation.navigation
 
 import com.theveloper.pixelplay.presentation.screens.DelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.WordDelimiterConfigScreen
+import com.theveloper.pixelplay.presentation.screens.ArtistWhitelistConfigScreen
 import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
 import com.theveloper.pixelplay.presentation.screens.DeviceCapabilitiesScreen
 import android.annotation.SuppressLint
@@ -533,6 +534,16 @@ fun AppNavigation(
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     WordDelimiterConfigScreen(
+                        navController = navController,
+                        viewModel = hiltViewModel()
+                    )
+                }
+            }
+            composable(
+                Screen.ArtistWhitelistConfig.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    ArtistWhitelistConfigScreen(
                         navController = navController,
                         viewModel = hiltViewModel()
                     )

@@ -138,6 +138,7 @@ fun LibraryHistoryTab(
                         song = item.song,
                         isCurrentSong = currentSongId == item.song.id,
                         isPlaying = currentSongId == item.song.id && isPlaying,
+                        isRadio = item.song.isRadioStation,
                         onClick = {
                             playerViewModel.playSongs(
                                 songsToPlay = queueSongs,

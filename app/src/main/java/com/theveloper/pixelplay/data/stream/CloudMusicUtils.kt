@@ -35,4 +35,22 @@ object CloudMusicUtils {
             .distinct()
         return if (parsed.isEmpty()) listOf("Unknown Artist") else parsed
     }
+
+    /**
+     * ⚡ 网易云歌曲歌手拆分：直接按网易云返回的顺序拆分（singer 一般用 "、" 或带空格的 " / "
+     * 连接，与 artistIds 逗号连接一一对应）。
+     *
+     * 不做 [parseArtistNames] 的本地暴力分割（[,/&;+、] 会把歌手名里的特殊字符如 "/"、"&"、"+" 误切，
+     * 导致歌手名与真实 artistIds 错位 → 多歌手歌曲第二歌手跳转成第一歌手）。
+     */
+    fun parseNeteaseArtistNames(rawArtist: String): List<String> {
+        if (rawArtist.isBlank()) return listOf("Unknown Artist")
+        val parsed = rawArtist
+            .replace(Regex("\\s*/\\s*"), "、")
+            .split("、")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+        return if (parsed.isEmpty()) listOf("Unknown Artist") else parsed
+    }
 }

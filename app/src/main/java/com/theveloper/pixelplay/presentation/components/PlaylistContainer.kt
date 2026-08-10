@@ -279,9 +279,6 @@ fun PlaylistItems(
 
     val isCustomOrder = currentSortOption == SortOption.PlaylistCustomOrder && onReorder != null && !isAddingToPlaylist && !isSelectionMode
     var localPlaylists by remember { mutableStateOf(filteredPlaylists) }
-    LaunchedEffect(filteredPlaylists) {
-        localPlaylists = filteredPlaylists
-    }
     var lastMovedFrom by remember { mutableStateOf<Int?>(null) }
     var lastMovedTo by remember { mutableStateOf<Int?>(null) }
 
@@ -289,13 +286,22 @@ fun PlaylistItems(
         lazyListState = listState,
         onMove = { from, to ->
             if (!isCustomOrder) return@rememberReorderableLazyListState
+            // ⚡ LazyColumn 顶部有每日推荐 header 时它占了一个 item 位（index 0），
+            //    库回调的 from.index/to.index 是含 header 的全局索引，而 localPlaylists
+            //    只含播放列表（无 header），必须减去偏移量得到局部索引，否则
+            //    removeAt/add 的目标位置错位，拖动时列表会跳来跳去。
+            val headerOffset = if (dailyRecommendHeader != null) 1 else 0
+            val fromIndex = (from.index - headerOffset).coerceIn(0, localPlaylists.lastIndex)
+            val toIndex = (to.index - headerOffset).coerceIn(0, localPlaylists.size)
             localPlaylists = localPlaylists.toMutableList().apply {
-                add(to.index, removeAt(from.index))
+                val moved = removeAt(fromIndex)
+                // ⚡ 拖到列表末尾时 to.index 可能超出范围，必须裁剪，否则 add() 越界崩溃
+                add(toIndex.coerceAtMost(size), moved)
             }
             if (lastMovedFrom == null) {
-                lastMovedFrom = from.index
+                lastMovedFrom = fromIndex
             }
-            lastMovedTo = to.index
+            lastMovedTo = toIndex
             performAppCompatHapticFeedback(
                 view,
                 appHapticsConfig,
@@ -310,6 +316,13 @@ fun PlaylistItems(
             onReorder.invoke(localPlaylists.map { it.id })
             lastMovedFrom = null
             lastMovedTo = null
+        }
+    }
+
+    // ⚡ 拖动过程中绝不重置 localPlaylists，否则外部数据刷新会让列表跳回原顺序/跳动
+    LaunchedEffect(filteredPlaylists, reorderableState.isAnyItemDragging) {
+        if (!reorderableState.isAnyItemDragging) {
+            localPlaylists = filteredPlaylists
         }
     }
 

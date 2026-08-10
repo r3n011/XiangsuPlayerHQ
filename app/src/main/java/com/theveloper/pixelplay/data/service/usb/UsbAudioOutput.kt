@@ -31,6 +31,8 @@ object UsbAudioOutput {
     private external fun nativeClose(): Boolean
     private external fun nativeIsActive(): Boolean
     private external fun nativeGetSampleRate(): Int
+    private external fun nativeGetChannels(): Int
+    private external fun nativeGetSubframeSize(): Int
 
     fun isActive(): Boolean = active
 
@@ -44,6 +46,29 @@ object UsbAudioOutput {
     } catch (t: Throwable) {
         Timber.w(t, "$TAG: nativeGetSampleRate 异常")
         0
+    }
+
+    /**
+     * 获取 DAC 声道数（bNrChannels），未激活/解析失败回退 2。
+     * 用于 Java 层归一化声道，避免立体声数据超出单声道等时包带宽。
+     */
+    fun getChannels(): Int = try {
+        nativeGetChannels()
+    } catch (t: Throwable) {
+        Timber.w(t, "$TAG: nativeGetChannels 异常")
+        2
+    }
+
+    /**
+     * 获取 DAC 子帧字节数（bSubframeSize），未激活/解析失败回退 2。
+     * 等时包容量 wMaxPacketSize 按此值计算；用户设置位深超过它时，
+     * 每帧字节数会超出包容量被总线丢弃 → 无声，须降级到该值。
+     */
+    fun getSubframeSize(): Int = try {
+        nativeGetSubframeSize()
+    } catch (t: Throwable) {
+        Timber.w(t, "$TAG: nativeGetSubframeSize 异常")
+        2
     }
 
     /** 使用 UsbDeviceConnection 的文件描述符启动 USB 音频输出 */

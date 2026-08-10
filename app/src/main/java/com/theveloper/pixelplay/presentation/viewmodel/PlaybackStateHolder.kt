@@ -120,6 +120,13 @@ class PlaybackStateHolder @Inject constructor(
     private var shuffleToggleJob: Job? = null
     private var lastShuffleToggleFinishedAtMs: Long = 0L
     private var lastCastSeekBlockedToastAtMs: Long = 0L
+    // ⚡ 播完卡死看门狗：歌曲音频已到末尾但 offload HAL 未发 EOS 时，
+    // ExoPlayer 停留在 READY + playWhenReady=true、位置不再前进，10s 后会被
+    // StuckPlayerDetector 判定为 StuckPlayerException → 恢复逻辑重建播放器
+    // → mini player 消失。这里提前识别"卡在末尾"并视同自然播放完成。
+    private var trackEndFrozenPosMs: Long = -1L
+    private var trackEndFrozenAtMs: Long = 0L
+    private var trackEndFrozenHandled = false
     private val powerManager: PowerManager by lazy(LazyThreadSafetyMode.NONE) {
         appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
     }
@@ -745,6 +752,55 @@ class PlaybackStateHolder @Inject constructor(
                               currentPositionMs = currentPosition
                           )
 
+                          // ⚡ 播完卡死看门狗：歌曲已到末尾但播放器停在"仍在播放"的外观上。
+                          //   A. READY 冻结：offload HAL 未发 EOS，播放器声称仍在播放
+                          //      （isPlaying=true）但位置停在末尾不再前进；
+                          //   B. ENDED 冻结：已到 STATE_ENDED 但 playWhenReady 仍为 true
+                          //      （终态事件未被上层消费），UI 一直显示在"播放完"状态。
+                          // 两种情况都视同自然播放完成：自动暂停（并回到开头），
+                          // 避免 10s 后 StuckPlayerException（卡住 + runtime 错误 +
+                          // 重建播放器 → mini player 消失）。
+                          val atTrackEnd = controller.duration > 0 &&
+                              currentPosition >= controller.duration - 1000L
+                          val stuckAtEnd = atTrackEnd && (
+                              controller.isPlaying ||
+                              (controller.playbackState == Player.STATE_ENDED && controller.playWhenReady)
+                              )
+                          if (stuckAtEnd) {
+                              if (trackEndFrozenPosMs == currentPosition) {
+                                  if (!trackEndFrozenHandled &&
+                                      SystemClock.elapsedRealtime() - trackEndFrozenAtMs >= 2500L
+                                  ) {
+                                      trackEndFrozenHandled = true
+                                      Timber.w(
+                                          "TrackEndWatchdog: stuck at track end (${currentPosition}ms, state=${controller.playbackState}), auto-pausing"
+                                      )
+                                      dualPlayerEngine.disableAudioOffloadWithoutRebuild()
+                                      runCatching {
+                                          controller.pause()
+                                          // READY 冻结（A）需 seekTo 重新武装播放器；
+                                          // ENDED 冻结（B）只需暂停即可
+                                          if (controller.playbackState != Player.STATE_ENDED) {
+                                              controller.seekTo(0L)
+                                          }
+                                      }
+                                      // ⚡ 直接同步 UI 为暂停态（即使上层 listener 被去抖/
+                                      // 拦截），保证按钮立刻变回播放、mini player 不消失
+                                      updateStablePlayerStateIfChanged {
+                                          it.copy(isPlaying = false, playWhenReady = false)
+                                      }
+                                  }
+                              } else {
+                                  trackEndFrozenPosMs = currentPosition
+                                  trackEndFrozenAtMs = SystemClock.elapsedRealtime()
+                                  trackEndFrozenHandled = false
+                              }
+                          } else {
+                              trackEndFrozenPosMs = -1L
+                              trackEndFrozenAtMs = 0L
+                              trackEndFrozenHandled = false
+                          }
+
                           val resolvedPosition = resolveUiPosition(currentMediaId, currentPosition)
                           if (_currentPosition.value != resolvedPosition) {
                               _currentPosition.value = resolvedPosition
@@ -771,9 +827,10 @@ class PlaybackStateHolder @Inject constructor(
         if (controller.mediaItemCount <= 0) return false
         if (controller.isPlaying) return true
 
+        // ⚡ 终态也要采样：STATE_ENDED 但 playWhenReady 仍为 true（卡在"播放完"状态）时，
+        // 看门狗需要持续看到位置不前进才能判定自然播完并自动暂停，否则 UI 会一直卡住。
         return controller.playWhenReady &&
-            controller.playbackState != Player.STATE_IDLE &&
-            controller.playbackState != Player.STATE_ENDED
+            controller.playbackState != Player.STATE_IDLE
     }
 
     private fun currentProgressTickMs(): Long {
