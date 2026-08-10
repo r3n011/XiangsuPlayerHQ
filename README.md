@@ -190,5 +190,5 @@ QQ群：<a href="https://qm.qq.com/q/31XTTiZqg0">907852088</a>
    <br>
    <a href="https://github.com/yzrbz">yzrbz</a>
    <br>
-   <a href="https://github.com/hzx0831">yzrbz</a>
+   <a href="https://github.com/hzx0831">HZX0831</a>
 </p>
