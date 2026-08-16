@@ -578,6 +578,15 @@ fun PlaylistItem(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                    if (playlist.source == "BILIBILI") {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            painter = painterResource(R.drawable.ic_bilibili),
+                            contentDescription = "Bilibili",
+                            tint = Color(0xFFFB7299),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                     if (playlist.source == "TELEGRAM" || playlist.source == "TELEGRAM_TOPIC") {
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(

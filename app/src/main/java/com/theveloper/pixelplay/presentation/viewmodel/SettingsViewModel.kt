@@ -32,6 +32,7 @@ import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
+import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -71,6 +72,14 @@ data class SettingsUiState(
     val customPaletteSeedColor: Color = Color(ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_SEED),
     // ⚡ 应用级调色盘开关：关闭 = 壁纸取色，打开 = 自定义调色盘染色整个应用（播放器内部除外）
     val appPaletteEnabled: Boolean = false,
+    // ⚡ 自定义播放器背景：开关 + 图片 URI + 显示模式 + 模糊半径（0=关闭）（应用到播放器界面与歌词界面）
+    val customPlayerBackgroundEnabled: Boolean = false,
+    val customPlayerBackgroundUri: String? = null,
+    val customPlayerBackgroundMode: PlayerBackgroundMode = PlayerBackgroundMode.Cover,
+    val customPlayerBackgroundBlurRadius: Int = 0,
+    // ⚡ 播放器控键透明度（百分比，30-100，默认 100=不透明）与歌词渐变遮罩开关
+    val customPlayerControlsOpacity: Int = 100,
+    val lyricsGradientOverlayEnabled: Boolean = true,
     val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
@@ -175,6 +184,12 @@ private sealed interface SettingsUiUpdate {
         val albumArtColorAccuracy: Int,
         val customPaletteSeedColor: Color,
         val appPaletteEnabled: Boolean,
+        val customPlayerBackgroundEnabled: Boolean,
+        val customPlayerBackgroundUri: String?,
+        val customPlayerBackgroundMode: PlayerBackgroundMode,
+        val customPlayerBackgroundBlurRadius: Int,
+        val customPlayerControlsOpacity: Int,
+        val lyricsGradientOverlayEnabled: Boolean,
         val mockGenresEnabled: Boolean,
         val navBarCornerRadius: Int,
         val navBarStyle: String,
@@ -417,6 +432,12 @@ class SettingsViewModel @Inject constructor(
                 themePreferencesRepository.albumArtColorAccuracyFlow,
                 themePreferencesRepository.customPaletteSeedColorFlow,
                 themePreferencesRepository.appPaletteEnabledFlow,
+                themePreferencesRepository.customPlayerBackgroundEnabledFlow,
+                themePreferencesRepository.customPlayerBackgroundUriFlow,
+                themePreferencesRepository.customPlayerBackgroundModeFlow,
+                themePreferencesRepository.customPlayerBackgroundBlurRadiusFlow,
+                themePreferencesRepository.customPlayerControlsOpacityFlow,
+                themePreferencesRepository.lyricsGradientOverlayEnabledFlow,
                 userPreferencesRepository.mockGenresEnabledFlow,
                 userPreferencesRepository.navBarCornerRadiusFlow,
                 userPreferencesRepository.navBarStyleFlow,
@@ -434,14 +455,20 @@ class SettingsViewModel @Inject constructor(
                     albumArtColorAccuracy = values[4] as Int,
                     customPaletteSeedColor = Color(values[5] as Int),
                     appPaletteEnabled = values[6] as Boolean,
-                    mockGenresEnabled = values[7] as Boolean,
-                    navBarCornerRadius = values[8] as Int,
-                    navBarStyle = values[9] as String,
-                    navBarCompactMode = values[10] as Boolean,
-                    libraryNavigationMode = values[11] as String,
-                    carouselStyle = values[12] as String,
-                    launchTab = values[13] as String,
-                    showPlayerFileInfo = values[14] as Boolean
+                    customPlayerBackgroundEnabled = values[7] as Boolean,
+                    customPlayerBackgroundUri = values[8] as String?,
+                    customPlayerBackgroundMode = values[9] as PlayerBackgroundMode,
+                    customPlayerBackgroundBlurRadius = values[10] as Int,
+                    customPlayerControlsOpacity = values[11] as Int,
+                    lyricsGradientOverlayEnabled = values[12] as Boolean,
+                    mockGenresEnabled = values[13] as Boolean,
+                    navBarCornerRadius = values[14] as Int,
+                    navBarStyle = values[15] as String,
+                    navBarCompactMode = values[16] as Boolean,
+                    libraryNavigationMode = values[17] as String,
+                    carouselStyle = values[18] as String,
+                    launchTab = values[19] as String,
+                    showPlayerFileInfo = values[20] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -453,6 +480,12 @@ class SettingsViewModel @Inject constructor(
                         albumArtColorAccuracy = update.albumArtColorAccuracy,
                         customPaletteSeedColor = update.customPaletteSeedColor,
                         appPaletteEnabled = update.appPaletteEnabled,
+                        customPlayerBackgroundEnabled = update.customPlayerBackgroundEnabled,
+                        customPlayerBackgroundUri = update.customPlayerBackgroundUri,
+                        customPlayerBackgroundMode = update.customPlayerBackgroundMode,
+                        customPlayerBackgroundBlurRadius = update.customPlayerBackgroundBlurRadius,
+                        customPlayerControlsOpacity = update.customPlayerControlsOpacity,
+                        lyricsGradientOverlayEnabled = update.lyricsGradientOverlayEnabled,
                         mockGenresEnabled = update.mockGenresEnabled,
                         navBarCornerRadius = update.navBarCornerRadius,
                         navBarStyle = update.navBarStyle,
@@ -856,6 +889,44 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setCustomPlayerBackgroundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            themePreferencesRepository.setCustomPlayerBackgroundEnabled(enabled)
+        }
+    }
+
+    fun setCustomPlayerBackgroundUri(uri: String?) {
+        viewModelScope.launch {
+            themePreferencesRepository.setCustomPlayerBackgroundUri(uri)
+        }
+    }
+
+    fun setCustomPlayerBackgroundMode(mode: PlayerBackgroundMode) {
+        viewModelScope.launch {
+            themePreferencesRepository.setCustomPlayerBackgroundMode(mode)
+        }
+    }
+
+    fun setCustomPlayerBackgroundBlurRadius(radius: Int) {
+        viewModelScope.launch {
+            themePreferencesRepository.setCustomPlayerBackgroundBlurRadius(radius)
+        }
+    }
+
+    // ⚡ 播放器控键透明度（百分比，应用到播放器界面与歌词界面）
+    fun setCustomPlayerControlsOpacity(opacity: Int) {
+        viewModelScope.launch {
+            themePreferencesRepository.setCustomPlayerControlsOpacity(opacity)
+        }
+    }
+
+    // ⚡ 歌词界面上下两侧渐变遮罩开关
+    fun setLyricsGradientOverlayEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            themePreferencesRepository.setLyricsGradientOverlayEnabled(enabled)
+        }
+    }
+
     suspend fun getAlbumArtPalettePreview(
         uriString: String,
         style: AlbumArtPaletteStyle,
@@ -961,6 +1032,12 @@ class SettingsViewModel @Inject constructor(
     fun setHiFiModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setHiFiModeEnabled(enabled)
+        }
+    }
+
+    fun setHomeTopListEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setHomeTopListEnabled(enabled)
         }
     }
 
@@ -1177,6 +1254,10 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     val isAiRecommendationManualOnly: StateFlow<Boolean> = aiPreferencesRepository.isAiRecommendationManualOnly
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    // ⚡ 首页排行榜开关（设置页可关闭）
+    val homeTopListEnabled: StateFlow<Boolean> = userPreferencesRepository.homeTopListEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     val isWebRemoteEnabled: StateFlow<Boolean> = aiPreferencesRepository.isWebRemoteEnabled

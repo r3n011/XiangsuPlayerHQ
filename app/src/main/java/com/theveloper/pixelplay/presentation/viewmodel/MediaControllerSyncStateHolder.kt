@@ -88,6 +88,11 @@ class MediaControllerSyncStateHolder @Inject constructor(
 
     fun initialize(callbacks: ControllerSyncCallbacks) {
         cb = callbacks
+        // ⚡ 进度自愈：进度轮询检测到 UI 的 currentSong 与播放器当前媒体长时间错位时，
+        // 通过 syncDisplayedMediaItemIfChanged 重新对齐，防止进度条冻结。
+        playbackStateHolder.setUiMediaDesyncHandler {
+            cb.getController()?.let { syncDisplayedMediaItemIfChanged(it) }
+        }
     }
 
     // All Player.Listener instances registered by the decomposed setup*Listeners()

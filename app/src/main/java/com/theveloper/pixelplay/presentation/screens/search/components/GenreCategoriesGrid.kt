@@ -60,7 +60,8 @@ fun GenreCategoriesGrid(
     genres: List<Genre>,
     onGenreClick: (Genre) -> Unit,
     playerViewModel: PlayerViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null
 ) {
     if (genres.isEmpty()) {
         Box(
@@ -104,6 +105,11 @@ fun GenreCategoriesGrid(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (header != null) {
+            item(key = "toplist_header", span = { GridItemSpan(maxLineSpan) }) {
+                header()
+            }
+        }
         item(span = { GridItemSpan(maxLineSpan) }) {
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier

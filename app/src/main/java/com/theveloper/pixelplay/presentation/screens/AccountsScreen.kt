@@ -76,6 +76,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.presentation.bilibili.auth.BilibiliLoginActivity
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.subcomps.TightWrapText
@@ -87,6 +88,7 @@ import com.theveloper.pixelplay.presentation.telegram.auth.TelegramLoginActivity
 import com.theveloper.pixelplay.presentation.viewmodel.AccountsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.ExternalAccountUiModel
 import com.theveloper.pixelplay.presentation.viewmodel.ExternalServiceAccount
+import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
 import kotlin.math.roundToInt
@@ -100,11 +102,14 @@ fun AccountsScreen(
     onOpenQqMusicDashboard: () -> Unit = {},
     onOpenNavidromeDashboard: () -> Unit = {},
     onOpenJellyfinDashboard: () -> Unit = {},
+    onOpenBilibiliDashboard: () -> Unit = {},
     viewModel: AccountsViewModel = hiltViewModel(),
-    showBackButton: Boolean = true
+    showBackButton: Boolean = true,
+    playerViewModel: PlayerViewModel? = null
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val syncingServices by viewModel.syncingServicesFlow.collectAsStateWithLifecycle()
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -208,17 +213,24 @@ fun AccountsScreen(
                 ) { account ->
                     ConnectedAccountCard(
                         account = account,
+                        isSyncing = account.service in syncingServices,
                         onManage = {
-                            openService(
-                                context = context,
-                                service = account.service,
-                                onOpenNeteaseDashboard = onOpenNeteaseDashboard,
-                                onOpenQqMusicDashboard = onOpenQqMusicDashboard,
-                                onOpenNavidromeDashboard = onOpenNavidromeDashboard,
-                                onOpenJellyfinDashboard = onOpenJellyfinDashboard,
-                                preferNeteaseDashboard = true
-                            )
+                            if (account.service == ExternalServiceAccount.BILIBILI) {
+                                // 已登录：打开 B 站收藏服务页（对齐网易云打开服务页面的导航方式）
+                                onOpenBilibiliDashboard()
+                            } else {
+                                openService(
+                                    context = context,
+                                    service = account.service,
+                                    onOpenNeteaseDashboard = onOpenNeteaseDashboard,
+                                    onOpenQqMusicDashboard = onOpenQqMusicDashboard,
+                                    onOpenNavidromeDashboard = onOpenNavidromeDashboard,
+                                    onOpenJellyfinDashboard = onOpenJellyfinDashboard,
+                                    preferNeteaseDashboard = true
+                                )
+                            }
                         },
+                        onManualSync = { viewModel.manualSync(account.service) },
                         onLogout = { viewModel.logout(account.service) },
                         painter = if (account.service == ExternalServiceAccount.NETEASE) {
                             painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_)
@@ -230,6 +242,8 @@ fun AccountsScreen(
                             painterResource(R.drawable.ic_jellyfin)
                         } else if (account.service == ExternalServiceAccount.NAVIDROME) {
                             painterResource(R.drawable.ic_navidrome_md3)
+                        } else if (account.service == ExternalServiceAccount.BILIBILI) {
+                            painterResource(R.drawable.ic_bilibili)
                         } else null
                     )
                 }
@@ -240,15 +254,22 @@ fun AccountsScreen(
                     EmptyAccountsCard(
                         disconnectedServices = uiState.disconnectedServices,
                         onConnect = { service ->
-                            openService(
-                                context = context,
-                                service = service,
-                                onOpenNeteaseDashboard = onOpenNeteaseDashboard,
-                                onOpenQqMusicDashboard = onOpenQqMusicDashboard,
-                                onOpenNavidromeDashboard = onOpenNavidromeDashboard,
-                                onOpenJellyfinDashboard = onOpenJellyfinDashboard,
-                                preferNeteaseDashboard = false
-                            )
+                            if (service == ExternalServiceAccount.BILIBILI) {
+                                safeStartActivity(
+                                    context = context,
+                                    intent = Intent(context, BilibiliLoginActivity::class.java)
+                                )
+                            } else {
+                                openService(
+                                    context = context,
+                                    service = service,
+                                    onOpenNeteaseDashboard = onOpenNeteaseDashboard,
+                                    onOpenQqMusicDashboard = onOpenQqMusicDashboard,
+                                    onOpenNavidromeDashboard = onOpenNavidromeDashboard,
+                                    onOpenJellyfinDashboard = onOpenJellyfinDashboard,
+                                    preferNeteaseDashboard = false
+                                )
+                            }
                         }
                     )
                 }
@@ -351,7 +372,9 @@ private fun HeroStatTile(
 private fun ConnectedAccountCard(
     account: ExternalAccountUiModel,
     onManage: () -> Unit,
+    onManualSync: () -> Unit,
     onLogout: () -> Unit,
+    isSyncing: Boolean = false,
     painter: androidx.compose.ui.graphics.painter.Painter? = null
 ) {
     val statusSoon = stringResource(R.string.presentation_batch_b_accounts_status_soon)
@@ -560,6 +583,33 @@ private fun ConnectedAccountCard(
                 )
             }
 
+            if (supportsManualSync(account.service)) {
+                OutlinedButton(
+                    onClick = onManualSync,
+                    enabled = !account.isLoggingOut && !isSyncing,
+                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                    border = BorderStroke(1.dp, palette.primaryActionTint.copy(alpha = 0.45f)),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    if (isSyncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Sync,
+                            contentDescription = null
+                        )
+                    }
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = if (isSyncing) "同步中…" else "立即同步",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
             OutlinedButton(
                 onClick = onLogout,
                 enabled = !account.isLoggingOut,
@@ -627,6 +677,7 @@ private fun EmptyAccountsCard(
                     ExternalServiceAccount.GOOGLE_DRIVE -> painterResource(R.drawable.rounded_drive_export_24)
                     ExternalServiceAccount.JELLYFIN -> painterResource(R.drawable.ic_jellyfin)
                     ExternalServiceAccount.NAVIDROME -> painterResource(R.drawable.ic_navidrome_md3)
+                    ExternalServiceAccount.BILIBILI -> painterResource(R.drawable.ic_bilibili)
                 }
                 FilledTonalButton(
                     onClick = { if (!isComingSoon) onConnect(service) },
@@ -656,6 +707,19 @@ private fun EmptyAccountsCard(
                 }
             }
         }
+    }
+}
+
+/** 该服务支持「立即同步」按钮（有云端收藏/歌单可同步到媒体库） */
+private fun supportsManualSync(service: ExternalServiceAccount): Boolean {
+    return when (service) {
+        ExternalServiceAccount.NETEASE,
+        ExternalServiceAccount.QQ_MUSIC,
+        ExternalServiceAccount.NAVIDROME,
+        ExternalServiceAccount.JELLYFIN,
+        ExternalServiceAccount.BILIBILI -> true
+        ExternalServiceAccount.TELEGRAM,
+        ExternalServiceAccount.GOOGLE_DRIVE -> false
     }
 }
 
@@ -719,6 +783,14 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
             primaryActionContainer = Color(0xFFE3F2FD),
             primaryActionTint = Color(0xFF1565C0)
         )
+        ExternalServiceAccount.BILIBILI -> ServicePalette(
+            iconContainer = Color(0xFFFFF0F4),
+            iconTint = Color.Unspecified,
+            statusContainer = Color(0xFFFFE0E8),
+            statusTint = Color(0xFFB0265A),
+            primaryActionContainer = Color(0xFFFFE0E8),
+            primaryActionTint = Color(0xFFB0265A)
+        )
     }
 }
 
@@ -730,6 +802,7 @@ private fun accountIcon(service: ExternalServiceAccount): ImageVector {
         ExternalServiceAccount.QQ_MUSIC -> Icons.Rounded.MusicNote
         ExternalServiceAccount.NAVIDROME -> Icons.Rounded.CloudQueue
         ExternalServiceAccount.JELLYFIN -> Icons.Rounded.CloudQueue
+        ExternalServiceAccount.BILIBILI -> Icons.Rounded.CloudQueue
     }
 }
 
@@ -766,6 +839,13 @@ private fun ServiceIcon(service: ExternalServiceAccount, tint: Color, modifier: 
             tint = tint,
             modifier = modifier
         )
+    } else if (service == ExternalServiceAccount.BILIBILI) {
+        Icon(
+            painter = painterResource(R.drawable.ic_bilibili),
+            contentDescription = null,
+            tint = Color.Unspecified,
+            modifier = modifier
+        )
     } else {
         Icon(
             imageVector = accountIcon(service),
@@ -785,6 +865,7 @@ private fun serviceDisplayName(service: ExternalServiceAccount): String {
         ExternalServiceAccount.QQ_MUSIC -> stringResource(R.string.screen_qq_music_dashboard_title)
         ExternalServiceAccount.NAVIDROME -> stringResource(R.string.cd_subsonic_logo)
         ExternalServiceAccount.JELLYFIN -> stringResource(R.string.auth_jellyfin_title)
+        ExternalServiceAccount.BILIBILI -> "Bilibili"
     }
 }
 
@@ -846,6 +927,13 @@ private fun openService(
                     intent = Intent(context, JellyfinLoginActivity::class.java)
                 )
             }
+        }
+        // B 站登录打开独立界面（BilibiliLoginActivity，对齐 Telegram/Netease）
+        ExternalServiceAccount.BILIBILI -> {
+            safeStartActivity(
+                context = context,
+                intent = Intent(context, BilibiliLoginActivity::class.java)
+            )
         }
     }
 }

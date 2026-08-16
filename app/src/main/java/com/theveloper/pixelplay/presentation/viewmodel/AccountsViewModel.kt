@@ -2,11 +2,13 @@ package com.theveloper.pixelplay.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.theveloper.pixelplay.data.gdrive.GDriveRepository
+import com.theveloper.pixelplay.data.bilibili.BilibiliFavoritesSyncer
+import com.theveloper.pixelplay.data.bilibili.BilibiliRepository
 import com.theveloper.pixelplay.data.jellyfin.JellyfinRepository
 import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
+import com.theveloper.pixelplay.data.gdrive.GDriveRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.telegram.TelegramRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +16,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -28,7 +31,8 @@ enum class ExternalServiceAccount {
     NETEASE,
     QQ_MUSIC,
     NAVIDROME,
-    JELLYFIN
+    JELLYFIN,
+    BILIBILI
 }
 
 data class ExternalAccountUiModel(
@@ -53,10 +57,16 @@ class AccountsViewModel @Inject constructor(
     private val neteaseRepository: NeteaseRepository,
     private val qqMusicRepository: QqMusicRepository,
     private val navidromeRepository: NavidromeRepository,
-    private val jellyfinRepository: JellyfinRepository
+    private val jellyfinRepository: JellyfinRepository,
+    private val bilibiliRepository: BilibiliRepository,
+    private val bilibiliFavoritesSyncer: BilibiliFavoritesSyncer
 ) : ViewModel() {
 
     private val loggingOutServices = MutableStateFlow<Set<ExternalServiceAccount>>(emptySet())
+
+    /** 正在执行手动同步的第三方服务（用于按钮 loading 状态） */
+    private val syncingServices = MutableStateFlow<Set<ExternalServiceAccount>>(emptySet())
+    val syncingServicesFlow: StateFlow<Set<ExternalServiceAccount>> = syncingServices.asStateFlow()
 
     private val telegramStateFlow = combine(
         telegramRepository.authorizationState
@@ -102,6 +112,12 @@ class AccountsViewModel @Inject constructor(
         connected to playlistCount
     }
 
+    private val bilibiliStateFlow = bilibiliRepository.isLoggedInFlow
+        .map { connected ->
+            connected to (if (connected) bilibiliRepository.userNickname?.takeIf { it.isNotBlank() } ?: "" else "")
+        }
+        .distinctUntilChanged()
+
     val uiState: StateFlow<AccountsUiState> = combine(
         combine(
             listOf(
@@ -110,7 +126,8 @@ class AccountsViewModel @Inject constructor(
                 neteaseStateFlow,
                 qqMusicStateFlow,
                 navidromeStateFlow,
-                jellyfinStateFlow
+                jellyfinStateFlow,
+                bilibiliStateFlow
             )
         ) { it.toList() },
         loggingOutServices
@@ -121,6 +138,7 @@ class AccountsViewModel @Inject constructor(
         val (qqConnected, qqPlaylistCount) = states[3] as Pair<Boolean, Int>
         val (navidromeConnected, navidromePlaylistCount) = states[4] as Pair<Boolean, Int>
         val (jellyfinConnected, jellyfinPlaylistCount) = states[5] as Pair<Boolean, Int>
+        val (bilibiliConnected, bilibiliNickname) = states[6] as Pair<Boolean, String>
 
         val connectedAccounts = buildList {
             if (telegramConnected) {
@@ -226,6 +244,17 @@ class AccountsViewModel @Inject constructor(
                     )
                 )
             }
+            if (bilibiliConnected) {
+                add(
+                    ExternalAccountUiModel(
+                        service = ExternalServiceAccount.BILIBILI,
+                        title = "Bilibili",
+                        accountLabel = bilibiliNickname.ifBlank { "Bilibili account connected" },
+                        syncedContentLabel = "已同步 B 站收藏",
+                        isLoggingOut = ExternalServiceAccount.BILIBILI in activeLogouts
+                    )
+                )
+            }
         }
 
         val disconnectedServices = buildList {
@@ -235,6 +264,7 @@ class AccountsViewModel @Inject constructor(
             if (!qqConnected) add(ExternalServiceAccount.QQ_MUSIC)
             if (!navidromeConnected) add(ExternalServiceAccount.NAVIDROME)
             if (!jellyfinConnected) add(ExternalServiceAccount.JELLYFIN)
+            if (!bilibiliConnected) add(ExternalServiceAccount.BILIBILI)
         }
 
         AccountsUiState(
@@ -261,6 +291,7 @@ class AccountsViewModel @Inject constructor(
                         ExternalServiceAccount.QQ_MUSIC -> qqMusicRepository.logout()
                         ExternalServiceAccount.NAVIDROME -> navidromeRepository.logout()
                         ExternalServiceAccount.JELLYFIN -> jellyfinRepository.logout()
+                        ExternalServiceAccount.BILIBILI -> bilibiliRepository.logout()
                     }
                 }
             } finally {
@@ -274,6 +305,40 @@ class AccountsViewModel @Inject constructor(
             "1 $singular"
         } else {
             "$count $plural"
+        }
+    }
+
+    /**
+     * 手动同步指定第三方账户的数据到媒体库（第三方账户管理页「立即同步」按钮）。
+     * B 站走 [BilibiliFavoritesSyncer.syncNow]（不受节流限制），其余走各仓库的全量同步。
+     */
+    fun manualSync(service: ExternalServiceAccount) {
+        if (service in syncingServices.value) return
+        viewModelScope.launch {
+            syncingServices.update { it + service }
+            try {
+                runCatching {
+                    when (service) {
+                        ExternalServiceAccount.BILIBILI -> bilibiliFavoritesSyncer.syncNow()
+                        ExternalServiceAccount.NETEASE -> neteaseRepository.autoSyncOnLibraryEntry()
+                        ExternalServiceAccount.QQ_MUSIC -> qqMusicRepository.autoSyncOnLibraryEntry()
+                        ExternalServiceAccount.NAVIDROME -> navidromeRepository.syncAllPlaylistsAndSongs()
+                        ExternalServiceAccount.JELLYFIN -> jellyfinRepository.syncAllPlaylistsAndSongs()
+                        else -> Unit
+                    }
+                }
+            } finally {
+                syncingServices.update { it - service }
+            }
+        }
+    }
+
+    /**
+     * 进入媒体库时自动同步 B 站收藏（模仿网易云 autoSyncOnLibraryEntry，内部 1 小时节流）。
+     */
+    fun autoSyncBilibili() {
+        viewModelScope.launch {
+            runCatching { bilibiliFavoritesSyncer.sync() }
         }
     }
 }

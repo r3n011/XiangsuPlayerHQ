@@ -17,10 +17,11 @@ import java.util.zip.InflaterInputStream
  * 蓝奏云直链解析 API
  *
  * 用于从蓝奏云分享链接获取真实下载 URL。
- * 对齐 LanzouAPI (v2.0.3 / api.js v2.0.1) 最新算法：
+ * 对齐 LanzouAPI (v2.1.3 / api.py) 最新算法：
  *   - acw_sc__v2 cookie v3：由下载页 `arg1`（40 位十六进制）按 order 表重排后与 KEY 逐字节 XOR 生成
  *   - filemoreajax.php 文件列表：POST 分享页参数获取文件清单（zt==1）
- *   - 逐文件走下载页（arg1 → cookie → /fn → /ajaxm）拿到直链 `${dom}/file/${url}`
+ *   - 逐文件走下载页（arg1 → cookie（含 path/expires）→ /fn → /ajaxm）拿到硬编码域名直链 `https://slssm.dmpdmp.com/file/{url}`
+ *   - PAGE2 每个文件使用独立会话（清空 PAGE1 cookie），对齐 Python 版独立 Session
  */
 class LanzouCloudApi {
 
@@ -57,11 +58,12 @@ class LanzouCloudApi {
      * 从文件名解析版本号
      * 支持格式：PixelPlay-{versionName}-{versionCode}-{date}-arm64.apk
      *         或：PixelPlay-{versionName}-{versionCode}-{date}-universal.apk
+     *         或：PixelPlay-{versionName}-{versionCode}-{date}-release.apk（对齐 example.py target_name）
      */
     fun parseVersionFromFileName(fileName: String): String? {
         val apkName = fileName.removeSuffix(".apk")
         // 匹配 PixelPlay-{versionName}-{versionCode}-{date}-{variant} 格式
-        val regex = Regex("""PixelPlay-([\d.]+)-\d+-\d+-(arm64|universal)""")
+        val regex = Regex("""PixelPlay-([\d.]+)-\d+-\d+-(arm64|universal|release)""")
         val match = regex.find(apkName)
         return match?.groupValues?.get(1)
     }
@@ -69,7 +71,7 @@ class LanzouCloudApi {
     /**
      * 解析蓝奏云分享链接，获取所有文件的下载信息
      *
-     * @param shareUrl 分享链接（如 https://wwbvc.lanzn.com/b011m9azlg）
+     * @param shareUrl 分享链接（如 https://wwbvc.lanzouv.com/b011m9azlg）
      * @param password 提取密码（可选）
      * @return 文件信息列表
      */
@@ -89,7 +91,9 @@ class LanzouCloudApi {
                     val arg1 = Regex("""var\s+arg1\s*=\s*'([^']+)'""")
                         .find(indexHtml)?.groupValues?.get(1)
                     if (arg1 != null) {
+                        // Python 版：session.cookies.update({"acw_sc__v2": ky(arg1), "path": "/"})
                         session.setCookie("acw_sc__v2", generateAcwCookieV3(arg1))
+                        session.setCookie("path", "/")
                         indexHtml = session.get(shareUrl, referer = shareUrl)
                     }
                 }
@@ -226,7 +230,12 @@ class LanzouCloudApi {
     ): String? {
         val downloadPageUrl = "https://$host/${entry.id}"
 
+        // Python 版 PAGE2 使用独立新 Session（只带 headers，不带 PAGE1 的 cookie），
+        // 这里在解析每个文件前清空会话 cookie 以对齐
+        session.clearCookies()
+
         // 进入下载页，提取 arg1 并生成 acw_sc__v2 cookie，再访问一次拿真实内容
+        // （对齐 Python 版：path/expires 是 Set-Cookie 属性，不进入 Cookie 头，这里只设置 acw_sc__v2）
         var dp = session.get(downloadPageUrl, referer = shareUrl)
         val arg1 = Regex("""var\s+arg1\s*=\s*'([^']+)'""").find(dp)?.groupValues?.get(1)
         if (arg1 != null) {
@@ -265,15 +274,19 @@ class LanzouCloudApi {
         ajaxForm["ves"] = ves.toString()
 
         val dlJson = session.post("https://$host$ajaxUrl", ajaxForm, referer = buttonUrl)
+        // Python 版不校验 zt，直接取 url 字段拼直链；为空则失败
         val dlObj = JSONObject(dlJson)
-        if (dlObj.optInt("zt") != 1) {
+        val urlPart = dlObj.optString("url")
+        if (urlPart.isBlank()) {
             Timber.w("Lanzou: ajax failed for ${entry.name}: $dlJson")
             return null
         }
-        val dom = dlObj.optString("dom")
-        val urlPart = dlObj.optString("url")
-        if (dom.isBlank() || urlPart.isBlank()) return null
-        return "$dom/file/$urlPart"
+        // ⚡ 优先用 ajax 返回的真实 CDN 域名 dom（蓝奏云经常更换 CDN 域名，
+        // 硬编码 slssm.dmpdmp.com 一旦失效会导致下载 404/无法访问），
+        // dom 缺失时才回退硬编码域名
+        val dom = dlObj.optString("dom").takeIf { it.isNotBlank() }?.trimEnd('/')
+        val base = dom ?: "https://slssm.dmpdmp.com"
+        return "$base/file/$urlPart"
     }
 
     // === acw_sc__v2 cookie v3 算法 ===
@@ -357,6 +370,11 @@ class LanzouCloudApi {
 
         fun setCookie(name: String, value: String) {
             cookies[name] = value
+        }
+
+        /** 清空会话 cookie（对齐 Python 版 PAGE2 使用独立新 Session） */
+        fun clearCookies() {
+            cookies.clear()
         }
 
         /** 导出会话 Cookie 字符串（供直链下载使用） */

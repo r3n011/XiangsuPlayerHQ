@@ -68,14 +68,51 @@ class BilibiliRepository @Inject constructor(
         }
     }
 
+    /** 从已保存 cookie 中取 bili_jct（评论发布/点赞/举报等写操作的 csrf 参数） */
+    fun getCsrf(): String? {
+        val json = getCookieString()
+        if (json.isBlank()) return null
+        return try {
+            jsonToMap(json)["bili_jct"]?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to read Bilibili csrf")
+            null
+        }
+    }
+
     val userId: Long
-        get() = prefs.getLong("bilibili_user_id", -1L)
+        get() {
+            val saved = prefs.getLong("bilibili_user_id", -1L)
+            if (saved > 0L) return saved
+            // 兜底：nav 未成功时从 cookie 的 DedeUserID 解析 uid（收藏夹列表接口必须携带）
+            return try {
+                jsonToMap(getCookieString())["DedeUserID"]?.toLongOrNull() ?: -1L
+            } catch (e: Exception) {
+                -1L
+            }
+        }
 
     val userNickname: String?
         get() = prefs.getString("bilibili_nickname", null)
 
     val userAvatar: String?
         get() = prefs.getString("bilibili_avatar", null)
+
+    // —— 评论过滤设置（对齐 PiliPlus Pref.banWordForReply / Pref.antiGoodsReply）——
+    /** 关键词过滤开关（默认关闭，与 PiliPlus banWordForReply 默认空串一致） */
+    var commentFilterEnabled: Boolean
+        get() = prefs.getBoolean("bilibili_comment_filter_enabled", false)
+        set(value) { prefs.edit().putBoolean("bilibili_comment_filter_enabled", value).apply() }
+
+    /** 广告评论过滤开关（默认关闭，与 PiliPlus antiGoodsReply 默认 false 一致） */
+    var antiGoodsFilterEnabled: Boolean
+        get() = prefs.getBoolean("bilibili_anti_goods_filter_enabled", false)
+        set(value) { prefs.edit().putBoolean("bilibili_anti_goods_filter_enabled", value).apply() }
+
+    /** 评论关键词正则（为空表示不过滤） */
+    var commentBanWords: String
+        get() = prefs.getString("bilibili_comment_ban_words", "") ?: ""
+        set(value) { prefs.edit().putString("bilibili_comment_ban_words", value).apply() }
 
     private fun initFromSavedCookies() {
         val cookieJson = prefs.getString("bilibili_cookies", null) ?: return
@@ -102,16 +139,30 @@ class BilibiliRepository @Inject constructor(
                 prefs.edit().putString("bilibili_cookies", cookieJson).apply()
 
                 _isLoggedInFlow.value = true
+                // DedeUserID 即用户 uid；昵称后续由 /x/web-interface/nav 拉取并刷新
+                val uid = cookies["DedeUserID"]?.toLongOrNull() ?: -1L
                 val nickname = cookies["DedeUserID__ckMd5"] ?: "Bilibili User"
-                saveUserInfo(-1L, nickname, null)
+                saveUserInfo(uid, nickname, null)
 
-                Timber.d("Bilibili login successful")
+                Timber.d("Bilibili login successful, uid=$uid")
                 Result.success(nickname)
             } catch (e: Exception) {
                 Timber.e(e, "loginWithCookies: failed")
                 Result.failure(e)
             }
         }
+    }
+
+    /** 覆盖保存 cookie（如扫码登录成功后拿到完整会话） */
+    fun updateCookies(cookieMap: Map<String, String>) {
+        prefs.edit().putString("bilibili_cookies", mapToJson(cookieMap)).apply()
+        _isLoggedInFlow.value = hasLogin()
+    }
+
+    /** 刷新用户资料（扫码登录后由 nav 接口拉取真实昵称/头像/uid） */
+    fun updateUserInfo(userId: Long, nickname: String, avatarUrl: String?) {
+        saveUserInfo(userId, nickname, avatarUrl)
+        _isLoggedInFlow.value = true
     }
 
     suspend fun logout() {
@@ -139,6 +190,17 @@ class BilibiliRepository @Inject constructor(
 
     fun getPlaylists(): Flow<List<Nothing>> {
         return kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+
+    private fun mapToJson(map: Map<String, String>): String {
+        return try {
+            val obj = JSONObject()
+            map.forEach { (k, v) -> obj.put(k, v) }
+            obj.toString()
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to serialize cookie map")
+            "{}"
+        }
     }
 
     private fun jsonToMap(json: String): Map<String, String> {

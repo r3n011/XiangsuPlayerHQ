@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.22.1)
 project("miniaudio_jni")
 
+# 16KB 页对齐：所有自编译 .so 必须使用 16KB 对齐以兼容 Android 15+ 设备
+add_link_options("-Wl,-z,max-page-size=16384")
+
 add_library(
         miniaudio_jni
         SHARED
@@ -22,6 +25,7 @@ target_link_libraries(
 # USB 独占输出（libusb）
 # 预编译 libusb1.0.so 位于 app/src/main/jniLibs/${ANDROID_ABI}/，
 # 头文件位于 app/src/main/cpp/libusb/include/。
+# 注意：预编译 .so 的 16KB 页对齐需要用 NDK 从源码重建（见下方说明）。
 # ============================================================
 set(libusb_so_dir ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI})
 set(libusb_h_dir ${CMAKE_SOURCE_DIR}/libusb/include)

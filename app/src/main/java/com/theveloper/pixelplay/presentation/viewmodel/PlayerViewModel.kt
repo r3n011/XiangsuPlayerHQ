@@ -75,6 +75,7 @@ import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
+import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
@@ -399,6 +400,51 @@ class PlayerViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = AlbumArtPaletteStyle.default
+        )
+    // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）
+    val customPlayerBackgroundEnabled: StateFlow<Boolean> = themePreferencesRepository
+        .customPlayerBackgroundEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
+        )
+    val customPlayerBackgroundUri: StateFlow<String?> = themePreferencesRepository
+        .customPlayerBackgroundUriFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
+    val customPlayerBackgroundMode: StateFlow<PlayerBackgroundMode> = themePreferencesRepository
+        .customPlayerBackgroundModeFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = PlayerBackgroundMode.Cover
+        )
+    val customPlayerBackgroundBlurRadius: StateFlow<Int> = themePreferencesRepository
+        .customPlayerBackgroundBlurRadiusFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 0
+        )
+    // ⚡ 播放器控键透明度（百分比，应用到播放器界面与歌词界面）
+    val customPlayerControlsOpacity: StateFlow<Int> = themePreferencesRepository
+        .customPlayerControlsOpacityFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 100
+        )
+    // ⚡ 歌词界面上下两侧渐变遮罩开关
+    val lyricsGradientOverlayEnabled: StateFlow<Boolean> = themePreferencesRepository
+        .lyricsGradientOverlayEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true
         )
     /**
      * High-frequency playback position should not force global UI recomposition.
@@ -2158,6 +2204,25 @@ class PlayerViewModel @Inject constructor(
                 }
         }
 
+        // ⚡ 下载完成自动切换本地播放：正在播放（或当前选中）的歌曲下载完成后，
+        // 立即把播放器当前媒体项换成本地文件，避免继续走已过期的网络 URL。
+        viewModelScope.launch {
+            var seenCompleteDownloadIds = emptySet<String>()
+            musicDownloadServiceProvider.get().downloads.collect { downloads ->
+                    val completeIds = downloads.filter { it.isComplete }.map { it.songId }.toSet()
+                    val newlyCompleted = completeIds - seenCompleteDownloadIds
+                    seenCompleteDownloadIds = completeIds
+                    newlyCompleted.forEach { songId ->
+                        val currentSong = playbackStateHolder.stablePlayerState.value.currentSong
+                        if (currentSong?.id == songId) {
+                            viewModelScope.launch {
+                                switchCurrentSongToLocalFileIfNeeded(currentSong)
+                            }
+                        }
+                    }
+                }
+        }
+
         viewModelScope.launch {
             combine(libraryTabsFlow, lastLibraryTabIndexFlow) { tabs, index ->
                 tabs.getOrNull(index)?.toLibraryTabIdOrNull() ?: LibraryTabId.SONGS
@@ -3185,6 +3250,17 @@ class PlayerViewModel @Inject constructor(
             _artistNavigationRequests.emit(resolvedId)
         }
     }
+
+    /** 按艺人名字查数据库艺人 ID（本地多艺人拆分出名字但没有 ID 时使用）。 */
+    suspend fun resolveLocalArtistIdByName(name: String): Long? =
+        withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                musicRepository.getArtistIdByName(name)
+            } catch (t: Throwable) {
+                Timber.e(t, "resolveLocalArtistIdByName failed: $name")
+                null
+            }
+        }
 
     suspend fun awaitSheetState(target: PlayerSheetState) {
         sheetState.first { it == target }
@@ -4267,6 +4343,21 @@ class PlayerViewModel @Inject constructor(
     private var lastSongTransitionAtMs = 0L
     private val songTransitionLockMs = 500L
 
+    /**
+     * ⚡ 发起显式切歌/播放动作时立即开启切歌锁定期。
+     *
+     * onMediaItemTransition 之前在 setMediaItem → onTimelineChanged 的窗口期里，
+     * MediaController 可能仍读到旧的 currentMediaItem（低性能设备回调乱序/延迟时更明显），
+     * 若此时 syncDisplayedMediaItemIfChanged 用旧 mediaItem 更新 state，
+     * 会把 currentSong 回跳到上一曲，随后真正的 transition 回调又把它纠正到下一曲，
+     * 表现就是"切歌时跳回上一曲又跳到下一曲"。
+     * 提前开启锁定期后，这段窗口内的非 transition 调用全部被忽略，
+     * 只有最终的 onMediaItemTransition(fromTransition=true) 才允许更新 state。
+     */
+    private fun beginSongTransitionLock() {
+        lastSongTransitionAtMs = SystemClock.elapsedRealtime()
+    }
+
     // ⚡ 防闪烁：isPlaying/playWhenReady 延迟更新 job
     private var isPlayingDebounceJob: Job? = null
     private var playWhenReadyDebounceJob: Job? = null
@@ -4491,7 +4582,8 @@ class PlayerViewModel @Inject constructor(
 
             // 漫游歌曲 URL 过期/播放失败：自动刷新 URL 并重试
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                val currentSongId = playerCtrl.currentMediaItem?.mediaId ?: return
+                val currentMediaItem = playerCtrl.currentMediaItem ?: return
+                val currentSongId = currentMediaItem.mediaId
                 if (!currentSongId.startsWith("roaming_")) {
                     // ⚡ 非漫游歌曲（搜索/在线单曲播放等）：不吞掉错误——
                     // 同步 UI 为暂停状态并保留 currentSong，防止播放器异常后
@@ -4507,7 +4599,15 @@ class PlayerViewModel @Inject constructor(
                     return
                 }
 
-                val currentSongObj = playbackStateHolder.stablePlayerState.value.currentSong ?: return
+                // ⚡ 修复漫游切歌错乱：以 playerCtrl 当前媒体项为准解析当前歌曲。
+                // AUTO 自动切歌后 onMediaItemTransition 先于 StablePlayerState 更新，
+                // 若用 stablePlayerState.currentSong（仍是上一首）去刷新 URL，
+                // replaceMediaItem(currentIndex, 旧歌) 会把上一首换到新歌位置，
+                // 造成"跳到下一首再跳回来/队列错位/一放就暂停"。
+                val currentSongObj = _playerUiState.value.currentPlaybackQueue.find { it.id == currentSongId }
+                    ?: resolveSongFromMediaItem(currentMediaItem)
+                    ?: playbackStateHolder.stablePlayerState.value.currentSong
+                    ?: return
                 if (currentSongObj.neteaseId == null) return
 
                 val currentIndex = playerCtrl.currentMediaItemIndex
@@ -5161,6 +5261,18 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * ⚡ 等待播放器进入 STATE_READY（当前歌曲已可播放），带超时兜底。
+     * 低性能设备上用于把"队列准备 + 回填"这类重活推迟到首曲初始化完成之后，
+     * 避免与音频解码/首帧渲染争抢 CPU 造成放歌前 3 秒卡顿。
+     */
+    private suspend fun awaitPlaybackReady(player: Player, timeoutMs: Long) {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (player.playbackState != Player.STATE_READY && SystemClock.elapsedRealtime() < deadline) {
+            delay(50)
+        }
+    }
+
     private suspend fun preparePlaybackQueueSegments(
         songsToPlay: List<Song>,
         startSongId: String,
@@ -5232,6 +5344,11 @@ class PlayerViewModel @Inject constructor(
             return
         }
         val effectiveStartSong = songsToPlay.firstOrNull { it.id == startSong.id } ?: songsToPlay.first()
+
+        // ⚡ 提前开启切歌锁定期：internalPlaySongs 会先更新 currentSong 再 setMediaItem，
+        // 锁定期让中间 onTimelineChanged/onMediaMetadataChanged 读到的陈旧 mediaItem
+        // 不会把 currentSong 回跳（见 beginSongTransitionLock 注释）。
+        beginSongTransitionLock()
 
         // Update dynamic shortcut for last played playlist
         if (playlistId != null && queueName != "None") {
@@ -5311,6 +5428,9 @@ class PlayerViewModel @Inject constructor(
                 try {
                     // Use Direct Engine Access to avoid TransactionTooLargeException on Binder
                     dualPlayerEngine.cancelNext()
+                    // ⚡ 紧贴 setMediaItem 再刷新一次锁定期：URI 解析可能耗时数秒，
+                    // 保证 onTimelineChanged/onMediaMetadataChanged 的陈旧读取窗口始终被覆盖。
+                    beginSongTransitionLock()
                     val enginePlayer = dualPlayerEngine.masterPlayer
 
                     enginePlayer.setMediaItem(startMediaItem, 0L)
@@ -5321,6 +5441,11 @@ class PlayerViewModel @Inject constructor(
                     if (songsToPlay.size > 1) {
                         pendingQueueSegmentsJob?.cancel()
                         pendingQueueSegmentsJob = viewModelScope.launch {
+                            // ⚡ 低性能优化：先等当前歌曲真正进入播放（STATE_READY）再准备并
+                            // 回填队列，避免"逐首构建 MediaItem + 批量 addMediaItems + 多次
+                            // onTimelineChanged 队列重建"与首曲初始化争抢 CPU/主线程，
+                            // 消除媒体库放歌前 3 秒的卡顿。
+                            awaitPlaybackReady(dualPlayerEngine.masterPlayer, timeoutMs = 4_000L)
                             val preparedSegments = preparePlaybackQueueSegments(
                                 songsToPlay = songsToPlay,
                                 startSongId = effectiveStartSong.id,
@@ -5368,14 +5493,31 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * ⚡ 已下载歌曲的本地播放 URI：命中下载记录时优先返回本地文件，
+     * 支持公共目录（/storage/...，校验文件存在）与 SAF（content://，由应用创建可直接播放）。
+     * 进程重启后由 MusicDownloadService 从 DataStore 恢复下载索引，仍可命中。
+     */
+    private fun localDownloadPlaybackUri(song: Song): android.net.Uri? {
+        val filePath = getDownloadInfo(song.id)?.filePath ?: return null
+        return when {
+            filePath.startsWith("content://", ignoreCase = true) ->
+                android.net.Uri.parse(filePath)
+            filePath.startsWith("/") -> {
+                val file = java.io.File(filePath)
+                if (file.exists()) android.net.Uri.fromFile(file) else null
+            }
+            else -> null
+        }
+    }
+
     private suspend fun buildResolvedPlaybackMediaItem(song: Song): MediaItem {
         // ⚡ 已下载歌曲优先播放本地文件：下载完成后数据库里 path 不会自动更新，
         // 若仍按网络源解析，URL 过期/下架/限流时会出现"下载后无法播放"。
-        // 命中已下载记录时直接用本地 mp3 文件 URI 播放，绕过网络解析。
-        val localFile = getDownloadInfo(song.id)?.filePath
-        if (!localFile.isNullOrBlank() && localFile.startsWith("/")) {
+        // 命中已下载记录时直接用本地文件 URI 播放（含 SAF content:// 路径），绕过网络解析。
+        localDownloadPlaybackUri(song)?.let { localUri ->
             return MediaItemBuilder.build(song).buildUpon()
-                .setUri(android.net.Uri.fromFile(java.io.File(localFile)))
+                .setUri(localUri)
                 .build()
         }
 
@@ -5416,9 +5558,33 @@ class PlayerViewModel @Inject constructor(
         return mediaItem.buildUpon().setUri(resolvedUri).build()
     }
 
+    /**
+     * ⚡ 下载完成后把当前正在播放的歌曲切换为本地文件播放：
+     * 保留当前位置与播放状态，交叉淡化/预加载期间跳过，避免打断过渡。
+     */
+    private suspend fun switchCurrentSongToLocalFileIfNeeded(song: Song) {
+        val controller = mediaController ?: return
+        if (dualPlayerEngine.isTransitionRunning()) return
+        val localUri = localDownloadPlaybackUri(song) ?: return
+        if (controller.currentMediaItem?.mediaId != song.id) return
+        val currentUri = controller.currentMediaItem?.localConfiguration?.uri
+        if (currentUri != null && currentUri.toString() == localUri.toString()) return
+
+        val position = controller.currentPosition.coerceAtLeast(0L)
+        val wasPlaying = controller.isPlaying
+        val mediaItem = MediaItemBuilder.build(song).buildUpon().setUri(localUri).build()
+        Timber.w(
+            "PlayerViewModel: switching current song '${song.title}' (${song.id}) to local file ${localUri}"
+        )
+        controller.setMediaItem(mediaItem, position)
+        controller.prepare()
+        if (wasPlaying) controller.play()
+    }
+
 
     private fun loadAndPlaySong(song: Song) {
         cancelPendingFullQueuePlayback()
+        beginSongTransitionLock()
         beginPreparingSong(song)
         playbackStateHolder.updateStablePlayerState {
             it.copy(
@@ -5430,6 +5596,16 @@ class PlayerViewModel @Inject constructor(
             )
         }
         _isSheetVisible.value = true
+
+        // ⚡ 核心修复：手动触发颜色提取。
+        // loadAndPlaySong 会立即更新 StablePlayerState，导致后续 player 监听器回调时
+        // oldSongUri == newSongUri 而跳过提取。
+        val artUri = song.albumArtUriString
+        if (!artUri.isNullOrBlank()) {
+            viewModelScope.launch {
+                themeStateHolder.extractAndGenerateColorScheme(artUri.toUri(), artUri)
+            }
+        }
 
         val controller = mediaController
         if (controller == null) {
@@ -5445,6 +5621,8 @@ class PlayerViewModel @Inject constructor(
                 if (controller.currentMediaItem?.mediaId == song.id) {
                     if (!controller.isPlaying) controller.play()
                 } else {
+                    // ⚡ 紧贴 setMediaItem 刷新锁定期，覆盖 URI 解析耗时造成的锁过期窗口
+                    beginSongTransitionLock()
                     controller.setMediaItem(mediaItem)
                     controller.prepare()
                     controller.play()
@@ -5748,6 +5926,49 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 把已解析出直链的在线歌曲追加到当前播放队列（不打断当前播放）。
+     * 供在线搜索"整队播放"使用：点击某首搜索结果后，其余结果解析完成后逐个入队。
+     * 与 [playUrl] 保持相同的 Song 构造逻辑（netease:// 走 id、其余走直链）。
+     */
+    fun enqueueCloudSong(
+        url: String,
+        title: String,
+        artist: String = "",
+        cover: String = "",
+        songId: String? = null,
+        bilibiliBvid: String? = null
+    ) {
+        val sanitizedUrl = url.trim()
+            .replace("[\\x00-\\x1F\\x7F]".toRegex(), "")
+        if (sanitizedUrl.isBlank()) return
+        val id = songId.takeIf { !it.isNullOrBlank() } ?: "cloud://${System.currentTimeMillis()}"
+        val parsedNeteaseId = id.toLongOrNull()
+        val contentUri = if (parsedNeteaseId != null && parsedNeteaseId > 0) {
+            "netease://$parsedNeteaseId"
+        } else {
+            sanitizedUrl
+        }
+        val song = Song(
+            id = id,
+            title = title.ifBlank { "Cloud Track" },
+            artist = artist.ifBlank { "Unknown Artist" },
+            artistId = 0L,
+            album = "",
+            albumId = 0L,
+            path = "",
+            contentUriString = contentUri,
+            albumArtUriString = cover.takeIf { it.isNotBlank() },
+            duration = 0L,
+            mimeType = null,
+            bitrate = null,
+            sampleRate = null,
+            neteaseId = parsedNeteaseId?.takeIf { it > 0 },
+            bilibiliBvid = bilibiliBvid?.takeIf { it.isNotBlank() }
+        )
+        addSongToQueue(song)
+    }
+
     fun addSongNextToQueue(song: Song) {
         mediaController?.let { controller ->
             val mediaItem = buildPlaybackMediaItem(song)
@@ -5764,7 +5985,11 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun buildPlaybackMediaItem(song: Song, playlistId: String? = null): MediaItem {
-        val baseItem = MediaItemBuilder.build(song)
+        // ⚡ 队列项同样优先本地已下载文件：避免自动切到下一首已下载歌曲时
+        // 仍走已过期的网络 URL 导致"下载后无法播放"。
+        val baseItem = localDownloadPlaybackUri(song)?.let { localUri ->
+            MediaItemBuilder.build(song).buildUpon().setUri(localUri).build()
+        } ?: MediaItemBuilder.build(song)
         if (playlistId == null) {
             return baseItem
         }
@@ -6254,7 +6479,7 @@ class PlayerViewModel @Inject constructor(
     }
 
 
-    fun playUrl(url: String, title: String, artist: String = "", cover: String = "", songId: String? = null) {
+    fun playUrl(url: String, title: String, artist: String = "", cover: String = "", songId: String? = null, bilibiliBvid: String? = null) {
         _isRoamingMode.value = false
         android.util.Log.d("LxPlayUrl", "=== playUrl called ===")
         android.util.Log.d("LxPlayUrl", "URL: $url")
@@ -6281,7 +6506,11 @@ class PlayerViewModel @Inject constructor(
         val id = songId.takeIf { !it.isNullOrBlank() } ?: "cloud://${System.currentTimeMillis()}"
 
         val isQQMusicSong = id.startsWith("qq_")
-        val sourceName = if (isQQMusicSong) "QQ音乐" else "Cloud Play"
+        // 播放器不显示 B 站来源标签（B站仅在歌曲列表中显示文字徽标）
+        val sourceName = when {
+            isQQMusicSong -> "QQ音乐"
+            else -> "Cloud Play"
+        }
 
         viewModelScope.launch {
             try {
@@ -6289,11 +6518,17 @@ class PlayerViewModel @Inject constructor(
 
                 var tempSong: com.theveloper.pixelplay.data.model.Song
                 if (storedSong != null) {
-                    // 如果数据库中保存的歌曲缺少封面，但本次播放传入的 cover 有效，则补上
+                    // 如果数据库中保存的歌曲缺少封面，但本次播放传入的 cover 有效，则补上；
+                    // B 站源每次播放都带上 bvid，确保即使历史保存的歌曲没有该字段也能查看评论
                     tempSong = if (storedSong.albumArtUriString.isNullOrBlank() && cover.isNotBlank()) {
-                        storedSong.copy(albumArtUriString = cover)
+                        storedSong.copy(
+                            albumArtUriString = cover,
+                            bilibiliBvid = bilibiliBvid?.takeIf { it.isNotBlank() } ?: storedSong.bilibiliBvid
+                        )
                     } else {
-                        storedSong
+                        storedSong.copy(
+                            bilibiliBvid = bilibiliBvid?.takeIf { it.isNotBlank() } ?: storedSong.bilibiliBvid
+                        )
                     }
                 } else {
                     val parsedNeteaseId = id.toLongOrNull()
@@ -6316,13 +6551,15 @@ class PlayerViewModel @Inject constructor(
                         mimeType = null,
                         bitrate = null,
                         sampleRate = null,
-                        neteaseId = parsedNeteaseId?.takeIf { it > 0 }
+                        neteaseId = parsedNeteaseId?.takeIf { it > 0 },
+                        bilibiliBvid = bilibiliBvid?.takeIf { it.isNotBlank() }
                     )
                 }
 
                 android.util.Log.d("LxPlayUrl", "Using stored song: ${storedSong != null}, neteaseId: ${tempSong.neteaseId}, contentUri: ${tempSong.contentUriString}")
 
                 cancelPendingFullQueuePlayback()
+                beginSongTransitionLock()
 
                 beginPreparingSong(tempSong)
 
@@ -7467,6 +7704,9 @@ class PlayerViewModel @Inject constructor(
      * ⚡ 关键优化：漫游模式下如果下一首与当前歌曲相同，则自动跳过
      */
     fun nextSong() {
+        // ⚡ 提前开启切歌锁定期：覆盖 seekToNext → onMediaItemTransition 之间的
+        // 陈旧读取窗口，避免 currentSong 被回跳到上一曲（见 beginSongTransitionLock 注释）。
+        beginSongTransitionLock()
         if (_isRoamingMode.value) {
             val currentQueue = _playerUiState.value.currentPlaybackQueue
             val currentSongId = stablePlayerState.value.currentSong?.id
@@ -7522,6 +7762,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun previousSong() {
+        beginSongTransitionLock()
         playbackStateHolder.previousSong()
     }
 

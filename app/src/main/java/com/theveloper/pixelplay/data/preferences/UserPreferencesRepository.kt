@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -88,6 +89,18 @@ data class AdvancedPerformanceDiagnosticsSettings(
     fun isActive(nowEpochMs: Long = System.currentTimeMillis()): Boolean =
         enabled && expiresAtEpochMs?.let { nowEpochMs < it } == true
 }
+
+/**
+ * 已下载歌曲的持久化索引：进程重启后仍能命中"已下载 → 本地播放"，
+ * 避免下载过的歌曲因内存态丢失而回落到已过期的网络 URL 导致无法播放。
+ */
+@Serializable
+data class PersistedDownloadEntry(
+    val songId: String,
+    val title: String = "",
+    val artist: String = "",
+    val filePath: String = ""
+)
 
 @Singleton
 class UserPreferencesRepository @Inject constructor(
@@ -163,6 +176,7 @@ class UserPreferencesRepository @Inject constructor(
         val KEEP_PLAYING_IN_BACKGROUND = booleanPreferencesKey("keep_playing_in_background")
         val IS_CROSSFADE_ENABLED = booleanPreferencesKey("is_crossfade_enabled")
         val HI_FI_MODE_ENABLED = booleanPreferencesKey("hi_fi_mode_enabled")
+        val HOME_TOP_LIST_ENABLED = booleanPreferencesKey("home_top_list_enabled")
         val MUSIC_QUALITY = stringPreferencesKey("music_quality")
         val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
         val CUSTOM_GENRES = stringSetPreferencesKey("custom_genres")
@@ -309,6 +323,7 @@ class UserPreferencesRepository @Inject constructor(
 
         // Download settings
         val DOWNLOAD_PATH = stringPreferencesKey("download_path")
+        val DOWNLOADS_INDEX_JSON = stringPreferencesKey("downloads_index_json_v1")
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────
@@ -439,6 +454,14 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setHiFiModeEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.HI_FI_MODE_ENABLED] = enabled }
+    }
+
+    // ─── 首页排行榜显示开关 ────────────────────────────────────────────
+    val homeTopListEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.HOME_TOP_LIST_ENABLED] ?: true }
+
+    suspend fun setHomeTopListEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.HOME_TOP_LIST_ENABLED] = enabled }
     }
 
     val musicQualityFlow: Flow<MusicQuality> =
@@ -1770,6 +1793,19 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun getDownloadPath(): String {
         return downloadPathFlow.first()
+    }
+
+    // ─── Downloaded songs index (survives process restart) ──────────────────
+
+    suspend fun getDownloadsIndexOnce(): List<PersistedDownloadEntry> {
+        val raw = dataStore.data.first()[PreferencesKeys.DOWNLOADS_INDEX_JSON]
+        return raw
+            ?.let { runCatching { json.decodeFromString<List<PersistedDownloadEntry>>(it) }.getOrNull() }
+            ?: emptyList()
+    }
+
+    suspend fun setDownloadsIndex(entries: List<PersistedDownloadEntry>) {
+        dataStore.edit { it[PreferencesKeys.DOWNLOADS_INDEX_JSON] = json.encodeToString(entries) }
     }
 
     // ─── Transcode cache ──────────────────────────────────────────────────────

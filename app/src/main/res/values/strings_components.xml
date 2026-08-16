@@ -16,7 +16,10 @@
     <string name="lyrics_more_hide_sync_controls">Hide sync controls</string>
     <string name="lyrics_more_adjust_sync">Adjust sync</string>
     <string name="lyrics_more_show_romanization">Show romanization</string>
-    <string name="lyrics_more_show_translations">Show original</string>
+    <string name="lyrics_more_display_mode">Lyrics display</string>
+    <string name="lyrics_mode_translation_only">Translation</string>
+    <string name="lyrics_mode_original_only">Original</string>
+    <string name="lyrics_mode_original_and_translation">Both</string>
     <string name="lyrics_more_disable_immersive_once">Disable immersive (once)</string>
     <string name="lyrics_more_keep_screen_on">Keep screen on</string>
     <string name="cd_lyrics_align_left">Align lyrics left</string>

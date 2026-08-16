@@ -3,7 +3,9 @@ package com.theveloper.pixelplay.presentation.components.player
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
+import android.widget.Toast
 import com.theveloper.pixelplay.data.model.Lyrics
+import com.theveloper.pixelplay.presentation.components.BilibiliCommentSheet
 import com.theveloper.pixelplay.presentation.components.CommentSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -135,9 +137,11 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
+import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.radio.RadioStation
 import com.theveloper.pixelplay.presentation.components.AlbumCarouselSection
 import com.theveloper.pixelplay.presentation.components.AutoScrollingTextOnDemand
+import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
 import com.theveloper.pixelplay.presentation.components.LocalMaterialTheme
 import com.theveloper.pixelplay.presentation.components.LyricsSheet
 import com.theveloper.pixelplay.presentation.components.SmartImage
@@ -169,6 +173,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val PREVIOUS_TRACK_RESTART_THRESHOLD_MS = 10_000L
 private const val SKIP_COMMAND_GUARD_MS = 96L
@@ -204,6 +209,21 @@ private suspend fun validateLyricsImport(
             reportedSizeBytes = fileSize
         )
     } ?: LyricsImportValidationResult.Invalid(LyricsImportFailureReason.EMPTY_CONTENT)
+}
+
+/**
+ * 解析歌曲的 B 站 bvid：优先使用 bilibiliBvid 字段；
+ * 数据库/队列恢复的歌曲没有该字段时，从 contentUriString（bilibili://{bvid}/{cid}/{aid}）解析。
+ * ⚡ 仅接受 "BV" 开头的真实 bvid：B 站音频等无 bvid 歌曲会用 aid 兜底存成
+ * bilibili://{aid}/{cid}/{aid}，若当作 bvid 去查评论会得到"无法获取视频信息"。
+ */
+private fun Song.resolveBilibiliBvid(): String? {
+    bilibiliBvid?.takeIf { it.startsWith("BV") }?.let { return it }
+    val uriString = contentUriString ?: return null
+    if (!uriString.startsWith("bilibili://")) return null
+    return runCatching {
+        android.net.Uri.parse(uriString).host?.takeIf { it.startsWith("BV") }
+    }.getOrNull()
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -255,8 +275,15 @@ fun FullPlayerContent(
     val isExpanded by remember(expansionFractionProvider) {
         derivedStateOf { expansionFractionProvider() > 0.35f }
     }
-    
-    if (!isExpanded && currentSheetState == PlayerSheetState.COLLAPSED) {
+
+    // ⚡ 防闪烁：只在"从未展开过"时允许折叠态销毁内容（首次进入省组合开销）。
+    // 一旦展开过，hasEverExpanded 置 true，此后收起/再展开都保持内容挂载，
+    // 封面与歌曲信息不会因整棵销毁重建而重新加载闪烁。
+    var hasEverExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(isExpanded) {
+        if (isExpanded) hasEverExpanded = true
+    }
+    if (!hasEverExpanded && !isExpanded && currentSheetState == PlayerSheetState.COLLAPSED) {
         return
     }
 
@@ -274,6 +301,9 @@ fun FullPlayerContent(
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showArtistPicker by rememberSaveable { mutableStateOf(false) }
     var showCommentSheet by remember { mutableStateOf(false) }
+    // ⚡ B 站源评论：入口与网易云一致（CD 页评论按钮），点击后全屏打开该视频的评论
+    var showBilibiliCommentSheet by remember { mutableStateOf(false) }
+    var bilibiliCommentBvid by remember { mutableStateOf("") }
 
     val lyricsSearchUiState by playerViewModel.lyricsSearchUiState.collectAsStateWithLifecycle()
 
@@ -284,6 +314,14 @@ fun FullPlayerContent(
     val currentSongArtists = fullPlayerSlice.currentSongArtists
     val lyricsSyncOffset = fullPlayerSlice.lyricsSyncOffset
     val lyricsFontFamily by playerViewModel.lyricsFontFamily.collectAsStateWithLifecycle()
+    // ⚡ 自定义播放器背景：开关 + 所选图片 URI + 显示模式 + 模糊半径（0=关闭）（应用到播放器界面与歌词界面）
+    val customPlayerBackgroundEnabled by playerViewModel.customPlayerBackgroundEnabled.collectAsStateWithLifecycle()
+    val customPlayerBackgroundUri by playerViewModel.customPlayerBackgroundUri.collectAsStateWithLifecycle()
+    val customPlayerBackgroundMode by playerViewModel.customPlayerBackgroundMode.collectAsStateWithLifecycle()
+    val customPlayerBackgroundBlurRadius by playerViewModel.customPlayerBackgroundBlurRadius.collectAsStateWithLifecycle()
+    // ⚡ 播放器控键透明度（百分比）与歌词渐变遮罩开关
+    val customPlayerControlsOpacity by playerViewModel.customPlayerControlsOpacity.collectAsStateWithLifecycle()
+    val lyricsGradientOverlayEnabled by playerViewModel.lyricsGradientOverlayEnabled.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     val gradientEdgeColor by androidx.compose.animation.animateColorAsState(
         targetValue = LocalMaterialTheme.current.primaryContainer,
@@ -499,7 +537,19 @@ fun FullPlayerContent(
     val latestShowLyricsSheet by rememberUpdatedState(showLyricsSheet)
     val onLyricsClick = remember {{ showLyricsSheet = true }}
 
-    val onCommentClick = remember {{ showCommentSheet = true }}
+    // 评论按钮：网易云歌曲打开 CommentSheet，B 站源歌曲打开 BilibiliCommentSheet（入口完全一致）
+    val commentTargetSongRef = rememberUpdatedState(song)
+    val onCommentClick = remember {
+        {
+            val targetSong = commentTargetSongRef.value
+            if (resolveCommentSongId(targetSong).isNotBlank()) {
+                showCommentSheet = true
+            } else if (!targetSong.resolveBilibiliBvid().isNullOrBlank()) {
+                bilibiliCommentBvid = targetSong.resolveBilibiliBvid().orEmpty()
+                showBilibiliCommentSheet = true
+            }
+        }
+    }
 
     if (showFetchLyricsDialog) {
         MaterialTheme(
@@ -580,13 +630,25 @@ fun FullPlayerContent(
     val latestCurrentSongArtists by rememberUpdatedState(currentSongArtists)
     val latestShowArtistPicker by rememberUpdatedState(showArtistPicker)
     // 多位歌手选择列表：优先用歌曲自带的 artists（含真实歌手 ID，漫游/在线/收藏歌曲都能用），
-    // 其次用数据库 song_artist_cross_ref 关联（本地媒体）。
-    val pickerArtists = remember(song.id, song.artists, currentSongArtists) {
+    // 其次用数据库 song_artist_cross_ref 关联（本地媒体），
+    // 最后从 displayArtist 按分隔符拆分（在线歌曲 artists 未填充、本地未拆分入库时，
+    // 保证 2 位以上艺人也能弹出选择器，而不是直接跳第一位）。
+    val pickerArtists = remember(song.id, song.artists, currentSongArtists, song.displayArtist) {
         val fromSong = song.artists.filter { it.name.isNotBlank() && it.id != 0L }
-        if (fromSong.size > 1) {
-            fromSong.map { Artist(id = it.id, name = it.name, songCount = 0) }
-        } else {
-            currentSongArtists
+        when {
+            fromSong.size > 1 -> fromSong.map { Artist(id = it.id, name = it.name, songCount = 0) }
+            currentSongArtists.size > 1 -> currentSongArtists
+            else -> {
+                val names = song.displayArtist
+                    .split("、", "，", ",", "&", "/")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() && it.length <= 32 }
+                if (names.size > 1) {
+                    names.map { Artist(id = 0L, name = it, songCount = 0) }
+                } else {
+                    currentSongArtists
+                }
+            }
         }
     }
     val latestPickerArtists by rememberUpdatedState(pickerArtists)
@@ -984,9 +1046,117 @@ fun FullPlayerContent(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // ⚡ 已按用户要求移除：歌名右侧的设备状态按钮
-                            // （连接蓝牙时显示蓝牙图标；未连接显示扬声器；投屏时显示 cast），
-                            // 其投屏/设备切换入口不再显示。
+                            val showCastLabel = isCastConnecting || (isRemotePlaybackActive && selectedRouteName != null)
+                            val isBluetoothActive =
+                                isBluetoothEnabled && !bluetoothName.isNullOrEmpty() && !isRemotePlaybackActive && !isCastConnecting
+                            val castIconPainter = when {
+                                isCastConnecting || isRemotePlaybackActive -> painterResource(R.drawable.rounded_cast_24)
+                                isBluetoothActive -> painterResource(R.drawable.rounded_bluetooth_24)
+                                else -> painterResource(R.drawable.rounded_mobile_speaker_24)
+                            }
+                            val castCornersExpanded = 50.dp
+                            val castCornersCompact = 6.dp
+                            val castTopStart = castCornersExpanded
+                            val castTopEnd by animateDpAsState(
+                                targetValue = if (showCastLabel) castCornersExpanded else castCornersCompact,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                            )
+                            val castBottomStart = castCornersExpanded
+                            val castBottomEnd by animateDpAsState(
+                                targetValue = if (showCastLabel) castCornersExpanded else castCornersCompact,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                            )
+                            val castContainerColor = playerOnAccentColor.copy(alpha = 0.7f)
+                            Box(
+                                modifier = Modifier
+                                    .height(42.dp)
+                                    .align(Alignment.CenterVertically)
+                                    .animateContentSize(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessLow
+                                        )
+                                    )
+                                    .widthIn(
+                                        min = 50.dp,
+                                        max = if (showCastLabel) 190.dp else 58.dp
+                                    )
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = castTopStart.coerceAtLeast(0.dp),
+                                            topEnd = castTopEnd.coerceAtLeast(0.dp),
+                                            bottomStart = castBottomStart.coerceAtLeast(0.dp),
+                                            bottomEnd = castBottomEnd.coerceAtLeast(0.dp)
+                                        )
+                                    )
+                                    .background(castContainerColor)
+                                    .clickable { onShowCastClicked() },
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(start = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Start
+                                ) {
+                                    Icon(
+                                        painter = castIconPainter,
+                                        contentDescription = when {
+                                            isCastConnecting || isRemotePlaybackActive -> stringResource(R.string.presentation_batch_g_player_cd_cast)
+                                            isBluetoothActive -> stringResource(R.string.presentation_batch_g_player_cd_bluetooth)
+                                            else -> stringResource(R.string.presentation_batch_g_player_cd_local_playback)
+                                        },
+                                        tint = playerAccentColor
+                                    )
+                                    AnimatedVisibility(visible = showCastLabel) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Spacer(Modifier.width(8.dp))
+                                            AnimatedContent(
+                                                targetState = when {
+                                                    isCastConnecting -> stringResource(R.string.presentation_batch_g_player_connecting)
+                                                    isRemotePlaybackActive && selectedRouteName != null -> selectedRouteName
+                                                    else -> ""
+                                                },
+                                                transitionSpec = {
+                                                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(120))
+                                                },
+                                                label = "castButtonLabel"
+                                            ) { label ->
+                                                Row(
+                                                    modifier = Modifier.padding(end = 16.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                                ) {
+                                                    Text(
+                                                        text = label,
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = playerAccentColor,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.weight(1f, fill = false)
+                                                    )
+                                                    AnimatedVisibility(visible = isCastConnecting) {
+                                                        CircularProgressIndicator(
+                                                            modifier = Modifier
+                                                                .size(14.dp),
+                                                            strokeWidth = 2.dp,
+                                                            color = playerAccentColor
+                                                        )
+                                                    }
+                                                    if (isRemotePlaybackActive && !isCastConnecting) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(8.dp)
+                                                                .clip(CircleShape)
+                                                                .background(LocalMaterialTheme.current.onTertiaryContainer)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             // Queue Button（广播电台播放时不显示：实时流没有播放列表）
                             if (!isRadioPlayback) {
@@ -1029,29 +1199,48 @@ fun FullPlayerContent(
             animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
             label = "orientationAlpha"
         )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = contentAlpha }
-        ) {
-            if (isLandscape) {
-                FullPlayerLandscapeContent(
-                    paddingValues = paddingValues,
-                    albumCoverSection = albumCoverSection,
-                    songMetadataSection = landscapeSongMetadataSection,
-                    playerProgressSection = playerProgressSection,
-                    controlsSection = controlsSection,
-                    isRadioPlayback = isRadioPlayback
+        Box(modifier = Modifier.fillMaxSize()) {
+            // ⚡ 自定义播放器背景：置于所有播放器内容之下（开关关闭或未选图时不绘制）
+            //    背景不参与「播放器不透明度」——该设置只作用于背景之外的所有元素
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = contentAlpha }
+            ) {
+                CustomPlayerBackground(
+                    modifier = Modifier.fillMaxSize(),
+                    enabled = customPlayerBackgroundEnabled,
+                    uri = customPlayerBackgroundUri,
+                    mode = customPlayerBackgroundMode,
+                    blurRadius = customPlayerBackgroundBlurRadius,
+                    scrimAlpha = 0.25f
                 )
-            } else {
-                FullPlayerPortraitContent(
-                    paddingValues = paddingValues,
-                    albumCoverSection = albumCoverSection,
-                    songMetadataSection = portraitSongMetadataSection,
-                    playerProgressSection = playerProgressSection,
-                    controlsSection = controlsSection,
-                    isRadioPlayback = isRadioPlayback
-                )
+            }
+            // ⚡ 播放器不透明度：背景之外的所有元素（封面、元信息、进度、控制）统一淡化
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = contentAlpha * (customPlayerControlsOpacity / 100f) }
+            ) {
+                if (isLandscape) {
+                    FullPlayerLandscapeContent(
+                        paddingValues = paddingValues,
+                        albumCoverSection = albumCoverSection,
+                        songMetadataSection = landscapeSongMetadataSection,
+                        playerProgressSection = playerProgressSection,
+                        controlsSection = controlsSection,
+                        isRadioPlayback = isRadioPlayback
+                    )
+                } else {
+                    FullPlayerPortraitContent(
+                        paddingValues = paddingValues,
+                        albumCoverSection = albumCoverSection,
+                        songMetadataSection = portraitSongMetadataSection,
+                        playerProgressSection = playerProgressSection,
+                        controlsSection = controlsSection,
+                        isRadioPlayback = isRadioPlayback
+                    )
+                }
             }
         }
     }
@@ -1107,7 +1296,13 @@ fun FullPlayerContent(
             onShuffleToggle = onShuffleToggle,
             onRepeatToggle = onRepeatToggle,
             onFavoriteToggle = onFavoriteToggle,
-            showLyricsTrackInfo = fullPlayerSlice.showLyricsTrackInfo
+            showLyricsTrackInfo = fullPlayerSlice.showLyricsTrackInfo,
+            customPlayerBackgroundEnabled = customPlayerBackgroundEnabled,
+            customPlayerBackgroundUri = customPlayerBackgroundUri,
+            customPlayerBackgroundMode = customPlayerBackgroundMode,
+            customPlayerBackgroundBlurRadius = customPlayerBackgroundBlurRadius,
+            customPlayerControlsOpacity = customPlayerControlsOpacity,
+            lyricsGradientOverlayEnabled = lyricsGradientOverlayEnabled
         )
     }
 
@@ -1142,6 +1337,27 @@ fun FullPlayerContent(
         )
     }
 
+    AnimatedVisibility(
+        visible = showBilibiliCommentSheet,
+        enter = slideInVertically(
+            initialOffsetY = { it / 5 },
+            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+        ) + fadeIn(animationSpec = tween(durationMillis = 160)),
+        exit = slideOutVertically(
+            targetOffsetY = { it / 6 },
+            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+        ) + fadeOut(animationSpec = tween(durationMillis = 120))
+    ) {
+        // ⚡ B 站源评论页：入口与网易云完全一致（CD 页评论按钮），按 bvid 拉取该视频评论
+        BilibiliCommentSheet(
+            bvid = bilibiliCommentBvid,
+            videoTitle = song.title,
+            upName = song.displayArtist,
+            colorScheme = LocalMaterialTheme.current,
+            onBackClick = { showBilibiliCommentSheet = false }
+        )
+    }
+
     val artistPickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     if (showArtistPicker && pickerArtists.isNotEmpty()) {
         PlayerArtistPickerBottomSheet(
@@ -1153,14 +1369,32 @@ fun FullPlayerContent(
                 // 网易云多歌手：点击哪个歌手就进哪个歌手的主页（artist.id 即该歌手的网易云 ID）。
                 // 统一媒体库歌曲歌手 ID 是名字 hash（负数），透传歌手下标，由 ViewModel 按
                 // 歌曲详情真实 artistIds 解析对应歌手，避免"第二歌手永远跳到第一歌手"。
-                playerViewModel.triggerArtistNavigationFromPlayer(
-                    artistId = artist.id,
-                    songNeteaseId = song.neteaseId,
-                    neteaseArtistId = artist.id.takeIf { song.neteaseId != null && it > 0L },
-                    neteaseArtistIndex = pickerArtists.indexOfFirst { it.name == artist.name }
-                        .takeIf { it >= 0 }
-                )
-                showArtistPicker = false
+                if (artist.id == 0L && song.neteaseId == null) {
+                    // 本地歌曲：displayArtist 拆分出来的名字没有真实 ID，按名字查数据库
+                    fileImportScope.launch {
+                        val idByName = try {
+                            withContext(Dispatchers.IO) { playerViewModel.resolveLocalArtistIdByName(artist.name) }
+                        } catch (t: Throwable) {
+                            Timber.w(t, "resolveLocalArtistIdByName failed: ${artist.name}")
+                            null
+                        }
+                        if (idByName != null && idByName != 0L) {
+                            playerViewModel.triggerArtistNavigationFromPlayer(idByName, null)
+                        } else {
+                            Toast.makeText(context, "未找到艺人「${artist.name}」", Toast.LENGTH_SHORT).show()
+                        }
+                        showArtistPicker = false
+                    }
+                } else {
+                    playerViewModel.triggerArtistNavigationFromPlayer(
+                        artistId = artist.id,
+                        songNeteaseId = song.neteaseId,
+                        neteaseArtistId = artist.id.takeIf { song.neteaseId != null && it > 0L },
+                        neteaseArtistIndex = pickerArtists.indexOfFirst { it.name == artist.name }
+                            .takeIf { it >= 0 }
+                    )
+                    showArtistPicker = false
+                }
             }
         )
     }
@@ -1325,6 +1559,8 @@ private fun FullPlayerControlsSection(
     onSecondaryFixed: Color,
     tertiaryFixed: Color,
     onTertiaryFixed: Color,
+    // ⚡ 播放器控键透明度：0..1 alpha（100% = 完全不透明，应用到所有控制按钮）
+    controlsOpacity: Float = 1f,
 ) {
     val motionScheme = remember { MotionScheme.expressive() }
     val controlSpatialSpec = remember { motionScheme.fastSpatialSpec<Float>() }
@@ -1355,7 +1591,10 @@ private fun FullPlayerControlsSection(
         }
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            // ⚡ 播放器控键透明度：播放/暂停、上/下首、随机/循环/收藏整块统一淡化
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = controlsOpacity },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -1836,8 +2075,10 @@ private fun SongMetadataDisplaySection(
     isPlayingProvider: () -> Boolean = { true },
     isRadioPlayback: Boolean = false
 ) {
-    // 评论依赖网易云接口（加载/发送），非网易云歌曲（本地/其它在线源）不显示评论按钮
-    val canShowComment = song?.let { resolveCommentSongId(it).isNotBlank() } ?: false
+    // 评论依赖网易云接口（加载/发送）或 B 站接口（加载）：只有网易云/B 站歌曲显示评论按钮
+    val canShowComment = song?.let {
+        resolveCommentSongId(it).isNotBlank() || !it.resolveBilibiliBvid().isNullOrBlank()
+    } ?: false
     Row(
         modifier
             .fillMaxWidth()
@@ -2035,23 +2276,6 @@ private fun SongMetadataDisplaySection(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val hasBluetooth by playerViewModel.hasBluetoothOutput.collectAsStateWithLifecycle()
-                    val btLyricsEnabled by playerViewModel.bluetoothLyricsEnabled.collectAsStateWithLifecycle()
-                    if (hasBluetooth) {
-                        FilledIconButton(
-                            modifier = Modifier.size(width = 48.dp, height = 48.dp),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = if (btLyricsEnabled) chipContentColor else chipColor,
-                                contentColor = if (btLyricsEnabled) chipColor else chipContentColor
-                            ),
-                            onClick = { playerViewModel.toggleBluetoothLyrics() }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.rounded_bluetooth_24),
-                                contentDescription = "Bluetooth Lyrics"
-                            )
-                        }
-                    }
                     FilledIconButton(
                         modifier = Modifier
                             .size(width = 48.dp, height = 48.dp),
@@ -2607,8 +2831,13 @@ private fun DelayedContent(
             if (isExpandedOverride) {
                 isDelayGateOpen = true
             } else {
-                snapshotFlow { expansionFractionProvider().coerceIn(0f, 1f) }
-                    .first { fraction -> fraction <= 0.001f }
+                // ⚡ 兜底：等待折叠动画归零最长 1.5s。若展开/折叠动画被中断或卡住
+                // （fraction 始终 >0.001），超时后强制关门，避免 gate 永久挂起导致
+                // 内容被占位层盖住（表现为进度条/播放信息"完全卡住"）。
+                withTimeoutOrNull(1500) {
+                    snapshotFlow { expansionFractionProvider().coerceIn(0f, 1f) }
+                        .first { fraction -> fraction <= 0.001f }
+                }
                 isDelayGateOpen = false
             }
             return@LaunchedEffect
@@ -2637,12 +2866,13 @@ private fun DelayedContent(
                 !previousExpandedOverride && frame.isExpandedOverride
             val isCollapsing = isCollapsingByFraction || justStartedCollapsing
             val isExpanding = isExpandingByFraction || justStartedExpanding
-            val isFullyExpanded =
-                frame.isExpandedOverride && frame.effectiveExpansionFraction >= 0.985f
 
             if (frame.effectiveExpansionFraction <= 0.001f && !frame.isExpandedOverride) {
                 isDelayGateOpen = false
-            } else if (isFullyExpanded) {
+            } else if (frame.isExpandedOverride) {
+                // ⚡ 展开即开门：展开过程中内容全程可见（alpha 由 baseAlphaProvider 平滑控制），
+                // 不再等展开到 appearThreshold(98%) 才显示——否则展开前期全是不透明占位块，
+                // 占位块与内容交叉淡入淡出，视觉上表现为"展开时闪几下"。
                 isDelayGateOpen = true
             } else if (isDelayGateOpen) {
                 if (applyPlaceholderDelayOnClose &&
@@ -2653,7 +2883,7 @@ private fun DelayedContent(
                 }
             } else if (
                 frame.effectiveExpansionFraction >= appearThreshold &&
-                    (!applyPlaceholderDelayOnClose || isExpanding || frame.isExpandedOverride)
+                    (!applyPlaceholderDelayOnClose || isExpanding)
             ) {
                 isDelayGateOpen = true
             }
@@ -2691,18 +2921,19 @@ private fun DelayedContent(
 
     if (shouldDelay) {
         Box(modifier = sharedBoundsModifier) {
-            val shouldComposeContent = isDelayGateOpen
-
-            if (shouldComposeContent) {
-                Box(
-                    modifier = Modifier.graphicsLayer {
-                        alpha = contentBlendAlpha * baseAlphaProvider()
-                    }
-                ) {
-                    content()
+            // ⚡ 防闪烁：content 常驻组合，isDelayGateOpen 只通过 contentBlendAlpha 控制显隐。
+            // 旧实现用 if(isDelayGateOpen) 条件组合，gate 翻转一次就销毁重建一次内容，
+            // 封面图片会重新加载、歌曲信息动画重播 → 展开时闪几下。
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    alpha = contentBlendAlpha * baseAlphaProvider()
                 }
+            ) {
+                content()
             }
-            if (showPlaceholders && placeholderBlendAlpha > 0.001f) {
+            // ⚡ 展开态不渲染占位块：占位块与内容交叉淡入淡出是展开闪烁的根源之一。
+            // 展开时内容全程可见（alpha 由 baseAlphaProvider 平滑过渡），折叠时才淡入占位块。
+            if (showPlaceholders && !isExpandedOverride && placeholderBlendAlpha > 0.001f) {
                 Box(
                     modifier = Modifier.graphicsLayer { alpha = placeholderBlendAlpha }
                 ) {

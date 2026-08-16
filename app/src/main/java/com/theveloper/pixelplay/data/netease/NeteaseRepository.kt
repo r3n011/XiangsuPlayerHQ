@@ -407,6 +407,71 @@ class NeteaseRepository @Inject constructor(
         }
     }
 
+    /**
+     * 拉取网易云官方榜单（榜单本质是官方歌单）的全部歌曲。
+     * 走 /api/v6/playlist/detail（CryptoMode.API 明文、匿名可用），
+     * 内嵌 tracks 不足时按 trackIds 分批 getSongDetails 补全（同 syncPlaylistSongs 管线）。
+     */
+    suspend fun getToplistSongs(toplistId: Long): Result<List<Song>> = withContext(Dispatchers.IO) {
+        try {
+            val raw = api.getPlaylistDetail(toplistId)
+            val root = JSONObject(raw)
+
+            if (root.optInt("code", -1) != 200) {
+                return@withContext Result.failure(Exception("Toplist API error: code=${root.optInt("code", -1)}"))
+            }
+
+            val playlist = root.optJSONObject("playlist")
+                ?: return@withContext Result.failure(Exception("No playlist data"))
+            val embeddedTracks = playlist.optJSONArray("tracks")
+            val trackIds = playlist.optJSONArray("trackIds")
+
+            val songsById = LinkedHashMap<Long, Song>()
+            for (i in 0 until (embeddedTracks?.length() ?: 0)) {
+                val track = embeddedTracks?.optJSONObject(i) ?: continue
+                songsById[track.optLong("id")] = parseTrackToSong(track)
+            }
+
+            val orderedIds = mutableListOf<Long>()
+            for (i in 0 until (trackIds?.length() ?: 0)) {
+                val id = trackIds?.optJSONObject(i)?.optLong("id") ?: 0L
+                if (id > 0L) orderedIds.add(id)
+            }
+
+            val missing = orderedIds.filterNot(songsById::containsKey)
+            if (missing.isNotEmpty()) {
+                missing.chunked(NETEASE_SONG_DETAIL_BATCH_SIZE).forEach { chunk ->
+                    val detailRaw = api.getSongDetails(chunk)
+                    val detailRoot = JSONObject(detailRaw)
+                    if (detailRoot.optInt("code", -1) != 200) return@forEach
+                    val detailSongs = detailRoot.optJSONArray("songs") ?: return@forEach
+                    for (i in 0 until detailSongs.length()) {
+                        val track = detailSongs.optJSONObject(i) ?: continue
+                        songsById[track.optLong("id")] = parseTrackToSong(track)
+                    }
+                }
+            }
+
+            val songs = if (orderedIds.isNotEmpty()) {
+                val ordered = orderedIds.mapNotNull { songsById[it] }
+                if (ordered.size < songsById.size) {
+                    val orderedSet = orderedIds.toSet()
+                    ordered + songsById.values.filterNot { it.neteaseId != null && it.neteaseId in orderedSet }
+                } else {
+                    ordered
+                }
+            } else {
+                songsById.values.toList()
+            }
+
+            Timber.d("getToplistSongs: toplistId=$toplistId fetched ${songs.size} songs")
+            Result.success(songs)
+        } catch (e: Exception) {
+            Timber.e(e, "getToplistSongs failed for $toplistId")
+            Result.failure(e)
+        }
+    }
+
     suspend fun syncAllPlaylistsAndSongs(): Result<BulkSyncResult> {
         return withContext(Dispatchers.IO) {
             val playlistResult = syncUserPlaylists().getOrElse { return@withContext Result.failure(it) }

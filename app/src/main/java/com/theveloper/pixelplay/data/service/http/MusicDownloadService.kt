@@ -21,6 +21,7 @@ import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
+import com.theveloper.pixelplay.data.preferences.PersistedDownloadEntry
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
@@ -75,6 +76,16 @@ class MusicDownloadService @Inject constructor(
     private val _downloads = MutableStateFlow<List<DownloadInfo>>(emptyList())
     val downloads: StateFlow<List<DownloadInfo>> = _downloads.asStateFlow()
 
+    // ⚡ 下载索引缓存：songId → DownloadInfo。getDownloadInfo 原先对下载列表线性扫描
+    // （O(M)），媒体库放歌构建大队列时每首歌都要查一次（O(N×M)），低性能设备上会明显
+    // 拖慢"放歌前几秒"。改为在下载列表变更时重建不可变 Map，查询降为 O(1)。
+    @Volatile
+    private var downloadIndex: Map<String, DownloadInfo> = emptyMap()
+
+    private fun rebuildDownloadIndex() {
+        downloadIndex = _downloads.value.associateBy { it.songId }
+    }
+
     // 应用级作用域：下载在后台独立协程中执行，不占主线程、
     // 不随播放页 ViewModel 销毁而中断（关闭播放页/切到后台仍能继续下载）。
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -86,6 +97,50 @@ class MusicDownloadService @Inject constructor(
 
     init {
         createDownloadChannel()
+        // ⚡ 进程重启后恢复已下载索引：_downloads 从纯内存态升级为
+        // DataStore 持久化索引，重启后仍能命中"已下载 → 本地播放"。
+        loadPersistedDownloads()
+    }
+
+    /** 从 DataStore 恢复已完成的下载记录（标题/进度仅为展示用，路径最关键）。 */
+    private fun loadPersistedDownloads() {
+        appScope.launch {
+            val persisted = userPreferencesRepository.getDownloadsIndexOnce()
+            if (persisted.isEmpty()) return@launch
+            _downloads.value = persisted
+                .filter { it.songId.isNotBlank() && it.filePath.isNotBlank() }
+                .map {
+                    DownloadInfo(
+                        songId = it.songId,
+                        title = it.title,
+                        artist = it.artist,
+                        progress = 100f,
+                        isComplete = true,
+                        isFailed = false,
+                        filePath = it.filePath
+                    )
+                }
+            rebuildDownloadIndex()
+            Timber.d("MusicDownloadService: restored ${persisted.size} downloaded songs from index")
+        }
+    }
+
+    /** 把已完成的下载记录持久化到 DataStore，保证进程重启后仍可本地播放。 */
+    private fun persistDownloads() {
+        appScope.launch {
+            userPreferencesRepository.setDownloadsIndex(
+                _downloads.value
+                    .filter { it.isComplete && !it.songId.isBlank() && !it.filePath.isNullOrBlank() }
+                    .map {
+                        PersistedDownloadEntry(
+                            songId = it.songId,
+                            title = it.title,
+                            artist = it.artist,
+                            filePath = it.filePath!!
+                        )
+                    }
+            )
+        }
     }
 
     private fun createDownloadChannel() {
@@ -165,6 +220,8 @@ class MusicDownloadService @Inject constructor(
             if (result) {
                 updateDownloadStatus(songId, song.title, song.displayArtist, 100f, true, false, outputPath)
                 showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true)
+                // ⚡ 持久化下载索引：进程重启后仍可命中本地播放。
+                persistDownloads()
                 // 下载完成后自动补全元数据：写音频标签（标题/歌手/专辑/封面/歌词）、
                 // 生成同目录 .lrc 歌词文件并刷新 MediaStore
                 enrichDownloadedFile(song, outputPath)
@@ -346,14 +403,18 @@ class MusicDownloadService @Inject constructor(
         }.ifEmpty {
             listOf(DownloadInfo(songId, title, artist, progress, isComplete, isFailed, filePath))
         }
+        rebuildDownloadIndex()
     }
 
     fun getDownloadInfo(songId: String): DownloadInfo? {
-        return _downloads.value.find { it.songId == songId }
+        val index = downloadIndex
+        return if (index.isNotEmpty()) index[songId] else _downloads.value.find { it.songId == songId }
     }
 
     fun removeDownload(songId: String) {
         _downloads.value = _downloads.value.filterNot { it.songId == songId }
+        rebuildDownloadIndex()
+        persistDownloads()
     }
 
     /**

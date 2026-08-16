@@ -31,6 +31,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -114,14 +116,11 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     .fillMaxWidth()
                     .height(MiniPlayerHeight)
                     .graphicsLayer {
-                        // ⚡ 展开动画：封面/歌名/歌手不再原地直接淡出（旧逻辑 alpha=1-f*2，0.5 即消失），
-                        // 而是随展开进度逐渐向上移动到 full player 目标区域，途中轻微缩小，
-                        // 到约 0.75 才完全淡出，形成"内容逐渐移动到目标位置"的连续运动感。
+                        // ⚡ 展开动画：封面/歌名/歌手各自独立动画（见 MiniPlayerContentInternal），
+                        // 外层只负责整体轻微上移和最终淡出
                         val f = playerContentExpansionFraction.value.coerceIn(0f, 1f)
-                        translationY = -f * 240f
-                        scaleX = lerp(1f, 0.94f, f)
-                        scaleY = lerp(1f, 0.94f, f)
-                        alpha = (1f - f * 1.34f).coerceIn(0f, 1f)
+                        translationY = -f * 80f
+                        alpha = (1f - f * 1.5f).coerceIn(0f, 1f)
                     }
                     .layout { measurable, constraints ->
                         // 平滑过渡：宽度与偏移随展开进度连续变化，不再分段量化，
@@ -152,8 +151,22 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                 val isMiniPlayerVisible by remember {
                     derivedStateOf { playerContentExpansionFraction.value < 0.01f }
                 }
+                val expansionFractionProvider = remember(playerContentExpansionFraction) {
+                    { playerContentExpansionFraction.value }
+                }
                 val navBarBlurEnabled by playerViewModel.navBarBlurEnabled.collectAsStateWithLifecycle()
                 val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
+                val density = LocalDensity.current
+                val configuration = LocalConfiguration.current
+                val containerHeightDp = configuration.screenHeightDp.toFloat()
+                val screenWidthDp = configuration.screenWidthDp.toFloat()
+                // full player 封面尺寸：与 FullPlayerContent 计算逻辑一致
+                val coverHorizontalPadding = 12f
+                val bottomMinHeight = 300f
+                val coverSizeDp = minOf(
+                    containerHeightDp - bottomMinHeight,
+                    screenWidthDp - coverHorizontalPadding * 2
+                ).coerceAtLeast(100f)
                 MiniPlayerContentInternal(
                     song = activeSong, // Use activeSong
                     isPlaying = infrequentPlayerState.isPlaying,
@@ -174,7 +187,11 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                         }
                     ),
                     currentPositionProvider = currentPositionProvider,
-                    totalDurationProvider = { infrequentPlayerState.totalDuration }
+                    totalDurationProvider = { infrequentPlayerState.totalDuration },
+                    expansionFractionProvider = expansionFractionProvider,
+                    fullPlayerCoverSizeDp = coverSizeDp,
+                    containerHeightDp = containerHeightDp,
+                    screenWidthDp = screenWidthDp
                 )
             }
         }

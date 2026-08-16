@@ -990,6 +990,7 @@ private fun TabletSettingsScreen(
                         onOpenQqMusicDashboard = { outerNavController.navigateSafely(Screen.QqMusicDashboard.route) },
                         onOpenNavidromeDashboard = { outerNavController.navigateSafely(Screen.NavidromeDashboard.route) },
                         onOpenJellyfinDashboard = { outerNavController.navigateSafely(Screen.JellyfinDashboard.route) },
+                        onOpenBilibiliDashboard = { outerNavController.navigateSafely(Screen.BilibiliFavorites.route) },
                         showBackButton = false
                     )
                 }

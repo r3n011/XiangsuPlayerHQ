@@ -23,6 +23,9 @@ sealed class Screen(val route: String) {
     object DailyMixScreen : Screen("daily_mix")
     object AiMixScreen : Screen("ai_mix")
     object DailyRecommendScreen : Screen("daily_recommend")
+    object ToplistDetail : Screen("toplist_detail/{entryId}") {
+        fun createRoute(entryId: String) = "toplist_detail/$entryId"
+    }
     object RecentlyPlayed : Screen("recently_played")
     object Stats : Screen("stats")
     object GenreDetail : Screen("genre_detail/{genreId}") { // New screen
@@ -62,6 +65,7 @@ sealed class Screen(val route: String) {
     object QqMusicDashboard : Screen("qqmusic_dashboard")
     object NavidromeDashboard : Screen("navidrome_dashboard")
     object JellyfinDashboard : Screen("jellyfin_dashboard")
+    object BilibiliFavorites : Screen("bilibili_favorites")
 
     object CloudMusicSettings : Screen("cloud_music_settings")
     object DotDeviceSettings : Screen("dot_device_settings")

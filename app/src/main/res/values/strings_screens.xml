@@ -201,6 +201,7 @@
     <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
     <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
     <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
     <string name="cd_open_github_profile">Open GitHub profile</string>
     <string name="cd_open_telegram">Open Telegram</string>
     <string name="cd_contributor_avatar">Avatar of %1$s</string>

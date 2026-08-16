@@ -38,8 +38,8 @@ class UpdateChecker @Inject constructor() {
         const val GITHUB_REPO_OWNER = "r3n011"
         const val GITHUB_REPO_NAME = "XiangsuPlayerHQ"
         
-        // 蓝奏云配置
-        const val LANZOU_SHARE_URL = "https://wwbvc.lanzn.com/b011m9azlg"
+        // 蓝奏云配置（域名与 example.py 保持一致：wwbvc.lanzouv.com）
+        const val LANZOU_SHARE_URL = "https://wwbvc.lanzouv.com/b011m9azlg"
         const val LANZOU_PASSWORD = "dtu2"
     }
 

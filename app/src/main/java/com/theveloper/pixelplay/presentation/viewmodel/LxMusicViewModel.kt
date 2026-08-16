@@ -514,88 +514,22 @@ class LxMusicViewModel @Inject constructor(
                     progressLabel = "获取播放链接…",
                     loadingSongId = song.id
                 )
-                val songMap = song.toInfoMap()
-                val availableSources = runCatching {
-                    engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
-                }.getOrDefault(emptyList())
-                // 优先用歌曲自己携带的音源（搜索结果逐条标记），避免切了音源后点播其他源的结果仍走错音源
-                val targetSource = when {
-                    song.source == "wy" -> "wy"
-                    song.source.isNotBlank() &&
-                        (availableSources.contains(song.source) || builtInSourceSearchApi.isSupported(song.source)) -> song.source
-                    selectedSource != "all" &&
-                        (availableSources.contains(selectedSource) || builtInSourceSearchApi.isSupported(selectedSource)) -> selectedSource
-                    else -> availableSources.firstOrNull() ?: "wy"
-                }
-                android.util.Log.d("LxPlaySong", "Target source: $targetSource")
-
-                // 如果 song.pic 为空，在播放前尝试获取封面
-                val coverToUse = if (song.pic.isBlank()) {
-                    android.util.Log.d("LxPlaySong", "封面为空，尝试从歌曲详情 API 获取...")
-                    searchApi.getSongCoverFromDetail(song.id)
-                        ?: run {
-                            android.util.Log.d("LxPlaySong", "详情 API 无封面，尝试 vkeys...")
-                            searchApi.getSongCoverFromVkeys(song.id)
-                        } ?: ""
-                } else song.pic
-
-                _uiState.value = _uiState.value.copy(progressLabel = "正在解析音源…")
-                val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
-                    // 网易云直接走落雪 JS 引擎播放，不经网易云 API 取试听 URL
-                    val preferredQuality = try {
-                        userPreferencesRepository.musicQualityFlow.first()
-                    } catch (_: Exception) {
-                        com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
-                    }
-                    android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=${preferredQuality.lxValue})")
-                    resolvePlayUrlWithQualityChain("wy", songMap, preferredQuality.lxValue)
-                } else if (builtInSourceSearchApi.isSupported(targetSource)) {
-                    // 内置源（QQ音乐/酷狗/咪咕）：官方播放接口 + 溯音酷我兜底
-                    val preferredQuality = try {
-                        userPreferencesRepository.musicQualityFlow.first()
-                    } catch (_: Exception) {
-                        com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
-                    }
-                    android.util.Log.d("LxPlaySong", "Built-in source $targetSource, preferredQuality=${preferredQuality.name} (${preferredQuality.lxValue})")
-                    builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality.lxValue)
-                } else {
-                    val preferredQuality = try {
-                        userPreferencesRepository.musicQualityFlow.first()
-                    } catch (_: Exception) {
-                        com.theveloper.pixelplay.data.preferences.MusicQuality.HIGH
-                    }
-                    resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality.lxValue)
-                }
-                android.util.Log.d("LxPlaySong", "Resolved URL: $url, cover: $coverToUse")
+                val resolved = resolvePlayableSong(song)
+                android.util.Log.d("LxPlaySong", "Resolved URL: ${resolved?.url}, cover: ${resolved?.cover}")
 
                 _uiState.value = _uiState.value.copy(progressLabel = "正在打开播放器…")
 
-                // ── 将歌曲保存到数据库，使用返回的真实 song id
-                // 同时将成功获取 URL 的音源保存到 songInfo.source，
-                // 这样从媒体库播放时可以用正确的音源重新获取播放链接
-                val songWithCover = if (coverToUse.isNotBlank() && song.pic.isBlank()) {
-                    song.copy(pic = coverToUse, source = targetSource)
-                } else {
-                    song.copy(source = targetSource)
-                }
-                val savedSongId = try {
-                    musicRepository.saveCloudSong(songWithCover).toString()
-                } catch (t: Throwable) {
-                    android.util.Log.w("LxPlaySong", "saveCloudSong 失败: ${t.message}")
-                    "cloud_${song.id}"
-                }
-                android.util.Log.d("LxPlaySong", "Saved song ID: $savedSongId, source: $targetSource")
-
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
-                    if (url == null) {
-                        android.util.Log.w("LxPlaySong", "URL is null, showing error (source=$targetSource, song=${song.id})")
-                        _uiState.value = _uiState.value.copy(error = "无法获取播放链接（音源: $targetSource），请换一首或换音源")
+                    if (resolved == null) {
+                        android.util.Log.w("LxPlaySong", "URL is null, showing error (song=${song.id})")
+                        _uiState.value = _uiState.value.copy(
+                            error = "无法获取播放链接（音源: ${resolved?.source ?: "unknown"}），请换一首或换音源"
+                        )
                         return@withContext
                     }
-                    android.util.Log.d("LxPlaySong", "Calling onOpenPlayer with URL length: ${url.length}, songId: $savedSongId")
-                    android.util.Log.d("LxPlaySong", "URL scheme: ${android.net.Uri.parse(url).scheme}, host: ${android.net.Uri.parse(url).host}")
-                    onOpenPlayer(url, song.name, song.singer, coverToUse, savedSongId)
+                    android.util.Log.d("LxPlaySong", "Calling onOpenPlayer with URL length: ${resolved.url.length}, songId: ${resolved.savedSongId}")
+                    onOpenPlayer(resolved.url, song.name, song.singer, resolved.cover, resolved.savedSongId)
                 }
             } catch (t: Throwable) {
                 android.util.Log.e("LxPlaySong", "Error: ${t.message}", t)
@@ -603,6 +537,93 @@ class LxMusicViewModel @Inject constructor(
                     progress = null, progressLabel = null, loadingSongId = null,
                     error = "播放失败: ${t.message ?: t.javaClass.simpleName}"
                 )
+            }
+        }
+    }
+
+    private data class LxResolvedPlayable(
+        val url: String,
+        val cover: String,
+        val savedSongId: String,
+        val source: String
+    )
+
+    /**
+     * 解析一首落雪歌曲的可播放直链（音源选择 → 封面补全 → URL 解析 → 保存云端歌曲）。
+     * 不更新 UI 状态，供 [playSong] 与 [enqueueAllSearchResults] 共用（静默批量解析）。
+     */
+    private suspend fun resolvePlayableSong(song: LxSongInfo): LxResolvedPlayable? {
+        val songMap = song.toInfoMap()
+        val availableSources = runCatching {
+            engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
+        }.getOrDefault(emptyList())
+        // 优先用歌曲自己携带的音源（搜索结果逐条标记），避免切了音源后点播其他源的结果仍走错音源
+        val targetSource = when {
+            song.source == "wy" -> "wy"
+            song.source.isNotBlank() &&
+                (availableSources.contains(song.source) || builtInSourceSearchApi.isSupported(song.source)) -> song.source
+            selectedSource != "all" &&
+                (availableSources.contains(selectedSource) || builtInSourceSearchApi.isSupported(selectedSource)) -> selectedSource
+            else -> availableSources.firstOrNull() ?: "wy"
+        }
+        android.util.Log.d("LxPlaySong", "Target source: $targetSource")
+
+        // 如果 song.pic 为空，在播放前尝试获取封面
+        val coverToUse = if (song.pic.isBlank()) {
+            searchApi.getSongCoverFromDetail(song.id)
+                ?: searchApi.getSongCoverFromVkeys(song.id)
+                ?: ""
+        } else song.pic
+
+        val preferredQuality = runCatching { userPreferencesRepository.musicQualityFlow.first() }
+            .getOrDefault(MusicQuality.HIGH)
+        val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
+            // 网易云直接走落雪 JS 引擎播放，不经网易云 API 取试听 URL
+            android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=${preferredQuality.lxValue})")
+            resolvePlayUrlWithQualityChain("wy", songMap, preferredQuality.lxValue)
+        } else if (builtInSourceSearchApi.isSupported(targetSource)) {
+            // 内置源（QQ音乐/酷狗/咪咕）：官方播放接口 + 溯音酷我兜底
+            android.util.Log.d("LxPlaySong", "Built-in source $targetSource, preferredQuality=${preferredQuality.name} (${preferredQuality.lxValue})")
+            builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality.lxValue)
+        } else {
+            resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality.lxValue)
+        }
+        if (url == null) return null
+
+        // ── 将歌曲保存到数据库，使用返回的真实 song id
+        // 同时将成功获取 URL 的音源保存到 songInfo.source，
+        // 这样从媒体库播放时可以用正确的音源重新获取播放链接
+        val songWithCover = if (coverToUse.isNotBlank() && song.pic.isBlank()) {
+            song.copy(pic = coverToUse, source = targetSource)
+        } else {
+            song.copy(source = targetSource)
+        }
+        val savedSongId = try {
+            musicRepository.saveCloudSong(songWithCover).toString()
+        } catch (t: Throwable) {
+            android.util.Log.w("LxPlaySong", "saveCloudSong 失败: ${t.message}")
+            "cloud_${song.id}"
+        }
+        android.util.Log.d("LxPlaySong", "Saved song ID: $savedSongId, source: $targetSource")
+        return LxResolvedPlayable(url = url, cover = coverToUse, savedSongId = savedSongId, source = targetSource)
+    }
+
+    /**
+     * 搜索整队播放：点击某首结果后，把当前搜索结果的其余歌曲逐首静默解析并追加到播放队列。
+     * 自动切下一曲时即可按搜索结果顺序依次播放。
+     */
+    fun enqueueAllSearchResults(
+        clickedSongId: String,
+        onEnqueue: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit
+    ) {
+        val results = _uiState.value.results
+        if (results.size <= 1) return
+        viewModelScope.launch(Dispatchers.IO) {
+            results.filter { getStableSongId(it) != clickedSongId }.forEach { song ->
+                val resolved = runCatching { resolvePlayableSong(song) }.getOrNull() ?: return@forEach
+                withContext(Dispatchers.Main) {
+                    onEnqueue(resolved.url, song.name, song.singer, resolved.cover, resolved.savedSongId)
+                }
             }
         }
     }

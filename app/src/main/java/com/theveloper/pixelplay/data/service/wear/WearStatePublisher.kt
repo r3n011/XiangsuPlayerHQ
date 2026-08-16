@@ -7,6 +7,7 @@ import android.media.AudioManager
 import android.net.Uri
 import androidx.core.graphics.ColorUtils
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
@@ -111,7 +112,11 @@ class WearStatePublisher @Inject constructor(
         // Read lyrics display preferences from DataStore so the watch respects
         // the same translation/romanization visibility as the phone UI.
         val prefs = application.dataStore.data.first()
-        val showLyricsTranslation = prefs[booleanPreferencesKey("show_lyrics_translation")] ?: true
+        // 三态歌词显示模式：original_and_translation（默认）/ original_only / translation_only
+        val lyricsDisplayMode = prefs[stringPreferencesKey("lyrics_display_mode")]
+            ?: "original_and_translation"
+        // 手表侧保持"原文+翻译"或"仅翻译"时显示翻译；"仅原文"时隐藏
+        val showLyricsTranslation = lyricsDisplayMode != "original_only"
         val showLyricsRomanization = prefs[booleanPreferencesKey("show_lyrics_romanization")] ?: true
 
         val volumeLevel = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)

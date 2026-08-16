@@ -444,26 +444,48 @@ class BuiltInSourceSearchApi @Inject constructor(
 
     // ─── QQ音乐（zzcSign）────────────────────────────────────────────────
 
+    /** tx 搜索单次结果：ok=true 表示接口合法响应（code==0），即使没结果也无需重试 */
+    private class TxSearchOnceResult(
+        val ok: Boolean,
+        val list: List<LxSongInfo>,
+        val total: Int
+    )
+
     /**
      * QQ 搜索（对齐落雪 lx-music-mobile 的 musicSearch：失败时最多重试 5 次，共 6 次尝试）。
-     * u.y.qq.com 会间歇性返回错误码/空结果，参考项目依赖多次重试保证可用性。
+     * 仅当接口返回错误码（如 u.y.qq.com 间歇限流 50000005）或请求异常时才重试；
+     * code==0 但确实没有结果（合法空响应）直接返回，不浪费重试（落雪同款行为）。
      */
     private suspend fun searchTx(keyword: String, page: Int, pageSize: Int): LxSearchResult {
-        var last: LxSearchResult? = null
+        var lastEmpty = LxSearchResult(list = emptyList(), isEnd = true, total = 0)
         repeat(6) { attempt ->
-            last = runCatching { searchTxOnce(keyword, page, pageSize) }.getOrNull()
-            if (last != null && last!!.list.isNotEmpty()) return last!!
-            // 失败后指数退避（200/400/800/1600/3200ms），给 QQ 风控留出喘息，避免高频重试反被限流
+            val r = runCatching { searchTxOnce(keyword, page, pageSize) }.getOrNull()
+            if (r != null && r.list.isNotEmpty()) {
+                return LxSearchResult(
+                    // 对齐落雪：total 来自 meta.estimate_sum，据此判断是否还有下一页
+                    isEnd = if (r.total > 0) page * pageSize >= r.total else r.list.size < pageSize,
+                    list = r.list,
+                    total = r.total
+                )
+            }
+            if (r != null && r.ok) {
+                // 合法响应但没有结果：直接返回，不再重试
+                return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+            // 请求异常或 code!=0（限流）：指数退避后重试（200/400/800/1600/3200ms），
+            // 给 QQ 风控留出喘息，避免高频重试反被限流
             if (attempt < 5) delay(200L * (1 shl attempt))
         }
-        return last ?: LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        return lastEmpty
     }
 
-    private suspend fun searchTxOnce(keyword: String, page: Int, pageSize: Int): LxSearchResult {
+    private suspend fun searchTxOnce(keyword: String, page: Int, pageSize: Int): TxSearchOnceResult {
         val data = buildTxSearchJson(keyword, page, pageSize)
         val sign = zzcSign(data)
         val request = Request.Builder()
             .url("$TX_SEARCH_URL?sign=$sign")
+            // 对齐落雪 httpFetch：携带 Accept: application/json
+            .addHeader("Accept", "application/json")
             .addHeader("User-Agent", "QQMusic 14090508(android 12)")
             .post(data.toRequestBody("application/json;charset=UTF-8".toMediaType()))
             .build()
@@ -472,16 +494,16 @@ class BuiltInSourceSearchApi @Inject constructor(
                 if (!resp.isSuccessful) null else resp.body?.bytes()
             }
         }.getOrNull()?.let { txDecodeBody(it) }
-            ?: return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+            ?: return TxSearchOnceResult(ok = false, list = emptyList(), total = 0)
 
         val root = JSONObject(body)
-        // 对齐参考：顶层 code 非 0（如限流 50000005）也视为失败，交给上层重试
-        if (root.optInt("code", -1) != 0) return LxSearchResult(isEnd = true)
-        val req = root.optJSONObject("req") ?: return LxSearchResult(isEnd = true)
-        if (req.optInt("code", -1) != 0) return LxSearchResult(isEnd = true)
-        val reqData = req.optJSONObject("data") ?: return LxSearchResult(isEnd = true)
-        val body2 = reqData.optJSONObject("body") ?: return LxSearchResult(isEnd = true)
-        val itemSong = body2.optJSONArray("item_song") ?: return LxSearchResult(isEnd = true)
+        // 对齐参考：顶层 code 非 0（如限流 50000005）视为失败，交给上层重试
+        if (root.optInt("code", -1) != 0) return TxSearchOnceResult(ok = false, list = emptyList(), total = 0)
+        val req = root.optJSONObject("req") ?: return TxSearchOnceResult(ok = false, list = emptyList(), total = 0)
+        if (req.optInt("code", -1) != 0) return TxSearchOnceResult(ok = false, list = emptyList(), total = 0)
+        val reqData = req.optJSONObject("data") ?: return TxSearchOnceResult(ok = false, list = emptyList(), total = 0)
+        val body2 = reqData.optJSONObject("body") ?: return TxSearchOnceResult(ok = false, list = emptyList(), total = 0)
+        val itemSong = body2.optJSONArray("item_song") ?: return TxSearchOnceResult(ok = true, list = emptyList(), total = 0)
 
         val list = mutableListOf<LxSongInfo>()
         for (i in 0 until itemSong.length()) {
@@ -503,7 +525,16 @@ class BuiltInSourceSearchApi @Inject constructor(
             val album = item.optJSONObject("album")
             val albumMid = album?.optString("mid", "") ?: ""
             val albumName = album?.optString("name", "") ?: ""
-            val pic = if (albumMid.isBlank()) "" else "https://y.gtimg.cn/music/photo_new/T002R300x300M000$albumMid.jpg"
+            // 对齐落雪：album.mid 为空/“空”时用歌手头像（singer[0].mid 的 T001 图）兜底
+            var pic = ""
+            if (albumMid.isNotBlank() && albumMid != "空") {
+                pic = "https://y.gtimg.cn/music/photo_new/T002R300x300M000$albumMid.jpg"
+            } else if (singers != null && singers.length() > 0) {
+                val singerMid = singers.optJSONObject(0)?.optString("mid", "")
+                if (!singerMid.isNullOrBlank()) {
+                    pic = "https://y.gtimg.cn/music/photo_new/T001R300x300M000$singerMid.jpg"
+                }
+            }
 
             list.add(
                 LxSongInfo(
@@ -518,10 +549,12 @@ class BuiltInSourceSearchApi @Inject constructor(
                 )
             )
         }
-        return LxSearchResult(
-            isEnd = list.isEmpty(),
+        // 对齐落雪：total 取 meta.estimate_sum（estimate_sum 缺失时退回 list.size）
+        val estimateSum = reqData.optJSONObject("meta")?.optInt("estimate_sum", 0) ?: 0
+        return TxSearchOnceResult(
+            ok = true,
             list = list,
-            total = list.size
+            total = if (estimateSum > 0) estimateSum else list.size
         )
     }
 

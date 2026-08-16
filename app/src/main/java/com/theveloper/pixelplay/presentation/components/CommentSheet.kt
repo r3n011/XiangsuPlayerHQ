@@ -1,6 +1,8 @@
 package com.theveloper.pixelplay.presentation.components
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,9 +51,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -59,11 +63,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.theveloper.pixelplay.data.lx.LxSearchApi
@@ -71,6 +77,7 @@ import com.theveloper.pixelplay.data.lx.NeteaseComment
 import com.theveloper.pixelplay.data.lx.NeteaseCommentResult
 import com.theveloper.pixelplay.data.lx.NeteaseUserDetail
 import com.theveloper.pixelplay.data.netease.PersonalFmApi
+import com.theveloper.pixelplay.presentation.components.scoped.LyricsPredictiveBackHandler
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -254,10 +261,43 @@ fun CommentSheet(
             }
     }
 
-    BackHandler { onBackClick() }
+    // ─── 预测性返回（与歌词页 LyricsSheet 完全一致）──────────────────────
+    // backProgress：0f = 完全可见，1f = 已关闭。手势逐帧驱动根节点 graphicsLayer，
+    // 缩小到 92% + 下滑 8% 高度；提交后 tween 补全、取消后回弹。
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    val backProgressProvider = rememberUpdatedState(backProgress)
+
+    // 进入动画：1f → 0f（同歌词页 spring 曲线）
+    LaunchedEffect(Unit) {
+        val anim = Animatable(1f)
+        anim.animateTo(
+            targetValue = 0f,
+            animationSpec = spring(
+                stiffness = Spring.StiffnessMediumLow,
+                dampingRatio = Spring.DampingRatioLowBouncy
+            )
+        ) { backProgress = value }
+    }
+
+    // 预测性返回（Android 13+）或旧设备普通返回
+    LyricsPredictiveBackHandler(
+        enabled = true,
+        onProgressChanged = { backProgress = it },
+        onBack = onBackClick
+    )
 
     // —— 主体：Scaffold + TopAppBar ——
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            // 与歌词页相同的预测性返回退出变换（draw-phase 读取，不触发重排版）
+            .graphicsLayer {
+                val p = backProgressProvider.value
+                val scale = lerp(1f, 0.92f, p)
+                scaleX = scale
+                scaleY = scale
+                translationY = lerp(0f, size.height * 0.08f, p)
+            },
         containerColor = colorScheme.surface,
         contentColor = colorScheme.onSurface,
         topBar = {

@@ -1449,16 +1449,11 @@ fun SyncedLyricsList(
                 return@LaunchedEffect
             }
 
-            // Music Style Dynamic Velocity - 优化弹簧效果视觉表现
-            // 问题：之前根据 timeDiff 决定动画时长（最高 2000ms），当歌词间隔很长时
-            // 动画移动太慢，字体大小动画早已完成但位置还在缓慢移动，视觉不自然
-            // 优化：
-            // 1. 缩短动画时长上限（从 2000ms → 600ms），让动画响应更即时
-            // 2. 使用 spring 动画替代 tween，产生自然的"弹簧"效果
+            // folia-style spring for scroll: {stiffness:142, damping:28, mass:0.82}
             val dynamicAnimationSpec = if (useAnimatedLyrics) {
                 spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessLow
+                    dampingRatio = 0.82f,
+                    stiffness = 142f
                 )
             } else {
                 autoscrollAnimationSpec
@@ -1509,12 +1504,14 @@ fun SyncedLyricsList(
                             val lineItemInfo = currentLayoutInfo.visibleItemsInfo.find { it.index == index }
                             val itemCenter = lineItemInfo?.let { it.offset + (it.size / 2f) }
                             val viewportCenter = currentLayoutInfo.viewportEndOffset / 2f
-                            
+
                             val distanceFromCenter = itemCenter?.let { it - viewportCenter } ?: 0f
-                            
-                            val maxTranslation = 40f 
+
+                            // folia-style parallax: quadratic curve (distance^2) with sign preservation
+                            // creates a more natural "curved track" feel than cubic
+                            val maxTranslation = 55f
                             val distanceRatio = (distanceFromCenter / viewportCenter).coerceIn(-1f, 1f)
-                            translationY = distanceRatio * distanceRatio * distanceRatio * maxTranslation 
+                            translationY = distanceRatio * distanceRatio * maxTranslation * if (distanceRatio < 0) -1f else 1f
                         }
                     } else Modifier
 
@@ -1597,10 +1594,10 @@ fun LyricLineRow(
     var containerWidthPx by remember { mutableIntStateOf(0) }
     // 复用父级共享的 TextMeasurer；单独使用时才自行创建
     val measurer = textMeasurer ?: rememberTextMeasurer()
-    // 高亮行会被放大（useAnimatedLyrics 时 active scale≈1.1），为其预留放大余量，
-    // 换行后即使放大 1.1 倍也不会超出容器，彻底避免裁切。
-    // 预算取 1.25（> 实际缩放 1.1），再叠加 Bold 测量，双重保险保证边缘不裁切。
-    val activeScale = if (useAnimatedLyrics && distanceFromCurrent == 0) 1.25f else 1f
+    // 高亮行会被放大（useAnimatedLyrics 时 active scale≈1.08），为其预留放大余量，
+    // 换行后即使放大 1.08 倍也不会超出容器，彻底避免裁切。
+    // 预算取 1.2（> 实际缩放 1.08），再叠加 Bold 测量，双重保险保证边缘不裁切。
+    val activeScale = if (useAnimatedLyrics && distanceFromCurrent == 0) 1.2f else 1f
     val availableWidthPx =
         if (containerWidthPx > 0) (containerWidthPx / activeScale).toInt() else Int.MAX_VALUE
     val wrappedLine = remember(sanitizedLine, style, availableWidthPx) {
@@ -1621,20 +1618,20 @@ fun LyricLineRow(
         derivedStateOf { position in line.time.toLong()..<lineEndTime }
     }
     val unhighlightedColor = LocalContentColor.current.copy(alpha = 0.45f)
-    // amlv-style spring animation
-    // dampingRatio = LowBouncy, stiffness = StiffnessLow
+    // folia-style spring: {stiffness:142, damping:28, mass:0.82}
+    // Compose dampingRatio ≈ damping / (2 * sqrt(stiffness * mass)) ≈ 0.82
     val springFloatAnimSpec = spring(
-        dampingRatio = Spring.DampingRatioLowBouncy,
-        stiffness = Spring.StiffnessLow,
+        dampingRatio = 0.82f,
+        stiffness = 142f,
         visibilityThreshold = 0.005f
     )
     val springColorAnimSpec = spring<Color>(
-        dampingRatio = Spring.DampingRatioLowBouncy,
-        stiffness = Spring.StiffnessLow
+        dampingRatio = 0.82f,
+        stiffness = 142f
     )
     val springDpAnimSpec = spring<Dp>(
-        dampingRatio = Spring.DampingRatioLowBouncy,
-        stiffness = Spring.StiffnessLow
+        dampingRatio = 0.82f,
+        stiffness = 142f
     )
 
     val colorAnimSpec: AnimationSpec<Color> = if (useAnimatedLyrics) {
@@ -1648,12 +1645,14 @@ fun LyricLineRow(
         label = "lineColor"
     )
 
-    // amlv-style: active scale = 1.1f, inactive scale = 1f, active alpha = 1f, inactive alpha = 0.35f
+    // folia-style continuous visual treatment:
+    // active→scale 1.08, opacity 1.0; distance 1→scale 0.96, opacity 0.68; distance 2→scale 0.90, opacity 0.52; distance 3+→scale 0.84, opacity 0.40
     val (targetScale, targetAlpha, targetOffsetY) = if (useAnimatedLyrics) {
         when (distanceFromCurrent) {
-            0 -> Triple(1.1f, 1.0f, 0.dp)
-            1 -> Triple(1f, 0.50f, 0.dp)
-            else -> Triple(1f, 0.35f, 0.dp)
+            0 -> Triple(1.08f, 1.0f, 0.dp)
+            1 -> Triple(0.96f, 0.68f, 0.dp)
+            2 -> Triple(0.90f, 0.52f, 0.dp)
+            else -> Triple(0.84f, 0.40f, 0.dp)
         }
     } else Triple(1f, 1f, 0.dp)
 
@@ -1684,34 +1683,38 @@ fun LyricLineRow(
         label = "lineOffsetY"
     )
 
-    // Blur Effect: a gentle visual distance cue — use the same unified animationSpec so it
-    // arrives together with the scale/alpha change, no lag.
+    // folia-style blur: gentle distance cue with non-linear falloff
+    // distance 1→0.7dp, distance 2→1.8dp, distance 3→2.6dp, distance 4+→3.4dp
     val targetBlur = if (useAnimatedLyrics && animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
-        (distanceFromCurrent * animatedLyricsBlurStrength).coerceAtMost(10f).dp
+        when (distanceFromCurrent) {
+            1 -> 0.7f.dp
+            2 -> 1.8f.dp
+            3 -> 2.6f.dp
+            else -> 3.4f.dp
+        }
     } else 0.dp
     val blurRadius by animateDpAsState(
         targetValue = targetBlur,
-        animationSpec = if (useAnimatedLyrics) tween(durationMillis = 250, easing = FastOutSlowInEasing)
+        animationSpec = if (useAnimatedLyrics) spring(dampingRatio = 0.82f, stiffness = 142f)
         else tween(durationMillis = 200),
         label = "lineBlur"
     )
 
-    // 行距也有弹簧动画：当前歌词间距更大，其他歌词间距更小
-    // 同样的柔和弹簧参数，形成"被拉动"的整体感
+    // folia-style gap: active line→18dp, inactive→14dp
     val targetVerticalPadding = if (useAnimatedLyrics) {
         when (distanceFromCurrent) {
-            0 -> if (immersiveMode) 20.dp else 24.dp
+            0 -> if (immersiveMode) 16.dp else 18.dp
             1 -> 14.dp
-            else -> 10.dp
+            else -> 14.dp
         }
     } else 12.dp
     val animatedVerticalPadding by animateDpAsState(
         targetValue = targetVerticalPadding,
         animationSpec = if (useAnimatedLyrics) {
+            // folia-style: active line uses slightly bouncy spring, inactive uses damped spring
             when (distanceFromCurrent) {
-                0 -> spring(stiffness = 180f, dampingRatio = Spring.DampingRatioMediumBouncy)
-                1 -> spring(stiffness = 220f, dampingRatio = Spring.DampingRatioLowBouncy)
-                else -> spring(stiffness = 280f, dampingRatio = Spring.DampingRatioLowBouncy)
+                0 -> spring(stiffness = 180f, dampingRatio = 0.82f)
+                else -> spring(stiffness = 220f, dampingRatio = 0.85f)
             }
         } else {
             tween(durationMillis = 180, easing = FastOutSlowInEasing)
@@ -1878,7 +1881,7 @@ fun LyricLineRow(
                 // 避免 FlowRow 换行后焦点行边缘文字被容器裁切。
                 val flowRowWidthModifier =
                     if (useAnimatedLyrics && distanceFromCurrent == 0 && containerWidthPx > 0) {
-                        Modifier.width(with(LocalDensity.current) { (containerWidthPx / 1.1f).toDp() })
+                        Modifier.width(with(LocalDensity.current) { (containerWidthPx / 1.08f).toDp() })
                     } else {
                         Modifier.fillMaxWidth()
                     }
@@ -2062,17 +2065,17 @@ fun LyricWordSpan(
     unhighlightedColor: Color,
     modifier: Modifier = Modifier
 ) {
-    // Unified word-level animation spec — fast and crisp, matches the line-level curve.
+    // folia-style word-level animation: fast, precise spring for word highlighting
     val wordAnimSpec = if (useAnimatedLyrics) spring<Float>(
-        stiffness = 500f,
-        dampingRatio = Spring.DampingRatioNoBouncy
+        stiffness = 380f,
+        dampingRatio = 0.88f
     ) else tween(durationMillis = 180, easing = FastOutSlowInEasing)
 
     val color by animateColorAsState(
         targetValue = if (isHighlighted) highlightedColor else unhighlightedColor,
         animationSpec = if (useAnimatedLyrics) spring(
-            stiffness = 500f,
-            dampingRatio = Spring.DampingRatioNoBouncy
+            stiffness = 380f,
+            dampingRatio = 0.88f
         ) else tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "wordColor"
     )

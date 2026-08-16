@@ -13,8 +13,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.flow.first
-import androidx.compose.runtime.snapshotFlow
 
 // ------------------------------------------------------------
 // 1) Phase loader: compose a subtree only after a threshold, then keep it alive
@@ -93,9 +91,17 @@ fun rememberSmoothProgress(
 
             if (!isVisible || !isPlaying) {
                 val initialPos = latestPositionProvider()
-                snapshotFlow {
-                    latestIsVisible && (latestIsPlayingProvider() || latestPositionProvider() != initialPos)
-                }.first { it }
+                // ⚡ 自愈等待：原实现用 snapshotFlow{...}.first{} 等待条件成立，
+                // 一旦条件永假（如 isVisible 因状态时序没恢复）会永久挂起 → 进度条
+                // 有概率完全卡住、退出重进才恢复。改为有限轮询：每次重新求值条件，
+                // 满足立即恢复采样；位置变化（如暂停时拖进度）也能及时恢复。
+                var restored = false
+                while (isActive && !restored) {
+                    delay(200L)
+                    restored =
+                        latestIsVisible &&
+                            (latestIsPlayingProvider() || latestPositionProvider() != initialPos)
+                }
 
                 sampleNow()
                 if (!latestIsVisible || !latestIsPlayingProvider()) {

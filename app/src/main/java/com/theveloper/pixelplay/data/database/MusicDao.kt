@@ -273,6 +273,9 @@ interface MusicDao {
     @Query("SELECT id FROM songs WHERE source_type = 6")
     suspend fun getAllJellyfinSongIds(): List<Long>
 
+    @Query("SELECT id FROM songs WHERE source_type = 8")
+    suspend fun getAllBilibiliSongIds(): List<Long>
+
     @Transaction
     suspend fun deleteSongsAndRelatedData(songIds: List<Long>) {
         if (songIds.isEmpty()) return
@@ -319,6 +322,13 @@ interface MusicDao {
         val jellyfinSongIds = getAllJellyfinSongIds()
         if (jellyfinSongIds.isEmpty()) return
         deleteSongsAndRelatedData(jellyfinSongIds)
+    }
+
+    @Transaction
+    suspend fun clearAllBilibiliSongs() {
+        val bilibiliSongIds = getAllBilibiliSongIds()
+        if (bilibiliSongIds.isEmpty()) return
+        deleteSongsAndRelatedData(bilibiliSongIds)
     }
 
     @Transaction

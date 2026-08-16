@@ -39,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -52,6 +51,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import coil.size.Size
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
@@ -87,7 +89,14 @@ internal fun MiniPlayerContentInternal(
     modifier: Modifier = Modifier,
     canScroll: Boolean = true,
     currentPositionProvider: () -> Long = { 0L },
-    totalDurationProvider: () -> Long = { 0L }
+    totalDurationProvider: () -> Long = { 0L },
+    expansionFractionProvider: () -> Float = { 0f },
+    /** 全屏播放器封面尺寸（dp），用于计算展开目标位置 */
+    fullPlayerCoverSizeDp: Float = 300f,
+    /** 容器高度（dp），用于计算歌名/歌手目标位置 */
+    containerHeightDp: Float = 700f,
+    /** 屏幕宽度（dp），用于计算封面居中偏移 */
+    screenWidthDp: Float = 400f
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     val controlsEnabled = !isCastConnecting && !isPreparingPlayback
@@ -182,18 +191,36 @@ internal fun MiniPlayerContentInternal(
             ) {
                 val albumArtModel = song.albumArtUriString?.takeIf { it.isNotBlank() }
                 Box(contentAlignment = Alignment.Center) {
-                    key(song.id) {
-                        SmartImage(
-                            model = albumArtModel,
-                            contentDescription = "Carátula de ${song.title}",
-                            shape = CircleShape,
-                            targetSize = Size(150, 150),
-                            modifier = Modifier.size(44.dp),
-                            placeholderModel = if (albumArtModel?.startsWith("telegram_art") == true) {
-                                "$albumArtModel?quality=thumb"
-                            } else null
-                        )
-                    }
+                    // ⚡ 低性能优化：不再用 key(song.id) 强制卸载/重建封面。
+                    // 直接替换 model 会让 Coil 在旧图基础上 crossfade 平滑过渡，
+                    // 避免切歌/打开 mini player 时封面因整棵重建而闪动。
+                    SmartImage(
+                        model = albumArtModel,
+                        contentDescription = "Carátula de ${song.title}",
+                        shape = CircleShape,
+                        targetSize = Size(150, 150),
+                        modifier = Modifier
+                            .size(44.dp)
+                            .graphicsLayer {
+                                val f = expansionFractionProvider().coerceIn(0f, 1f)
+                                // 封面：44dp circle → full player 尺寸居中
+                                val coverScale = fullPlayerCoverSizeDp / 44f
+                                val s = lerp(1f, coverScale, f)
+                                scaleX = s
+                                scaleY = s
+                                // 从 mini 中心(32dp) 移动到 full player 居中位置
+                                val fullPlayerCenterX = (screenWidthDp - 12f) / 2f
+                                translationX = (fullPlayerCenterX - 32f) * f
+                                // 向上移动到屏幕顶部区域（full player 封面从顶部开始）
+                                translationY = -60f * f
+                                alpha = (1f - f * 0.4f).coerceIn(0f, 1f)
+                                // 从左侧缩放，让封面从 mini 位置向右展开
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                            },
+                        placeholderModel = if (albumArtModel?.startsWith("telegram_art") == true) {
+                            "$albumArtModel?quality=thumb"
+                        } else null
+                    )
                     if (isCastConnecting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
@@ -218,7 +245,19 @@ internal fun MiniPlayerContentInternal(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .graphicsLayer {
+                            val f = expansionFractionProvider().coerceIn(0f, 1f)
+                            // 歌名/歌手：移动到 full player 封面下方的 metadata 位置
+                            // full player 封面约占屏幕 60-70%高度，metadata 在封面下方
+                            val metadataY = containerHeightDp * 0.62f
+                            translationY = (metadataY - 32f) * f  // 从 mini 中心(32dp) 移动到 metadata 区域
+                            alpha = (1f - f * 1.8f).coerceIn(0f, 1f)
+                            // 轻微放大以匹配 full player 的字号
+                            scaleX = lerp(1f, 1.08f, f)
+                            scaleY = lerp(1f, 1.08f, f)
+                        },
                     verticalArrangement = Arrangement.Center
                 ) {
                     val titleStyle = MaterialTheme.typography.titleSmall.copy(
@@ -254,74 +293,84 @@ internal fun MiniPlayerContentInternal(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(onPrimary)
-                        .clickable(
-                            interactionSource = previousInteraction,
-                            indication = miniPlayerIndication,
-                            enabled = controlsEnabled
-                        ) {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onPrevious()
-                        },
-                    contentAlignment = Alignment.Center
+                // 控制按钮：展开时快速淡出
+                Row(
+                    modifier = Modifier.graphicsLayer {
+                        val f = expansionFractionProvider().coerceIn(0f, 1f)
+                        alpha = (1f - f * 3f).coerceIn(0f, 1f)
+                        translationX = 30f * f
+                    },
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.SkipPrevious,
-                        contentDescription = "Anterior",
-                        tint = primary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(onPrimary)
+                            .clickable(
+                                interactionSource = previousInteraction,
+                                indication = miniPlayerIndication,
+                                enabled = controlsEnabled
+                            ) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onPrevious()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.SkipPrevious,
+                            contentDescription = "Anterior",
+                            tint = primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(primary)
-                        .clickable(
-                            interactionSource = playPauseInteraction,
-                            indication = miniPlayerIndication,
-                            enabled = controlsEnabled
-                        ) {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onPlayPause()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = if (isPlaying) "Pausar" else "Reproducir",
-                        tint = onPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(primary)
+                            .clickable(
+                                interactionSource = playPauseInteraction,
+                                indication = miniPlayerIndication,
+                                enabled = controlsEnabled
+                            ) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onPlayPause()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                            tint = onPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(onPrimary)
-                        .clickable(
-                            interactionSource = nextInteraction,
-                            indication = miniPlayerIndication,
-                            enabled = controlsEnabled
-                        ) { onNext() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.SkipNext,
-                        contentDescription = "Siguiente",
-                        tint = primary,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(onPrimary)
+                            .clickable(
+                                interactionSource = nextInteraction,
+                                indication = miniPlayerIndication,
+                                enabled = controlsEnabled
+                            ) { onNext() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.SkipNext,
+                            contentDescription = "Siguiente",
+                            tint = primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 

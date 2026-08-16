@@ -756,7 +756,8 @@ class LibraryStateHolder @Inject constructor(
             contentUriString.startsWith("qqmusic://") ||
             contentUriString.startsWith("navidrome://") ||
             contentUriString.startsWith("jellyfin://") ||
-            contentUriString.startsWith("cloud://lx/")
+            contentUriString.startsWith("cloud://lx/") ||
+            contentUriString.startsWith("bilibili://")
     }
 
     private fun Song.passesStorageFilter(filter: StorageFilter): Boolean {

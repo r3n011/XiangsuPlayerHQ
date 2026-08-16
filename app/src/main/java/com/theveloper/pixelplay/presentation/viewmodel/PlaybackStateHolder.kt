@@ -16,12 +16,10 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -72,6 +70,9 @@ class PlaybackStateHolder @Inject constructor(
         private const val BULK_REPLACE_THRESHOLD = 80
         private const val SHUFFLE_TOGGLE_COOLDOWN_MS = 400L
         private const val CAST_SEEK_BLOCKED_TOAST_COOLDOWN_MS = 2500L
+        // UI 的 currentSong 与播放器当前媒体错位容忍窗口：交叉淡化/预加载期间
+        // 短暂错位属正常，超过该窗口仍未恢复则强制触发上层重同步，防止进度条冻结。
+        private const val MEDIA_MISMATCH_RESYNC_MS = 1500L
     }
 
     private var scope: CoroutineScope? = null
@@ -95,7 +96,6 @@ class PlaybackStateHolder @Inject constructor(
             startProgressUpdates()
         }
     }
-
     // True while the full player sheet (slider visible) is mounted. Set by the
     // sheet via DisposableEffect. Controls whether the position ticker runs at
     // slider-smooth resolution (250 ms) or mini-player resolution (1 s).
@@ -120,13 +120,14 @@ class PlaybackStateHolder @Inject constructor(
     private var shuffleToggleJob: Job? = null
     private var lastShuffleToggleFinishedAtMs: Long = 0L
     private var lastCastSeekBlockedToastAtMs: Long = 0L
-    // ⚡ 播完卡死看门狗：歌曲音频已到末尾但 offload HAL 未发 EOS 时，
-    // ExoPlayer 停留在 READY + playWhenReady=true、位置不再前进，10s 后会被
-    // StuckPlayerDetector 判定为 StuckPlayerException → 恢复逻辑重建播放器
-    // → mini player 消失。这里提前识别"卡在末尾"并视同自然播放完成。
-    private var trackEndFrozenPosMs: Long = -1L
-    private var trackEndFrozenAtMs: Long = 0L
-    private var trackEndFrozenHandled = false
+    // 进度自愈：UI 的 currentSong 与播放器当前媒体长时间错位时，触发上层
+    // syncDisplayedMediaItemIfChanged 重新对齐，避免进度条因 media mismatch 永久冻结。
+    private var mediaMismatchSinceMs = 0L
+    private var onUiMediaDesync: (() -> Unit)? = null
+
+    fun setUiMediaDesyncHandler(handler: (() -> Unit)?) {
+        onUiMediaDesync = handler
+    }
     private val powerManager: PowerManager by lazy(LazyThreadSafetyMode.NONE) {
         appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
     }
@@ -669,18 +670,25 @@ class PlaybackStateHolder @Inject constructor(
     )
 
     fun startProgressUpdates() {
+        // ⚡ 自愈式进度轮询（治本）：启动后不再依赖外部反复 start/stop 的时序，
+        // 循环每 tick 实时读取订阅者数量：
+        //   - 无订阅者（全屏/迷你播放器都未组合）→ 低开销轮询等待，订阅出现即自动恢复；
+        //   - 有订阅者 → 持续采样并推进 _currentPosition。
+        // 这消除了 subscriptionCount.collectLatest 捕获旧值导致的"进度条偶发不动"竞态。
+        if (progressJob?.isActive == true) return
         stopProgressUpdates()
         progressJob = scope?.launch {
-            _currentPosition.subscriptionCount.collectLatest { subscriberCount ->
-                if (subscriberCount == 0 && !_isWebRemoteActive) return@collectLatest
-                coroutineScope {
-                    while (isActive && (subscriberCount > 0 || _isWebRemoteActive)) {
-                        val tickMs = currentProgressTickMs()
-                        val castSession = castStateHolder.castSession.value
-                        val remoteClient = castSession?.remoteMediaClient
-                        val isRemote = remoteClient != null
+            while (isActive) {
+                // ⚡ 位置始终推进：原实现当 _currentPosition 无订阅者（全屏/迷你播放器
+                // 都未组合）时只空转 delay 不采样，一旦订阅因生命周期时序/竞态未恢复，
+                // 位置永久冻结 → 进度条有概率完全卡住、退出重进才恢复。
+                // 现在无订阅者时也以低速 tick 持续推进位置（订阅恢复自动回到高精度）。
+                val tickMs = currentProgressTickMs()
+                val castSession = castStateHolder.castSession.value
+                val remoteClient = castSession?.remoteMediaClient
+                val isRemote = remoteClient != null
 
-                        if (isRemote) {
+                if (isRemote) {
                     val activeRemoteClient = checkNotNull(remoteClient)
                     val previousPlayIntent = _stablePlayerState.value.playWhenReady
                     val remotePlayback = activeRemoteClient.mediaStatus?.let { mediaStatus ->
@@ -726,98 +734,60 @@ class PlaybackStateHolder @Inject constructor(
                         }
                     }
                 } else {
-                     val controller = activeLocalPlayer()
-                     if (shouldSampleLocalProgress(controller)) {
-                         val visibleSong = _stablePlayerState.value.currentSong
-                         val currentMediaId = controller.currentMediaItem?.mediaId
-                         val hasMediaMismatch = visibleSong?.id != null &&
-                             currentMediaId != null &&
-                             visibleSong.id != currentMediaId
+                    val controller = activeLocalPlayer()
+                    if (shouldSampleLocalProgress(controller)) {
+                        val visibleSong = _stablePlayerState.value.currentSong
+                        val currentMediaId = controller.currentMediaItem?.mediaId
+                        val hasMediaMismatch = visibleSong?.id != null &&
+                            currentMediaId != null &&
+                            visibleSong.id != currentMediaId
 
-                         if (hasMediaMismatch) {
-                            Timber.tag(TAG).v(
-                                 "Skipping local progress tick due media mismatch (visible=%s, player=%s)",
-                                 visibleSong?.id,
-                                 currentMediaId
-                             )
+                        if (hasMediaMismatch) {
+                            // ⚡ 有界错位（治本）：短暂错位（交叉淡化/预加载窗口）跳过该 tick；
+                            // 超过 MEDIA_MISMATCH_RESYNC_MS 仍未恢复 → 说明 UI 的 currentSong
+                            // 与播放器不同步，强制触发上层重同步（syncDisplayedMediaItemIfChanged），
+                            // 避免进度条因 mismatch 永久冻结。
+                            val nowMs = SystemClock.elapsedRealtime()
+                            if (mediaMismatchSinceMs == 0L) {
+                                mediaMismatchSinceMs = nowMs
+                            } else if (nowMs - mediaMismatchSinceMs >= MEDIA_MISMATCH_RESYNC_MS) {
+                                mediaMismatchSinceMs = 0L
+                                Timber.tag(TAG).w(
+                                    "Media mismatch persisted (%s vs %s), requesting UI re-sync",
+                                    visibleSong?.id,
+                                    currentMediaId
+                                )
+                                onUiMediaDesync?.invoke()
+                            }
                             delay(tickMs)
                             continue
+                        } else {
+                            mediaMismatchSinceMs = 0L
                         }
 
-                          val currentPosition = controller.currentPosition.coerceAtLeast(0L)
-                          val songDurationHint = visibleSong?.duration ?: 0L
-                          val duration = resolveEffectiveDuration(
-                              reportedDurationMs = controller.duration,
-                              songDurationHintMs = songDurationHint,
-                              currentPositionMs = currentPosition
-                          )
+                        val currentPosition = controller.currentPosition.coerceAtLeast(0L)
+                        val songDurationHint = visibleSong?.duration ?: 0L
+                        val duration = resolveEffectiveDuration(
+                            reportedDurationMs = controller.duration,
+                            songDurationHintMs = songDurationHint,
+                            currentPositionMs = currentPosition
+                        )
 
-                          // ⚡ 播完卡死看门狗：歌曲已到末尾但播放器停在"仍在播放"的外观上。
-                          //   A. READY 冻结：offload HAL 未发 EOS，播放器声称仍在播放
-                          //      （isPlaying=true）但位置停在末尾不再前进；
-                          //   B. ENDED 冻结：已到 STATE_ENDED 但 playWhenReady 仍为 true
-                          //      （终态事件未被上层消费），UI 一直显示在"播放完"状态。
-                          // 两种情况都视同自然播放完成：自动暂停（并回到开头），
-                          // 避免 10s 后 StuckPlayerException（卡住 + runtime 错误 +
-                          // 重建播放器 → mini player 消失）。
-                          val atTrackEnd = controller.duration > 0 &&
-                              currentPosition >= controller.duration - 1000L
-                          val stuckAtEnd = atTrackEnd && (
-                              controller.isPlaying ||
-                              (controller.playbackState == Player.STATE_ENDED && controller.playWhenReady)
-                              )
-                          if (stuckAtEnd) {
-                              if (trackEndFrozenPosMs == currentPosition) {
-                                  if (!trackEndFrozenHandled &&
-                                      SystemClock.elapsedRealtime() - trackEndFrozenAtMs >= 2500L
-                                  ) {
-                                      trackEndFrozenHandled = true
-                                      Timber.w(
-                                          "TrackEndWatchdog: stuck at track end (${currentPosition}ms, state=${controller.playbackState}), auto-pausing"
-                                      )
-                                      dualPlayerEngine.disableAudioOffloadWithoutRebuild()
-                                      runCatching {
-                                          controller.pause()
-                                          // READY 冻结（A）需 seekTo 重新武装播放器；
-                                          // ENDED 冻结（B）只需暂停即可
-                                          if (controller.playbackState != Player.STATE_ENDED) {
-                                              controller.seekTo(0L)
-                                          }
-                                      }
-                                      // ⚡ 直接同步 UI 为暂停态（即使上层 listener 被去抖/
-                                      // 拦截），保证按钮立刻变回播放、mini player 不消失
-                                      updateStablePlayerStateIfChanged {
-                                          it.copy(isPlaying = false, playWhenReady = false)
-                                      }
-                                  }
-                              } else {
-                                  trackEndFrozenPosMs = currentPosition
-                                  trackEndFrozenAtMs = SystemClock.elapsedRealtime()
-                                  trackEndFrozenHandled = false
-                              }
-                          } else {
-                              trackEndFrozenPosMs = -1L
-                              trackEndFrozenAtMs = 0L
-                              trackEndFrozenHandled = false
-                          }
+                        val resolvedPosition = resolveUiPosition(currentMediaId, currentPosition)
+                        if (_currentPosition.value != resolvedPosition) {
+                            _currentPosition.value = resolvedPosition
+                        }
 
-                          val resolvedPosition = resolveUiPosition(currentMediaId, currentPosition)
-                          if (_currentPosition.value != resolvedPosition) {
-                              _currentPosition.value = resolvedPosition
-                          }
-
-                          _stablePlayerState.update { state ->
-                              if (state.totalDuration == duration) {
-                                  state
-                              } else {
-                                  state.copy(totalDuration = duration)
-                              }
-                         }
-                      }
-                }
-                        delay(tickMs)
+                        _stablePlayerState.update { state ->
+                            if (state.totalDuration == duration) {
+                                state
+                            } else {
+                                state.copy(totalDuration = duration)
+                            }
+                        }
                     }
                 }
+                delay(tickMs)
             }
         }
     }
@@ -827,8 +797,8 @@ class PlaybackStateHolder @Inject constructor(
         if (controller.mediaItemCount <= 0) return false
         if (controller.isPlaying) return true
 
-        // ⚡ 终态也要采样：STATE_ENDED 但 playWhenReady 仍为 true（卡在"播放完"状态）时，
-        // 看门狗需要持续看到位置不前进才能判定自然播完并自动暂停，否则 UI 会一直卡住。
+        // 未在播放时也保持采样：playWhenReady 为 true 但处于缓冲/准备阶段的
+        // 状态也要持续推进位置（订阅恢复后进度条不会卡住）。
         return controller.playWhenReady &&
             controller.playbackState != Player.STATE_IDLE
     }

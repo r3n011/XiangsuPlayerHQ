@@ -85,6 +85,9 @@ class BluetoothLyricsManager @Inject constructor(
 
     // "上一次推送到 player 的行内容" —— 用来判断是否需要真正调用 replaceMediaItem。
     @Volatile private var lastPushedKey: String? = null
+    // 上一次推送时的播放位置 / 曲目索引：用于拦截"位置小幅回退（缓冲抖动）导致的歌词回弹"。
+    @Volatile private var lastPushedPositionMs: Long = -1L
+    @Volatile private var lastPushedIndex: Int = -1
     // 防重入：正在 push 的过程中，不要再被其他事件触发 push。
     @Volatile private var isPushingNow: Boolean = false
 
@@ -237,6 +240,13 @@ class BluetoothLyricsManager @Inject constructor(
     }
 
     /**
+     * ⚡ 当前正在播放的 mediaId（供外部做歌词异步竞态校验）。
+     * 歌词加载协程完成后，用它对比启动时的 songId：不一致说明期间已切歌，
+     * 晚到的旧歌歌词必须丢弃，否则设备端会"弹回之前的歌词"。
+     */
+    val currentMediaItemId: String? get() = currentMediaItem?.mediaId
+
+    /**
      * 绑定当前播放的 MediaItem。切歌时应调用（主线程 / IO 线程皆可）。
      *
      * ⚡ 只在新歌（mediaId 变化）时才重置推送状态并捕获原始歌名：
@@ -250,6 +260,11 @@ class BluetoothLyricsManager @Inject constructor(
         currentMediaItem = item
         if (newId != oldId) {
             lastPushedKey = null
+            lastPushedPositionMs = -1L
+            lastPushedIndex = -1
+            // ⚡ 切歌时立即清空旧歌词：旧歌的歌词在 getLyrics 完成前仍挂在 lyrics 上，
+            // 若此时用新歌的播放位置去二分旧歌词，500ms 轮询会短暂弹出上一首歌的歌词。
+            lyrics = null
             // 捕获真实的原始歌名：replaceMediaItem 后 base.title 会变成歌词，
             // 必须记住真正的歌名用于：空行回退 / 专辑字段展示 / 恢复原始元数据。
             originalTitle = item?.mediaMetadata?.title?.toString()?.takeIf { it.isNotBlank() }
@@ -416,6 +431,19 @@ class BluetoothLyricsManager @Inject constructor(
         if (pushKey == lastPushedKey) {
             return
         }
+
+        // ⚡ 防闪烁：同一首歌内位置"小幅回退"（缓冲/解码抖动，<3 秒）时忽略本次
+        // 更新 —— 否则设备端歌词会"回弹"闪一下。超过阈值视为用户手动 seek，
+        // 正常更新歌词。
+        if (lastPushedPositionMs >= 0 &&
+            player.currentMediaItemIndex == lastPushedIndex &&
+            currentPositionMs < lastPushedPositionMs &&
+            currentPositionMs >= lastPushedPositionMs - 3000L
+        ) {
+            return
+        }
+        lastPushedPositionMs = currentPositionMs
+        lastPushedIndex = player.currentMediaItemIndex
 
         // --- 行确实变化了：覆盖 MediaSession 会话元数据（通知栏/锁屏/蓝牙设备显示歌词） ---
         isPushingNow = true

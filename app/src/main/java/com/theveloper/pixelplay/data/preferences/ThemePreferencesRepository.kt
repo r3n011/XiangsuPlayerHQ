@@ -12,6 +12,21 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 自定义播放器背景的显示模式：
+ *  - [Cover]：铺满（裁剪填满整个区域，保持比例）
+ *  - [Stretch]：拉伸（完全拉伸到区域尺寸，比例可能变形）
+ */
+enum class PlayerBackgroundMode(val storageKey: String) {
+    Cover("cover"),
+    Stretch("stretch");
+
+    companion object {
+        fun fromStorageKey(key: String?): PlayerBackgroundMode =
+            entries.firstOrNull { it.storageKey == key } ?: Cover
+    }
+}
+
 @Singleton
 class ThemePreferencesRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>
@@ -25,11 +40,26 @@ class ThemePreferencesRepository @Inject constructor(
         // ⚡ 应用级调色盘开关：打开 = 使用自定义调色盘染色整个应用（播放器内部除外），
         //    关闭 = 跟随壁纸动态取色
         val APP_PALETTE_ENABLED = booleanPreferencesKey("app_palette_enabled_v1")
+        // ⚡ 自定义播放器背景：开关 + 图片 URI + 显示模式 + 模糊半径（0=关闭，dp 值）（应用到播放器界面与歌词界面）
+        val CUSTOM_PLAYER_BACKGROUND_ENABLED = booleanPreferencesKey("custom_player_background_enabled_v1")
+        val CUSTOM_PLAYER_BACKGROUND_URI = stringPreferencesKey("custom_player_background_uri_v1")
+        val CUSTOM_PLAYER_BACKGROUND_MODE = stringPreferencesKey("custom_player_background_mode_v1")
+        val CUSTOM_PLAYER_BACKGROUND_BLUR = intPreferencesKey("custom_player_background_blur_v1")
+        // ⚡ 播放器控键透明度（百分比，30-100，默认 100=不透明）（应用到播放器界面与歌词界面主控按钮）
+        val CUSTOM_PLAYER_CONTROLS_OPACITY = intPreferencesKey("custom_player_controls_opacity_v1")
+        // ⚡ 歌词界面上下两侧渐变遮罩开关
+        val LYRICS_GRADIENT_OVERLAY_ENABLED = booleanPreferencesKey("lyrics_gradient_overlay_enabled_v1")
     }
 
     companion object {
         // 默认种子色：蓝色（避免 Android 10 等无系统取色时默认紫色）
         const val DEFAULT_CUSTOM_PALETTE_SEED = 0xFF2196F3.toInt()
+        // ⚡ 自定义播放器背景模糊半径上限（dp）
+        const val MAX_CUSTOM_BACKGROUND_BLUR = 30
+        // ⚡ 播放器控键透明度范围（百分比）
+        const val MIN_CUSTOM_CONTROLS_OPACITY = 30
+        const val MAX_CUSTOM_CONTROLS_OPACITY = 100
+        const val DEFAULT_CUSTOM_CONTROLS_OPACITY = 100
     }
 
     val appThemeModeFlow: Flow<String> = dataStore.data.map { preferences ->
@@ -55,6 +85,28 @@ class ThemePreferencesRepository @Inject constructor(
     // ⚡ 应用级调色盘开关（独立于播放器主题）
     val appPaletteEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.APP_PALETTE_ENABLED] ?: false
+    }
+
+    // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）
+    val customPlayerBackgroundEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.CUSTOM_PLAYER_BACKGROUND_ENABLED] ?: false
+    }
+    val customPlayerBackgroundUriFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[Keys.CUSTOM_PLAYER_BACKGROUND_URI]
+    }
+    val customPlayerBackgroundModeFlow: Flow<PlayerBackgroundMode> = dataStore.data.map { preferences ->
+        PlayerBackgroundMode.fromStorageKey(preferences[Keys.CUSTOM_PLAYER_BACKGROUND_MODE])
+    }
+    val customPlayerBackgroundBlurRadiusFlow: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[Keys.CUSTOM_PLAYER_BACKGROUND_BLUR] ?: 0
+    }
+
+    // ⚡ 播放器控键透明度（百分比）与歌词渐变遮罩开关（应用到播放器界面与歌词界面）
+    val customPlayerControlsOpacityFlow: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[Keys.CUSTOM_PLAYER_CONTROLS_OPACITY] ?: DEFAULT_CUSTOM_CONTROLS_OPACITY
+    }
+    val lyricsGradientOverlayEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.LYRICS_GRADIENT_OVERLAY_ENABLED] ?: true
     }
 
     suspend fun setPlayerThemePreference(themeMode: String) =
@@ -100,6 +152,41 @@ class ThemePreferencesRepository @Inject constructor(
     suspend fun setAppPaletteEnabled(enabled: Boolean) =
         dataStore.edit { preferences ->
             preferences[Keys.APP_PALETTE_ENABLED] = enabled
+        }
+
+    suspend fun setCustomPlayerBackgroundEnabled(enabled: Boolean) =
+        dataStore.edit { preferences ->
+            preferences[Keys.CUSTOM_PLAYER_BACKGROUND_ENABLED] = enabled
+        }
+
+    suspend fun setCustomPlayerBackgroundUri(uri: String?) =
+        dataStore.edit { preferences ->
+            if (uri.isNullOrBlank()) {
+                preferences.remove(Keys.CUSTOM_PLAYER_BACKGROUND_URI)
+            } else {
+                preferences[Keys.CUSTOM_PLAYER_BACKGROUND_URI] = uri
+            }
+        }
+
+    suspend fun setCustomPlayerBackgroundMode(mode: PlayerBackgroundMode) =
+        dataStore.edit { preferences ->
+            preferences[Keys.CUSTOM_PLAYER_BACKGROUND_MODE] = mode.storageKey
+        }
+
+    suspend fun setCustomPlayerBackgroundBlurRadius(radius: Int) =
+        dataStore.edit { preferences ->
+            preferences[Keys.CUSTOM_PLAYER_BACKGROUND_BLUR] = radius.coerceIn(0, MAX_CUSTOM_BACKGROUND_BLUR)
+        }
+
+    suspend fun setCustomPlayerControlsOpacity(opacity: Int) =
+        dataStore.edit { preferences ->
+            preferences[Keys.CUSTOM_PLAYER_CONTROLS_OPACITY] =
+                opacity.coerceIn(MIN_CUSTOM_CONTROLS_OPACITY, MAX_CUSTOM_CONTROLS_OPACITY)
+        }
+
+    suspend fun setLyricsGradientOverlayEnabled(enabled: Boolean) =
+        dataStore.edit { preferences ->
+            preferences[Keys.LYRICS_GRADIENT_OVERLAY_ENABLED] = enabled
         }
 
     /**

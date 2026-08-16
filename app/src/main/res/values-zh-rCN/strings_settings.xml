@@ -159,6 +159,20 @@
     <string
         name="setcat_album_art_palette_subtitle"
     >当前：%1$s。打开实时预览并选择风格。</string>
+    <string name="setcat_custom_player_background_title">自定义播放器背景</string>
+    <string name="setcat_custom_player_background_subtitle">使用自定义图片作为播放器与歌词界面的背景。</string>
+    <string name="setcat_custom_player_background_pick">选择背景图片</string>
+    <string name="setcat_custom_player_background_change">更换背景图片</string>
+    <string name="setcat_custom_player_background_remove">移除背景</string>
+    <string name="setcat_custom_player_background_mode_title">背景显示模式</string>
+    <string name="setcat_custom_player_background_mode_cover">铺满</string>
+    <string name="setcat_custom_player_background_mode_stretch">拉伸</string>
+    <string name="setcat_custom_player_background_blur_title">背景模糊</string>
+    <string name="setcat_custom_player_background_blur_off">关闭</string>
+    <string name="setcat_custom_player_controls_opacity_title">播放器不透明度</string>
+    <string name="setcat_custom_player_controls_opacity_desc">应用于播放器界面与歌词界面除背景外的所有元素（封面、信息、进度、控制按钮等）。</string>
+    <string name="setcat_lyrics_gradient_overlay_title">歌词渐变遮罩</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">在歌词界面上方与下方显示柔和渐变，提升文字可读性。</string>
     <string name="setcat_home_collage">主页拼贴</string>
     <string name="setcat_collage_pattern_label">拼贴图案</string>
     <string

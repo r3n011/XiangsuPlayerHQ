@@ -107,6 +107,13 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".presentation.bilibili.auth.BilibiliLoginActivity"
+            android:exported="false"
+            android:label="Bilibili Login"
+            android:theme="@style/Theme.PixelPlay"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".presentation.netease.auth.NeteaseLoginActivity"
             android:exported="false"
             android:label="Netease Login"

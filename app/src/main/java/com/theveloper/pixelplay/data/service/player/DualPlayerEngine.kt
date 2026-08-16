@@ -45,6 +45,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -2408,7 +2410,14 @@ class DualPlayerEngine @Inject constructor(
         val realAid = if (realBvid.isBlank()) bvid.toLongOrNull() ?: aidFromPath else aidFromPath
 
         Timber.d("Resolving Bilibili URI: bvid=$realBvid, aid=$realAid, cid=$cid")
-        val url = bilibiliSearchApi.getPlayUrl(realAid, cid, realBvid)
+        // B 站网络接口偶发慢/风控（OkHttp 读超时 8s），给播放解析加总超时，
+        // 避免媒体库点 B 站歌时长时间"卡住"（网络抖动时一次解析最坏等 8s+）。
+        val url = try {
+            withTimeout(4000) { bilibiliSearchApi.getPlayUrl(realAid, cid, realBvid) }
+        } catch (e: TimeoutCancellationException) {
+            Timber.w("Bilibili URI resolution timed out: $uri")
+            null
+        }
         if (url.isNullOrBlank()) {
             Timber.w("Failed to resolve Bilibili playable URL for $uri")
             return@withContext null

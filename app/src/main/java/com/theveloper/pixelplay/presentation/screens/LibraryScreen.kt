@@ -171,7 +171,9 @@ import com.theveloper.pixelplay.presentation.components.PlaylistCreationTypeDial
 import com.theveloper.pixelplay.presentation.components.CreateAiPlaylistDialog
 import com.theveloper.pixelplay.presentation.components.subcomps.SelectionActionRow
 import com.theveloper.pixelplay.presentation.components.subcomps.SelectionCountPill
+import com.theveloper.pixelplay.presentation.viewmodel.AccountsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
+import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
@@ -460,12 +462,16 @@ fun LibraryScreen(
     libraryViewModel: LibraryViewModel = hiltViewModel(),
     songInfoBottomSheetViewModel: SongInfoBottomSheetViewModel = hiltViewModel(),
     neteaseDashboardViewModel: NeteaseDashboardViewModel = hiltViewModel(),
-    qqMusicDashboardViewModel: QqMusicDashboardViewModel = hiltViewModel()
+    qqMusicDashboardViewModel: QqMusicDashboardViewModel = hiltViewModel(),
+    accountsViewModel: AccountsViewModel = hiltViewModel()
 ) {
     // La recolección de estados de alto nivel se mantiene mínima.
     val context = LocalContext.current // Added context
     val haptic = LocalHapticFeedback.current
     val lastTabIndex by playerViewModel.lastLibraryTabIndexFlow.collectAsStateWithLifecycle()
+    // 播放器展开时，系统返回应优先收起播放器，而不是让媒体库文件夹回到上一级
+    val playerSheetState by playerViewModel.sheetState.collectAsStateWithLifecycle()
+    val isPlayerSheetExpanded = playerSheetState == PlayerSheetState.EXPANDED
     val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle() // Reintroducir favoriteIds aquí
     val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope() // Mantener si se usa para acciones de UI
@@ -477,6 +483,8 @@ fun LibraryScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         neteaseDashboardViewModel.autoSyncOnLibraryEntry()
         qqMusicDashboardViewModel.autoSyncOnLibraryEntry()
+        // B 站收藏同步（模仿网易云：进入媒体库自动同步，Syncer 内部 1 小时节流）
+        accountsViewModel.autoSyncBilibili()
     }
     // The pull-to-refresh spinner is reserved for user gestures. Automatic sync
     // and long-running refresh work move through the slim linear indicator under
@@ -749,7 +757,8 @@ fun LibraryScreen(
         derivedStateOf {
             currentTabId == LibraryTabId.FOLDERS &&
                     canNavigateBackInFolders &&
-                    !isSortSheetVisible
+                    !isSortSheetVisible &&
+                    !isPlayerSheetExpanded
         }
     }
 

@@ -285,6 +285,9 @@ fun UnifiedPlayerSheetV2(
     val currentSheetTranslationY = remember { Animatable(initialY) }
     val visualOvershootScaleY = remember { Animatable(1f) }
 
+    // 防止快速点击导致动画冲突卡住
+    var isSheetAnimating by remember { mutableStateOf(false) }
+
     // ⚡ sheetMotionController: 封装 translationY 和 expansionFraction 的动画操作
     val sheetMotionController = remember(
         currentSheetTranslationY,
@@ -308,13 +311,18 @@ fun UnifiedPlayerSheetV2(
         initialVelocity: Float = 0f
     ) {
         scope.launch {
-            sheetMotionController.animateTo(
-                targetExpanded = targetExpanded,
-                canExpand = showPlayerContentArea,
-                collapsedY = sheetCollapsedTargetY,
-                animationSpec = animationSpec ?: sheetAnimationSpec,
-                initialVelocity = initialVelocity
-            )
+            isSheetAnimating = true
+            try {
+                sheetMotionController.animateTo(
+                    targetExpanded = targetExpanded,
+                    canExpand = showPlayerContentArea,
+                    collapsedY = sheetCollapsedTargetY,
+                    animationSpec = animationSpec ?: sheetAnimationSpec,
+                    initialVelocity = initialVelocity
+                )
+            } finally {
+                isSheetAnimating = false
+            }
         }
     }
 
@@ -697,10 +705,17 @@ fun UnifiedPlayerSheetV2(
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt()
                                 // 平滑过渡：折叠态按卡片宽度测量并对齐卡片左侧，展开态按全屏宽度测量并对齐屏幕左侧。
                                 // 不要用硬阈值瞬间切到全屏宽度，否则 fraction 刚离开 0 时内容会先向两侧跳变再回弹。
+                                // ⚡ 性能优化：FullPlayerContent 在 fraction<=0.25 时不可见（contentAlpha=0 + 移出屏幕），
+                                // 但此前宽度插值从 fraction=0 就开始，不可见阶段也被每帧全量重测（约 25% 动画时间）。
+                                // 现在把宽度插值映射到 0.25→1：0→0.25 期间宽度恒为卡片宽，测量约束不变 → 子级
+                                // Placeable 缓存命中，FullPlayerContent 树零重测；0.25 后内容实际显示时再平滑
+                                // 展开到全屏宽。0.25 时刻 contentAlpha 恰为 0（与 FullPlayerRuntimePolicy 一致），
+                                // 宽度差异不可见，视觉完全一致。
+                                val visibleFraction = ((fraction - 0.25f) / 0.75f).coerceIn(0f, 1f)
                                 val measureWidth = androidx.compose.ui.util.lerp(
                                     constraints.maxWidth.toFloat(),
                                     screenWidthPx,
-                                    fraction
+                                    visibleFraction
                                 ).roundToInt().coerceAtLeast(0)
                                 val placeable = measurable.measure(
                                     constraints.copy(
@@ -724,12 +739,14 @@ fun UnifiedPlayerSheetV2(
                                 handler = sheetInteractionState.sheetVerticalDragGestureHandler
                             )
                             .clickable(
-                                enabled = tapBackgroundClosesPlayer || currentSheetContentState == PlayerSheetState.COLLAPSED,
+                                enabled = !isSheetAnimating && (tapBackgroundClosesPlayer || currentSheetContentState == PlayerSheetState.COLLAPSED),
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) {
                                 // ⚡ 折叠状态点击：直接展开播放器
                                 //   展开状态点击背景：调用 togglePlayerSheetState() 关闭播放器
+                                //   isSheetAnimating 守卫：动画进行中忽略点击，防止快速点击导致卡住
+                                if (isSheetAnimating) return@clickable
                                 if (currentSheetContentState == PlayerSheetState.COLLAPSED) {
                                     playerViewModel.expandPlayerSheet()
                                 } else if (tapBackgroundClosesPlayer) {

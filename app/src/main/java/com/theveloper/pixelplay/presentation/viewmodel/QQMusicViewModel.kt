@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -178,56 +179,87 @@ class QQMusicViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             Timber.d("QQMusic playSong: '${song.title}' - '${song.singer}' songmid=${song.songmid}")
 
-            val quality = try {
-                userPreferencesRepository.musicQualityFlow.first().lxValue
-            } catch (_: Exception) {
-                "320k"
-            }
-            val brs = when (quality) {
-                "24bit", "flac" -> listOf(1, 5, 7) // FLAC → 320k → 128k
-                "320k" -> listOf(5, 7)
-                "128k" -> listOf(7)
-                else -> listOf(5, 7)
-            }
-            Timber.d("QQMusic playSong: quality=$quality brChain=$brs")
-
-            var playUrl: String? = null
-
-            // 1. 官方 QQ 音源（落雪 tx 多代理竞速）
-            if (song.songmid.isNotBlank()) {
-                playUrl = lxTxPlayUrl(song, quality)
-                Timber.d("QQMusic playSong: tx result=${playUrl?.take(80)}")
-            }
-
-            // 2. 兜底：oiapi 酷我
-            if (playUrl.isNullOrEmpty()) {
-                for (br in brs) {
-                    val result = qqSearchApi.getPlayUrl(song, br)
-                    if (result.isSuccess) {
-                        val u = result.getOrDefault("")
-                        if (u.isNotEmpty()) {
-                            playUrl = u
-                            Timber.d("QQMusic playSong: got url br=$br len=${u.length}")
-                            break
-                        }
-                    } else {
-                        Timber.d("QQMusic playSong: br=$br failed: ${result.exceptionOrNull()?.message}")
-                    }
-                }
-            }
-
-            // 3. 兜底：落雪 kw 音源
-            if (playUrl.isNullOrEmpty()) {
-                // 兜底：落雪 kw 音源（仅引擎已加载时尝试，避免空引擎白白等待）
-                Timber.d("QQMusic playSong: all above failed, fallback to lx kw")
-                playUrl = lxFallbackPlayUrl(song, quality)
-            }
+            val playUrl = runCatching { resolvePlayableUrl(song) }.getOrNull()
 
             if (!playUrl.isNullOrEmpty()) {
                 onUrlReady(playUrl, song.title, song.singer, song.cover, getStableSongId(song))
             } else {
                 Timber.e("QQMusic playSong: ALL sources failed for '${song.title}'")
                 onUrlReady("", song.title, song.singer, song.cover, getStableSongId(song))
+            }
+        }
+    }
+
+    /**
+     * 解析一首 QQ 搜索结果的可播放直链（官方 tx 多代理竞速 → oiapi 酷我 → 落雪 kw 兜底）。
+     * 不更新 UI 状态，供 [playSong] 与 [enqueueAllSearchResults] 共用（静默批量解析）。
+     */
+    private suspend fun resolvePlayableUrl(song: QQSearchApi.QQSong): String? {
+        val quality = try {
+            userPreferencesRepository.musicQualityFlow.first().lxValue
+        } catch (_: Exception) {
+            "320k"
+        }
+        val brs = when (quality) {
+            "24bit", "flac" -> listOf(1, 5, 7) // FLAC → 320k → 128k
+            "320k" -> listOf(5, 7)
+            "128k" -> listOf(7)
+            else -> listOf(5, 7)
+        }
+        Timber.d("QQMusic playSong: quality=$quality brChain=$brs")
+
+        var playUrl: String? = null
+
+        // 1. 官方 QQ 音源（落雪 tx 多代理竞速）
+        if (song.songmid.isNotBlank()) {
+            playUrl = lxTxPlayUrl(song, quality)
+            Timber.d("QQMusic playSong: tx result=${playUrl?.take(80)}")
+        }
+
+        // 2. 兜底：oiapi 酷我
+        if (playUrl.isNullOrEmpty()) {
+            for (br in brs) {
+                val result = qqSearchApi.getPlayUrl(song, br)
+                if (result.isSuccess) {
+                    val u = result.getOrDefault("")
+                    if (u.isNotEmpty()) {
+                        playUrl = u
+                        Timber.d("QQMusic playSong: got url br=$br len=${u.length}")
+                        break
+                    }
+                } else {
+                    Timber.d("QQMusic playSong: br=$br failed: ${result.exceptionOrNull()?.message}")
+                }
+            }
+        }
+
+        // 3. 兜底：落雪 kw 音源
+        if (playUrl.isNullOrEmpty()) {
+            // 兜底：落雪 kw 音源（仅引擎已加载时尝试，避免空引擎白白等待）
+            Timber.d("QQMusic playSong: all above failed, fallback to lx kw")
+            playUrl = lxFallbackPlayUrl(song, quality)
+        }
+
+        return playUrl
+    }
+
+    /**
+     * 搜索整队播放：点击某首结果后，把当前搜索结果的其余歌曲逐首静默解析并追加到播放队列。
+     * 自动切下一曲时即可按搜索结果顺序依次播放。
+     */
+    fun enqueueAllSearchResults(
+        clickedSongId: String,
+        onEnqueue: (String, String, String, String, String) -> Unit
+    ) {
+        val results = _uiState.value.results
+        if (results.size <= 1) return
+        viewModelScope.launch(Dispatchers.IO) {
+            results.filter { getStableSongId(it) != clickedSongId }.forEach { song ->
+                val url = runCatching { resolvePlayableUrl(song) }.getOrNull()
+                if (url.isNullOrEmpty()) return@forEach
+                withContext(Dispatchers.Main) {
+                    onEnqueue(url, song.title, song.singer, song.cover, getStableSongId(song))
+                }
             }
         }
     }

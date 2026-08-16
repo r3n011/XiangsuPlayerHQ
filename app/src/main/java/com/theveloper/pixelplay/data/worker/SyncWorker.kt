@@ -19,6 +19,8 @@ import androidx.work.PeriodicWorkRequest
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.theveloper.pixelplay.data.bilibili.BilibiliFavoritesSyncer
+import com.theveloper.pixelplay.data.bilibili.BilibiliRepository
 import com.theveloper.pixelplay.data.database.AlbumEntity
 import com.theveloper.pixelplay.data.database.ArtistEntity
 import com.theveloper.pixelplay.data.database.MusicDao
@@ -35,6 +37,7 @@ import com.theveloper.pixelplay.data.model.ArtistRef
 import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
 import com.theveloper.pixelplay.data.media.AudioMetadataReader
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.service.PlaybackActivityTracker
@@ -82,7 +85,10 @@ constructor(
         private val lyricsRepository: LyricsRepository,
         private val telegramDao: TelegramDao,
         private val neteaseDao: NeteaseDao,
-        private val navidromeRepository: NavidromeRepository
+        private val navidromeRepository: NavidromeRepository,
+        private val bilibiliRepository: BilibiliRepository,
+        private val bilibiliFavoritesSyncer: BilibiliFavoritesSyncer,
+        private val playlistPreferencesRepository: PlaylistPreferencesRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     private val contentResolver: ContentResolver = appContext.contentResolver
@@ -446,10 +452,12 @@ constructor(
                     // For Navidrome, we only do network sync if SYNC_THRESHOLD_MS (24h) threshold has passed.
                     val navidromeNeedsNetworkSync = navidromeRepository.isLoggedIn && 
                         (System.currentTimeMillis() - navidromeRepository.lastFullSyncTime >= NavidromeRepository.SYNC_THRESHOLD_MS)
+                    val bilibiliLoggedIn = bilibiliRepository.isLoggedIn && bilibiliRepository.userId > 0L
                     
                     val needsActiveCloudSync = hasTelegramChannels ||
                         neteaseCount > 0 ||
-                        navidromeNeedsNetworkSync
+                        navidromeNeedsNetworkSync ||
+                        bilibiliLoggedIn
 
                     if (needsActiveCloudSync) {
                         setProgress(
@@ -478,6 +486,9 @@ constructor(
                     } else {
                         Log.d(TAG, "Skipping Navidrome sync — not logged in.")
                     }
+
+                    // Bilibili 收藏自动同步（Syncer 内部处理登录/节流/清理逻辑）
+                    bilibiliFavoritesSyncer.syncNow()
 
                     // Backfill missing primary artist cross-references so online songs
                     // saved before the cross-ref write path existed still show up in

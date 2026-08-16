@@ -684,7 +684,11 @@ class SongMetadataEditor(
                 }
                 val writeOk = runPipeline(tempFile.absolutePath)
                 if (writeOk) {
-                    file.inputStream().use { input ->
+                    // ⚡ 必须把写好了标签的临时文件复制回原文件。
+                    // 原实现错误地从原文件读、写回原文件：FileOutputStream(file, false)
+                    // 打开瞬间就截断原文件为 0 字节，而 input 读的正是被截断的同一文件
+                    // （读到 EOF），导致下载好的歌曲被清空成 0 字节、时长 0、无法播放。
+                    tempFile.inputStream().use { input ->
                         FileOutputStream(file, false).use { out ->
                             input.copyTo(out)
                             out.fd.sync()

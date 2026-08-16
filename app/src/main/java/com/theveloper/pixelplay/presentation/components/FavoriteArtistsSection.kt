@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,6 +76,9 @@ private fun rememberFavoriteArtistAvatar(artist: FavoriteArtist): String? {
 /** 主页收藏歌手卡片的单个歌手项宽度 */
 private val HomeFavoriteArtistCardWidth = 104.dp
 
+/** ⚡ 平板模式内部滚动区最大高度（超出部分内部滚动，避免 LazyColumn item 无限高度崩溃） */
+private val HomeFavoriteArtistsTabletMaxHeight = 520.dp
+
 /**
  * 主页「收藏的歌手」卡片
  *
@@ -104,10 +108,15 @@ fun FavoriteArtistsSection(
         )
 
         if (isTabletMode) {
-            // ⚡ 平板模式：FlowRow 自动换行，超高时上下滑动（与父级滚动嵌套）
+            // ⚡ 平板模式：FlowRow 自动换行，超高时上下滑动
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    // ⚡ 修复崩溃：作为首页 LazyColumn 的 item 时高度约束为无限
+                    // （maxHeight=Infinity），verticalScroll 禁止无限最大高度 →
+                    // "Vertically scrollable component was measured with an infinity maximum height"。
+                    // 给有界最大高度，超高时内部滚动，不向父级传播无限约束。
+                    .heightIn(max = HomeFavoriteArtistsTabletMaxHeight)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)

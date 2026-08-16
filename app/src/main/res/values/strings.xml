@@ -297,4 +297,19 @@
     <string name="transcode_cache_list_empty">No cached transcode songs</string>
     <string name="transcode_cache_list_clear_all">Clear all</string>
     <string name="transcode_cache_list_delete">Delete cache</string>
+
+    <!-- Toplist (排行榜) settings -->
+    <string name="setcat_home_toplist_title">首页排行榜</string>
+    <string name="setcat_home_toplist_subtitle">在首页展示网易云官方排行榜</string>
+
+    <!-- Toplist home section -->
+    <string name="home_toplist_title">排行榜</string>
+    <string name="home_toplist_subtitle">网易云官方榜单</string>
+    <string name="toplist_see_all">查看全部</string>
+    <string name="toplist_loading_failed">加载失败，点击重试</string>
+    <string name="toplist_retry">重试</string>
+    <string name="toplist_songs_count">%1$d 首歌曲</string>
+    <string name="toplist_empty">暂无歌曲</string>
+    <string name="toplist_detail_play_all">播放全部</string>
+    <string name="toplist_detail_shuffle">随机播放</string>
 </resources>

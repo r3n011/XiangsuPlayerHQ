@@ -95,6 +95,8 @@ import com.theveloper.pixelplay.presentation.components.AutoScrollingText
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.SmartImageListTargetSize
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
+import com.theveloper.pixelplay.presentation.components.ToplistHomeSection
+import com.theveloper.pixelplay.presentation.viewmodel.ToplistViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.LxUiState
@@ -167,6 +169,7 @@ fun SearchScreen(
     lxViewModel: LxMusicViewModel = hiltViewModel(),
     qqViewModel: QQMusicViewModel = hiltViewModel(),
     bilibiliViewModel: BilibiliMusicViewModel = hiltViewModel(),
+    toplistViewModel: ToplistViewModel = hiltViewModel(),
     navController: NavHostController,
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
@@ -191,6 +194,7 @@ fun SearchScreen(
     }.collectAsStateWithLifecycle(initialValue = SearchUiSlice())
     val currentFilter = searchUiState.selectedSearchFilter
     val onlineSearchState by lxViewModel.uiState.collectAsStateWithLifecycle()
+    val toplistUiState by toplistViewModel.uiState.collectAsStateWithLifecycle()
     val genres by playerViewModel.genres.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
@@ -403,7 +407,30 @@ fun SearchScreen(
                             navController.navigateSafely(Screen.GenreDetail.createRoute(encodedGenreId))
                         },
                         playerViewModel = playerViewModel,
-                        modifier = Modifier.padding(top = 12.dp)
+                        modifier = Modifier.padding(top = 12.dp),
+                        header = {
+                            // ⚡ 排行榜（从首页移动到搜索页：未搜索时展示，对齐 lx-music 发现页；
+                            // 仍遵循设置「首页排行榜」开关）
+                            if (toplistUiState.enabled) {
+                                ToplistHomeSection(
+                                    selectedPlatform = toplistUiState.selectedPlatform,
+                                    selectedToplistId = toplistUiState.selectedToplistId,
+                                    songs = toplistUiState.displaySongs,
+                                    isLoading = toplistUiState.isLoading,
+                                    error = toplistUiState.error,
+                                    onSelectPlatform = { toplistViewModel.selectPlatform(it) },
+                                    onSelectToplist = { toplistViewModel.selectToplist(it) },
+                                    onRetry = { toplistViewModel.refresh() },
+                                    onOpenAllClick = {
+                                        navController.navigateSafely(
+                                            Screen.ToplistDetail.createRoute(toplistUiState.selectedToplistId)
+                                        )
+                                    },
+                                    playerViewModel = playerViewModel,
+                                    navController = navController
+                                )
+                            }
+                        }
                     )
                 } else {
                     Column(
@@ -519,6 +546,11 @@ fun SearchScreen(
                                                 lxViewModel.playSong(song) { url, name, singer, cover, songId ->
                                                     playerViewModel.playUrl(url, name, singer, cover, songId)
                                                 }
+                                                lxViewModel.enqueueAllSearchResults(
+                                                    lxViewModel.getStableSongId(song)
+                                                ) { url, name, singer, cover, songId ->
+                                                    playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                                }
                                             },
                                             favoriteIds = favoriteSongIds,
                                             onToggleFavorite = { song ->
@@ -573,6 +605,11 @@ fun SearchScreen(
                                         lxViewModel.playSong(song) { url, name, singer, cover, songId ->
                                             playerViewModel.playUrl(url, name, singer, cover, songId)
                                         }
+                                        lxViewModel.enqueueAllSearchResults(
+                                            lxViewModel.getStableSongId(song)
+                                        ) { url, name, singer, cover, songId ->
+                                            playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                        }
                                     },
                                     favoriteIds = favoriteSongIds,
                                     onToggleFavorite = { song ->
@@ -595,6 +632,11 @@ fun SearchScreen(
                                         qqViewModel.playSong(song) { url, name, singer, cover, songId ->
                                             playerViewModel.playUrl(url, name, singer, cover, songId)
                                         }
+                                        qqViewModel.enqueueAllSearchResults(
+                                            qqViewModel.getStableSongId(song)
+                                        ) { url, name, singer, cover, songId ->
+                                            playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                        }
                                     },
                                     colorScheme = colorScheme,
                                     stableIdFn = { song -> qqViewModel.getStableSongId(song) },
@@ -608,8 +650,13 @@ fun SearchScreen(
                                     isSearching = isSearching as Boolean,
                                     searchQuery = searchQuery,
                                     onPlaySong = { song ->
-                                        bilibiliViewModel.playSong(song) { url, name, singer, cover, songId ->
-                                            playerViewModel.playUrl(url, name, singer, cover, songId)
+                                        bilibiliViewModel.playSong(song) { url, name, singer, cover, songId, bvid ->
+                                            playerViewModel.playUrl(url, name, singer, cover, songId, bilibiliBvid = bvid)
+                                        }
+                                        bilibiliViewModel.enqueueAllSearchResults(
+                                            bilibiliViewModel.getStableSongId(song)
+                                        ) { url, name, singer, cover, songId, bvid ->
+                                            playerViewModel.enqueueCloudSong(url, name, singer, cover, songId, bilibiliBvid = bvid)
                                         }
                                     },
                                     colorScheme = colorScheme,

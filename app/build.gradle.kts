@@ -93,8 +93,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 43
-        versionName = "1.4.6"
+        versionCode = 47
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -308,6 +308,7 @@ dependencies {
     implementation(libs.converter.gson)
     implementation(libs.okhttp)
     implementation(libs.logging.interceptor)
+    implementation(libs.zxing.core)
     implementation(libs.gson)
     implementation(libs.quickjs.wrapper.android)
     implementation(libs.kotlinx.serialization.json)

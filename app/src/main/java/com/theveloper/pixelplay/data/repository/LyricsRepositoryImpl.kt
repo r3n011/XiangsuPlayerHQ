@@ -81,10 +81,15 @@ internal fun parseBestEmbeddedLyricsField(propertyMap: Map<String, Array<String>
 /**
  * LyricsData for JSON disk cache (matches Rhythm's format)
  */
+// 缓存版本：修复"原文/翻译顺序颠倒"（旧版按中文字符数把翻译当主文本）后，
+// 旧 JSON 缓存里可能是反向歌词，必须通过版本号丢弃并重新拉取
+private const val LYRICS_CACHE_VERSION = 2
+
 private data class LyricsData(
     val plainLyrics: String?,
     val syncedLyrics: String?,
-    val wordByWordLyrics: String? = null
+    val wordByWordLyrics: String? = null,
+    val version: Int = LYRICS_CACHE_VERSION
 ) {
     fun hasLyrics(): Boolean =
         !plainLyrics.isNullOrBlank() ||
@@ -119,7 +124,8 @@ class LyricsRepositoryImpl @Inject constructor(
     private val lyricsDao: com.theveloper.pixelplay.data.database.LyricsDao,
     private val okHttpClient: OkHttpClient,
     private val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi,
-    private val builtInSourceSearchApi: BuiltInSourceSearchApi
+    private val builtInSourceSearchApi: BuiltInSourceSearchApi,
+    private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi
 ) : LyricsRepository {
 
 
@@ -334,33 +340,37 @@ class LyricsRepositoryImpl @Inject constructor(
     ): Lyrics? = withContext(Dispatchers.IO) {
         val cacheKey = generateCacheKey(song)
         val isNeteaseTrack = isNeteaseSong(song)
+        // B 站视频：歌词必须实时从视频字幕拉取（"就用 b 站的字幕"），
+        // 若走缓存会命中之前普通歌词（LRCLIB 等），字幕永远不会显示
+        val isBilibiliTrack = isBilibiliSong(song)
         
         Log.d(TAG, "===== FETCH LYRICS START: ${song.displayArtist} - ${song.title} (forceRefresh=$forceRefresh, source=$sourcePreference) =====")
 
         // Check in-memory cache unless force refresh (early return - matching Rhythm)
-        if (!forceRefresh && !isNeteaseTrack) {
+        if (!forceRefresh && !isNeteaseTrack && !isBilibiliTrack) {
             lyricsCache.get(cacheKey)?.let { cached ->
                 Log.d(TAG, "===== RETURNING IN-MEMORY CACHED LYRICS =====")
                 return@withContext cached
             }
             Log.d(TAG, "===== NO IN-MEMORY CACHE HIT, proceeding to fetch =====")
-        } else if (!forceRefresh && isNeteaseTrack) {
-            Log.d(TAG, "===== BYPASSING IN-MEMORY CACHE FOR NETEASE TRACK =====")
+        } else if (!forceRefresh && (isNeteaseTrack || isBilibiliTrack)) {
+            Log.d(TAG, "===== BYPASSING IN-MEMORY CACHE FOR NETEASE/BILIBILI TRACK =====")
         } else {
             Log.d(TAG, "===== FORCE REFRESH - BYPASSING IN-MEMORY CACHE =====")
         }
 
-        if (!forceRefresh && !isNeteaseTrack) {
+        if (!forceRefresh && !isNeteaseTrack && !isBilibiliTrack) {
             loadStoredLyrics(song, cacheKey, includeMemoryCache = false)?.let { stored ->
                 lyricsCache.put(cacheKey, stored.first)
                 Log.d(TAG, "===== RETURNING STORED LYRICS WITHOUT REMOTE FETCH =====")
                 return@withContext stored.first
             }
-        } else if (!forceRefresh && isNeteaseTrack) {
+        } else if (!forceRefresh && (isNeteaseTrack || isBilibiliTrack)) {
             // 网易云歌曲：跳过数据库/JSON 陈旧缓存，直接从 Netease API 获取
             // 否则会显示上一首歌的歌词（因为 song.id 可能与数据库中旧条目冲突）
             // 但保留磁盘 JSON 作为 API 失败后的兜底（在 fetchLyricsFromAPI 内部）
-            Log.d(TAG, "===== BYPASSING STORED LYRICS FOR NETEASE TRACK — fetching from API =====")
+            // B 站歌曲：同上，必须走 API 实时拉字幕
+            Log.d(TAG, "===== BYPASSING STORED LYRICS FOR NETEASE/BILIBILI TRACK — fetching from API =====")
         }
 
         // Define source fetchers (matching Rhythm pattern)
@@ -387,10 +397,14 @@ class LyricsRepositoryImpl @Inject constructor(
         }
 
         // Try sources in order based on preference, with fallback (matching Rhythm)
-        val sourceFetchers = when (sourcePreference) {
-            LyricsSourcePreference.API_FIRST -> listOf(fetchFromAPI, fetchFromEmbedded, fetchFromLocal)
-            LyricsSourcePreference.EMBEDDED_FIRST -> listOf(fetchFromEmbedded, fetchFromAPI, fetchFromLocal)
-            LyricsSourcePreference.LOCAL_FIRST -> listOf(fetchFromLocal, fetchFromEmbedded, fetchFromAPI)
+        // B 站视频：强制 API 优先（字幕优先，不让本地/内嵌歌词抢前）
+        val sourceFetchers = when {
+            isBilibiliTrack -> listOf(fetchFromAPI, fetchFromEmbedded, fetchFromLocal)
+            else -> when (sourcePreference) {
+                LyricsSourcePreference.API_FIRST -> listOf(fetchFromAPI, fetchFromEmbedded, fetchFromLocal)
+                LyricsSourcePreference.EMBEDDED_FIRST -> listOf(fetchFromEmbedded, fetchFromAPI, fetchFromLocal)
+                LyricsSourcePreference.LOCAL_FIRST -> listOf(fetchFromLocal, fetchFromEmbedded, fetchFromAPI)
+            }
         }
 
         // Try each source in order until we find lyrics (early return on success)
@@ -522,6 +536,32 @@ class LyricsRepositoryImpl @Inject constructor(
         val isNetease = isNeteaseSong(song)
         val isCloudLx = song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
         val usedNeteaseSpecific = isNetease || isCloudLx
+
+        // B 站视频：优先使用视频字幕作为歌词（对齐 PiliPlus vttSubtitles 思路）
+        val bilibiliBvid = resolveBilibiliBvid(song)
+        if (bilibiliBvid != null) {
+            val subtitleLrc = try {
+                kotlinx.coroutines.withTimeout(5000L) {
+                    bilibiliSearchApi.getBilibiliSubtitleLrc(
+                        bvid = bilibiliBvid,
+                        cid = resolveBilibiliCid(song)
+                    )
+                }
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                Log.w(TAG, "Bilibili subtitle fetch timed out for: ${song.title}")
+                null
+            }
+            if (subtitleLrc != null) {
+                val parsed = LyricsUtils.parseLyrics(subtitleLrc)
+                if (parsed.isValid()) {
+                    Log.d(TAG, "===== LOADED LYRICS FROM BILIBILI SUBTITLES =====")
+                    saveLocalLyricsJson(song, parsed)
+                    return@withContext parsed.copy(areFromRemote = true)
+                }
+            } else {
+                Log.d(TAG, "No Bilibili subtitles available, falling back to lyrics APIs")
+            }
+        }
 
         // 内置源（酷我/QQ/酷狗/咪咕）歌词优先：对齐落雪 musicSdk 的 lyric 实现
         if (isCloudLx) {
@@ -919,6 +959,30 @@ class LyricsRepositoryImpl @Inject constructor(
         song.contentUriString.startsWith("netease://") ||
         song.contentUriString.startsWith("cloud://lx/")
 
+    /** B 站视频歌曲（bilibili:// 协议或带 bilibiliBvid），歌词应优先走视频字幕。 */
+    private fun isBilibiliSong(song: Song): Boolean =
+        song.bilibiliBvid?.startsWith("BV", ignoreCase = true) == true ||
+        song.contentUriString.startsWith("bilibili://")
+
+    /** 解析 B 站歌曲的 BV 号（优先 Song.bilibiliBvid，其次 bilibili:// 协议）。 */
+    private fun resolveBilibiliBvid(song: Song): String? {
+        song.bilibiliBvid?.takeIf { it.startsWith("BV", ignoreCase = true) }?.let { return it }
+        if (song.contentUriString.startsWith("bilibili://")) {
+            return song.contentUriString
+                .removePrefix("bilibili://")
+                .substringBefore("/")
+                .takeIf { it.startsWith("BV", ignoreCase = true) }
+        }
+        return null
+    }
+
+    /** 解析 B 站歌曲的 cid（bilibili://{bvid}/{cid}/{aid}）；无法解析返回 0，由接口兜底。 */
+    private fun resolveBilibiliCid(song: Song): Long {
+        if (!song.contentUriString.startsWith("bilibili://")) return 0L
+        val segments = song.contentUriString.removePrefix("bilibili://").split("/")
+        return segments.getOrNull(1)?.toLongOrNull() ?: 0L
+    }
+
     private fun resolveNeteaseSongId(song: Song): Long? {
         // 1) 优先 song.neteaseId（最准确）
         song.neteaseId?.let { if (it > 0L) return it }
@@ -1210,6 +1274,11 @@ class LyricsRepositoryImpl @Inject constructor(
     private suspend fun loadLocalLyricsJson(song: Song): Lyrics? {
         try {
             val data = readLyricsJsonCache(song) ?: return null
+            // 旧版本缓存（如修复"原文/翻译颠倒"之前的反向歌词）直接丢弃，强制重新拉取
+            if (data.version < LYRICS_CACHE_VERSION) {
+                Log.d(TAG, "Discarding stale lyrics JSON cache (version=${data.version}) for ${song.id}")
+                return null
+            }
             if (data.hasLyrics()) {
                 val rawLyrics = data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
                 val parsed = LyricsUtils.parseLyrics(rawLyrics)
@@ -1291,8 +1360,11 @@ class LyricsRepositoryImpl @Inject constructor(
      * Load embedded lyrics from audio file metadata
      */
     private suspend fun loadEmbeddedLyricsFromMetadata(song: Song): Lyrics? = withContext(Dispatchers.IO) {
-        // Skip embedded lyrics for Telegram songs (not supported yet/streamed)
-        if (song.contentUriString.startsWith("telegram://") || song.contentUriString.isEmpty()) {
+        // Skip embedded lyrics for streamed/remote songs (Telegram/Bilibili/empty)
+        if (song.contentUriString.startsWith("telegram://") ||
+            song.contentUriString.startsWith("bilibili://") ||
+            song.contentUriString.isEmpty()
+        ) {
             return@withContext null
         }
 
@@ -1339,16 +1411,21 @@ class LyricsRepositoryImpl @Inject constructor(
                 parseStoredLyrics(rawLyrics)?.let { return@withContext it to rawLyrics }
             }
 
-        song.id.toLongOrNull()
-            ?.let { lyricsDao.getLyrics(it)?.content }
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { rawLyrics ->
-                parseStoredLyrics(rawLyrics)?.let { return@withContext it to rawLyrics }
-            }
+        // cloud://lx 在线歌曲：跳过数据库缓存（旧版本可能存有修复"原文/翻译颠倒"前的
+        // 反向歌词，且 DB 无法版本化），统一走版本化 JSON 缓存 + 重新拉取
+        val isCloudLxSong = song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
+        if (!isCloudLxSong) {
+            song.id.toLongOrNull()
+                ?.let { lyricsDao.getLyrics(it)?.content }
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?.let { rawLyrics ->
+                    parseStoredLyrics(rawLyrics)?.let { return@withContext it to rawLyrics }
+                }
+        }
 
         readLyricsJsonCache(song)
-            ?.takeIf { it.hasLyrics() }
+            ?.takeIf { it.hasLyrics() && it.version >= LYRICS_CACHE_VERSION }
             ?.let { data ->
                 val rawLyrics = data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
                 if (!rawLyrics.isNullOrBlank()) {

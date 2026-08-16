@@ -12,6 +12,7 @@ import android.content.Intent
 import android.os.Build
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import android.os.Bundle
 import android.os.Handler
@@ -306,6 +307,47 @@ class MainActivity : ComponentActivity() {
             throw t // Cannot recover from this
         }
 
+        // 主线程卡顿检测器（仅 Debug）：后台线程每 200ms 采样主线程帧时间戳，
+        // 检测到阻塞 > 500ms 时 dump 主线程调用栈。
+        // 注意：检测逻辑必须在后台线程（Choreographer 回调也在主线程，卡顿时无法执行）。
+        if (BuildConfig.DEBUG) {
+            try {
+                val choreographer = android.view.Choreographer.getInstance()
+                val lastFrameMs = java.util.concurrent.atomic.AtomicLong(0L)
+                choreographer.postFrameCallback(object : android.view.Choreographer.FrameCallback {
+                    override fun doFrame(frameTimeNanos: Long) {
+                        lastFrameMs.set(android.os.SystemClock.uptimeMillis())
+                        choreographer.postFrameCallback(this)
+                    }
+                })
+                Thread {
+                    var lastLoggedMs = 0L
+                    while (true) {
+                        Thread.sleep(200)
+                        val mainThread = Looper.getMainLooper().thread
+                        // 主线程若在等待（闲时 sleep），不算卡顿
+                        val state = mainThread.state
+                        if (state == Thread.State.WAITING || state == Thread.State.TIMED_WAITING) continue
+                        val now = android.os.SystemClock.uptimeMillis()
+                        val last = lastFrameMs.get()
+                        val elapsed = now - last
+                        // 距上次打印至少 2 秒，避免刷屏
+                        if (last != 0L && elapsed > 500 && now - lastLoggedMs > 2000) {
+                            lastLoggedMs = now
+                            val stack = mainThread.stackTrace.joinToString("\n    at ")
+                            android.util.Log.w(
+                                "MainThreadHang",
+                                "主线程阻塞 ${elapsed}ms！调用栈:\n    at $stack"
+                            )
+                        }
+                    }
+                }.apply { isDaemon = true }.start()
+                android.util.Log.i("PixelPlay", "MainThreadHang detector installed (background sampler)")
+            } catch (t: Throwable) {
+                android.util.Log.e("PixelPlay", "Failed to install MainThreadHang detector: ${t.message}")
+            }
+        }
+
         // LEER SEÑAL DE BENCHMARK
         val isBenchmarkMode = intent.getBooleanExtra("is_benchmark", false)
         val shouldBenchmarkRebuildDatabase =
@@ -407,7 +449,19 @@ class MainActivity : ComponentActivity() {
                             label = "SplashTransition"
                         ) { isFinished ->
                             if (!isFinished) {
-                                PixelPlaySplashScreen()
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    PixelPlaySplashScreen()
+                                    // 预热复杂矢量图（pixelplay_base_monochrome 含超长 path，
+                                    // 首绘生成 DrawCache 需 ~600ms）。在启动 splash 阶段提前绘制，
+                                    // 避免展开播放器（封面加载前 AlbumPlaceholder）时主线程卡顿。
+                                    // 透明 tint 不影响 DrawCache 缓存内容（缓存不应用 colorFilter）。
+                                    Icon(
+                                        painter = painterResource(R.drawable.pixelplay_base_monochrome),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(86.dp),
+                                        tint = Color.Transparent
+                                    )
+                                }
                             } else {
                                 // Show main app content directly (no setup screen)
                                 MainAppContent(playerViewModel, mainViewModel)
@@ -838,6 +892,7 @@ class MainActivity : ComponentActivity() {
                 Screen.DailyRecommendScreen.route,
                 Screen.RecentlyPlayed.route,
                 Screen.GenreDetail.route,
+                Screen.ToplistDetail.route,
                 Screen.AlbumDetail.route,
                 Screen.ArtistDetail.route,
                 Screen.ArtistHomepage.route,
@@ -857,7 +912,8 @@ class MainActivity : ComponentActivity() {
                 Screen.DotDeviceSettings.route,
                 Screen.EasterEgg.route,
                 Screen.WordDelimiterConfig.route,
-                Screen.ArtistWhitelistConfig.route
+                Screen.ArtistWhitelistConfig.route,
+                Screen.Equalizer.route
             )
         }
         val isPlayerExpanded by remember {

@@ -1539,6 +1539,10 @@ class MusicService : MediaLibraryService() {
                     }
                     if (song == null) return@launch
                     val lyrics = runCatching { musicRepository.getLyrics(song) }.getOrNull()
+                    // ⚡ 竞态守卫：getLyrics 是异步的（IO + 网络），期间可能已切歌/换源。
+                    // 只有结果仍属于当前播放的歌曲时才设置，否则丢弃 —— 否则上一首歌的
+                    // 歌词会晚到覆盖新歌，设备端就会"弹回之前的歌词"。
+                    if (bluetoothLyricsManager.currentMediaItemId != songId) return@launch
                     bluetoothLyricsManager.setLyrics(lyrics)
                     bluetoothLyricsManager.updatePlaybackState(posMs, playing)
                     bluetoothLyricsManager.pushNow()

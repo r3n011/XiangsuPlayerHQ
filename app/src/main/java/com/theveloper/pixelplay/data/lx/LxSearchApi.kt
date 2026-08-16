@@ -156,6 +156,36 @@ class LxSearchApi @Inject constructor(
      */
     suspend fun getSongCoverFromVkeys(songId: String): String? = withContext(Dispatchers.IO) {
         if (songId.isBlank()) return@withContext null
+
+        // ⚡ 优先尝试 ncmapi 的 song/detail，因为它更官方且包含 picUrl (对齐用户反馈)
+        try {
+            val url = "$BTWOA_API_BASE/song/detail?ids=$songId"
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (response.isSuccessful) {
+                val body = response.body?.string()
+                if (body != null) {
+                    val obj = JSONObject(body)
+                    val songs = obj.optJSONArray("songs")
+                    if (songs != null && songs.length() > 0) {
+                        val songObj = songs.optJSONObject(0)
+                        val al = songObj.optJSONObject("al") ?: songObj.optJSONObject("album")
+                        val picUrl = al?.optString("picUrl") ?: al?.optString("pic")
+                        if (!picUrl.isNullOrBlank()) {
+                            return@withContext picUrl.trim().replace("http://", "https://")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "从 ncmapi 获取封面失败，尝试 vkeys")
+        }
+
         try {
             val url = "$COVER_API_BASE?id=$songId"
             val request = Request.Builder()
@@ -166,7 +196,7 @@ class LxSearchApi @Inject constructor(
 
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
-                Timber.e("获取封面失败: ${response.code}")
+                Timber.e("获取封面失败 (vkeys): ${response.code}")
                 return@withContext null
             }
 
@@ -182,9 +212,9 @@ class LxSearchApi @Inject constructor(
                 data.optString("pic", "")
             }.trim()
 
-            if (cover.isBlank()) null else cover
+            if (cover.isBlank()) null else cover.replace("http://", "https://")
         } catch (e: Exception) {
-            Timber.e(e, "获取封面异常")
+            Timber.e(e, "获取封面异常 (vkeys)")
             null
         }
     }
@@ -393,21 +423,16 @@ class LxSearchApi @Inject constructor(
     }
 
     /**
-     * 合并 LRC 与翻译 LRC：智能选择含中文字符更多的一方作为主文本，
-     * 然后按时间戳排序后，主文本行之后紧跟相同时间戳的次文本行。
+     * 合并 LRC 与翻译 LRC：网易云 lrc 永远是原文、tlyric 永远是翻译，
+     * 一律以原文为主文本、翻译为次文本；按时间戳排序后，原文行之后紧跟相同时间戳的翻译行。
      * LyricsUtils.parseLyrics() 的 pairTranslationLines() 会根据相同时间戳自动配对翻译。
      */
     private fun mergeLrcWithTranslation(lrcText: String, tlyricText: String): String {
-        // 判断哪一侧含更多中文字符——中文多的作为主文本（line.line），
-        // 另一方作为翻译/次文本（line.translation）。
-        // 这样：中文歌曲的 lrc（中文）为主文本，英文歌曲的 tlyric（中文翻译）为主文本。
-        val cjkRegex = Regex("[\\u4e00-\\u9fff]")
-        val lrcCjkCount = cjkRegex.findAll(lrcText).count()
-        val tlyricCjkCount = cjkRegex.findAll(tlyricText).count()
-        val preferTlyricAsPrimary = tlyricCjkCount > lrcCjkCount
-
-        val primarySource = if (preferTlyricAsPrimary) tlyricText else lrcText
-        val secondarySource = if (preferTlyricAsPrimary) lrcText else tlyricText
+        // lrc = 原文（line.line），tlyric = 翻译（line.translation）。
+        // 注意：不能按"中文字符多的一方作主文本"——外文歌曲的 tlyric（中文翻译）中文多，
+        // 那样会让翻译显示在主位置、原文跑到第二位置（用户要求原文在主、翻译在次）。
+        val primarySource = lrcText
+        val secondarySource = tlyricText
 
         val originalLines = primarySource.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
         val translationLines = secondarySource.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
@@ -688,8 +713,8 @@ class LxSearchApi @Inject constructor(
         val id = obj.optString("id", "")
         val name = obj.optString("name", "未知歌曲")
 
-        // 兼容两种响应结构：web 端 artists/album（cloudsearch），移动端 ar/al（search/get 老接口）
-        val artists = obj.optJSONArray("artists") ?: obj.optJSONArray("ar")
+        // 兼容多种响应结构：ar/al (官方/NCM SDK), artists/album (CloudSearch/BTWOA)
+        val artists = obj.optJSONArray("ar") ?: obj.optJSONArray("artists")
         val singer = if (artists != null) {
             buildString {
                 for (i in 0 until artists.length()) {
@@ -703,8 +728,7 @@ class LxSearchApi @Inject constructor(
         } else {
             "未知歌手"
         }
-        // 多个歌手时按顺序收集歌手 ID（逗号分隔，与 singer 一一对应），
-        // 供 JS 引擎 musicInfo.artists 数组使用，避免多歌手歌曲取链接失败
+        // 多个歌手时按顺序收集歌手 ID
         val artistIds = if (artists != null) {
             buildString {
                 for (i in 0 until artists.length()) {
@@ -722,12 +746,15 @@ class LxSearchApi @Inject constructor(
             ""
         }
 
-        val album = obj.optJSONObject("album") ?: obj.optJSONObject("al")
+        val album = obj.optJSONObject("al") ?: obj.optJSONObject("album")
         val albumName = album?.optString("name", "") ?: ""
-        val pic = album?.optString("picUrl", "")?.trim()?.replace("`", "") ?: ""
+        
+        // ⚡ 兼容 picUrl / pic 字段，并确保使用 https
+        val pic = (album?.optString("picUrl") ?: album?.optString("pic"))
+            ?.trim()?.replace("`", "")?.replace("http://", "https://") ?: ""
 
-        val duration = obj.optLong("duration", 0L).takeIf { it > 0L }
-            ?: obj.optLong("dt", 0L)
+        val duration = obj.optLong("dt", 0L).takeIf { it > 0L }
+            ?: obj.optLong("duration", 0L)
 
         return LxSongInfo(
             id = id,

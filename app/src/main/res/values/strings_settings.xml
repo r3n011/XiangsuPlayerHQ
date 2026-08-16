@@ -186,6 +186,30 @@
     <string
         name="setcat_album_art_palette_subtitle"
     >Current: %1$s. Open live preview and choose style.</string>
+    <string
+        name="setcat_custom_player_background_title"
+    >Custom Player Background</string>
+    <string
+        name="setcat_custom_player_background_subtitle"
+    >Use a custom image as the background of the player and lyrics screens.</string>
+    <string
+        name="setcat_custom_player_background_pick"
+    >Choose background image</string>
+    <string
+        name="setcat_custom_player_background_change"
+    >Change background image</string>
+    <string
+        name="setcat_custom_player_background_remove"
+    >Remove background</string>
+    <string name="setcat_custom_player_background_mode_title">Display Mode</string>
+    <string name="setcat_custom_player_background_mode_cover">Fill</string>
+    <string name="setcat_custom_player_background_mode_stretch">Stretch</string>
+    <string name="setcat_custom_player_background_blur_title">Background Blur</string>
+    <string name="setcat_custom_player_background_blur_off">Off</string>
+    <string name="setcat_custom_player_controls_opacity_title">Player Opacity</string>
+    <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
+    <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
     <string name="setcat_home_collage">Home Collage</string>
     <string name="setcat_collage_pattern_label">Collage Pattern</string>
     <string

@@ -56,6 +56,16 @@ fun customFontDisplayName(key: String): String {
     return fileName.removeSuffix(".ttf").removeSuffix(".otf")
 }
 
+/**
+ * 删除自定义字体文件（应用内部存储），返回是否删除成功。
+ */
+fun deleteCustomFont(context: Context, key: String): Boolean {
+    val fileName = customFontFileName(key)
+    if (fileName.isBlank()) return false
+    val fontFile = File(getCustomFontsDir(context), fileName)
+    return fontFile.exists() && fontFile.isFile && fontFile.delete()
+}
+
 private val montserrat = GoogleFont("Montserrat")
 private val provider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
@@ -189,6 +199,23 @@ val GoogleSansFlexTopBarTitle = FontFamily(
 )
 
 /**
+ * 内置中文字体（均支持简体中文，OFL/免费商用授权）：
+ * 站酷快乐体（圆润治愈）、站酷小薇（优雅宋体）、马善政楷书（书法）、得意黑（现代窄黑）。
+ */
+val ZcoolKuaileFamily = FontFamily(
+    androidx.compose.ui.text.font.Font(resId = R.font.zcool_kuaile, weight = FontWeight.Normal)
+)
+val ZcoolXiaoWeiFamily = FontFamily(
+    androidx.compose.ui.text.font.Font(resId = R.font.zcool_xiaowei, weight = FontWeight.Normal)
+)
+val MaShanZhengFamily = FontFamily(
+    androidx.compose.ui.text.font.Font(resId = R.font.ma_shan_zheng, weight = FontWeight.Normal)
+)
+val SmileySansFamily = FontFamily(
+    androidx.compose.ui.text.font.Font(resId = R.font.smiley_sans, weight = FontWeight.Normal)
+)
+
+/**
  * 歌词字体选项 — 名称 → FontFamily 的映射。
  * "DEFAULT" → 跟随应用主题（Google Sans Rounded）。
  */
@@ -200,6 +227,10 @@ val LyricsFontFamilies: Map<String, FontFamily> = mapOf(
     "SANS_SERIF" to FontFamily.SansSerif,
     "MONOSPACE" to FontFamily.Monospace,
     "CURSIVE" to FontFamily.Cursive,
+    "ZCOOL_KUAILE" to ZcoolKuaileFamily,
+    "ZCOOL_XIAOWEI" to ZcoolXiaoWeiFamily,
+    "MA_SHAN_ZHENG" to MaShanZhengFamily,
+    "SMILEY_SANS" to SmileySansFamily,
 )
 
 /**
@@ -230,6 +261,10 @@ val LyricsFontDisplayNames: Map<String, String> = mapOf(
     "SANS_SERIF" to "无衬线",
     "MONOSPACE" to "等宽",
     "CURSIVE" to "手写",
+    "ZCOOL_KUAILE" to "站酷快乐体",
+    "ZCOOL_XIAOWEI" to "站酷小薇",
+    "MA_SHAN_ZHENG" to "马善政楷书",
+    "SMILEY_SANS" to "得意黑",
 )
 
 // Tipografía - Usar fuentes amigables y modernas.

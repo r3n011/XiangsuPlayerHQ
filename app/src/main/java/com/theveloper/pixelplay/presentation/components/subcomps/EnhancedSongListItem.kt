@@ -82,6 +82,7 @@ private fun resolvePlatformBadge(song: Song): PlatformBadge? {
     return when {
         uri.startsWith("netease://") -> PlatformBadge("网易", Color(0xFFE0242B))
         uri.startsWith("qqmusic://") -> PlatformBadge("qq", Color(0xFF31C27C))
+        uri.startsWith("bilibili://") -> PlatformBadge("B站", Color(0xFFFB7299))
         uri.startsWith("navidrome://") -> PlatformBadge("nav", Color(0xFF2E7CF6))
         uri.startsWith("jellyfin://") -> PlatformBadge("jf", Color(0xFFFB7299))
         uri.startsWith("gdrive://") -> PlatformBadge("gd", Color(0xFF229ED9))
@@ -97,7 +98,7 @@ private fun resolveCloudLxSourceBadge(uri: String): PlatformBadge {
             "tx" -> PlatformBadge("qq", Color(0xFF31C27C))
             "kg" -> PlatformBadge("酷狗", Color(0xFF2E7CF6))
             "mg" -> PlatformBadge("酷我", Color(0xFFFF8F00))
-            "bilibili" -> PlatformBadge("b站", Color(0xFFFB7299))
+            "bilibili" -> PlatformBadge("B站", Color(0xFFFB7299))
             "wy" -> PlatformBadge("网易", Color(0xFFE0242B))
             else -> PlatformBadge("云", Color(0xFF8E8E93))
         }

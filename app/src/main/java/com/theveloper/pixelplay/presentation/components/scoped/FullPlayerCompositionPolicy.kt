@@ -34,6 +34,8 @@ internal fun rememberFullPlayerCompositionPolicy(
     collapsedWarmDelayMs: Long = 300L,
     expandAnimationSettleDelayMs: Long = 200L
 ): FullPlayerCompositionPolicy {
+    // 不用 currentSongId 作 remember key：一旦组合过就保持挂载，切歌/收起都不销毁主层，
+    // 避免展开动画期间封面与歌曲信息因整棵重建而闪烁。
     var keepFullPlayerComposed by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentSongId, currentSheetState) {
@@ -41,20 +43,18 @@ internal fun rememberFullPlayerCompositionPolicy(
             keepFullPlayerComposed = false
             return@LaunchedEffect
         }
-
+        if (keepFullPlayerComposed) {
+            return@LaunchedEffect
+        }
         if (currentSheetState == PlayerSheetState.EXPANDED) {
-            if (keepFullPlayerComposed) {
-                return@LaunchedEffect
-            }
             delay(expandAnimationSettleDelayMs)
-            keepFullPlayerComposed = true
         } else {
             delay(collapsedWarmDelayMs)
-            keepFullPlayerComposed = true
         }
+        keepFullPlayerComposed = true
     }
 
-    val shouldRenderFullPlayer by remember(currentSongId) {
+    val shouldRenderFullPlayer by remember {
         derivedStateOf {
             currentSongId != null && keepFullPlayerComposed
         }

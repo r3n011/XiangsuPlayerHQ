@@ -62,6 +62,7 @@ import com.theveloper.pixelplay.presentation.screens.RadioScreen
 import com.theveloper.pixelplay.presentation.screens.AboutScreen
 import com.theveloper.pixelplay.presentation.screens.StatsScreen
 import com.theveloper.pixelplay.presentation.screens.SettingsCategoryScreen
+import com.theveloper.pixelplay.presentation.screens.ToplistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.EqualizerScreen
 import com.theveloper.pixelplay.presentation.screens.LxMusicScreen
 import com.theveloper.pixelplay.presentation.screens.HeadphonePresetScreen
@@ -75,6 +76,7 @@ import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardS
 import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashboardScreen
 import com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboardScreen
 import com.theveloper.pixelplay.presentation.telegram.dashboard.TelegramDashboardScreen
+import com.theveloper.pixelplay.presentation.components.BilibiliFavoritesScreen
 
 import androidx.compose.foundation.layout.PaddingValues
 
@@ -294,7 +296,11 @@ fun AppNavigation(
                         },
                         onOpenJellyfinDashboard = {
                             navController.navigateSafely(Screen.JellyfinDashboard.route)
-                        }
+                        },
+                        onOpenBilibiliDashboard = {
+                            navController.navigateSafely(Screen.BilibiliFavorites.route)
+                        },
+                        playerViewModel = playerViewModel
                     )
                 }
             }
@@ -607,6 +613,16 @@ fun AppNavigation(
                 }
             }
             composable(
+                Screen.BilibiliFavorites.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    BilibiliFavoritesScreen(
+                        playerViewModel = playerViewModel,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
                 Screen.QqMusicDashboard.route,
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
@@ -649,6 +665,20 @@ fun AppNavigation(
                     RadioScreen(
                         navController = navController,
                         playerViewModel = playerViewModel
+                    )
+                }
+            }
+            composable(
+                route = Screen.ToplistDetail.route,
+                arguments = listOf(navArgument("entryId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    val entryId = backStackEntry.arguments?.getString("entryId")
+                        ?: com.theveloper.pixelplay.data.toplist.ToplistCatalog.DEFAULT_TOPLIST_ID
+                    ToplistDetailScreen(
+                        entryId = entryId,
+                        playerViewModel = playerViewModel,
+                        navController = navController
                     )
                 }
             }

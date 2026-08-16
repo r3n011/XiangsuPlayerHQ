@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.rotate
 
 import android.content.Context
 import android.content.Intent
+import androidx.activity.result.PickVisualMediaRequest
 import android.app.Activity
 import android.net.Uri
 import android.os.Build
@@ -43,6 +44,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -83,6 +86,8 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -98,6 +103,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.ViewCarousel
+import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -152,6 +158,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -186,13 +193,17 @@ import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
+import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
+import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.ai.GeminiModel
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
+import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.FileExplorerDialog
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsRefreshProgress
@@ -856,6 +867,232 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
+                                // ⚡ 播放器不透明度（独立设置项：应用到播放器/歌词界面除背景外的所有元素）
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.setcat_custom_player_controls_opacity_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Slider(
+                                            value = uiState.customPlayerControlsOpacity.toFloat(),
+                                            onValueChange = { settingsViewModel.setCustomPlayerControlsOpacity(it.toInt()) },
+                                            valueRange = ThemePreferencesRepository.MIN_CUSTOM_CONTROLS_OPACITY.toFloat()..ThemePreferencesRepository.MAX_CUSTOM_CONTROLS_OPACITY.toFloat(),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = "${uiState.customPlayerControlsOpacity}%",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(start = 12.dp, end = 8.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = stringResource(R.string.setcat_custom_player_controls_opacity_desc),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 4.dp, end = 4.dp)
+                                    )
+                                }
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_lyrics_gradient_overlay_title),
+                                    subtitle = stringResource(R.string.setcat_lyrics_gradient_overlay_desc),
+                                    checked = uiState.lyricsGradientOverlayEnabled,
+                                    onCheckedChange = { settingsViewModel.setLyricsGradientOverlayEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Layers, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
+                                // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）
+                                val context = LocalContext.current
+                                val customBgPicker = rememberLauncherForActivityResult(
+                                    contract = ActivityResultContracts.PickVisualMedia(),
+                                    onResult = { uri ->
+                                        if (uri != null) {
+                                            // 持久化读取权限：重启后仍可读取所选图片
+                                            runCatching {
+                                                context.contentResolver.takePersistableUriPermission(
+                                                    uri,
+                                                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                                )
+                                            }
+                                            settingsViewModel.setCustomPlayerBackgroundUri(uri.toString())
+                                            settingsViewModel.setCustomPlayerBackgroundEnabled(true)
+                                        }
+                                    }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_custom_player_background_title),
+                                    subtitle = stringResource(R.string.setcat_custom_player_background_subtitle),
+                                    checked = uiState.customPlayerBackgroundEnabled,
+                                    onCheckedChange = { settingsViewModel.setCustomPlayerBackgroundEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Image, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                // 打开开关后显示背景预览与选择/移除按钮
+                                AnimatedVisibility(
+                                    visible = uiState.customPlayerBackgroundEnabled,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
+                                        // ⚡ 展开的额外选项统一用容器卡片包裹（与 SwitchSettingItem 等行容器一致：全宽 + 10dp 圆角）
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        ) {
+                                            if (!uiState.customPlayerBackgroundUri.isNullOrBlank()) {
+                                                // ⚡ 实时预览：与真实播放器背景一致——按设备屏幕宽高比渲染（竖屏/横屏随窗口变化），
+                                                //    并实时套用当前显示模式（铺满/拉伸）与模糊强度，所见即所得
+                                                val screenAspect = with(LocalWindowInfo.current.containerSize) {
+                                                    width.toFloat() / height.toFloat()
+                                                }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .align(Alignment.CenterHorizontally)
+                                                        .fillMaxWidth(0.55f)
+                                                        .aspectRatio(screenAspect)
+                                                        .padding(vertical = 8.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                                ) {
+                                                    CustomPlayerBackground(
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        enabled = true,
+                                                        uri = uiState.customPlayerBackgroundUri,
+                                                        mode = uiState.customPlayerBackgroundMode,
+                                                        blurRadius = uiState.customPlayerBackgroundBlurRadius
+                                                    )
+                                                }
+                                                // ⚡ 背景显示模式编辑：铺满 / 拉伸
+                                                Text(
+                                                    text = stringResource(R.string.setcat_custom_player_background_mode_title),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                                                )
+                                                SingleChoiceSegmentedButtonRow(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                                                ) {
+                                                    PlayerBackgroundMode.entries.forEachIndexed { index, mode ->
+                                                        SegmentedButton(
+                                                            selected = uiState.customPlayerBackgroundMode == mode,
+                                                            onClick = { settingsViewModel.setCustomPlayerBackgroundMode(mode) },
+                                                            shape = SegmentedButtonDefaults.itemShape(
+                                                                index = index,
+                                                                count = PlayerBackgroundMode.entries.size
+                                                            )
+                                                        ) {
+                                                            Text(
+                                                                text = stringResource(
+                                                                    when (mode) {
+                                                                        PlayerBackgroundMode.Cover -> R.string.setcat_custom_player_background_mode_cover
+                                                                        PlayerBackgroundMode.Stretch -> R.string.setcat_custom_player_background_mode_stretch
+                                                                    }
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                // ⚡ 模糊强度（0=关闭）：滑块实时驱动预览
+                                                Text(
+                                                    text = stringResource(R.string.setcat_custom_player_background_blur_title),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                                                )
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 4.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Slider(
+                                                        value = uiState.customPlayerBackgroundBlurRadius.toFloat(),
+                                                        onValueChange = { settingsViewModel.setCustomPlayerBackgroundBlurRadius(it.toInt()) },
+                                                        valueRange = 0f..ThemePreferencesRepository.MAX_CUSTOM_BACKGROUND_BLUR.toFloat(),
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    Text(
+                                                        text = if (uiState.customPlayerBackgroundBlurRadius > 0)
+                                                            uiState.customPlayerBackgroundBlurRadius.toString()
+                                                        else
+                                                            stringResource(R.string.setcat_custom_player_background_blur_off),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.padding(start = 12.dp, end = 8.dp)
+                                                    )
+                                                }
+                                            }
+                                            // ⚡ 背景图片选择 / 移除按钮
+                                            Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 4.dp),
+                                        horizontalArrangement = Arrangement.Start
+                                    ) {
+                                                TextButton(
+                                                    onClick = {
+                                                        customBgPicker.launch(
+                                                            PickVisualMediaRequest(
+                                                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                                                            )
+                                                        )
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        Icons.Rounded.AddPhotoAlternate,
+                                                        null,
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Text(
+                                                        stringResource(
+                                                            if (uiState.customPlayerBackgroundUri.isNullOrBlank())
+                                                                R.string.setcat_custom_player_background_pick
+                                                            else
+                                                                R.string.setcat_custom_player_background_change
+                                                        )
+                                                    )
+                                                }
+                                                if (!uiState.customPlayerBackgroundUri.isNullOrBlank()) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            settingsViewModel.setCustomPlayerBackgroundUri(null)
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Rounded.Delete,
+                                                            null,
+                                                            modifier = Modifier.size(18.dp),
+                                                            tint = MaterialTheme.colorScheme.error
+                                                        )
+                                                        Spacer(Modifier.width(6.dp))
+                                                        Text(
+                                                            stringResource(R.string.setcat_custom_player_background_remove),
+                                                            color = MaterialTheme.colorScheme.error
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_show_player_file_info_title),
                                     subtitle = stringResource(R.string.setcat_show_player_file_info_subtitle),
@@ -1410,6 +1647,24 @@ fun SettingsCategoryScreen(
                             }
                         }
                         SettingsCategory.BEHAVIOR -> {
+                            val homeTopListEnabled by settingsViewModel.homeTopListEnabled.collectAsStateWithLifecycle()
+                            SettingsSubsection(
+                                title = stringResource(R.string.home_toplist_title)
+                            ) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_home_toplist_title),
+                                    subtitle = stringResource(R.string.setcat_home_toplist_subtitle),
+                                    checked = homeTopListEnabled,
+                                    onCheckedChange = { settingsViewModel.setHomeTopListEnabled(it) },
+                                    leadingIcon = {
+                                        Icon(
+                                            painterResource(R.drawable.rounded_music_note_24),
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                )
+                            }
                             SettingsSubsection(
                                 title = stringResource(R.string.setcat_folders)
                             ) {

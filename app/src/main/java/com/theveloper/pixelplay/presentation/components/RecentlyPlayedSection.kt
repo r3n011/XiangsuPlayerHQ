@@ -136,7 +136,15 @@ fun RecentlyPlayedSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight()
+                    // ⚡ 修复崩溃：首页 LazyColumn 的 item 高度约束为无限（maxHeight=Infinity），
+                    // 原 fillMaxHeight() 会解析为无限高，verticalScroll 禁止无限最大高度 →
+                    // "Vertically scrollable component was measured with an infinity maximum height"。
+                    // 改为有界最大高度（平板最多 12 首、2 列、每列 6 行 = 6*58 + 5*8 = 388dp），
+                    // 超高时内部滚动，不再向父级传播无限约束。
+                    .heightIn(
+                        max = HomeRecentlyPlayedPillHeight * (HomeRecentlyPlayedTabletPillsLimit / 2) +
+                                HomeRecentlyPlayedPillSpacing * (HomeRecentlyPlayedTabletPillsLimit / 2 - 1)
+                    )
                     .verticalScroll(state = verticalScrollState)
                     .padding(tabletInnerPadding),
                 horizontalArrangement = Arrangement.spacedBy(HomeRecentlyPlayedPillSpacing)
