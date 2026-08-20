@@ -48,17 +48,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
@@ -112,6 +117,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -271,6 +277,8 @@ fun FullPlayerContent(
     onRepeatToggle: () -> Unit,
     onFavoriteToggle: () -> Unit,
     onDownloadClick: () -> Unit,
+    onSpeedToggle: () -> Unit = {},
+    onSpeedSet: (Float) -> Unit = {},
 ) {
     val isExpanded by remember(expansionFractionProvider) {
         derivedStateOf { expansionFractionProvider() > 0.35f }
@@ -292,6 +300,8 @@ fun FullPlayerContent(
         if (currentSong != null) {
             retainedSong = currentSong
         }
+        // 切歌时清理 AI 歌词解释（实现"单次开启"语义：仅当前歌曲有效）
+        playerViewModel.onSongChangedForLyricsExplanation(currentSong?.id)
     }
 
     val song = currentSong ?: retainedSong ?: return // Keep the player visible while transitioning
@@ -306,6 +316,10 @@ fun FullPlayerContent(
     var bilibiliCommentBvid by remember { mutableStateOf("") }
 
     val lyricsSearchUiState by playerViewModel.lyricsSearchUiState.collectAsStateWithLifecycle()
+    val isExplainingLyrics by playerViewModel.isExplainingLyrics.collectAsStateWithLifecycle()
+    val lyricsExplanation by playerViewModel.lyricsExplanation.collectAsStateWithLifecycle()
+    val isLyricsExplanationSessionEnabled by playerViewModel.isLyricsExplanationSessionEnabled.collectAsStateWithLifecycle()
+    val isLyricsExplanationGloballyEnabled by playerViewModel.isLyricsExplanationGloballyEnabled.collectAsStateWithLifecycle()
 
     // Single subscription — replaces 11 independent collectAsStateWithLifecycle calls.
     // distinctUntilChanged in the ViewModel ensures this only emits when something
@@ -322,6 +336,7 @@ fun FullPlayerContent(
     // ⚡ 播放器控键透明度（百分比）与歌词渐变遮罩开关
     val customPlayerControlsOpacity by playerViewModel.customPlayerControlsOpacity.collectAsStateWithLifecycle()
     val lyricsGradientOverlayEnabled by playerViewModel.lyricsGradientOverlayEnabled.collectAsStateWithLifecycle()
+    val lyricsSolidOverlayAlpha by playerViewModel.lyricsSolidOverlayAlpha.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     val gradientEdgeColor by androidx.compose.animation.animateColorAsState(
         targetValue = LocalMaterialTheme.current.primaryContainer,
@@ -434,45 +449,22 @@ fun FullPlayerContent(
     // OPTIMIZATION: Use passed provider instead of collecting flow
     val totalDurationValue = totalDurationProvider()
 
-    val playerOnBaseColor by androidx.compose.animation.animateColorAsState(
-        targetValue = LocalMaterialTheme.current.onPrimaryContainer,
-        animationSpec = tween(durationMillis = 400),
-        label = "PlayerOnBaseColor"
-    )
-    val playerAccentColor by androidx.compose.animation.animateColorAsState(
-        targetValue = LocalMaterialTheme.current.primary,
-        animationSpec = tween(durationMillis = 400),
-        label = "PlayerAccentColor"
-    )
-    val playerOnAccentColor by androidx.compose.animation.animateColorAsState(
-        targetValue = LocalMaterialTheme.current.onPrimary,
-        animationSpec = tween(durationMillis = 400),
-        label = "PlayerOnAccentColor"
-    )
+    // ⚡ 直接读取 MaterialTheme 颜色，不再使用 animateColorAsState。
+    //   SheetThemeState 已在 lerpColorScheme 中做切歌过渡动画（300ms lerp），
+    //   此处再套一层 animateColorAsState(400ms) 会导致双重插值——
+    //   每个 ColorScheme 变化触发 9 个动画同时启动，每帧 9×400ms 插值 = 严重卡顿。
+    //   移除后切歌颜色过渡仍平滑（由 SheetThemeState 驱动），且大幅减少 recomposition。
+    val playerOnBaseColor = LocalMaterialTheme.current.onPrimaryContainer
+    val playerAccentColor = LocalMaterialTheme.current.primary
+    val playerOnAccentColor = LocalMaterialTheme.current.onPrimary
 
     val transportPlayPauseColors = TransportButtonColors(
-        container = androidx.compose.animation.animateColorAsState(
-            targetValue = LocalMaterialTheme.current.tertiaryFixedDim,
-            animationSpec = tween(durationMillis = 400),
-            label = "TransportPlayPauseContainer"
-        ).value,
-        content = androidx.compose.animation.animateColorAsState(
-            targetValue = LocalMaterialTheme.current.onTertiaryFixed,
-            animationSpec = tween(durationMillis = 400),
-            label = "TransportPlayPauseContent"
-        ).value
+        container = LocalMaterialTheme.current.tertiaryFixedDim,
+        content = LocalMaterialTheme.current.onTertiaryFixed
     )
     val transportSkipColors = TransportButtonColors(
-        container = androidx.compose.animation.animateColorAsState(
-            targetValue = LocalMaterialTheme.current.secondaryFixedDim,
-            animationSpec = tween(durationMillis = 400),
-            label = "TransportSkipContainer"
-        ).value,
-        content = androidx.compose.animation.animateColorAsState(
-            targetValue = LocalMaterialTheme.current.onSecondaryFixed,
-            animationSpec = tween(durationMillis = 400),
-            label = "TransportSkipContent"
-        ).value
+        container = LocalMaterialTheme.current.secondaryFixedDim,
+        content = LocalMaterialTheme.current.onSecondaryFixed
     )
     val transportSkipButtonColors = TransportButtonColors(
         container = playerAccentColor,
@@ -810,6 +802,7 @@ fun FullPlayerContent(
 
     val controlsSection: @Composable () -> Unit = {
         val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
+        val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
         val downloadInfo = remember(currentSong?.id, downloads) {
             currentSong?.let { song -> downloads.find { it.songId == song.id } }
         }
@@ -848,6 +841,9 @@ fun FullPlayerContent(
             onSecondaryFixed = onSecondaryFixed,
             tertiaryFixed = tertiaryFixed,
             onTertiaryFixed = onTertiaryFixed,
+            playbackSpeed = playbackSpeed,
+            onSpeedToggle = onSpeedToggle,
+            onSpeedSet = onSpeedSet,
         )
     }
 
@@ -1280,6 +1276,11 @@ fun FullPlayerContent(
             onBackClick = { showLyricsSheet = false },
             onSaveLyricsToFile = playerViewModel::saveLyricsToFile,
             onTranslateViaAi = { playerViewModel.translateLyricsViaAi() },
+            onExplainLyricsViaAi = { playerViewModel.explainCurrentLyrics() },
+            isExplainingLyrics = isExplainingLyrics,
+            lyricsExplanation = lyricsExplanation,
+            lyricsExplanationEnabled = isLyricsExplanationGloballyEnabled || isLyricsExplanationSessionEnabled,
+            onDismissExplanation = { playerViewModel.clearLyricsExplanation() },
             onSeekTo = { playerViewModel.seekTo(it) },
             onPlayPause = {
                 playerViewModel.playPause()
@@ -1302,7 +1303,8 @@ fun FullPlayerContent(
             customPlayerBackgroundMode = customPlayerBackgroundMode,
             customPlayerBackgroundBlurRadius = customPlayerBackgroundBlurRadius,
             customPlayerControlsOpacity = customPlayerControlsOpacity,
-            lyricsGradientOverlayEnabled = lyricsGradientOverlayEnabled
+            lyricsGradientOverlayEnabled = lyricsGradientOverlayEnabled,
+            lyricsSolidOverlayAlpha = lyricsSolidOverlayAlpha
         )
     }
 
@@ -1559,6 +1561,10 @@ private fun FullPlayerControlsSection(
     onSecondaryFixed: Color,
     tertiaryFixed: Color,
     onTertiaryFixed: Color,
+    // ⚡ 倍速播放
+    playbackSpeed: Float = 1f,
+    onSpeedToggle: () -> Unit = {},
+    onSpeedSet: (Float) -> Unit = {},
     // ⚡ 播放器控键透明度：0..1 alpha（100% = 完全不透明，应用到所有控制按钮）
     controlsOpacity: Float = 1f,
 ) {
@@ -1653,6 +1659,9 @@ private fun FullPlayerControlsSection(
                 onSecondaryFixed = onSecondaryFixed,
                 tertiaryFixed = tertiaryFixed,
                 onTertiaryFixed = onTertiaryFixed,
+                playbackSpeed = playbackSpeed,
+                onSpeedToggle = onSpeedToggle,
+                onSpeedSet = onSpeedSet,
             )
         }
     }
@@ -3463,9 +3472,13 @@ private fun BottomToggleRow(
     onSecondaryFixed: Color,
     tertiaryFixed: Color,
     onTertiaryFixed: Color,
+    playbackSpeed: Float = 1f,
+    onSpeedToggle: () -> Unit = {},
+    onSpeedSet: (Float) -> Unit = {},
 ) {
     val isFavorite = isFavoriteProvider()
     val rowCorners = 60.dp
+    var showSpeedSheet by remember { mutableStateOf(false) }
 
     val inactiveBg = onSurface.copy(alpha = 0.07f)
     val inactiveContentColor = onSurface
@@ -3506,6 +3519,43 @@ private fun BottomToggleRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 倍速按钮：正方形，1x 时右侧圆角匹配其他按钮，其它倍速时为完美圆形
+            if (!isRadioPlayback) {
+                val speedText = if (playbackSpeed == 1f) "1x" else "${playbackSpeed}x"
+                val isActive = playbackSpeed != 1f
+                val btnSize = 40.dp
+                val halfSize = btnSize / 2
+                val btnShape = RoundedCornerShape(
+                    topStart = halfSize,
+                    topEnd = if (isActive) halfSize else rowCorners,
+                    bottomStart = halfSize,
+                    bottomEnd = if (isActive) halfSize else rowCorners
+                )
+                Box(
+                    modifier = Modifier
+                        .size(btnSize)
+                        .background(
+                            color = if (isActive) primaryFixed else inactiveBg,
+                            shape = btnShape
+                        )
+                        .clip(btnShape)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { onSpeedToggle() },
+                                onLongPress = { showSpeedSheet = true }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = speedText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isActive) onPrimaryFixed else inactiveContentColor
+                    )
+                }
+            }
+
             val commonModifier = Modifier.weight(1f)
 
             if (!isRadioPlayback) {
@@ -3596,9 +3646,93 @@ private fun BottomToggleRow(
             }
         }
     }
-}
 
-// ─── 广播电台实时流专用组件 ─────────────────────────────────────────────
+    // 倍速详细调节底部弹窗
+    if (showSpeedSheet) {
+        @OptIn(ExperimentalMaterial3Api::class)
+        ModalBottomSheet(
+            onDismissRequest = { showSpeedSheet = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.playback_speed),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                var sliderValue by remember(playbackSpeed) { mutableStateOf(playbackSpeed) }
+                val displayText = String.format("%.1fx", sliderValue)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "0.5x",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = displayText,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "2.0x",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    onValueChangeFinished = { onSpeedSet(sliderValue) },
+                    valueRange = 0.5f..2f,
+                    steps = 14
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(0.5f, 0.8f, 1f, 1.2f, 1.5f).forEach { preset ->
+                        val isSelected = sliderValue == preset
+                        FilledTonalButton(
+                            onClick = {
+                                sliderValue = preset
+                                onSpeedSet(preset)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = if (isSelected)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = if (isSelected)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            ),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "${preset}x",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
 
 /**
  * 广播电台播放时的热门电台推荐区。

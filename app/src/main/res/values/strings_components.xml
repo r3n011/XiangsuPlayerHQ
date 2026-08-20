@@ -16,6 +16,7 @@
     <string name="lyrics_more_hide_sync_controls">Hide sync controls</string>
     <string name="lyrics_more_adjust_sync">Adjust sync</string>
     <string name="lyrics_more_show_romanization">Show romanization</string>
+    <string name="lyrics_more_show_translations">Show translations</string>
     <string name="lyrics_more_display_mode">Lyrics display</string>
     <string name="lyrics_mode_translation_only">Translation</string>
     <string name="lyrics_mode_original_only">Original</string>

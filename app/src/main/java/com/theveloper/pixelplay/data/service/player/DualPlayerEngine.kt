@@ -37,6 +37,7 @@ import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.mp3.Mp3Extractor
 import androidx.media3.extractor.flac.FlacExtractor
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
+import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.data.model.TransitionSettings
 import com.theveloper.pixelplay.data.telegram.TelegramRepository
 import com.theveloper.pixelplay.utils.envelope
@@ -695,6 +696,10 @@ class DualPlayerEngine @Inject constructor(
                         }
                         bufferingStartedAtMs = 0L
                     }
+                    // 倍速恢复：在线流加载就绪后确保倍速不丢失
+                    if (desiredPlaybackSpeed != 1f && playerA.playbackParameters.speed != desiredPlaybackSpeed) {
+                        playerA.playbackParameters = PlaybackParameters(desiredPlaybackSpeed)
+                    }
                     scheduleAudioOffloadFallbackIfNeeded(playerA)
                 }
                 Player.STATE_IDLE -> {
@@ -880,6 +885,19 @@ class DualPlayerEngine @Inject constructor(
 
     private var isReleased = false
     private val resolvedUriCache = LruCache<String, Uri>(100)
+
+    /** 用户期望的倍速，引擎在每次就绪时自动恢复 */
+    var desiredPlaybackSpeed: Float = 1f
+        private set
+
+    /** 设置倍速，立即应用到当前活跃播放器，并记住设置以便后续恢复 */
+    fun setPlaybackSpeed(speed: Float) {
+        val clamped = speed.coerceIn(0.5f, 2f)
+        desiredPlaybackSpeed = clamped
+        val params = PlaybackParameters(clamped)
+        if (::playerA.isInitialized) playerA.playbackParameters = params
+        playerB?.playbackParameters = params
+    }
 
     // Whether the OS classifies this as a low-RAM device. Used to cap the player's max
     // prefetch depth so hi-res/lossless buffering (and the second player during a crossfade)
@@ -1930,6 +1948,9 @@ class DualPlayerEngine @Inject constructor(
         playerB?.let { return it }
         return buildPlayer().also { player ->
             player.setWakeMode(currentWakeMode)
+            if (desiredPlaybackSpeed != 1f) {
+                player.playbackParameters = PlaybackParameters(desiredPlaybackSpeed)
+            }
             playerB = player
         }
     }
@@ -2134,9 +2155,13 @@ class DualPlayerEngine @Inject constructor(
     @Volatile
     private var musicQualityLxValue: String = "320k"
 
-    fun setMusicQuality(quality: com.theveloper.pixelplay.data.preferences.MusicQuality) {
-        musicQualityLxValue = quality.lxValue
+    fun setMusicQuality(qualityValue: String) {
+        musicQualityLxValue = qualityValue
     }
+
+    /** 音源脚本注册的可用音质（qualitys）；未注册/未就绪时返回空列表。 */
+    private fun availableQualitiesFor(source: String): List<String> =
+        lxJsEngine.getSources()[source]?.qualitys.orEmpty()
 
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
         val uriString = uri.toString()
@@ -2201,14 +2226,11 @@ class DualPlayerEngine @Inject constructor(
                         "hash" to songId,
                         "source" to "wy"
                     )
-                    // 按用户音质向下递减尝试（24bit→flac→320k→128k；128k 不抬音质）
-                    val chain = when (musicQualityLxValue) {
-                        "24bit" -> listOf("24bit", "flac", "320k", "128k")
-                        "flac" -> listOf("flac", "24bit", "320k", "128k")
-                        "320k" -> listOf("320k", "128k")
-                        "128k" -> listOf("128k")
-                        else -> listOf(musicQualityLxValue, "320k", "128k")
-                    }
+                    // 按用户音质向下递减尝试（动态识别音源脚本注册的 qualitys）
+                    val chain = MusicQualityCatalog.resolveChain(
+                        target = musicQualityLxValue,
+                        available = availableQualitiesFor("wy")
+                    )
                     var lxUrl: String? = null
                     for (q in chain) {
                         if (lxUrl != null) break
@@ -2335,6 +2357,11 @@ class DualPlayerEngine @Inject constructor(
             var url: String? = null
             for (source in targetSources) {
                 if (url != null) break
+                // 按该音源脚本注册的 qualitys 动态生成降级链（不再硬编码 320k/128k）
+                val chain = MusicQualityCatalog.resolveChain(
+                    target = musicQualityLxValue,
+                    available = availableQualitiesFor(source)
+                )
                 url = if (builtInSourceSearchApi.isSupported(source)) {
                     val lxSongInfo = com.theveloper.pixelplay.data.lx.LxSongInfo(
                         id = songMap["id"]?.toString() ?: "",
@@ -2347,14 +2374,20 @@ class DualPlayerEngine @Inject constructor(
                         pic = songMap["pic"]?.toString() ?: "",
                         source = source
                     )
-                    builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, musicQualityLxValue)
-                        ?: lxJsEngine.getPlayUrl(source, songMap, musicQualityLxValue)
-                        ?: lxJsEngine.getPlayUrl(source, songMap, "320k")
-                        ?: lxJsEngine.getPlayUrl(source, songMap, "128k")
+                    var resolved: String? = null
+                    for (q in chain) {
+                        if (resolved != null) break
+                        resolved = builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, q)
+                            ?: lxJsEngine.getPlayUrl(source, songMap, q)
+                    }
+                    resolved
                 } else {
-                    lxJsEngine.getPlayUrl(source, songMap, musicQualityLxValue)
-                        ?: lxJsEngine.getPlayUrl(source, songMap, "320k")
-                        ?: lxJsEngine.getPlayUrl(source, songMap, "128k")
+                    var resolved: String? = null
+                    for (q in chain) {
+                        if (resolved != null) break
+                        resolved = lxJsEngine.getPlayUrl(source, songMap, q)
+                    }
+                    resolved
                 }
                 if (url != null) {
                     android.util.Log.d("DualPlayerEngine", "resolveCloudLxUri: got url from source=$source")

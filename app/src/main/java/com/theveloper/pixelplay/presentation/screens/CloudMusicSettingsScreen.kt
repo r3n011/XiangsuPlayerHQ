@@ -25,26 +25,23 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.NoteAdd
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,24 +57,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.MainActivity
-import com.theveloper.pixelplay.R
-import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
+import com.theveloper.pixelplay.data.lx.LxScriptInfo
+import com.theveloper.pixelplay.data.lx.LxSourceInfo
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.LxUiState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @Composable
 fun CloudMusicSettingsScreen(
@@ -189,305 +191,57 @@ fun CloudMusicSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                // Status card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (state.engineReady)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceContainerHighest
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.Cloud,
-                                null,
-                                tint = if (state.engineReady) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    if (state.engineReady) "已就绪" else "未配置",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                if (state.engineReady) {
-                                    Text(
-                                        "已加载 ${state.scriptInfos.size} 个脚本 · 版本: ${state.version}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            }
-                        }
-
-                        if (state.engineReady && state.sources.isNotEmpty()) {
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "可用音源: ${state.sources.entries.joinToString(" · ") {
-                                    val name = it.value.name.ifBlank { it.key }
-                                    if (sourceToggles[it.key] == false) "$name(关)" else name
-                                }}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-
-                        if (state.initing) {
-                            Spacer(Modifier.height(12.dp))
-                            LinearProgressIndicator(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        if (state.importError != null) {
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                state.importError ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                // Action buttons row 1
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilledTonalButton(
-                        onClick = { filePicker.launch("*/*") },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Rounded.FileDownload, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("导入 JS 文件", style = MaterialTheme.typography.labelLarge)
-                    }
-
-                    OutlinedButton(
-                        onClick = { showImportUrl = true },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Rounded.Cloud, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("从 URL", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-
-            item {
-                // Action buttons row 2
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { viewModel.reloadEngine() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("重新加载", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
+                HeroSourceCard(
+                    state = state,
+                    onImportFile = { filePicker.launch("*/*") },
+                    onImportUrl = { showImportUrl = true },
+                    onReload = { viewModel.reloadEngine() }
+                )
             }
 
             item {
                 Text(
-                    "已导入脚本 (${state.scriptInfos.size})",
-                    style = MaterialTheme.typography.titleSmall,
+                    "已安装音源 (${state.scriptInfos.size})",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
             state.scriptInfos.forEach { info ->
                 item(key = info.fileName) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = info.name.ifBlank { info.fileName },
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = buildString {
-                                            append(info.fileName)
-                                            if (info.version.isNotBlank()) {
-                                                append(" · v").append(info.version.removePrefix("v"))
-                                            }
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(onClick = { pendingDelete = info.fileName }) {
-                                    Icon(
-                                        Icons.Rounded.DeleteOutline,
-                                        contentDescription = "删除 ${info.fileName}",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-
-                            if (info.description.isNotBlank()) {
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    info.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = if (expandedScript == info.fileName) Int.MAX_VALUE else 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            // ⚡ 该脚本注册的音源列表：可临时单独开关每个音源（运行时生效）
-                            val instanceSrcs = viewModel.getInstanceSources(info.fileName)
-                            if (instanceSrcs.isNotEmpty()) {
-                                Spacer(Modifier.height(10.dp))
-                                instanceSrcs.forEach { (key, srcInfo) ->
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 2.dp)
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = srcInfo.name.ifBlank { key },
-                                                style = MaterialTheme.typography.bodySmall,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                            if (srcInfo.qualitys.isNotEmpty()) {
-                                                Text(
-                                                    text = srcInfo.qualitys.joinToString(" / "),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                        Spacer(Modifier.width(8.dp))
-                                        Switch(
-                                            checked = sourceToggles[key] ?: true,
-                                            onCheckedChange = { viewModel.toggleSource(key, it) },
-                                            modifier = Modifier.scale(0.85f)
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (info.author.isNotBlank() || info.homepage.isNotBlank() ||
-                                info.lastUpdate.isNotBlank() || info.md5.isNotBlank()
-                            ) {
-                                val expanded = expandedScript == info.fileName
-                                TextButton(onClick = {
-                                    expandedScript = if (expanded) null else info.fileName
-                                }) {
-                                    Icon(
-                                        if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                        null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(if (expanded) "收起简介" else "查看简介")
-                                }
-                                if (expanded) {
-                                    listOf(
-                                        "作者" to info.author,
-                                        "主页" to info.homepage,
-                                        "更新时间" to info.lastUpdate,
-                                        "MD5" to info.md5
-                                    ).forEach { (label, value) ->
-                                        if (value.isNotBlank()) {
-                                            Text(
-                                                "$label: $value",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 12.dp)
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                }
-                            }
+                    ScriptSourceCard(
+                        info = info,
+                        instanceSources = viewModel.getInstanceSources(info.fileName),
+                        sourceToggles = sourceToggles,
+                        expanded = expandedScript == info.fileName,
+                        onToggleSource = { key, enabled -> viewModel.toggleSource(key, enabled) },
+                        onDelete = { pendingDelete = info.fileName },
+                        onToggleExpand = {
+                            expandedScript = if (expandedScript == info.fileName) null else info.fileName
                         }
-                    }
+                    )
                 }
             }
 
             if (state.scriptInfos.isEmpty()) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        )
-                    ) {
-                        Text(
-                            "尚未导入任何 JS 音源脚本，点上方按钮导入即可同时加载多个音源。",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
+                    EmptySourceCard()
                 }
             }
 
             item {
-                // Info card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "使用说明",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "1. 可同时导入多个 JS 音源文件（如聚合音源脚本），自动一起生效\n" +
-                                "2. 多个脚本注册同一音源时按加载顺序逐个尝试，直到拿到结果\n" +
-                                "3. 每个脚本下方的音源开关可临时单独启用/禁用某个音源（运行时生效，重启恢复）\n" +
-                                "4. 播放音质设置对所有在线音源生效（网易云、内置源、落雪脚本）\n" +
-                                "5. 点每个脚本的「查看简介」可查看作者、主页、更新时间等信息\n" +
-                                "6. 启动时会自动加载已导入的所有 JS 文件",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                UsageInfoCard()
             }
         }
 
         CollapsibleCommonTopBar(
-            title = "在线音源",
+            title = "自定义音源",
             collapseFraction = collapseFraction,
             headerHeight = currentTopBarHeightDp,
             onBackClick = onBackClick,
-            subtitle = "管理 JS 音乐源",
+            subtitle = "LX user-api v2 播放解析脚本",
             fadeSubtitleOnCollapse = false
         )
     }
@@ -537,5 +291,358 @@ fun CloudMusicSettingsScreen(
                 TextButton(onClick = { pendingDelete = null }) { Text("取消") }
             }
         )
+    }
+}
+
+@Composable
+private fun HeroSourceCard(
+    state: LxUiState,
+    onImportFile: () -> Unit,
+    onImportUrl: () -> Unit,
+    onReload: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = if (state.engineReady) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val contentColor = if (state.engineReady) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = AbsoluteSmoothCornerShape(28.dp, 60),
+        color = containerColor
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatusIcon(
+                icon = Icons.Rounded.Code,
+                containerColor = contentColor.copy(alpha = 0.12f),
+                contentColor = contentColor
+            )
+
+            Text(
+                text = "JavaScript 自定义音源",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = contentColor
+            )
+
+            Text(
+                text = "导入落雪官方 user-api v2 脚本，扩展播放地址、歌词和封面解析。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor.copy(alpha = 0.76f)
+            )
+
+            if (state.engineReady) {
+                Text(
+                    text = "已加载 ${state.scriptInfos.size} 个脚本 · v${state.version}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor.copy(alpha = 0.85f)
+                )
+            }
+
+            if (state.initing) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            if (state.importError != null) {
+                Text(
+                    text = state.importError ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 胶囊导入按钮：浅蓝紫背景 + 深蓝紫内容（Material 3 主色反色）
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable(onClick = onImportFile)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.NoteAdd,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "导入脚本",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+
+                // 从 URL 导入
+                Surface(
+                    shape = CircleShape,
+                    color = contentColor.copy(alpha = 0.12f),
+                    modifier = Modifier.clickable(onClick = onImportUrl)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Cloud,
+                        contentDescription = "从 URL 导入",
+                        tint = contentColor,
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .size(20.dp)
+                    )
+                }
+
+                // 重新加载
+                Surface(
+                    shape = CircleShape,
+                    color = contentColor.copy(alpha = 0.12f),
+                    modifier = Modifier.clickable(onClick = onReload)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = "重新加载",
+                        tint = contentColor,
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .size(20.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScriptSourceCard(
+    info: LxScriptInfo,
+    instanceSources: Map<String, LxSourceInfo>,
+    sourceToggles: Map<String, Boolean>,
+    expanded: Boolean,
+    onToggleSource: (String, Boolean) -> Unit,
+    onDelete: () -> Unit,
+    onToggleExpand: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = AbsoluteSmoothCornerShape(20.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StatusIcon(
+                    icon = Icons.Rounded.WorkspacePremium,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    size = 42.dp,
+                    iconSize = 22.dp
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = info.name.ifBlank { info.fileName },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = buildString {
+                            append(info.fileName)
+                            if (info.version.isNotBlank()) {
+                                append(" · v").append(info.version.removePrefix("v"))
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (instanceSources.isNotEmpty()) {
+                        Text(
+                            text = "Source Key: " + instanceSources.entries.joinToString(" · ") {
+                                it.value.name.ifBlank { it.key }
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Rounded.DeleteOutline,
+                        contentDescription = "删除 ${info.fileName}",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            if (info.description.isNotBlank()) {
+                Text(
+                    text = info.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (instanceSources.isNotEmpty()) {
+                instanceSources.forEach { (key, srcInfo) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = srcInfo.name.ifBlank { key },
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (srcInfo.qualitys.isNotEmpty()) {
+                                Text(
+                                    text = srcInfo.qualitys.joinToString(" / "),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = sourceToggles[key] ?: true,
+                            onCheckedChange = { onToggleSource(key, it) },
+                            modifier = Modifier.scale(0.85f)
+                        )
+                    }
+                }
+            }
+
+            if (info.author.isNotBlank() || info.homepage.isNotBlank() ||
+                info.lastUpdate.isNotBlank() || info.md5.isNotBlank()
+            ) {
+                TextButton(onClick = onToggleExpand) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (expanded) "收起简介" else "查看简介")
+                }
+                if (expanded) {
+                    listOf(
+                        "作者" to info.author,
+                        "主页" to info.homepage,
+                        "更新时间" to info.lastUpdate,
+                        "MD5" to info.md5
+                    ).forEach { (label, value) ->
+                        if (value.isNotBlank()) {
+                            Text(
+                                text = "$label: $value",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusIcon(
+    icon: ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 44.dp,
+    iconSize: Dp = 24.dp
+) {
+    Surface(
+        modifier = modifier.size(size),
+        shape = CircleShape,
+        color = containerColor
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptySourceCard(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = AbsoluteSmoothCornerShape(20.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Text(
+            text = "尚未导入任何 JS 音源脚本，点上方按钮导入即可同时加载多个音源。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Composable
+private fun UsageInfoCard(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = AbsoluteSmoothCornerShape(20.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "使用说明",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "1. 可同时导入多个 JS 音源文件（如聚合音源脚本），自动一起生效\n" +
+                    "2. 多个脚本注册同一音源时按加载顺序逐个尝试，直到拿到结果\n" +
+                    "3. 每个脚本下方的音源开关可临时单独启用/禁用某个音源（运行时生效，重启恢复）\n" +
+                    "4. 播放音质设置对所有在线音源生效（网易云、内置源、落雪脚本）\n" +
+                    "5. 点每个脚本的「查看简介」可查看作者、主页、更新时间等信息\n" +
+                    "6. 启动时会自动加载已导入的所有 JS 文件",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

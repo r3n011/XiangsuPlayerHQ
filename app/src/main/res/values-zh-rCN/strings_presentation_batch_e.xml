@@ -92,6 +92,12 @@
     <string name="presentation_batch_e_ai_enter_custom_title">输入自定义值</string>
     <string name="presentation_batch_e_ai_enter_custom_label">输入你的自定义值</string>
     <string name="presentation_batch_e_ai_evaluate_playlist">AI 评价播放列表</string>
+    <string name="presentation_batch_e_ai_evaluating">正在评价歌单…</string>
+    <string name="presentation_batch_e_ai_eval_title">AI 评价</string>
+    <string name="presentation_batch_e_ai_eval_cohesion">连贯性</string>
+    <string name="presentation_batch_e_ai_eval_diversity">多样性</string>
+    <string name="presentation_batch_e_ai_eval_energy_flow">能量流</string>
+    <string name="presentation_batch_e_ai_eval_suggestions">建议</string>
     <string name="presentation_batch_e_ai_recommendation_success">AI推荐歌单已生成！</string>
     <string name="presentation_batch_e_ai_view_all_mix">查看全部AI歌单</string>
     

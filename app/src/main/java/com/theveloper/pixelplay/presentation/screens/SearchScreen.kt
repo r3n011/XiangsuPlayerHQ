@@ -43,6 +43,15 @@ import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Surface
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
@@ -174,6 +183,118 @@ fun SearchScreen(
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
     var searchQuery by rememberSaveable { mutableStateOf(playerViewModel.searchQuery) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // 剪贴板检测分享链接
+    var shareDialogResult by remember { mutableStateOf<com.theveloper.pixelplay.data.share.ShareResult?>(null) }
+
+    // 分享链接确认弹窗（模仿更新弹窗样式）
+    if (shareDialogResult != null) {
+        val success = shareDialogResult as? com.theveloper.pixelplay.data.share.ShareResult.Success
+        if (success != null) {
+            val cardShape = RoundedCornerShape(28.dp)
+            androidx.compose.material3.BasicAlertDialog(onDismissRequest = { shareDialogResult = null }) {
+                Surface(
+                    shape = cardShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        // 标题区
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("分享链接", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(success.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                val matchInfo = if (success.unmatchedCount > 0) {
+                                    "匹配 ${success.matchedSongs.size}/${success.totalCount} 首"
+                                } else "共 ${success.totalCount} 首"
+                                Text(matchInfo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                            ) {
+                                Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // 歌曲列表（模仿媒体库显示）
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                success.matchedSongs.take(5).forEach { song ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.size(40.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                        ) {
+                                            Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(song.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(song.displayArtist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                    }
+                                }
+                                if (success.matchedSongs.size > 5) {
+                                    Text(
+                                        "...还有 ${success.matchedSongs.size - 5} 首",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 按钮区
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            androidx.compose.material3.OutlinedButton(
+                                onClick = { shareDialogResult = null },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp)
+                            ) { Text("取消") }
+                            androidx.compose.material3.Button(
+                                onClick = {
+                                    if (success.matchedSongs.isNotEmpty()) {
+                                        playerViewModel.playSongs(success.matchedSongs, success.matchedSongs.first(), "shared_${success.name}")
+                                    }
+                                    shareDialogResult = null; searchQuery = ""
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                                enabled = success.matchedSongs.isNotEmpty()
+                            ) { Text("播放") }
+                        }
+                    }
+                }
+            }
+        }
+    }
     val statusBarTopInset = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
@@ -341,6 +462,23 @@ fun SearchScreen(
                             onValueChange = {
                                 searchQuery = it
                                 playerViewModel.updateSearchQuery(it)
+                                // 检测粘贴的分享链接
+                                val detectedLink = com.theveloper.pixelplay.data.share.ShareLinkCodec.extractShareLink(it)
+                                if (detectedLink != null) {
+                                    coroutineScope.launch {
+                                        val result = playerViewModel.resolveShareLink(detectedLink)
+                                        when (result) {
+                                            is com.theveloper.pixelplay.data.share.ShareResult.Success -> {
+                                                if (result.matchedSongs.isNotEmpty() || result.totalCount > 0) {
+                                                    shareDialogResult = result
+                                                }
+                                            }
+                                            is com.theveloper.pixelplay.data.share.ShareResult.Error -> {
+                                                Toast.makeText(context, "分享链接无效", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+                                }
                             },
                             modifier = Modifier
                                 .weight(1f)

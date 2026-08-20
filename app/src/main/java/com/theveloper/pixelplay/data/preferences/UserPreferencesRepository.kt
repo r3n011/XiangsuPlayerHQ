@@ -17,6 +17,7 @@ import androidx.media3.common.Player
 import com.theveloper.pixelplay.data.equalizer.EqualizerPreset
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
+import com.theveloper.pixelplay.data.lx.LxSourceInfo
 import com.theveloper.pixelplay.data.model.FolderSource
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.PlaybackQueueSnapshot
@@ -79,6 +80,75 @@ enum class MusicQuality(val lxValue: String, val neteaseLevel: String, val label
     FLAC("flac", "lossless", R.string.music_quality_flac),
     HIGH("320k", "exhigh", R.string.music_quality_high),
     STANDARD("128k", "standard", R.string.music_quality_standard)
+}
+
+/**
+ * 在线音源音质目录：识别音源脚本注册的 qualitys（音源实际支持的音质），
+ * 而不是硬编码固定档位。用于音质设置选项动态化 + 播放时按音源向下匹配。
+ */
+object MusicQualityCatalog {
+    // 音质优先级（高 → 低）。覆盖内置/自定义脚本常见 qualitys 值，含网易云 VIP 音质。
+    private val QUALITY_ORDER = listOf(
+        "jymaster", "sky", "jyeffect", "atmos", "master",
+        "24bit", "flac24bit", "hires", "flac",
+        "320k", "192k", "128k"
+    )
+
+    /** 引擎未就绪 / 无脚本时的兜底音质（与旧 MusicQuality 枚举保持一致）。 */
+    val FALLBACK: List<String> = listOf("24bit", "flac", "320k", "128k")
+
+    /** 去重并按音质从高到低排序。未知值排最后。 */
+    fun sort(values: Collection<String>): List<String> {
+        val order = QUALITY_ORDER
+        return values.filter { it.isNotBlank() }
+            .distinct()
+            .sortedBy { v -> order.indexOf(v).let { if (it >= 0) it else Int.MAX_VALUE } }
+    }
+
+    /** 合并所有音源注册的 qualitys 并集（去重 + 排序）。 */
+    fun mergeFromSources(sources: Map<String, LxSourceInfo>): List<String> =
+        sort(sources.values.flatMap { it.qualitys })
+
+    /** 音质选项的可读标签（音质值本身在播放器语境下即国际通用，仅个别值做友好映射）。 */
+    fun labelFor(value: String): String = when (value) {
+        "24bit" -> "24bit / Hi-Res"
+        "flac" -> "FLAC"
+        else -> value
+    }
+
+    /** 动态音质值 → 网易云官方接口等级（standard/higher/exhigh/lossless/hires/...）。 */
+    fun neteaseLevelFor(value: String): String = when (value) {
+        "24bit", "flac24bit", "hires" -> "hires"
+        "flac" -> "lossless"
+        "320k" -> "exhigh"
+        "192k" -> "higher"
+        "128k" -> "standard"
+        "jymaster" -> "jymaster"
+        "sky" -> "sky"
+        "jyeffect" -> "jyeffect"
+        else -> "exhigh"
+    }
+
+    /**
+     * 根据音源实际支持的音质，生成"目标优先、向下兼容"的降级尝试链。
+     * 目标不在可用列表时，从目标之后的较低可用音质开始；128k 恒为最后兜底。
+     */
+    fun resolveChain(target: String, available: Collection<String>): List<String> {
+        val sorted = sort(available)
+        if (sorted.isEmpty()) return listOf(target, "320k", "128k").distinct()
+
+        val idx = sorted.indexOf(target)
+        val result = if (idx >= 0) {
+            sorted.subList(idx, sorted.size).toMutableList()
+        } else {
+            val targetOrder = QUALITY_ORDER.indexOf(target)
+            val startOrder = if (targetOrder >= 0) targetOrder else 0
+            QUALITY_ORDER.drop(startOrder).filter { sorted.contains(it) }.toMutableList()
+                .ifEmpty { sorted.toMutableList() }
+        }
+        if (result.none { it == "128k" }) result.add("128k")
+        return result.distinct()
+    }
 }
 
 data class AdvancedPerformanceDiagnosticsSettings(
@@ -178,6 +248,7 @@ class UserPreferencesRepository @Inject constructor(
         val HI_FI_MODE_ENABLED = booleanPreferencesKey("hi_fi_mode_enabled")
         val HOME_TOP_LIST_ENABLED = booleanPreferencesKey("home_top_list_enabled")
         val MUSIC_QUALITY = stringPreferencesKey("music_quality")
+        val MUSIC_QUALITY_VALUE = stringPreferencesKey("music_quality_value")
         val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
         val CUSTOM_GENRES = stringSetPreferencesKey("custom_genres")
         val CUSTOM_GENRE_ICONS = stringPreferencesKey("custom_genre_icons")
@@ -464,17 +535,24 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[PreferencesKeys.HOME_TOP_LIST_ENABLED] = enabled }
     }
 
-    val musicQualityFlow: Flow<MusicQuality> =
-        pref {
-            try {
-                MusicQuality.valueOf(it[PreferencesKeys.MUSIC_QUALITY] ?: MusicQuality.HIGH.name)
-            } catch (_: Exception) {
-                MusicQuality.HIGH
+    /**
+     * 动态音质值（来自音源脚本注册的 qualitys），如 "320k" / "flac" / "24bit" / "flac24bit"。
+     * 旧版存的是 MusicQuality 枚举名（如 HIGH），此处自动迁移为对应 lxValue。
+     */
+    val musicQualityValueFlow: Flow<String> =
+        pref { preferences ->
+            val explicit = preferences[PreferencesKeys.MUSIC_QUALITY_VALUE]
+            if (!explicit.isNullOrBlank()) {
+                explicit
+            } else {
+                val legacyName = preferences[PreferencesKeys.MUSIC_QUALITY]
+                runCatching { MusicQuality.valueOf(legacyName ?: "").lxValue }
+                    .getOrDefault(MusicQuality.HIGH.lxValue)
             }
         }
 
-    suspend fun setMusicQuality(quality: MusicQuality) {
-        dataStore.edit { it[PreferencesKeys.MUSIC_QUALITY] = quality.name }
+    suspend fun setMusicQualityValue(value: String) {
+        dataStore.edit { it[PreferencesKeys.MUSIC_QUALITY_VALUE] = value }
     }
 
     val keepPlayingInBackgroundFlow: Flow<Boolean> =

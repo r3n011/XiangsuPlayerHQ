@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.components
 
+import android.os.Build
 import android.widget.Toast
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.Lyrics
@@ -24,6 +25,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.util.lerp
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.animation.AnimatedVisibility
@@ -44,6 +48,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,6 +63,8 @@ import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -131,11 +139,13 @@ import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.theveloper.pixelplay.data.preferences.dataStore
+import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 
 import kotlin.math.abs
 import kotlin.math.pow
@@ -261,6 +271,11 @@ fun LyricsSheet(
     onSetImmersiveTemporarilyDisabled: (Boolean) -> Unit,
     onSaveLyricsToFile: (Song, Lyrics, Boolean) -> Unit,
     onTranslateViaAi: () -> Unit,
+    onExplainLyricsViaAi: () -> Unit,
+    isExplainingLyrics: Boolean = false,
+    lyricsExplanation: String? = null,
+    lyricsExplanationEnabled: Boolean = false,
+    onDismissExplanation: () -> Unit = {},
     // BottomToggleRow Params
     isShuffleEnabled: Boolean,
     repeatMode: Int,
@@ -269,6 +284,13 @@ fun LyricsSheet(
     onRepeatToggle: () -> Unit,
     onFavoriteToggle: () -> Unit,
     showLyricsTrackInfo: Boolean,
+    customPlayerBackgroundEnabled: Boolean,
+    customPlayerBackgroundUri: String?,
+    customPlayerBackgroundMode: PlayerBackgroundMode,
+    customPlayerBackgroundBlurRadius: Int,
+    customPlayerControlsOpacity: Int,
+    lyricsGradientOverlayEnabled: Boolean,
+    lyricsSolidOverlayAlpha: Float = 0f,
     modifier: Modifier = Modifier,
     swipeThreshold: Dp = 100.dp,
     highlightZoneFraction: Float = 0.08f, // Reduced from 0.22 for less padding
@@ -303,7 +325,29 @@ fun LyricsSheet(
         onBack = onBackClick
     )
 
-    val stablePlayerState by stablePlayerStateFlow.collectAsStateWithLifecycle()
+    // ── 拆分订阅：避免 totalDuration 每 250ms 更新导致整个页面重组 ──
+    val lyrics by stablePlayerStateFlow
+        .map { it.lyrics }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = null)
+    val isLoadingLyrics by stablePlayerStateFlow
+        .map { it.isLoadingLyrics }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = false)
+    val isPlaying by stablePlayerStateFlow
+        .map { it.isPlaying }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = false)
+    val currentSong by stablePlayerStateFlow
+        .map { it.currentSong }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = null)
+    // totalDuration 只在 SyncedLyricsList 内部使用，单独订阅
+    val totalDuration by stablePlayerStateFlow
+        .map { it.totalDuration }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = 0L)
+
     val sheetColors = remember(colorScheme) { lyricsSheetColors(colorScheme) }
     val backgroundColor = sheetColors.controlContainer
     val onBackgroundColor = sheetColors.controlContent
@@ -314,11 +358,6 @@ fun LyricsSheet(
     val lyricHighlightColor = sheetColors.lyricHighlight
     val playPauseColor = sheetColors.playPauseContainer
     val onPlayPauseColor = sheetColors.playPauseContent
-
-    val isLoadingLyrics by remember(stablePlayerState) { derivedStateOf { stablePlayerState.isLoadingLyrics } }
-    val lyrics by remember(stablePlayerState) { derivedStateOf { stablePlayerState.lyrics } }
-    val isPlaying by remember(stablePlayerState) { derivedStateOf { stablePlayerState.isPlaying } }
-    val currentSong by remember(stablePlayerState) { derivedStateOf { stablePlayerState.currentSong } }
 
     val hasTranslatedLyrics = remember(lyrics) {
         // Translated lyrics read same timestamp on the lrc, not possible in plain type lyrics
@@ -737,49 +776,97 @@ fun LyricsSheet(
                     }
                 )
             },
-        containerColor = Color.Transparent,
+        containerColor = containerColor,
         contentColor = contentColor,
         contentWindowInsets = WindowInsets(0),
         // Removed TopBar and FAB
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(containerColor)
-            )
-
-            androidx.compose.animation.AnimatedVisibility(
-                visible = currentSong?.albumArtUriString != null,
-                enter = fadeIn(animationSpec = tween(400)),
-                exit = fadeOut(animationSpec = tween(300)),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                SmartImage(
-                    model = currentSong?.albumArtUriString,
-                    contentDescription = null,
+        val hasOverlay = lyricsSolidOverlayAlpha > 0f || lyricsGradientOverlayEnabled
+            val controlsBackground = if (hasOverlay) backgroundColor else Color.Transparent
+            Box(modifier = Modifier.fillMaxSize()) {
+            var showExplanationSheet by remember { mutableStateOf(false) }
+            // 歌词解析完成提示
+            val explanationContext = androidx.compose.ui.platform.LocalContext.current
+            LaunchedEffect(lyricsExplanation) {
+                if (lyricsExplanation != null && showExplanationSheet) {
+                    // 已经在显示了，不需要提示
+                } else if (lyricsExplanation != null) {
+                    Toast.makeText(explanationContext, explanationContext.getString(R.string.ai_lyrics_explanation_title) + " ✓", Toast.LENGTH_SHORT).show()
+                }
+            }
+            // 纯色底色遮罩：受透明度滑块直接控制（默认 60%）
+            if (lyricsSolidOverlayAlpha > 0f) {
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(radiusX = 40.dp, radiusY = 40.dp)
-                        .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
-                    contentScale = ContentScale.Crop
+                        .background(containerColor.copy(alpha = lyricsSolidOverlayAlpha))
+                )
+            }
+
+            // 自定义播放器背景优先：开启并已选图时，用它替代专辑封面的旋转背景
+            CustomPlayerBackground(
+                modifier = Modifier.fillMaxSize(),
+                enabled = customPlayerBackgroundEnabled,
+                uri = customPlayerBackgroundUri,
+                mode = customPlayerBackgroundMode,
+                blurRadius = customPlayerBackgroundBlurRadius,
+                scrimAlpha = 0f
+            )
+
+            val hasCustomBackground =
+                customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank()
+
+            if (!hasCustomBackground) {
+                if (Build.VERSION.SDK_INT >= 31 && currentSong?.albumArtUriString != null) {
+                    // 高版本：Apple Music 风格 4 块封面旋转 + 重模糊（RenderEffect）
+                    AppleMusicRotatingBackground(
+                        albumArtUri = currentSong?.albumArtUriString,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = currentSong?.albumArtUriString != null,
+                        enter = fadeIn(animationSpec = tween(400)),
+                        exit = fadeOut(animationSpec = tween(300)),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        SmartImage(
+                            model = currentSong?.albumArtUriString,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(radiusX = 40.dp, radiusY = 40.dp)
+                                .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+
+            // 纯色遮罩优先：开启时用均匀纯色压暗背景，替代渐变遮罩，避免两层叠加
+            if (lyricsSolidOverlayAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(containerColor.copy(alpha = lyricsSolidOverlayAlpha))
+                )
+            } else if (lyricsGradientOverlayEnabled) {
+                // 渐变遮罩：上下柔和渐变，提升文字可读性（受「歌词渐变遮罩」开关控制）
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    containerColor.copy(alpha = 0.4f),
+                                    containerColor.copy(alpha = 0.95f)
+                                )
+                            )
+                        )
                 )
             }
 
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                containerColor.copy(alpha = 0.55f),
-                                containerColor.copy(alpha = 0.82f)
-                            )
-                        )
-                    )
-            )
-
-            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = paddingValues.calculateTopPadding())
@@ -801,12 +888,12 @@ fun LyricsSheet(
             )
             val staticListState = rememberLazyListState()
 
-            // Lyrics Content (Weight 1)
+            // 控制栏高度估算：播放按钮 78dp + 上下 padding/Spacer 约 42dp ≈ 120dp
+            val controlsReservedBottom = if (immersiveMode) 24.dp else 120.dp
+
+            // Lyrics Content - 填满整个区域，控制栏改为悬浮覆盖在底部
             Box(
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .weight(1f)
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxSize()
             ) {
                 // 歌曲信息条：与原版一致 —— 悬浮在歌词内容区左上角（黑胶唱片风格圆形药丸），
                 // 背景/文字颜色跟随主题黑白模式（亮色/暗色自动切换）
@@ -841,7 +928,7 @@ fun LyricsSheet(
                                 )
                                 .wrapContentWidth(), // ⚡ 旋转屏幕时 animateContentSize 与 AnimatedContent
                                 // 尺寸动画叠加、配合封面异步加载会在 measure 阶段崩溃，故移除宽度动画
-                            backgroundColor = backgroundColor, // Distinct solid background
+                            backgroundColor = backgroundColor,
                             contentColor = onBackgroundColor,
                             isPlaying = isPlaying
                         )
@@ -881,12 +968,13 @@ fun LyricsSheet(
                     }
 
                     true -> {
-                        lyrics?.synced?.let { synced ->
+                        val lyricsData = lyrics
+                        lyricsData?.synced?.let { synced ->
                             SyncedLyricsList(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(horizontal = 12.dp),
-                                contentPadding = PaddingValues(top = 130.dp, bottom = 100.dp),
+                                contentPadding = PaddingValues(top = 130.dp, bottom = controlsReservedBottom),
                                 lines = synced,
                                 listState = syncedListState,
                                 playbackPositionFlow = playbackPositionFlow,
@@ -915,7 +1003,7 @@ fun LyricsSheet(
                                 showTranslation = showLyricsTranslation,
                                 showRomanization = showLyricsRomanization,
                                 footer = {
-                                    if (lyrics?.areFromRemote == true) {
+                                    if (lyricsData?.areFromRemote == true) {
                                         item(key = "provider_text") {
                                             ProviderText(
                                                 providerText = stringResource(R.string.lyrics_provided_by),
@@ -928,7 +1016,8 @@ fun LyricsSheet(
                                             )
                                         }
                                     }
-                                }
+                                },
+                                gradientOverlayEnabled = lyricsGradientOverlayEnabled
                             )
                         }
                     }
@@ -942,7 +1031,7 @@ fun LyricsSheet(
                                     start = 24.dp,
                                     end = 24.dp,
                                     top = 130.dp,
-                                    bottom = 24.dp
+                                    bottom = controlsReservedBottom
                                 )
                             ) {
                                 itemsIndexed(
@@ -964,43 +1053,47 @@ fun LyricsSheet(
                     }
                 }
                 
-                // Top Gradient for fade
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .align(Alignment.TopCenter)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(containerColor, Color.Transparent)
+                // 上下渐变遮罩：受「歌词渐变遮罩」开关控制
+                if (lyricsGradientOverlayEnabled) {
+                    // Top Gradient for fade
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(130.dp)
+                            .align(Alignment.TopCenter)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(containerColor, Color.Transparent)
+                                )
                             )
-                        )
-                )
+                    )
 
-                // Bottom Gradient for fade
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, containerColor)
+                    // Bottom Gradient for fade
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, containerColor)
+                                )
                             )
-                        )
-                )
+                    )
+                }
             }
 
-            // Controls Section (Auto-hide in immersive mode)
+            // Controls Section (Auto-hide in immersive mode) - 悬浮在歌词内容区底部
             AnimatedVisibility(
                 visible = !immersiveMode,
+                modifier = Modifier.align(Alignment.BottomCenter),
                 enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                 exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(containerColor)
+                        .background(Color.Transparent)
                         .padding(bottom = paddingValues.calculateBottomPadding() + 10.dp, end = 16.dp, start = 16.dp)
                         .pointerInput(Unit) {
                             awaitPointerEventScope {
@@ -1089,7 +1182,7 @@ fun LyricsSheet(
                         backgroundColor = backgroundColor,
                         onBackgroundColor = onBackgroundColor,
                         accentColor = accentColor,
-                        totalDuration = stablePlayerState.totalDuration,
+                        totalDuration = totalDuration,
                         onSeekTo = onSeekTo,
                         onSeekPreviewChange = { previewSeekPositionMs = it },
                         isPlaying = isPlaying
@@ -1112,8 +1205,12 @@ fun LyricsSheet(
                     onBackgroundColor = onBackgroundColor,
                     accentColor = accentColor,
                     onAccentColor = onAccentColor,
-                    // Pass progress so the back button animates with the gesture (draw-phase).
                     backProgressProvider = { backProgressProvider.value },
+                    isExplainingLyrics = isExplainingLyrics,
+                    lyricsExplanation = lyricsExplanation,
+                    lyricsExplanationEnabled = lyricsExplanationEnabled,
+                    onExplainLyricsViaAi = onExplainLyricsViaAi,
+                    onShowExplanation = { showExplanationSheet = true },
                 )
              }
             }
@@ -1140,6 +1237,7 @@ fun LyricsSheet(
                         onSearchLyrics(true)
                     },
                     onTranslateViaAi = onTranslateViaAi,
+                    onExplainLyricsViaAi = onExplainLyricsViaAi,
                     onToggleSyncControls = {
                         resetImmersiveTimer()
                         showSyncControls = !showSyncControls
@@ -1208,6 +1306,56 @@ fun LyricsSheet(
                         onFavoriteToggle()
                     },
                 )
+            }
+        }
+
+        // AI 歌词解析结果底部弹窗（Markdown 渲染）
+        if (showExplanationSheet && lyricsExplanation != null) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val markwon = remember { io.noties.markwon.Markwon.create(context) }
+            val explanationText = lyricsExplanation ?: ""
+            val spannable = remember(explanationText) { markwon.toMarkdown(explanationText) }
+            val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+            val linkColor = MaterialTheme.colorScheme.primary.toArgb()
+
+            ModalBottomSheet(
+                onDismissRequest = { showExplanationSheet = false },
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 32.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.ai_lyrics_explanation_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    androidx.compose.ui.viewinterop.AndroidView(
+                        modifier = Modifier.fillMaxWidth(),
+                        factory = { ctx ->
+                            android.widget.TextView(ctx).apply {
+                                textSize = 15f
+                                movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                                highlightColor = android.graphics.Color.TRANSPARENT
+                            }
+                        },
+                        update = { tv ->
+                            tv.setTextColor(textColor)
+                            tv.setLinkTextColor(linkColor)
+                            tv.text = spannable
+                        }
+                    )
+                }
             }
         }
 
@@ -1281,6 +1429,104 @@ fun LyricsSheet(
     }
 }
 
+/**
+ * AI 歌词解释面板 — 独立 Composable 隔离重组范围，
+ * 避免加载动画/文本更新触发歌词列表重组导致卡顿。
+ */
+@Composable
+private fun AiLyricsExplanationPanel(
+    isExplaining: Boolean,
+    explanation: String?,
+    immersiveMode: Boolean,
+    accentColor: Color,
+    onBackgroundColor: Color,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val showPanel = isExplaining || explanation != null
+    androidx.compose.animation.AnimatedVisibility(
+        visible = showPanel && !immersiveMode,
+        enter = androidx.compose.animation.fadeIn() +
+            androidx.compose.animation.slideInVertically { it / 4 },
+        exit = androidx.compose.animation.fadeOut() +
+            androidx.compose.animation.slideOutVertically { it / 5 },
+        modifier = modifier
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = accentColor.copy(alpha = 0.14f),
+            contentColor = onBackgroundColor,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoStories,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.ai_lyrics_explanation_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = onBackgroundColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (explanation != null) {
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = stringResource(R.string.cancel),
+                                modifier = Modifier.size(18.dp),
+                                tint = onBackgroundColor.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                if (isExplaining) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = accentColor
+                        )
+                        Text(
+                            text = stringResource(R.string.ai_lyrics_explaining),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = onBackgroundColor.copy(alpha = 0.85f)
+                        )
+                    }
+                } else if (explanation != null) {
+                    Text(
+                        text = explanation,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onBackgroundColor,
+                        modifier = Modifier
+                            .heightIn(max = 220.dp)
+                            .verticalScroll(rememberScrollState())
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun LyricsPlaybackSeekBar(
     playbackPositionFlow: StateFlow<Long>,
@@ -1332,7 +1578,8 @@ fun SyncedLyricsList(
     showRomanization: Boolean = true,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    footer: LazyListScope.() -> Unit = {}
+    footer: LazyListScope.() -> Unit = {},
+    gradientOverlayEnabled: Boolean = true
 ) {
     val density = LocalDensity.current
     // 共享一个 TextMeasurer 给所有歌词行，避免每行单独创建（流畅度优化）
@@ -1379,9 +1626,15 @@ fun SyncedLyricsList(
 
     BoxWithConstraints(
         modifier = modifier
-            .fadingEdges(
-                edges = FadingEdges(top = 16.dp, bottom = 100.dp),
-                backgroundColor = containerColor
+            .then(
+                if (gradientOverlayEnabled) {
+                    Modifier.fadingEdges(
+                        edges = FadingEdges(top = 16.dp, bottom = 100.dp),
+                        backgroundColor = containerColor
+                    )
+                } else {
+                    Modifier
+                }
             )
     ) {
         val metrics = remember(maxHeight, highlightZoneFraction, highlightOffsetDp) {
@@ -1549,6 +1802,10 @@ fun SyncedLyricsList(
                     }
 // 16 dp Spacer removed to allow dynamic padding in LyricLineRow
                 }
+                // 底部空白行：让最后几首歌词可以滚到高亮区域，而不是贴在屏幕底部
+                items(count = 4) {
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
                 footer()
             }
 
@@ -1618,27 +1875,37 @@ fun LyricLineRow(
         derivedStateOf { position in line.time.toLong()..<lineEndTime }
     }
     val unhighlightedColor = LocalContentColor.current.copy(alpha = 0.45f)
-    // folia-style spring: {stiffness:142, damping:28, mass:0.82}
-    // Compose dampingRatio ≈ damping / (2 * sqrt(stiffness * mass)) ≈ 0.82
-    val springFloatAnimSpec = spring(
-        dampingRatio = 0.82f,
-        stiffness = 142f,
-        visibilityThreshold = 0.005f
-    )
-    val springColorAnimSpec = spring<Color>(
-        dampingRatio = 0.82f,
-        stiffness = 142f
-    )
-    val springDpAnimSpec = spring<Dp>(
-        dampingRatio = 0.82f,
-        stiffness = 142f
-    )
-
-    val colorAnimSpec: AnimationSpec<Color> = if (useAnimatedLyrics) {
-        springColorAnimSpec
-    } else {
-        tween(durationMillis = 180, easing = FastOutSlowInEasing)
+    // Apple Music 式弹簧：高阻尼 + 较低 stiffness，仅产生极轻微过冲回弹，
+    // 让歌词行缩放/颜色/位移有“重量和惯性”，而不是果冻般的明显弹跳。
+    val floatAnimSpec: AnimationSpec<Float> = remember(useAnimatedLyrics) {
+        if (useAnimatedLyrics) {
+            spring(dampingRatio = 0.9f, stiffness = 150f, visibilityThreshold = 0.005f)
+        } else {
+            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+        }
     }
+    val colorAnimSpec: AnimationSpec<Color> = remember(useAnimatedLyrics) {
+        if (useAnimatedLyrics) {
+            spring(dampingRatio = 0.9f, stiffness = 150f)
+        } else {
+            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+        }
+    }
+    val dpAnimSpec: AnimationSpec<Dp> = remember(useAnimatedLyrics) {
+        if (useAnimatedLyrics) {
+            spring(dampingRatio = 0.9f, stiffness = 150f)
+        } else {
+            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+        }
+    }
+    val paddingAnimSpec: AnimationSpec<Dp> = remember(useAnimatedLyrics) {
+        if (useAnimatedLyrics) {
+            spring(stiffness = 160f, dampingRatio = 0.4f)
+        } else {
+            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+        }
+    }
+
     val lineColor by animateColorAsState(
         targetValue = if (isCurrentLine) accentColor else unhighlightedColor,
         animationSpec = colorAnimSpec,
@@ -1647,25 +1914,14 @@ fun LyricLineRow(
 
     // folia-style continuous visual treatment:
     // active→scale 1.08, opacity 1.0; distance 1→scale 0.96, opacity 0.68; distance 2→scale 0.90, opacity 0.52; distance 3+→scale 0.84, opacity 0.40
-    val (targetScale, targetAlpha, targetOffsetY) = if (useAnimatedLyrics) {
+    val (targetScale, targetAlpha) = if (useAnimatedLyrics) {
         when (distanceFromCurrent) {
-            0 -> Triple(1.08f, 1.0f, 0.dp)
-            1 -> Triple(0.96f, 0.68f, 0.dp)
-            2 -> Triple(0.90f, 0.52f, 0.dp)
-            else -> Triple(0.84f, 0.40f, 0.dp)
+            0 -> Pair(1.08f, 1.0f)
+            1 -> Pair(0.96f, 0.68f)
+            2 -> Pair(0.90f, 0.52f)
+            else -> Pair(0.84f, 0.40f)
         }
-    } else Triple(1f, 1f, 0.dp)
-
-    val floatAnimSpec: AnimationSpec<Float> = if (useAnimatedLyrics) {
-        springFloatAnimSpec
-    } else {
-        tween(durationMillis = 180, easing = FastOutSlowInEasing)
-    }
-    val dpAnimSpec: AnimationSpec<Dp> = if (useAnimatedLyrics) {
-        springDpAnimSpec
-    } else {
-        tween(durationMillis = 180, easing = FastOutSlowInEasing)
-    }
+    } else Pair(1f, 1f)
 
     val scale by animateFloatAsState(
         targetValue = targetScale,
@@ -1677,48 +1933,32 @@ fun LyricLineRow(
         animationSpec = floatAnimSpec,
         label = "lineAlpha"
     )
-    val offsetYDp by animateDpAsState(
-        targetValue = targetOffsetY,
-        animationSpec = dpAnimSpec,
-        label = "lineOffsetY"
-    )
 
-    // folia-style blur: gentle distance cue with non-linear falloff
-    // distance 1→0.7dp, distance 2→1.8dp, distance 3→2.6dp, distance 4+→3.4dp
+    // folia-style blur: gentle distance cue with non-linear falloff（增强模糊，让非当前行明显虚化）
+    // distance 1→2dp, distance 2→4dp, distance 3→6dp, distance 4+→8dp
     val targetBlur = if (useAnimatedLyrics && animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
-        when (distanceFromCurrent) {
-            1 -> 0.7f.dp
-            2 -> 1.8f.dp
-            3 -> 2.6f.dp
-            else -> 3.4f.dp
-        }
+        (minOf(distanceFromCurrent, 4) * 2).dp
     } else 0.dp
     val blurRadius by animateDpAsState(
         targetValue = targetBlur,
-        animationSpec = if (useAnimatedLyrics) spring(dampingRatio = 0.82f, stiffness = 142f)
-        else tween(durationMillis = 200),
+        animationSpec = dpAnimSpec,
         label = "lineBlur"
     )
 
-    // folia-style gap: active line→18dp, inactive→14dp
+    // 行间距物理弹簧：不同距离的行 stiffness 递减（移动速度不同），
+    // dampingRatio 0.38~0.42 产生明显过冲——切换时上方行被“挤压”（间距先明显变小），
+    // 下方行被“拉扯”（间距先明显变大），到位后回弹恢复；间距差拉大让弹簧感更明显。
     val targetVerticalPadding = if (useAnimatedLyrics) {
         when (distanceFromCurrent) {
-            0 -> if (immersiveMode) 16.dp else 18.dp
+            0 -> if (immersiveMode) 22.dp else 32.dp
             1 -> 14.dp
-            else -> 14.dp
+            2 -> 10.dp
+            else -> 7.dp
         }
     } else 12.dp
     val animatedVerticalPadding by animateDpAsState(
         targetValue = targetVerticalPadding,
-        animationSpec = if (useAnimatedLyrics) {
-            // folia-style: active line uses slightly bouncy spring, inactive uses damped spring
-            when (distanceFromCurrent) {
-                0 -> spring(stiffness = 180f, dampingRatio = 0.82f)
-                else -> spring(stiffness = 220f, dampingRatio = 0.85f)
-            }
-        } else {
-            tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        },
+        animationSpec = paddingAnimSpec,
         label = "linePadding"
     )
 
@@ -1739,7 +1979,7 @@ fun LyricLineRow(
                 scaleX = scale
                 scaleY = scale
                 this.alpha = alpha
-                translationY = offsetYDp.toPx()
+                translationY = 0f
                 transformOrigin = TransformOrigin(
                     pivotFractionX = when (lyricsAlignment) {
                         "center" -> 0.5f

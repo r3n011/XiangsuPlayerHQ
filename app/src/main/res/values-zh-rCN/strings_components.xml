@@ -23,6 +23,7 @@
     <string name="lyrics_more_hide_sync_controls">隐藏同步控件</string>
     <string name="lyrics_more_adjust_sync">调整同步</string>
     <string name="lyrics_more_show_romanization">显示罗马音</string>
+    <string name="lyrics_more_show_translations">显示翻译</string>
     <string name="lyrics_more_display_mode">歌词显示</string>
     <string name="lyrics_mode_translation_only">翻译</string>
     <string name="lyrics_mode_original_only">原文</string>

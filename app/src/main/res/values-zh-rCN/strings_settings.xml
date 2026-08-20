@@ -173,6 +173,8 @@
     <string name="setcat_custom_player_controls_opacity_desc">应用于播放器界面与歌词界面除背景外的所有元素（封面、信息、进度、控制按钮等）。</string>
     <string name="setcat_lyrics_gradient_overlay_title">歌词渐变遮罩</string>
     <string name="setcat_lyrics_gradient_overlay_desc">在歌词界面上方与下方显示柔和渐变，提升文字可读性。</string>
+    <string name="setcat_lyrics_solid_overlay_title">歌词纯色遮罩</string>
+    <string name="setcat_lyrics_solid_overlay_desc">调整歌词界面纯色遮罩的不透明度，让背景变暗以提升文字可读性。</string>
     <string name="setcat_home_collage">主页拼贴</string>
     <string name="setcat_collage_pattern_label">拼贴图案</string>
     <string
@@ -363,6 +365,7 @@
     >关闭 —— 更深上下文。发送完整收听画像（约 8K tokens）以获得更丰富的结果。</string>
     <string name="setcat_credentials">凭证</string>
     <string name="setcat_ai_api_key_title">%1$s API 密钥</string>
+    <string name="setcat_ai_api_key_title_simple">API 密钥</string>
     <string name="setcat_ai_api_key_subtitle">从 %1$s 获取</string>
     <string
         name="setcat_ai_source_gemini"
@@ -542,6 +545,9 @@
     <string name="setcat_ai_recommendation_card_subtitle">在主页显示AI推荐卡片</string>
     <string name="setcat_ai_recommendation_manual_title">仅手动生成</string>
     <string name="setcat_ai_recommendation_manual_subtitle">点击生成推荐（防止自动消耗token）</string>
+
+    <string name="setcat_ai_lyrics_explanation_title">AI 歌词洞察卡片</string>
+    <string name="setcat_ai_lyrics_explanation_subtitle">在歌词界面显示 AI 歌词解释卡片（默认关闭，可在歌词菜单中单次开启）</string>
 
     <string name="setcat_web_remote_section">网页遥控</string>
     <string name="setcat_web_remote_enabled_title">启用网页遥控</string>

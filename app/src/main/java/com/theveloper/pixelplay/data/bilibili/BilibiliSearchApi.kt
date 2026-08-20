@@ -638,7 +638,8 @@ class BilibiliSearchApi @Inject constructor(
                     .header("x-bili-aurora-zone", "sh001")
                     .header("Origin", "https://www.bilibili.com")
                     .header("Referer", "https://www.bilibili.com/video/$bvid")
-                if (sessionCookie.isNotBlank()) builder.header("Cookie", sessionCookie)
+                // ⚡ 显式设置 Cookie（同 fetchCommentPage），防止 Interceptor 注入错误 cookie
+                builder.header("Cookie", sessionCookie)
                 val response = okHttpClient.newCall(builder.get().build()).execute()
                 val body = response.body?.string() ?: return@withContext null
                 val bodyObj = JSONObject(body)
@@ -652,58 +653,63 @@ class BilibiliSearchApi @Inject constructor(
                 Timber.d("Bilibili subtitles count: ${subtitles.length()}")
                 if (subtitles.length() == 0) return@withContext null
 
-                // 优先中文字幕（含 AI 字幕 ai-zh），否则取第一个
-                var chosen: JSONObject? = null
+                // 选择主字幕：优先中文字幕（含 AI 字幕 ai-zh），否则取第一个
+                var primary: JSONObject? = null
+                // 选择翻译字幕：优先英文字幕（en / en-US / ai-en），用于双语显示
+                var secondary: JSONObject? = null
                 for (i in 0 until subtitles.length()) {
                     val s = subtitles.optJSONObject(i) ?: continue
-                    if (chosen == null) chosen = s
+                    if (primary == null) primary = s
                     val lan = s.optString("lan", "")
                     val lanDoc = s.optString("lan_doc", "")
                     if (lan.startsWith("zh", ignoreCase = true) || lan == "ai-zh" || lanDoc.contains("中文")) {
-                        chosen = s
-                        break
+                        primary = s
+                    }
+                    if (lan.startsWith("en", ignoreCase = true) || lan == "ai-en" || lanDoc.contains("英文")) {
+                        secondary = s
                     }
                 }
-                val subtitleUrl = chosen?.optString("subtitle_url", "")
+
+                val primaryUrl = primary?.optString("subtitle_url", "")
                     ?.takeIf { it.isNotBlank() }
-                    ?: chosen?.optString("subtitle_url_v2", "")
+                    ?: primary?.optString("subtitle_url_v2", "")
                     ?: return@withContext null
-                if (subtitleUrl.isBlank()) return@withContext null
-                val fullUrl = when {
-                    subtitleUrl.startsWith("//") -> "https:$subtitleUrl"
-                    subtitleUrl.startsWith("http://", ignoreCase = true) ->
-                        subtitleUrl.replaceFirst("http://", "https://")
-                    subtitleUrl.startsWith("https://", ignoreCase = true) -> subtitleUrl
-                    else -> "https://$subtitleUrl"
+                if (primaryUrl.isBlank()) return@withContext null
+
+                // 下载主字幕内容
+                val primaryLines = downloadSubtitleJson(primaryUrl, bvid) ?: return@withContext null
+                if (primaryLines.isEmpty()) return@withContext null
+
+                // 下载翻译字幕内容（如有）
+                val secondaryLines = secondary?.let { sec ->
+                    val secUrl = sec.optString("subtitle_url", "")
+                        .takeIf { it.isNotBlank() }
+                        ?: sec.optString("subtitle_url_v2", "")
+                    if (secUrl.isNullOrBlank()) return@let null
+                    downloadSubtitleJson(secUrl, bvid)
                 }
 
-                val subResponse = okHttpClient.newCall(
-                    Request.Builder()
-                        .url(fullUrl)
-                        .header("User-Agent", BILI_HD_UA)
-                        .header("env", "prod")
-                        .header("app-key", "android64")
-                        .header("x-bili-aurora-zone", "sh001")
-                        .header("Referer", "https://www.bilibili.com/video/$bvid")
-                        .get()
-                        .build()
-                ).execute()
-                val subBody = subResponse.body?.string() ?: return@withContext null
-                val bodyArr = JSONObject(subBody).optJSONArray("body") ?: return@withContext null
-                if (bodyArr.length() == 0) return@withContext null
-
-                // 字幕逐句转 LRC
-                val sb = StringBuilder(bodyArr.length() * 32)
-                for (i in 0 until bodyArr.length()) {
-                    val item = bodyArr.optJSONObject(i) ?: continue
-                    val from = item.optDouble("from", -1.0)
-                    val content = item.optString("content", "").trim()
-                    if (from < 0.0 || content.isEmpty()) continue
+                // 字幕逐句转 LRC（双语时翻译行紧跟主行，用 LRC 翻译标记语法）
+                val sb = StringBuilder(primaryLines.size * 48)
+                for (i in primaryLines.indices) {
+                    val (from, content) = primaryLines[i]
                     val totalMs = (from * 1000.0).toLong()
                     val mm = (totalMs / 60000).toString().padStart(2, '0')
                     val ss = ((totalMs % 60000) / 1000).toString().padStart(2, '0')
                     val ms = ((totalMs % 1000) / 10).toString().padStart(2, '0')
-                    sb.append("[$mm:$ss.$ms]$content\n")
+                    // 查找时间最接近的翻译行（±500ms 容差）
+                    val translation = secondaryLines?.let { secLines ->
+                        secLines.minByOrNull { kotlin.math.abs(it.first - from) }
+                            ?.takeIf { kotlin.math.abs(it.first - from) < 0.5 }
+                            ?.second
+                    }
+                    if (translation != null) {
+                        // 双语：主行后紧跟翻译行（相同时间戳），pairTranslationLines 会自动配对为 translation
+                        sb.append("[$mm:$ss.$ms]$content\n")
+                        sb.append("[$mm:$ss.$ms]$translation\n")
+                    } else {
+                        sb.append("[$mm:$ss.$ms]$content\n")
+                    }
                 }
                 if (sb.isEmpty()) return@withContext null
                 sb.toString()
@@ -711,6 +717,48 @@ class BilibiliSearchApi @Inject constructor(
                 Timber.e(e, "Bilibili get subtitle lrc failed")
                 null
             }
+        }
+    }
+
+    /**
+     * 下载B站字幕JSON并解析为 (时间秒, 文本) 列表。
+     * 字幕URL可能是 // 开头、http:// 或 https://，自动补全协议。
+     */
+    private fun downloadSubtitleJson(subtitleUrl: String, bvid: String): List<Pair<Double, String>>? {
+        return try {
+            val fullUrl = when {
+                subtitleUrl.startsWith("//") -> "https:$subtitleUrl"
+                subtitleUrl.startsWith("http://", ignoreCase = true) ->
+                    subtitleUrl.replaceFirst("http://", "https://")
+                subtitleUrl.startsWith("https://", ignoreCase = true) -> subtitleUrl
+                else -> "https://$subtitleUrl"
+            }
+            val request = Request.Builder()
+                .url(fullUrl)
+                .header("User-Agent", BILI_HD_UA)
+                .header("env", "prod")
+                .header("app-key", "android64")
+                .header("x-bili-aurora-zone", "sh001")
+                .header("Referer", "https://www.bilibili.com/video/$bvid")
+                // ⚡ 显式设置空 Cookie，防止 Interceptor 注入残留登录 cookie
+                .header("Cookie", "")
+                .get()
+                .build()
+            val response = okHttpClient.newCall(request).execute()
+            val body = response.body?.string() ?: return null
+            val bodyArr = JSONObject(body).optJSONArray("body") ?: return null
+            val lines = mutableListOf<Pair<Double, String>>()
+            for (i in 0 until bodyArr.length()) {
+                val item = bodyArr.optJSONObject(i) ?: continue
+                val from = item.optDouble("from", -1.0)
+                val content = item.optString("content", "").trim()
+                if (from < 0.0 || content.isEmpty()) continue
+                lines.add(from to content)
+            }
+            lines
+        } catch (e: Exception) {
+            Timber.e(e, "Bilibili download subtitle JSON failed")
+            null
         }
     }
 
@@ -804,7 +852,10 @@ class BilibiliSearchApi @Inject constructor(
                 .header("x-bili-aurora-zone", "sh001")
                 .header("Origin", "https://www.bilibili.com")
                 .header("Referer", "https://www.bilibili.com/video/av$aid")
-            if (sessionCookie.isNotBlank()) builder.header("Cookie", sessionCookie)
+            // ⚡ 显式设置 Cookie 头：对齐 PiliPlus 未登录时 options.cookie=''，
+            // 防止 BilibiliHeaderInterceptor 自动添加残留的登录 cookie 导致风控拦截 (-352/-412)。
+            // 已登录时使用完整 cookie；未登录时使用匿名 buvid 或空串。
+            builder.header("Cookie", sessionCookie)
             val response = okHttpClient.newCall(builder.get().build()).execute()
             if (!response.isSuccessful) {
                 val err = "评论接口 HTTP ${response.code}"
@@ -843,6 +894,11 @@ class BilibiliSearchApi @Inject constructor(
                 .header("env", "prod")
                 .header("app-key", "android64")
                 .header("x-bili-aurora-zone", "sh001")
+                // ⚡ 对齐 PiliPlus：显式设置空 Cookie，防止 BilibiliHeaderInterceptor
+                // 自动添加残留登录 cookie 导致风控拦截；补充 Referer/Origin 防止 WAF 拒绝。
+                .header("Cookie", "")
+                .header("Origin", "https://www.bilibili.com")
+                .header("Referer", "https://www.bilibili.com/video/av$aid")
                 .get()
                 .build()
             val response = okHttpClient.newCall(request).execute()
@@ -863,7 +919,7 @@ class BilibiliSearchApi @Inject constructor(
     }
 
     private fun parseCommentResponse(obj: JSONObject, isLoggedIn: Boolean = false, pn: Int = 1): BilibiliCommentResult {
-        val data = obj.optJSONObject("data") ?: return BilibiliCommentResult()
+        val data = obj.optJSONObject("data") ?: return BilibiliCommentResult(error = "评论数据为空")
         // 视频 UP 主 uid（对齐 PiliPlus data.upper.mid），用于识别 UP 本人评论与置顶权限
         val upMid = data.optJSONObject("upper")?.optLong("mid", 0L) ?: 0L
         val comments = mutableListOf<BilibiliComment>()
@@ -874,10 +930,28 @@ class BilibiliSearchApi @Inject constructor(
             }
         }
         val topComments = mutableListOf<BilibiliComment>()
-        val topReplies = data.optJSONArray("top_replies")
-        if (topReplies != null) {
-            for (i in 0 until topReplies.length()) {
-                parseCommentItem(topReplies.optJSONObject(i), top = true, upMid = upMid)?.let { topComments.add(it) }
+        // 对齐 PiliPlus Top 模型：置顶评论在 data.top.upper（UP 主置顶）和 data.top.admin（管理员置顶），
+        // 而非 data.top_replies（旧接口字段，/x/v2/reply/main 不返回此数组）。
+        val topObj = data.optJSONObject("top")
+        if (topObj != null) {
+            // UP 主置顶评论
+            val topUpper = topObj.optJSONObject("upper")
+            if (topUpper != null && topUpper.optLong("rpid", 0L) > 0L) {
+                parseCommentItem(topUpper, top = true, upMid = upMid)?.let { topComments.add(it) }
+            }
+            // 管理员置顶评论
+            val topAdmin = topObj.optJSONObject("admin")
+            if (topAdmin != null && topAdmin.optLong("rpid", 0L) > 0L) {
+                parseCommentItem(topAdmin, top = true, upMid = upMid)?.let { topComments.add(it) }
+            }
+        }
+        // 兜底：部分旧接口可能仍返回 top_replies 数组
+        if (topComments.isEmpty()) {
+            val topReplies = data.optJSONArray("top_replies")
+            if (topReplies != null) {
+                for (i in 0 until topReplies.length()) {
+                    parseCommentItem(topReplies.optJSONObject(i), top = true, upMid = upMid)?.let { topComments.add(it) }
+                }
             }
         }
         if (isLoggedIn) {
@@ -1076,7 +1150,8 @@ class BilibiliSearchApi @Inject constructor(
                 .header("x-bili-aurora-zone", "sh001")
                 .header("Origin", "https://www.bilibili.com")
                 .header("Referer", "https://www.bilibili.com/video/av$oid")
-            if (sessionCookie.isNotBlank()) builder.header("Cookie", sessionCookie)
+            // ⚡ 显式设置 Cookie 头（同 fetchCommentPage），防止 BilibiliHeaderInterceptor 注入错误 cookie
+            builder.header("Cookie", sessionCookie)
             val response = okHttpClient.newCall(builder.get().build()).execute()
             if (!response.isSuccessful) {
                 return BilibiliReplyRepliesResult(error = "子回复接口 HTTP ${response.code}")
@@ -1087,7 +1162,7 @@ class BilibiliSearchApi @Inject constructor(
                 val msg = obj.optString("message", "未知错误").ifBlank { "未知错误" }
                 return BilibiliReplyRepliesResult(error = "(${obj.optInt("code", -1)}) $msg")
             }
-            val data = obj.optJSONObject("data") ?: return BilibiliReplyRepliesResult()
+            val data = obj.optJSONObject("data") ?: return BilibiliReplyRepliesResult(error = "子回复数据为空")
             val list = mutableListOf<BilibiliComment>()
             val arr = data.optJSONArray("replies")
             val upMid = data.optJSONObject("upper")?.optLong("mid", 0L) ?: 0L
@@ -1871,7 +1946,8 @@ class BilibiliSearchApi @Inject constructor(
                     .header("User-Agent", BASE_UA)
                     .header("Origin", "https://www.bilibili.com")
                     .header("Referer", "https://www.bilibili.com/video/av$oid")
-                if (sessionCookie.isNotBlank()) builder.header("Cookie", sessionCookie)
+                // ⚡ 显式设置 Cookie（同 fetchCommentPage），保证一致性
+                builder.header("Cookie", sessionCookie)
                 val response = okHttpClient.newCall(builder.get().build()).execute()
                 if (!response.isSuccessful) return@withContext BilibiliReplyInteraction()
                 val body = response.body?.string() ?: return@withContext BilibiliReplyInteraction()

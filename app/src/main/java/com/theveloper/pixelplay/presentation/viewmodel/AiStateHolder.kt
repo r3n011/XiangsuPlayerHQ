@@ -18,6 +18,7 @@ import com.theveloper.pixelplay.data.model.Song
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -68,8 +69,25 @@ class AiStateHolder @Inject constructor(
     private val _isEvaluatingPlaylist = MutableStateFlow(false)
     val isEvaluatingPlaylist = _isEvaluatingPlaylist.asStateFlow()
 
-    private val _playlistEvaluation = MutableStateFlow<PlaylistEvaluation?>(null)
-    val playlistEvaluation = _playlistEvaluation.asStateFlow()
+    // 按歌单 ID 存储评价，每个歌单独立
+    private val _playlistEvaluationCache = mutableMapOf<String, PlaylistEvaluation>()
+    private val _currentPlaylistId = MutableStateFlow<String?>(null)
+    val playlistEvaluation: StateFlow<PlaylistEvaluation?> = MutableStateFlow(null)
+
+    private val _isExplainingLyrics = MutableStateFlow(false)
+    val isExplainingLyrics: StateFlow<Boolean> = _isExplainingLyrics.asStateFlow()
+
+    private val _lyricsExplanation = MutableStateFlow<String?>(null)
+    val lyricsExplanation: StateFlow<String?> = _lyricsExplanation.asStateFlow()
+
+    // 单次开启会话标志：歌词菜单中点击"AI 解释歌词"时置 true，
+    // 即使全局设置关闭也允许本次显示卡片；切歌或 dismiss 后自动重置。
+    private val _isLyricsExplanationSessionEnabled = MutableStateFlow(false)
+    val isLyricsExplanationSessionEnabled: StateFlow<Boolean> = _isLyricsExplanationSessionEnabled.asStateFlow()
+
+    // 记录本次解释对应的歌曲 ID，切歌时自动清理（实现"单次"语义）
+    @Volatile
+    private var lyricsExplanationSongId: String? = null
 
     private val _generatedPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
     val generatedPlaylistSongs = _generatedPlaylistSongs.asStateFlow()
@@ -408,7 +426,109 @@ $lyricsText
         }
     }
 
-    fun evaluatePlaylist(playlistName: String, songs: List<Song>, userPrompt: String = "", force: Boolean = false) {
+    fun explainLyrics(
+        lyricsText: String,
+        songTitle: String,
+        artistName: String,
+        songId: String? = null,
+        force: Boolean = false
+    ) {
+        val scope = this.scope ?: return
+
+        scope.launch {
+            if (!force && !isAutoMetadataEnabled()) {
+                toastEmitter?.invoke(context.getString(R.string.ai_auto_disabled))
+                return@launch
+            }
+
+            // 单次开启：菜单触发时记录歌曲 ID 并置位 session 标志，
+            // 即使全局开关关闭也允许本次显示卡片。
+            lyricsExplanationSongId = songId
+            _isLyricsExplanationSessionEnabled.value = true
+            _isExplainingLyrics.value = true
+            _aiError.value = null
+
+            try {
+                val locale = context.resources.configuration.locales[0]
+                val langCode = locale.language
+                val targetLanguage = when (langCode) {
+                    "zh" -> "中文 (Chinese)"
+                    "ja" -> "日本語 (Japanese)"
+                    "ko" -> "한국어 (Korean)"
+                    "es" -> "Español (Spanish)"
+                    "fr" -> "Français (French)"
+                    "de" -> "Deutsch (German)"
+                    "pt" -> "Português (Portuguese)"
+                    "ru" -> "Русский (Russian)"
+                    "ar" -> "العربية (Arabic)"
+                    else -> "English"
+                }
+                val prompt = """
+You are a music expert. Explain the meaning and themes of the following song lyrics.
+CRITICAL: You MUST respond entirely in $targetLanguage. Do not use English if $targetLanguage is not English.
+
+Song: "$songTitle"
+Artist: "$artistName"
+
+Structure your response in $targetLanguage using Markdown formatting:
+1. **整体含义** — A brief, insightful summary of what the song is about.
+2. **核心主题** — 3 to 6 bullet points listing the main themes or emotions.
+3. **经典歌词解读** — Pick a few representative lines and explain their deeper meaning.
+4. **情绪与氛围** — Describe the overall tone, mood, and intended feeling.
+
+Keep it engaging, warm, and accessible. Avoid being too academic. Do not output JSON or code blocks.
+
+Lyrics:
+$lyricsText
+                """.trimIndent()
+
+                val response = aiOrchestrator.generateContent(
+                    prompt = prompt,
+                    type = AiSystemPromptType.GENERAL,
+                    temperature = 0.4f
+                )
+                _lyricsExplanation.value = response
+            } catch (e: Exception) {
+                Timber.tag("AiLyricsExplain").e(e, "Lyrics explanation failed")
+                _aiError.value = resolveAiErrorMessage(e)
+            } finally {
+                _isExplainingLyrics.value = false
+            }
+        }
+    }
+
+    fun clearLyricsExplanation() {
+        _lyricsExplanation.value = null
+        _isLyricsExplanationSessionEnabled.value = false
+        lyricsExplanationSongId = null
+        _aiError.value = null
+    }
+
+    /**
+     * 切歌时调用：如果当前解释不是新歌的，则清理（实现"单次开启"语义）。
+     */
+    fun onSongChangedForLyricsExplanation(newSongId: String?) {
+        if (newSongId == null || newSongId != lyricsExplanationSongId) {
+            clearLyricsExplanation()
+        }
+    }
+
+    /**
+     * 设置当前查看的歌单 ID，自动切换显示对应的评价
+     */
+    fun setCurrentPlaylistId(playlistId: String?) {
+        _currentPlaylistId.value = playlistId
+        (playlistEvaluation as MutableStateFlow).value =
+            if (playlistId != null) _playlistEvaluationCache[playlistId] else null
+    }
+
+    /**
+     * 获取指定歌单的缓存评价
+     */
+    fun getCachedPlaylistEvaluation(playlistId: String): PlaylistEvaluation? =
+        _playlistEvaluationCache[playlistId]
+
+    fun evaluatePlaylist(playlistId: String, playlistName: String, songs: List<Song>, userPrompt: String = "", force: Boolean = false) {
         val scope = this.scope ?: return
         
         scope.launch {
@@ -430,7 +550,11 @@ $lyricsText
                 )
                 
                 result.onSuccess { evaluation ->
-                    _playlistEvaluation.value = evaluation
+                    _playlistEvaluationCache[playlistId] = evaluation
+                    // 如果当前正在查看这个歌单，同步更新显示
+                    if (_currentPlaylistId.value == playlistId) {
+                        (playlistEvaluation as MutableStateFlow).value = evaluation
+                    }
                     toastEmitter?.invoke("Playlist evaluation complete!")
                 }.onFailure { error ->
                     Timber.tag("AiPlaylist").e(error, "Playlist evaluation failed")
@@ -447,7 +571,11 @@ $lyricsText
     }
 
     fun clearPlaylistEvaluation() {
-        _playlistEvaluation.value = null
+        val playlistId = _currentPlaylistId.value
+        if (playlistId != null) {
+            _playlistEvaluationCache.remove(playlistId)
+        }
+        (playlistEvaluation as MutableStateFlow).value = null
         _aiError.value = null
     }
 

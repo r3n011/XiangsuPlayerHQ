@@ -241,6 +241,9 @@ class MusicService : MediaLibraryService() {
         getSystemService(Context.ALARM_SERVICE) as AlarmManager
     }
     private var endOfTrackTimerSongId: String? = null
+    // 用户设置的期望倍速，在切歌/播放器重建时自动重设
+    @Volatile
+    private var desiredPlaybackSpeed: Float = 1f
     // Cast remote-session synchronization, extracted to a standalone coordinator.
     // Lazily built so the Hilt-injected listeningStatsTracker is ready before first use.
     private val castSyncCoordinator by lazy {
@@ -557,8 +560,8 @@ class MusicService : MediaLibraryService() {
         }
 
         serviceScope.launch {
-            userPreferencesRepository.musicQualityFlow.collect { quality ->
-                engine.setMusicQuality(quality)
+            userPreferencesRepository.musicQualityValueFlow.collect { qualityValue ->
+                engine.setMusicQuality(qualityValue)
             }
         }
 
@@ -639,6 +642,7 @@ class MusicService : MediaLibraryService() {
                     MusicNotificationProvider.CUSTOM_COMMAND_SET_SLEEP_TIMER_DURATION,
                     MusicNotificationProvider.CUSTOM_COMMAND_SET_SLEEP_TIMER_END_OF_TRACK,
                     MusicNotificationProvider.CUSTOM_COMMAND_CANCEL_SLEEP_TIMER,
+                    MusicNotificationProvider.CUSTOM_COMMAND_SET_PLAYBACK_SPEED,
                 ).map { SessionCommand(it, Bundle.EMPTY) }
 
                 val sessionCommandsBuilder = SessionCommands.Builder()
@@ -767,6 +771,14 @@ class MusicService : MediaLibraryService() {
                             session = session,
                             targetFavoriteState = enabled
                         )
+                    }
+                    MusicNotificationProvider.CUSTOM_COMMAND_SET_PLAYBACK_SPEED -> {
+                        val speed = args.getFloat(
+                            MusicNotificationProvider.EXTRA_PLAYBACK_SPEED,
+                            1f
+                        )
+                        desiredPlaybackSpeed = speed
+                        session.player.playbackParameters = androidx.media3.common.PlaybackParameters(speed)
                     }
                 }
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -1391,6 +1403,13 @@ class MusicService : MediaLibraryService() {
             } else {
                 syncLocalListeningStatsFromPlayer(mediaSession?.player ?: engine.masterPlayer)
             }
+            // 倍速保持：播放就绪时重设（防止在线流加载后倍速丢失）
+            if (playbackState == Player.STATE_READY && desiredPlaybackSpeed != 1f) {
+                val p2 = engine.masterPlayer
+                if (p2.playbackParameters.speed != desiredPlaybackSpeed) {
+                    p2.playbackParameters = androidx.media3.common.PlaybackParameters(desiredPlaybackSpeed)
+                }
+            }
             mediaSession?.let { refreshMediaSessionUi(it) }
             schedulePlaybackSnapshotPersist(immediate = playbackState == Player.STATE_IDLE)
             // 蓝牙歌词：播放状态变化时刷新
@@ -1487,6 +1506,10 @@ class MusicService : MediaLibraryService() {
             val nextIndex = player.nextMediaItemIndex
             if (nextIndex != androidx.media3.common.C.INDEX_UNSET) {
                 runCatching { replayGainProcessor.prefetch(player.getMediaItemAt(nextIndex)) }
+            }
+            // 保持倍速：切歌后重设用户期望的倍速
+            if (desiredPlaybackSpeed != 1f) {
+                player.playbackParameters = androidx.media3.common.PlaybackParameters(desiredPlaybackSpeed)
             }
             // Optimization: Don't force-update widgets on every rapid skip.
             // Let the debounced updater handle it to prevent UI freezes.

@@ -20,6 +20,7 @@ import android.os.Looper
 import android.os.Trace
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -62,12 +63,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -80,8 +83,10 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -247,6 +252,8 @@ class MainActivity : ComponentActivity() {
     lateinit var themeStateHolder: ThemeStateHolder
     @Inject
     lateinit var syncManager: SyncManager
+    @Inject
+    lateinit var shareLinkHandler: com.theveloper.pixelplay.data.share.ShareLinkHandler
     // For handling shortcut navigation - using StateFlow so composables can observe changes
     private val _pendingPlaylistNavigation = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private val _pendingShuffleAll = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -389,7 +396,26 @@ class MainActivity : ComponentActivity() {
             // Crash report dialog state
             var showCrashReportDialog by remember { mutableStateOf(false) }
             var crashLogData by remember { mutableStateOf<CrashLogData?>(null) }
-            
+            var shareLinkResult by remember { mutableStateOf<com.theveloper.pixelplay.data.share.ShareResult?>(null) }
+
+            // 连接剪贴板分享链接检测回调 + 处理 pending URL
+            LaunchedEffect(Unit) {
+                onShareLinkDetected = { result -> shareLinkResult = result }
+                // 处理在 composable 就绪前就检测到的链接
+                pendingShareUrl?.let { url ->
+                    pendingShareUrl = null
+                    val result = shareLinkHandler.resolve(url)
+                    when (result) {
+                        is com.theveloper.pixelplay.data.share.ShareResult.Success -> {
+                            if (result.matchedSongs.isNotEmpty() || result.totalCount > 0) {
+                                shareLinkResult = result
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
             // Permissions Logic - Request media and notification permissions on startup
             val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 listOf(Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
@@ -478,6 +504,21 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+
+                        // 分享链接确认弹窗
+                        if (shareLinkResult != null) {
+                            ShareLinkDialog(
+                                result = shareLinkResult!!,
+                                onConfirm = {
+                                    val success = shareLinkResult as com.theveloper.pixelplay.data.share.ShareResult.Success
+                                    if (success.matchedSongs.isNotEmpty()) {
+                                        playerViewModel.playSongs(success.matchedSongs, success.matchedSongs.first(), "shared_${success.name}")
+                                    }
+                                    shareLinkResult = null
+                                },
+                                onDismiss = { shareLinkResult = null }
+                            )
+                        }
                     }
                 }
             }
@@ -515,11 +556,33 @@ class MainActivity : ComponentActivity() {
             }
 
             intent.action == android.content.Intent.ACTION_VIEW && intent.data != null -> {
-                intent.data?.let { uri ->
-                    persistUriPermissionIfNeeded(intent, uri)
-                    playerViewModel.playExternalUri(uri)
+                val uri = intent.data
+                if (uri?.scheme == "xiangsuplayer" && uri.host == "share") {
+                    // 像素播放器分享链接
+                    val url = uri.toString()
+                    lifecycleScope.launch {
+                        val result = shareLinkHandler.resolve(url)
+                        when (result) {
+                            is com.theveloper.pixelplay.data.share.ShareResult.Success -> {
+                                if (result.matchedSongs.isNotEmpty() || result.totalCount > 0) {
+                                    onShareLinkDetected?.invoke(result)
+                                } else {
+                                    Toast.makeText(this@MainActivity, "未在本地找到匹配的歌曲", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            is com.theveloper.pixelplay.data.share.ShareResult.Error -> {
+                                Toast.makeText(this@MainActivity, "分享链接无效", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    intent.action = null
+                } else {
+                    uri?.let {
+                        persistUriPermissionIfNeeded(intent, it)
+                        playerViewModel.playExternalUri(it)
+                    }
+                    clearExternalIntentPayload(intent)
                 }
-                clearExternalIntentPayload(intent)
             }
 
             intent.action == android.content.Intent.ACTION_SEND && intent.type?.startsWith("audio/") == true -> {
@@ -970,11 +1033,13 @@ class MainActivity : ComponentActivity() {
             if (appHapticsConfig.enabled) platformHapticFeedback else NoOpHapticFeedback
         }
         val hazeState = remember {
-            // RenderScript 模糊在部分设备/软件渲染环境下不可靠（会因 RenderScript.validate() 空指针崩溃）。
-            // 仅在 SDK>=31 且窗口硬件加速（保证 haze 走 RenderEffect 实现）时才启用模糊，
-            // 否则退回 Scrim 着色，避免触发 RenderScript 崩溃路径。
-            val blurSafe = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && rootView.isHardwareAccelerated
-            dev.chrisbanes.haze.HazeState(initialBlurEnabled = blurSafe)
+            // Haze v1.6+ 支持全版本模糊：
+            // - API 33+: 硬件 RenderEffect（最优）
+            // - API 31-32: RenderEffect + workaround
+            // - API 21-30: RenderScript 模糊（实验性，可能略卡但比纯 Scrim 好）
+            // 窗口硬件加速时启用模糊，软件渲染时退回 Scrim
+            val blurEnabled = rootView.isHardwareAccelerated
+            dev.chrisbanes.haze.HazeState(initialBlurEnabled = blurEnabled)
         }
 
         val systemNavBarInset = sanitizeNavigationBarBottomInset(
@@ -1628,7 +1693,7 @@ Trace.endSection()
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
-                            if (navBarBlurEnabledState && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !disableBlurAllOverState) {
+                            if (navBarBlurEnabledState && !disableBlurAllOverState) {
                                 Modifier.hazeEffect(
                                     state = LocalHazeState.current,
                                     style = dev.chrisbanes.haze.materials.HazeMaterials.ultraThin()
@@ -1835,10 +1900,237 @@ Trace.endSection()
         }
     }
 
+    private var lastProcessedClip: String? = null
+    // shareLinkResult 在 setContent 中定义，通过回调传递
+    private var pendingShareUrl: String? = null
+    var onShareLinkDetected: ((com.theveloper.pixelplay.data.share.ShareResult) -> Unit)? = null
+    private var hasCheckedClipboard = false
+
     override fun onResume() {
         super.onResume()
+        if (!hasCheckedClipboard) {
+            hasCheckedClipboard = true
+            checkClipboardForShareLink()
+        }
     }
 
+    private fun checkClipboardForShareLink() {
+        try {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = clipboard.primaryClip
+            val text = clip?.getItemAt(0)?.text?.toString()?.trim() ?: return
+            if (text == lastProcessedClip) return
+            val shareLink = com.theveloper.pixelplay.data.share.ShareLinkCodec.extractShareLink(text) ?: return
+
+            lastProcessedClip = text
+            lifecycleScope.launch {
+                val result = shareLinkHandler.resolve(shareLink)
+                when (result) {
+                    is com.theveloper.pixelplay.data.share.ShareResult.Success -> {
+                        if (result.matchedSongs.isNotEmpty() || result.totalCount > 0) {
+                            val callback = onShareLinkDetected
+                            if (callback != null) {
+                                callback(result)
+                            } else {
+                                pendingShareUrl = shareLink
+                            }
+                        }
+                    }
+                    is com.theveloper.pixelplay.data.share.ShareResult.Error -> {}
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShareLinkDialog(
+    result: com.theveloper.pixelplay.data.share.ShareResult,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val success = result as? com.theveloper.pixelplay.data.share.ShareResult.Success ?: return
+    val colorScheme = MaterialTheme.colorScheme
+    val typography = MaterialTheme.typography
+
+    val cardShape = AbsoluteSmoothCornerShape(30.dp, 60)
+    val blockShape = AbsoluteSmoothCornerShape(22.dp, 60)
+    val actionShape = AbsoluteSmoothCornerShape(18.dp, 60)
+
+    androidx.compose.material3.BasicAlertDialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 420.dp),
+            shape = cardShape,
+            color = colorScheme.surfaceContainerHigh,
+            tonalElevation = 8.dp,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                // 标题区
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = blockShape,
+                    color = colorScheme.surfaceContainer,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Surface(
+                                shape = AbsoluteSmoothCornerShape(12.dp, 60),
+                                color = colorScheme.secondaryContainer,
+                            ) {
+                                Text(
+                                    text = "分享链接",
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                    style = typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.onSecondaryContainer,
+                                )
+                            }
+                            Surface(
+                                shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                                color = colorScheme.primaryContainer,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.MusicNote,
+                                    contentDescription = null,
+                                    tint = colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(10.dp).size(18.dp),
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = success.name,
+                            style = typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+
+                        val matchInfo = if (success.unmatchedCount > 0) {
+                            "匹配到 ${success.matchedSongs.size}/${success.totalCount} 首（${success.unmatchedCount} 首未找到）"
+                        } else {
+                            "共 ${success.totalCount} 首歌曲"
+                        }
+                        Text(
+                            text = matchInfo,
+                            style = typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                // 歌曲列表（模仿媒体库显示）
+                val songsToShow = success.matchedSongs.take(5)
+                if (songsToShow.isNotEmpty()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = blockShape,
+                        color = colorScheme.surfaceContainer,
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                        ) {
+                            songsToShow.forEach { song ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Surface(
+                                        shape = AbsoluteSmoothCornerShape(10.dp, 60),
+                                        color = colorScheme.primary.copy(alpha = 0.12f),
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.MusicNote,
+                                                contentDescription = null,
+                                                tint = colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = song.title,
+                                            style = typography.bodyMedium,
+                                            color = colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            text = song.displayArtist,
+                                            style = typography.bodySmall,
+                                            color = colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                            if (success.matchedSongs.size > 5) {
+                                Text(
+                                    text = "...还有 ${success.matchedSongs.size - 5} 首",
+                                    style = typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 底部按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    androidx.compose.material3.Button(
+                        onClick = onConfirm,
+                        enabled = success.matchedSongs.isNotEmpty(),
+                        shape = actionShape,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                    ) {
+                        Text(
+                            text = "播放",
+                            style = typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onDismiss,
+                        shape = actionShape,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                    ) {
+                        Text(
+                            text = "取消",
+                            style = typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**

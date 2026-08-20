@@ -123,6 +123,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -258,6 +259,7 @@ class PlayerViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val aiPreferencesRepository: AiPreferencesRepository,
+    private val shareLinkHandler: com.theveloper.pixelplay.data.share.ShareLinkHandler,
     private val themePreferencesRepository: ThemePreferencesRepository,
     val syncManager: SyncManager, // Inyectar SyncManager
 
@@ -298,6 +300,7 @@ class PlayerViewModel @Inject constructor(
     private val dotImageRepositoryProvider: Lazy<com.theveloper.pixelplay.data.repository.DotImageRepository>,
     private val neteaseDownloadService: com.theveloper.pixelplay.data.service.http.NeteaseDownloadService,
     private val musicDownloadServiceProvider: Lazy<com.theveloper.pixelplay.data.service.http.MusicDownloadService>,
+    private val aiCompanionManager: com.theveloper.pixelplay.data.ai.AiCompanionManager,
 ) : ViewModel() {
 
     // ─── 网易云账户相关 ────────────────────────────────────────────────────
@@ -445,6 +448,14 @@ class PlayerViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = true
+        )
+    // ⚡ 歌词界面纯色遮罩透明度（0~1）
+    val lyricsSolidOverlayAlpha: StateFlow<Float> = themePreferencesRepository
+        .lyricsSolidOverlayAlphaFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 0f
         )
     /**
      * High-frequency playback position should not force global UI recomposition.
@@ -665,10 +676,21 @@ class PlayerViewModel @Inject constructor(
     val isGeneratingAiPlaylist: StateFlow<Boolean> = aiStateHolder.isGeneratingAiPlaylist
     val isEvaluatingPlaylist: StateFlow<Boolean> = aiStateHolder.isEvaluatingPlaylist
     val playlistEvaluation: StateFlow<com.theveloper.pixelplay.data.ai.PlaylistEvaluation?> = aiStateHolder.playlistEvaluation
+    val isExplainingLyrics: StateFlow<Boolean> = aiStateHolder.isExplainingLyrics
+    val lyricsExplanation: StateFlow<String?> = aiStateHolder.lyricsExplanation
+    val isLyricsExplanationSessionEnabled: StateFlow<Boolean> = aiStateHolder.isLyricsExplanationSessionEnabled
+    val isLyricsExplanationGloballyEnabled: StateFlow<Boolean> = aiPreferencesRepository.isLyricsExplanationEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val aiSuccess: StateFlow<Boolean> = aiStateHolder.aiSuccess
     val aiStatus: StateFlow<String?> = aiStateHolder.aiStatus
     val aiError: StateFlow<String?> = aiStateHolder.aiError
     val generatedPlaylistSongs: StateFlow<List<Song>> = aiStateHolder.generatedPlaylistSongs
+
+    // AI Companion
+    val isCompanionPlaying: StateFlow<Boolean> = aiCompanionManager.isPlaying
+    val companionComment: StateFlow<String?> = aiCompanionManager.currentComment
+    val isCompanionEnabled: StateFlow<Boolean> = aiPreferencesRepository.isCompanionEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     // AI Metadata Generation States
     val isGeneratingAiMetadata: StateFlow<Boolean> = aiStateHolder.isGeneratingMetadata
@@ -2142,6 +2164,27 @@ class PlayerViewModel @Inject constructor(
             }
         }
 
+        // AI 陪伴：切歌时触发衔接语（放在 init 保证始终运行）
+        viewModelScope.launch {
+            var previousSong: Song? = null
+            stablePlayerState
+                .map { it.currentSong }
+                .distinctUntilChangedBy { it?.id }
+                .collect { currentSong ->
+                    if (currentSong != null) {
+                        aiCompanionManager.onSongTransition(previousSong, currentSong)
+                        // 提前 ~20s 预生成下一首衔接文本（手动切歌会取消上一首的预生成）
+                        val state = stablePlayerState.value
+                        val queue = _playerUiState.value.currentPlaybackQueue
+                        val nextSong = if (!state.isShuffleEnabled && state.repeatMode != Player.REPEAT_MODE_ONE) {
+                            queue.getOrNull(state.currentMediaItemIndex + 1)
+                        } else null
+                        aiCompanionManager.schedulePrefetch(currentSong, state.totalDuration, nextSong)
+                        previousSong = currentSong
+                    }
+                }
+        }
+
         viewModelScope.launch {
             userPreferencesRepository.isFoldersPlaylistViewFlow.collect { isPlaylistView ->
                 folderNavigationStateHolder.setFoldersPlaylistViewState(
@@ -2325,6 +2368,11 @@ class PlayerViewModel @Inject constructor(
                 Log.w("PixelPlay_Debug", "=== setupMediaControllerListeners DONE ===")
                 flushPendingRepeatMode()
                 syncShuffleStateWithSession(playbackStateHolder.stablePlayerState.value.isShuffleEnabled)
+                // 同步倍速到 MediaSession
+                val currentSpeed = _playbackSpeed.value
+                if (currentSpeed != 1f) {
+                    setPlaybackSpeed(currentSpeed)
+                }
                 // Execute any pending action that was queued while the controller was connecting
                 pendingPlaybackAction?.invoke()
                 pendingPlaybackAction = null
@@ -4234,14 +4282,15 @@ class PlayerViewModel @Inject constructor(
     // MediaItem，并更新 UI state 中的 Song 对象。失败时静默忽略
     // （当前 URL 可能仍然有效，或等到播放时再由错误处理逻辑介入）。
     private suspend fun preferredNeteaseQuality(): String = try {
-        userPreferencesRepository.musicQualityFlow.first().neteaseLevel
+        com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
+            .neteaseLevelFor(userPreferencesRepository.musicQualityValueFlow.first())
     } catch (_: Exception) {
         "exhigh"
     }
 
-    /** 用户选择的音质（落雪 JS 引擎用值：24bit/flac/320k/128k），读取失败回退 320k */
+    /** 用户选择的音质（落雪 JS 引擎用值，如 24bit/flac/320k/128k/flac24bit），读取失败回退 320k */
     private suspend fun preferredLxQuality(): String = try {
-        userPreferencesRepository.musicQualityFlow.first().lxValue
+        userPreferencesRepository.musicQualityValueFlow.first()
     } catch (_: Exception) {
         "320k"
     }
@@ -5672,6 +5721,38 @@ class PlayerViewModel @Inject constructor(
         playbackStateHolder.cycleRepeatMode()
     }
 
+    // ─── 倍速播放 ─────────────────────────────────────────────
+    private val _playbackSpeed = MutableStateFlow(1f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
+    /** 快速切换预设倍速 */
+    fun cyclePlaybackSpeed() {
+        val speeds = listOf(0.5f, 0.8f, 1f, 1.2f, 1.5f)
+        val currentIndex = speeds.indexOf(_playbackSpeed.value).coerceAtLeast(0)
+        val nextSpeed = speeds[(currentIndex + 1) % speeds.size]
+        setPlaybackSpeed(nextSpeed)
+    }
+
+    /** 精确设置倍速（详细调节界面用） */
+    fun setPlaybackSpeed(speed: Float) {
+        val clamped = speed.coerceIn(0.5f, 2f)
+        _playbackSpeed.value = clamped
+        // 直接作用于播放引擎（记住倍速并在在线流就绪时自动恢复）
+        try {
+            dualPlayerEngine.setPlaybackSpeed(clamped)
+        } catch (_: Exception) {}
+        // 同步到 MediaSession（通知/蓝牙倍速显示）
+        mediaController?.let { controller ->
+            val args = Bundle().apply {
+                putFloat(MusicNotificationProvider.EXTRA_PLAYBACK_SPEED, clamped)
+            }
+            controller.sendCustomCommand(
+                SessionCommand(MusicNotificationProvider.CUSTOM_COMMAND_SET_PLAYBACK_SPEED, Bundle.EMPTY),
+                args
+            )
+        }
+    }
+
     private suspend fun setFavoriteStatusEverywhere(songId: String, isFavorite: Boolean) {
         musicRepository.setFavoriteStatus(songId, isFavorite)
     }
@@ -6996,7 +7077,7 @@ class PlayerViewModel @Inject constructor(
             val loadingSong = Song(
                 id = "roaming_loading",
                 title = "正在加载推荐歌曲...",
-                artist = "漫游模式",
+                artist = "",
                 artistId = 0L,
                 artists = emptyList(),
                 album = "",
@@ -7970,12 +8051,77 @@ class PlayerViewModel @Inject constructor(
         aiStateHolder.retryLastMetadataGeneration()
     }
 
-    fun evaluatePlaylist(playlistName: String, songs: List<Song>, userPrompt: String = "", force: Boolean = false) {
-        aiStateHolder.evaluatePlaylist(playlistName, songs, userPrompt, force)
+    fun evaluatePlaylist(playlistId: String, playlistName: String, songs: List<Song>, userPrompt: String = "", force: Boolean = false) {
+        aiStateHolder.evaluatePlaylist(playlistId, playlistName, songs, userPrompt, force)
+    }
+
+    fun setCurrentPlaylistId(playlistId: String?) {
+        aiStateHolder.setCurrentPlaylistId(playlistId)
     }
 
     fun clearPlaylistEvaluation() {
         aiStateHolder.clearPlaylistEvaluation()
+    }
+
+    fun explainCurrentLyrics(force: Boolean = true) {
+        val currentSong = stablePlayerState.value.currentSong ?: return
+        // 在线歌曲的歌词可能只存在于已加载的 Lyrics 对象中（Song.lyrics 字段为空），
+        // 因此需要回退到 stablePlayerState.lyrics 重建纯文本。
+        val rawLyrics = currentSong.lyrics
+            ?.takeIf { it.isNotBlank() }
+            ?: stablePlayerState.value.lyrics?.let { lyricsObj ->
+                lyricsObj.synced?.takeIf { it.isNotEmpty() }
+                    ?.joinToString("\n") { it.line }
+                    ?: lyricsObj.plain?.takeIf { it.isNotEmpty() }
+                        ?.joinToString("\n")
+            }
+        if (rawLyrics.isNullOrBlank()) {
+            viewModelScope.launch {
+                _toastEvents.emit(context.getString(R.string.lyrics_not_found))
+            }
+            return
+        }
+        aiStateHolder.explainLyrics(
+            lyricsText = rawLyrics,
+            songTitle = currentSong.title,
+            artistName = currentSong.artist,
+            songId = currentSong.id,
+            force = force
+        )
+    }
+
+    fun clearLyricsExplanation() {
+        aiStateHolder.clearLyricsExplanation()
+    }
+
+    fun onSongChangedForLyricsExplanation(newSongId: String?) {
+        aiStateHolder.onSongChangedForLyricsExplanation(newSongId)
+    }
+
+    fun setCompanionEnabled(enabled: Boolean) {
+        viewModelScope.launch { aiPreferencesRepository.setCompanionEnabled(enabled) }
+    }
+
+    fun setCompanionVoice(voiceId: String) {
+        viewModelScope.launch { aiPreferencesRepository.setCompanionVoice(voiceId) }
+    }
+
+    fun stopCompanion() {
+        aiCompanionManager.stop()
+    }
+
+    suspend fun previewCompanionVoice(voiceId: String): ByteArray? {
+        val mimoKey = aiPreferencesRepository.mimoApiKey.first()
+        if (mimoKey.isBlank()) return null
+        return aiCompanionManager.previewVoice(mimoKey, voiceId)
+    }
+
+    fun playCompanionPreview(audioData: ByteArray) {
+        viewModelScope.launch { aiCompanionManager.playPreviewAudio(audioData) }
+    }
+
+    suspend fun resolveShareLink(url: String): com.theveloper.pixelplay.data.share.ShareResult {
+        return shareLinkHandler.resolve(url)
     }
 
     fun clearQueueExceptCurrent() {

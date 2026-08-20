@@ -56,6 +56,8 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -105,6 +107,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -115,6 +118,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import coil.size.Size
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.ai.PlaylistEvaluation
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
@@ -192,6 +196,7 @@ fun PlaylistDetailScreen(
 
     LaunchedEffect(playlistId) {
         playlistViewModel.loadPlaylistDetails(playlistId)
+        playerViewModel.setCurrentPlaylistId(playlistId)
     }
 
     var showAddSongsSheet by remember { mutableStateOf(false) }
@@ -214,7 +219,9 @@ fun PlaylistDetailScreen(
     }
 
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
-    val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle() // Reintroducir favoriteIds aquí
+    val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
+    val isEvaluatingPlaylist by playerViewModel.isEvaluatingPlaylist.collectAsStateWithLifecycle()
+    val playlistEvaluation by playerViewModel.playlistEvaluation.collectAsStateWithLifecycle()
     val stableOnMoreOptionsClick: (Song) -> Unit = remember {
         { song ->
             playerViewModel.selectSongForInfo(song)
@@ -230,6 +237,13 @@ fun PlaylistDetailScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val view = LocalView.current
+
+    // AI评价开始或结果到达时，自动滚动到评价卡片位置
+    LaunchedEffect(isEvaluatingPlaylist, playlistEvaluation) {
+        if (isEvaluatingPlaylist || playlistEvaluation != null) {
+            listState.animateScrollToItem(0)
+        }
+    }
     val appHapticsConfig = LocalAppHapticsConfig.current
     var lastMovedFrom by remember { mutableStateOf<Int?>(null) }
     var lastMovedTo by remember { mutableStateOf<Int?>(null) }
@@ -714,6 +728,17 @@ fun PlaylistDetailScreen(
                                 )
                             }
                         ) {
+                            if (isEvaluatingPlaylist || playlistEvaluation != null) {
+                                item(key = "ai_eval") {
+                                    PlaylistEvaluationCard(
+                                        isEvaluating = isEvaluatingPlaylist,
+                                        evaluation = playlistEvaluation,
+                                        onDismiss = { playerViewModel.clearPlaylistEvaluation() },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                }
+                            }
+
                             itemsIndexed(
                                 localReorderableSongs,
                                 key = { _, item -> item.id },
@@ -897,6 +922,7 @@ fun PlaylistDetailScreen(
                         showPlaylistOptionsSheet = false
                         currentPlaylist?.let { playlist ->
                             playerViewModel.evaluatePlaylist(
+                                playlistId = playlist.id,
                                 playlistName = playlist.name,
                                 songs = songsInPlaylist,
                                 force = true
@@ -1196,4 +1222,241 @@ fun RenamePlaylistDialog(currentName: String, onDismiss: () -> Unit, onRename: (
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), maxLines = 1, overflow = TextOverflow.Ellipsis) } }
     )
+}
+
+@Composable
+private fun PlaylistEvaluationCard(
+    isEvaluating: Boolean,
+    evaluation: com.theveloper.pixelplay.data.ai.PlaylistEvaluation?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(AbsoluteSmoothCornerShape(
+                cornerRadiusTL = 24.dp, cornerRadiusTR = 24.dp,
+                cornerRadiusBL = 24.dp, cornerRadiusBR = 24.dp,
+                smoothnessAsPercentTL = 60, smoothnessAsPercentTR = 60,
+                smoothnessAsPercentBL = 60, smoothnessAsPercentBR = 60
+            ))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Header: AI icon + title + dismiss
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.generate_playlist_ai),
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.presentation_batch_e_ai_eval_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.rounded_close_24),
+                    contentDescription = stringResource(R.string.cancel),
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        if (isEvaluating) {
+            // Loading state — 复用统计页加载风格
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.presentation_batch_e_ai_evaluating),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (evaluation != null) {
+            // Overall rating + 维度标签 — 评分左侧，标签右侧
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 总评分 HeroCard
+                HeroCard(
+                    title = stringResource(R.string.presentation_batch_e_ai_eval_title),
+                    value = "${evaluation.rating}/10",
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+                // 维度标签 — 竖排，淡色 chip 风格
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    val dimensionItems = listOf(
+                        Triple(stringResource(R.string.presentation_batch_e_ai_eval_cohesion), evaluation.cohesion, MaterialTheme.colorScheme.primary),
+                        Triple(stringResource(R.string.presentation_batch_e_ai_eval_diversity), evaluation.diversity, MaterialTheme.colorScheme.tertiary),
+                        Triple(stringResource(R.string.presentation_batch_e_ai_eval_energy_flow), evaluation.energyFlow, MaterialTheme.colorScheme.secondary)
+                    )
+                    dimensionItems.forEach { (title, score, color) ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(color.copy(alpha = 0.08f))
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = color.copy(alpha = 0.8f),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "$score/10",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = color,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Comment — 复用 HighlightRow 风格
+            if (evaluation.comment.isNotBlank()) {
+                var commentExpanded by remember { mutableStateOf(false) }
+                var isCommentOverflow by remember { mutableStateOf(false) }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.tertiaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.generate_playlist_ai),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "\"${evaluation.comment}\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = if (commentExpanded) Int.MAX_VALUE else 3,
+                            overflow = if (commentExpanded) TextOverflow.Visible else TextOverflow.Ellipsis,
+                            onTextLayout = { result ->
+                                if (!commentExpanded && result.hasVisualOverflow) {
+                                    isCommentOverflow = true
+                                }
+                            }
+                        )
+                        if (isCommentOverflow || commentExpanded) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (commentExpanded) stringResource(R.string.ai_eval_show_less) else stringResource(R.string.ai_eval_show_all),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { commentExpanded = !commentExpanded }
+                                    .padding(horizontal = 2.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Suggestions — 复用 HabitMetric 风格
+            if (evaluation.suggestions.isNotEmpty()) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.presentation_batch_e_ai_eval_suggestions),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    evaluation.suggestions.take(3).forEach { suggestion ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = suggestion,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

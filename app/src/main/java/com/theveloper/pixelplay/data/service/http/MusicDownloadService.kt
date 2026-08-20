@@ -298,7 +298,8 @@ class MusicDownloadService @Inject constructor(
             song.neteaseId != null -> {
                 // 使用用户设置的首选音质（无损耗 FLAC 等），API 内部失败会自动回退
                 val quality = try {
-                    userPreferencesRepository.musicQualityFlow.first().neteaseLevel
+                    com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
+                        .neteaseLevelFor(userPreferencesRepository.musicQualityValueFlow.first())
                 } catch (_: Exception) {
                     "exhigh"
                 }

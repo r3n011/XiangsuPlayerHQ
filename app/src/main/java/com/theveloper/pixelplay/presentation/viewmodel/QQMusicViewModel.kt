@@ -196,12 +196,12 @@ class QQMusicViewModel @Inject constructor(
      */
     private suspend fun resolvePlayableUrl(song: QQSearchApi.QQSong): String? {
         val quality = try {
-            userPreferencesRepository.musicQualityFlow.first().lxValue
+            userPreferencesRepository.musicQualityValueFlow.first()
         } catch (_: Exception) {
             "320k"
         }
         val brs = when (quality) {
-            "24bit", "flac" -> listOf(1, 5, 7) // FLAC → 320k → 128k
+            "24bit", "flac24bit", "hires", "flac" -> listOf(1, 5, 7) // FLAC → 320k → 128k
             "320k" -> listOf(5, 7)
             "128k" -> listOf(7)
             else -> listOf(5, 7)

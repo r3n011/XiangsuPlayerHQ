@@ -15,7 +15,7 @@ class AiClientFactory @Inject constructor() {
      * @param apiKey The API key for the provider
      * @return AiClient instance
      */
-    fun createClient(provider: AiProvider, apiKey: String): AiClient {
+    fun createClient(provider: AiProvider, apiKey: String, baseUrl: String = ""): AiClient {
         if (apiKey.isBlank()) {
             throw IllegalArgumentException("API Key cannot be blank for ${provider.displayName}")
         }
@@ -76,9 +76,15 @@ class AiClientFactory @Inject constructor() {
                 defaultModelId = "llama3",
                 providerName = "Ollama"
             )
+            AiProvider.MIMO -> GenericOpenAiClient(
+                apiKey = apiKey,
+                baseUrl = baseUrl.ifBlank { "https://api.xiaomimimo.com/v1" },
+                defaultModelId = "MiMo-V2.5",
+                providerName = "MiMo"
+            )
             AiProvider.CUSTOM -> GenericOpenAiClient(
                 apiKey = apiKey,
-                baseUrl = "",
+                baseUrl = baseUrl,
                 defaultModelId = "",
                 providerName = "Custom Provider"
             )

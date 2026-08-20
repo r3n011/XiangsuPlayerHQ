@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
@@ -49,6 +50,8 @@ class ThemePreferencesRepository @Inject constructor(
         val CUSTOM_PLAYER_CONTROLS_OPACITY = intPreferencesKey("custom_player_controls_opacity_v1")
         // ⚡ 歌词界面上下两侧渐变遮罩开关
         val LYRICS_GRADIENT_OVERLAY_ENABLED = booleanPreferencesKey("lyrics_gradient_overlay_enabled_v1")
+        // ⚡ 歌词界面纯色遮罩透明度（0~1，0=无遮罩）
+        val LYRICS_SOLID_OVERLAY_ALPHA = floatPreferencesKey("lyrics_solid_overlay_alpha_v1")
     }
 
     companion object {
@@ -107,6 +110,10 @@ class ThemePreferencesRepository @Inject constructor(
     }
     val lyricsGradientOverlayEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.LYRICS_GRADIENT_OVERLAY_ENABLED] ?: true
+    }
+    val lyricsSolidOverlayAlphaFlow: Flow<Float> = dataStore.data.map {
+        // 强制为 0%：忽略任何历史存储值（无论新老用户均统一为 0）
+        0f
     }
 
     suspend fun setPlayerThemePreference(themeMode: String) =
@@ -187,6 +194,11 @@ class ThemePreferencesRepository @Inject constructor(
     suspend fun setLyricsGradientOverlayEnabled(enabled: Boolean) =
         dataStore.edit { preferences ->
             preferences[Keys.LYRICS_GRADIENT_OVERLAY_ENABLED] = enabled
+        }
+
+    suspend fun setLyricsSolidOverlayAlpha(alpha: Float) =
+        dataStore.edit { preferences ->
+            preferences[Keys.LYRICS_SOLID_OVERLAY_ALPHA] = alpha.coerceIn(0f, 1f)
         }
 
     /**

@@ -14,6 +14,7 @@ enum class AiProvider(val displayName: String, val requiresApiKey: Boolean, val 
     OPENAI("OpenAI", requiresApiKey = true),
     OPENROUTER("OpenRouter", requiresApiKey = true),
     OLLAMA("Ollama", requiresApiKey = true),
+    MIMO("MiMo (Xiaomi)", requiresApiKey = true),
     CUSTOM("Custom Provider", requiresApiKey = true, hasConfigurableUrl = true);
     
     companion object {

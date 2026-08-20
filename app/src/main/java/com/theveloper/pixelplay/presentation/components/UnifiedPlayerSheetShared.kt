@@ -51,7 +51,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
@@ -60,7 +59,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.lerp
 import coil.size.Size
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
@@ -90,13 +88,7 @@ internal fun MiniPlayerContentInternal(
     canScroll: Boolean = true,
     currentPositionProvider: () -> Long = { 0L },
     totalDurationProvider: () -> Long = { 0L },
-    expansionFractionProvider: () -> Float = { 0f },
-    /** 全屏播放器封面尺寸（dp），用于计算展开目标位置 */
-    fullPlayerCoverSizeDp: Float = 300f,
-    /** 容器高度（dp），用于计算歌名/歌手目标位置 */
-    containerHeightDp: Float = 700f,
-    /** 屏幕宽度（dp），用于计算封面居中偏移 */
-    screenWidthDp: Float = 400f
+    expansionFractionProvider: () -> Float = { 0f }
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     val controlsEnabled = !isCastConnecting && !isPreparingPlayback
@@ -203,19 +195,8 @@ internal fun MiniPlayerContentInternal(
                             .size(44.dp)
                             .graphicsLayer {
                                 val f = expansionFractionProvider().coerceIn(0f, 1f)
-                                // 封面：44dp circle → full player 尺寸居中
-                                val coverScale = fullPlayerCoverSizeDp / 44f
-                                val s = lerp(1f, coverScale, f)
-                                scaleX = s
-                                scaleY = s
-                                // 从 mini 中心(32dp) 移动到 full player 居中位置
-                                val fullPlayerCenterX = (screenWidthDp - 12f) / 2f
-                                translationX = (fullPlayerCenterX - 32f) * f
-                                // 向上移动到屏幕顶部区域（full player 封面从顶部开始）
-                                translationY = -60f * f
+                                // 封面移动动画已移除：展开时封面原地淡出，不再缩放/平移到全屏播放器位置
                                 alpha = (1f - f * 0.4f).coerceIn(0f, 1f)
-                                // 从左侧缩放，让封面从 mini 位置向右展开
-                                transformOrigin = TransformOrigin(0f, 0.5f)
                             },
                         placeholderModel = if (albumArtModel?.startsWith("telegram_art") == true) {
                             "$albumArtModel?quality=thumb"
@@ -249,14 +230,8 @@ internal fun MiniPlayerContentInternal(
                         .weight(1f)
                         .graphicsLayer {
                             val f = expansionFractionProvider().coerceIn(0f, 1f)
-                            // 歌名/歌手：移动到 full player 封面下方的 metadata 位置
-                            // full player 封面约占屏幕 60-70%高度，metadata 在封面下方
-                            val metadataY = containerHeightDp * 0.62f
-                            translationY = (metadataY - 32f) * f  // 从 mini 中心(32dp) 移动到 metadata 区域
+                            // 歌名/歌手移动动画已移除：展开时原地淡出，不再平移到全屏播放器 metadata 位置
                             alpha = (1f - f * 1.8f).coerceIn(0f, 1f)
-                            // 轻微放大以匹配 full player 的字号
-                            scaleX = lerp(1f, 1.08f, f)
-                            scaleY = lerp(1f, 1.08f, f)
                         },
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -293,12 +268,11 @@ internal fun MiniPlayerContentInternal(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 控制按钮：展开时快速淡出
+                // 控制按钮：展开时快速淡出（移动动画已移除）
                 Row(
                     modifier = Modifier.graphicsLayer {
                         val f = expansionFractionProvider().coerceIn(0f, 1f)
                         alpha = (1f - f * 3f).coerceIn(0f, 1f)
-                        translationX = 30f * f
                     },
                     verticalAlignment = Alignment.CenterVertically
                 ) {

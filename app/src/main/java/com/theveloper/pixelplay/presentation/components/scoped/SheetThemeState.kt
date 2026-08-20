@@ -182,14 +182,14 @@ internal fun rememberSheetThemeState(
         }
     }
 
-    // 使用 derivedStateOf 缓存 lerp 结果，量化进度到 5% 步进，减少 ColorScheme 创建频率
+    // 使用 derivedStateOf 缓存 lerp 结果，量化进度到 10% 步进，减少 ColorScheme 创建频率
     val animatedScheme by remember(animFromScheme, animToScheme) {
         derivedStateOf {
             val from = animFromScheme
             val to = animToScheme
             val progress = colorProgress.value
             if (from != null && to != null && progress < 1f) {
-                val quantizedProgress = (progress * 20f).toInt() / 20f
+                val quantizedProgress = (progress * 10f).toInt() / 10f
                 lerpColorScheme(from, to, quantizedProgress)
             } else {
                 to ?: targetAlbumColorScheme

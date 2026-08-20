@@ -30,9 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -78,8 +75,6 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     currentPositionProvider: () -> Long,
     isFavorite: Boolean,
     shouldRenderFullPlayer: Boolean = true,
-    currentHorizontalPaddingStartPxProvider: () -> Float,
-    currentHorizontalPaddingEndPxProvider: () -> Float,
     onShowQueueClicked: () -> Unit,
     onQueueDragStart: () -> Unit,
     onQueueDrag: (Float) -> Unit,
@@ -104,49 +99,16 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
         CompositionLocalProvider(
             LocalMaterialTheme provides readyScheme
         ) {
-            val miniPlayerZIndex by remember {
-                derivedStateOf {
-                    // 展开动画期间（fraction < 0.72）mini 内容仍在向上飞行，保持置顶不被 full 层盖住
-                    if (playerContentExpansionFraction.value < 0.72f) 1f else 0f
-                }
-            }
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .height(MiniPlayerHeight)
                     .graphicsLayer {
-                        // ⚡ 展开动画：封面/歌名/歌手各自独立动画（见 MiniPlayerContentInternal），
-                        // 外层只负责整体轻微上移和最终淡出
+                        // mini player 展开动画已移除移动/宽度过渡，仅保留整体淡出
                         val f = playerContentExpansionFraction.value.coerceIn(0f, 1f)
-                        translationY = -f * 80f
                         alpha = (1f - f * 1.5f).coerceIn(0f, 1f)
                     }
-                    .layout { measurable, constraints ->
-                        // 平滑过渡：宽度与偏移随展开进度连续变化，不再分段量化，
-                        // 避免展开初期 mini-player 内容先向两侧跳变再回弹。
-                        val fraction = playerContentExpansionFraction.value.coerceIn(0f, 1f)
-                        val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)
-                        val endPaddingPx = currentHorizontalPaddingEndPxProvider().toInt().coerceAtLeast(0)
-
-                        val insetWidth = (constraints.maxWidth - startPaddingPx - endPaddingPx).coerceAtLeast(0)
-                        val targetWidth = lerp(
-                            constraints.maxWidth.toFloat(),
-                            insetWidth.toFloat(),
-                            fraction
-                        ).toInt()
-                        val placeable = measurable.measure(
-                            constraints.copy(
-                                minWidth = targetWidth,
-                                maxWidth = targetWidth
-                            )
-                        )
-                        layout(constraints.maxWidth, constraints.maxHeight) {
-                            val xOffset = (startPaddingPx * fraction).toInt()
-                            placeable.placeRelative(xOffset, 0)
-                        }
-                    }
-                    .zIndex(miniPlayerZIndex)
             ) {
                 val isMiniPlayerVisible by remember {
                     derivedStateOf { playerContentExpansionFraction.value < 0.01f }
@@ -156,17 +118,6 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                 }
                 val navBarBlurEnabled by playerViewModel.navBarBlurEnabled.collectAsStateWithLifecycle()
                 val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
-                val density = LocalDensity.current
-                val configuration = LocalConfiguration.current
-                val containerHeightDp = configuration.screenHeightDp.toFloat()
-                val screenWidthDp = configuration.screenWidthDp.toFloat()
-                // full player 封面尺寸：与 FullPlayerContent 计算逻辑一致
-                val coverHorizontalPadding = 12f
-                val bottomMinHeight = 300f
-                val coverSizeDp = minOf(
-                    containerHeightDp - bottomMinHeight,
-                    screenWidthDp - coverHorizontalPadding * 2
-                ).coerceAtLeast(100f)
                 MiniPlayerContentInternal(
                     song = activeSong, // Use activeSong
                     isPlaying = infrequentPlayerState.isPlaying,
@@ -177,7 +128,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     onNext = { playerViewModel.nextSong() },
                     canScroll = isMiniPlayerVisible && infrequentPlayerState.isPlaying,
                     modifier = Modifier.fillMaxSize().then(
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && navBarBlurEnabled && !disableBlurAllOver) {
+                        if (navBarBlurEnabled && !disableBlurAllOver) {
                             Modifier.hazeEffect(
                                 state = MainActivity.LocalHazeState.current,
                                 style = HazeMaterials.ultraThin(containerColor = MaterialTheme.colorScheme.surface)
@@ -188,10 +139,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     ),
                     currentPositionProvider = currentPositionProvider,
                     totalDurationProvider = { infrequentPlayerState.totalDuration },
-                    expansionFractionProvider = expansionFractionProvider,
-                    fullPlayerCoverSizeDp = coverSizeDp,
-                    containerHeightDp = containerHeightDp,
-                    screenWidthDp = screenWidthDp
+                    expansionFractionProvider = expansionFractionProvider
                 )
             }
         }
@@ -206,12 +154,6 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                 derivedStateOf { lerp(1f, 0.972f, bottomSheetOpenFraction) }
             }
 
-            val fullPlayerZIndex by remember {
-                derivedStateOf {
-                    // 与 mini 层同步：mini 内容飞行结束后（fraction >= 0.72）full 层才置顶
-                    if (playerContentExpansionFraction.value < 0.72f) 0f else 1f
-                }
-            }
             val fullPlayerOffset by remember {
                 derivedStateOf {
                     // Align the on-screen threshold with the alpha start point (0.25).
@@ -249,7 +191,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                         scaleX = fullPlayerScale * lerp(0.96f, 1f, fpAlpha)
                         scaleY = fullPlayerScale * lerp(0.96f, 1f, fpAlpha)
                     }
-                    .zIndex(fullPlayerZIndex)
+                    .zIndex(1f)
                     .offset { fullPlayerOffset }
             ) {
                 val latestInfrequentPlayerState = rememberUpdatedState(infrequentPlayerState)
@@ -298,6 +240,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                         Unit
                     }
                 }
+                val onSpeedToggle = remember(playerViewModel) { playerViewModel::cyclePlaybackSpeed }
+                val onSpeedSet = remember(playerViewModel) { playerViewModel::setPlaybackSpeed }
 
                 FullPlayerContent(
                     currentSong = currentSong, // Pass nullable original, it has its own internal retained logic
@@ -336,7 +280,9 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     onShuffleToggle = onShuffleToggle,
                     onRepeatToggle = onRepeatToggle,
                     onFavoriteToggle = onFavoriteToggle,
-                    onDownloadClick = onDownloadClick
+                    onDownloadClick = onDownloadClick,
+                    onSpeedToggle = onSpeedToggle,
+                    onSpeedSet = onSpeedSet,
                 )
             }
         }
@@ -442,7 +388,7 @@ internal fun UnifiedPlayerPrewarmLayer(
                     onShuffleToggle = onShuffleToggle,
                     onRepeatToggle = onRepeatToggle,
                     onFavoriteToggle = onFavoriteToggle,
-                    onDownloadClick = onDownloadClick
+                    onDownloadClick = onDownloadClick,
                 )
             }
         }

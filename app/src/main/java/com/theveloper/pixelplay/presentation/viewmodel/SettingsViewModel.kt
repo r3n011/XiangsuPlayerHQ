@@ -23,9 +23,11 @@ import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.database.AiUsageDao
 import com.theveloper.pixelplay.data.database.AiUsageEntity
+import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
 import com.theveloper.pixelplay.data.preferences.MusicQuality
+import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.data.preferences.AlbumArtColorAccuracy
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.AppLanguage
@@ -80,6 +82,7 @@ data class SettingsUiState(
     // ⚡ 播放器控键透明度（百分比，30-100，默认 100=不透明）与歌词渐变遮罩开关
     val customPlayerControlsOpacity: Int = 100,
     val lyricsGradientOverlayEnabled: Boolean = true,
+    val lyricsSolidOverlayAlpha: Float = 0f,
     val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
@@ -98,7 +101,8 @@ data class SettingsUiState(
     val currentUsbDeviceName: String? = null,
     val aaudioEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O,
     val usbOutputBitDepthBits: Int = 32,
-    val musicQuality: MusicQuality = MusicQuality.HIGH,
+    val musicQualityValue: String = MusicQuality.HIGH.lxValue,
+    val availableMusicQualities: List<String> = MusicQualityCatalog.FALLBACK,
     val crossfadeDuration: Int = 2000,
     val persistentShuffleEnabled: Boolean = false,
     val folderBackGestureNavigation: Boolean = true,
@@ -211,7 +215,7 @@ private sealed interface SettingsUiUpdate {
         val currentUsbDeviceName: String?,
         val aaudioEnabled: Boolean,
         val usbOutputBitDepthBits: Int,
-        val musicQuality: MusicQuality,
+        val musicQualityValue: String,
         val crossfadeDuration: Int,
         val persistentShuffleEnabled: Boolean,
         val folderBackGestureNavigation: Boolean,
@@ -247,7 +251,8 @@ class SettingsViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val backupManager: BackupManager,
     @ApplicationContext private val context: Context,
-    private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings
+    private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
+    private val lxJsEngine: LxJsEngine
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -269,6 +274,10 @@ class SettingsViewModel @Inject constructor(
     val currentAiSystemPrompt: StateFlow<String> = aiProvider
         .flatMapLatest { provider -> aiPreferencesRepository.getSystemPrompt(AiProvider.fromString(provider)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_SYSTEM_PROMPT)
+
+    val currentAiBaseUrl: StateFlow<String> = aiProvider
+        .flatMapLatest { provider -> aiPreferencesRepository.getBaseUrl(AiProvider.fromString(provider)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     val safeTokenMode: StateFlow<Boolean> = aiPreferencesRepository.isSafeTokenLimitEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -310,6 +319,13 @@ class SettingsViewModel @Inject constructor(
 
     fun onMimoModelChange(model: String) = viewModelScope.launch {
         aiPreferencesRepository.setModel(AiProvider.fromString(aiProvider.value), model)
+    }
+
+    fun onAiBaseUrlChange(url: String) {
+        viewModelScope.launch {
+            val provider = AiProvider.fromString(aiProvider.value)
+            aiPreferencesRepository.setBaseUrl(provider, url)
+        }
     }
 
     fun onAiSystemPromptChange(prompt: String) {
@@ -393,6 +409,12 @@ class SettingsViewModel @Inject constructor(
     val dataTransferProgress: StateFlow<BackupTransferProgressUpdate?> = _dataTransferProgress.asStateFlow()
 
     init {
+        // 音质设置选项：识别音源脚本注册的 qualitys（动态并集，引擎就绪后刷新）
+        viewModelScope.launch {
+            lxJsEngine.awaitReady(15_000)
+            refreshAvailableMusicQualities()
+        }
+
         viewModelScope.launch {
             backupManager.getBackupHistory().collect { history ->
                 _uiState.update { it.copy(backupHistory = history) }
@@ -512,7 +534,7 @@ class SettingsViewModel @Inject constructor(
                 audioEngineSettings.currentUsbDeviceName,
                 audioEngineSettings.aaudioEnabled,
                 audioEngineSettings.usbOutputBitDepth,
-                userPreferencesRepository.musicQualityFlow,
+                userPreferencesRepository.musicQualityValueFlow,
                 userPreferencesRepository.crossfadeDurationFlow,
                 userPreferencesRepository.persistentShuffleEnabledFlow,
                 userPreferencesRepository.folderBackGestureNavigationFlow,
@@ -543,7 +565,7 @@ class SettingsViewModel @Inject constructor(
                     currentUsbDeviceName = values[7] as String?,
                     aaudioEnabled = values[8] as Boolean,
                     usbOutputBitDepthBits = (values[9] as com.theveloper.pixelplay.data.service.audioengine.UsbOutputBitDepth).bits,
-                    musicQuality = values[10] as MusicQuality,
+                    musicQualityValue = values[10] as String,
                     crossfadeDuration = values[11] as Int,
                     persistentShuffleEnabled = values[12] as Boolean,
                     folderBackGestureNavigation = values[13] as Boolean,
@@ -576,7 +598,7 @@ class SettingsViewModel @Inject constructor(
                         currentUsbDeviceName = update.currentUsbDeviceName,
                         aaudioEnabled = update.aaudioEnabled,
                         usbOutputBitDepthBits = update.usbOutputBitDepthBits,
-                        musicQuality = update.musicQuality,
+                        musicQualityValue = update.musicQualityValue,
                         crossfadeDuration = update.crossfadeDuration,
                         persistentShuffleEnabled = update.persistentShuffleEnabled,
                         folderBackGestureNavigation = update.folderBackGestureNavigation,
@@ -610,6 +632,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.useAnimatedLyricsFlow.collect { enabled ->
                 _uiState.update { it.copy(useAnimatedLyrics = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            themePreferencesRepository.lyricsSolidOverlayAlphaFlow.collect { alpha ->
+                _uiState.update { it.copy(lyricsSolidOverlayAlpha = alpha) }
             }
         }
 
@@ -927,6 +955,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ⚡ 歌词界面纯色遮罩透明度（0~1）
+    fun setLyricsSolidOverlayAlpha(alpha: Float) {
+        viewModelScope.launch {
+            themePreferencesRepository.setLyricsSolidOverlayAlpha(alpha)
+        }
+    }
+
     suspend fun getAlbumArtPalettePreview(
         uriString: String,
         style: AlbumArtPaletteStyle,
@@ -1062,10 +1097,18 @@ class SettingsViewModel @Inject constructor(
         audioEngineSettings.setUsbOutputBitDepth(bits)
     }
 
-    fun setMusicQuality(quality: MusicQuality) {
+    fun setMusicQuality(qualityValue: String) {
         viewModelScope.launch {
-            userPreferencesRepository.setMusicQuality(quality)
+            userPreferencesRepository.setMusicQualityValue(qualityValue)
         }
+    }
+
+    /** 合并所有音源脚本注册的 qualitys（去重排序），并始终保留基础音质兜底。 */
+    private fun refreshAvailableMusicQualities() {
+        val merged = MusicQualityCatalog.mergeFromSources(lxJsEngine.getSources())
+        // 基础音质（128k/320k/flac/24bit）始终并入选项，避免音源未注册时无兜底选项
+        val options = MusicQualityCatalog.sort(merged + MusicQualityCatalog.FALLBACK)
+        _uiState.update { it.copy(availableMusicQualities = options) }
     }
 
     fun setShowQueueHistory(show: Boolean) {
@@ -1256,6 +1299,21 @@ class SettingsViewModel @Inject constructor(
     val isAiRecommendationManualOnly: StateFlow<Boolean> = aiPreferencesRepository.isAiRecommendationManualOnly
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val isLyricsExplanationEnabled: StateFlow<Boolean> = aiPreferencesRepository.isLyricsExplanationEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isCompanionEnabled: StateFlow<Boolean> = aiPreferencesRepository.isCompanionEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val companionVoice: StateFlow<String> = aiPreferencesRepository.companionVoice
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "mimo_default")
+
+    val companionSpeed: StateFlow<Float> = aiPreferencesRepository.companionSpeed
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1.0f)
+
+    val mimoTtsApiKey: StateFlow<String> = aiPreferencesRepository.mimoApiKey
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
     // ⚡ 首页排行榜开关（设置页可关闭）
     val homeTopListEnabled: StateFlow<Boolean> = userPreferencesRepository.homeTopListEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -1335,6 +1393,36 @@ class SettingsViewModel @Inject constructor(
     fun setAiRecommendationManualOnly(enabled: Boolean) {
         viewModelScope.launch {
             aiPreferencesRepository.setAiRecommendationManualOnly(enabled)
+        }
+    }
+
+    fun setLyricsExplanationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setLyricsExplanationEnabled(enabled)
+        }
+    }
+
+    fun setCompanionEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setCompanionEnabled(enabled)
+        }
+    }
+
+    fun setCompanionVoice(voiceId: String) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setCompanionVoice(voiceId)
+        }
+    }
+
+    fun setCompanionSpeed(speed: Float) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setCompanionSpeed(speed)
+        }
+    }
+
+    fun setMimoTtsApiKey(apiKey: String) {
+        viewModelScope.launch {
+            aiPreferencesRepository.setMimoApiKey(apiKey)
         }
     }
 
@@ -1524,7 +1612,12 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingModels = true, modelsFetchError = null) }
             try {
                 val provider = AiProvider.fromString(providerName)
-                val aiClient = aiClientFactory.createClient(provider, apiKey)
+                val baseUrl = if (provider.hasConfigurableUrl) {
+                    aiPreferencesRepository.getBaseUrl(provider).first()
+                } else {
+                    ""
+                }
+                val aiClient = aiClientFactory.createClient(provider, apiKey, baseUrl)
                 val models = aiClient.getAvailableModels(apiKey)
                     .map { it.trim() }
                     .filter { it.isNotBlank() }

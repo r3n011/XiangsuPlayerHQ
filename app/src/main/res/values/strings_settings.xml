@@ -210,6 +210,8 @@
     <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
     <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
     <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
+    <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
     <string name="setcat_home_collage">Home Collage</string>
     <string name="setcat_collage_pattern_label">Collage Pattern</string>
     <string
@@ -423,6 +425,9 @@
     <string name="setcat_ai_recommendation_manual_title">Manual Generation Only</string>
     <string name="setcat_ai_recommendation_manual_subtitle">Click to generate recommendation (prevents automatic token usage)</string>
 
+    <string name="setcat_ai_lyrics_explanation_title">AI Lyrics Insight Card</string>
+    <string name="setcat_ai_lyrics_explanation_subtitle">Show AI-powered lyrics explanation card in the lyrics view (off by default; can be enabled per-session from the lyrics menu)</string>
+
     <string name="setcat_web_remote_section">Web Remote</string>
     <string name="setcat_web_remote_enabled_title">Enable Web Remote</string>
     <string name="setcat_web_remote_enabled_subtitle">Access PixelPlay from any browser on your network</string>
@@ -452,6 +457,7 @@
     >OFF — Deep context. Sends full listening profile (~8K tokens) for richer results.</string>
     <string name="setcat_credentials">Credentials</string>
     <string name="setcat_ai_api_key_title">%1$s API Key</string>
+    <string name="setcat_ai_api_key_title_simple">API Key</string>
     <string name="setcat_ai_api_key_subtitle">Get from %1$s</string>
     <string
         name="setcat_ai_source_gemini"

@@ -6,7 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -116,7 +116,8 @@ fun ToggleSegmentButton(
     inactiveContentColor: Color = LocalMaterialTheme.current.primary,
     activeCornerRadius: Dp = 8.dp,
     onClick: () -> Unit,
-    text: String
+    text: String,
+    onLongClick: (() -> Unit)? = null
 ) {
     ToggleSegmentButtonContainer(
         modifier = modifier,
@@ -125,13 +126,16 @@ fun ToggleSegmentButton(
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
-        onClick = onClick
+        onClick = onClick,
+        onLongClick = onLongClick
     ) {
         androidx.compose.material3.Text(
             text = text,
             color = if (active) activeContentColor else inactiveContentColor,
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            softWrap = true
         )
     }
 }
@@ -191,6 +195,7 @@ private fun ToggleSegmentButtonContainer(
     inactiveColor: Color,
     activeCornerRadius: Dp,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     progressFill: Float = 0f,
     progressFillColor: Color = Color.Transparent,
     content: @Composable () -> Unit
@@ -226,7 +231,11 @@ private fun ToggleSegmentButtonContainer(
                     }
                 }
             }
-            .clickable(enabled = enabled, onClick = onClick),
+            .combinedClickable(
+                enabled = enabled,
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Box(modifier = Modifier.graphicsLayer(alpha = if (enabled) 1f else 0.38f)) {

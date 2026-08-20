@@ -220,20 +220,12 @@ constructor(
                     // Determine what to fetch based on mode
                     val isFreshInstall = musicDao.getSongCount().first() == 0
 
-                    // If REBUILD or FULL or RescanRequired or Fresh Install -> Fetch EVERYTHING
-                    // (timestamp = 0)
-                    // If INCREMENTAL -> Fetch only changes since lastSyncTimestamp
-                    val fetchTimestamp =
-                            if (syncMode == SyncMode.INCREMENTAL &&
-                                            !rescanRequired &&
-                                            !directoryRulesChanged &&
-                                            !isFreshInstall
-                            ) {
-                                lastSyncTimestamp /
-                                        1000 // Convert to seconds for MediaStore comparison
-                            } else {
-                                0L
-                            }
+                    // 始终从 MediaStore 查询全部歌曲（fetchTimestamp = 0）。
+                    // 之前增量同步使用 lastSyncTimestamp 过滤 DATE_MODIFIED/DATE_ADDED，
+                    // 但 MediaStore 延迟索引 + 文件原始时间戳会导致新歌曲被永久遗漏。
+                    // 变更检测已由 fetchMusicFromMediaStore 内部的 isSongUnchanged 机制处理，
+                    // 效率不受影响。
+                    val fetchTimestamp = 0L
 
                     Log.i(TAG, "Fetching music from MediaStore (since: $fetchTimestamp seconds)...")
 

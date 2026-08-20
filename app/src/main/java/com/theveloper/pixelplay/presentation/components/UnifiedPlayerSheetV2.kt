@@ -779,8 +779,6 @@ fun UnifiedPlayerSheetV2(
                             currentPositionProvider = positionToDisplayProvider,
                             isFavorite = isFavorite,
                             shouldRenderFullPlayer = shouldRenderFullPlayer,
-                            currentHorizontalPaddingStartPxProvider = currentHorizontalPaddingStartPxProvider,
-                            currentHorizontalPaddingEndPxProvider = currentHorizontalPaddingEndPxProvider,
                             onShowQueueClicked = sheetActionHandlers.openQueueSheet,
                             onQueueDragStart = sheetActionHandlers.beginQueueDrag,
                             onQueueDrag = sheetActionHandlers.dragQueueBy,

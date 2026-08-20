@@ -15,6 +15,7 @@ import com.theveloper.pixelplay.data.lx.LxScriptInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
 import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
 import com.theveloper.pixelplay.data.preferences.MusicQuality
+import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import timber.log.Timber
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,8 +38,8 @@ data class LxUiState(
     val sources: Map<String, LxSourceInfo> = emptyMap(),
     /** 已导入的所有 JS 脚本简介列表（多 JS 管理用） */
     val scriptInfos: List<LxScriptInfo> = emptyList(),
-    /** 在线音源播放音质（24bit / FLAC / 320k / 128k） */
-    val musicQuality: MusicQuality = MusicQuality.HIGH,
+    /** 在线音源播放音质值（来自音源脚本 qualitys，如 24bit / FLAC / 320k / 128k） */
+    val musicQualityValue: String = MusicQuality.HIGH.lxValue,
     val keyword: String = "",
     val selectedSource: String = "wy",
     val searching: Boolean = false,
@@ -87,8 +88,8 @@ class LxMusicViewModel @Inject constructor(
         }
         // 同步在线音源播放音质
         viewModelScope.launch {
-            userPreferencesRepository.musicQualityFlow.collect { quality ->
-                _uiState.value = _uiState.value.copy(musicQuality = quality)
+            userPreferencesRepository.musicQualityValueFlow.collect { qualityValue ->
+                _uiState.value = _uiState.value.copy(musicQualityValue = qualityValue)
             }
         }
     }
@@ -114,14 +115,14 @@ class LxMusicViewModel @Inject constructor(
     }
 
     /** 设置在线音源播放音质（与设置页数据源一致） */
-    fun setMusicQuality(quality: MusicQuality) {
+    fun setMusicQuality(qualityValue: String) {
         // 立即同步 UI（不等待 DataStore flow 回环，避免点击后无响应）
-        _uiState.value = _uiState.value.copy(musicQuality = quality)
+        _uiState.value = _uiState.value.copy(musicQualityValue = qualityValue)
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                userPreferencesRepository.setMusicQuality(quality)
+                userPreferencesRepository.setMusicQualityValue(qualityValue)
             }.onFailure {
-                Timber.w(it, "setMusicQuality 持久化失败: $quality")
+                Timber.w(it, "setMusicQuality 持久化失败: $qualityValue")
             }
         }
     }
@@ -575,18 +576,18 @@ class LxMusicViewModel @Inject constructor(
                 ?: ""
         } else song.pic
 
-        val preferredQuality = runCatching { userPreferencesRepository.musicQualityFlow.first() }
-            .getOrDefault(MusicQuality.HIGH)
+        val preferredQuality = runCatching { userPreferencesRepository.musicQualityValueFlow.first() }
+            .getOrDefault(MusicQuality.HIGH.lxValue)
         val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
             // 网易云直接走落雪 JS 引擎播放，不经网易云 API 取试听 URL
-            android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=${preferredQuality.lxValue})")
-            resolvePlayUrlWithQualityChain("wy", songMap, preferredQuality.lxValue)
+            android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=$preferredQuality)")
+            resolvePlayUrlWithQualityChain("wy", songMap, preferredQuality)
         } else if (builtInSourceSearchApi.isSupported(targetSource)) {
             // 内置源（QQ音乐/酷狗/咪咕）：官方播放接口 + 溯音酷我兜底
-            android.util.Log.d("LxPlaySong", "Built-in source $targetSource, preferredQuality=${preferredQuality.name} (${preferredQuality.lxValue})")
-            builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality.lxValue)
+            android.util.Log.d("LxPlaySong", "Built-in source $targetSource, preferredQuality=$preferredQuality")
+            builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality)
         } else {
-            resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality.lxValue)
+            resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality)
         }
         if (url == null) return null
 
@@ -629,24 +630,18 @@ class LxMusicViewModel @Inject constructor(
     }
 
     /**
-     * 按用户选择的音质**向下递减**尝试落雪播放链接，严格遵守音质设置：
-     * - 24bit → 24bit → flac → 320k → 128k
-     * - flac  → flac → 24bit → 320k → 128k
-     * - 320k  → 320k → 128k
-     * - 128k  → 128k（不自动抬音质，避免用户选 128k 却被拉到高音质）
+     * 按用户选择的音质**向下递减**尝试落雪播放链接，动态识别音源脚本注册的 qualitys，
+     * 严格遵守音质设置（128k 不自动抬音质，避免用户选 128k 却被拉到高音质）。
      */
     private suspend fun resolvePlayUrlWithQualityChain(
         source: String,
         songMap: Map<String, Any?>,
         preferred: String
     ): String? {
-        val chain = when (preferred) {
-            "24bit" -> listOf("24bit", "flac", "320k", "128k")
-            "flac" -> listOf("flac", "24bit", "320k", "128k")
-            "320k" -> listOf("320k", "128k")
-            "128k" -> listOf("128k")
-            else -> listOf(preferred, "320k", "128k")
-        }
+        val chain = MusicQualityCatalog.resolveChain(
+            target = preferred,
+            available = engine.getSources()[source]?.qualitys.orEmpty()
+        )
         for (q in chain) {
             val url = engine.getPlayUrl(source, songMap, q)
             if (!url.isNullOrBlank()) {

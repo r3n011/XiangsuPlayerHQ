@@ -92,6 +92,12 @@
     <string name="presentation_batch_e_ai_enter_custom_title">Enter custom value</string>
     <string name="presentation_batch_e_ai_enter_custom_label">Enter your custom value</string>
     <string name="presentation_batch_e_ai_evaluate_playlist">AI Evaluate Playlist</string>
+    <string name="presentation_batch_e_ai_evaluating">Evaluating playlist…</string>
+    <string name="presentation_batch_e_ai_eval_title">AI Evaluation</string>
+    <string name="presentation_batch_e_ai_eval_cohesion">Cohesion</string>
+    <string name="presentation_batch_e_ai_eval_diversity">Diversity</string>
+    <string name="presentation_batch_e_ai_eval_energy_flow">Energy Flow</string>
+    <string name="presentation_batch_e_ai_eval_suggestions">Suggestions</string>
     <string name="presentation_batch_e_ai_recommendation_success">AI recommendation generated!</string>
     <string name="presentation_batch_e_ai_view_all_mix">View All AI Mix</string>
     

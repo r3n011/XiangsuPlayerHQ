@@ -70,6 +70,7 @@
     <string name="next_track">Next track</string>
     <string name="pause_playback">Pause playback</string>
     <string name="play_playback">Play</string>
+    <string name="playback_speed">Playback Speed</string>
     <string name="playlist_not_found">Playlist not found.</string>
     <string name="disc_number_header">Disc %d</string>
 
@@ -88,6 +89,20 @@
     <string name="ai_lyrics_api_not_configured">API is not configured</string>
     <string name="ai_lyrics_translation_success">Lyrics translated successfully!</string>
     <string name="ai_lyrics_translating">Translating lyrics...</string>
+
+    <string name="ai_explain_lyrics">Explain Lyrics via AI</string>
+    <string name="ai_lyrics_explaining">Analyzing lyrics meaning...</string>
+    <string name="ai_lyrics_explanation_title">Lyrics Insight</string>
+    <string name="ai_eval_show_all">Show all</string>
+    <string name="ai_eval_show_less">Show less</string>
+    <string name="setcat_ai_companion_section">AI Companion</string>
+    <string name="setcat_ai_companion_title">AI Companion</string>
+    <string name="setcat_ai_companion_subtitle">Generate transitional commentary between songs using AI voice</string>
+    <string name="setcat_ai_companion_voice">Voice</string>
+    <string name="setcat_ai_companion_speed">Speed</string>
+    <string name="setcat_ai_companion_mimo_key_hint">Enter your MiMo API Key (format: sk-xxxxx). Get from mimo.mi.com</string>
+    <string name="share_clipboard_detected">Share link detected in clipboard, tap to import</string>
+    <string name="ai_lyrics_no_explanation">No explanation yet</string>
 
     <string name="shortcut_shuffle_short">Shuffle</string>
     <string name="shortcut_shuffle_long">Shuffle all songs</string>

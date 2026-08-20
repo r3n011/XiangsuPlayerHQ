@@ -81,6 +81,7 @@
     <string name="next_track">下一曲</string>
     <string name="pause_playback">暂停播放</string>
     <string name="play_playback">播放</string>
+    <string name="playback_speed">播放速度</string>
     <string name="playlist_not_found">未找到播放列表。</string>
     <string name="disc_number_header">碟片 %d</string>
 
@@ -238,6 +239,15 @@
     <string name="ai_lyrics_api_not_configured">API 未配置</string>
     <string name="ai_lyrics_translation_success">歌词翻译成功！</string>
     <string name="ai_lyrics_translating">正在翻译歌词……</string>
+    <string name="ai_eval_show_all">显示全部</string>
+    <string name="ai_eval_show_less">收起</string>
+    <string name="setcat_ai_companion_section">AI 陪伴</string>
+    <string name="setcat_ai_companion_title">AI 音乐陪伴</string>
+    <string name="setcat_ai_companion_subtitle">切歌时用 AI 语音生成衔接语，营造氛围</string>
+    <string name="setcat_ai_companion_voice">音色</string>
+    <string name="setcat_ai_companion_speed">语速</string>
+    <string name="setcat_ai_companion_mimo_key_hint">输入 MiMo API Key（格式：sk-xxxxx），前往 mimo.mi.com 获取</string>
+    <string name="share_clipboard_detected">检测到剪贴板中的分享链接，点击导入</string>
 
     <string name="player_playback_error">播放错误：%1$s</string>
 

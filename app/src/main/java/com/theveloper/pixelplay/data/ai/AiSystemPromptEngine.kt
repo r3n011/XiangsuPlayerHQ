@@ -190,10 +190,11 @@ class AiSystemPromptEngine @Inject constructor() {
                 - Provide insightful commentary on song selection and sequencing.
                 - Rate the playlist on multiple dimensions (cohesion, diversity, energy flow).
                 - Offer constructive feedback and improvement suggestions.
+                - IMPORTANT: Always respond in the same language as the user's system language. If the user's language is Chinese (中文), respond entirely in Chinese. If English, respond in English. Match the user's language exactly.
                 </strategy>
                 <output_schema>
                 Return ONLY a raw JSON object string.
-                Format: {"rating": 0-10, "cohesion": 0-10, "diversity": 0-10, "energy_flow": 0-10, "comment": "Your analysis here", "suggestions": ["Suggestion 1", "Suggestion 2"]}
+                Format: {"rating": 0-10, "cohesion": 0-10, "diversity": 0-10, "energy_flow": 0-10, "comment": "Your analysis here in user's language", "suggestions": ["Suggestion 1 in user's language", "Suggestion 2 in user's language"]}
                 </output_schema>
             """.trimIndent()
 
@@ -203,6 +204,7 @@ class AiSystemPromptEngine @Inject constructor() {
                 - Answer questions about music, artists, genres, and playback features.
                 - Be concise and accurate. If you don't know something, say so directly.
                 - Provide actionable answers that help the user enjoy their music library.
+                - CRITICAL: Always respond in the same language as the user's request. If the user writes in Chinese, respond in Chinese. If in Japanese, respond in Japanese. Match the user's language exactly.
                 </strategy>
             """.trimIndent()
         }

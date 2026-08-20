@@ -43,7 +43,8 @@ class NeteaseStreamProxy @Inject constructor(
 
     override suspend fun resolveStreamUrl(id: Long): String? {
         val quality = try {
-            userPreferencesRepository.musicQualityFlow.first().neteaseLevel
+            com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
+                .neteaseLevelFor(userPreferencesRepository.musicQualityValueFlow.first())
         } catch (_: Exception) {
             "exhigh"
         }

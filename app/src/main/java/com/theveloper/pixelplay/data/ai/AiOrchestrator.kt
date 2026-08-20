@@ -52,6 +52,10 @@ class AiOrchestrator @Inject constructor(
         return preferencesRepo.getApiKey(provider).first()
     }
 
+    private suspend fun getBaseUrl(provider: AiProvider): String {
+        return if (provider.hasConfigurableUrl) preferencesRepo.getBaseUrl(provider).first() else ""
+    }
+
     private suspend fun getModel(provider: AiProvider): String {
         return preferencesRepo.getModel(provider).first()
     }
@@ -67,7 +71,7 @@ class AiOrchestrator @Inject constructor(
         prompt: String,
         temperature: Float
     ): String {
-        val client = clientFactory.createClient(provider, apiKey)
+        val client = clientFactory.createClient(provider, apiKey, getBaseUrl(provider))
         val requestedModel = getModel(provider).ifBlank { client.getDefaultModel() }
 
         return try {
@@ -270,5 +274,34 @@ class AiOrchestrator @Inject constructor(
         
         Timber.tag("AiOrchestrator").e("All providers failed. Details: %s", failedProviders.joinToString(" | "))
         throw Exception(errorMessage)
+    }
+
+    /**
+     * 只使用用户配置的主 provider 生成内容，不尝试 fallback。
+     * 适用于 AI 陪伴等低延迟场景。
+     */
+    suspend fun generateWithPrimaryProvider(
+        prompt: String,
+        type: AiSystemPromptType = AiSystemPromptType.GENERAL,
+        temperature: Float = 0.7f,
+        timeoutMs: Long = 15_000L
+    ): String {
+        val userProviderStr = preferencesRepo.aiProvider.first()
+        val userProvider = AiProvider.fromString(userProviderStr)
+        val apiKey = getApiKey(userProvider)
+        if (apiKey.isBlank()) throw Exception("No API key for ${userProvider.displayName}")
+
+        val persona = getBasePersona(userProvider)
+        val systemPrompt = promptEngine.buildPrompt(persona, type, "")
+
+        return withTimeout(timeoutMs) {
+            generateWithRecovery(
+                provider = userProvider,
+                apiKey = apiKey,
+                systemPrompt = systemPrompt,
+                prompt = prompt,
+                temperature = temperature
+            )
+        }
     }
 }

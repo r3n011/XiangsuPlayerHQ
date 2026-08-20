@@ -3,8 +3,11 @@ package com.theveloper.pixelplay.data.ai
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,16 +16,18 @@ data class PlaylistEvaluation(
     val rating: Int,
     val cohesion: Int,
     val diversity: Int,
+    @SerialName("energy_flow")
     val energyFlow: Int,
     val comment: String,
-    val suggestions: List<String>
+    val suggestions: List<String> = emptyList()
 )
 
 @Singleton
 class AiPlaylistEvaluator @Inject constructor(
     private val aiOrchestrator: AiOrchestrator,
     private val preferencesRepo: AiPreferencesRepository,
-    private val json: Json
+    private val json: Json,
+    @ApplicationContext private val context: Context
 ) {
 
     suspend fun evaluatePlaylist(
@@ -36,6 +41,14 @@ class AiPlaylistEvaluator @Inject constructor(
                 return Result.failure(Exception("AI auto-trigger is disabled"))
             }
             val songInfo = buildSongInfo(songs)
+            val locale = context.resources.configuration.locales[0]
+            val langCode = locale.language
+            val languageInstruction = when (langCode) {
+                "zh" -> "请用中文回复所有内容（comment 和 suggestions）。"
+                "ja" -> "すべての内容を日本語で回答してください。"
+                "ko" -> "모든 내용을 한국어로回答してください。"
+                else -> "Respond in English."
+            }
             
             val prompt = """
                 <playlist>
@@ -43,6 +56,7 @@ class AiPlaylistEvaluator @Inject constructor(
                 <songs>
                 $songInfo
                 </songs>
+                <language_instruction>$languageInstruction</language_instruction>
                 ${if (userPrompt.isNotBlank()) "<user_prompt>$userPrompt</user_prompt>" else ""}
                 </playlist>
             """.trimIndent()

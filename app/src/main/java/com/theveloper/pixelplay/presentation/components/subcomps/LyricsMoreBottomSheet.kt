@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.Abc
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Translate
@@ -47,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.presentation.components.ToggleSegmentButton
@@ -64,11 +67,33 @@ import com.theveloper.pixelplay.ui.theme.resolveLyricsFontFamily
 import com.theveloper.pixelplay.ui.theme.isCustomFontKey
 import com.theveloper.pixelplay.ui.theme.customFontDisplayName
 import com.theveloper.pixelplay.ui.theme.listCustomFonts
+import com.theveloper.pixelplay.ui.theme.deleteCustomFont
 import com.theveloper.pixelplay.ui.theme.CUSTOM_FONT_PREFIX
 import com.theveloper.pixelplay.presentation.components.player.BottomToggleRow
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.edit
+import com.theveloper.pixelplay.data.preferences.dataStore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun LyricsMoreBottomSheet(
     onDismissRequest: () -> Unit,
@@ -80,6 +105,7 @@ fun LyricsMoreBottomSheet(
     onResetImportedLyrics: () -> Unit,
     onSearchLyricsOnline: () -> Unit,
     onTranslateViaAi: () -> Unit,
+    onExplainLyricsViaAi: () -> Unit,
     onToggleSyncControls: () -> Unit,
     isImmersiveTemporarilyDisabled: Boolean,
     onSetImmersiveTemporarilyDisabled: (Boolean) -> Unit,
@@ -116,6 +142,17 @@ fun LyricsMoreBottomSheet(
 ) {
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     var showResetDialog by remember { mutableStateOf(false) }
+
+    // 首次打开歌词页面时，提示可长按删除自定义字体
+    val hintContext = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showFontDeleteHint by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val alreadyShown = hintContext.dataStore.data.first()[booleanPreferencesKey("font_delete_hint_shown")] == true
+        if (!alreadyShown) {
+            showFontDeleteHint = true
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -189,7 +226,7 @@ fun LyricsMoreBottomSheet(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                             .background(itemBackgroundColor)
                             .clickable {
                                 onDismissRequest()
@@ -204,11 +241,7 @@ fun LyricsMoreBottomSheet(
                 }
 
                 // Search lyrics online
-                val onlineSearchShape = if (lyrics != null) {
-                    RoundedCornerShape(8.dp)
-                } else {
-                    RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 8.dp, bottomEnd = 8.dp)
-                }
+                val onlineSearchShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 8.dp, bottomEnd = 8.dp)
 
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.search_lyrics_online)) },
@@ -413,7 +446,15 @@ fun LyricsMoreBottomSheet(
 
                     // 构建字体选项列表：预定义 + 自定义字体
                     val sheetContext = LocalContext.current
-                    val customFonts = remember {
+                    var customFontsRefreshTick by remember { mutableStateOf(0) }
+                    // 直接订阅 DataStore 的字体值：ModalBottomSheet 渲染在独立 window 中，
+                    // 外层 lyricsFontFamily 参数变化可能不会触发内部重组，导致导入字体后
+                    // 列表不刷新。改为监听 DataStore 自身变化即可在导入后立即刷新。
+                    val currentFontFamily by sheetContext.dataStore.data
+                        .map { it[stringPreferencesKey("lyrics_font_family")] ?: "DEFAULT" }
+                        .distinctUntilChanged()
+                        .collectAsState(initial = "DEFAULT")
+                    val customFonts = remember(customFontsRefreshTick, currentFontFamily) {
                         listCustomFonts(sheetContext).map { "$CUSTOM_FONT_PREFIX$it" }
                     }
                     val predefinedFonts = LyricsFontDisplayNames.keys.toList()
@@ -423,74 +464,39 @@ fun LyricsMoreBottomSheet(
                         if (isCustomFontKey(key)) customFontDisplayName(key)
                         else LyricsFontDisplayNames[key] ?: key
 
-                    val row1 = allFontFamilies.take(3)
-                    val row2 = allFontFamilies.drop(3).take(3)
-                    val row3 = allFontFamilies.drop(6)
+                    // 长按删除自定义字体；删除当前选中字体时回退到主题默认
+                    val onFontLongClick: (String) -> Unit = { key ->
+                        if (isCustomFontKey(key)) {
+                            deleteCustomFont(sheetContext, key)
+                            if (lyricsFontFamily == key) {
+                                onLyricsFontFamilyChange("DEFAULT")
+                            }
+                            customFontsRefreshTick++
+                        }
+                    }
 
-                    Row(
+                    // 字体按钮流式布局：每行最多 3 个，超过自动换行
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        maxItemsInEachRow = 3,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        row1.forEach { family ->
-                            ToggleSegmentButton(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp),
+                        allFontFamilies.forEach { family ->
+                            FontOptionButton(
+                                text = displayName(family),
                                 active = lyricsFontFamily == family,
+                                deletable = isCustomFontKey(family),
                                 activeColor = accentColor,
                                 inactiveColor = containerColor,
                                 activeContentColor = onAccentColor,
                                 inactiveContentColor = contentColor.copy(alpha = 0.78f),
-                                activeCornerRadius = 50.dp,
                                 onClick = { onLyricsFontFamilyChange(family) },
-                                text = displayName(family)
+                                onDelete = { onFontLongClick(family) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
                             )
-                        }
-                    }
-
-                    if (row2.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            row2.forEach { family ->
-                                ToggleSegmentButton(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp),
-                                    active = lyricsFontFamily == family,
-                                    activeColor = accentColor,
-                                    inactiveColor = containerColor,
-                                    activeContentColor = onAccentColor,
-                                    inactiveContentColor = contentColor.copy(alpha = 0.78f),
-                                    activeCornerRadius = 50.dp,
-                                    onClick = { onLyricsFontFamilyChange(family) },
-                                    text = displayName(family)
-                                )
-                            }
-                        }
-                    }
-
-                    if (row3.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            row3.forEach { family ->
-                                ToggleSegmentButton(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp),
-                                    active = lyricsFontFamily == family,
-                                    activeColor = accentColor,
-                                    inactiveColor = containerColor,
-                                    activeContentColor = onAccentColor,
-                                    inactiveContentColor = contentColor.copy(alpha = 0.78f),
-                                    activeCornerRadius = 50.dp,
-                                    onClick = { onLyricsFontFamilyChange(family) },
-                                    text = displayName(family)
-                                )
-                            }
                         }
                     }
 
@@ -781,5 +787,89 @@ fun LyricsMoreBottomSheet(
                 )
             }
         }
+    }
+
+    if (showFontDeleteHint) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showFontDeleteHint = false
+                scope.launch { hintContext.dataStore.edit { it[booleanPreferencesKey("font_delete_hint_shown")] = true } }
+            },
+            title = { Text("长按删除字体") },
+            text = { Text("普通点击选择字体，长按自定义字体可将其删除。") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showFontDeleteHint = false
+                        scope.launch { hintContext.dataStore.edit { it[booleanPreferencesKey("font_delete_hint_shown")] = true } }
+                    }
+                ) {
+                    Text("知道了")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            titleContentColor = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FontOptionButton(
+    text: String,
+    active: Boolean,
+    deletable: Boolean,
+    activeColor: Color,
+    inactiveColor: Color,
+    activeContentColor: Color,
+    inactiveContentColor: Color,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val pressProgress = remember { Animatable(0f) }
+    val dangerColor = MaterialTheme.colorScheme.error
+    val targetBg = if (active) activeColor else inactiveColor
+    val bgColor = lerp(targetBg, dangerColor, pressProgress.value)
+    val targetContent = if (active) activeContentColor else inactiveContentColor
+    val textColor = lerp(targetContent, Color.White, pressProgress.value)
+    val corner by animateDpAsState(
+        targetValue = if (active) 50.dp else 12.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "FontOptionCorner"
+    )
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(corner))
+            .background(bgColor)
+            .pointerInput(deletable) {
+                if (deletable) {
+                    detectTapGestures(
+                        onPress = {
+                            // 长按逐渐变红：按下即开始向 error 色过渡，提示可删除
+                            pressProgress.animateTo(1f, tween(durationMillis = 600))
+                            tryAwaitRelease()
+                            pressProgress.animateTo(0f, tween(durationMillis = 200))
+                        },
+                        onTap = { onClick() },
+                        onLongPress = { onDelete() }
+                    )
+                } else {
+                    detectTapGestures(onTap = { onClick() })
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            softWrap = true,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
     }
 }

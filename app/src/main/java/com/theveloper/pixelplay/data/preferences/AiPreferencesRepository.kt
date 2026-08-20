@@ -60,6 +60,11 @@ class AiPreferencesRepository @Inject constructor(
         val AI_AUTO_PLAYLIST_EVALUATION = booleanPreferencesKey("ai_auto_playlist_evaluation")
         val AI_RECOMMENDATION_CARD_ENABLED = booleanPreferencesKey("ai_recommendation_card_enabled")
         val AI_RECOMMENDATION_MANUAL_ONLY = booleanPreferencesKey("ai_recommendation_manual_only")
+        val AI_LYRICS_EXPLANATION_ENABLED = booleanPreferencesKey("ai_lyrics_explanation_enabled")
+        val AI_COMPANION_ENABLED = booleanPreferencesKey("ai_companion_enabled")
+        val AI_COMPANION_VOICE = stringPreferencesKey("ai_companion_voice")
+        val AI_COMPANION_SPEED = floatPreferencesKey("ai_companion_speed")
+        val AI_MIMO_API_KEY = stringPreferencesKey("ai_mimo_api_key")
 
         val WEB_REMOTE_ENABLED = booleanPreferencesKey("web_remote_enabled")
         val WEB_REMOTE_SYNC_MODE = booleanPreferencesKey("web_remote_sync_mode")
@@ -208,6 +213,23 @@ class AiPreferencesRepository @Inject constructor(
     val isAiRecommendationManualOnly: Flow<Boolean> =
         dataStore.data.map { preferences -> preferences[Keys.AI_RECOMMENDATION_MANUAL_ONLY] ?: true }
 
+    val isLyricsExplanationEnabled: Flow<Boolean> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_LYRICS_EXPLANATION_ENABLED] ?: false }
+
+    val isCompanionEnabled: Flow<Boolean> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_COMPANION_ENABLED] ?: false }
+
+    val companionVoice: Flow<String> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_COMPANION_VOICE] ?: "mimo_default" }
+
+    /** 语速：0.5（慢）~ 2.0（快），默认 1.0 */
+    val companionSpeed: Flow<Float> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_COMPANION_SPEED] ?: 1.0f }
+
+    /** MiMo TTS 专用 API Key */
+    val mimoApiKey: Flow<String> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_MIMO_API_KEY] ?: "" }
+
     val isWebRemoteEnabled: Flow<Boolean> =
         dataStore.data.map { preferences -> preferences[Keys.WEB_REMOTE_ENABLED] ?: false }
 
@@ -290,6 +312,26 @@ class AiPreferencesRepository @Inject constructor(
 
     suspend fun setAiRecommendationManualOnly(enabled: Boolean) {
         dataStore.edit { preferences -> preferences[Keys.AI_RECOMMENDATION_MANUAL_ONLY] = enabled }
+    }
+
+    suspend fun setLyricsExplanationEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[Keys.AI_LYRICS_EXPLANATION_ENABLED] = enabled }
+    }
+
+    suspend fun setCompanionEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[Keys.AI_COMPANION_ENABLED] = enabled }
+    }
+
+    suspend fun setCompanionVoice(voiceId: String) {
+        dataStore.edit { preferences -> preferences[Keys.AI_COMPANION_VOICE] = voiceId }
+    }
+
+    suspend fun setCompanionSpeed(speed: Float) {
+        dataStore.edit { preferences -> preferences[Keys.AI_COMPANION_SPEED] = speed.coerceIn(0.5f, 2.0f) }
+    }
+
+    suspend fun setMimoApiKey(apiKey: String) {
+        dataStore.edit { preferences -> preferences[Keys.AI_MIMO_API_KEY] = apiKey }
     }
 
     suspend fun setWebRemoteEnabled(enabled: Boolean) {

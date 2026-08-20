@@ -434,7 +434,7 @@ private fun StatsHeroSection(
 }
 
 @Composable
-private fun HeroCard(
+fun HeroCard(
     title: String,
     value: String,
     containerColor: Color,

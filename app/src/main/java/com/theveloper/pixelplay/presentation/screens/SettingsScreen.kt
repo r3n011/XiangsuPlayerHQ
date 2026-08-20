@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -30,6 +31,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.material.icons.Icons
@@ -82,6 +84,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.theveloper.pixelplay.R
@@ -508,6 +511,8 @@ private fun getSettingsItemIndex(): List<Pair<String, SettingsCategory>> = listO
     stringResource(R.string.setcat_ai_recommendation_section) to SettingsCategory.AI_INTEGRATION,
     stringResource(R.string.setcat_ai_recommendation_card_title) to SettingsCategory.AI_INTEGRATION,
     stringResource(R.string.setcat_ai_recommendation_manual_title) to SettingsCategory.AI_INTEGRATION,
+    // 播放 - AI 歌词解释卡片
+    stringResource(R.string.setcat_ai_lyrics_explanation_title) to SettingsCategory.PLAYBACK,
     // 网页遥控
     stringResource(R.string.setcat_web_remote_section) to SettingsCategory.WEB_REMOTE,
     stringResource(R.string.setcat_web_remote_enabled_title) to SettingsCategory.WEB_REMOTE,
@@ -869,27 +874,19 @@ private fun TabletSettingsScreen(
         MiniPlayerHeight + 8.dp
 
     val detailNavController = rememberNavController()
-    val currentDestination by androidx.compose.runtime.produceState<androidx.navigation.NavDestination?>(
-        initialValue = detailNavController.currentDestination
-    ) {
-        val listener = NavController.OnDestinationChangedListener { controller, _, _ ->
-            value = controller.currentDestination
-        }
-        detailNavController.addOnDestinationChangedListener(listener)
-        awaitDispose { detailNavController.removeOnDestinationChangedListener(listener) }
-    }
-
-    val currentDetailKey = currentDestination?.let { dest ->
-        val r = dest.route
-        when {
-            r != null && r.startsWith("settings_category/") -> r.removePrefix("settings_category/")
-            r == Screen.Equalizer.route -> "equalizer"
-            r == Screen.DeviceCapabilities.route -> "device_capabilities"
-            r == Screen.Accounts.route -> "accounts"
-            r == "about" -> "about"
+    // 监听 back stack entry（而非仅 destination），保证 arguments 里的 categoryId
+    // 已就绪后才计算选中 key，避免「destination 已变但 arguments 未更新」的时序错位。
+    val currentBackStackEntry by detailNavController.currentBackStackEntryAsState()
+    val currentDetailKey = currentBackStackEntry?.arguments?.getString("categoryId")
+        ?: when (currentBackStackEntry?.destination?.route) {
+            Screen.Equalizer.route -> "equalizer"
+            Screen.DeviceCapabilities.route -> "device_capabilities"
+            Screen.Accounts.route -> "accounts"
+            Screen.CloudMusicSettings.route -> "cloud_music_settings"
+            Screen.DotDeviceSettings.route -> "dot_device_settings"
+            "about" -> "about"
             else -> SettingsCategory.LIBRARY.id
         }
-    } ?: SettingsCategory.LIBRARY.id
 
     val startDestination = Screen.SettingsCategory.createRoute(SettingsCategory.LIBRARY.id)
 
@@ -1054,10 +1051,23 @@ private fun TabletCategoryItem(
     onClick: () -> Unit,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(24.dp)
 ) {
+    // ⚡ 选中状态与媒体库播放歌曲一致：圆角变化（→50dp 胶囊）+ 背景 primaryContainer
+    val cornerRadius by animateDpAsState(
+        targetValue = if (selected) 50.dp else 4.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "TabletCategoryCorner"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = tween(durationMillis = 250),
+        label = "TabletCategoryContainer"
+    )
+    val effectiveShape = if (selected) RoundedCornerShape(cornerRadius) else shape
+
     Surface(
         onClick = onClick,
-        shape = shape,
-        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        shape = effectiveShape,
+        color = containerColor,
         modifier = Modifier.fillMaxWidth().height(72.dp)
     ) {
         Row(
@@ -1105,14 +1115,6 @@ private fun TabletCategoryItem(
                     maxLines = 2
                 )
             }
-            if (selected) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            }
         }
     }
 }
@@ -1128,10 +1130,23 @@ private fun TabletNavigationItem(
     onClick: () -> Unit,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(24.dp)
 ) {
+    // ⚡ 选中状态与媒体库播放歌曲一致：圆角变化（→50dp 胶囊）+ 背景 primaryContainer
+    val cornerRadius by animateDpAsState(
+        targetValue = if (selected) 50.dp else 4.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "TabletNavigationCorner"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = tween(durationMillis = 250),
+        label = "TabletNavigationContainer"
+    )
+    val effectiveShape = if (selected) RoundedCornerShape(cornerRadius) else shape
+
     Surface(
         onClick = onClick,
-        shape = shape,
-        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        shape = effectiveShape,
+        color = containerColor,
         modifier = Modifier.fillMaxWidth().height(72.dp)
     ) {
         Row(
@@ -1168,14 +1183,6 @@ private fun TabletNavigationItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                     maxLines = 2
-                )
-            }
-            if (selected) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
                 )
             }
         }

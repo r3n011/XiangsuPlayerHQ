@@ -5,6 +5,7 @@ import com.theveloper.pixelplay.presentation.components.BackupModuleSelectionDia
 import com.theveloper.pixelplay.presentation.components.TranscodeCacheListDialog
 import com.theveloper.pixelplay.utils.TranscodeCacheManager
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.ai.provider.AiProvider
 import java.util.Locale
 import java.util.Date
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,6 +42,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +72,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CardGiftcard
+import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
@@ -100,6 +105,7 @@ import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.SpaceBar
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.ViewCarousel
@@ -125,6 +131,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -165,6 +172,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -189,7 +197,7 @@ import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.LaunchTab
-import com.theveloper.pixelplay.data.preferences.MusicQuality
+import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
@@ -492,9 +500,134 @@ fun SettingsCategoryScreen(
                             val isAutoPlaylistEnabled by settingsViewModel.isAutoPlaylistEnabled.collectAsStateWithLifecycle()
                             val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
                             val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
+                            val currentAiBaseUrl by settingsViewModel.currentAiBaseUrl.collectAsStateWithLifecycle()
+                            val currentProvider = AiProvider.fromString(aiProvider)
 
                             LaunchedEffect(aiProvider, currentAiApiKey) {
                                 settingsViewModel.loadModelsForCurrentProvider()
+                            }
+
+                            // MiMo 推广卡片
+                            val mimoContext = LocalContext.current
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        mimoContext.startActivity(
+                                            Intent(Intent.ACTION_VIEW, "https://platform.xiaomimimo.com?ref=LAGBWT".toUri())
+                                        )
+                                    }
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.CardGiftcard,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        Text(
+                                            text = "MiMo 开放平台 · 新用户福利",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "体验小米顶尖模型 MiMo V2.5 等。通过邀请码注册：双方各得 ¥10 API 体验金 + 首单 9 折。",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)
+                                        ) {
+                                            Text(
+                                                text = "邀请码：LAGBWT",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                        Text(
+                                            text = "体验金 40 天有效",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.OpenInNew,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "platform.xiaomimimo.com",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 服务商 / 平台选择
+                            SettingsSubsection(title = "服务商") {
+                                ThemeSelectorItem(
+                                    label = "服务商",
+                                    description = currentProvider.displayName,
+                                    options = AiProvider.entries.associate { it.name to it.displayName },
+                                    selectedKey = aiProvider,
+                                    onSelectionChanged = { settingsViewModel.onAiProviderChange(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            // 自定义 OpenAI 兼容平台地址
+                            if (currentProvider.hasConfigurableUrl) {
+                                SettingsSubsection(title = "自定义平台地址") {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceContainer,
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Text(
+                                                text = "Base URL（OpenAI 兼容）",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "填写到 /v1 为止，例如 https://api.deepseek.com",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            OutlinedTextField(
+                                                value = currentAiBaseUrl,
+                                                onValueChange = { settingsViewModel.onAiBaseUrlChange(it) },
+                                                placeholder = { Text("https://api.example.com/v1") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true
+                                            )
+                                        }
+                                    }
+                                }
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_ai_provider_section)) {
@@ -504,7 +637,7 @@ fun SettingsCategoryScreen(
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
                                         Text(
-                                            text = stringResource(R.string.setcat_ai_api_key_title, "Xiaomi MiMo"),
+                                            text = stringResource(R.string.setcat_ai_api_key_title_simple),
                                             style = MaterialTheme.typography.titleMedium,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -528,22 +661,52 @@ fun SettingsCategoryScreen(
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_model_selection)) {
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.setcat_ai_model_label),
-                                    description = if (isLoadingModels) {
-                                        stringResource(R.string.setcat_loading_models)
-                                    } else if (!modelsFetchError.isNullOrBlank()) {
-                                        modelsFetchError
-                                    } else {
-                                        stringResource(R.string.setcat_ai_model_desc)
-                                    },
-                                    options = availableModels.associate { model -> model.name to model.displayName },
-                                    selectedKey = currentAiModel,
-                                    onSelectionChanged = {
-                                        settingsViewModel.onAiModelChange(it)
-                                    },
-                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
+                                if (currentProvider.hasConfigurableUrl) {
+                                    // 自定义 OpenAI 兼容平台：手动填写模型名（第三方 /models 接口不一定可用）
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceContainer,
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Text(
+                                                text = stringResource(R.string.setcat_ai_model_label),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "手动填写模型名，例如 deepseek-chat、qwen-max",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            OutlinedTextField(
+                                                value = currentAiModel,
+                                                onValueChange = { settingsViewModel.onAiModelChange(it) },
+                                                placeholder = { Text("deepseek-chat") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    ThemeSelectorItem(
+                                        label = stringResource(R.string.setcat_ai_model_label),
+                                        description = if (isLoadingModels) {
+                                            stringResource(R.string.setcat_loading_models)
+                                        } else if (!modelsFetchError.isNullOrBlank()) {
+                                            modelsFetchError
+                                        } else {
+                                            stringResource(R.string.setcat_ai_model_desc)
+                                        },
+                                        options = availableModels.associate { model -> model.name to model.displayName },
+                                        selectedKey = currentAiModel,
+                                        onSelectionChanged = {
+                                            settingsViewModel.onAiModelChange(it)
+                                        },
+                                        leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                }
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_safe_token_title)) {
@@ -581,6 +744,112 @@ fun SettingsCategoryScreen(
                                     onCheckedChange = { settingsViewModel.setAiRecommendationManualOnly(it) },
                                     leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                            }
+
+                            // AI 陪伴
+                            val isCompanionEnabled by settingsViewModel.isCompanionEnabled.collectAsStateWithLifecycle()
+                            val companionVoice by settingsViewModel.companionVoice.collectAsStateWithLifecycle()
+                            val voiceList = com.theveloper.pixelplay.data.ai.MiMoTtsClient.BUILT_IN_VOICES
+                            SettingsSubsection(title = stringResource(R.string.setcat_ai_companion_section)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_ai_companion_title),
+                                    subtitle = stringResource(R.string.setcat_ai_companion_subtitle),
+                                    checked = isCompanionEnabled,
+                                    onCheckedChange = { settingsViewModel.setCompanionEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                if (isCompanionEnabled) {
+                                    // MiMo TTS API Key
+                                    val mimoTtsKey by settingsViewModel.mimoTtsApiKey.collectAsStateWithLifecycle()
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceContainer,
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Text(
+                                                text = "MiMo TTS API Key",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = stringResource(R.string.setcat_ai_companion_mimo_key_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            var ttsKeyText by remember(mimoTtsKey) { mutableStateOf(mimoTtsKey) }
+                                            OutlinedTextField(
+                                                value = ttsKeyText,
+                                                onValueChange = { ttsKeyText = it },
+                                                placeholder = { Text("sk-xxxxx") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true,
+                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                                trailingIcon = {
+                                                    if (ttsKeyText != mimoTtsKey) {
+                                                        IconButton(onClick = { settingsViewModel.setMimoTtsApiKey(ttsKeyText) }) {
+                                                            Icon(Icons.Rounded.Check, contentDescription = "Save", tint = MaterialTheme.colorScheme.primary)
+                                                        }
+                                                    }
+                                                },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                                )
+                                            )
+                                        }
+                                    }
+                                    val currentVoiceName = voiceList.find { it.id == companionVoice }?.displayName ?: companionVoice
+                                    ThemeSelectorItem(
+                                        label = stringResource(R.string.setcat_ai_companion_voice),
+                                        description = currentVoiceName,
+                                        options = voiceList.associate { it.id to it.displayName },
+                                        selectedKey = companionVoice,
+                                        onSelectionChanged = { settingsViewModel.setCompanionVoice(it) },
+                                        leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.primary) }
+                                    )
+                                    // 语速滑块
+                                    val companionSpeed by settingsViewModel.companionSpeed.collectAsStateWithLifecycle()
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceContainer,
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = stringResource(R.string.setcat_ai_companion_speed),
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                val speedText = when {
+                                                    companionSpeed <= 0.5f -> "0.5x"
+                                                    companionSpeed <= 0.75f -> "0.75x"
+                                                    companionSpeed <= 1.0f -> "1x"
+                                                    companionSpeed <= 1.25f -> "1.25x"
+                                                    companionSpeed <= 1.5f -> "1.5x"
+                                                    else -> "2x"
+                                                }
+                                                Text(
+                                                    text = speedText,
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            Slider(
+                                                value = companionSpeed,
+                                                onValueChange = { settingsViewModel.setCompanionSpeed(it) },
+                                                valueRange = 0.5f..2.0f,
+                                                steps = 5,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                         SettingsCategory.WEB_REMOTE -> {
@@ -1305,17 +1574,15 @@ fun SettingsCategoryScreen(
                                 ThemeSelectorItem(
                                     label = stringResource(R.string.music_quality_title),
                                     description = stringResource(R.string.music_quality_subtitle),
-                                    options = MusicQuality.entries.associate { it.name to stringResource(it.labelResId) },
-                                    selectedKey = uiState.musicQuality.name,
+                                    options = uiState.availableMusicQualities.associate { it to MusicQualityCatalog.labelFor(it) },
+                                    selectedKey = uiState.musicQualityValue,
                                     onSelectionChanged = { key ->
-                                        MusicQuality.entries.find { it.name == key }?.let { quality ->
-                                            settingsViewModel.setMusicQuality(quality)
-                                        }
+                                        settingsViewModel.setMusicQuality(key)
                                     },
                                     leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
                                     optionBadge = { key ->
-                                        // 24bit Hi-Res 选项右侧显示 Hi-Res logo
-                                        if (key == MusicQuality.HIRES.name) {
+                                        // Hi-Res 选项（24bit / flac24bit / hires）右侧显示 Hi-Res logo
+                                        if (key == "24bit" || key == "flac24bit" || key == "hires") {
                                             Image(
                                                 painter = painterResource(R.drawable.hires_audio_logo),
                                                 contentDescription = "Hi-Res",
@@ -1645,6 +1912,7 @@ fun SettingsCategoryScreen(
                                     }
                                 )
                             }
+
                         }
                         SettingsCategory.BEHAVIOR -> {
                             val homeTopListEnabled by settingsViewModel.homeTopListEnabled.collectAsStateWithLifecycle()
