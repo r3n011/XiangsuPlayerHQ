@@ -299,19 +299,17 @@ object AppModule {
         return ImageLoader.Builder(context)
             .okHttpClient(okHttpClient)
             .dispatcher(Dispatchers.Default) // Use CPU-bound dispatcher for decoding
-            .allowHardware(true) // Re-enable hardware bitmaps for better performance
+            // 关闭硬件位图：硬件位图的 GPU 缓冲在内存压力/裁剪后会失效，导致
+            // 长会话中封面渐进变成空白（重启恢复正常）。软件位图更稳，代价可忽略。
+            .allowHardware(false)
             .memoryCache {
                 MemoryCache.Builder(context)
-                    // Hard 40 MB cap instead of 20%-of-heap. Rationale:
-                    //  - On large-heap devices (Pixel 8 etc.) the percentage
-                    //    expanded to ~80–100 MB, far beyond what an album-art
-                    //    workload needs.
-                    //  - allowHardware(true) keeps most decoded pixels in GPU
-                    //    memory, so the MemoryCache mostly tracks Bitmap
-                    //    references — 40 MB still buffers ~100+ album arts.
-                    //  - Tighter cap = less GC pressure and less thermal
-                    //    headroom spent on memory pressure during long sessions.
-                    .maxSizeBytes(40 * 1024 * 1024)
+                    // 已从固定 40MB hard cap 恢复为可用堆容量的 20%：
+                    // 之前为了“省内存”把百分比收紧成 40MB，但封面清晰化后
+                    // OptimizedAlbumArt 使用 2048x2048 目标尺寸（约 16MB/张软件位图），
+                    // 40MB 只能装 2–3 张大封面，离开页面再回来时封面被逐出变成空白。
+                    // 20% ~ 大堆设备约 100–200MB，足以长期缓冲几十张大封面且不易 OOM。
+                    .maxSizePercent(0.20)
                     .build()
             }
             .diskCache {

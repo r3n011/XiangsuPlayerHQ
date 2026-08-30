@@ -34,6 +34,7 @@ internal class SheetVerticalDragGestureHandler(
     private val miniHeightPxProvider: () -> Float,
     private val currentSheetStateProvider: () -> PlayerSheetState,
     private val visualOvershootScaleY: Animatable<Float, AnimationVector1D>,
+    private val isFloatingBottomBarProvider: () -> Boolean,
     private val onDraggingChange: (Boolean) -> Unit,
     private val onDraggingPlayerAreaChange: (Boolean) -> Unit,
     private val onAnimateSheet: suspend (
@@ -42,7 +43,8 @@ internal class SheetVerticalDragGestureHandler(
         initialVelocity: Float
     ) -> Unit,
     private val onExpandSheetState: () -> Unit,
-    private val onCollapseSheetState: () -> Unit
+    private val onCollapseSheetState: () -> Unit,
+    private val onFloatingBottomBarCollapse: () -> Unit
 ) {
     private var initialFractionOnDragStart = 0f
     private var initialYOnDragStart = 0f
@@ -97,6 +99,17 @@ internal class SheetVerticalDragGestureHandler(
         val currentFraction = playerContentExpansionFraction.value
         val minDragThresholdPx = with(densityProvider()) { 5.dp.toPx() }
         val velocityThreshold = 150f
+
+        // 悬浮底栏模式：mini player 处于 collapsed 且被下拉（超过阈值或快速下甩）时，
+        // 收起悬浮 mini player 回到封面圆（而非停留在 collapsed 的 squash 回弹）。
+        val isFloatingCollapseDrag = isFloatingBottomBarProvider() &&
+            currentSheetStateProvider() == PlayerSheetState.COLLAPSED &&
+            (accumulatedDragYSinceStart > minDragThresholdPx || verticalVelocity > velocityThreshold)
+        if (isFloatingCollapseDrag) {
+            accumulatedDragYSinceStart = 0f
+            onFloatingBottomBarCollapse()
+            return
+        }
 
         val targetState = resolveVerticalSheetTargetState(
             currentSheetContentState = currentSheetStateProvider(),

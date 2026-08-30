@@ -98,6 +98,7 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.TabletAndroid
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MusicNote
@@ -206,6 +207,7 @@ import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
+import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -1141,6 +1143,19 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
+                                // Tablet player layout option
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_tablet_player_layout_label),
+                                    description = stringResource(R.string.setcat_tablet_player_layout_desc),
+                                    options = mapOf(
+                                        TabletPlayerLayout.VERTICAL.storageKey to stringResource(R.string.setcat_tablet_layout_vertical),
+                                        TabletPlayerLayout.PARALLEL.storageKey to stringResource(R.string.setcat_tablet_layout_parallel)
+                                    ),
+                                    selectedKey = uiState.tabletPlayerLayout.storageKey,
+                                    onSelectionChanged = { key -> settingsViewModel.setTabletPlayerLayout(TabletPlayerLayout.fromStorageKey(key)) },
+                                    leadingIcon = { Icon(Icons.Rounded.TabletAndroid, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
                                 // ⚡ 播放器不透明度（独立设置项：应用到播放器/歌词界面除背景外的所有元素）
                                 Column(
                                     modifier = Modifier
@@ -1469,7 +1484,8 @@ fun SettingsCategoryScreen(
                                     description = stringResource(R.string.setcat_navbar_style_desc),
                                     options = mapOf(
                                         NavBarStyle.DEFAULT to stringResource(R.string.setcat_navbar_style_default),
-                                        NavBarStyle.FULL_WIDTH to stringResource(R.string.setcat_navbar_style_full_width)
+                                        NavBarStyle.FULL_WIDTH to stringResource(R.string.setcat_navbar_style_full_width),
+                                        NavBarStyle.FLOATING to stringResource(R.string.setcat_navbar_style_floating)
                                     ),
                                     selectedKey = uiState.navBarStyle,
                                     onSelectionChanged = { settingsViewModel.setNavBarStyle(it) },
@@ -2211,7 +2227,12 @@ fun SettingsCategoryScreen(
                                         options = mapOf(
                                             "NOW_PLAYING" to stringResource(R.string.setcat_glyph_matrix_mode_now_playing),
                                             "VISUALIZER" to stringResource(R.string.setcat_glyph_matrix_mode_visualizer),
-                                            "WAVEFORM" to stringResource(R.string.setcat_glyph_matrix_mode_waveform)
+                                            "WAVEFORM" to stringResource(R.string.setcat_glyph_matrix_mode_waveform),
+                                            "RING" to stringResource(R.string.setcat_glyph_matrix_mode_ring),
+                                            "PULSE" to stringResource(R.string.setcat_glyph_matrix_mode_pulse),
+                                            "ARTWORK" to stringResource(R.string.setcat_glyph_matrix_mode_artwork),
+                                            "TITLE" to stringResource(R.string.setcat_glyph_matrix_mode_scroll_title),
+                                            "PROGRESS" to stringResource(R.string.setcat_glyph_matrix_mode_progress)
                                         ),
                                         selectedKey = uiState.glyphMatrixDisplayMode,
                                         onSelectionChanged = { settingsViewModel.setGlyphMatrixDisplayMode(it) },

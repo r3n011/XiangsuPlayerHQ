@@ -1,10 +1,16 @@
 package com.theveloper.pixelplay.data.ai.provider
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -158,6 +164,90 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
                         responseBody = responseBody,
                         requestedModel = resolvedModel
                     )
+                }
+            } catch (e: Exception) {
+                throw AiProviderSupport.wrapThrowable("Gemini", e, resolvedModel)
+            }
+        }
+    }
+
+    override fun generateContentStream(
+        model: String,
+        systemPrompt: String,
+        prompt: String,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        maxTokens: Int,
+        presencePenalty: Float,
+        frequencyPenalty: Float
+    ): Flow<String> = flow {
+        withContext(Dispatchers.IO) {
+            val resolvedModel = model.ifBlank { DEFAULT_GEMINI_MODEL }
+
+            val requestBody = GenerateRequest(
+                contents = listOf(Content(role = "user", parts = listOf(Part(prompt)))),
+                systemInstruction = systemPrompt
+                    .takeIf { it.isNotBlank() }
+                    ?.let { Content(parts = listOf(Part(it))) },
+                generationConfig = GenerationConfig(
+                    temperature = temperature.toDouble(),
+                    topK = topK,
+                    topP = topP.toDouble(),
+                    maxOutputTokens = maxTokens,
+                    presencePenalty = presencePenalty.toDouble().takeIf { it != 0.0 },
+                    frequencyPenalty = frequencyPenalty.toDouble().takeIf { it != 0.0 }
+                )
+            )
+
+            val jsonBody = json.encodeToString(GenerateRequest.serializer(), requestBody)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url("$BASE_URL/models/$resolvedModel:streamGenerateContent?alt=sse")
+                .addHeader("x-goog-api-key", apiKey)
+                .addHeader("Content-Type", "application/json")
+                .post(body)
+                .build()
+
+            try {
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw AiProviderSupport.createException(
+                            providerName = "Gemini",
+                            statusCode = response.code,
+                            transportMessage = response.message,
+                            responseBody = response.body?.string().orEmpty(),
+                            requestedModel = resolvedModel
+                        )
+                    }
+                    val reader = response.body?.charStream()?.buffered()
+                        ?: throw AiProviderSupport.createException(
+                            providerName = "Gemini",
+                            statusCode = response.code,
+                            transportMessage = "Streaming response had no body",
+                            responseBody = "",
+                            requestedModel = resolvedModel
+                        )
+                    while (true) {
+                        val line = reader.readLine() ?: break
+                        val trimmed = line.trim()
+                        if (trimmed.isEmpty() || !trimmed.startsWith("data:")) continue
+                        val data = trimmed.removePrefix("data:").trim()
+                        if (data.isEmpty()) continue
+                        runCatching {
+                            val obj = Json.parseToJsonElement(data).jsonObject
+                            val candidates = obj["candidates"]?.jsonArray ?: return@runCatching
+                            for (candidate in candidates) {
+                                val parts = candidate.jsonObject["content"]?.jsonObject
+                                    ?.get("parts")?.jsonArray ?: continue
+                                for (part in parts) {
+                                    val text = part.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: continue
+                                    if (text.isNotEmpty()) emit(text)
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 throw AiProviderSupport.wrapThrowable("Gemini", e, resolvedModel)

@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.data.ai.provider
 
+import kotlinx.coroutines.flow.Flow
+
 /**
  * Abstract interface for AI providers
  * Defines common operations for text generation and metadata completion
@@ -17,6 +19,23 @@ interface AiClient {
         presencePenalty: Float = 0.0f,
         frequencyPenalty: Float = 0.0f
     ): String
+
+    /**
+     * Stream text generation as a cold [Flow] of incremental chunks.
+     * Providers that support SSE streaming should override this; otherwise a
+     * non-stream fallback emits the whole result at once.
+     */
+    fun generateContentStream(
+        model: String,
+        systemPrompt: String,
+        prompt: String,
+        temperature: Float = 0.7f,
+        topP: Float = 0.95f,
+        topK: Int = 64,
+        maxTokens: Int = 4096,
+        presencePenalty: Float = 0.0f,
+        frequencyPenalty: Float = 0.0f
+    ): Flow<String>
     
     /**
      * Estimate or count tokens for a given prompt

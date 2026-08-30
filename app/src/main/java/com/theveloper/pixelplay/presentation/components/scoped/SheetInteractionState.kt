@@ -46,6 +46,7 @@ internal fun rememberSheetInteractionState(
     playerContentActualBottomRadiusProvider: () -> Dp,
     useSmoothCorners: Boolean,
     isDragging: Boolean,
+    isFloatingBottomBar: Boolean,
     onAnimateSheet: suspend (
         targetExpanded: Boolean,
         animationSpec: AnimationSpec<Float>?,
@@ -54,7 +55,8 @@ internal fun rememberSheetInteractionState(
     onExpandSheetState: () -> Unit,
     onCollapseSheetState: () -> Unit,
     onDraggingChange: (Boolean) -> Unit,
-    onDraggingPlayerAreaChange: (Boolean) -> Unit
+    onDraggingPlayerAreaChange: (Boolean) -> Unit,
+    onFloatingBottomBarCollapse: () -> Unit = {}
 ): SheetInteractionState {
     val useSmoothCornersState = rememberUpdatedState(useSmoothCorners)
     val isDraggingState = rememberUpdatedState(isDragging)
@@ -101,6 +103,8 @@ internal fun rememberSheetInteractionState(
     val onCollapseSheetStateState = rememberUpdatedState(onCollapseSheetState)
     val onDraggingChangeState = rememberUpdatedState(onDraggingChange)
     val onDraggingPlayerAreaChangeState = rememberUpdatedState(onDraggingPlayerAreaChange)
+    val isFloatingBottomBarState = rememberUpdatedState(isFloatingBottomBar)
+    val onFloatingBottomBarCollapseState = rememberUpdatedState(onFloatingBottomBarCollapse)
 
     val sheetVerticalDragGestureHandler = remember(
         scope,
@@ -122,13 +126,15 @@ internal fun rememberSheetInteractionState(
             miniHeightPxProvider = { miniHeightState.value },
             currentSheetStateProvider = { currentSheetState.value },
             visualOvershootScaleY = visualOvershootScaleY,
+            isFloatingBottomBarProvider = { isFloatingBottomBarState.value },
             onDraggingChange = { onDraggingChangeState.value(it) },
             onDraggingPlayerAreaChange = { onDraggingPlayerAreaChangeState.value(it) },
             onAnimateSheet = { targetExpanded, animationSpec, initialVelocity ->
                 onAnimateSheetState.value(targetExpanded, animationSpec, initialVelocity)
             },
             onExpandSheetState = { onExpandSheetStateState.value() },
-            onCollapseSheetState = { onCollapseSheetStateState.value() }
+            onCollapseSheetState = { onCollapseSheetStateState.value() },
+            onFloatingBottomBarCollapse = { onFloatingBottomBarCollapseState.value() }
         )
     }
 

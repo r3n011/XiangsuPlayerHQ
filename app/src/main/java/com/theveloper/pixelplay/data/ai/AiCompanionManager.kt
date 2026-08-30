@@ -9,6 +9,7 @@ import android.media.MediaPlayer
 import android.net.Uri
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
+import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,13 +38,20 @@ class AiCompanionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val ttsClient: MiMoTtsClient,
     private val aiOrchestrator: AiOrchestrator,
-    private val preferencesRepo: AiPreferencesRepository
+    private val preferencesRepo: AiPreferencesRepository,
+    private val dualPlayerEngine: DualPlayerEngine
 ) {
     companion object {
         private const val TAG = "AiCompanionManager"
-        // 软件开启播放的第一首歌固定台词，不走 AI 生成（带歌名）
-        private fun firstSongIntro(song: Song) =
-            "我是粽子，你的私人音乐陪伴。我们今天来听《${song.title}》"
+        // 软件开启播放的第一首歌固定台词，不走 AI 生成（带歌名），每次随机挑选一种
+        private fun firstSongIntro(song: Song): String = listOf(
+            "你好呀，我是粽子，你的私人电台 DJ。今晚我们第一站，就来听《${song.title}》，把它当作我们之间的小小开场白吧。",
+            "哈喽，我是你的专属电台 DJ 粽子！今晚的音乐之旅，就从《${song.title}》开始吧，希望它能给你带来好心情～",
+            "欢迎收听粽子的私人电台～第一首歌，我们一起来听《${song.title}》，让它成为今晚美好的开端。",
+            "嗨，我是粽子！很高兴能陪你听歌，今天第一首为你播的是《${song.title}》，一起沉浸其中吧。",
+            "这里是粽子的深夜电台，感谢你的收听。第一站，为你奉上《${song.title}》，愿这段旋律能抚平今天的疲惫。",
+            "粽子来啦～新的一天从好歌开始，第一首送上《${song.title}》，准备好了吗？我们一起出发。"
+        ).random()
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -64,6 +72,14 @@ class AiCompanionManager @Inject constructor(
     private var pendingCommentSongId: String? = null
     private var prefetchJob: Job? = null
     private val prefetchLeadMillis = 20_000L
+
+    // ── 自然播完前的 AI 陪伴时序 ──
+    // 上一首播到末尾前 [companionStartLeadMs] 就开始渐出并播放 AI；
+    // AI 播到还剩 [companionFadeInBeforeEndMs] 时渐入下一首。
+    private val companionStartLeadMs = 5_000L
+    private val companionFadeInBeforeEndMs = 8_000L
+    /** 提前播一首的陪伴（在歌曲结束前触发）的任务 */
+    private var companionAheadJob: Job? = null
 
     /**
      * 切歌时调用 — 生成衔接语并通过流式 TTS 播放
@@ -108,6 +124,7 @@ class AiCompanionManager @Inject constructor(
 
         // 真实切歌：取消上一首遗留的预生成任务（手动切歌也会走这里，从而跳过预生成）
         prefetchJob?.cancel()
+        companionAheadJob?.cancel()
         playbackJob?.cancel()
         playbackJob = scope.launch {
             try {
@@ -179,6 +196,61 @@ class AiCompanionManager @Inject constructor(
         }
     }
 
+    /**
+     * 在上一首自然播放到末尾前约 [companionStartLeadMs] 时，提前开始 AI 陪伴：
+     * 上一曲在这个窗口内渐出，AI 开播；AI 播到还剩 [companionFadeInBeforeEndMs] 时渐入下一曲。
+     * 仅用于"自然播完"，手动切歌会触发 onSongTransition 并取消本任务。
+     *
+     * @param currentSong 正在播放、即将自然结束的上一首
+     * @param nextSong    结束后要播的下一首（AI 开场要预告的衔接目标）
+     */
+    fun scheduleCompanionAhead(
+        currentSong: Song,
+        nextSong: Song?,
+        durationMillis: Long
+    ) {
+        companionAheadJob?.cancel()
+        if (nextSong == null || durationMillis <= companionStartLeadMs) return
+        val delayMs = (durationMillis - companionStartLeadMs).coerceAtLeast(0L)
+        companionAheadJob = scope.launch {
+            delay(delayMs)
+            if (!isActive) return@launch
+            // 上一首播到最后 5s：渐出并开播 AI（衔接 currentSong → nextSong）
+            playCompanionAhead(currentSong, nextSong)
+        }
+    }
+
+    /** 在歌曲结束前提前播放 AI 陪伴（承接 scheduleCompanionAhead 的触发体） */
+    private suspend fun playCompanionAhead(prevSong: Song?, targetSong: Song) {
+        try {
+            val isEnabled = preferencesRepo.isCompanionEnabled.first()
+            if (!isEnabled) return
+            val mimoKey = preferencesRepo.mimoApiKey.first()
+            if (mimoKey.isBlank()) return
+            val voiceId = preferencesRepo.companionVoice.first()
+            val speed = preferencesRepo.companionSpeed.first()
+
+            val text = if (pendingCommentSongId == targetSong.id && !pendingComment.isNullOrBlank()) {
+                val cached = pendingComment
+                pendingComment = null
+                pendingCommentSongId = null
+                cached
+            } else {
+                generateTransition(prevSong, targetSong)
+            }
+            if (text.isNullOrBlank()) return
+            // 提前标记，避免真正的 onSongTransition 重复触发同一首的陪伴
+            lastSongId = targetSong.id
+            _currentComment.value = text
+            // 渐出取较长时长（约 4.5s），贴合"末尾 5s 渐出"的听感
+            playStreaming(mimoKey, text, voiceId, speed, fadeOutMs = 4_500L)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Companion ahead failed")
+        } finally {
+            _currentComment.value = null
+        }
+    }
+
     /** 预览指定音色（非流式，简短文本） */
     suspend fun previewVoice(apiKey: String, voiceId: String): ByteArray? {
         return ttsClient.synthesize(
@@ -228,8 +300,16 @@ class AiCompanionManager @Inject constructor(
 
     // ─── 流式播放核心 ─────────────────────────────────────────────
 
-    private suspend fun playStreaming(apiKey: String, text: String, voiceId: String, speed: Float = 1.0f) {
+    private suspend fun playStreaming(
+        apiKey: String,
+        text: String,
+        voiceId: String,
+        speed: Float = 1.0f,
+        fadeOutMs: Long = 450L
+    ) {
         withContext(Dispatchers.Main) { _isPlaying.value = true }
+        // AI 电台：AI 开播前音乐渐出（闪避到低电平），保持背景底噪而非静音
+        dualPlayerEngine.setCompanionDucked(true, fadeOutMs = fadeOutMs)
 
         try {
             val sampleRate = MiMoTtsClient.PCM_SAMPLE_RATE
@@ -286,6 +366,13 @@ class AiCompanionManager @Inject constructor(
             if (totalBytes > 0) {
                 // flush 不适用于 STREAM 模式，等待 buffer 播完
                 val estimatedDurationMs = (totalBytes * 1000L) / (sampleRate * 2) // 16bit mono
+                // 渐入下一首：AI 还剩 [companionFadeInBeforeEndMs] 时提前恢复音乐（不等 AI 完全结束）
+                if (estimatedDurationMs > companionFadeInBeforeEndMs + 200L) {
+                    scope.launch {
+                        delay(estimatedDurationMs - companionFadeInBeforeEndMs)
+                        dualPlayerEngine.setCompanionDucked(false)
+                    }
+                }
                 kotlinx.coroutines.delay(estimatedDurationMs + 200)
             }
 
@@ -296,11 +383,14 @@ class AiCompanionManager @Inject constructor(
             Timber.tag(TAG).e(e, "Streaming playback failed")
             stopPlayback()
         } finally {
+            // AI 电台：播报结束，音乐渐入恢复（若已被上面提前渐入，此处幂等到达最终音量）
+            dualPlayerEngine.setCompanionDucked(false)
             withContext(Dispatchers.Main) { _isPlaying.value = false }
         }
     }
 
     private fun stopPlayback() {
+        dualPlayerEngine.setCompanionDucked(false)
         try {
             audioTrack?.let {
                 try { it.pause() } catch (_: Exception) {}
@@ -316,8 +406,15 @@ class AiCompanionManager @Inject constructor(
 
     private suspend fun generateTransition(previousSong: Song?, currentSong: Song): String? {
         return try {
-            val prevInfo = if (previousSong != null) "《${previousSong.title}》" else "开始"
-            val prompt = "从${prevInfo}自然过渡到《${currentSong.title}》(${currentSong.artist})，说一句简短衔接语。不超过30字，不加引号。"
+            val prevName = previousSong?.title ?: ""
+            val prevInfo = if (previousSong != null) "《${previousSong.title}》" else "开场"
+            val prompt = buildString {
+                append("你是一档私人电台的暖场 DJ“粽子”。从${prevInfo}自然过渡到现在的《${currentSong.title}》(${currentSong.artist})，")
+                append("来一段有温度的话作为听众的私人点播开场。唠会儿嗑：")
+                if (prevName.isNotBlank()) append("顺口说说听完《$prevName》后的感受，")
+                append("再说说《${currentSong.title}》适合什么时刻、什么心情听。像朋友深夜分享歌单那样自然亲切，不要正式、不要说教。")
+                append("控制在60到100字，直接说内容即可，不要加引号、不要写“粽子说：”这类前缀。")
+            }
             // 只使用「AI 集成」设置里配置的主 provider（如 CUSTOM），不做无意义的空 provider 兜底
             aiOrchestrator.generateWithPrimaryProvider(
                 prompt = prompt,

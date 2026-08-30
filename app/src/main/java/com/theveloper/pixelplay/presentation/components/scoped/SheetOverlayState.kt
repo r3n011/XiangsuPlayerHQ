@@ -33,6 +33,7 @@ internal fun rememberSheetOverlayState(
     density: Density,
     showPlayerContentArea: Boolean,
     hideMiniPlayer: Boolean,
+    isSheetExpanded: Boolean,
     showQueueSheet: Boolean,
     isQueueCollapsing: Boolean,
     queueHiddenOffsetPx: Float,
@@ -54,8 +55,11 @@ internal fun rememberSheetOverlayState(
             }
     }
 
-    val shouldShowSheet by remember(showPlayerContentArea, hideMiniPlayer) {
-        derivedStateOf { showPlayerContentArea && !hideMiniPlayer }
+    // 悬浮/隐藏 mini player 时，折叠态不渲染 sheet 内容（避免空容器挡住页面点击）。
+    // 但一旦播放器被显式展开（isSheetExpanded），必须无条件渲染，否则点击封面展开
+    // 时只剩 MainActivity 的 scrim 模糊层，播放器 Surface 因提前 return 而缺失。
+    val shouldShowSheet by remember(showPlayerContentArea, hideMiniPlayer, isSheetExpanded) {
+        derivedStateOf { showPlayerContentArea && (!hideMiniPlayer || isSheetExpanded) }
     }
 
     // Keep the sheet mounted while IME is visible to avoid mini-player flicker/recomposition

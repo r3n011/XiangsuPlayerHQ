@@ -35,6 +35,7 @@ import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
+import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -159,6 +160,7 @@ data class SettingsUiState(
     val transcodeCacheSizeLimitMb: Int = UserPreferencesRepository.DEFAULT_TRANSCODE_CACHE_LIMIT_MB,
     val transcodeAutoCleanupEnabled: Boolean = true,
     val transcodeCleanupThresholdPercent: Int = 80,
+    val tabletPlayerLayout: TabletPlayerLayout = TabletPlayerLayout.VERTICAL,
 )
 
 data class FailedSongInfo(
@@ -204,7 +206,8 @@ private sealed interface SettingsUiUpdate {
         val libraryNavigationMode: String,
         val carouselStyle: String,
         val launchTab: String,
-        val showPlayerFileInfo: Boolean
+        val showPlayerFileInfo: Boolean,
+        val tabletPlayerLayout: TabletPlayerLayout
     ) : SettingsUiUpdate
     
     data class Group2(
@@ -470,7 +473,8 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.libraryNavigationModeFlow,
                 userPreferencesRepository.carouselStyleFlow,
                 userPreferencesRepository.launchTabFlow,
-                userPreferencesRepository.showPlayerFileInfoFlow
+                userPreferencesRepository.showPlayerFileInfoFlow,
+                userPreferencesRepository.tabletPlayerLayoutFlow
             ) { values ->
                 SettingsUiUpdate.Group1(
                     appRebrandDialogShown = values[0] as Boolean,
@@ -493,7 +497,8 @@ class SettingsViewModel @Inject constructor(
                     libraryNavigationMode = values[17] as String,
                     carouselStyle = values[18] as String,
                     launchTab = values[19] as String,
-                    showPlayerFileInfo = values[20] as Boolean
+                    showPlayerFileInfo = values[20] as Boolean,
+                    tabletPlayerLayout = values[21] as TabletPlayerLayout
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -518,7 +523,8 @@ class SettingsViewModel @Inject constructor(
                         libraryNavigationMode = update.libraryNavigationMode,
                         carouselStyle = update.carouselStyle,
                         launchTab = update.launchTab,
-                        showPlayerFileInfo = update.showPlayerFileInfo
+                        showPlayerFileInfo = update.showPlayerFileInfo,
+                        tabletPlayerLayout = update.tabletPlayerLayout
                     )
                 }
             }
@@ -1046,6 +1052,12 @@ class SettingsViewModel @Inject constructor(
     fun setShowPlayerFileInfo(show: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setShowPlayerFileInfo(show)
+        }
+    }
+
+    fun setTabletPlayerLayout(layout: TabletPlayerLayout) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTabletPlayerLayout(layout)
         }
     }
 

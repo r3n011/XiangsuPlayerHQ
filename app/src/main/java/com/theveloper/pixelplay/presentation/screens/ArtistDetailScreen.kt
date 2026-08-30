@@ -134,6 +134,7 @@ fun ArtistDetailScreen(
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
     var showPlaylistBottomSheet by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
+    val isWideScreen = configuration.screenWidthDp >= 840
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val isDarkTheme = LocalPixelPlayDarkTheme.current
@@ -289,11 +290,111 @@ fun ArtistDetailScreen(
                     val showScrollBar by remember(isScrollbarEnabled) {
                         derivedStateOf {
                             isScrollbarEnabled &&
-                            collapseFraction > 0.95f &&
+                            (!isWideScreen && collapseFraction > 0.95f) &&
                                 (lazyListState.canScrollForward || lazyListState.canScrollBackward)
                         }
                     }
 
+                    if (isWideScreen) {
+                        // --- Tablet layout: two-column ---
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            // Left panel: Artist hero
+                            TabletArtistHeroPanel(
+                                artist = artist,
+                                effectiveImageUrl = uiState.effectiveImageUrl,
+                                songsCount = songs.size,
+                                hasCustomImage = !artist.customImageUri.isNullOrBlank(),
+                                onPlayClick = {
+                                    if (songs.isNotEmpty()) {
+                                        playerViewModel.playSongsShuffled(songs, artist.name, startAtZero = true)
+                                    }
+                                },
+                                onShuffleClick = {
+                                    if (songs.isNotEmpty()) {
+                                        playerViewModel.playSongsShuffled(songs, artist.name, startAtZero = true)
+                                    }
+                                },
+                                onChangeImage = { imagePickerLauncher.launch("image/*") },
+                                onClearCustomImage = { viewModel.clearCustomImage() },
+                                onBackPressed = { navController.popBackStack() }
+                            )
+                            // Right panel: Song list
+                            LazyColumn(
+                                state = lazyListState,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .hazeSource(MainActivity.LocalHazeState.current),
+                                contentPadding = PaddingValues(
+                                    top = 16.dp,
+                                    start = 8.dp,
+                                    end = if (showScrollBar) 24.dp else 16.dp,
+                                    bottom = MiniPlayerHeight + systemNavBarInset + 8.dp
+                                )
+                            ) {
+                                albumSections.forEachIndexed { index, section ->
+                                    if (section.songs.isEmpty()) return@forEachIndexed
+                                    val sectionKey = section.collapseKey()
+                                    val isExpanded = expandedSections[sectionKey] ?: true
+                                    val sectionSongs = if (isTransitionFinished) section.songs else section.songs.take(5)
+
+                                    item(key = "${sectionKey}_header", contentType = "artist_section_header") {
+                                        CollapsibleAlbumSectionHeader(
+                                            section = section,
+                                            isExpanded = isExpanded,
+                                            onToggleExpanded = { expandedSections[sectionKey] = !isExpanded },
+                                            onPlayAlbum = {
+                                                section.songs.firstOrNull()?.let { firstSong ->
+                                                    playerViewModel.showAndPlaySong(firstSong, section.songs)
+                                                }
+                                            }
+                                        )
+                                    }
+                                    if (isExpanded) {
+                                        item(key = "${sectionKey}_song_group_spacer", contentType = "artist_section_spacer") {
+                                            Box(
+                                                modifier = Modifier
+                                                    .animateItem(fadeInSpec = tween(durationMillis = 160), fadeOutSpec = tween(durationMillis = 120), placementSpec = tween(durationMillis = 180))
+                                                    .fillMaxWidth()
+                                                    .height(10.dp)
+                                                    .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f))
+                                            )
+                                        }
+                                        itemsIndexed(
+                                            items = sectionSongs,
+                                            key = { songIndex, song -> "${sectionKey}_song_${song.id}_$songIndex" },
+                                            contentType = { _, _ -> "artist_section_song" }
+                                        ) { songIndex, song ->
+                                            ArtistAlbumSectionSongItem(
+                                                modifier = Modifier.animateItem(fadeInSpec = tween(durationMillis = 180), fadeOutSpec = tween(durationMillis = 120), placementSpec = tween(durationMillis = 200)),
+                                                song = song,
+                                                songIndex = songIndex,
+                                                songCount = section.songs.size,
+                                                isCurrentSong = stablePlayerState.currentSong?.id == song.id,
+                                                isPlaying = stablePlayerState.isPlaying,
+                                                onSongClick = { playerViewModel.showAndPlaySong(song, section.songs) },
+                                                onMoreOptionsClick = {
+                                                    playerViewModel.selectSongForInfo(song)
+                                                    showSongInfoBottomSheet = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                    item(key = "${sectionKey}_footer", contentType = "artist_section_footer") {
+                                        Spacer(modifier = Modifier.height(if (index == albumSections.lastIndex) 24.dp else 16.dp))
+                                    }
+                                }
+                            }
+                            if (showScrollBar) {
+                                ExpressiveScrollBar(
+                                    listState = lazyListState,
+                                    modifier = Modifier
+                                        .padding(top = 16.dp, bottom = MiniPlayerHeight + systemNavBarInset + 8.dp)
+                                )
+                            }
+                        }
+                    } else {
+                    // --- Phone layout: collapsing header ---
                     LazyColumn(
                         state = lazyListState,
                         modifier = Modifier
@@ -453,6 +554,7 @@ fun ArtistDetailScreen(
                             onClearCustomImage = { viewModel.clearCustomImage() }
                         )
                     }
+                    } // end else (phone layout)
                 }
             }
         }
@@ -987,7 +1089,7 @@ private fun CustomCollapsingTopBar(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(displayUrl)
                             .size(headerImageRequestSize)
-                            .allowHardware(true)
+                            .allowHardware(false)
                             .crossfade(false)
                             .build(),
                         contentDescription = artist.name,
@@ -1124,6 +1226,159 @@ private fun CustomCollapsingTopBar(
                         }
                 ) {
                     Icon(Icons.Rounded.Shuffle, contentDescription = stringResource(R.string.cd_shuffle_play_album))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TabletArtistHeroPanel(
+    artist: Artist,
+    effectiveImageUrl: String?,
+    songsCount: Int,
+    hasCustomImage: Boolean,
+    onPlayClick: () -> Unit,
+    onShuffleClick: () -> Unit,
+    onChangeImage: () -> Unit,
+    onClearCustomImage: () -> Unit,
+    onBackPressed: () -> Unit
+) {
+    var showImageMenu by remember { mutableStateOf(false) }
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val displayUrl = effectiveImageUrl?.takeIf { it.isNotBlank() }
+
+    Surface(
+        modifier = Modifier
+            .width(380.dp)
+            .fillMaxHeight(),
+        color = surfaceColor,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(top = 8.dp)
+                .padding(bottom = MiniPlayerHeight + 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Top bar with back button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilledIconButton(
+                    onClick = onBackPressed,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.auth_cd_back))
+                }
+                Spacer(Modifier.weight(1f))
+                Box {
+                    FilledIconButton(
+                        onClick = { showImageMenu = true },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.presentation_batch_d_edit_artist_image_cd))
+                    }
+                    DropdownMenu(
+                        expanded = showImageMenu,
+                        onDismissRequest = { showImageMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.presentation_batch_d_change_photo)) },
+                            leadingIcon = { Icon(Icons.Rounded.AddAPhoto, contentDescription = null) },
+                            onClick = { showImageMenu = false; onChangeImage() }
+                        )
+                        if (hasCustomImage) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.presentation_batch_d_reset_to_default)) },
+                                leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+                                onClick = { showImageMenu = false; onClearCustomImage() }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Artist image — reduced from 240dp to 160dp
+            Box(
+                modifier = Modifier
+                    .size(160.dp)
+                    .clip(RoundedStarShape(sides = 8, curve = 0.05, rotation = 0f))
+            ) {
+                if (!displayUrl.isNullOrEmpty()) {
+                    SmartImage(
+                        model = displayUrl,
+                        contentDescription = artist.name,
+                        contentScale = ContentScale.Crop,
+                        targetSize = Size(320, 320),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    MusicIconPattern(modifier = Modifier.fillMaxSize())
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Artist name
+            Text(
+                text = artist.name,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.SemiBold,
+                    textGeometricTransform = TextGeometricTransform(scaleX = 1.08f)
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            // Song count
+            Text(
+                text = formatSongCount(songsCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // Play / Shuffle buttons
+            Row(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                LargeExtendedFloatingActionButton(
+                    onClick = onPlayClick,
+                    shape = RoundedStarShape(sides = 8, curve = 0.05, rotation = 0f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text(stringResource(R.string.cd_play), fontWeight = FontWeight.Bold)
+                }
+                LargeExtendedFloatingActionButton(
+                    onClick = onShuffleClick,
+                    shape = RoundedStarShape(sides = 8, curve = 0.05, rotation = 0f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.Shuffle, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("随机", fontWeight = FontWeight.Bold)
                 }
             }
         }

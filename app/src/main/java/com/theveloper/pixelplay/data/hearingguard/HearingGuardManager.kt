@@ -104,7 +104,7 @@ class HearingGuardManager @Inject constructor(
         context.dataStore.edit { prefs ->
             prefs[KEY_CONFIG] = json.encodeToString(config)
         }
-        val plan = calculatePlan(config.gender, config.age)
+        val plan = calculatePlan(config.gender, config.computedAge)
         _state.value = _state.value.copy(
             isConfigured = true,
             config = config,
@@ -175,7 +175,7 @@ class HearingGuardManager @Inject constructor(
         if (configJson != null) {
             try {
                 val config = json.decodeFromString<HearingGuardConfig>(configJson)
-                val plan = calculatePlan(config.gender, config.age)
+                val plan = calculatePlan(config.gender, config.computedAge)
                 val todayMs = loadTodayMs(prefs)
                 _state.value = _state.value.copy(
                     isConfigured = true,

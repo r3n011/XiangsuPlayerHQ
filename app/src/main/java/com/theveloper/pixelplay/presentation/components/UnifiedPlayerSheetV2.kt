@@ -116,7 +116,9 @@ fun UnifiedPlayerSheetV2(
     hideMiniPlayer: Boolean = false,
     isNavBarHidden: Boolean = false,
     navRailPadding: Dp = 0.dp,
-    isLandscape: Boolean = false
+    isLandscape: Boolean = false,
+    isFloatingBottomBar: Boolean = false,
+    onFloatingBottomBarCollapse: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -506,6 +508,7 @@ fun UnifiedPlayerSheetV2(
         density = density,
         showPlayerContentArea = showPlayerContentArea,
         hideMiniPlayer = hideMiniPlayer,
+        isSheetExpanded = currentSheetContentState == PlayerSheetState.EXPANDED,
         showQueueSheet = showQueueSheet,
         isQueueCollapsing = queueSheetState.isCollapsing,
         queueHiddenOffsetPx = queueHiddenOffsetPx,
@@ -585,6 +588,7 @@ fun UnifiedPlayerSheetV2(
         playerContentActualBottomRadiusProvider = playerContentActualBottomRadiusProvider,
         useSmoothCorners = useSmoothCorners,
         isDragging = sheetBackAndDragState.isDragging,
+        isFloatingBottomBar = isFloatingBottomBar,
         onAnimateSheet = { targetExpanded, animationSpec, initialVelocity ->
             animatePlayerSheet(
                 targetExpanded = targetExpanded,
@@ -595,7 +599,8 @@ fun UnifiedPlayerSheetV2(
         onExpandSheetState = { playerViewModel.expandPlayerSheet() },
         onCollapseSheetState = { playerViewModel.collapsePlayerSheet() },
         onDraggingChange = sheetBackAndDragState.onDraggingChange,
-        onDraggingPlayerAreaChange = sheetBackAndDragState.onDraggingPlayerAreaChange
+        onDraggingPlayerAreaChange = sheetBackAndDragState.onDraggingPlayerAreaChange,
+        onFloatingBottomBarCollapse = onFloatingBottomBarCollapse
     )
 
     if (!actuallyShowSheetContent) return

@@ -93,8 +93,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 49
-        versionName = "1.5.2"
+        versionCode = 50
+        versionName = "1.5.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -303,6 +303,7 @@ dependencies {
 
     // Markdown 渲染（关于页更新日志等）
     implementation(libs.markwon)
+    implementation(libs.markwon.image)
 
     // Networking & Serialization
     implementation(libs.retrofit)

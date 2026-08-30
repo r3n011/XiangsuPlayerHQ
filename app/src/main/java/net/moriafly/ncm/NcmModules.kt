@@ -74,7 +74,8 @@ internal object NcmModules {
         offset: Int = 0,
     ): Result<Map<String, Any?>> = withContext(Dispatchers.IO) {
         runCatching {
-            // 对齐原版 module/search.js：POST /api/search/get，type/limit/offset 为数字
+            // 搜索沿用 weapi /api/search/get（新版 cloudsearch/pc 走 eapi，需 header 字段，
+            // 为稳妥起见搜索仍用 weapi，能稳定返回搜索结果）
             val params = linkedMapOf(
                 "s" to keyword,
                 "type" to type,
@@ -104,14 +105,14 @@ internal object NcmModules {
     ): Result<Map<String, Any?>> = withContext(Dispatchers.IO) {
         runCatching {
             val idsParam = ids.joinToString(separator = ",", prefix = "[", postfix = "]") { "\"$it\"" }
-            // 对齐原版 module/song_url_v1.js：默认只传 ids/level/encodeType，level=sky 才加 immerseType
+            // 对齐 api-enhanced module/song_url_v1.js：走 xeapi 加密（新版安卓接口）
             val params = linkedMapOf(
                 "ids" to idsParam,
                 "level" to level,
                 "encodeType" to encodeType,
             )
             if (level == "sky") params["immerseType"] = "c51"
-            NcmRequest.weapi(
+            NcmRequest.xeapi(
                 path = "/api/song/enhance/player/url/v1",
                 params = params,
             ).getOrThrow().body

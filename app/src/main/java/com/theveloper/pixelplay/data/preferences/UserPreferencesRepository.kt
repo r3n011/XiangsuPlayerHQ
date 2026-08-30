@@ -83,6 +83,21 @@ enum class MusicQuality(val lxValue: String, val neteaseLevel: String, val label
 }
 
 /**
+ * 平板播放器布局模式。
+ * - [VERTICAL]：传统垂直布局（封面在上，控制在下）
+ * - [PARALLEL]：平行布局（左侧播放器，右侧歌词）
+ */
+enum class TabletPlayerLayout(val storageKey: String) {
+    VERTICAL("vertical"),
+    PARALLEL("parallel");
+
+    companion object {
+        fun fromStorageKey(key: String?): TabletPlayerLayout =
+            entries.firstOrNull { it.storageKey == key } ?: VERTICAL
+    }
+}
+
+/**
  * 在线音源音质目录：识别音源脚本注册的 qualitys（音源实际支持的音质），
  * 而不是硬编码固定档位。用于音质设置选项动态化 + 播放时按音源向下匹配。
  */
@@ -396,12 +411,18 @@ class UserPreferencesRepository @Inject constructor(
         val GLYPH_MATRIX_ENABLED = booleanPreferencesKey("glyph_matrix_enabled")
         val GLYPH_MATRIX_DISPLAY_MODE = stringPreferencesKey("glyph_matrix_display_mode")
 
+        // AI Mix 历史记录（JSON）
+        val AI_MIX_HISTORY = stringPreferencesKey("ai_mix_history_v1")
+
         // Lyrics vibrant background
         val LYRICS_VIBRANT_BACKGROUND_ENABLED = booleanPreferencesKey("lyrics_vibrant_background_enabled")
 
         // Download settings
         val DOWNLOAD_PATH = stringPreferencesKey("download_path")
         val DOWNLOADS_INDEX_JSON = stringPreferencesKey("downloads_index_json_v1")
+
+        // Tablet player layout
+        val TABLET_PLAYER_LAYOUT = stringPreferencesKey("tablet_player_layout")
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────
@@ -713,6 +734,15 @@ class UserPreferencesRepository @Inject constructor(
     /** Removes the deprecated player sheet V2 preference key. */
     suspend fun clearDeprecatedPlayerSheetPreference() {
         dataStore.edit { it.remove(PreferencesKeys.USE_PLAYER_SHEET_V2) }
+    }
+
+    // ─── Tablet player layout ─────────────────────────────────────────────────
+
+    val tabletPlayerLayoutFlow: Flow<TabletPlayerLayout> =
+        pref { TabletPlayerLayout.fromStorageKey(it[PreferencesKeys.TABLET_PLAYER_LAYOUT]) }
+
+    suspend fun setTabletPlayerLayout(layout: TabletPlayerLayout) {
+        dataStore.edit { it[PreferencesKeys.TABLET_PLAYER_LAYOUT] = layout.storageKey }
     }
 
     // ─── Transitions ──────────────────────────────────────────────────────────
@@ -1860,6 +1890,14 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setGlyphMatrixDisplayMode(mode: String) {
         dataStore.edit { it[PreferencesKeys.GLYPH_MATRIX_DISPLAY_MODE] = mode }
+    }
+
+    // AI Mix 历史记录
+    suspend fun getAiMixHistoryOnce(): String =
+        dataStore.data.first()[PreferencesKeys.AI_MIX_HISTORY] ?: "[]"
+
+    suspend fun setAiMixHistory(json: String) {
+        dataStore.edit { it[PreferencesKeys.AI_MIX_HISTORY] = json }
     }
 
     suspend fun clearDotCredentials() {

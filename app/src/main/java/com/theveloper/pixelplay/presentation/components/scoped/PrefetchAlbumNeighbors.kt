@@ -96,7 +96,7 @@ fun PrefetchAlbumNeighbors(
                             }
                             .diskCachePolicy(diskPolicy)
                             .networkCachePolicy(coil.request.CachePolicy.ENABLED)
-                            .allowHardware(true)
+                            .allowHardware(false)
                             .build()
                         imageLoader.enqueue(req) // fire-and-forget
                     }

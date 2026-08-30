@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -27,6 +28,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,6 +48,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -59,12 +63,21 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -99,6 +112,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -122,15 +136,23 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.FormatAlignCenter
+import androidx.compose.material.icons.rounded.FormatAlignLeft
+import androidx.compose.material.icons.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.res.stringResource
 import androidx.media3.common.Player
@@ -149,6 +171,7 @@ import com.theveloper.pixelplay.presentation.components.AlbumCarouselSection
 import com.theveloper.pixelplay.presentation.components.AutoScrollingTextOnDemand
 import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
 import com.theveloper.pixelplay.presentation.components.LocalMaterialTheme
+import com.theveloper.pixelplay.presentation.components.lyricsSheetColors
 import com.theveloper.pixelplay.presentation.components.LyricsSheet
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSmoothProgress
@@ -158,6 +181,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 import com.theveloper.pixelplay.presentation.viewmodel.RadioViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat
 import com.theveloper.pixelplay.utils.LyricsImportFailureReason
@@ -176,8 +200,20 @@ import kotlin.math.roundToLong
 import com.theveloper.pixelplay.presentation.components.WavySliderExpressive
 import com.theveloper.pixelplay.presentation.components.ToggleSegmentButton
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
+import com.theveloper.pixelplay.data.preferences.dataStore
+import androidx.compose.foundation.verticalScroll
+import com.theveloper.pixelplay.presentation.components.SyncedLyricsList
+import com.theveloper.pixelplay.presentation.components.PlainLyricsLine
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -339,6 +375,8 @@ fun FullPlayerContent(
     val lyricsSolidOverlayAlpha by playerViewModel.lyricsSolidOverlayAlpha.collectAsStateWithLifecycle()
     val lyricsVibrantBackgroundEnabled by playerViewModel.lyricsVibrantBackgroundEnabled.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
+    // Tablet player layout preference
+    val tabletPlayerLayout by playerViewModel.tabletPlayerLayout.collectAsStateWithLifecycle()
     val gradientEdgeColor by androidx.compose.animation.animateColorAsState(
         targetValue = LocalMaterialTheme.current.primaryContainer,
         animationSpec = tween(durationMillis = 400),
@@ -1219,7 +1257,84 @@ fun FullPlayerContent(
                     .fillMaxSize()
                     .graphicsLayer { alpha = contentAlpha * (customPlayerControlsOpacity / 100f) }
             ) {
-                if (isLandscape) {
+                // Check if we should use parallel layout on tablet
+                val configuration = LocalConfiguration.current
+                val isTablet = configuration.screenWidthDp >= 840
+                val useParallelLayout = isTablet && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+
+                // 平行布局歌词设置卡片状态（在调用方管理，以便 metadata 歌词按钮可切换）
+                var showParallelLyricsSettings by remember { mutableStateOf(false) }
+
+                if (useParallelLayout) {
+                    // 平行布局专用 metadata section：隐藏歌词按钮（歌词面板右下角有设置入口）
+                    val parallelSongMetadataSection: @Composable () -> Unit = {
+                        FullPlayerSongMetadataSection(
+                            song = song,
+                            currentSongArtists = currentSongArtists,
+                            loadingTweaks = loadingTweaks,
+                            isSheetDragGestureActive = isSheetDragGestureActive,
+                            expansionFractionProvider = expansionFractionProvider,
+                            currentSheetState = currentSheetState,
+                            currentQueueSourceName = currentQueueSourceName,
+                            placeholderColor = placeholderColor,
+                            placeholderOnColor = placeholderOnColor,
+                            isLandscape = false,
+                            isRadioPlayback = isRadioPlayback,
+                            showLyricsButton = false,
+                            onLyricsClick = { },
+                            onCommentClick = onCommentClick,
+                            playerOnBaseColor = playerOnBaseColor,
+                            playerViewModel = playerViewModel,
+                            gradientEdgeColor = gradientEdgeColor,
+                            chipColor = playerOnAccentColor.copy(alpha = 0.8f),
+                            chipContentColor = playerAccentColor,
+                            onQueueClick = onSongMetadataQueueClick,
+                            onArtistClick = onSongMetadataArtistClick,
+                            isPlayingProvider = isPlayingProvider
+                        )
+                    }
+
+                    // Parallel layout: player on left, lyrics on right
+                    FullPlayerParallelLayout(
+                        paddingValues = paddingValues,
+                        albumCoverSection = albumCoverSection,
+                        songMetadataSection = parallelSongMetadataSection,
+                        showLyricsSettings = showParallelLyricsSettings,
+                        onToggleLyricsSettings = { showParallelLyricsSettings = !showParallelLyricsSettings },
+                        playerProgressSection = playerProgressSection,
+                        controlsSection = controlsSection,
+                        isRadioPlayback = isRadioPlayback,
+                        showLyricsSheet = showLyricsSheet,
+                        playerViewModel = playerViewModel,
+                        lyricsSearchUiState = lyricsSearchUiState,
+                        lyricsSyncOffset = lyricsSyncOffset,
+                        lyricsFontFamily = lyricsFontFamily,
+                        customPlayerBackgroundEnabled = customPlayerBackgroundEnabled,
+                        customPlayerBackgroundUri = customPlayerBackgroundUri,
+                        customPlayerBackgroundMode = customPlayerBackgroundMode,
+                        customPlayerBackgroundBlurRadius = customPlayerBackgroundBlurRadius,
+                        customPlayerControlsOpacity = customPlayerControlsOpacity,
+                        lyricsGradientOverlayEnabled = lyricsGradientOverlayEnabled,
+                        lyricsSolidOverlayAlpha = lyricsSolidOverlayAlpha,
+                        lyricsVibrantBackgroundEnabled = lyricsVibrantBackgroundEnabled,
+                        immersiveLyricsEnabled = immersiveLyricsEnabled,
+                        immersiveLyricsTimeout = immersiveLyricsTimeout,
+                        isImmersiveTemporarilyDisabled = isImmersiveTemporarilyDisabled,
+                        isShuffleEnabled = isShuffleEnabled,
+                        repeatMode = repeatMode,
+                        isFavoriteProvider = isFavoriteProvider,
+                        onShuffleToggle = onShuffleToggle,
+                        onRepeatToggle = onRepeatToggle,
+                        onFavoriteToggle = onFavoriteToggle,
+                        onNext = onNext,
+                        onPrevious = onPrevious,
+                        showLyricsTrackInfo = fullPlayerSlice.showLyricsTrackInfo,
+                        isExplainingLyrics = isExplainingLyrics,
+                        lyricsExplanation = lyricsExplanation,
+                        lyricsExplanationEnabled = isLyricsExplanationGloballyEnabled || isLyricsExplanationSessionEnabled,
+                        onDismissExplanation = { playerViewModel.clearLyricsExplanation() }
+                    )
+                } else if (isLandscape) {
                     FullPlayerLandscapeContent(
                         paddingValues = paddingValues,
                         albumCoverSection = albumCoverSection,
@@ -1241,6 +1356,11 @@ fun FullPlayerContent(
             }
         }
     }
+    // Only show lyrics sheet overlay when NOT in parallel layout
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 840
+    val useParallelLayout = isTablet && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+    if (!useParallelLayout) {
     AnimatedVisibility(
         visible = showLyricsSheet,
         enter = slideInVertically(
@@ -1309,6 +1429,7 @@ fun FullPlayerContent(
             lyricsVibrantBackgroundEnabled = lyricsVibrantBackgroundEnabled
         )
     }
+    } // end if (!useParallelLayout)
 
     AnimatedVisibility(
         visible = showCommentSheet,
@@ -1798,6 +1919,7 @@ private fun FullPlayerSongMetadataSection(
     placeholderOnColor: Color,
     isLandscape: Boolean,
     isRadioPlayback: Boolean = false,
+    showLyricsButton: Boolean = true,
     onLyricsClick: () -> Unit,
     onCommentClick: () -> Unit,
     playerOnBaseColor: Color,
@@ -1840,6 +1962,7 @@ private fun FullPlayerSongMetadataSection(
             modifier = Modifier
                 .padding(start = 0.dp),
             onClickLyrics = onLyricsClick,
+            showLyricsButton = showLyricsButton,
             onClickComment = onCommentClick,
             isRadioPlayback = isRadioPlayback,
             song = song,
@@ -2077,6 +2200,7 @@ private fun SongMetadataDisplaySection(
     chipColor: Color,
     chipContentColor: Color,
     onClickLyrics: () -> Unit,
+    showLyricsButton: Boolean = true,
     showQueueButton: Boolean,
     onClickQueue: () -> Unit,
     onClickArtist: () -> Unit,
@@ -2203,7 +2327,7 @@ private fun SongMetadataDisplaySection(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isRadioPlayback) {
+                if (!isRadioPlayback && showLyricsButton) {
                     Box(
                         modifier = Modifier
                             .size(height = 42.dp, width = 50.dp)
@@ -2287,19 +2411,21 @@ private fun SongMetadataDisplaySection(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilledIconButton(
-                        modifier = Modifier
-                            .size(width = 48.dp, height = 48.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = chipColor,
-                            contentColor = chipContentColor
-                        ),
-                        onClick = onClickLyrics,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.rounded_lyrics_24),
-                            contentDescription = stringResource(R.string.presentation_batch_g_player_cd_lyrics)
-                        )
+                    if (showLyricsButton) {
+                        FilledIconButton(
+                            modifier = Modifier
+                                .size(width = 48.dp, height = 48.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = chipColor,
+                                contentColor = chipContentColor
+                            ),
+                            onClick = onClickLyrics,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.rounded_lyrics_24),
+                                contentDescription = stringResource(R.string.presentation_batch_g_player_cd_lyrics)
+                            )
+                        }
                     }
                     if (canShowComment) {
                         FilledIconButton(
@@ -2782,16 +2908,24 @@ private fun EfficientTimeLabels(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (isHiRes) {
-                        // ⚡ Hi-Res 认证徽标：tint 跟随文字颜色自动切换黑白（深色主题白、浅色主题黑），
-                        //    替代原金色 "Hi-Res" 文字标签与 PNG logo。
+                        // ⚡ Hi-Res 认证指示：左侧认证圆点 + 徽标（徽标缩小并垂直对齐文字中线，避免偏大偏下）
                         Spacer(modifier = Modifier.width(6.dp))
-                        Image(
-                            painter = painterResource(R.drawable.hires_audio_badge),
-                            contentDescription = "Hi-Res",
-                            colorFilter = ColorFilter.tint(textColor),
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.size(width = 28.dp, height = 12.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .clip(CircleShape)
+                                    .background(textColor)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Image(
+                                painter = painterResource(R.drawable.hires_audio_badge),
+                                contentDescription = "Hi-Res",
+                                colorFilter = ColorFilter.tint(textColor),
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.size(width = 19.dp, height = 8.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -3950,6 +4084,586 @@ private fun RadioLiveBadge(
                 letterSpacing = 0.5.sp,
                 color = chipContentColor
             )
+        }
+    }
+}
+
+/**
+ * Parallel layout for tablets: player controls on left, lyrics on right.
+ * Left side is scrollable to prevent overflow on smaller tablet windows.
+ * Right side only shows lyrics (no controls/search/background).
+ */
+@androidx.annotation.OptIn(UnstableApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FullPlayerParallelLayout(
+    paddingValues: PaddingValues,
+    albumCoverSection: @Composable (Modifier) -> Unit,
+    songMetadataSection: @Composable () -> Unit,
+    playerProgressSection: @Composable () -> Unit,
+    controlsSection: @Composable () -> Unit,
+    isRadioPlayback: Boolean,
+    showLyricsSheet: Boolean,
+    playerViewModel: PlayerViewModel,
+    lyricsSearchUiState: LyricsSearchUiState,
+    lyricsSyncOffset: Int,
+    lyricsFontFamily: String,
+    customPlayerBackgroundEnabled: Boolean,
+    customPlayerBackgroundUri: String?,
+    customPlayerBackgroundMode: com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode,
+    customPlayerBackgroundBlurRadius: Int,
+    customPlayerControlsOpacity: Int,
+    lyricsGradientOverlayEnabled: Boolean,
+    lyricsSolidOverlayAlpha: Float,
+    lyricsVibrantBackgroundEnabled: Boolean,
+    immersiveLyricsEnabled: Boolean,
+    immersiveLyricsTimeout: Long,
+    isImmersiveTemporarilyDisabled: Boolean,
+    isShuffleEnabled: Boolean,
+    repeatMode: Int,
+    isFavoriteProvider: () -> Boolean,
+    onShuffleToggle: () -> Unit,
+    onRepeatToggle: () -> Unit,
+    onFavoriteToggle: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    showLyricsSettings: Boolean = false,
+    onToggleLyricsSettings: () -> Unit = {},
+    showLyricsTrackInfo: Boolean,
+    isExplainingLyrics: Boolean,
+    lyricsExplanation: String?,
+    lyricsExplanationEnabled: Boolean,
+    onDismissExplanation: () -> Unit
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        // Left side: Player controls — scrollable to prevent overflow
+        androidx.compose.foundation.rememberScrollState().let { scrollState ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Album cover — smaller to leave room for controls
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .aspectRatio(1f)
+                        .padding(bottom = 16.dp)
+                ) {
+                    albumCoverSection(Modifier.fillMaxSize())
+                }
+
+                // Song metadata
+                songMetadataSection()
+
+                Spacer(Modifier.height(12.dp))
+
+                // Progress bar
+                playerProgressSection()
+
+                Spacer(Modifier.height(8.dp))
+
+                // Controls
+                controlsSection()
+            }
+        }
+
+        // Divider
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .fillMaxHeight()
+                .padding(vertical = 32.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        )
+
+        // Right side: Lyrics only (no controls/search/background)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            ParallelLyricsPanel(
+                stablePlayerStateFlow = playerViewModel.stablePlayerState,
+                playbackPositionFlow = playerViewModel.currentPlaybackPosition,
+                lyricsSyncOffset = lyricsSyncOffset,
+                onSeekTo = { playerViewModel.seekTo(it) },
+                onMoreClick = onToggleLyricsSettings,
+                gradientOverlayEnabled = lyricsGradientOverlayEnabled
+            )
+
+            // 歌词设置卡片（从右侧底部弹出）
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showLyricsSettings,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                ) {
+                    ParallelLyricsSettingsCard(
+                        playerViewModel = playerViewModel,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 歌词设置卡片（平行布局），与普通模式 LyricsMoreBottomSheet 的外观设置一致。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ParallelLyricsSettingsCard(
+    playerViewModel: PlayerViewModel,
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val fullPlayerSlice by playerViewModel.fullPlayerSlice.collectAsStateWithLifecycle()
+    val lyricsFontFamily by playerViewModel.lyricsFontFamily.collectAsStateWithLifecycle()
+
+    // 读取 DataStore 偏好
+    val lyricsAlignment by remember(context) {
+        context.dataStore.data.map { it[stringPreferencesKey("lyrics_alignment")] ?: "left" }
+    }.collectAsStateWithLifecycle(initialValue = "left")
+
+    val showTranslation by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("show_lyrics_translation")] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    val showRomanization by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("show_romanization")] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    val useAnimatedLyrics by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("use_animated_lyrics")] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    // 获取当前歌词是否有翻译/罗马音
+    val lyrics by playerViewModel.stablePlayerState
+        .map { it.lyrics }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = null)
+    val hasTranslation = lyrics?.synced?.any { !it.translation.isNullOrBlank() } == true
+    val hasRomanization = lyrics?.synced?.any { !it.romanization.isNullOrBlank() } == true
+
+    // 构建字体选项列表：预定义 + 自定义字体
+    var customFontsRefreshTick by remember { mutableStateOf(0) }
+    val currentFontKey by context.dataStore.data
+        .map { it[stringPreferencesKey("lyrics_font_family")] ?: "DEFAULT" }
+        .distinctUntilChanged()
+        .collectAsState(initial = "DEFAULT")
+    val customFonts = remember(customFontsRefreshTick, currentFontKey) {
+        com.theveloper.pixelplay.ui.theme.listCustomFonts(context).map {
+            "${com.theveloper.pixelplay.ui.theme.CUSTOM_FONT_PREFIX}$it"
+        }
+    }
+    val predefinedFonts = com.theveloper.pixelplay.ui.theme.LyricsFontDisplayNames.keys.toList()
+    val allFontFamilies = predefinedFonts + customFonts
+
+    fun fontDisplayName(key: String): String =
+        if (com.theveloper.pixelplay.ui.theme.isCustomFontKey(key))
+            com.theveloper.pixelplay.ui.theme.customFontDisplayName(key)
+        else com.theveloper.pixelplay.ui.theme.LyricsFontDisplayNames[key] ?: key
+
+    val onFontLongClick: (String) -> Unit = { key ->
+        if (com.theveloper.pixelplay.ui.theme.isCustomFontKey(key)) {
+            com.theveloper.pixelplay.ui.theme.deleteCustomFont(context, key)
+            if (lyricsFontFamily == key) {
+                playerViewModel.setLyricsFontFamily("DEFAULT")
+            }
+            customFontsRefreshTick++
+        }
+    }
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // 标题栏 + 关闭按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "歌词设置",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.ExpandLess,
+                        contentDescription = "收起",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // 对齐方式
+            Text(
+                text = "对齐方式",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val alignmentOptions = listOf("left", "center", "right")
+            val alignmentLabels = listOf("左", "中", "右")
+            val alignmentIcons = listOf(Icons.Rounded.FormatAlignLeft, Icons.Rounded.FormatAlignCenter, Icons.Rounded.FormatAlignRight)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                alignmentOptions.forEachIndexed { index, value ->
+                    SegmentedButton(
+                        selected = lyricsAlignment == value,
+                        onClick = {
+                            scope.launch {
+                                context.dataStore.edit { it[stringPreferencesKey("lyrics_alignment")] = value }
+                            }
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index, alignmentOptions.size),
+                        icon = { Icon(alignmentIcons[index], contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        label = { Text(alignmentLabels[index], fontSize = 12.sp) },
+                        modifier = Modifier.height(36.dp)
+                    )
+                }
+            }
+
+            // 字体大小
+            Text(
+                text = "字体大小",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val sizeOptions = listOf("SMALL", "DEFAULT", "LARGE", "EXTRA_LARGE")
+            val sizeLabels = listOf("S", "M", "L", "XL")
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                sizeOptions.forEachIndexed { index, value ->
+                    SegmentedButton(
+                        selected = fullPlayerSlice.lyricsFontSize == value,
+                        onClick = { playerViewModel.setLyricsFontSize(value) },
+                        shape = SegmentedButtonDefaults.itemShape(index, sizeOptions.size),
+                        label = { Text(sizeLabels[index], fontSize = 12.sp) },
+                        modifier = Modifier.height(36.dp)
+                    )
+                }
+            }
+
+            // 字体选择
+            Text(
+                text = "字体",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                maxItemsInEachRow = 3,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                allFontFamilies.forEach { family ->
+                    val isActive = lyricsFontFamily == family
+                    val isDeletable = com.theveloper.pixelplay.ui.theme.isCustomFontKey(family)
+                    val pressProgress = remember { Animatable(0f) }
+                    val dangerColor = MaterialTheme.colorScheme.error
+                    val targetBg = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
+                    val bgColor = lerpColor(targetBg, dangerColor, pressProgress.value)
+                    val targetContent = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    val txtColor = lerpColor(targetContent, Color.White, pressProgress.value)
+                    val corner by animateDpAsState(
+                        targetValue = if (isActive) 50.dp else 12.dp,
+                        animationSpec = spring(stiffness = Spring.StiffnessLow),
+                        label = "FontCorner"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 40.dp)
+                            .clip(RoundedCornerShape(corner))
+                            .background(bgColor)
+                            .pointerInput(isDeletable) {
+                                if (isDeletable) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            pressProgress.animateTo(1f, tween(durationMillis = 600))
+                                            tryAwaitRelease()
+                                            pressProgress.animateTo(0f, tween(durationMillis = 200))
+                                        },
+                                        onTap = { playerViewModel.setLyricsFontFamily(family) },
+                                        onLongPress = { onFontLongClick(family) }
+                                    )
+                                } else {
+                                    detectTapGestures(onTap = { playerViewModel.setLyricsFontFamily(family) })
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = fontDisplayName(family),
+                            color = txtColor,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            softWrap = true,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
+            // 动画歌词
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("动画歌词", style = MaterialTheme.typography.bodyMedium)
+                    Text("逐行高亮动画效果", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = useAnimatedLyrics,
+                    onCheckedChange = {
+                        scope.launch {
+                            context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("use_animated_lyrics")] = it }
+                        }
+                    }
+                )
+            }
+
+            // 翻译
+            if (hasTranslation) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("显示翻译", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = showTranslation,
+                        onCheckedChange = {
+                            scope.launch {
+                                context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("show_lyrics_translation")] = it }
+                            }
+                        }
+                    )
+                }
+            }
+
+            // 罗马音
+            if (hasRomanization) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("显示罗马音", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = showRomanization,
+                        onCheckedChange = {
+                            scope.launch {
+                                context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("show_romanization")] = it }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Lightweight lyrics-only panel for parallel layout.
+ * Shows synced/plain lyrics without background, controls, search, or other extras.
+ */
+@Composable
+private fun ParallelLyricsPanel(
+    stablePlayerStateFlow: StateFlow<StablePlayerState>,
+    playbackPositionFlow: StateFlow<Long>,
+    lyricsSyncOffset: Int,
+    onSeekTo: (Long) -> Unit,
+    onMoreClick: () -> Unit = {},
+    gradientOverlayEnabled: Boolean = true
+) {
+    val lyrics by stablePlayerStateFlow
+        .map { it.lyrics }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = null)
+    val isLoadingLyrics by stablePlayerStateFlow
+        .map { it.isLoadingLyrics }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = false)
+
+    // 使用专辑取色主题（与主歌词页一致）
+    val colorScheme = LocalMaterialTheme.current
+    val sheetColors = remember(colorScheme) { lyricsSheetColors(colorScheme) }
+    val containerColor = sheetColors.container
+    val accentColor = sheetColors.lyricHighlight
+    val textStyle = MaterialTheme.typography.titleLarge
+
+    // Read alignment preference
+    val context = LocalContext.current
+    val lyricsAlignment by remember(context) {
+        context.dataStore.data.map { it[stringPreferencesKey("lyrics_alignment")] ?: "left" }
+    }.collectAsStateWithLifecycle(initialValue = "left")
+
+    val showTranslation by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("show_lyrics_translation")] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    val showRomanization by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("show_romanization")] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    val useAnimatedLyrics by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("use_animated_lyrics")] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    val animatedLyricsBlurEnabled by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("animated_lyrics_blur_enabled")] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    val showSynced = remember(lyrics, isLoadingLyrics) {
+        when {
+            isLoadingLyrics -> null
+            !lyrics?.synced.isNullOrEmpty() -> true
+            !lyrics?.plain.isNullOrEmpty() -> false
+            else -> null
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (showSynced) {
+            null -> {
+                // Loading
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (isLoadingLyrics) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(R.string.loading_lyrics),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            androidx.compose.material3.LinearWavyProgressIndicator(
+                                trackColor = accentColor.copy(alpha = 0.4f),
+                                color = accentColor,
+                                modifier = Modifier.width(100.dp)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(R.string.lyrics_not_found),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            true -> {
+                lyrics?.synced?.let { synced ->
+                    val syncedListState = rememberLazyListState()
+                    SyncedLyricsList(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        contentPadding = PaddingValues(top = 80.dp, bottom = 80.dp),
+                        lines = synced,
+                        listState = syncedListState,
+                        playbackPositionFlow = playbackPositionFlow,
+                        lyricsSyncOffset = lyricsSyncOffset,
+                        accentColor = accentColor,
+                        containerColor = containerColor,
+                        textStyle = textStyle,
+                        onLineClick = { line ->
+                            onSeekTo((line.time.toLong() - lyricsSyncOffset).coerceAtLeast(0L))
+                        },
+                        highlightZoneFraction = 0.08f,
+                        highlightOffsetDp = 32.dp,
+                        autoscrollAnimationSpec = spring(stiffness = Spring.StiffnessLow),
+                        useAnimatedLyrics = useAnimatedLyrics,
+                        animatedLyricsBlurEnabled = animatedLyricsBlurEnabled,
+                        animatedLyricsBlurStrength = 2.5f,
+                        lyricsAlignment = lyricsAlignment,
+                        showTranslation = showTranslation,
+                        showRomanization = showRomanization,
+                        gradientOverlayEnabled = gradientOverlayEnabled
+                    )
+                }
+            }
+
+            false -> {
+                lyrics?.plain?.let { plain ->
+                    val staticListState = rememberLazyListState()
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = staticListState,
+                        contentPadding = PaddingValues(
+                            start = 24.dp, end = 24.dp,
+                            top = 80.dp, bottom = 80.dp
+                        )
+                    ) {
+                        itemsIndexed(
+                            items = plain,
+                            key = { index, line -> "$index-$line" }
+                        ) { _, line ->
+                            com.theveloper.pixelplay.presentation.components.PlainLyricsLine(
+                                line = line,
+                                style = textStyle,
+                                lyricsAlignment = lyricsAlignment,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        // 右下角省略号按钮（歌词设置入口）
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 24.dp)
+        ) {
+            FilledIconButton(
+                onClick = onMoreClick,
+                modifier = Modifier.size(40.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.MoreVert,
+                    contentDescription = "歌词设置"
+                )
+            }
         }
     }
 }

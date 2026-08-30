@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -67,7 +68,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,7 +76,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -84,12 +87,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.FitScreen
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import timber.log.Timber
 import coil.compose.AsyncImage
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHeight
@@ -104,6 +120,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemeProcessor
 import com.theveloper.pixelplay.presentation.viewmodel.FavoriteArtistViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.MainActivity
+import kotlinx.coroutines.launch
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -193,6 +210,8 @@ fun ArtistHomepageScreen(
 
     val backgroundHeight = 320.dp
     val surfaceContainer = MaterialTheme.colorScheme.surface
+    val configuration = LocalConfiguration.current
+    val isWideScreen = configuration.screenWidthDp >= 840
 
     // 渐隐遮罩：从顶部透明到底部实色（让背景图自然过渡到内容区域）
     val fadeBrush = remember(surfaceContainer) {
@@ -283,8 +302,8 @@ fun ArtistHomepageScreen(
             .fillMaxSize()
             .background(surfaceContainer)
     ) {
-        // 视差背景图（仅在有背景图 URL 时显示）
-        if (!uiState.isLoading && uiState.backgroundUrl.isNotBlank()) {
+        // 视差背景图（仅手机模式 + 有背景图 URL 时显示）
+        if (!isWideScreen && !uiState.isLoading && uiState.backgroundUrl.isNotBlank()) {
             val scrollOffset by remember {
                 derivedStateOf {
                     if (lazyListState.firstVisibleItemIndex == 0) {
@@ -349,24 +368,14 @@ fun ArtistHomepageScreen(
             }
 
             else -> {
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .hazeSource(MainActivity.LocalHazeState.current),
-                    contentPadding = PaddingValues(bottom = bottomBarHeightDp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // 透明 Spacer：留出背景图可见区域
-                    item(key = "background_spacer") {
-                        Spacer(Modifier.height(backgroundHeight - 80.dp))
-                    }
-
-                    // 歌手头像和名字
-                    item(key = "artist_header") {
-                        ArtistHomepageHeader(
+                if (isWideScreen) {
+                    // --- 平板双栏布局 ---
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // 左侧：艺人信息面板
+                        TabletArtistHomepagePanel(
                             artistName = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
                             artistAvatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
+                            backgroundUrl = uiState.backgroundUrl,
                             identifyTag = uiState.identifyTag,
                             identityImages = uiState.identityImages,
                             briefDesc = uiState.briefDesc,
@@ -382,96 +391,197 @@ fun ArtistHomepageScreen(
                                     avatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
                                     alias = uiState.alias.joinToString(" / ")
                                 )
-                            }
+                            },
+                            onPlayClick = {
+                                if (uiState.songs.isNotEmpty()) {
+                                    playerViewModel.playSongs(
+                                        uiState.songs,
+                                        uiState.songs.first(),
+                                        uiState.artistName.ifBlank { "歌手歌曲" }
+                                    )
+                                }
+                            },
+                            onShuffleClick = {
+                                if (uiState.songs.isNotEmpty()) {
+                                    playerViewModel.playSongsShuffled(
+                                        songsToPlay = uiState.songs,
+                                        queueName = uiState.artistName.ifBlank { "歌手歌曲" },
+                                        startAtZero = true
+                                    )
+                                }
+                            },
+                            onBackPressed = { navController.popBackStack() }
                         )
-                    }
-
-                    // 播放/随机播放按钮
-                    item(key = "play_shuffle_buttons") {
-                        Row(
+                        // 右侧：歌曲/专辑列表
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                                .padding(horizontal = 20.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                .weight(1f)
+                                .fillMaxHeight()
                         ) {
-                            Button(
-                                onClick = {
-                                    if (uiState.songs.isNotEmpty()) {
-                                        playerViewModel.playSongs(
-                                            uiState.songs,
-                                            uiState.songs.first(),
-                                            uiState.artistName.ifBlank { "歌手歌曲" }
-                                        )
-                                    }
-                                },
+                            // Tab 栏
+                            TabletHomepageTabRow(
+                                selectedTab = uiState.selectedTab,
+                                onTabSelect = { viewModel.selectTab(it) },
+                                order = uiState.order,
+                                onOrderClick = { showSongSortSheet = true },
+                                songsSize = uiState.songs.size,
+                                songCount = uiState.songCount,
+                                albumsSize = uiState.albums.size,
+                                albumCount = uiState.albumCount,
+                                showOrderButton = uiState.selectedTab == "songs" && (uiState.songs.isNotEmpty() || uiState.isLoading)
+                            )
+                            // 列表
+                            LazyColumn(
+                                state = lazyListState,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(72.dp),
-                                enabled = uiState.songs.isNotEmpty(),
-                                shape = RoundedCornerShape(
-                                    topStart = 60.dp,
-                                    topEnd = 14.dp,
-                                    bottomStart = 60.dp,
-                                    bottomEnd = 14.dp
+                                    .fillMaxWidth()
+                                    .hazeSource(MainActivity.LocalHazeState.current),
+                                contentPadding = PaddingValues(
+                                    bottom = bottomBarHeightDp,
+                                    top = 8.dp,
+                                    start = 8.dp,
+                                    end = 16.dp
                                 ),
-                                contentPadding = PaddingValues(horizontal = 10.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(
-                                    Icons.Rounded.PlayArrow,
-                                    contentDescription = stringResource(R.string.cd_play),
-                                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                                )
-                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text(
-                                    text = stringResource(R.string.cd_play),
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    maxLines = 1
-                                )
-                            }
-                            FilledTonalButton(
-                                onClick = {
-                                    if (uiState.songs.isNotEmpty()) {
-                                        playerViewModel.playSongsShuffled(
-                                            songsToPlay = uiState.songs,
-                                            queueName = uiState.artistName.ifBlank { "歌手歌曲" },
-                                            startAtZero = true
-                                        )
-                                    }
-                                },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(72.dp),
-                                enabled = uiState.songs.isNotEmpty(),
-                                shape = RoundedCornerShape(
-                                    topStart = 14.dp,
-                                    topEnd = 60.dp,
-                                    bottomStart = 14.dp,
-                                    bottomEnd = 60.dp
-                                ),
-                                contentPadding = PaddingValues(horizontal = 10.dp)
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Shuffle,
-                                    contentDescription = "随机播放",
-                                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                                )
-                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text(
-                                    text = "随机",
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    maxLines = 1
+                                TabletHomepageSongAlbumContent(
+                                    uiState = uiState,
+                                    playerViewModel = playerViewModel,
+                                    navController = navController,
+                                    colorSchemeProcessor = colorSchemeProcessor,
+                                    albumPaletteStyle = albumPaletteStyle,
+                                    viewModel = viewModel,
+                                    showSongInfoSheet = { playerViewModel.selectSongForInfo(it) }
                                 )
                             }
                         }
                     }
+                } else {
+                    // --- 手机布局 ---
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .hazeSource(MainActivity.LocalHazeState.current),
+                        contentPadding = PaddingValues(bottom = bottomBarHeightDp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // 透明 Spacer：留出背景图可见区域
+                        item(key = "background_spacer") {
+                            Spacer(Modifier.height(backgroundHeight - 80.dp))
+                        }
 
-                    // 歌曲 / 专辑 切换标题（模仿媒体库 PrimaryScrollableTabRow）
-                    item(key = "songs_albums_tabs") {
+                        // 歌手头像和名字
+                        item(key = "artist_header") {
+                            ArtistHomepageHeader(
+                                artistName = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                                artistAvatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
+                                identifyTag = uiState.identifyTag,
+                                identityImages = uiState.identityImages,
+                                briefDesc = uiState.briefDesc,
+                                alias = uiState.alias,
+                                tags = uiState.tags,
+                                songCount = uiState.songCount,
+                                albumCount = uiState.albumCount,
+                                isFavorite = isArtistFavorite,
+                                onFavoriteClick = {
+                                    favoriteArtistViewModel.toggleFavorite(
+                                        id = artistId,
+                                        name = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                                        avatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
+                                        alias = uiState.alias.joinToString(" / ")
+                                    )
+                                }
+                            )
+                        }
+
+                        // 播放/随机播放按钮
+                        item(key = "play_shuffle_buttons") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(72.dp)
+                                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (uiState.songs.isNotEmpty()) {
+                                            playerViewModel.playSongs(
+                                                uiState.songs,
+                                                uiState.songs.first(),
+                                                uiState.artistName.ifBlank { "歌手歌曲" }
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(72.dp),
+                                    enabled = uiState.songs.isNotEmpty(),
+                                    shape = RoundedCornerShape(
+                                        topStart = 60.dp,
+                                        topEnd = 14.dp,
+                                        bottomStart = 60.dp,
+                                        bottomEnd = 14.dp
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 10.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.PlayArrow,
+                                        contentDescription = stringResource(R.string.cd_play),
+                                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                                    )
+                                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                    Text(
+                                        text = stringResource(R.string.cd_play),
+                                        modifier = Modifier.padding(end = 4.dp),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                                FilledTonalButton(
+                                    onClick = {
+                                        if (uiState.songs.isNotEmpty()) {
+                                            playerViewModel.playSongsShuffled(
+                                                songsToPlay = uiState.songs,
+                                                queueName = uiState.artistName.ifBlank { "歌手歌曲" },
+                                                startAtZero = true
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(72.dp),
+                                    enabled = uiState.songs.isNotEmpty(),
+                                    shape = RoundedCornerShape(
+                                        topStart = 14.dp,
+                                        topEnd = 60.dp,
+                                        bottomStart = 14.dp,
+                                        bottomEnd = 60.dp
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 10.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Shuffle,
+                                        contentDescription = "随机播放",
+                                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                                    )
+                                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                    Text(
+                                        text = "随机",
+                                        modifier = Modifier.padding(end = 4.dp),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        // 歌曲 / 专辑 切换标题（模仿媒体库 PrimaryScrollableTabRow）
+                        item(key = "songs_albums_tabs") {
                         val tabs = listOf(
                             "歌曲" to "songs",
                             "专辑" to "albums"
@@ -608,8 +718,7 @@ fun ArtistHomepageScreen(
                             }
                         }
                     }
-
-                    }
+                    } // end if (selectedTab == "songs")
                     
                     if (uiState.selectedTab == "albums") {
                         if (uiState.albums.isEmpty() && uiState.isInitialLoading) {
@@ -675,11 +784,13 @@ fun ArtistHomepageScreen(
                             }
                         }
                     }
-                }
+                    } // end LazyColumn
+                } // end else (phone layout)
             }
         }
 
-        // 返回按钮
+        // 返回按钮（手机模式下显示；平板模式下左侧面板已有返回按钮）
+        if (!isWideScreen) {
         FilledIconButton(
             onClick = { navController.popBackStack() },
             colors = IconButtonDefaults.filledIconButtonColors(
@@ -696,7 +807,9 @@ fun ArtistHomepageScreen(
                 contentDescription = stringResource(R.string.auth_cd_back)
             )
         }
+        } // end if (!isWideScreen) — back button
 
+        if (!isWideScreen) {
         // 顶部渐变
         Box(
             modifier = Modifier
@@ -729,6 +842,7 @@ fun ArtistHomepageScreen(
                     )
                 )
         )
+        } // end if (!isWideScreen) — top/bottom gradients
 
         // 歌曲排序底部弹窗（模仿媒体库排序 sheet）
         if (showSongSortSheet) {
@@ -1133,5 +1247,673 @@ private fun ArtistHomepageLoadingHint(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+// ──────────────────────── Tablet composables ────────────────────────
+
+@Composable
+private fun TabletArtistHomepagePanel(
+    artistName: String,
+    artistAvatar: String,
+    backgroundUrl: String,
+    identifyTag: String,
+    identityImages: List<String>,
+    briefDesc: String,
+    alias: List<String>,
+    tags: List<String>,
+    songCount: Int,
+    albumCount: Int,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
+    onPlayClick: () -> Unit,
+    onShuffleClick: () -> Unit,
+    onBackPressed: () -> Unit
+) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    var viewingImage by remember { mutableStateOf<String?>(null) }
+    var isViewingAvatar by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier
+            .width(380.dp)
+            .fillMaxHeight(),
+        color = Color.Transparent,
+        tonalElevation = 0.dp
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 底色
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(surfaceColor)
+            )
+            // 背景图 + 渐变遮罩（和手机模式一致）
+            if (backgroundUrl.isNotBlank()) {
+                AsyncImage(
+                    model = backgroundUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp)
+                        .clickable { viewingImage = backgroundUrl; isViewingAvatar = false },
+                    contentScale = ContentScale.Crop
+                )
+                // 渐变遮罩：和手机模式完全一致的参数
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp + 200.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Transparent,
+                                    surfaceColor.copy(alpha = 0.3f),
+                                    surfaceColor.copy(alpha = 0.7f),
+                                    surfaceColor
+                                ),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY
+                            )
+                        )
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 顶部：返回按钮
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilledIconButton(
+                        onClick = onBackPressed,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.auth_cd_back))
+                    }
+                    Spacer(Modifier.weight(1f))
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // 头像（点击查看大图）
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    if (artistAvatar.isNotBlank()) {
+                        AsyncImage(
+                            model = artistAvatar,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(140.dp)
+                                .clip(CircleShape)
+                                .clickable { viewingImage = artistAvatar; isViewingAvatar = true },
+                            contentScale = ContentScale.Crop,
+                            placeholder = null,
+                            error = null
+                        )
+                    } else {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.size(140.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Rounded.MusicNote,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    FilledIconButton(
+                        onClick = onFavoriteClick,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .offset(x = 4.dp, y = 4.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                            contentColor = if (isFavorite) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            contentDescription = stringResource(
+                                if (isFavorite) R.string.cd_unfavorite_artist else R.string.cd_favorite_artist
+                            ),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // 歌手名
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                ) {
+                    Text(
+                        text = artistName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Image(
+                        painter = painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_),
+                        contentDescription = "网易云音乐",
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(16.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
+                // 认证标识
+                if (identityImages.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        identityImages.take(3).forEach { imageUrl ->
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                } else if (identifyTag.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = identifyTag,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                // 歌曲/专辑数量
+                Text(
+                    text = "$songCount 首歌曲 · $albumCount 张专辑",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // 别名 / 标签
+                if (alias.isNotEmpty() || tags.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    androidx.compose.foundation.layout.FlowRow(
+                        modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        (alias + tags).distinct().take(10).forEach { tag ->
+                            androidx.compose.material3.SuggestionChip(
+                                onClick = { },
+                                label = {
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                enabled = false
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // 播放 / 随机播放按钮
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onPlayClick,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(
+                            topStart = 60.dp, topEnd = 14.dp,
+                            bottomStart = 60.dp, bottomEnd = 14.dp
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp)
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text(stringResource(R.string.cd_play), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    }
+                    FilledTonalButton(
+                        onClick = onShuffleClick,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(
+                            topStart = 14.dp, topEnd = 60.dp,
+                            bottomStart = 14.dp, bottomEnd = 60.dp
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp)
+                    ) {
+                        Icon(Icons.Rounded.Shuffle, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text("随机", fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    }
+                }
+
+                // 简介（可滚动，底部留出 now playing 条空间）
+                if (briefDesc.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        contentPadding = PaddingValues(bottom = MiniPlayerHeight + 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item {
+                            Text(
+                                text = "歌手简介",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = briefDesc,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 22.sp
+                            )
+                        }
+                    }
+                } else {
+                    Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.height(MiniPlayerHeight + 16.dp))
+                }
+            }
+        }
+    }
+
+    // 全屏图片查看器
+    if (viewingImage != null) {
+        ImageViewerDialog(
+            imageUrl = viewingImage!!,
+            isAvatar = isViewingAvatar,
+            onDismiss = { viewingImage = null }
+        )
+    }
+}
+
+/**
+ * 全屏图片查看器，支持缩放、平移和保存。
+ */
+@Composable
+private fun ImageViewerDialog(
+    imageUrl: String,
+    isAvatar: Boolean,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    var saveMessage by remember { mutableStateOf<String?>(null) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(0.5f, 5f)
+                        offsetX += pan.x
+                        offsetY += pan.y
+                    }
+                }
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                ) {
+                    if (scale <= 1.05f) onDismiss()
+                }
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offsetX
+                        translationY = offsetY
+                    },
+                contentScale = if (isAvatar) ContentScale.Fit else ContentScale.Fit
+            )
+
+            // 顶部工具栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .align(Alignment.TopStart),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = "关闭",
+                        tint = Color.White
+                    )
+                }
+                Row {
+                    // 重置缩放
+                    if (scale > 1.05f || offsetX != 0f || offsetY != 0f) {
+                        IconButton(onClick = {
+                            scale = 1f; offsetX = 0f; offsetY = 0f
+                        }) {
+                            Icon(
+                                Icons.Rounded.FitScreen,
+                                contentDescription = "重置",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    // 保存按钮
+                    IconButton(onClick = {
+                        scope.launch {
+                            try {
+                                val imageLoader = coil.ImageLoader(context)
+                                val request = coil.request.ImageRequest.Builder(context)
+                                    .data(imageUrl)
+                                    .build()
+                                val result = imageLoader.execute(request)
+                                val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                                if (bitmap != null) {
+                                    val displayName = if (isAvatar) "artist_avatar_${System.currentTimeMillis()}.jpg" else "artist_bg_${System.currentTimeMillis()}.jpg"
+                                    val contentValues = ContentValues().apply {
+                                        put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+                                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/PixelPlay")
+                                        }
+                                    }
+                                    val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                                    uri?.let {
+                                        context.contentResolver.openOutputStream(it)?.use { os ->
+                                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, os)
+                                        }
+                                        saveMessage = "已保存到相册"
+                                    } ?: run { saveMessage = "保存失败" }
+                                } else {
+                                    saveMessage = "保存失败"
+                                }
+                            } catch (_: Exception) {
+                                saveMessage = "保存失败"
+                            }
+                        }
+                    }) {
+                        Icon(
+                            Icons.Rounded.Download,
+                            contentDescription = "保存",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+
+            // 保存提示
+            saveMessage?.let { msg ->
+                LaunchedEffect(msg) {
+                    kotlinx.coroutines.delay(2000)
+                    saveMessage = null
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 48.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = Color.Black.copy(alpha = 0.7f)
+                    ) {
+                        Text(
+                            text = msg,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TabletHomepageTabRow(
+    selectedTab: String,
+    onTabSelect: (String) -> Unit,
+    order: String,
+    onOrderClick: () -> Unit,
+    songsSize: Int,
+    songCount: Int,
+    albumsSize: Int,
+    albumCount: Int,
+    showOrderButton: Boolean
+) {
+    val tabs = listOf("歌曲" to "songs", "专辑" to "albums")
+    val selectedTabIndex = remember(selectedTab) {
+        tabs.indexOfFirst { it.second == selectedTab }.coerceAtLeast(0)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        PrimaryScrollableTabRow(
+            selectedTabIndex = selectedTabIndex,
+            containerColor = Color.Transparent,
+            edgePadding = 0.dp,
+            indicator = {},
+            divider = {},
+            modifier = Modifier.weight(1f)
+        ) {
+            tabs.forEachIndexed { index, (label, code) ->
+                TabAnimation(
+                    index = index,
+                    title = code,
+                    selectedIndex = selectedTabIndex,
+                    onClick = { onTabSelect(code) }
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        if (showOrderButton) {
+            TextButton(
+                onClick = onOrderClick,
+                modifier = Modifier.height(40.dp)
+            ) {
+                Text(
+                    text = if (order == "hot") "热门" else "最新",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                Icon(
+                    imageVector = Icons.Rounded.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Text(
+            text = if (selectedTab == "songs") "$songsSize/$songCount" else "$albumsSize/$albumCount",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+fun LazyListScope.TabletHomepageSongAlbumContent(
+    uiState: com.theveloper.pixelplay.presentation.viewmodel.ArtistHomepageUiState,
+    playerViewModel: PlayerViewModel,
+    navController: NavController,
+    colorSchemeProcessor: ColorSchemeProcessor,
+    albumPaletteStyle: AlbumArtPaletteStyle,
+    viewModel: ArtistHomepageViewModel,
+    showSongInfoSheet: (Song) -> Unit
+) {
+    if (uiState.selectedTab == "songs") {
+        if (uiState.songs.isEmpty() && uiState.isInitialLoading) {
+            item(key = "songs_loading") {
+                ArtistHomepageLoadingHint(modifier = Modifier.fillMaxWidth())
+            }
+        }
+        items(uiState.songs, key = { it.id }) { song ->
+            LibraryPlaybackAwareSongItem(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                song = song,
+                playerViewModel = playerViewModel,
+                onMoreOptionsClick = { showSongInfoSheet(song) },
+                onClick = {
+                    playerViewModel.showAndPlaySong(
+                        song,
+                        uiState.songs,
+                        uiState.artistName.ifBlank { "歌手歌曲" },
+                        isVoluntaryPlay = false
+                    )
+                }
+            )
+        }
+        // 加载更多 / 已全部加载
+        item(key = "load_more") {
+            if (uiState.isLoadingMore) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ContainedLoadingIndicator()
+                }
+            } else if (uiState.hasMore && uiState.songs.isNotEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextButton(
+                        onClick = { viewModel.loadMoreSongs(playerViewModel.neteaseCookie) },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                    ) {
+                        Text(text = "加载更多", fontWeight = FontWeight.Medium)
+                    }
+                }
+            } else if (uiState.songs.isNotEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "已加载全部 ${uiState.songs.size} 首",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+
+    if (uiState.selectedTab == "albums") {
+        if (uiState.albums.isEmpty() && uiState.isInitialLoading) {
+            item(key = "albums_loading") {
+                ArtistHomepageLoadingHint(modifier = Modifier.fillMaxWidth())
+            }
+        }
+        items(uiState.albums, key = { it.albumId }) { album ->
+            ArtistAlbumCard(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                album = album,
+                colorSchemeProcessor = colorSchemeProcessor,
+                paletteStyle = albumPaletteStyle,
+                onClick = {
+                    navController.navigateSafely(
+                        Screen.AlbumDetail.createRoute(album.albumId)
+                    )
+                }
+            )
+        }
+        item(key = "load_more_albums") {
+            if (uiState.albums.isNotEmpty()) {
+                if (uiState.isLoadingMoreAlbums) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ContainedLoadingIndicator()
+                    }
+                } else if (uiState.albumHasMore) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TextButton(
+                            onClick = { viewModel.loadMoreAlbums(playerViewModel.neteaseCookie) },
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                        ) {
+                            Text(text = "加载更多专辑", fontWeight = FontWeight.Medium)
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "已加载全部 ${uiState.albums.size} 张专辑",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }

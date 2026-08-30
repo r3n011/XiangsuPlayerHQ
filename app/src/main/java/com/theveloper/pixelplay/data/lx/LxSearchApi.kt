@@ -769,7 +769,7 @@ class LxSearchApi @Inject constructor(
         )
     }
 
-    /** 从 NcmApi（Map 结构）解析单条评论 */
+    /** 从 NcmApi（Map 结构）解析单条评论（含楼中楼 beReplied 与 subReplyCount） */
     private fun parseCommentFromMap(obj: Map<*, *>): NeteaseComment {
         val m = obj as? Map<String, Any?> ?: return NeteaseComment()
         val userMap = m.ncmObj("user")
@@ -779,6 +779,23 @@ class LxSearchApi @Inject constructor(
             avatarUrl = userMap.ncmString("avatarUrl")
         )
 
+        // 楼中楼："@"的主评论信息列表
+        val beReplied = m.ncmList("beReplied").mapNotNull { item ->
+            if (item !is Map<*, *>) return@mapNotNull null
+            val br = item as? Map<String, Any?> ?: return@mapNotNull null
+            val brUser = br.ncmObj("user")
+            NeteaseCommentBeReplied(
+                userId = brUser.ncmLong("userId", 0L),
+                nickname = brUser.ncmString("nickname"),
+                content = br.ncmString("content"),
+                beRepliedCommentId = br.ncmLong("beRepliedCommentId", 0L)
+            )
+        }
+        // 主评论下回复总数（ciCount / replyCount 兼容解析）
+        val subReplyCount = m.ncmInt("ciCount", 0).coerceAtLeast(
+            m.ncmInt("replyCount", 0)
+        )
+
         return NeteaseComment(
             commentId = m.ncmLong("commentId", 0L),
             content = m.ncmString("content"),
@@ -786,7 +803,9 @@ class LxSearchApi @Inject constructor(
             timeStr = m.ncmString("timeStr"),
             likedCount = m.ncmInt("likedCount", 0),
             liked = m.ncmBool("liked", false),
-            user = user
+            user = user,
+            beReplied = beReplied,
+            subReplyCount = subReplyCount
         )
     }
 }

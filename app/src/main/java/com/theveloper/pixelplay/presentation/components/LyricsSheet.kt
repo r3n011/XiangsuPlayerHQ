@@ -898,42 +898,29 @@ fun LyricsSheet(
             ) {
                 // 歌曲信息条：与原版一致 —— 悬浮在歌词内容区左上角（黑胶唱片风格圆形药丸），
                 // 背景/文字颜色跟随主题黑白模式（亮色/暗色自动切换）
+                // ⚡ 直出渲染，去掉 AnimatedContent 进入动画（淡入+缩放入场）
                 if (showLyricsTrackInfo) {
-                    AnimatedContent(
-                        targetState = currentSong,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(300)) +
-                                scaleIn(initialScale = 0.9f, animationSpec = tween(300)))
-                                .togetherWith(fadeOut(animationSpec = tween(300)))
-                        },
+                    LyricsTrackInfo(
+                        song = currentSong,
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .zIndex(2f)
+                            // ⚡ 避开手机挖孔/刘海：Scaffold contentWindowInsets 为 0（沉浸式
+                            // 歌词背景），悬浮的歌曲信息条默认贴着屏幕顶端会被挖孔遮挡，
+                            // 这里手动按 safeDrawing（状态栏 ∪ 挖孔）内缩，下移到安全区内。
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .padding(
+                                top = 4.dp, bottom = 24.dp, start = 18.dp, end = 18.dp
+                            )
+                            .background(
+                                color = backgroundColor,
+                                shape = CircleShape
+                            )
                             .wrapContentWidth(),
-                        label = "headerAnimation"
-                    ) { song ->
-                        LyricsTrackInfo(
-                            song = song,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                // ⚡ 避开手机挖孔/刘海：Scaffold contentWindowInsets 为 0（沉浸式
-                                // 歌词背景），悬浮的歌曲信息条默认贴着屏幕顶端会被挖孔遮挡，
-                                // 这里手动按 safeDrawing（状态栏 ∪ 挖孔）内缩，下移到安全区内。
-                                .windowInsetsPadding(WindowInsets.safeDrawing)
-                                .padding(
-                                    top = 4.dp, bottom = 24.dp, start = 18.dp, end = 18.dp
-                                )
-                                .background(
-                                    color = backgroundColor,
-                                    shape = CircleShape
-                                )
-                                .wrapContentWidth(), // ⚡ 旋转屏幕时 animateContentSize 与 AnimatedContent
-                                // 尺寸动画叠加、配合封面异步加载会在 measure 阶段崩溃，故移除宽度动画
-                            backgroundColor = backgroundColor,
-                            contentColor = onBackgroundColor,
-                            isPlaying = isPlaying
-                        )
-                    }
+                        backgroundColor = backgroundColor,
+                        contentColor = onBackgroundColor,
+                        isPlaying = isPlaying
+                    )
                 }
 
                 when (showSyncedLyrics) {
@@ -1313,7 +1300,11 @@ fun LyricsSheet(
         // AI 歌词解析结果底部弹窗（Markdown 渲染）
         if (showExplanationSheet && lyricsExplanation != null) {
             val context = androidx.compose.ui.platform.LocalContext.current
-            val markwon = remember { io.noties.markwon.Markwon.create(context) }
+            val markwon = remember {
+                io.noties.markwon.Markwon.builder(context)
+                    .usePlugin(io.noties.markwon.image.ImagesPlugin.create())
+                    .build()
+            }
             val explanationText = lyricsExplanation ?: ""
             val spannable = remember(explanationText) { markwon.toMarkdown(explanationText) }
             val textColor = MaterialTheme.colorScheme.onSurface.toArgb()

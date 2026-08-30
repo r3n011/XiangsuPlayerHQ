@@ -21,8 +21,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -35,6 +38,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
@@ -74,11 +78,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -88,6 +97,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -99,6 +110,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.CollagePattern
+import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.presentation.components.AlbumArtCollage
 import com.theveloper.pixelplay.presentation.components.BetaInfoBottomSheet
 import com.theveloper.pixelplay.presentation.components.Beta05CleanInstallDisclaimerDialog
@@ -116,6 +128,7 @@ import com.theveloper.pixelplay.presentation.components.RecentlyPlayedSectionMin
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.StatsOverviewCard
 import com.theveloper.pixelplay.presentation.components.AiRecommendationCard
+import com.theveloper.pixelplay.presentation.components.AiMixSheet
 import com.theveloper.pixelplay.presentation.components.resolveMainScreenBottomGradientHeight
 import com.theveloper.pixelplay.presentation.model.collectRecentlyPlayedSongIds
 import com.theveloper.pixelplay.presentation.model.mapRecentlyPlayedSongs
@@ -124,11 +137,14 @@ import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.components.StreamingProviderSheet
 import com.theveloper.pixelplay.presentation.telegram.auth.TelegramLoginActivity
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.AiMixViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StatsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.FavoriteArtistViewModel
+import com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardCapsule
 import com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardViewModel
 import com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardSetupDialog
+import com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardStatusSheet
 import com.theveloper.pixelplay.presentation.components.hearingguard.RestReminderDialog
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import kotlinx.collections.immutable.persistentListOf
@@ -137,10 +153,51 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
+
+/**
+ * 九边波浪（太阳 / Cookie）形状：绕中心画 9 个交替内外半径的顶点，
+ * 形成带锯齿波浪外圈的多边形容器。
+ */
+private class NineWaveShape : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val outer = size.width / 2f
+        val inner = outer * 0.78f
+        val spikes = 9
+        val total = spikes * 2
+        val step = (2.0 * PI) / total
+        val path = Path()
+        var angle = -PI / 2
+        path.moveTo(
+            (cx + outer * cos(angle)).toFloat(),
+            (cy + outer * sin(angle)).toFloat()
+        )
+        for (i in 1..total) {
+            val r = if (i % 2 == 0) outer else inner
+            angle += step
+            path.lineTo(
+                (cx + r * cos(angle)).toFloat(),
+                (cy + r * sin(angle)).toFloat()
+            )
+        }
+        path.close()
+        return Outline.Generic(path)
+    }
+}
+
+private val NineWaveShapeInstance = NineWaveShape()
 
 // Modern HomeScreen with collapsible top bar and staggered grid layout
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -318,7 +375,9 @@ fun HomeScreen(
     // Padding inferior si hay canción en reproducción
     val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
-    val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
+    val navBarStyle by playerViewModel.navBarStyle.collectAsStateWithLifecycle()
+    val bottomGradientHeight = if (navBarStyle == NavBarStyle.FLOATING) 0.dp
+        else resolveMainScreenBottomGradientHeight(navBarCompactMode)
 
     var showOptionsBottomSheet by remember { mutableStateOf(false) }
     var showBetaInfoBottomSheet by remember { mutableStateOf(false) }
@@ -326,7 +385,11 @@ fun HomeScreen(
     var showNeteaseLoginRequiredDialog by remember { mutableStateOf(false) }
     var cleanInstallDisclaimerDismissedThisSession by rememberSaveable { mutableStateOf(false) }
     var showHearingGuardSetup by remember { mutableStateOf(false) }
+    var showHearingGuardStatusSheet by remember { mutableStateOf(false) }
+    var hasShownSetupHint by rememberSaveable { mutableStateOf(false) }
     var showHearingGuardRestReminder by remember { mutableStateOf(false) }
+    var showAiMixSheet by remember { mutableStateOf(false) }
+    val aiMixViewModel: AiMixViewModel = hiltViewModel()
     val sheetState = rememberModalBottomSheetState()
     val betaSheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -456,7 +519,8 @@ fun HomeScreen(
                                         startAtZero = true,
                                     )
                                 }
-                            }
+                            },
+                            onAiMixClick = { showAiMixSheet = true }
                         )
                     }
                 }
@@ -863,8 +927,29 @@ fun HomeScreen(
                 isScrolled = isScrolledPastThreshold.value,
                 disableBlurAllOver = disableBlurAllOver,
                 hearingGuardState = hearingGuardState,
-                onHearingGuardClick = { showHearingGuardSetup = true },
+                onHearingGuardClick = {
+                    if (!hearingGuardState.isConfigured) hasShownSetupHint = true
+                    showHearingGuardStatusSheet = true
+                },
                 modifier = Modifier.align(Alignment.TopCenter)
+            )
+        } else {
+            // 平板横向：像素卫士胶囊浮动在首页右上角（与手机模式一致），替代原左侧导航栏底部盾牌
+            HearingGuardCapsule(
+                state = hearingGuardState,
+                onClick = {
+                    if (!hearingGuardState.isConfigured) hasShownSetupHint = true
+                    showHearingGuardStatusSheet = true
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(
+                        top = androidx.compose.foundation.layout.WindowInsets.statusBars
+                            .asPaddingValues()
+                            .calculateTopPadding(),
+                        end = 16.dp
+                    )
+                    .zIndex(10f)
             )
         }
     }
@@ -951,6 +1036,29 @@ fun HomeScreen(
                     settingsViewModel.setBeta05CleanInstallDisclaimerDismissed(true)
                 }
             }
+        )
+    }
+
+    // 听力保护状态卡片（从下往上弹出）
+    if (showHearingGuardStatusSheet) {
+        HearingGuardStatusSheet(
+            state = hearingGuardState,
+            showSetupHint = hasShownSetupHint && !hearingGuardState.isConfigured,
+            onSettingsClick = {
+                showHearingGuardStatusSheet = false
+                showHearingGuardSetup = true
+            },
+            onDismissRequest = { showHearingGuardStatusSheet = false }
+        )
+    }
+
+    // AI Mix 歌单生成卡片（从下往上弹出）：每次打开都重置为全新的输入态
+    if (showAiMixSheet) {
+        LaunchedEffect(Unit) { aiMixViewModel.reset() }
+        AiMixSheet(
+            aiMixViewModel = aiMixViewModel,
+            playerViewModel = playerViewModel,
+            onDismissRequest = { showAiMixSheet = false }
         )
     }
 
@@ -1102,7 +1210,8 @@ private fun YourMixEmptyPlaceholder(
 fun YourMixHeader(
     song: String,
     isShuffleEnabled: Boolean = false,
-    onPlayShuffled: () -> Unit
+    onPlayShuffled: () -> Unit,
+    onAiMixClick: () -> Unit = {}
 ) {
     val buttonCorners = 68.dp
     val colors = MaterialTheme.colorScheme
@@ -1137,14 +1246,12 @@ fun YourMixHeader(
             )
         }
         // Play Button - color changes based on shuffle state
-        Row(
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(end = 12.dp)
         ) {
             LargeExtendedFloatingActionButton(
-                modifier = Modifier,
                 onClick = onPlayShuffled,
                 containerColor = if (isShuffleEnabled) colors.primary else colors.tertiaryContainer,
                 contentColor = if (isShuffleEnabled) colors.onPrimary else colors.onTertiaryContainer,
@@ -1164,6 +1271,25 @@ fun YourMixHeader(
                     contentDescription = stringResource(R.string.cd_shuffle_play),
                     modifier = Modifier.size(36.dp)
                 )
+            }
+            // AI Mix 小按钮：叠在随机播放按钮的右下角，稍微向外偏移产生部分重叠
+            Surface(
+                onClick = onAiMixClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 10.dp, y = 10.dp)
+                    .size(44.dp),
+                shape = NineWaveShapeInstance,
+                color = colors.surfaceContainerHigh
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoAwesome,
+                        contentDescription = "AI Mix",
+                        tint = colors.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }

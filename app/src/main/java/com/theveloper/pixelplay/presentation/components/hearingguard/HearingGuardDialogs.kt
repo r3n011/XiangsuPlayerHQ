@@ -18,10 +18,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -31,6 +35,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Typography
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -41,15 +47,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.theveloper.pixelplay.data.hearingguard.Gender
 import com.theveloper.pixelplay.data.hearingguard.HearingGuardConfig
 import com.theveloper.pixelplay.data.hearingguard.HearingGuardState
 import com.theveloper.pixelplay.data.hearingguard.ListeningPlan
 import com.theveloper.pixelplay.ui.theme.ShapeCache
+import java.time.LocalDate
+import java.time.Period
 
 /**
  * 听力保护设置弹窗
@@ -66,11 +77,19 @@ fun HearingGuardSetupDialog(
     onDismiss: () -> Unit
 ) {
     var selectedGender by remember { mutableStateOf(currentConfig?.gender ?: Gender.MALE) }
-    var selectedAge by remember { mutableIntStateOf(currentConfig?.age ?: 18) }
+    var selectedBirthdayEpochDay by remember {
+        mutableStateOf(
+            currentConfig?.birthdayEpochDay
+                ?: defaultBirthdayEpochDay(currentConfig?.age ?: 18)
+        )
+    }
+    val birthdayAge = remember(selectedBirthdayEpochDay) {
+        ageFromEpochDay(selectedBirthdayEpochDay)
+    }
 
     // 预览计划
-    val previewPlan = remember(selectedGender, selectedAge) {
-        calculatePlanPreview(selectedGender, selectedAge)
+    val previewPlan = remember(selectedGender, birthdayAge) {
+        calculatePlanPreview(selectedGender, birthdayAge)
     }
 
     AlertDialog(
@@ -134,35 +153,40 @@ fun HearingGuardSetupDialog(
                     onGenderSelected = { selectedGender = it }
                 )
 
-                // 年龄选择
-                AgeSelector(
-                    selectedAge = selectedAge,
-                    onAgeChanged = { selectedAge = it }
+                // 生日选择（自动计算年龄）
+                BirthdaySelector(
+                    birthdayEpochDay = selectedBirthdayEpochDay,
+                    age = birthdayAge,
+                    onBirthdaySelected = { selectedBirthdayEpochDay = it }
                 )
 
                 // 计划预览
                 PlanPreviewCard(
                     gender = selectedGender,
-                    age = selectedAge,
+                    age = birthdayAge,
                     plan = previewPlan
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(HearingGuardConfig(selectedGender, selectedAge)) }) {
-                Text("启用保护", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            TextButton(
+                onClick = {
+                    // 同步 age 字段以便旧逻辑与持久化保持一致
+                    onConfirm(
+                        HearingGuardConfig(
+                            gender = selectedGender,
+                            age = birthdayAge,
+                            birthdayEpochDay = selectedBirthdayEpochDay
+                        )
+                    )
+                }
+            ) {
+                Text("确定", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            Row {
-                if (currentConfig != null) {
-                    TextButton(onClick = onDisable) {
-                        Text("关闭保护", color = MaterialTheme.colorScheme.error)
-                    }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
-                }
+            TextButton(onClick = onDismiss) {
+                Text("取消")
             }
         }
     )
@@ -191,7 +215,7 @@ fun RestReminderDialog(
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 // 盾牌图标
-                val shieldColor = if (isDailyExhausted) Color(0xFFEF4444) else Color(0xFFFBBF24)
+                val shieldColor = if (isDailyExhausted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
                 val icon = if (isDailyExhausted) Icons.Rounded.Close else Icons.Rounded.Warning
 
                 Box(
@@ -349,11 +373,19 @@ private fun GenderChip(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AgeSelector(
-    selectedAge: Int,
-    onAgeChanged: (Int) -> Unit
+private fun BirthdaySelector(
+    birthdayEpochDay: Long,
+    age: Int,
+    onBirthdaySelected: (Long) -> Unit
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = birthdayEpochDay * 86_400_000L,
+        yearRange = 1940..LocalDate.now().year
+    )
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -361,43 +393,145 @@ private fun AgeSelector(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "年龄",
+                text = "生日",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium
             )
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.clickable { showDatePicker = true }
             ) {
-                Text(
-                    text = "${selectedAge} 岁",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
+                ) {
+                    Text(
+                        text = formatBirthday(birthdayEpochDay),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "$age 岁",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.CalendarMonth,
+                        contentDescription = "选择生日",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
 
-        Slider(
-            value = selectedAge.toFloat(),
-            onValueChange = { onAgeChanged(it.toInt()) },
-            valueRange = 6f..80f,
-            steps = 73,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainer
-            )
+        AssistantText(
+            text = "自动根据生日计算年龄与听音计划"
         )
+    }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+    if (showDatePicker) {
+        // 使用 decorFitsSystemWindows=false，键盘弹出/收起时窗口位置不重算，避免切换闪屏
+        Dialog(
+            onDismissRequest = { showDatePicker = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
         ) {
-            Text("6 岁", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("80 岁", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 6.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().imePadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CjkDatePicker(state = datePickerState)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                        TextButton(
+                            onClick = {
+                                datePickerState.selectedDateMillis?.let {
+                                    onBirthdaySelected(it / 86_400_000L)
+                                }
+                                showDatePicker = false
+                            }
+                        ) { Text("确定") }
+                    }
+                }
+            }
         }
+    }
+}
+
+/**
+ * 用系统默认字体渲染 DatePicker，规避 Google Sans 可变字体缺少 CJK 周几字形、
+ * 导致星期几只显示成"星"的问题。字体仅作用于本 DatePicker 上下文。
+ */
+@Composable
+private fun CjkDatePicker(state: androidx.compose.material3.DatePickerState) {
+    val theme = MaterialTheme
+    MaterialTheme(
+        typography = Typography(
+            titleLarge = theme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+            headlineMedium = theme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+            bodyLarge = theme.typography.bodyLarge.copy(fontFamily = FontFamily.Default),
+            bodyMedium = theme.typography.bodyMedium.copy(fontFamily = FontFamily.Default),
+            bodySmall = theme.typography.bodySmall.copy(fontFamily = FontFamily.Default),
+            labelLarge = theme.typography.labelLarge.copy(fontFamily = FontFamily.Default),
+            labelMedium = theme.typography.labelMedium.copy(fontFamily = FontFamily.Default),
+            labelSmall = theme.typography.labelSmall.copy(fontFamily = FontFamily.Default)
+        )
+    ) {
+        DatePicker(state = state)
+    }
+}
+
+@Composable
+private fun AssistantText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+private fun formatBirthday(epochDay: Long): String {
+    return try {
+        LocalDate.ofEpochDay(epochDay).format(
+            java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日")
+        )
+    } catch (_: Exception) {
+        "--"
+    }
+}
+
+private fun ageFromEpochDay(epochDay: Long): Int {
+    return try {
+        Period.between(LocalDate.ofEpochDay(epochDay), LocalDate.now()).years
+    } catch (_: Exception) {
+        18
+    }
+}
+
+private fun defaultBirthdayEpochDay(age: Int): Long {
+    return try {
+        LocalDate.now().minusYears(age.toLong()).toEpochDay()
+    } catch (_: Exception) {
+        LocalDate.of(2006, 1, 1).toEpochDay()
     }
 }
 

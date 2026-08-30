@@ -12,5 +12,6 @@ enum class SearchFilterType {
     ONLINE,
     KUWO_MUSIC,
     BILIBILI_MUSIC,
-    LX_MUSIC
+    LX_MUSIC,
+    AI_SEARCH
 }

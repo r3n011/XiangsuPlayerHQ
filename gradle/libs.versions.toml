@@ -216,6 +216,7 @@ tensorflow-lite-select-tf-ops = { module = "org.tensorflow:tensorflow-lite-selec
 tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 markwon = { module = "io.noties.markwon:core", version.ref = "markwon" }
+markwon-image = { module = "io.noties.markwon:image", version.ref = "markwon" }
 wavy-slider = { module = "ir.mahozad.multiplatform:wavy-slider", version.ref = "wavySlider" }
 checker-qual = { group = "org.checkerframework", name = "checker-qual", version.ref = "checkerframework" }
 taglib = { group = "io.github.kyant0", name = "taglib", version.ref = "taglib" }

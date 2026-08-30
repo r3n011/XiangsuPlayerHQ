@@ -70,8 +70,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -119,11 +121,13 @@ import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import io.noties.markwon.Markwon
+import io.noties.markwon.image.ImagesPlugin
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.GitHubContributorService
 import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
+import com.theveloper.pixelplay.presentation.components.ChangelogBottomSheet
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.UpdateAvailableDialog
@@ -217,6 +221,7 @@ private fun normalizeHandle(handle: String): String {
 // AboutTopBar removed, replaced by CollapsibleCommonTopBar
 
 @androidx.annotation.OptIn(UnstableApi::class)
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Suppress("UNUSED_PARAMETER")
 @Composable
 fun AboutScreen(
@@ -245,6 +250,9 @@ fun AboutScreen(
     var latestReleaseInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var isLoadingChangelog by remember { mutableStateOf(true) }
     var changelogError by remember { mutableStateOf<String?>(null) }
+
+    // 全量更新日志弹窗（点击"更新日志"入口打开，显示所有历史版本）
+    var showChangelogSheet by remember { mutableStateOf(false) }
 
     // APK 下载状态
     var apkDownloadState by remember { mutableStateOf<ApkDownloadInstaller.DownloadState?>(null) }
@@ -634,22 +642,15 @@ fun AboutScreen(
                 )
             }
 
-            item(key = "changelog_section_title") {
-                AboutSectionHeader(
-                    title = "更新日志",
-                    subtitle = "Version $versionName",
-                    modifier = Modifier.padding(top = 24.dp),
-                )
-            }
-
-            item(key = "changelog_card") {
-                ChangelogCard(
-                    releaseInfo = latestReleaseInfo,
-                    isLoading = isLoadingChangelog,
-                    errorMessage = changelogError,
+            item(key = "changelog_row") {
+                // 更新日志入口：点击弹出全量更新日志窗口，取代页面上冗长的内联 GitHub 更新日志卡片
+                ChangelogEntryCard(
+                    currentVersion = versionName,
+                    onClick = { showChangelogSheet = true },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 24.dp),
                 )
             }
 
@@ -780,6 +781,19 @@ fun AboutScreen(
                 },
                 onOpenLanzouInBrowser = { openLanzouInBrowser() }
             )
+        }
+
+        // 全量更新日志：单独从底部弹出窗口，显示所有历史版本（标题点击展开详细内容）
+        if (showChangelogSheet) {
+            val sheetState = rememberModalBottomSheetState()
+            ModalBottomSheet(
+                onDismissRequest = { showChangelogSheet = false },
+                sheetState = sheetState,
+            ) {
+                ChangelogBottomSheet(
+                    modifier = Modifier.navigationBarsPadding(),
+                )
+            }
         }
     }
 }
@@ -1545,6 +1559,64 @@ private fun AcknowledgementItem(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+private fun ChangelogEntryCard(
+    currentVersion: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = LocalIndication.current,
+            role = Role.Button,
+            onClick = onClick,
+        ),
+        shape = AbsoluteSmoothCornerShape(22.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.NewReleases,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(10.dp).size(28.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "更新日志",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "查看所有历史版本的更新内容（当前版本 $currentVersion）",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
 private fun ChangelogCard(
     releaseInfo: UpdateChecker.UpdateInfo?,
     isLoading: Boolean,
@@ -1631,7 +1703,11 @@ private fun ChangelogCard(
                     } else {
                         // ⚡ Markdown 渲染：更新日志支持完整 Markdown（标题/列表/粗体/斜体/链接/代码块等），
                         // 替换原来的逐行手写解析
-                        val markwon = remember { Markwon.create(context) }
+                        val markwon = remember {
+                            Markwon.builder(context)
+                                .usePlugin(ImagesPlugin.create())
+                                .build()
+                        }
                         val changelogSpannable = remember(releaseInfo.releaseNotes) {
                             markwon.toMarkdown(releaseInfo.releaseNotes)
                         }

@@ -184,6 +184,7 @@ import com.theveloper.pixelplay.data.model.LibraryTabId
 import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
 import com.theveloper.pixelplay.data.preferences.LibraryManualOrderType
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
+import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.worker.SyncProgress
 import com.theveloper.pixelplay.presentation.screens.search.components.GenreTypography
 import com.theveloper.pixelplay.presentation.components.SyncProgressBar
@@ -860,8 +861,10 @@ fun LibraryScreen(
 
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
+    val navBarStyle by playerViewModel.navBarStyle.collectAsStateWithLifecycle()
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
-    val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
+    val bottomGradientHeight = if (navBarStyle == NavBarStyle.FLOATING) 0.dp
+        else resolveMainScreenBottomGradientHeight(navBarCompactMode)
 
     val dm = LocalPixelPlayDarkTheme.current
 

@@ -125,6 +125,8 @@ internal fun rememberSheetVisualState(
                 navBarCornerRadiusDp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
+            } else if (navBarStyle == NavBarStyle.FLOATING) {
+                28.dp
             } else {
                 navBarCornerRadiusDp
             }
@@ -138,6 +140,8 @@ internal fun rememberSheetVisualState(
                 if (navBarStyle == NavBarStyle.DEFAULT) {
                     navBarCornerRadiusDp
                 } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
+                    0.dp
+                } else if (navBarStyle == NavBarStyle.FLOATING) {
                     0.dp
                 } else if (isNavBarHidden) {
                     60.dp
@@ -191,6 +195,8 @@ internal fun rememberSheetVisualState(
                 10.dp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
+            } else if (navBarStyle == NavBarStyle.FLOATING) {
+                28.dp
             } else {
                 navBarCornerRadiusDp
             }
@@ -226,6 +232,8 @@ internal fun rememberSheetVisualState(
             ) {
                 if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                     calculatedNormally
+                } else if (navBarStyle == NavBarStyle.FLOATING) {
+                    calculatedNormally
                 } else if (navBarStyle == NavBarStyle.DEFAULT && isLandscape) {
                     // Landscape: bottom radius always matches top (navBarCornerRadiusDp)
                     navBarCornerRadiusDp
@@ -245,7 +253,9 @@ internal fun rememberSheetVisualState(
     }
 
     val actualCollapsedStateHorizontalPadding =
-        if (navBarStyle == NavBarStyle.FULL_WIDTH) 14.dp else collapsedStateHorizontalPadding
+        if (navBarStyle == NavBarStyle.FULL_WIDTH) 14.dp
+        else if (navBarStyle == NavBarStyle.FLOATING) 14.dp
+        else collapsedStateHorizontalPadding
     val collapsedStateHorizontalPaddingPx = remember(actualCollapsedStateHorizontalPadding, density) {
         with(density) { actualCollapsedStateHorizontalPadding.toPx() }
     }

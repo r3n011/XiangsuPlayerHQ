@@ -41,6 +41,7 @@ import androidx.media3.common.util.UnstableApi
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
+import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.presentation.components.player.FullPlayerContent
 import com.theveloper.pixelplay.presentation.components.scoped.FullPlayerVisualState
 import com.theveloper.pixelplay.presentation.components.scoped.rememberFullPlayerRuntimePolicy
@@ -79,7 +80,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     onQueueDragStart: () -> Unit,
     onQueueDrag: (Float) -> Unit,
     onQueueRelease: (Float, Float) -> Unit,
-    onShowCastClicked: () -> Unit
+    onShowCastClicked: () -> Unit,
+    navBarStyle: String = NavBarStyle.DEFAULT
 ) {
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     // Toast 订阅：收集 PlayerViewModel.toastEvents，新事件到就弹 Toast

@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Song
@@ -61,6 +62,9 @@ fun AlbumArtCollage(
                     .data(it)
                     .dispatcher(Dispatchers.IO)
                     .crossfade(true)
+                    .allowHardware(false)
+                    .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                    .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                     //.placeholder(R.drawable.ic_music_placeholder)
                     .error(R.drawable.ic_music_placeholder)
                     .build()

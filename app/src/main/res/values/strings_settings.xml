@@ -166,6 +166,12 @@
     <string name="setcat_player_theme_album_art">Album Art</string>
     <string name="setcat_player_theme_custom_palette">Custom Palette</string>
     <string name="setcat_player_theme_dynamic">System Dynamic</string>
+    <string name="setcat_tablet_player_layout_label">Tablet Player Layout</string>
+    <string
+        name="setcat_tablet_player_layout_desc"
+    >Choose the layout for the player on tablets.</string>
+    <string name="setcat_tablet_layout_vertical">Vertical</string>
+    <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
     <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
     <string
         name="setcat_custom_palette_enabled_subtitle"
@@ -246,6 +252,7 @@
     >Choose the appearance for the navigation bar.</string>
     <string name="setcat_navbar_style_default">Default</string>
     <string name="setcat_navbar_style_full_width">Full Width</string>
+    <string name="setcat_navbar_style_floating">Floating</string>
     <string name="setcat_compact_mode_title">Compact mode</string>
     <string
         name="setcat_compact_mode_subtitle"
@@ -734,6 +741,11 @@
     <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
     <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
     <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_mode_ring">Music Ring</string>
+    <string name="setcat_glyph_matrix_mode_pulse">Beat Pulse</string>
+    <string name="setcat_glyph_matrix_mode_artwork">Album Cover</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">Scrolling Title</string>
+    <string name="setcat_glyph_matrix_mode_progress">Playback Progress</string>
     <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
     <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
     <string name="setcat_glyph_matrix_preview_title">Preview</string>

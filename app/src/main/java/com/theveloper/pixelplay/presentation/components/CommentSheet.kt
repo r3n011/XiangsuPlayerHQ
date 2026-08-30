@@ -44,6 +44,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Reply
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
@@ -133,6 +136,38 @@ fun CommentSheet(
     val sendError = remember { mutableStateOf<String?>(null) }
     val isLoggedIn = cookie?.isNotBlank() == true
     val songIdLong = songId.toLongOrNull() ?: 0L
+
+    // —— 回复评论状态（回复模式下发的是楼中楼）——
+    val replyToCommentId = remember { mutableStateOf<Long?>(null) }
+    val replyToNickname = remember { mutableStateOf<String?>(null) }
+
+    // —— 楼中楼（评论下的回复）展开状态 ——
+    val repliesState = remember { mutableStateOf<Map<Long, List<NeteaseComment>>>(emptyMap()) }
+    val expandedReplies = remember { mutableStateOf<Set<Long>>(emptySet()) }
+    val repliesLoading = remember { mutableStateOf<Set<Long>>(emptySet()) }
+    val repliesError = remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
+
+    /** 懒加载某条评论下的楼中楼回复 */
+    suspend fun loadReplies(commentId: Long) {
+        if (repliesLoading.value.contains(commentId)) return
+        if (repliesState.value.containsKey(commentId)) return
+        repliesLoading.value = repliesLoading.value + commentId
+        repliesError.value = repliesError.value - commentId
+        try {
+            val list = personalFmApi?.getCommentReplies(
+                type = 0,
+                id = songIdLong,
+                commentId = commentId,
+                cookie = cookie,
+            )?.getOrNull() ?: emptyList()
+            repliesState.value = repliesState.value + (commentId to list)
+        } catch (t: Throwable) {
+            Timber.e(t, "加载楼中楼失败 commentId=$commentId")
+            repliesError.value = repliesError.value + (commentId to (t.message ?: "加载失败"))
+        } finally {
+            repliesLoading.value = repliesLoading.value - commentId
+        }
+    }
 
     // —— 点赞本地状态: 记录哪些评论被本地点赞 ——
     val likedState = remember { mutableStateOf<Map<Long, Boolean>>(emptyMap()) }
@@ -338,6 +373,36 @@ fun CommentSheet(
         },
         bottomBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                if (replyToNickname.value != null) {
+                    // 回复模式提示条：显示正在回复谁，可取消
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "回复 @${replyToNickname.value}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                replyToNickname.value = null
+                                replyToCommentId.value = null
+                                commentText.value = ""
+                            },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                text = "取消回复",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
                 if (!sendError.value.isNullOrBlank()) {
                     Text(
                         text = sendError.value ?: "",
@@ -401,7 +466,10 @@ fun CommentSheet(
                                             decorationBox = { innerTextField ->
                                                 if (commentText.value.isEmpty()) {
                                                     Text(
-                                                        text = "说点什么...",
+                                                        text = if (replyToNickname.value != null)
+                                                            "回复 @${replyToNickname.value}:"
+                                                        else
+                                                            "说点什么...",
                                                         style = MaterialTheme.typography.bodyMedium,
                                                         color = colorScheme.primary
                                                     )
@@ -417,17 +485,30 @@ fun CommentSheet(
                                             if (content.isBlank() || isSending.value) return@IconButton
                                             isSending.value = true
                                             sendError.value = null
+                                            val replyId = replyToCommentId.value
                                             scope.launch {
                                                 try {
                                                     val cookieVal = cookie ?: ""
-                                                    val success = personalFmApi.sendComment(
-                                                        type = 0,
-                                                        id = songIdLong,
-                                                        content = content,
-                                                        cookie = cookieVal
-                                                    ).getOrDefault(false)
+                                                    val success = if (replyId != null) {
+                                                        personalFmApi.replyComment(
+                                                            type = 0,
+                                                            id = songIdLong,
+                                                            commentId = replyId,
+                                                            content = content,
+                                                            cookie = cookieVal
+                                                        ).getOrDefault(false)
+                                                    } else {
+                                                        personalFmApi.sendComment(
+                                                            type = 0,
+                                                            id = songIdLong,
+                                                            content = content,
+                                                            cookie = cookieVal
+                                                        ).getOrDefault(false)
+                                                    }
                                                     if (success) {
                                                         commentText.value = ""
+                                                        replyToCommentId.value = null
+                                                        replyToNickname.value = null
                                                         try {
                                                             val result = withContext(Dispatchers.IO) {
                                                                 api.getSongComments(songId = songId, limit = pageSize, offset = 0, before = null)
@@ -627,6 +708,26 @@ fun CommentSheet(
                                             }
                                         }
                                     },
+                                    showReply = isLoggedIn && personalFmApi != null,
+                                    onReply = {
+                                        replyToCommentId.value = comment.commentId
+                                        replyToNickname.value = comment.user.nickname
+                                        commentText.value = ""
+                                    },
+                                    replies = repliesState.value[comment.commentId] ?: emptyList(),
+                                    isRepliesExpanded = expandedReplies.value.contains(comment.commentId),
+                                    isRepliesLoading = repliesLoading.value.contains(comment.commentId),
+                                    repliesError = repliesError.value[comment.commentId],
+                                    onToggleReplies = {
+                                        scope.launch {
+                                            if (expandedReplies.value.contains(comment.commentId)) {
+                                                expandedReplies.value = expandedReplies.value - comment.commentId
+                                            } else {
+                                                expandedReplies.value = expandedReplies.value + comment.commentId
+                                                loadReplies(comment.commentId)
+                                            }
+                                        }
+                                    },
                                     showDivider = true
                                 )
                             }
@@ -710,6 +811,26 @@ fun CommentSheet(
                                                 }
                                             } catch (t: Throwable) {
                                                 Timber.e(t, "删除评论失败")
+                                            }
+                                        }
+                                    },
+                                    showReply = isLoggedIn && personalFmApi != null,
+                                    onReply = {
+                                        replyToCommentId.value = comment.commentId
+                                        replyToNickname.value = comment.user.nickname
+                                        commentText.value = ""
+                                    },
+                                    replies = repliesState.value[comment.commentId] ?: emptyList(),
+                                    isRepliesExpanded = expandedReplies.value.contains(comment.commentId),
+                                    isRepliesLoading = repliesLoading.value.contains(comment.commentId),
+                                    repliesError = repliesError.value[comment.commentId],
+                                    onToggleReplies = {
+                                        scope.launch {
+                                            if (expandedReplies.value.contains(comment.commentId)) {
+                                                expandedReplies.value = expandedReplies.value - comment.commentId
+                                            } else {
+                                                expandedReplies.value = expandedReplies.value + comment.commentId
+                                                loadReplies(comment.commentId)
                                             }
                                         }
                                     },
@@ -806,6 +927,14 @@ private fun CommentRow(
     canDelete: Boolean,
     onLikeToggle: (Boolean) -> Unit = {},
     onDelete: () -> Unit = {},
+    showReply: Boolean = false,
+    onReply: () -> Unit = {},
+    showFloor: Boolean = true,
+    replies: List<NeteaseComment> = emptyList(),
+    isRepliesExpanded: Boolean = false,
+    isRepliesLoading: Boolean = false,
+    repliesError: String? = null,
+    onToggleReplies: () -> Unit = {},
     showDivider: Boolean = true
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -887,6 +1016,27 @@ private fun CommentRow(
                         )
                     }
 
+                    if (showReply) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        androidx.compose.material3.TextButton(
+                            onClick = onReply,
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Reply,
+                                contentDescription = "回复",
+                                tint = onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "回复",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = onSurfaceVariant
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.weight(1f))
 
                     // —— 删除按钮（仅当前用户自己的评论）——
@@ -954,6 +1104,85 @@ private fun CommentRow(
             }
         }
 
+        // —— 楼中楼：展开入口 + 回复列表（无需登录即可查看）——
+        if (showFloor) {
+            androidx.compose.material3.TextButton(
+                onClick = onToggleReplies,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 2.dp)
+            ) {
+                Icon(
+                    imageVector = if (isRepliesExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                    text = when {
+                        isRepliesExpanded -> "收起回复"
+                        comment.subReplyCount > 0 -> "查看回复 (${comment.subReplyCount})"
+                        replies.isNotEmpty() -> "查看回复"
+                        else -> "查看回复"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            if (isRepliesExpanded) {
+                if (isRepliesLoading && replies.isEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 72.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "加载回复中…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else if (!repliesError.isNullOrBlank() && replies.isEmpty()) {
+                    Text(
+                        text = repliesError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 4.dp, bottom = 6.dp)
+                    )
+                } else if (replies.isEmpty()) {
+                    Text(
+                        text = "暂无回复",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 4.dp, bottom = 6.dp)
+                    )
+                } else {
+                    replies.forEachIndexed { index, reply ->
+                        FloorReplyItem(
+                            reply = reply,
+                            primaryColor = primaryColor,
+                            onSurface = onSurface,
+                            onSurfaceVariant = onSurfaceVariant
+                        )
+                        if (index != replies.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 72.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // 评论之间用细线分割，与头像起始对齐（16dp 外边距 + 40dp 头像 + 16dp 间距）
         if (showDivider) {
             HorizontalDivider(
@@ -971,5 +1200,83 @@ private fun formatCompactCount(count: Int): String {
         count < 1000 -> count.toString()
         count < 10000 -> String.format("%.1fk", count / 1000f)
         else -> String.format("%.1fw", count / 10000f)
+    }
+}
+
+// —————————————————————————————————————————————————
+// 楼中楼单条回复行（与头像对齐缩进，紧凑样式，含"回复 @某某"提示）
+// —————————————————————————————————————————————————
+@Composable
+private fun FloorReplyItem(
+    reply: NeteaseComment,
+    primaryColor: Color,
+    onSurface: Color,
+    onSurfaceVariant: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 72.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        val avatarUrl = reply.user.avatarUrl.ifBlank { null }
+        if (avatarUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(avatarUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(primaryColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = reply.user.nickname.firstOrNull()?.uppercase() ?: "U",
+                    color = primaryColor,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = reply.user.nickname.ifBlank { "匿名用户" },
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = onSurfaceVariant
+                )
+                if (reply.beReplied.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "回复 @${reply.beReplied.first().nickname}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = primaryColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = reply.content.ifBlank { " " },
+                style = MaterialTheme.typography.bodyMedium,
+                color = onSurface
+            )
+        }
     }
 }

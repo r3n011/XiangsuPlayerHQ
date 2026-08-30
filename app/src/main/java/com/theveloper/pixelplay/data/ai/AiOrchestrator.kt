@@ -10,6 +10,7 @@ import com.theveloper.pixelplay.data.database.AiUsageDao
 import com.theveloper.pixelplay.data.database.AiUsageEntity
 import com.theveloper.pixelplay.di.AppScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -274,6 +275,62 @@ class AiOrchestrator @Inject constructor(
         
         Timber.tag("AiOrchestrator").e("All providers failed. Details: %s", failedProviders.joinToString(" | "))
         throw Exception(errorMessage)
+    }
+
+    /** 与 generateContent 相同的温度映射（抽取为独立辅助，供流式方法复用，不触碰原逻辑） */
+    private fun resolveTemperature(type: AiSystemPromptType, temperature: Float): Float {
+        if (temperature != 0.7f) return temperature
+        return when (type) {
+            AiSystemPromptType.METADATA -> 0.1f
+            AiSystemPromptType.MOOD_ANALYSIS -> 0.2f
+            AiSystemPromptType.TAGGING -> 0.4f
+            AiSystemPromptType.PLAYLIST, AiSystemPromptType.DAILY_MIX -> 0.6f
+            AiSystemPromptType.PLAYLIST_EVALUATION -> 0.4f
+            AiSystemPromptType.PERSONA -> 0.85f
+            AiSystemPromptType.GENERAL -> 0.7f
+        }
+    }
+
+    /**
+     * 流式生成内容。按用户优先级逐一尝试 provider，命中可用 provider 后返回其增量
+     * [Flow]。流式响应不走缓存（实时性优先）。
+     */
+    suspend fun generateContentStream(
+        prompt: String,
+        type: AiSystemPromptType = AiSystemPromptType.GENERAL,
+        temperature: Float = 0.7f,
+        context: String = ""
+    ): Flow<String> {
+        val resolvedTemperature = resolveTemperature(type, temperature)
+        val userProviderStr = preferencesRepo.aiProvider.first()
+        val userProvider = AiProvider.fromString(userProviderStr)
+        val providersToTry = com.theveloper.pixelplay.data.ai.provider.AiProviderSupport.buildProviderChain(userProvider)
+        val failedProviders = mutableListOf<String>()
+
+        for (provider in providersToTry) {
+            val apiKey = getApiKey(provider)
+            if (apiKey.isBlank()) {
+                failedProviders.add("${provider.name}: no API key configured")
+                continue
+            }
+            val providerPersona = getBasePersona(provider)
+            val finalSystemPrompt = promptEngine.buildPrompt(providerPersona, type, context)
+            val client = clientFactory.createClient(provider, apiKey, getBaseUrl(provider))
+            val requestedModel = getModel(provider).ifBlank { client.getDefaultModel() }
+            return client.generateContentStream(
+                requestedModel,
+                finalSystemPrompt,
+                prompt,
+                resolvedTemperature
+            )
+        }
+
+        throw Exception(
+            if (failedProviders.all { it.contains("no API key") })
+                "No API key configured. Go to Settings → AI Integration to set up your API key."
+            else
+                "AI generation failed after trying ${failedProviders.size} providers:\n${failedProviders.joinToString("\n• ", prefix = "• ")}"
+        )
     }
 
     /**

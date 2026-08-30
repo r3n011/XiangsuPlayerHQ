@@ -617,10 +617,21 @@ class LxMusicViewModel @Inject constructor(
         clickedSongId: String,
         onEnqueue: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit
     ) {
-        val results = _uiState.value.results
-        if (results.size <= 1) return
+        enqueueSongsList(_uiState.value.results, clickedSongId, onEnqueue)
+    }
+
+    /**
+     * 把给定歌曲列表（除点击的 [excludeId] 外）全部解析并排入播放队列。
+     * 供 AI 搜索/AI Mix 等场景使用：传入 AI 精选出的完整歌单，逐首入队保证后续自动连播。
+     */
+    fun enqueueSongsList(
+        songs: List<LxSongInfo>,
+        excludeId: String,
+        onEnqueue: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit
+    ) {
+        if (songs.size <= 1) return
         viewModelScope.launch(Dispatchers.IO) {
-            results.filter { getStableSongId(it) != clickedSongId }.forEach { song ->
+            songs.filter { getStableSongId(it) != excludeId }.forEach { song ->
                 val resolved = runCatching { resolvePlayableSong(song) }.getOrNull() ?: return@forEach
                 withContext(Dispatchers.Main) {
                     onEnqueue(resolved.url, song.name, song.singer, resolved.cover, resolved.savedSongId)

@@ -226,7 +226,7 @@ fun LyricsMoreBottomSheet(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 8.dp, bottomEnd = 8.dp))
                             .background(itemBackgroundColor)
                             .clickable {
                                 onDismissRequest()

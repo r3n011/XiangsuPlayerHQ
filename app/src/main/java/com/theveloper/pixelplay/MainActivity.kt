@@ -52,6 +52,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -89,6 +93,10 @@ import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
@@ -158,6 +166,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.theveloper.pixelplay.data.github.GitHubAnnouncementPropertiesService
+import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.github.PlayStoreAnnouncementRemoteConfig
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CenterNavButtonMode
@@ -218,7 +227,9 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
+import android.content.res.Configuration
 
 
 @Immutable
@@ -888,9 +899,9 @@ class MainActivity : ComponentActivity() {
         Trace.beginSection("MainActivity.MainUI")
 
         // 按窗口实际宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机模式。
-        // 使用 LocalWindowInfo（真实窗口尺寸）而非 Configuration，避免部分平板 ROM
-        // 在分屏/小窗时不更新 Configuration 导致布局不切换
-        val isLandscape = with(LocalWindowInfo.current.containerSize) { width > height }
+        // 使用 LocalConfiguration 而非容器尺寸：Activity 声明了 configChanges，旋转不会重建，
+        // LocalConfiguration 在 onConfigurationChanged 时可靠触发重组，容器尺寸在旋转时可能不更新
+        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
         val centerNavButtonMode by userPreferencesRepository.centerNavButtonModeFlow.collectAsStateWithLifecycle(initialValue = CenterNavButtonMode.DISCOVER)
         // 发现模式弹窗：让用户选择进入「漫游」或「电台」
@@ -934,7 +945,12 @@ class MainActivity : ComponentActivity() {
         val hearingGuardViewModel: com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardViewModel = hiltViewModel()
         val hearingGuardState by hearingGuardViewModel.state.collectAsStateWithLifecycle()
         var showHearingGuardSetup by remember { mutableStateOf(false) }
-        val onHearingGuardClick: () -> Unit = { showHearingGuardSetup = true }
+        var showHearingGuardStatus by remember { mutableStateOf(false) }
+        var hasShownSetupHint by remember { mutableStateOf(false) }
+        val onHearingGuardClick: () -> Unit = {
+            if (!hearingGuardState.isConfigured) hasShownSetupHint = true
+            showHearingGuardStatus = true
+        }
 
         val onCenterNavClick: () -> Unit = {
             when (centerNavButtonMode) {
@@ -953,6 +969,18 @@ class MainActivity : ComponentActivity() {
         val currentSongIdForUI by remember {
             playerViewModel.stablePlayerState
                 .map { it.currentSong?.id }
+                .distinctUntilChanged()
+        }.collectAsStateWithLifecycle(initialValue = null)
+
+        val isPlayingForUI by remember {
+            playerViewModel.stablePlayerState
+                .map { it.isPlaying }
+                .distinctUntilChanged()
+        }.collectAsStateWithLifecycle(initialValue = false)
+
+        val currentSongForUI by remember {
+            playerViewModel.stablePlayerState
+                .map { it.currentSong }
                 .distinctUntilChanged()
         }.collectAsStateWithLifecycle(initialValue = null)
 
@@ -1016,10 +1044,10 @@ class MainActivity : ComponentActivity() {
                 else isSearchActive || routeHidden
             }
         }
+        // 横屏 NavigationRail：始终保持在平板模式下可见（不因搜索激活而隐藏）
         val shouldHideNavigationRail by remember(isSearchActive, isLandscape) {
             derivedStateOf {
-                if (!isLandscape) false
-                else isSearchActive
+                false
             }
         }
 
@@ -1185,6 +1213,27 @@ class MainActivity : ComponentActivity() {
         ) {
 
                 Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    // 悬浮导航模式：默认不显示 mini player，点击左侧封面圆直接展开全屏播放器，
+                    // 返回/下滑收起后回到悬浮底栏（mini player 仍隐藏）。
+                    // ⚠️ 仅在真正显示底部悬浮导航时隐藏 mini player；横屏/平板走 NavigationRail，
+                    // 底部导航不悬浮，此时必须保留 mini player，否则平板会因设置了悬浮样式而 mini player 消失。
+                    val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
+                    val shouldHideFloatingMini by remember(currentRoute, navBarStyle, isLandscape) {
+                        derivedStateOf {
+                            currentRoute in routesWithHiddenMiniPlayer
+                        }
+                    }
+                    val onNowPlayingClick = remember(playerViewModel) {
+                        {
+                            playerViewModel.showPlayer()
+                            playerViewModel.expandPlayerSheet()
+                        }
+                    }
+                    val onNowPlayingSwipeDown = remember(playerViewModel) {
+                        {
+                            playerViewModel.collapsePlayerSheet()
+                        }
+                    }
                     if (isLandscape && !isCarModeEnabled) {
                         // ⚡ 横屏 NavigationRail:使用独立的 Composable,通过 Stable 参数提升重组性能
                         // 车机模式下隐藏导航栏,为驾驶场景优化
@@ -1193,9 +1242,7 @@ class MainActivity : ComponentActivity() {
                             navItems = commonNavItems,
                             currentRoute = currentRoute,
                             navRailProgressState = navRailProgressState,
-                            onCenterNavClick = onCenterNavClick,
-                            hearingGuardState = hearingGuardState,
-                            onHearingGuardClick = onHearingGuardClick
+                            onCenterNavClick = onCenterNavClick
                         )
                     }
 
@@ -1221,12 +1268,16 @@ class MainActivity : ComponentActivity() {
                                         navBarCornerRadius = navBarCornerRadius,
                                         useSmoothCorners = useSmoothCorners,
                                         isMiniPlayerDismissing = isMiniPlayerDismissing,
+                                        currentSong = currentSongForUI,
+                                        isPlaying = isPlayingForUI,
                                         bottomBarPadding = bottomBarPadding,
                                         navBarHeight = navBarHeight,
                                         navBarOccupiedHeight = navBarOccupiedHeight,
                                         horizontalPadding = horizontalPadding,
                                         bottomNavBarProgressState = bottomNavBarProgressState,
-                                        onCenterNavClick = onCenterNavClick
+                                        onCenterNavClick = onCenterNavClick,
+                                        onNowPlayingClick = onNowPlayingClick,
+                                        miniPlayerVisible = !shouldHideFloatingMini
                                     )
                                 }
                             }
@@ -1290,9 +1341,12 @@ class MainActivity : ComponentActivity() {
                         .map { it.currentSong?.id != null }
                         .distinctUntilChanged()
                 }.collectAsStateWithLifecycle(initialValue = false)
-                val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
-                val shouldHideMiniPlayer by remember(currentRoute) {
-                    derivedStateOf { currentRoute in routesWithHiddenMiniPlayer }
+                // 悬浮模式：mini player 始终显示。
+                // ⚠️ 仅在特定路由时隐藏 mini player；横屏/平板（NavigationRail）不隐藏 mini player。
+                val shouldHideMiniPlayer by remember(currentRoute, navBarStyle, isLandscape) {
+                    derivedStateOf {
+                        currentRoute in routesWithHiddenMiniPlayer
+                    }
                 }
 
                 val miniPlayerH = with(density) { MiniPlayerHeight.toPx() }
@@ -1308,10 +1362,14 @@ class MainActivity : ComponentActivity() {
                     bottomSpacerPx = spacerPx
                 )
 
-                // ⚡ isExpandedOrExpanding：只在 playerContentExpansionFraction 跨过 0.01 时改变状态
-                // derivedStateOf 会把其他帧的变化都吞掉，不触发重组
-                val isExpandedOrExpanding by remember {
-                    derivedStateOf { playerViewModel.playerContentExpansionFraction.value > 0.01f }
+                // ⚡ isExpandedOrExpanding：当 sheet 状态为 EXPANDED 或 playerContentExpansionFraction 跨过 0.01 时为 true。
+                // 加入 sheetState 判断后，点击悬浮底栏封面展开瞬间就能立即渲染 sheet 容器。
+                val sheetState by playerViewModel.sheetState.collectAsStateWithLifecycle()
+                val isExpandedOrExpanding by remember(sheetState) {
+                    derivedStateOf {
+                        sheetState == PlayerSheetState.EXPANDED ||
+                            playerViewModel.playerContentExpansionFraction.value > 0.01f
+                    }
                 }
                 androidx.compose.animation.AnimatedVisibility(
                     visible = isExpandedOrExpanding,
@@ -1364,7 +1422,9 @@ class MainActivity : ComponentActivity() {
                 // ⚠️ 当没有播放内容且非展开态时（如横滑移除 mini-player 后），
                 // 完全不渲染 UnifiedPlayerSheetV2，避免其全屏 Surface 覆盖在底部导航栏上方
                 // 拦截触摸事件导致无法切换页面。
-                val shouldRenderPlayerSheet = showPlayerContentInitially || isExpandedOrExpanding
+                // 悬浮模式下默认隐藏 mini player，只在真正展开全屏播放器时才渲染 sheet 容器，
+                // 避免收起后空容器遮挡整个屏幕导致页面无法点击。
+                val shouldRenderPlayerSheet = (showPlayerContentInitially && !shouldHideMiniPlayer) || isExpandedOrExpanding
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1385,7 +1445,9 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             isNavBarHidden = isNavBarHiddenValue,
                             navRailPadding = navRailPaddingDp,
-                            isLandscape = isLandscape
+                            isLandscape = isLandscape,
+                            isFloatingBottomBar = navBarStyle == NavBarStyle.FLOATING,
+                            onFloatingBottomBarCollapse = onNowPlayingSwipeDown
                         )
                     }
                 }
@@ -1482,6 +1544,19 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+
+        // 听力保护状态卡片（平板模式下点击盾牌弹出，从下往上）
+        if (showHearingGuardStatus) {
+            com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardStatusSheet(
+                state = hearingGuardState,
+                showSetupHint = hasShownSetupHint && !hearingGuardState.isConfigured,
+                onSettingsClick = {
+                    showHearingGuardStatus = false
+                    showHearingGuardSetup = true
+                },
+                onDismissRequest = { showHearingGuardStatus = false }
+            )
         }
 
         // 听力保护设置弹窗（平板模式下由 NavigationRail 底部盾牌触发）
@@ -1592,12 +1667,16 @@ Trace.endSection()
         navBarCornerRadius: Int,
         useSmoothCorners: Boolean,
         isMiniPlayerDismissing: Boolean,
+        currentSong: Song? = null,
+        isPlaying: Boolean = false,
         bottomBarPadding: androidx.compose.ui.unit.Dp,
         navBarHeight: androidx.compose.ui.unit.Dp,
         navBarOccupiedHeight: androidx.compose.ui.unit.Dp,
         horizontalPadding: androidx.compose.ui.unit.Dp,
         bottomNavBarProgressState: androidx.compose.runtime.State<Float>,
-        onCenterNavClick: () -> Unit = {}
+        onCenterNavClick: () -> Unit = {},
+        onNowPlayingClick: () -> Unit = {},
+        miniPlayerVisible: Boolean = false
     ) {
         // 使用 Stable 参数,Compose 可以在参数不变时跳过重组
         val showPlayerContentArea = currentSongId != null
@@ -1648,7 +1727,13 @@ Trace.endSection()
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = bottomBarPadding)
+                    .then(
+                        if (navBarStyle == NavBarStyle.FLOATING) {
+                            Modifier.padding(start = 12.dp, end = 12.dp, bottom = bottomBarPadding)
+                        } else {
+                            Modifier.padding(bottom = bottomBarPadding)
+                        }
+                    )
                     .onSizeChanged { componentHeightPx = it.height }
                     .graphicsLayer {
                         val expansionHide = if (showPlayerContentArea) {
@@ -1667,6 +1752,20 @@ Trace.endSection()
                         val fraction = playerViewModel.playerContentExpansionFraction.value
                         val safeFraction = fraction.coerceIn(0f, 1f)
                         val topPx = when {
+                            navBarStyle == NavBarStyle.FLOATING -> {
+                                // 悬浮底栏：始终使用统一圆角
+                                val floatingRadius = with(densityLocal) { 28.dp.toPx() }
+                                if (showPlayerContentArea && !isMiniPlayerDismissing) {
+                                    val transitionFraction = (safeFraction / 0.2f).coerceIn(0f, 1f)
+                                    androidx.compose.ui.util.lerp(
+                                        floatingRadius,
+                                        playerTopCornerTargetPx,
+                                        transitionFraction
+                                    )
+                                } else {
+                                    floatingRadius
+                                }
+                            }
                             navBarStyle == NavBarStyle.DEFAULT -> {
                                 // When music is playing: start from nowPlayingBottomRadius (10.dp)
                                 // to match the now playing bar's bottom corners.
@@ -1707,13 +1806,19 @@ Trace.endSection()
                         }
                         val bottomPx = when (navBarStyle) {
                             NavBarStyle.FULL_WIDTH -> 0f
+                            NavBarStyle.FLOATING -> with(densityLocal) { 28.dp.toPx() }
                             else -> navBarCornerRadiusStaticPx
                         }
                         shape = navBarShapeCache.get(this, topPx, bottomPx, useSmoothCorners)
                         clip = true
-                        shadowElevation = navBarElevationPx
+                        shadowElevation = if (navBarStyle == NavBarStyle.FLOATING) 0f else navBarElevationPx
                     },
-                color = NavigationBarDefaults.containerColor
+                // 悬浮模式不再绘制整块条形底色（只保留三个独立元件悬浮）
+                color = if (navBarStyle == NavBarStyle.FLOATING) {
+                    androidx.compose.ui.graphics.Color.Transparent
+                } else {
+                    NavigationBarDefaults.containerColor
+                }
             ) {
                 PlayerInternalNavigationBar(
                     navController = navController,
@@ -1724,10 +1829,14 @@ Trace.endSection()
                     bottomBarPadding = bottomBarPadding,
                     onSearchIconDoubleTap = onSearchIconDoubleTap,
                     onCenterNavClick = onCenterNavClick,
+                    currentSong = currentSong,
+                    isPlaying = isPlaying,
+                    onNowPlayingClick = onNowPlayingClick,
+                    miniPlayerVisible = miniPlayerVisible,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
-                            if (navBarBlurEnabledState && !disableBlurAllOverState) {
+                            if (navBarBlurEnabledState && !disableBlurAllOverState && navBarStyle != NavBarStyle.FLOATING) {
                                 Modifier.hazeEffect(
                                     state = LocalHazeState.current,
                                     style = dev.chrisbanes.haze.materials.HazeMaterials.ultraThin()
@@ -1749,8 +1858,6 @@ Trace.endSection()
         currentRoute: String?,
         navRailProgressState: androidx.compose.runtime.State<Float>,
         onCenterNavClick: () -> Unit = {},
-        hearingGuardState: com.theveloper.pixelplay.data.hearingguard.HearingGuardState = com.theveloper.pixelplay.data.hearingguard.HearingGuardState(),
-        onHearingGuardClick: () -> Unit = {}
     ) {
         NavigationRail(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -1847,125 +1954,6 @@ Trace.endSection()
                     }
                 )
             }
-            // Push hearing guard to the bottom
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Hearing Guard shield at bottom of nav rail
-            val plan = hearingGuardState.plan
-            val hgShieldColor = when {
-                !hearingGuardState.isConfigured -> MaterialTheme.colorScheme.onSurfaceVariant
-                !hearingGuardState.enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                plan != null -> {
-                    val remaining = plan.sessionLimitMinutes - (hearingGuardState.currentSessionMs / 60000).toInt()
-                    val ratio = if (plan.sessionLimitMinutes > 0)
-                        (hearingGuardState.currentSessionMs.toFloat() / (plan.sessionLimitMinutes * 60000L)).coerceIn(0f, 1f) else 0f
-                    when {
-                        ratio >= 0.9f -> MaterialTheme.colorScheme.error
-                        ratio >= 0.75f -> Color(0xFFFFC107)
-                        else -> Color(0xFF4CAF50)
-                    }
-                }
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            }
-            val hgShieldAlpha by animateFloatAsState(
-                targetValue = if (hearingGuardState.isConfigured && !hearingGuardState.enabled) 0.5f else 1f,
-                animationSpec = tween(200),
-                label = "hgShieldAlpha"
-            )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .alpha(hgShieldAlpha)
-                    .clickable(onClick = onHearingGuardClick)
-                    .padding(vertical = 12.dp)
-            ) {
-                // Shield icon (Canvas drawn, same as HearingGuardCapsule)
-                Canvas(modifier = Modifier.size(24.dp)) {
-                    val w = size.width
-                    val h = size.height
-                    val shieldPath = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(w * 0.5f, h * 0.05f)
-                        cubicTo(w * 0.15f, h * 0.15f, w * 0.05f, h * 0.35f, w * 0.05f, h * 0.55f)
-                        cubicTo(w * 0.05f, h * 0.75f, w * 0.25f, h * 0.9f, w * 0.5f, h * 0.98f)
-                        cubicTo(w * 0.75f, h * 0.9f, w * 0.95f, h * 0.75f, w * 0.95f, h * 0.55f)
-                        cubicTo(w * 0.95f, h * 0.35f, w * 0.85f, h * 0.15f, w * 0.5f, h * 0.05f)
-                        close()
-                    }
-                    drawPath(shieldPath, color = hgShieldColor, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()))
-                    if (hearingGuardState.isConfigured && hearingGuardState.enabled) {
-                        drawPath(shieldPath, color = hgShieldColor.copy(alpha = 0.15f))
-                    }
-                    // Check / X / Warning icon inside shield
-                    val iconSize = w * 0.35f
-                    val iconX = (w - iconSize) / 2f
-                    val iconY = h * 0.35f
-                    if (hearingGuardState.isConfigured) {
-                        val ratio = hearingGuardState.plan?.let {
-                            if (it.sessionLimitMinutes > 0) (hearingGuardState.currentSessionMs.toFloat() / (it.sessionLimitMinutes * 60000L)).coerceIn(0f, 1f) else 0f
-                        } ?: 0f
-                        if (ratio >= 0.9f) {
-                            // X mark
-                            drawLine(Color.White, Offset(iconX, iconY), Offset(iconX + iconSize, iconY + iconSize), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                            drawLine(Color.White, Offset(iconX + iconSize, iconY), Offset(iconX, iconY + iconSize), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                        } else if (ratio >= 0.75f) {
-                            // !
-                            drawLine(Color.White, Offset(w * 0.5f, iconY), Offset(w * 0.5f, iconY + iconSize * 0.7f), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                            drawCircle(Color.White, radius = 1.5.dp.toPx(), center = Offset(w * 0.5f, iconY + iconSize * 0.85f))
-                        } else {
-                            // Checkmark
-                            drawLine(Color.White, Offset(iconX + iconSize * 0.15f, iconY + iconSize * 0.5f), Offset(iconX + iconSize * 0.4f, iconY + iconSize * 0.8f), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                            drawLine(Color.White, Offset(iconX + iconSize * 0.4f, iconY + iconSize * 0.8f), Offset(iconX + iconSize * 0.85f, iconY + iconSize * 0.2f), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                        }
-                    }
-                }
-                // Progress bar below shield (if configured and enabled)
-                val plan = hearingGuardState.plan
-                if (hearingGuardState.isConfigured && hearingGuardState.enabled && plan != null) {
-                    val remaining = plan.sessionLimitMinutes - (hearingGuardState.currentSessionMs / 60000).toInt()
-                    val progressRatio = if (plan.sessionLimitMinutes > 0)
-                        (hearingGuardState.currentSessionMs.toFloat() / (plan.sessionLimitMinutes * 60000L)).coerceIn(0f, 1f) else 0f
-                    val progressColor by animateColorAsState(
-                        targetValue = when {
-                            progressRatio >= 0.9f -> MaterialTheme.colorScheme.error
-                            progressRatio >= 0.75f -> Color(0xFFFFC107)
-                            else -> Color(0xFF4CAF50)
-                        },
-                        animationSpec = tween(300),
-                        label = "hgRailProgressColor"
-                    )
-                    val animatedProgress by animateFloatAsState(
-                        targetValue = progressRatio,
-                        animationSpec = tween(300),
-                        label = "hgRailProgress"
-                    )
-                    Canvas(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp).fillMaxWidth().height(3.dp)) {
-                        drawRoundRect(
-                            color = hgShieldColor.copy(alpha = 0.2f),
-                            cornerRadius = CornerRadius(1.5.dp.toPx())
-                        )
-                        if (animatedProgress > 0f) {
-                            drawRoundRect(
-                                color = progressColor,
-                                size = Size(size.width * animatedProgress, size.height),
-                                cornerRadius = CornerRadius(1.5.dp.toPx())
-                            )
-                        }
-                    }
-                }
-                // Label text below (mimicking NavigationRailItem label style)
-                val labelStyle = MaterialTheme.typography.labelSmall
-                val labelText = if (!hearingGuardState.isConfigured) "像素卫士"
-                    else if (!hearingGuardState.enabled) "卫士已暂停"
-                    else "像素卫士"
-                Text(
-                    text = labelText,
-                    style = labelStyle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-            }
-
         }
     }
 

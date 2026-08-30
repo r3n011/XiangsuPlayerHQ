@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.data.hearingguard
 
+import java.time.LocalDate
+import java.time.Period
 import kotlinx.serialization.Serializable
 
 /**
@@ -12,12 +14,37 @@ enum class Gender {
 
 /**
  * 听力保护配置
+ *
+ * @param birthdayEpochDay 生日（自 epoch 的天数）。设置后会按生日自动计算年龄，
+ *        旧数据无生日时回退到 [age] 字段。
  */
 @Serializable
 data class HearingGuardConfig(
     val gender: Gender = Gender.MALE,
-    val age: Int = 18
-)
+    val age: Int = 18,
+    val birthdayEpochDay: Long? = null
+) {
+    /** 按生日计算年龄；无生日时回退到 [age] 字段 */
+    val computedAge: Int
+        get() {
+            val bd = birthdayEpochDay ?: return age
+            return try {
+                Period.between(LocalDate.ofEpochDay(bd), LocalDate.now()).years
+            } catch (_: Exception) {
+                age
+            }
+        }
+
+    /** 当前生日对应的日期字符串（YYYY-MM-DD），无生日时返回 null */
+    val birthdayDateText: String?
+        get() = birthdayEpochDay?.let {
+            try {
+                LocalDate.ofEpochDay(it).toString()
+            } catch (_: Exception) {
+                null
+            }
+        }
+}
 
 /**
  * 听力保护每日计划（根据 WHO 安全听音指南计算）

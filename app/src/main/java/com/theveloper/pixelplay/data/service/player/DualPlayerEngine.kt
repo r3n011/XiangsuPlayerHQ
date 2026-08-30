@@ -237,6 +237,7 @@ class DualPlayerEngine @Inject constructor(
     private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
     private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
     private val audioProcessorProvider: AudioProcessorProvider,
+    private val audioVisualizer: com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer,
 ) {
     private companion object {
         private const val AUDIO_OFFLOAD_STALL_FALLBACK_MS = 4_000L
@@ -869,10 +870,78 @@ class DualPlayerEngine @Inject constructor(
 
     fun getAudioSessionId(): Int = if (::playerA.isInitialized) playerA.audioSessionId else 0
 
+    /**
+     * 用户设定的基础音量。AI 电台闪避结束后始终恢复到该值，
+     * 避免闪避把 playerA.volume 拉到低电平后无法自行恢复（声音变小回不来）。
+     */
+    private var companionBaseVolume = 1f
+
     fun setVolume(volume: Float) {
+        companionBaseVolume = volume.coerceIn(0f, 1f)
         if (::playerA.isInitialized) {
-            playerA.volume = volume.coerceIn(0f, 1f)
+            playerA.volume = companionBaseVolume
         }
+    }
+
+    // ─── AI 电台音量闪避（ducking）───────────────────────────────
+    // AI 陪伴播报时把当前播放音量平滑压到低电平（音乐渐出），播报结束平滑恢复
+    // （音乐渐入）。与 crossfade 叠加后呈现"音乐压低 → AI 评说 → 音乐回到下一曲"的电台感。
+    private var companionDuckJob: Job? = null
+    private var companionDuckRestoreVolume = 1f
+
+    /** AI 说话期间调用：true 压音乐，false 恢复 */
+    fun setCompanionDucked(
+        ducked: Boolean,
+        fadeOutMs: Long = 450L,
+        fadeInMs: Long = 800L
+    ) {
+        companionDuckJob?.cancel()
+        val duckLevel = 0.05f
+
+        // scope 基于 Dispatchers.Main，这里整个动画连同 ExoPlayer 的读写都放到主线程，
+        // 避免在 IO 线程访问 ExoPlayer（Player is accessed on the wrong thread）。
+        companionDuckJob = scope.launch {
+            if (ducked) {
+                // 以用户设定的基础音量为恢复目标，而非当前已（可能被上次闪避拉低）的 playerA.volume
+                companionDuckRestoreVolume = companionBaseVolume.coerceIn(0f, 1f)
+                val restoreVol = companionDuckRestoreVolume
+                val startMs = SystemClock.uptimeMillis()
+                val durationMs = fadeOutMs.coerceIn(60L, 6000L)
+                while (true) {
+                    val p = ((SystemClock.uptimeMillis() - startMs) / durationMs.toFloat()).coerceIn(0f, 1f)
+                    val eased = p * p * (3f - 2f * p) // smoothstep
+                    val vol = restoreVol + (duckLevel - restoreVol) * eased
+                    setCompanionDuckRawVolume(vol)
+                    if (p >= 1f) break
+                    delay(16)
+                }
+                setCompanionDuckRawVolume(duckLevel)
+            } else {
+                val restored = companionDuckRestoreVolume.coerceIn(0f, 1f)
+                val from = if (::playerA.isInitialized) playerA.volume else companionBaseVolume
+                val startMs = SystemClock.uptimeMillis()
+                val durationMs = fadeInMs.coerceIn(60L, 6000L)
+                while (true) {
+                    val p = ((SystemClock.uptimeMillis() - startMs) / durationMs.toFloat()).coerceIn(0f, 1f)
+                    val eased = p * p * (3f - 2f * p) // smoothstep
+                    val vol = from + (restored - from) * eased
+                    setCompanionDuckRawVolume(vol)
+                    if (p >= 1f) break
+                    delay(16)
+                }
+                companionDuckRestoreVolume = restored
+                setCompanionDuckRawVolume(restored)
+            }
+        }
+    }
+
+    private fun setCompanionDuckRawVolume(vol: Float) {
+        val v = vol.coerceIn(0f, 1f)
+        if (::playerA.isInitialized) {
+            playerA.volume = v
+        }
+        // 过渡/淡入下一曲时 playerB 也可能是当前出声的一侧，同步闪避与恢复
+        playerB?.volume = v
     }
 
     /**
@@ -1733,6 +1802,8 @@ class DualPlayerEngine @Inject constructor(
                                 hiFiEngineProcessor = it
                                 audioProcessorProvider.registerProcessor(it)
                             },
+                            // ⚡ 频谱采集：透传但偷看 PCM，供 Glyph Matrix 可视化驱动（不改声音）
+                            audioVisualizer.createProcessor(),
                             // ⚡ USB 独占输出：镜像最终 PCM 到 USB DAC（激活时）
                             com.theveloper.pixelplay.data.service.audioengine.UsbExclusiveAudioProcessor()
                         )

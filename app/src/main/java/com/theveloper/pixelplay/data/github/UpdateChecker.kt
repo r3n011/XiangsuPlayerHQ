@@ -94,6 +94,42 @@ class UpdateChecker @Inject constructor() {
     }
 
     /**
+     * 拉取该仓库的所有 GitHub Release（按最新在前排列），用于「更新日志」窗口展示全部历史版本。
+     * @param pageSize 一次请求返回的条数上限（GitHub 单页上限 100）
+     */
+    suspend fun fetchReleases(pageSize: Int = 100): Result<List<GitHubRelease>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = "https://api.github.com/repos/$GITHUB_REPO_OWNER/$GITHUB_REPO_NAME/releases?per_page=$pageSize"
+                val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+
+                connection.requestMethod = "GET"
+                connection.addRequestProperty("Accept", "application/vnd.github.v3+json")
+                if (BuildConfig.GITHUB_TOKEN.isNotBlank()) {
+                    connection.addRequestProperty("Authorization", "token ${BuildConfig.GITHUB_TOKEN}")
+                }
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+
+                val responseCode = connection.responseCode
+                if (responseCode == 200) {
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    val releases = json.decodeFromString<List<GitHubRelease>>(response)
+                    Timber.d("Fetched ${releases.size} releases for changelog")
+                    Result.success(releases)
+                } else {
+                    val errorMessage = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                    Timber.e("Failed to fetch releases: $responseCode - $errorMessage")
+                    Result.failure(Exception("Failed to fetch releases: $responseCode"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Exception fetching releases")
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
      * 解析 GitHub API 返回的 ISO 8601 时间字符串（如 "2026-07-20T12:34:56Z"）。
      * 解析失败返回 0L（而非当前时间），避免误报"有更新"。
      */

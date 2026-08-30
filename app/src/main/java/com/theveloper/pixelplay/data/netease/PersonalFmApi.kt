@@ -330,6 +330,128 @@ class PersonalFmApi @Inject constructor() {
     // ——— 歌手相关接口 ————————————————————————————————————————————————
 
     /**
+     * 回复一条评论 / 回复某人（本地 SDK 直连官方加密接口）
+     * 对应网易云官方 /comment?t=2 接口（需登录）
+     * @param type 资源类型: 0=歌曲, 1=MV, 2=歌单, 3=专辑, 4=电台, 5=视频
+     * @param id 资源 ID
+     * @param commentId 被回复的评论 ID
+     * @param content 回复内容
+     * @param cookie 用户的网易云 cookie（必须登录）
+     * @return 是否回复成功
+     */
+    suspend fun replyComment(type: Int, id: Long, commentId: Long, content: String, cookie: String): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            if (cookie.isBlank()) {
+                return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法回复评论"))
+            }
+            if (content.isBlank()) {
+                return@withContext Result.failure<Boolean>(IllegalArgumentException("回复内容不能为空"))
+            }
+            try {
+                Timber.d("$TAG: replyComment type=$type id=$id commentId=$commentId")
+                syncCookieToSession(cookie)
+                val result = NcmApi.full.commentSend(
+                    type = toCmtType(type),
+                    id = id.toString(),
+                    content = content,
+                    t = 2,
+                    commentId = commentId.toString(),
+                ).getOrNull()
+                val success = result != null && result.ncmInt("code", -1) == 200
+                Timber.d("$TAG: replyComment success=$success")
+                Result.success(success)
+            } catch (t: Throwable) {
+                Timber.e(t, "$TAG: replyComment failed")
+                Result.failure(t)
+            }
+        }
+    }
+
+    /**
+     * 获取某条评论下的所有回复（楼中楼，本地 SDK 直连官方加密接口）
+     * 对应 api-enhanced module/comment_floor.js：POST /api/resource/comment/floor/get
+     * @param type 资源类型: 0=歌曲, 1=MV, 2=歌单, 3=专辑, 4=电台, 5=视频
+     * @param id 资源 ID
+     * @param commentId 主评论 ID
+     * @param cookie 用户 cookie（未登录也能看）
+     * @param limit 每页条数
+     * @param time 游标（第一页传 -1）
+     * @return 回复列表（楼中楼里也可能含 beReplied 表示"回复某人的回复"）
+     */
+    suspend fun getCommentReplies(
+        type: Int,
+        id: Long,
+        commentId: Long,
+        cookie: String? = null,
+        limit: Int = 10,
+        time: Long = -1
+    ): Result<List<com.theveloper.pixelplay.data.lx.NeteaseComment>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                syncCookieToSession(cookie)
+                val map = NcmApi.full.commentFloor(
+                    id = id.toString(),
+                    type = toCmtType(type),
+                    parentCommentId = commentId.toString(),
+                    limit = limit,
+                    time = time,
+                ).getOrNull() ?: return@withContext Result.failure(Exception("楼层接口无响应"))
+                val root = ncmMapToJson(map) ?: return@withContext Result.failure(Exception("楼层响应解析失败"))
+                val data = root.optJSONObject("data")
+                    ?: return@withContext Result.failure(Exception("楼层 data 为空"))
+                val arr = data.optJSONArray("data") ?: JSONArray()
+                val out = ArrayList<com.theveloper.pixelplay.data.lx.NeteaseComment>(arr.length())
+                for (i in 0 until arr.length()) {
+                    val item = arr.optJSONObject(i) ?: continue
+                    out.add(parseFloorReply(item))
+                }
+                Timber.d("$TAG: getCommentReplies commentId=$commentId -> ${out.size} 条")
+                Result.success(out)
+            } catch (t: Throwable) {
+                Timber.e(t, "$TAG: getCommentReplies failed commentId=$commentId")
+                Result.failure(t)
+            }
+        }
+    }
+
+    /** 解析楼中楼单条回复（含 beReplied） */
+    private fun parseFloorReply(item: JSONObject): com.theveloper.pixelplay.data.lx.NeteaseComment {
+        val user = item.optJSONObject("user")
+        val beRepliedList = ArrayList<com.theveloper.pixelplay.data.lx.NeteaseCommentBeReplied>()
+        val brArr = item.optJSONArray("beReplied")
+        if (brArr != null) {
+            for (i in 0 until brArr.length()) {
+                val br = brArr.optJSONObject(i) ?: continue
+                val brUser = br.optJSONObject("user")
+                beRepliedList.add(
+                    com.theveloper.pixelplay.data.lx.NeteaseCommentBeReplied(
+                        userId = brUser?.optLong("userId", 0L) ?: 0L,
+                        nickname = brUser?.optString("nickname") ?: "",
+                        content = br.optString("content"),
+                        beRepliedCommentId = br.optLong("beRepliedCommentId", 0L)
+                    )
+                )
+            }
+        }
+        return com.theveloper.pixelplay.data.lx.NeteaseComment(
+            commentId = item.optLong("commentId", 0L),
+            content = item.optString("content"),
+            time = item.optLong("time", 0L),
+            timeStr = item.optString("timeStr"),
+            likedCount = item.optInt("likedCount", 0),
+            liked = item.optBoolean("liked", false),
+            user = com.theveloper.pixelplay.data.lx.NeteaseCommentUser(
+                userId = user?.optLong("userId", 0L) ?: 0L,
+                nickname = user?.optString("nickname") ?: "",
+                avatarUrl = user?.optString("avatarUrl") ?: ""
+            ),
+            beReplied = beRepliedList
+        )
+    }
+
+    // ——— 歌手相关接口 ————————————————————————————————————————————————
+
+    /**
      * 获取歌手的热门歌曲列表（本地 SDK 直连官方加密接口）
      * 接口: /artist/songs?id={artistId}&order={order}&limit={limit}&offset={offset}
      */

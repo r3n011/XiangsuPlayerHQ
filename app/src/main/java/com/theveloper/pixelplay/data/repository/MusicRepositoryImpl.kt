@@ -646,6 +646,7 @@ class MusicRepositoryImpl @Inject constructor(
                 SearchFilterType.KUWO_MUSIC -> flowOf(emptyList())
                 SearchFilterType.BILIBILI_MUSIC -> flowOf(emptyList())
                 SearchFilterType.LX_MUSIC -> flowOf(emptyList())
+                SearchFilterType.AI_SEARCH -> flowOf(emptyList())
             }
         }.flowOn(Dispatchers.Default)
     }

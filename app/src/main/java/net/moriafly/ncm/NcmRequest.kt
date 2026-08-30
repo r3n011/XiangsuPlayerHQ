@@ -47,8 +47,8 @@ object NcmRequest {
             appver = "3.1.17.204416",
         ),
         ANDROID(
-            // 对齐原版 userAgentMap.api.android（网易云 Android 客户端）
-            ua = "NeteaseMusic/9.1.65.240927161425(9001065);Dalvik/2.1.0 (Linux; U; Android 14; 23013RK75C Build/UKQ1.230804.001)",
+            // 对齐 api-enhanced userAgentMap.api.android（新版安卓客户端 UA，用于 xeapi/eapi）
+            ua = "NeteaseMusic/9.5.61.260802021928(9005061);Dalvik/2.1.0 (Linux; U; Android 12; HBN-AL00 Build/cd737a2.0)",
             appver = "8.20.20.231215173437",
         ),
         IOS(
@@ -220,8 +220,12 @@ object NcmRequest {
 
     /** weapi 接口基础地址（官方 PC Host） */
     const val WY_YX_BASE_URL = "https://music.163.com"
+    const val WY_API_BASE_URL = "https://interface.music.163.com"
     const val WY_INTERFACE_BASE_URL = "https://interface3.music.163.com"
-    const val WY_INTERFACE_EAPI_BASE_URL = "https://interface3.music.163.com"
+    /** eapi 主机：对齐 api-enhanced APP_CONF.eapiDomain */
+    const val WY_INTERFACE_EAPI_BASE_URL = "https://interfacepc.music.163.com"
+    /** xeapi 主机：对齐 api-enhanced APP_CONF.xeapiDomain */
+    const val WY_INTERFACE_XEAPI_BASE_URL = "https://interface3.music.163.com"
     const val WY_LINUXAPI_BASE_URL = "https://music.163.com"
 
     // ============================================================
@@ -291,11 +295,36 @@ object NcmRequest {
             val sess = NcmSession.INSTANCE
             ensureAnonymousToken(sess)
             val osEnum = OS.ANDROID
-            // 对齐原版 util/request.js：'/api/xxx' → 'https://interface3.music.163.com/eapi/xxx'
+            // 对齐 api-enhanced util/request.js：'/api/xxx' → 'https://interfacepc.music.163.com/eapi/xxx'
             // 注意：加密摘要仍使用原始 '/api/xxx' 路径（NcmCrypto.eapi 的第一个参数）
             val fullUrl = url ?: buildEapiUrl(path)
 
-            val encrypted = NcmCrypto.eapi(path, params)
+            // eapi 数据里注入 header（对应 createHeaderCookie 的请求头对象），
+            // 新版 /api/cloudsearch/pc、/api/v2/resource/comments 等 eapi 接口需要校验 header
+            val now = System.currentTimeMillis()
+            val (osver, appver, channel) = osMeta(OS.ANDROID)
+            val csrf = sess?.cookies?.get("__csrf") ?: ""
+            val header = linkedMapOf<String, Any?>(
+                "osver" to osver,
+                "deviceId" to deviceId,
+                "os" to "android",
+                "appver" to appver,
+                "versioncode" to "140",
+                "mobilename" to "",
+                "buildver" to now.toString().substring(0, 10),
+                "resolution" to "1920x1080",
+                "__csrf" to csrf,
+                "channel" to channel,
+                "requestId" to "${now}_${Random.nextInt(1000).toString().padStart(4, '0')}",
+            )
+            sess?.cookies?.get("MUSIC_U")?.takeIf { it.isNotBlank() }?.let { header["MUSIC_U"] = it }
+            val musicA = anonymousToken ?: sess?.cookies?.get("MUSIC_A")
+            if (!musicA.isNullOrBlank()) header["MUSIC_A"] = musicA
+
+            val enriched = LinkedHashMap(params)
+            enriched["header"] = header
+
+            val encrypted = NcmCrypto.eapi(path, enriched)
             val body = encrypted.toFormBody().toByteArray(Charsets.UTF_8)
             val headers = buildHeaders(
                 host = URL(fullUrl).host,
@@ -339,6 +368,153 @@ object NcmRequest {
     }
 
     // ============================================================
+    // xeapi（新版加密路由，参考 api-enhanced util/request.js + crypto.js）
+    // 用于 /api/song/enhance/player/url/v1 等被迫换到 xeapi 的接口，
+    // 避免 weapi/eapi 直接请求被风控断流（405 操作频繁）。
+    // ============================================================
+
+    @Volatile private var xeapiPublicKey: Map<String, Any?>? = null
+    @Volatile private var xeapiRegistering = false
+    private val xeapiLock = Any()
+    @Volatile private var xeapiSessionKey: String? = null
+    @Volatile private var xeapiSessionId: String = ""
+
+    /** xeapi POST（Android 客户端新加密） */
+    suspend fun xeapi(
+        path: String,
+        params: Map<String, Any?>,
+    ): Result<NcmResponse> = withContext(Dispatchers.IO) {
+        runCatching {
+            val sess = NcmSession.INSTANCE
+            ensureAnonymousToken(sess)
+            val pubKey = ensureXeapiPublicKey(sess)
+                ?: return@runCatching NcmResponse(520, emptyMap(), "xeapi 公钥未就绪")
+            val fullUrl = WY_INTERFACE_XEAPI_BASE_URL + "/xeapi" + path.removePrefix("/api")
+            val deviceIdVal = sess?.cookies?.get("deviceId") ?: deviceId
+            val encrypted = NcmCrypto.xeapi(
+                uri = path,
+                data = params,
+                publicKeyState = pubKey,
+                sessionKey = xeapiSessionKey,
+                sessionId = xeapiSessionId,
+                os = "android",
+            )
+            val body = encrypted.toFormBody().toByteArray(Charsets.UTF_8)
+            val headers = buildXeapiHeaders(sess, deviceIdVal)
+            val raw = http("POST", fullUrl, headers, body, sess?.proxy)
+
+            // 捕获会话密钥（服务器在响应头下发 ssid/sskey，会话内复用动态密钥）
+            raw.headers["x-encr-sskey"]?.takeIf { it.isNotBlank() }?.let { xeapiSessionKey = it }
+            raw.headers["x-encr-ssid"]?.takeIf { it.isNotBlank() }?.let { xeapiSessionId = it }
+
+            if (raw.setCookies.isNotEmpty()) sess?.merge(raw.setCookies)
+            if (raw.code !in 200..299) return@runCatching parseBody(raw.code, raw.bodyBytes, path, isEapi = false)
+
+            val parsed = NcmCrypto.xeapiResDecrypt(raw.bodyBytes)
+            val map = parsed as? Map<String, Any?> ?: emptyMap()
+            val respCode = map["code"] as? Int ?: raw.code
+            val msg = when {
+                map.contains("message") -> map["message"]?.toString()
+                map.contains("msg") -> map["msg"]?.toString()
+                else -> null
+            }
+            NcmResponse(respCode, map, msg)
+        }
+    }
+
+    /** 首次 xeapi 调用前注册公钥（进程内一次），对应 module/register_xeapikey.js */
+    private suspend fun ensureXeapiPublicKey(sess: NcmSession?): Map<String, Any?>? {
+        xeapiPublicKey?.let { return it }
+        synchronized(xeapiLock) {
+            xeapiPublicKey?.let { return it }
+            if (xeapiRegistering) return null
+            xeapiRegistering = true
+        }
+        try {
+            val deviceIdVal = sess?.cookies?.get("deviceId") ?: deviceId
+            val timestamp = System.currentTimeMillis()
+            val nonce = randomDigits(16)
+            val data = linkedMapOf(
+                "appVersion" to "9.5.61",
+                "currentKeyVersion" to "",
+                "deviceId" to deviceIdVal,
+                "nonce" to nonce,
+                "os" to "android",
+                "requestType" to "active",
+                "signature" to NcmCrypto.xeapiSign(timestamp, nonce),
+                "t1" to "",
+                "t2" to "",
+                "timestamp" to timestamp.toString(),
+                "uid" to "",
+            )
+            val body = formUrlEncode(data).toByteArray(Charsets.UTF_8)
+            val target = WY_API_BASE_URL + "/api/gorilla/anti/crawler/security/key/get"
+            val headers = linkedMapOf(
+                "User-Agent" to OS.ANDROID.ua,
+                "Content-Type" to "application/x-www-form-urlencoded",
+                "Accept-Encoding" to "gzip",
+            )
+            if (deviceIdVal.isNotBlank()) headers["Cookie"] = "deviceId=${deviceIdVal.urlEncode()}"
+            val raw = http("POST", target, headers, body, sess?.proxy)
+            val map = parseBody(raw.code, raw.bodyBytes, target, isEapi = false).body
+            val d = map["data"] as? Map<*, *>
+            val encrypted = d?.get("encryptedData") as? String
+            val sig = (d?.get("signature") as? String) ?: ""
+            val ts = (d?.get("timestamp") as? String)?.toLongOrNull() ?: 0L
+            if (!encrypted.isNullOrBlank() && sig == NcmCrypto.xeapiSign(ts, nonce)) {
+                val pk = NcmCrypto.xeapiDecryptPublicKey(encrypted)
+                if (pk["sk"] != null && pk["publicKey"] != null) xeapiPublicKey = pk
+            }
+            Timber.d("NCM xeapi publicKey ready=${xeapiPublicKey != null}")
+        } catch (t: Throwable) {
+            Timber.w(t, "NCM xeapi publicKey 注册失败")
+        } finally {
+            xeapiRegistering = false
+        }
+        return xeapiPublicKey
+    }
+
+    private fun buildXeapiHeaders(sess: NcmSession?, deviceId: String): Map<String, String> {
+        val now = System.currentTimeMillis()
+        val buildver = now.toString().substring(0, 10)
+        val headers = LinkedHashMap<String, String>()
+        headers["Host"] = URL(WY_INTERFACE_XEAPI_BASE_URL).host
+        headers["User-Agent"] = OS.ANDROID.ua
+        headers["Accept"] = "*/*"
+        headers["X-Client-Enc-State"] = "ENCRYPTED"
+        headers["x-aeapi"] = "true"
+        headers["Content-Type"] = "application/x-www-form-urlencoded;charset=utf-8"
+        headers["Accept-Encoding"] = "gzip"
+        headers["x-deviceid"] = deviceId
+        headers["x-os"] = "android"
+        headers["x-osver"] = "16"
+        headers["x-appver"] = "9.5.61"
+        headers["x-sdeviceid"] = deviceId
+        headers["x-buildver"] = buildver
+        sess?.cookies?.get("MUSIC_U")?.takeIf { it.isNotBlank() }?.let { headers["x-music-u"] = it }
+
+        val cookieSb = StringBuilder()
+        sess?.toCookieHeader()?.takeIf { it.isNotBlank() }?.let { cookieSb.append(it) }
+        if (cookieSb.isNotBlank()) cookieSb.append("; ")
+        cookieSb.append("osver=16; deviceId=$deviceId; os=android; appver=9.5.61; buildver=$buildver; requestId=${now}_${Random.nextInt(1000).toString().padStart(4, '0')}")
+        val cu = sess?.cookies?.get("MUSIC_U")
+        if (!cu.isNullOrBlank()) cookieSb.append("; MUSIC_U=$cu")
+        headers["Cookie"] = cookieSb.toString()
+        return headers
+    }
+
+    private fun formUrlEncode(params: Map<String, Any?>): String =
+        params.entries.joinToString("&") { (k, v) ->
+            k.urlEncode() + "=" + (v?.toString() ?: "").urlEncode()
+        }
+
+    private fun randomDigits(len: Int): String {
+        val sb = StringBuilder(len)
+        repeat(len) { sb.append(Random.nextInt(10)) }
+        return sb.toString()
+    }
+
+    // ============================================================
     // 内部：响应处理
     // ============================================================
 
@@ -347,6 +523,8 @@ object NcmRequest {
         val bodyBytes: ByteArray,
         val location: String?,
         val setCookies: List<String>,
+        /** 完整响应头（小写 key），xeapi 会话密钥 x-encr-sskey/x-encr-ssid 从这里取 */
+        val headers: Map<String, String> = emptyMap(),
     )
 
     private fun handleRawResponse(
@@ -572,11 +750,21 @@ object NcmRequest {
             val code = conn.responseCode
             val setCookies = extractSetCookies(conn)
             val loc = conn.getHeaderField("Location")
+            val respHeaders = LinkedHashMap<String, String>()
+            runCatching {
+                var i = 0
+                while (true) {
+                    val k = conn.getHeaderFieldKey(i) ?: break
+                    val v = conn.getHeaderField(i)
+                    if (k != null && v != null) respHeaders[k.lowercase()] = v
+                    i++
+                }
+            }
             val stream = runCatching {
                 if (code in 200..299) conn.inputStream else conn.errorStream
             }.getOrNull()
             val bytes = stream?.use { it.readBytesCompat() } ?: ByteArray(0)
-            Raw(code, bytes, loc, setCookies)
+            Raw(code, bytes, loc, setCookies, respHeaders)
         } finally {
             runCatching { conn.disconnect() }
         }

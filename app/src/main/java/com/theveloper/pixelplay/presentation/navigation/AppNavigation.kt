@@ -1,5 +1,8 @@
+@file:kotlin.OptIn(ExperimentalMaterial3Api::class)
+
 package com.theveloper.pixelplay.presentation.navigation
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import com.theveloper.pixelplay.presentation.screens.DelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.WordDelimiterConfigScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistWhitelistConfigScreen
@@ -80,7 +83,7 @@ import com.theveloper.pixelplay.presentation.components.BilibiliFavoritesScreen
 
 import androidx.compose.foundation.layout.PaddingValues
 
-@OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class, ExperimentalMaterial3Api::class)
 @SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
 fun AppNavigation(

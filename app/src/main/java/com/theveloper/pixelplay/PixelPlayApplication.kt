@@ -13,6 +13,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import coil.memory.MemoryCache
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnosticsController
 import com.theveloper.pixelplay.data.lx.LxJsEngine
@@ -263,6 +264,14 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     override fun newImageLoader(): ImageLoader {
         return try {
             imageLoader.get().newBuilder()
+                // 在主 loader 基础上再次显式声明禁用硬件位图与堆容量 20% 的内存缓存，
+                // 确保 newBuilder() 即便复制过程也不会丢失关键保护。
+                .allowHardware(false)
+                .memoryCache {
+                    MemoryCache.Builder(this)
+                        .maxSizePercent(0.20)
+                        .build()
+                }
                 .components {
                     runCatching { add(localArtworkCoilFetcherFactory.get()) }
                         .onFailure { android.util.Log.e("PixelPlay", "Failed to add localArtwork fetcher: ${it.message}") }
@@ -276,9 +285,16 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 .build()
         } catch (t: Throwable) {
             android.util.Log.e("PixelPlay", "Failed to create ImageLoader: ${t.message}")
-            // Minimal fallback ImageLoader without custom components
+            // Fallback ImageLoader: keep allowHardware(false) and 20%-of-heap memory cache so that
+            // even if the injected loader fails, we still avoid blank covers after a few minutes.
             ImageLoader.Builder(this)
                 .crossfade(true)
+                .allowHardware(false)
+                .memoryCache {
+                    MemoryCache.Builder(this)
+                        .maxSizePercent(0.20)
+                        .build()
+                }
                 .build()
         }
     }
@@ -287,9 +303,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
 
-        runCatching {
-            imageLoader.get().memoryCache?.trimMemory(level)
-        }
+        // 不再主动 trim Coil 内存缓存。40MB 上限 + 禁用硬件位图已满足项目约束；
+        // 手动 trim/clear 会导致 AsyncImagePainter 仍持有旧 drawable，而底层 bitmap 被逐出，
+        // 从而出现封面/唱片墙等已显示图片变空白。交由 Coil 自行管理。
 
         if (
             level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE ||
@@ -315,13 +331,6 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
 
         runCatching { libraryStateHolder.get().trimMemory(level) }
             .onFailure { android.util.Log.e("PixelPlay", "libraryStateHolder.trimMemory failed: ${it.message}") }
-
-        if (
-            level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ||
-            level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE
-        ) {
-            runCatching { imageLoader.get().memoryCache?.clear() }
-        }
     }
 
     override val workManagerConfiguration: Configuration

@@ -76,6 +76,7 @@ import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
+import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
@@ -301,6 +302,7 @@ class PlayerViewModel @Inject constructor(
     private val neteaseDownloadService: com.theveloper.pixelplay.data.service.http.NeteaseDownloadService,
     private val musicDownloadServiceProvider: Lazy<com.theveloper.pixelplay.data.service.http.MusicDownloadService>,
     private val aiCompanionManager: com.theveloper.pixelplay.data.ai.AiCompanionManager,
+    private val glyphMatrixController: com.theveloper.pixelplay.data.service.glyph.GlyphMatrixController,
 ) : ViewModel() {
 
     // ─── 网易云账户相关 ────────────────────────────────────────────────────
@@ -828,6 +830,20 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    // Tablet player layout preference
+    val tabletPlayerLayout: StateFlow<TabletPlayerLayout> = userPreferencesRepository.tabletPlayerLayoutFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = TabletPlayerLayout.VERTICAL
+        )
+
+    fun setTabletPlayerLayout(layout: TabletPlayerLayout) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTabletPlayerLayout(layout)
+        }
+    }
+
     // Lyrics sync offset - now managed by LyricsStateHolder
     val currentSongLyricsSyncOffset: StateFlow<Int> = lyricsStateHolder.currentSongSyncOffset
 
@@ -1282,6 +1298,42 @@ class PlayerViewModel @Inject constructor(
                 currentSongUriString = artworkUri,
                 isPreload = false
             )
+        }
+
+        // ⚡ Glyph Matrix：接入真实播放器（背部按钮暂停/继续、歌名滚动、播放进度）
+        glyphMatrixController.onTogglePlayback = { playPause() }
+        glyphMatrixController.initialize()
+        viewModelScope.launch {
+            // 开关 + 显示模式：启用 → 连服务并用所选模式激活；关闭 → 关闭矩阵
+            combine(
+                userPreferencesRepository.glyphMatrixEnabledFlow,
+                userPreferencesRepository.glyphMatrixDisplayModeFlow
+            ) { enabled, mode -> enabled to mode }.collect { (enabled, mode) ->
+                if (enabled) {
+                    runCatching { glyphMatrixController.initialize() }
+                    glyphMatrixController.activate(mode)
+                } else {
+                    glyphMatrixController.deactivate()
+                }
+            }
+        }
+        viewModelScope.launch {
+            // 播放状态：切歌 / 播放暂停 → 喂给矩阵
+            playbackStateHolder.stablePlayerState.collect { s ->
+                glyphMatrixController.updateNowPlaying(s.currentSong)
+                glyphMatrixController.updatePlayState(s.isPlaying)
+                glyphMatrixController.updateProgress(
+                    playbackStateHolder.currentPosition.value,
+                    s.totalDuration
+                )
+            }
+        }
+        viewModelScope.launch {
+            // 播放进度（高频）→ PROGRESS/TITLE 模式实时刷新
+            playbackStateHolder.currentPosition.collect { pos ->
+                val dur = playbackStateHolder.stablePlayerState.value.totalDuration
+                glyphMatrixController.updateProgress(pos, dur)
+            }
         }
 
         // ⚡ 颜色提取由 syncDisplayedMediaItemIfChanged 等显式路径负责（onMediaItemTransition 等）。
@@ -2188,6 +2240,8 @@ class PlayerViewModel @Inject constructor(
                             queue.getOrNull(state.currentMediaItemIndex + 1)
                         } else null
                         aiCompanionManager.schedulePrefetch(currentSong, state.totalDuration, nextSong)
+                        // 上一首自然播完前 5s 提前开播 AI，AI 剩 8s 时渐入下一首
+                        aiCompanionManager.scheduleCompanionAhead(currentSong, nextSong, state.totalDuration)
                         previousSong = currentSong
                     }
                 }

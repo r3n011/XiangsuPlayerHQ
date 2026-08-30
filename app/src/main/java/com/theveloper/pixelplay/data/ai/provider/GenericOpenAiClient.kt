@@ -1,10 +1,16 @@
 package com.theveloper.pixelplay.data.ai.provider
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,7 +38,8 @@ class GenericOpenAiClient(
         @SerialName("top_p") val topP: Double? = null,
         @SerialName("max_tokens") val maxTokens: Int? = null,
         @SerialName("presence_penalty") val presencePenalty: Double? = null,
-        @SerialName("frequency_penalty") val frequencyPenalty: Double? = null
+        @SerialName("frequency_penalty") val frequencyPenalty: Double? = null,
+        val stream: Boolean = false
     )
     
     @Serializable
@@ -125,6 +132,93 @@ class GenericOpenAiClient(
                             responseBody = responseBody,
                             requestedModel = resolvedModel
                         )
+                }
+            } catch (e: Exception) {
+                throw AiProviderSupport.wrapThrowable(providerName, e, resolvedModel)
+            }
+        }
+    }
+
+    override fun generateContentStream(
+        model: String,
+        systemPrompt: String,
+        prompt: String,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        maxTokens: Int,
+        presencePenalty: Float,
+        frequencyPenalty: Float
+    ): Flow<String> = flow {
+        withContext(Dispatchers.IO) {
+            val resolvedModel = model.ifBlank { defaultModelId }
+            val messagesList = mutableListOf<ChatMessage>()
+            if (systemPrompt.isNotBlank()) {
+                messagesList.add(ChatMessage(role = "system", content = systemPrompt))
+            }
+            messagesList.add(ChatMessage(role = "user", content = prompt))
+
+            val requestBody = ChatRequest(
+                model = resolvedModel,
+                messages = messagesList,
+                temperature = temperature.toDouble(),
+                topP = topP.toDouble(),
+                maxTokens = maxTokens.takeIf { it > 0 },
+                presencePenalty = presencePenalty.toDouble(),
+                frequencyPenalty = frequencyPenalty.toDouble(),
+                stream = true
+            )
+
+            val jsonBody = json.encodeToString(ChatRequest.serializer(), requestBody)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val requestBuilder = Request.Builder()
+                .url("${baseUrl.trimEnd('/')}/chat/completions")
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Content-Type", "application/json")
+
+            if (providerName.equals("OpenRouter", ignoreCase = true)) {
+                requestBuilder.addHeader("HTTP-Referer", "https://github.com/theovilardo/PixelPlayer")
+                requestBuilder.addHeader("X-Title", "XiangsuPlayer")
+            }
+
+            val request = requestBuilder.post(body).build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw AiProviderSupport.createException(
+                            providerName = providerName,
+                            statusCode = response.code,
+                            transportMessage = response.message,
+                            responseBody = response.body?.string().orEmpty(),
+                            requestedModel = resolvedModel
+                        )
+                    }
+                    val reader = response.body?.charStream()?.buffered()
+                        ?: throw AiProviderSupport.createException(
+                            providerName = providerName,
+                            statusCode = response.code,
+                            transportMessage = "Streaming response had no body",
+                            responseBody = "",
+                            requestedModel = resolvedModel
+                        )
+                    while (true) {
+                        val line = reader.readLine() ?: break
+                        val trimmed = line.trim()
+                        if (trimmed.isEmpty() || !trimmed.startsWith("data:")) continue
+                        val data = trimmed.removePrefix("data:").trim()
+                        if (data == "[DONE]") break
+                        runCatching {
+                            val obj = Json.parseToJsonElement(data).jsonObject
+                            val choices = obj["choices"]?.jsonArray ?: return@runCatching
+                            for (choice in choices) {
+                                val delta = choice.jsonObject["delta"]?.jsonObject ?: continue
+                                val chunk = delta["content"]?.jsonPrimitive?.contentOrNull ?: continue
+                                if (chunk.isNotEmpty()) emit(chunk)
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 throw AiProviderSupport.wrapThrowable(providerName, e, resolvedModel)

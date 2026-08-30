@@ -181,6 +181,10 @@
     <string name="setcat_lyrics_vibrant_bg_desc">在歌词界面后方显示旋转模糊的专辑封面背景。关闭后将使用纯色背景。</string>
     <string name="setcat_lyrics_solid_overlay_title">歌词纯色遮罩</string>
     <string name="setcat_lyrics_solid_overlay_desc">调整歌词界面纯色遮罩的不透明度，让背景变暗以提升文字可读性。</string>
+    <string name="setcat_tablet_player_layout_label">平板播放器布局</string>
+    <string name="setcat_tablet_player_layout_desc">选择平板上播放器的布局方式。</string>
+    <string name="setcat_tablet_layout_vertical">传统布局</string>
+    <string name="setcat_tablet_layout_parallel">平行布局（播放器 + 歌词）</string>
     <string name="setcat_home_collage">主页拼贴</string>
     <string name="setcat_collage_pattern_label">拼贴图案</string>
     <string
@@ -214,6 +218,7 @@
     <string name="setcat_navbar_style_desc">为导航栏选择外观。</string>
     <string name="setcat_navbar_style_default">默认</string>
     <string name="setcat_navbar_style_full_width">全宽</string>
+    <string name="setcat_navbar_style_floating">悬浮底栏</string>
     <string name="setcat_compact_mode_title">紧凑模式</string>
     <string
         name="setcat_compact_mode_subtitle"
@@ -628,6 +633,11 @@
     <string name="setcat_glyph_matrix_mode_now_playing">正在播放</string>
     <string name="setcat_glyph_matrix_mode_visualizer">音频可视化</string>
     <string name="setcat_glyph_matrix_mode_waveform">波形</string>
+    <string name="setcat_glyph_matrix_mode_ring">音乐圆环</string>
+    <string name="setcat_glyph_matrix_mode_pulse">鼓点脉冲</string>
+    <string name="setcat_glyph_matrix_mode_artwork">专辑封面</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">滚动歌名</string>
+    <string name="setcat_glyph_matrix_mode_progress">播放进度</string>
     <string name="setcat_glyph_matrix_not_available_title">此设备不支持</string>
     <string name="setcat_glyph_matrix_not_available">此功能需要 Nothing Phone 的 Glyph Matrix。你仍然可以在下方预览效果。</string>
     <string name="setcat_glyph_matrix_preview_title">效果预览</string>

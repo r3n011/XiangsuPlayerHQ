@@ -97,7 +97,21 @@ data class NeteaseComment(
     val timeStr: String = "",
     val likedCount: Int = 0,
     val liked: Boolean = false,
-    val user: NeteaseCommentUser = NeteaseCommentUser()
+    val user: NeteaseCommentUser = NeteaseCommentUser(),
+    /** 回复对象的信息（楼中楼子回复里"@"的主评论）；为空表示是主评论 */
+    val beReplied: List<NeteaseCommentBeReplied> = emptyList(),
+    /** 该主评论下的回复总数（用于显示"查看回复"入口） */
+    val subReplyCount: Int = 0
+)
+
+/**
+ * 评论回复对象（楼中楼）：主评论/被回复的那条评论的信息。
+ */
+data class NeteaseCommentBeReplied(
+    val userId: Long = 0L,
+    val nickname: String = "",
+    val content: String = "",
+    val beRepliedCommentId: Long = 0L
 )
 
 /**

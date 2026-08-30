@@ -536,6 +536,22 @@ object NcmModulesFull {
 
     private fun threadOf(type: CmtType, id: String) = type.prefix + id
 
+    /** 把 Netease 评论 typeCode 映射成 api-enhanced resourceTypeMap 的 threadId 前缀 */
+    private fun commentThreadIdForType(typeCode: Int, id: String): String {
+        val prefix = when (typeCode) {
+            0 -> "R_SO_4_"
+            1 -> "R_MV_5_"
+            2 -> "A_PL_0_"
+            3 -> "R_AL_3_"
+            4 -> "A_DJ_1_"
+            5 -> "R_VI_62_"
+            6 -> "A_EV_2_"
+            7 -> "A_DR_14_"
+            else -> "R_SO_4_"
+        }
+        return prefix + id
+    }
+
     suspend fun commentMusic(id: String, limit: Int = 20, offset: Int = 0, beforeTime: Long = 0) = comment(CmtType.SONG, id, limit, offset, beforeTime)
     suspend fun commentAlbum(id: String, limit: Int = 20, offset: Int = 0, beforeTime: Long = 0) = comment(CmtType.ALBUM, id, limit, offset, beforeTime)
     suspend fun commentPlaylist(id: String, limit: Int = 20, offset: Int = 0, beforeTime: Long = 0) = comment(CmtType.PLAYLIST, id, limit, offset, beforeTime)
@@ -543,17 +559,27 @@ object NcmModulesFull {
     suspend fun commentDj(id: String, limit: Int = 20, offset: Int = 0, beforeTime: Long = 0) = comment(CmtType.DJ, id, limit, offset, beforeTime)
     suspend fun commentEvent(id: String, limit: Int = 20, offset: Int = 0, beforeTime: Long = 0) = comment(CmtType.EVENT, id, limit, offset, beforeTime)
     suspend fun commentVideo(id: String, limit: Int = 20, offset: Int = 0, beforeTime: Long = 0) = comment(CmtType.VIDEO, id, limit, offset, beforeTime)
-    suspend fun commentNew(id: String, typeCode: Int) = rawWeapi(
-        "/api/v1/comment/new",
-        mapOf("id" to id, "type" to typeCode, "sortType" to 2, "pageNo" to 1, "pageSize" to 20, "cursor" to -1)
+    suspend fun commentNew(id: String, typeCode: Int) = rawEapi(
+        // 对齐 api-enhanced module/comment_new.js：POST /api/v2/resource/comments，eapi 加密
+        "/api/v2/resource/comments",
+        mapOf(
+            "threadId" to commentThreadIdForType(typeCode, id),
+            "pageNo" to 1,
+            "showInner" to true,
+            "pageSize" to 20,
+            "cursor" to "normalHot#0",
+            "sortType" to 99,
+        )
     )
-    suspend fun commentFloor(id: String, type: CmtType, parentCommentId: String, limit: Int = 20, time: Long = 0) = rawWeapi(
-        "/api/v1/comment/floor",
-        mapOf("parentCommentId" to parentCommentId, "threadId" to threadOf(type, id), "limit" to limit, "time" to time)
+    suspend fun commentFloor(id: String, type: CmtType, parentCommentId: String, limit: Int = 20, time: Long = -1) = rawWeapi(
+        // 对齐 api-enhanced module/comment_floor.js
+        "/api/resource/comment/floor/get",
+        mapOf("parentCommentId" to parentCommentId, "threadId" to threadOf(type, id), "time" to time, "limit" to limit)
     )
     suspend fun commentHot(type: CmtType, id: String, limit: Int = 20, offset: Int = 0, beforeTime: Long = 0) = rawWeapi(
-        "/api/v1/comment/hotwall/list",
-        mapOf("threadId" to threadOf(type, id), "pageNo" to (offset / limit + 1), "pageSize" to limit, "cursor" to if (beforeTime == 0L) 0 else beforeTime)
+        // 对齐 api-enhanced module/comment_hot.js：POST /api/v1/resource/hotcomments/{type}{id}
+        "/api/v1/resource/hotcomments/${threadOf(type, id)}",
+        mapOf("rid" to id, "limit" to limit, "offset" to offset, "beforeTime" to beforeTime)
     )
     suspend fun commentLike(id: String, cid: String, type: CmtType, t: Int = 1) = rawWeapi(
         // 对齐原版 module/comment_like.js：t=1 → /api/v1/comment/like，t=0 → /api/v1/comment/unlike
@@ -591,9 +617,9 @@ object NcmModulesFull {
         content: String,
         t: Int = 1,
         commentId: String? = null,
-    ) = when (t) {
-        // 删除评论（comment.js t=0）
-        0 -> rawWeapi(
+    ) : Result<Map<String, Any?>> = when (t) {
+        // 删除评论（comment.js t=0）；发/删/回均走 eapi（对齐 api-enhanced comment.js）
+        0 -> rawEapi(
             "/api/resource/comments/delete",
             buildMap<String, Any?> {
                 put("threadId", threadOf(type, id))
@@ -601,7 +627,7 @@ object NcmModulesFull {
             }
         )
         // 回复评论（comment.js t=2）
-        2 -> rawWeapi(
+        2 -> rawEapi(
             "/api/resource/comments/reply",
             buildMap<String, Any?> {
                 put("threadId", threadOf(type, id))
@@ -610,7 +636,7 @@ object NcmModulesFull {
             }
         )
         // 发评论（comment.js t=1）
-        else -> rawWeapi(
+        else -> rawEapi(
             "/api/resource/comments/add",
             buildMap<String, Any?> {
                 put("threadId", threadOf(type, id))

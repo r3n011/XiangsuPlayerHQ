@@ -5,6 +5,7 @@ import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
@@ -53,6 +54,15 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Send
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.PriorityHigh
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import coil.compose.AsyncImage
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -91,9 +101,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.data.model.Album
+import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.SearchFilterType
@@ -116,10 +129,17 @@ import com.theveloper.pixelplay.presentation.viewmodel.BilibiliUiState
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import com.theveloper.pixelplay.data.lx.LxArtistInfo
 import android.util.Log
+import com.theveloper.pixelplay.presentation.viewmodel.AiSearchViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.AiChatRole
+import com.theveloper.pixelplay.presentation.viewmodel.AiSearchUiState
+import com.theveloper.pixelplay.presentation.viewmodel.AiChatMsg
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.WindowInsets
@@ -141,6 +161,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.repository.MusicRepository
+import com.theveloper.pixelplay.presentation.components.MiniPlayerBottomSpacer
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.PlaylistCover
@@ -179,6 +200,7 @@ fun SearchScreen(
     qqViewModel: QQMusicViewModel = hiltViewModel(),
     bilibiliViewModel: BilibiliMusicViewModel = hiltViewModel(),
     toplistViewModel: ToplistViewModel = hiltViewModel(),
+    aiSearchViewModel: AiSearchViewModel = hiltViewModel(),
     navController: NavHostController,
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
@@ -299,7 +321,11 @@ fun SearchScreen(
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
-    val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
+    // AI 底部聊天输入框需避开的底部区域：Scaffold 提供的 bottomBar（mini player + 导航）实际高度
+    val contentBottomReserve = paddingValues.calculateBottomPadding()
+    val navBarStyle by playerViewModel.navBarStyle.collectAsStateWithLifecycle()
+    val bottomGradientHeight = if (navBarStyle == NavBarStyle.FLOATING) 0.dp
+        else resolveMainScreenBottomGradientHeight(navBarCompactMode)
     var showPlaylistBottomSheet by remember { mutableStateOf(false) }
     // ⚡ 网易云在线搜索子分类：0=歌曲，1=歌手
     var onlineSearchTab by rememberSaveable { mutableStateOf(0) }
@@ -314,6 +340,7 @@ fun SearchScreen(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = SearchUiSlice())
     val currentFilter = searchUiState.selectedSearchFilter
+    val isAiMode = currentFilter == SearchFilterType.AI_SEARCH
     val onlineSearchState by lxViewModel.uiState.collectAsStateWithLifecycle()
     val toplistUiState by toplistViewModel.uiState.collectAsStateWithLifecycle()
     val genres by playerViewModel.genres.collectAsStateWithLifecycle()
@@ -323,6 +350,17 @@ fun SearchScreen(
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val searchInputFocusRequester = remember { FocusRequester() }
+    val aiSearchState by aiSearchViewModel.uiState.collectAsStateWithLifecycle()
+
+    // AI 模式下同步内置音源：沿用主标签栏当前选中的内置源（酷我/QQ/酷狗/咪咕）
+    LaunchedEffect(isAiMode, onlineSearchState.selectedSource) {
+        if (isAiMode) {
+            val src = onlineSearchState.selectedSource
+            if (src in listOf("kw", "tx", "kg", "mg")) {
+                aiSearchViewModel.setSource(src)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         onSearchBarActiveChange(false)
@@ -370,6 +408,9 @@ fun SearchScreen(
                     bilibiliViewModel.keyword = searchQuery
                     bilibiliViewModel.search()
                 }
+            }
+            SearchFilterType.AI_SEARCH -> {
+                // AI 搜索：由 AiSearchViewModel 走 LLM + 内置搜索 API，不做规则搜索
             }
             else -> {
                 playerViewModel.performSearch(searchQuery)
@@ -426,21 +467,26 @@ fun SearchScreen(
             .hazeSource(MainActivity.LocalHazeState.current)
     ) {
 
+        // AI 聊天输入框焦点（需在 Box 直接作用域，供底部输入框与 Column 内容共同使用）
+        val aiChatFocusRequester = remember { FocusRequester() }
+
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, top = statusBarTopInset + 12.dp, end = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .background(color = Color.Transparent)
+            // AI 搜索模式：顶部搜索框隐藏，改为屏幕底部 AI 聊天输入框
+            if (!isAiMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, top = statusBarTopInset + 12.dp, end = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .background(color = Color.Transparent)
+                    ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -517,8 +563,11 @@ fun SearchScreen(
                     }
                 }
             }
+            } // if (!isAiMode) 顶部搜索框
 
-            val showGenreBrowse by remember(searchQuery) { derivedStateOf { searchQuery.isBlank() } }
+            val showGenreBrowse by remember(searchQuery, isAiMode) {
+                derivedStateOf { !isAiMode && searchQuery.isBlank() }
+            }
             AnimatedContent(
                 targetState = showGenreBrowse,
                 transitionSpec = {
@@ -580,7 +629,14 @@ fun SearchScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
-                                .padding(vertical = 8.dp, horizontal = 8.dp),
+                                // AI 模式顶部搜索框被隐藏，此处需补状态栏内边距，
+                                // 否则源标签行会被顶到状态栏下缘而被遮挡（看起来像“标签消失了”）。
+                                .padding(
+                                    top = if (isAiMode) statusBarTopInset + 8.dp else 8.dp,
+                                    bottom = 8.dp,
+                                    start = 8.dp,
+                                    end = 8.dp
+                                ),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             SearchFilterChip(SearchFilterType.ALL, currentFilter, playerViewModel)
@@ -590,6 +646,12 @@ fun SearchScreen(
                             SearchFilterChip(SearchFilterType.PLAYLISTS, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.ONLINE, currentFilter, playerViewModel)
                             SearchFilterChip(SearchFilterType.BILIBILI_MUSIC, currentFilter, playerViewModel)
+                            AiSearchFilterChip(
+                                selected = currentFilter == SearchFilterType.AI_SEARCH,
+                                onClick = {
+                                    playerViewModel.updateSearchFilter(SearchFilterType.AI_SEARCH)
+                                }
+                            )
                             // ⚡ 内置音源（落雪同款官方搜索，不依赖 JS 导入）：酷我/QQ音乐/酷狗/咪咕
                             LxSourceFilterChip(
                                 sourceKey = "kw",
@@ -661,6 +723,8 @@ fun SearchScreen(
                                     Triple("qq", true, qqViewModel.uiState.value.searching)
                                 currentFilter == SearchFilterType.BILIBILI_MUSIC ->
                                     Triple("bilibili", true, bilibiliViewModel.uiState.value.searching)
+                                currentFilter == SearchFilterType.AI_SEARCH ->
+                                    Triple("ai", true, aiSearchState.loading)
                                 else ->
                                     Triple("local", searchResults.isEmpty(), false)
                             },
@@ -805,6 +869,41 @@ fun SearchScreen(
                                     loadingSongId = bilibiliViewModel.uiState.value.loadingSongId,
                                     loadingStep = bilibiliViewModel.uiState.value.progressLabel
                                 )
+                            } else if (mode == "ai") {
+                                AiSearchSection(
+                                    state = aiSearchState,
+                                    sourceLabel = AiSearchViewModel.sourceLabel(aiSearchState.source),
+                                    favoriteIds = favoriteSongIds,
+                                    stableIdFn = { song -> lxViewModel.getStableSongId(song) },
+                                    // song 是被点击的歌曲，songs 是该轮对话对应的歌单（内联在本次对话下方）
+                                    onPlaySong = { song, songs ->
+                                        lxViewModel.playSong(song) { url, name, singer, cover, songId ->
+                                            playerViewModel.playUrl(url, name, singer, cover, songId)
+                                        }
+                                        // 点击 AI 列表任一首，把该轮对话的歌单其余歌曲逐首排入队列，保证自动连播
+                                        lxViewModel.enqueueSongsList(
+                                            songs,
+                                            lxViewModel.getStableSongId(song)
+                                        ) { url, name, singer, cover, songId ->
+                                            playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                        }
+                                    },
+                                    onToggleFavorite = { song ->
+                                        lxViewModel.toggleFavoriteForSong(song)
+                                    },
+                                    onSavePlaylist = {
+                                        coroutineScope.launch {
+                                            val name = aiSearchViewModel.saveCurrentPlaylist()
+                                            Toast.makeText(
+                                                context,
+                                                if (name != null) "已保存到媒体库播放列表：$name" else "暂无可保存的歌单",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    },
+                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
+                                    isPlaying = stablePlayerState.isPlaying
+                                )
                             } else if (isEmpty as Boolean) {
                                 EmptySearchResults(
                                     searchQuery = searchQuery,
@@ -839,6 +938,20 @@ fun SearchScreen(
                 .height(bottomGradientHeight)
                 .background(brush = bottomGradientBrush)
         )
+
+        // AI 搜索模式：屏幕底部 AI 聊天输入框（键盘弹出时上移）
+        if (isAiMode) {
+            AiSearchBottomInput(
+                aiSearchViewModel = aiSearchViewModel,
+                aiSearchState = aiSearchState,
+                focusRequester = aiChatFocusRequester,
+                initialQuery = searchQuery,
+                // 是否正在播放歌：决定是否需要为「迷你播放器」预留底部高度
+                hasNowPlaying = stablePlayerState.currentSong != null,
+                isFloatingNav = navBarStyle == NavBarStyle.FLOATING,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
     }
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
@@ -1567,6 +1680,7 @@ fun SearchFilterChip(
                     SearchFilterType.KUWO_MUSIC -> stringResource(R.string.search_filter_kuwo)
                     SearchFilterType.BILIBILI_MUSIC -> stringResource(R.string.search_filter_bilibili)
                     SearchFilterType.LX_MUSIC -> "落雪"
+                    SearchFilterType.AI_SEARCH -> "AI 搜索"
                 }
             )
         },
@@ -1636,6 +1750,454 @@ private fun LxSourceFilterChip(
             null
         }
     )
+}
+
+// ⚡ AI 搜索标签：与网易云/QQ/酷我/酷狗等标签一致的圆角 FilterChip
+@Composable
+private fun AiSearchFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text("AI 搜索") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Rounded.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+        },
+        trailingIcon = if (selected) {
+            {
+                Icon(
+                    painter = painterResource(R.drawable.rounded_check_circle_24),
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                )
+            }
+        } else {
+            null
+        },
+        shape = CircleShape,
+        border = BorderStroke(width = 0.dp, color = Color.Transparent),
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    )
+}
+
+// ⚡ AI 搜索区域：对话 + 操作日志 + 结果列表（统一在一个 LazyColumn 中滚动）
+@Composable
+private fun AiSearchSection(
+    state: AiSearchUiState,
+    sourceLabel: String,
+    favoriteIds: Set<String>,
+    stableIdFn: (LxSongInfo) -> String,
+    onPlaySong: (LxSongInfo, List<LxSongInfo>) -> Unit,
+    onToggleFavorite: (LxSongInfo) -> Unit,
+    onSavePlaylist: () -> Unit = {},
+    currentPlayingSongId: String? = null,
+    isPlaying: Boolean = false
+) {
+    val systemBarPaddingBottom =
+        WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
+    val listState = rememberLazyListState()
+
+    val itemCount = state.messages.size + (if (state.loading) 1 else 0)
+    LaunchedEffect(itemCount) {
+        if (itemCount > 0) {
+            listState.animateScrollToItem(itemCount - 1)
+        }
+    }
+
+    if (state.messages.isEmpty() && !state.loading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Rounded.AutoAwesome,
+                    contentDescription = "AI",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(44.dp)
+                )
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "用 AI 的方式帮你找歌",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "在下方输入框描述你想听的歌，AI 会在网易云/酷我/QQ音乐/酷狗/咪咕多源搜索并帮你精选。\n例如：“推荐6首周杰伦的经典老歌”",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+        return
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 12.dp,
+            bottom = systemBarPaddingBottom + 96.dp
+        )
+    ) {
+        items(state.messages, key = { it.id }) { msg ->
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                AiChatBubble(msg = msg)
+                // ⚡ 本次对话的 AI 歌单内联显示在推荐语气泡下方，而不是固定在对话底部
+                if (msg.songs.isNotEmpty()) {
+                    // 歌单归属标签：「为你找到的歌曲」(xx) + 保存歌单
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "为你找到的歌曲（${msg.songs.size}）",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = onSavePlaylist) {
+                            Icon(
+                                imageVector = Icons.Rounded.Download,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("保存歌单", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    msg.songs.forEach { song ->
+                        UnifiedOnlineSongItem(
+                            title = song.name,
+                            subtitle = listOfNotNull(
+                                song.singer.ifBlank { null },
+                                song.albumName.ifBlank { null }
+                            ).joinToString(" · "),
+                            coverUrl = song.pic.takeIf { it.isNotBlank() },
+                            isFavorite = favoriteIds.contains(stableIdFn(song)),
+                            onToggleFavorite = { onToggleFavorite(song) },
+                            isPlaying = isPlaying,
+                            isCurrentSong = currentPlayingSongId == stableIdFn(song),
+                            showLoading = false,
+                            loadingLabel = null,
+                            onClick = { onPlaySong(song, msg.songs) }
+                        )
+                    }
+                }
+            }
+        }
+        if (state.loading) {
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        "AI 处理中…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ⚡ AI 对话气泡：USER 右对齐、AI 左对齐、OP 操作日志居中
+@Composable
+private fun AiChatBubble(msg: AiChatMsg) {
+    when (msg.role) {
+        AiChatRole.USER -> {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp),
+                    modifier = Modifier.fillMaxWidth(0.8f)
+                ) {
+                    Text(
+                        text = msg.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                    )
+                }
+            }
+        }
+        AiChatRole.OP -> {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = msg.text,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        AiChatRole.AI -> {
+            if (msg.isThinking) {
+                AiThinkingBlock(msg)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp),
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    ) {
+                        Text(
+                            text = if (msg.streaming) msg.text + "▋" else msg.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Trae 风格「AI 思考」折叠块：进行中显示转动指示，点击展开正文
+@Composable
+private fun AiThinkingBlock(msg: AiChatMsg) {
+    var expanded by remember(msg.id) { mutableStateOf(false) }
+    var showProcessing by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        // 简短延迟后若无正文则保留小转圈，正文出现即停
+        val start = System.currentTimeMillis()
+        while (msg.thinking.isBlank()) {
+            delay(16)
+            if (System.currentTimeMillis() - start > 2500) break
+        }
+        if (msg.thinking.isEmpty()) {
+            // 仍在等待首包：保持转圈
+            delay(400)
+        }
+        showProcessing = false
+    }
+    val spinnerVisible = showProcessing // msg.streaming && msg.thinking.isBlank()
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(0.85f)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (spinnerVisible) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 1.6.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "AI 思考",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = msg.thinking,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 2.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+// ⚡ AI 搜索底部聊天输入框（键盘弹出时自动上移）
+@Composable
+private fun AiSearchBottomInput(
+    aiSearchViewModel: AiSearchViewModel,
+    aiSearchState: AiSearchUiState,
+    focusRequester: FocusRequester,
+    initialQuery: String,
+    hasNowPlaying: Boolean = false,
+    isFloatingNav: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    // 进入 AI 模式时，自动把用户在顶部搜索框输入的内容带到底部输入框；
+    // 之后用户在输入框内编辑不会影响顶部 searchQuery，因此只在 initialQuery 变化时重置。
+    var inputText by remember(initialQuery) { mutableStateOf(initialQuery) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    // 有正在播放的歌时，底部悬浮的迷你播放器会占用约 84dp，需为输入框预留，避免被遮挡。
+    // 悬浮导航模式下 mini player 默认隐藏，无需为其预留。
+    val miniPlayerReserve = if (hasNowPlaying && !isFloatingNav) 84.dp else 0.dp
+    // 竖屏（手机）下底部还有一个导航栏高度，需额外上移一个导航栏高度，避免输入框被浮动底栏遮挡。
+    // 悬浮导航的胶囊比常规导航栏低矮，预留值相应缩小，避免输入框过高。
+    val isPortrait = androidx.compose.ui.platform.LocalConfiguration.current.orientation ==
+        android.content.res.Configuration.ORIENTATION_PORTRAIT
+    val navBarReserve = when {
+        !isPortrait -> 0.dp
+        isFloatingNav -> 52.dp
+        else -> MiniPlayerHeight
+    }
+
+    // 底部预留只在键盘未弹开时生效：键盘弹开时仅靠 imePadding 抬起输入框，
+    // 否则固定的 mini/导航预留会和 imePadding 叠加，导致输入框被抬得过高、空白带过大。
+    val localDensity = LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(localDensity) > 0
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f))
+            .padding(bottom = if (imeVisible) 8.dp else miniPlayerReserve + navBarReserve)
+            .imePadding()
+            .navigationBarsPadding()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BasicTextField(
+                value = inputText,
+                onValueChange = { inputText = it },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(horizontal = 16.dp)
+                    .focusRequester(focusRequester),
+                textStyle = TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.sp
+                ),
+                singleLine = true,
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (inputText.isEmpty()) {
+                            Text(
+                                "和 AI 聊聊音乐…",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 16.sp
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(
+                    onSend = {
+                        if (inputText.isNotBlank()) {
+                            aiSearchViewModel.send(inputText)
+                            inputText = ""
+                            keyboardController?.hide()
+                        }
+                    }
+                )
+            )
+            Spacer(Modifier.width(10.dp))
+            FilledIconButton(
+                onClick = {
+                    if (inputText.isNotBlank()) {
+                        aiSearchViewModel.send(inputText)
+                        inputText = ""
+                        keyboardController?.hide()
+                    }
+                },
+                enabled = inputText.isNotBlank() && !aiSearchState.loading,
+                modifier = Modifier.size(48.dp)
+            ) {
+                if (aiSearchState.loading) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Send,
+                        contentDescription = "发送",
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
