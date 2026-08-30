@@ -540,15 +540,17 @@ fun SongInfoBottomSheet(
                                                             Intent.createChooser(shareIntent, shareChooserTitle)
                                                         )
                                                     } else {
-                                                        // 在线歌曲：生成协议分享链接并复制到剪贴板
+                                                        // 在线歌曲：生成协议分享链接并通过系统分享
                                                         val shareLink = com.theveloper.pixelplay.data.share.ShareLinkCodec.encodeSong(song)
                                                         if (shareLink != null) {
                                                             val shareText = "我在像素播放器听${song.displayArtist}的《${song.title}》\n复制后打开像素播放器或者手动输入到搜索框即可查看\n$shareLink"
-                                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                                            clipboard.setPrimaryClip(
-                                                                android.content.ClipData.newPlainText("PixelPlayer Share", shareText)
+                                                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                                                type = "text/plain"
+                                                            }
+                                                            context.startActivity(
+                                                                Intent.createChooser(sendIntent, shareChooserTitle)
                                                             )
-                                                            Toast.makeText(context, "分享链接已复制到剪贴板", Toast.LENGTH_SHORT).show()
                                                         } else {
                                                             Toast.makeText(context, "生成分享链接失败", Toast.LENGTH_SHORT).show()
                                                         }

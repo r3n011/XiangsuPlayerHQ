@@ -109,6 +109,8 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.ViewCarousel
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.SegmentedButton
@@ -117,6 +119,8 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -210,6 +214,7 @@ import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.FileExplorerDialog
+import com.theveloper.pixelplay.presentation.components.GlyphMatrixPreview
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
@@ -1181,6 +1186,14 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Rounded.Layers, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_lyrics_vibrant_bg_title),
+                                    subtitle = stringResource(R.string.setcat_lyrics_vibrant_bg_desc),
+                                    checked = uiState.lyricsVibrantBackgroundEnabled,
+                                    onCheckedChange = { settingsViewModel.setLyricsVibrantBackgroundEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
                                 // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）
                                 val context = LocalContext.current
                                 val customBgPicker = rememberLauncherForActivityResult(
@@ -2104,6 +2117,118 @@ fun SettingsCategoryScreen(
                         }
                         SettingsCategory.DEVICE_CAPABILITIES -> {
                              // Device Capabilities has its own screen
+                        }
+                        SettingsCategory.GLYPH_MATRIX -> {
+                            val isGlyphAvailable = remember {
+                                try {
+                                    Class.forName("com.nothing.glyph.matrix.GlyphMatrixManager")
+                                    true
+                                } catch (_: Exception) {
+                                    false
+                                }
+                            }
+
+                            // Info banner (same style as BackupInfoNoticeCard)
+                            var showGlyphInfoBanner by remember { mutableStateOf(!isGlyphAvailable) }
+                            if (showGlyphInfoBanner) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier
+                                                .padding(top = 2.dp)
+                                                .size(20.dp)
+                                        )
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.setcat_glyph_matrix_not_available_title),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.setcat_glyph_matrix_not_available),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { showGlyphInfoBanner = false },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.rounded_close_24),
+                                                contentDescription = stringResource(R.string.cd_close_notice),
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Enable toggle
+                            SettingsSubsection(title = stringResource(R.string.setcat_glyph_matrix_section)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_glyph_matrix_enable_title),
+                                    subtitle = stringResource(R.string.setcat_glyph_matrix_enable_subtitle),
+                                    checked = uiState.glyphMatrixEnabled,
+                                    onCheckedChange = { settingsViewModel.setGlyphMatrixEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.GridView, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            // Preview + mode selector (visible when enabled)
+                            if (uiState.glyphMatrixEnabled) {
+                                GlyphMatrixPreview(
+                                    displayMode = uiState.glyphMatrixDisplayMode,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                                Spacer(Modifier.height(10.dp))
+
+                                // Display mode selector
+                                SettingsSubsection(title = stringResource(R.string.setcat_glyph_matrix_mode_title)) {
+                                    ThemeSelectorItem(
+                                        label = stringResource(R.string.setcat_glyph_matrix_mode_title),
+                                        description = stringResource(R.string.setcat_glyph_matrix_mode_desc),
+                                        options = mapOf(
+                                            "NOW_PLAYING" to stringResource(R.string.setcat_glyph_matrix_mode_now_playing),
+                                            "VISUALIZER" to stringResource(R.string.setcat_glyph_matrix_mode_visualizer),
+                                            "WAVEFORM" to stringResource(R.string.setcat_glyph_matrix_mode_waveform)
+                                        ),
+                                        selectedKey = uiState.glyphMatrixDisplayMode,
+                                        onSelectionChanged = { settingsViewModel.setGlyphMatrixDisplayMode(it) },
+                                        leadingIcon = { Icon(Icons.Rounded.GridView, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                }
+
+                                // About section
+                                SettingsSubsection(title = stringResource(R.string.setcat_glyph_matrix_about_title)) {
+                                    Text(
+                                        text = stringResource(R.string.setcat_glyph_matrix_about_desc),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                            }
                         }
 
                     }

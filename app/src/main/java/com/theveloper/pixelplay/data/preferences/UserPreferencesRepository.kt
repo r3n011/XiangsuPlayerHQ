@@ -392,6 +392,13 @@ class UserPreferencesRepository @Inject constructor(
         // Navigation bar
         val CENTER_NAV_BUTTON_MODE = stringPreferencesKey("center_nav_button_mode")
 
+        // Glyph Matrix
+        val GLYPH_MATRIX_ENABLED = booleanPreferencesKey("glyph_matrix_enabled")
+        val GLYPH_MATRIX_DISPLAY_MODE = stringPreferencesKey("glyph_matrix_display_mode")
+
+        // Lyrics vibrant background
+        val LYRICS_VIBRANT_BACKGROUND_ENABLED = booleanPreferencesKey("lyrics_vibrant_background_enabled")
+
         // Download settings
         val DOWNLOAD_PATH = stringPreferencesKey("download_path")
         val DOWNLOADS_INDEX_JSON = stringPreferencesKey("downloads_index_json_v1")
@@ -1438,6 +1445,13 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] = strength }
     }
 
+    val lyricsVibrantBackgroundEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] ?: true }
+
+    suspend fun setLyricsVibrantBackgroundEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] = enabled }
+    }
+
     val bluetoothLyricsEnabledFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.BLUETOOTH_LYRICS_ENABLED] ?: false }
 
@@ -1831,6 +1845,21 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun hasDotCredentials(): Boolean {
         return getDotApiKey().isNotBlank() && getDotDeviceId().isNotBlank()
+    }
+
+    // Glyph Matrix
+    val glyphMatrixEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.GLYPH_MATRIX_ENABLED] ?: false }
+
+    suspend fun setGlyphMatrixEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.GLYPH_MATRIX_ENABLED] = enabled }
+    }
+
+    val glyphMatrixDisplayModeFlow: Flow<String> =
+        pref { it[PreferencesKeys.GLYPH_MATRIX_DISPLAY_MODE] ?: "NOW_PLAYING" }
+
+    suspend fun setGlyphMatrixDisplayMode(mode: String) {
+        dataStore.edit { it[PreferencesKeys.GLYPH_MATRIX_DISPLAY_MODE] = mode }
     }
 
     suspend fun clearDotCredentials() {

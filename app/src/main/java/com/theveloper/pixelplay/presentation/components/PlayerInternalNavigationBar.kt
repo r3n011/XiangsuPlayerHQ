@@ -101,7 +101,11 @@ private fun PlayerInternalNavigationItemsRow(
 ) {
     val navBarInsetPadding = sanitizeNavigationBarBottomInset(
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    )
+    ).let { inset ->
+        // Some devices report 0 inset when the system nav bar exists.
+        // Use a minimum fallback to prevent items sticking to the screen edge.
+        if (inset <= 0.dp && bottomBarPadding > 0.dp) bottomBarPadding else inset
+    }
     val innerRowPadding = (navBarInsetPadding - bottomBarPadding).coerceAtLeast(0.dp)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestOnSearchIconDoubleTap by rememberUpdatedState(onSearchIconDoubleTap)

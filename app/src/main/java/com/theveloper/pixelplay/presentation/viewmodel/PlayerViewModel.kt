@@ -457,6 +457,14 @@ class PlayerViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = 0f
         )
+    // ⚡ 歌词绚丽背景开关
+    val lyricsVibrantBackgroundEnabled: StateFlow<Boolean> = userPreferencesRepository
+        .lyricsVibrantBackgroundEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true
+        )
     /**
      * High-frequency playback position should not force global UI recomposition.
      * Keep a dedicated position flow for real-time UI elements (seek bars, lyrics timing).
@@ -4410,6 +4418,9 @@ class PlayerViewModel @Inject constructor(
     // ⚡ 防闪烁：isPlaying/playWhenReady 延迟更新 job
     private var isPlayingDebounceJob: Job? = null
     private var playWhenReadyDebounceJob: Job? = null
+    // ⚡ 用户主动暂停时间戳：用于跳过去抖，立即更新 UI
+    private var userPausedAtMs = 0L
+    private val userPauseBypassWindowMs = 800L
 
     /** Play/pause, playWhenReady and playback-state lifecycle. */
     private fun setupPlaybackListeners(playerCtrl: MediaController) {
@@ -4419,8 +4430,25 @@ class PlayerViewModel @Inject constructor(
                 val currentState = playbackStateHolder.stablePlayerState.value
                 Log.w("PixelPlay_Debug", "[onIsPlayingChanged] isPlaying=$isPlaying, currentState.isPlaying=${currentState.isPlaying}")
 
-                // ⚡ 核心防闪烁：切歌后 500ms 内，忽略 isPlaying 的一切变化
+                // ⚡ 用户主动暂停：跳过所有去抖和锁定，立即更新 UI
                 val now = SystemClock.elapsedRealtime()
+                val isUserPause = !isPlaying && (now - userPausedAtMs) < userPauseBypassWindowMs
+                if (isUserPause) {
+                    Log.w("PixelPlay_Debug", "  → 用户主动暂停(${now - userPausedAtMs}ms前)，立即更新")
+                    isPlayingDebounceJob?.cancel()
+                    playbackStateHolder.updateStablePlayerStateIfChanged {
+                        it.copy(
+                            isPlaying = false,
+                            playWhenReady = playerCtrl.playWhenReady
+                        )
+                    }
+                    stopProgressUpdates()
+                    val pausedPosition = playerCtrl.currentPosition.coerceAtLeast(0L)
+                    syncPlaybackPositionFromPlayer(playerCtrl.currentMediaItem?.mediaId, pausedPosition)
+                    return
+                }
+
+                // ⚡ 核心防闪烁：切歌后 500ms 内，忽略 isPlaying 的一切变化
                 val elapsedMs = now - lastSongTransitionAtMs
                 if (lastSongTransitionAtMs > 0 && elapsedMs < songTransitionLockMs) {
                     Log.w("PixelPlay_Debug", "  → ⏭️  切歌锁定期内(${elapsedMs}ms < ${songTransitionLockMs}ms)，忽略 isPlaying=$isPlaying 变化，强制保持 true")
@@ -4501,6 +4529,14 @@ class PlayerViewModel @Inject constructor(
                 val now = SystemClock.elapsedRealtime()
                 val elapsedMs = now - lastSongTransitionAtMs
                 if (lastSongTransitionAtMs > 0 && elapsedMs < songTransitionLockMs) {
+                    // 用户主动暂停时，不强制保持 playWhenReady=true
+                    val isUserPause = (now - userPausedAtMs) < userPauseBypassWindowMs
+                    if (isUserPause) {
+                        Log.w("PixelPlay_Debug", "  → 切歌锁定期内但用户主动暂停，不强制保持 playWhenReady")
+                        playWhenReadyDebounceJob?.cancel()
+                        playbackStateHolder.updateStablePlayerStateIfChanged { it.copy(playWhenReady = false) }
+                        return
+                    }
                     Log.w("PixelPlay_Debug", "  → ⏭️  切歌锁定期内(${elapsedMs}ms < ${songTransitionLockMs}ms)，忽略 playWhenReady=$playWhenReady 变化，强制保持 true")
                     playbackStateHolder.updateStablePlayerStateIfChanged {
                         if (it.playWhenReady) it
@@ -6514,6 +6550,7 @@ class PlayerViewModel @Inject constructor(
             }
 
             if (controller.isPlaying) {
+                userPausedAtMs = SystemClock.elapsedRealtime()
                 controller.pause()
             } else {
                 if (controller.currentMediaItem == null) {

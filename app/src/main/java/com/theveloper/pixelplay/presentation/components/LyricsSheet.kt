@@ -291,6 +291,7 @@ fun LyricsSheet(
     customPlayerControlsOpacity: Int,
     lyricsGradientOverlayEnabled: Boolean,
     lyricsSolidOverlayAlpha: Float = 0f,
+    lyricsVibrantBackgroundEnabled: Boolean = true,
     modifier: Modifier = Modifier,
     swipeThreshold: Dp = 100.dp,
     highlightZoneFraction: Float = 0.08f, // Reduced from 0.22 for less padding
@@ -816,7 +817,7 @@ fun LyricsSheet(
             val hasCustomBackground =
                 customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank()
 
-            if (!hasCustomBackground) {
+            if (!hasCustomBackground && lyricsVibrantBackgroundEnabled) {
                 if (Build.VERSION.SDK_INT >= 31 && currentSong?.albumArtUriString != null) {
                     // 高版本：Apple Music 风格 4 块封面旋转 + 重模糊（RenderEffect）
                     AppleMusicRotatingBackground(

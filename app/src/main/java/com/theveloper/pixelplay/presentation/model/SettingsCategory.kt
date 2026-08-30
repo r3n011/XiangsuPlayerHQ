@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeveloperBoard
 import androidx.compose.material.icons.rounded.DeveloperMode
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
@@ -79,6 +80,12 @@ enum class SettingsCategory(
         titleRes = R.string.settings_category_device_capabilities_title,
         subtitleRes = R.string.settings_category_device_capabilities_subtitle,
         icon = Icons.Rounded.DeveloperBoard
+    ),
+    GLYPH_MATRIX(
+        id = "glyph_matrix",
+        titleRes = R.string.settings_category_glyph_matrix_title,
+        subtitleRes = R.string.settings_category_glyph_matrix_subtitle,
+        icon = Icons.Rounded.GridView
     ),
     ABOUT(
         id = "about",

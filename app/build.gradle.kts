@@ -93,15 +93,16 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 48
-        versionName = "1.5.1"
+        versionCode = 49
+        versionName = "1.5.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            // 预编译 libusb1.0.so 仅提供 arm64-v8a，
-            // 限制 CMake/打包只针对该 ABI，避免其他 ABI 链接阶段报错
-            abiFilters += setOf("arm64-v8a")
+            // Release/Benchmark 只打包 arm64-v8a（预编译 libusb 仅提供该 ABI）；
+            // Debug 额外包含 x86，以便在 x86 模拟器上运行
+            abiFilters += if (enableAbiSplits) setOf("arm64-v8a")
+                          else setOf("arm64-v8a", "x86")
         }
 
 
@@ -351,6 +352,9 @@ dependencies {
         exclude(group = "androidx.compose.runtime")
         exclude(group = "androidx.compose.ui")
     }
+
+    // Nothing Glyph Matrix SDK
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 
     // Projects
     implementation(project(":shared"))

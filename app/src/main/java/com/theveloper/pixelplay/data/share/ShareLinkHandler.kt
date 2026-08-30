@@ -156,7 +156,9 @@ class ShareLinkHandler @Inject constructor(
     private suspend fun importFromQQMusic(item: ShareLinkCodec.ShareItem): OnlineImportResult {
         // 用标题+歌手搜索 QQ 音乐，然后匹配 songmid
         val searchResults = lxJsEngine.search("${item.t} ${item.ar}", "tx", 1, 10)
-        val matched = searchResults.list.find { it.songmid == item.eid || it.name.equals(item.t, true) }
+        val matched = searchResults.list.find { it.songmid == item.eid }
+            ?: searchResults.list.find { it.name.equals(item.t, true) && it.singer.contains(item.ar, true) }
+            ?: searchResults.list.find { it.name.equals(item.t, true) }
 
         if (matched != null) {
             val songId = musicRepository.saveCloudSong(matched)

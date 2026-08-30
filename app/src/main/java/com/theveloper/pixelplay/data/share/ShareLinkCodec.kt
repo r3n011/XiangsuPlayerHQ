@@ -104,19 +104,40 @@ object ShareLinkCodec {
             song.qqMusicMid != null -> "qqMusic" to song.qqMusicMid!!
             song.navidromeId != null -> "navidrome" to song.navidromeId!!
             song.jellyfinId != null -> "jellyfin" to song.jellyfinId!!
-            uri.startsWith("cloud://lx/") -> "cloudLx" to extractLxId(song)
+            uri.startsWith("cloud://lx/") -> extractLxSourceAndId(song)
             else -> "local" to ""
         }
     }
 
-    private fun extractLxId(song: Song): String {
-        // cloud://lx/{urlencoded JSON} 中提取 id
+    /**
+     * 从 cloud://lx/{urlencoded JSON} 中提取实际音源和平台 ID
+     * lx JSON 结构: {id, songmid, hash, name, singer, source, ...}
+     * source 映射: "wy"=网易云, "tx"=QQ音乐, "kw"=酷我, "kg"=酷狗
+     */
+    private fun extractLxSourceAndId(song: Song): Pair<String, String> {
         return try {
             val jsonStr = Uri.decode(song.contentUriString.removePrefix("cloud://lx/"))
-            val lxData = json.parseToJsonElement(jsonStr)
-            lxData.toString()
+            val lxObj = json.parseToJsonElement(jsonStr)
+            val obj = lxObj as? kotlinx.serialization.json.JsonObject
+                ?: return "local" to song.id
+            val source = obj["source"]?.toString()?.trim('"') ?: ""
+            val songmid = obj["songmid"]?.toString()?.trim('"')?.ifBlank { null }
+            val lxId = obj["id"]?.toString()?.trim('"')?.ifBlank { null }
+            when (source) {
+                "wy" -> {
+                    val eid = lxId?.toLongOrNull()?.toString() ?: songmid ?: ""
+                    if (eid.isNotBlank()) "netease" to eid else "cloudLx" to (lxId ?: song.id)
+                }
+                "tx" -> {
+                    val eid = songmid?.ifBlank { null } ?: lxId ?: ""
+                    if (eid.isNotBlank()) "qqMusic" to eid else "cloudLx" to (lxId ?: song.id)
+                }
+                "kw" -> "cloudLx" to (lxId ?: song.id)
+                "kg" -> "cloudLx" to (lxId ?: song.id)
+                else -> "cloudLx" to (lxId ?: songmid ?: song.id)
+            }
         } catch (_: Exception) {
-            song.id
+            "cloudLx" to song.id
         }
     }
 

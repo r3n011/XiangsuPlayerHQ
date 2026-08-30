@@ -5,12 +5,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.size.Size
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 
 /**
@@ -31,8 +35,16 @@ fun CustomPlayerBackground(
     scrimAlpha: Float = 0f
 ) {
     if (!enabled || uri.isNullOrBlank()) return
+    val context = LocalContext.current
     Box(modifier = modifier) {
-        val painter = rememberAsyncImagePainter(model = uri)
+        val imageRequest = remember(uri) {
+            ImageRequest.Builder(context)
+                .data(uri)
+                .size(Size(1024, 1024))
+                .crossfade(true)
+                .build()
+        }
+        val painter = rememberAsyncImagePainter(model = imageRequest)
         val imageModifier =
             if (blurRadius > 0) Modifier.fillMaxSize().blur(blurRadius.dp) else Modifier.fillMaxSize()
         when (mode) {

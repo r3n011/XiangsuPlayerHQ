@@ -110,6 +110,8 @@ fun HomeGradientTopBar(
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
     disableBlurAllOver: Boolean = false,
+    hearingGuardState: com.theveloper.pixelplay.data.hearingguard.HearingGuardState = com.theveloper.pixelplay.data.hearingguard.HearingGuardState(),
+    onHearingGuardClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -147,8 +149,16 @@ fun HomeGradientTopBar(
         actions = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(end = 14.dp)
+                modifier = Modifier.padding(end = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // 听力保护胶囊
+                com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardCapsule(
+                    state = hearingGuardState,
+                    onClick = onHearingGuardClick
+                )
+
+                // 云端串流按钮
                 FilledIconButton(
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -161,7 +171,6 @@ fun HomeGradientTopBar(
                          contentDescription = stringResource(R.string.presentation_batch_g_topbar_cd_telegram)
                     )
                 }
-                
             }
         },
         colors = topAppBarColors(

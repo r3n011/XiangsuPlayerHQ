@@ -50,6 +50,10 @@
     <string
         name="settings_category_device_capabilities_subtitle"
     >Audio specs, codecs, and decoder info</string>
+    <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
+    <string
+        name="settings_category_glyph_matrix_subtitle"
+    >Nothing Phone LED matrix display integration</string>
     <string name="settings_category_about_title">About</string>
     <string
         name="settings_category_about_subtitle"
@@ -210,6 +214,8 @@
     <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
     <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
     <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics. When off, a solid color background is used instead.</string>
     <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
     <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
     <string name="setcat_home_collage">Home Collage</string>
@@ -718,6 +724,22 @@
     <string name="dot_device_testing">测试中...</string>
     <string name="dot_device_save">保存设置</string>
     <string name="dot_device_clear">清除设置</string>
+
+    <!-- Glyph Matrix -->
+    <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">Enable Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">Show music visualization on Nothing Phone LED matrix</string>
+    <string name="setcat_glyph_matrix_mode_title">Display Mode</string>
+    <string name="setcat_glyph_matrix_mode_desc">Choose what to display on the Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
+    <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
+    <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
+    <string name="setcat_glyph_matrix_preview_title">Preview</string>
+    <string name="setcat_glyph_matrix_preview_desc">This is how it will look on the Nothing Phone LED matrix (25×25)</string>
+    <string name="setcat_glyph_matrix_about_title">About Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix is a programmable LED display on the back of Nothing Phone (3) featuring 625 individual LEDs arranged in a 25×25 grid. When you play music, PixelPlayer can animate the matrix to create stunning visual effects that sync with your music.</string>
 
     <!-- Car Mode -->
     <string name="setcat_car_mode_title">Car Mode</string>

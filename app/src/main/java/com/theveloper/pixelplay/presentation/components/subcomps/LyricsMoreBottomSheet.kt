@@ -241,7 +241,7 @@ fun LyricsMoreBottomSheet(
                 }
 
                 // Search lyrics online
-                val onlineSearchShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 8.dp, bottomEnd = 8.dp)
+                val onlineSearchShape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 8.dp, bottomEnd = 8.dp)
 
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.search_lyrics_online)) },

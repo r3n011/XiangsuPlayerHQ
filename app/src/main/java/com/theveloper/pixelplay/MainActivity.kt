@@ -12,6 +12,9 @@ import android.content.Intent
 import android.os.Build
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import android.os.Bundle
@@ -58,10 +61,12 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -608,7 +613,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    
     private fun resolveStreamUri(intent: Intent): android.net.Uri? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)?.let { return it }
@@ -927,6 +931,11 @@ class MainActivity : ComponentActivity() {
         }
 
         // 中间按钮点击行为：发现模式弹出选择，漫游模式直接进入漫游（电台模式为普通导航，不显示模式无中间按钮）
+        val hearingGuardViewModel: com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardViewModel = hiltViewModel()
+        val hearingGuardState by hearingGuardViewModel.state.collectAsStateWithLifecycle()
+        var showHearingGuardSetup by remember { mutableStateOf(false) }
+        val onHearingGuardClick: () -> Unit = { showHearingGuardSetup = true }
+
         val onCenterNavClick: () -> Unit = {
             when (centerNavButtonMode) {
                 CenterNavButtonMode.DISCOVER -> showDiscoverSheet = true
@@ -1042,9 +1051,13 @@ class MainActivity : ComponentActivity() {
             dev.chrisbanes.haze.HazeState(initialBlurEnabled = blurEnabled)
         }
 
-        val systemNavBarInset = sanitizeNavigationBarBottomInset(
-            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        )
+        // ⚡ 使用 getBottom(density) 而非 asPaddingValues().calculateBottomPadding()
+        // 后者在部分设备上会返回 0，导致导航栏紧贴屏幕底部边缘
+        val densityValue = LocalDensity.current
+        val systemNavBarInset = run {
+            val px = WindowInsets.navigationBars.getBottom(densityValue)
+            sanitizeNavigationBarBottomInset(with(densityValue) { px.toDp() })
+        }
 
         LaunchedEffect(hapticsEnabled, rootView) {
             rootView.isHapticFeedbackEnabled = hapticsEnabled
@@ -1180,7 +1193,9 @@ class MainActivity : ComponentActivity() {
                             navItems = commonNavItems,
                             currentRoute = currentRoute,
                             navRailProgressState = navRailProgressState,
-                            onCenterNavClick = onCenterNavClick
+                            onCenterNavClick = onCenterNavClick,
+                            hearingGuardState = hearingGuardState,
+                            onHearingGuardClick = onHearingGuardClick
                         )
                     }
 
@@ -1468,8 +1483,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
+
+        // 听力保护设置弹窗（平板模式下由 NavigationRail 底部盾牌触发）
+        if (showHearingGuardSetup) {
+            com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardSetupDialog(
+                currentConfig = hearingGuardState.config,
+                isEnabled = hearingGuardState.enabled,
+                onEnabledChange = { hearingGuardViewModel.setEnabled(it) },
+                onConfirm = { config ->
+                    hearingGuardViewModel.setConfig(config)
+                    showHearingGuardSetup = false
+                },
+                onDisable = {
+                    hearingGuardViewModel.clearConfig()
+                    showHearingGuardSetup = false
+                },
+                onDismiss = { showHearingGuardSetup = false }
+            )
+        }
+
 Trace.endSection()
+    }
     }
     }
 
@@ -1714,7 +1748,9 @@ Trace.endSection()
         navItems: kotlinx.collections.immutable.ImmutableList<BottomNavItem>,
         currentRoute: String?,
         navRailProgressState: androidx.compose.runtime.State<Float>,
-        onCenterNavClick: () -> Unit = {}
+        onCenterNavClick: () -> Unit = {},
+        hearingGuardState: com.theveloper.pixelplay.data.hearingguard.HearingGuardState = com.theveloper.pixelplay.data.hearingguard.HearingGuardState(),
+        onHearingGuardClick: () -> Unit = {}
     ) {
         NavigationRail(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -1804,20 +1840,132 @@ Trace.endSection()
                             animationSpec = tween(150),
                             label = "NavRailLabelColor"
                         )
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = selected,
-                            enter = fadeIn(tween(150)) + scaleIn(animationSpec = tween(150), initialScale = 0.9f),
-                            exit = fadeOut(tween(100)) + scaleOut(animationSpec = tween(100), targetScale = 0.9f),
-                            label = "NavRailLabelVisibility"
-                        ) {
-                            androidx.compose.material3.Text(
-                                stringResource(item.labelResId),
-                                color = labelColor
-                            )
-                        }
+                        androidx.compose.material3.Text(
+                            stringResource(item.labelResId),
+                            color = labelColor
+                        )
                     }
                 )
             }
+            // Push hearing guard to the bottom
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Hearing Guard shield at bottom of nav rail
+            val plan = hearingGuardState.plan
+            val hgShieldColor = when {
+                !hearingGuardState.isConfigured -> MaterialTheme.colorScheme.onSurfaceVariant
+                !hearingGuardState.enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                plan != null -> {
+                    val remaining = plan.sessionLimitMinutes - (hearingGuardState.currentSessionMs / 60000).toInt()
+                    val ratio = if (plan.sessionLimitMinutes > 0)
+                        (hearingGuardState.currentSessionMs.toFloat() / (plan.sessionLimitMinutes * 60000L)).coerceIn(0f, 1f) else 0f
+                    when {
+                        ratio >= 0.9f -> MaterialTheme.colorScheme.error
+                        ratio >= 0.75f -> Color(0xFFFFC107)
+                        else -> Color(0xFF4CAF50)
+                    }
+                }
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            val hgShieldAlpha by animateFloatAsState(
+                targetValue = if (hearingGuardState.isConfigured && !hearingGuardState.enabled) 0.5f else 1f,
+                animationSpec = tween(200),
+                label = "hgShieldAlpha"
+            )
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .alpha(hgShieldAlpha)
+                    .clickable(onClick = onHearingGuardClick)
+                    .padding(vertical = 12.dp)
+            ) {
+                // Shield icon (Canvas drawn, same as HearingGuardCapsule)
+                Canvas(modifier = Modifier.size(24.dp)) {
+                    val w = size.width
+                    val h = size.height
+                    val shieldPath = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(w * 0.5f, h * 0.05f)
+                        cubicTo(w * 0.15f, h * 0.15f, w * 0.05f, h * 0.35f, w * 0.05f, h * 0.55f)
+                        cubicTo(w * 0.05f, h * 0.75f, w * 0.25f, h * 0.9f, w * 0.5f, h * 0.98f)
+                        cubicTo(w * 0.75f, h * 0.9f, w * 0.95f, h * 0.75f, w * 0.95f, h * 0.55f)
+                        cubicTo(w * 0.95f, h * 0.35f, w * 0.85f, h * 0.15f, w * 0.5f, h * 0.05f)
+                        close()
+                    }
+                    drawPath(shieldPath, color = hgShieldColor, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()))
+                    if (hearingGuardState.isConfigured && hearingGuardState.enabled) {
+                        drawPath(shieldPath, color = hgShieldColor.copy(alpha = 0.15f))
+                    }
+                    // Check / X / Warning icon inside shield
+                    val iconSize = w * 0.35f
+                    val iconX = (w - iconSize) / 2f
+                    val iconY = h * 0.35f
+                    if (hearingGuardState.isConfigured) {
+                        val ratio = hearingGuardState.plan?.let {
+                            if (it.sessionLimitMinutes > 0) (hearingGuardState.currentSessionMs.toFloat() / (it.sessionLimitMinutes * 60000L)).coerceIn(0f, 1f) else 0f
+                        } ?: 0f
+                        if (ratio >= 0.9f) {
+                            // X mark
+                            drawLine(Color.White, Offset(iconX, iconY), Offset(iconX + iconSize, iconY + iconSize), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                            drawLine(Color.White, Offset(iconX + iconSize, iconY), Offset(iconX, iconY + iconSize), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                        } else if (ratio >= 0.75f) {
+                            // !
+                            drawLine(Color.White, Offset(w * 0.5f, iconY), Offset(w * 0.5f, iconY + iconSize * 0.7f), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                            drawCircle(Color.White, radius = 1.5.dp.toPx(), center = Offset(w * 0.5f, iconY + iconSize * 0.85f))
+                        } else {
+                            // Checkmark
+                            drawLine(Color.White, Offset(iconX + iconSize * 0.15f, iconY + iconSize * 0.5f), Offset(iconX + iconSize * 0.4f, iconY + iconSize * 0.8f), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                            drawLine(Color.White, Offset(iconX + iconSize * 0.4f, iconY + iconSize * 0.8f), Offset(iconX + iconSize * 0.85f, iconY + iconSize * 0.2f), strokeWidth = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                        }
+                    }
+                }
+                // Progress bar below shield (if configured and enabled)
+                val plan = hearingGuardState.plan
+                if (hearingGuardState.isConfigured && hearingGuardState.enabled && plan != null) {
+                    val remaining = plan.sessionLimitMinutes - (hearingGuardState.currentSessionMs / 60000).toInt()
+                    val progressRatio = if (plan.sessionLimitMinutes > 0)
+                        (hearingGuardState.currentSessionMs.toFloat() / (plan.sessionLimitMinutes * 60000L)).coerceIn(0f, 1f) else 0f
+                    val progressColor by animateColorAsState(
+                        targetValue = when {
+                            progressRatio >= 0.9f -> MaterialTheme.colorScheme.error
+                            progressRatio >= 0.75f -> Color(0xFFFFC107)
+                            else -> Color(0xFF4CAF50)
+                        },
+                        animationSpec = tween(300),
+                        label = "hgRailProgressColor"
+                    )
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = progressRatio,
+                        animationSpec = tween(300),
+                        label = "hgRailProgress"
+                    )
+                    Canvas(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp).fillMaxWidth().height(3.dp)) {
+                        drawRoundRect(
+                            color = hgShieldColor.copy(alpha = 0.2f),
+                            cornerRadius = CornerRadius(1.5.dp.toPx())
+                        )
+                        if (animatedProgress > 0f) {
+                            drawRoundRect(
+                                color = progressColor,
+                                size = Size(size.width * animatedProgress, size.height),
+                                cornerRadius = CornerRadius(1.5.dp.toPx())
+                            )
+                        }
+                    }
+                }
+                // Label text below (mimicking NavigationRailItem label style)
+                val labelStyle = MaterialTheme.typography.labelSmall
+                val labelText = if (!hearingGuardState.isConfigured) "像素卫士"
+                    else if (!hearingGuardState.enabled) "卫士已暂停"
+                    else "像素卫士"
+                Text(
+                    text = labelText,
+                    style = labelStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+            }
+
         }
     }
 

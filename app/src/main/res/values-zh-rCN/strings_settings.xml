@@ -46,6 +46,10 @@
     <string
         name="settings_category_device_capabilities_subtitle"
     >音频规格、编解码器与解码信息</string>
+    <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
+    <string
+        name="settings_category_glyph_matrix_subtitle"
+    >Nothing 手机 LED 矩阵显示集成</string>
     <string name="settings_category_about_title">关于</string>
     <string
         name="settings_category_about_subtitle"
@@ -173,6 +177,8 @@
     <string name="setcat_custom_player_controls_opacity_desc">应用于播放器界面与歌词界面除背景外的所有元素（封面、信息、进度、控制按钮等）。</string>
     <string name="setcat_lyrics_gradient_overlay_title">歌词渐变遮罩</string>
     <string name="setcat_lyrics_gradient_overlay_desc">在歌词界面上方与下方显示柔和渐变，提升文字可读性。</string>
+    <string name="setcat_lyrics_vibrant_bg_title">歌词绚丽背景</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">在歌词界面后方显示旋转模糊的专辑封面背景。关闭后将使用纯色背景。</string>
     <string name="setcat_lyrics_solid_overlay_title">歌词纯色遮罩</string>
     <string name="setcat_lyrics_solid_overlay_desc">调整歌词界面纯色遮罩的不透明度，让背景变暗以提升文字可读性。</string>
     <string name="setcat_home_collage">主页拼贴</string>
@@ -612,6 +618,22 @@
     <string name="equalizer_preset_treble_boost">高音增强</string>
     <string name="equalizer_preset_vocal">人声</string>
     <string name="equalizer_preset_custom">自定义</string>
+
+    <!-- Glyph Matrix -->
+    <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">启用 Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">在 Nothing 手机的 LED 矩阵上显示音乐可视化</string>
+    <string name="setcat_glyph_matrix_mode_title">显示模式</string>
+    <string name="setcat_glyph_matrix_mode_desc">选择 Glyph Matrix 上显示的内容</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">正在播放</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">音频可视化</string>
+    <string name="setcat_glyph_matrix_mode_waveform">波形</string>
+    <string name="setcat_glyph_matrix_not_available_title">此设备不支持</string>
+    <string name="setcat_glyph_matrix_not_available">此功能需要 Nothing Phone 的 Glyph Matrix。你仍然可以在下方预览效果。</string>
+    <string name="setcat_glyph_matrix_preview_title">效果预览</string>
+    <string name="setcat_glyph_matrix_preview_desc">这是在 Nothing Phone LED 矩阵 (25×25) 上的实际显示效果</string>
+    <string name="setcat_glyph_matrix_about_title">关于 Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix 是 Nothing Phone (3) 背面的可编程 LED 显示屏，由 625 颗独立 LED 排列成 25×25 的圆形矩阵。播放音乐时，像素播放器可以在矩阵上创建与音乐同步的炫酷视觉效果。</string>
 
     <!-- Car Mode -->
     <string name="setcat_car_mode_title">车机模式</string>

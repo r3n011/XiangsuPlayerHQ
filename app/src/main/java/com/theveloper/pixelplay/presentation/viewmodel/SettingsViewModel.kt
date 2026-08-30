@@ -130,6 +130,7 @@ data class SettingsUiState(
     val useAnimatedLyrics: Boolean = true,
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 2.5f,
+    val lyricsVibrantBackgroundEnabled: Boolean = true,
     val disableBlurAllOver: Boolean = false,
     val navBarBlurEnabled: Boolean = true,
     val backupInfoDismissed: Boolean = false,
@@ -150,6 +151,8 @@ data class SettingsUiState(
     val songFilterKeywords: List<UserPreferencesRepository.SongFilterKeyword> = emptyList(),
     val showLyricsTrackInfo: Boolean = true,
     val carModeEnabled: Boolean = false,
+    val glyphMatrixEnabled: Boolean = false,
+    val glyphMatrixDisplayMode: String = "NOW_PLAYING",
     val centerNavButtonMode: CenterNavButtonMode = CenterNavButtonMode.DISCOVER,
     val downloadPath: String = Environment.DIRECTORY_MUSIC,
     val transcodeStrategy: UserPreferencesRepository.TranscodeStrategy = UserPreferencesRepository.TranscodeStrategy.STREAMING,
@@ -642,6 +645,12 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            userPreferencesRepository.lyricsVibrantBackgroundEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(lyricsVibrantBackgroundEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
             userPreferencesRepository.backupInfoDismissedFlow.collect { dismissed ->
                 _uiState.update { it.copy(backupInfoDismissed = dismissed) }
             }
@@ -723,6 +732,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.carModeEnabledFlow.collect { enabled ->
                 _uiState.update { it.copy(carModeEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.glyphMatrixEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(glyphMatrixEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.glyphMatrixDisplayModeFlow.collect { mode ->
+                _uiState.update { it.copy(glyphMatrixDisplayMode = mode) }
             }
         }
 
@@ -1253,6 +1274,12 @@ class SettingsViewModel @Inject constructor(
     fun setAnimatedLyricsBlurStrength(strength: Float) {
         viewModelScope.launch {
             userPreferencesRepository.setAnimatedLyricsBlurStrength(strength)
+        }
+    }
+
+    fun setLyricsVibrantBackgroundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLyricsVibrantBackgroundEnabled(enabled)
         }
     }
 
@@ -1880,6 +1907,18 @@ class SettingsViewModel @Inject constructor(
     fun setCarModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setCarModeEnabled(enabled)
+        }
+    }
+
+    fun setGlyphMatrixEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setGlyphMatrixEnabled(enabled)
+        }
+    }
+
+    fun setGlyphMatrixDisplayMode(mode: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setGlyphMatrixDisplayMode(mode)
         }
     }
 

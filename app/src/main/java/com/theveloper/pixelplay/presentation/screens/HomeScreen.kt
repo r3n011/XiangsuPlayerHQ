@@ -127,6 +127,9 @@ import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StatsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.FavoriteArtistViewModel
+import com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardViewModel
+import com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardSetupDialog
+import com.theveloper.pixelplay.presentation.components.hearingguard.RestReminderDialog
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -322,12 +325,35 @@ fun HomeScreen(
     var showStreamingProviderSheet by remember { mutableStateOf(false) }
     var showNeteaseLoginRequiredDialog by remember { mutableStateOf(false) }
     var cleanInstallDisclaimerDismissedThisSession by rememberSaveable { mutableStateOf(false) }
+    var showHearingGuardSetup by remember { mutableStateOf(false) }
+    var showHearingGuardRestReminder by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     val betaSheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     LocalContext.current
 
     val homeStatsOverview by statsViewModel.homeOverview.collectAsStateWithLifecycle()
+
+    // 听力保护
+    val hearingGuardViewModel: HearingGuardViewModel = hiltViewModel()
+    val hearingGuardState by hearingGuardViewModel.state.collectAsStateWithLifecycle()
+
+    // 跟踪播放状态，通知听力保护管理器
+    val isPlaying by remember(playerViewModel) {
+        playerViewModel.stablePlayerState.map { it.isPlaying }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = false)
+    LaunchedEffect(isPlaying) {
+        hearingGuardViewModel.onPlaybackStateChanged(isPlaying)
+    }
+
+    // 听力保护休息提醒触发时，自动暂停播放
+    LaunchedEffect(hearingGuardState.restReminderTriggered) {
+        if (hearingGuardState.restReminderTriggered) {
+            showHearingGuardRestReminder = true
+            // 暂停播放（通过 playPause toggle，此时正在播放所以会暂停）
+            if (isPlaying) playerViewModel.playPause()
+        }
+    }
 
     // 主页滚动状态用 rememberSaveable 保存：Tab 切换（主页离开组合再回来）时恢复上次
     // 的滚动位置，避免整页回到顶部造成"重载闪一下"的观感。
@@ -836,6 +862,8 @@ fun HomeScreen(
                 },
                 isScrolled = isScrolledPastThreshold.value,
                 disableBlurAllOver = disableBlurAllOver,
+                hearingGuardState = hearingGuardState,
+                onHearingGuardClick = { showHearingGuardSetup = true },
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
@@ -922,6 +950,45 @@ fun HomeScreen(
                 if (dontShowAgain) {
                     settingsViewModel.setBeta05CleanInstallDisclaimerDismissed(true)
                 }
+            }
+        )
+    }
+
+    // 听力保护设置弹窗
+    if (showHearingGuardSetup) {
+        HearingGuardSetupDialog(
+            currentConfig = hearingGuardState.config,
+            isEnabled = hearingGuardState.enabled,
+            onEnabledChange = { hearingGuardViewModel.setEnabled(it) },
+            onConfirm = { config ->
+                hearingGuardViewModel.setConfig(config)
+                showHearingGuardSetup = false
+            },
+            onDisable = {
+                hearingGuardViewModel.clearConfig()
+                showHearingGuardSetup = false
+            },
+            onDismiss = { showHearingGuardSetup = false }
+        )
+    }
+
+    // 听力保护休息提醒弹窗
+    if (showHearingGuardRestReminder && hearingGuardState.restReminderTriggered) {
+        RestReminderDialog(
+            state = hearingGuardState,
+            onRestConfirm = {
+                hearingGuardViewModel.onRestConfirmed()
+                showHearingGuardRestReminder = false
+            },
+            onContinueListening = {
+                hearingGuardViewModel.onContinueListening()
+                showHearingGuardRestReminder = false
+                // 恢复播放（通过 playPause toggle，此时已暂停所以会播放）
+                if (!isPlaying) playerViewModel.playPause()
+            },
+            onDismiss = {
+                hearingGuardViewModel.onRestConfirmed()
+                showHearingGuardRestReminder = false
             }
         )
     }

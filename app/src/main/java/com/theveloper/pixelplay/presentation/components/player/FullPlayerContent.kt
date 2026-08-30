@@ -337,6 +337,7 @@ fun FullPlayerContent(
     val customPlayerControlsOpacity by playerViewModel.customPlayerControlsOpacity.collectAsStateWithLifecycle()
     val lyricsGradientOverlayEnabled by playerViewModel.lyricsGradientOverlayEnabled.collectAsStateWithLifecycle()
     val lyricsSolidOverlayAlpha by playerViewModel.lyricsSolidOverlayAlpha.collectAsStateWithLifecycle()
+    val lyricsVibrantBackgroundEnabled by playerViewModel.lyricsVibrantBackgroundEnabled.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     val gradientEdgeColor by androidx.compose.animation.animateColorAsState(
         targetValue = LocalMaterialTheme.current.primaryContainer,
@@ -1304,7 +1305,8 @@ fun FullPlayerContent(
             customPlayerBackgroundBlurRadius = customPlayerBackgroundBlurRadius,
             customPlayerControlsOpacity = customPlayerControlsOpacity,
             lyricsGradientOverlayEnabled = lyricsGradientOverlayEnabled,
-            lyricsSolidOverlayAlpha = lyricsSolidOverlayAlpha
+            lyricsSolidOverlayAlpha = lyricsSolidOverlayAlpha,
+            lyricsVibrantBackgroundEnabled = lyricsVibrantBackgroundEnabled
         )
     }
 

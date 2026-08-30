@@ -30,6 +30,7 @@ import androidx.core.graphics.drawable.toBitmap
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import coil.size.Size
 import kotlin.math.max
 import kotlin.math.sin
 import kotlin.random.Random
@@ -53,6 +54,7 @@ fun AppleMusicRotatingBackground(
                 val request = ImageRequest.Builder(context)
                     .data(uri)
                     .allowHardware(false)
+                    .size(Size(512, 512))
                     .build()
                 (imageLoader.execute(request) as? SuccessResult)
                     ?.drawable

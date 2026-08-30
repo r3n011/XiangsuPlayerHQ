@@ -32,22 +32,26 @@ set(libusb_h_dir ${CMAKE_SOURCE_DIR}/libusb/include)
 
 include_directories(${libusb_h_dir})
 
-# 导入预编译 libusb
-add_library(libusb SHARED IMPORTED)
-set_target_properties(libusb PROPERTIES IMPORTED_LOCATION ${libusb_so_dir}/libusb1.0.so)
+# 导入预编译 libusb（仅 arm64-v8a 提供预编译二进制，其他 ABI 跳过）
+if(EXISTS ${libusb_so_dir}/libusb1.0.so)
+    add_library(libusb SHARED IMPORTED)
+    set_target_properties(libusb PROPERTIES IMPORTED_LOCATION ${libusb_so_dir}/libusb1.0.so)
 
-# USB 音频输出 JNI 库（等时 OUT 端点写 PCM）
-add_library(
-        usbaudio_output
-        SHARED
-        usbaudio_output.c
-)
+    # USB 音频输出 JNI 库（等时 OUT 端点写 PCM）
+    add_library(
+            usbaudio_output
+            SHARED
+            usbaudio_output.c
+    )
 
-target_link_libraries(
-        usbaudio_output
-        libusb
-        ${log-lib}
-)
+    target_link_libraries(
+            usbaudio_output
+            libusb
+            ${log-lib}
+    )
+else()
+    message(WARNING "libusb1.0.so not found for ${ANDROID_ABI}, skipping usbaudio_output")
+endif()
 
 # ============================================================
 # AAudio 输出（Android O+ 低延迟原生音频）
