@@ -166,6 +166,9 @@ fun ArtistHomepageScreen(
     var showSongInfoSheet by remember { mutableStateOf(false) }
     var showSongSortSheet by remember { mutableStateOf(false) }
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
+    // 手机模式：点击头像/背景图查看大图（平板模式在 TabletArtistHomepagePanel 内部自行管理）
+    var viewingImage by remember { mutableStateOf<String?>(null) }
+    var isViewingAvatar by remember { mutableStateOf(false) }
 
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomBarHeightDp = MiniPlayerHeight + systemNavBarInset + 16.dp
@@ -320,6 +323,10 @@ fun ArtistHomepageScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(backgroundHeight + 200.dp)
+                    .clickable {
+                        viewingImage = uiState.backgroundUrl
+                        isViewingAvatar = false
+                    }
                     .graphicsLayer {
                         val overscroll = if (scrollOffset > 0) scrollOffset else 0f
                         translationY = -overscroll * 0.3f
@@ -485,6 +492,12 @@ fun ArtistHomepageScreen(
                                 songCount = uiState.songCount,
                                 albumCount = uiState.albumCount,
                                 isFavorite = isArtistFavorite,
+                                onAvatarClick = {
+                                    if (uiState.artistAvatar.isNotBlank()) {
+                                        viewingImage = uiState.artistAvatar
+                                        isViewingAvatar = true
+                                    }
+                                },
                                 onFavoriteClick = {
                                     favoriteArtistViewModel.toggleFavorite(
                                         id = artistId,
@@ -789,6 +802,15 @@ fun ArtistHomepageScreen(
             }
         }
 
+        // 手机模式：全屏图片查看器（平板模式在 TabletArtistHomepagePanel 内部渲染）
+        if (!isWideScreen && viewingImage != null) {
+            ImageViewerDialog(
+                imageUrl = viewingImage!!,
+                isAvatar = isViewingAvatar,
+                onDismiss = { viewingImage = null }
+            )
+        }
+
         // 返回按钮（手机模式下显示；平板模式下左侧面板已有返回按钮）
         if (!isWideScreen) {
         FilledIconButton(
@@ -916,6 +938,7 @@ private fun ArtistHomepageHeader(
     songCount: Int,
     albumCount: Int,
     isFavorite: Boolean,
+    onAvatarClick: () -> Unit = {},
     onFavoriteClick: () -> Unit
 ) {
     Column(
@@ -937,7 +960,8 @@ private fun ArtistHomepageHeader(
                         contentDescription = null,
                         modifier = Modifier
                             .size(160.dp)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable(onClick = onAvatarClick),
                         contentScale = ContentScale.Crop,
                         placeholder = null,
                         error = null
@@ -1303,7 +1327,7 @@ private fun TabletArtistHomepagePanel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp + 200.dp)
+                        .height(280.dp)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(

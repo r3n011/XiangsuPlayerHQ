@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,6 +51,7 @@ fun UpdateAvailableDialog(
     downloadState: ApkDownloadInstaller.DownloadState?,
     onDismiss: () -> Unit,
     onDownload: (List<ApkDownloadInstaller.DownloadCandidate>) -> Unit,
+    onBackgroundDownload: (List<ApkDownloadInstaller.DownloadCandidate>) -> Unit = {},
     onOpenLanzouInBrowser: () -> Unit = {}
 ) {
     // 蓝奏云直链（已同步时可用）+ GitHub 兜底，两个下载源独立展示、互不掺和
@@ -333,6 +335,33 @@ fun UpdateAvailableDialog(
                                         text = "在浏览器中打开蓝奏云",
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                            // 后台更新：关闭弹窗后用前台服务下载，通知栏实时显示进度
+                            if (hasAnySource && !isDownloading && !isInstalling) {
+                                TextButton(
+                                    onClick = {
+                                        val bgCandidates = if (lanzouCandidates.isNotEmpty()) {
+                                            lanzouCandidates
+                                        } else {
+                                            listOfNotNull(
+                                                githubUrl?.let {
+                                                    ApkDownloadInstaller.DownloadCandidate(url = it)
+                                                }
+                                            )
+                                        }
+                                        onBackgroundDownload(bgCandidates)
+                                        onDismiss()
+                                    },
+                                    shape = actionShape,
+                                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                                ) {
+                                    Text(
+                                        text = "后台更新（通知栏显示进度）",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary,
                                     )
                                 }
                             }

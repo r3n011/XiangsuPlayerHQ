@@ -86,6 +86,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
@@ -193,6 +194,7 @@ import com.theveloper.pixelplay.presentation.components.calculatePlayerSheetColl
 import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHeight
 import com.theveloper.pixelplay.presentation.components.resolveNavBarSurfaceHeight
 import com.theveloper.pixelplay.presentation.components.sanitizeNavigationBarBottomInset
+import com.theveloper.pixelplay.presentation.components.AutoUpdatePrompt
 import com.theveloper.pixelplay.presentation.navigation.AppNavigation
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.navigation.TabContentHost
@@ -904,6 +906,9 @@ class MainActivity : ComponentActivity() {
         val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
         val centerNavButtonMode by userPreferencesRepository.centerNavButtonModeFlow.collectAsStateWithLifecycle(initialValue = CenterNavButtonMode.DISCOVER)
+        val discoverShowRoaming by userPreferencesRepository.discoverShowRoamingFlow.collectAsStateWithLifecycle(initialValue = true)
+        val discoverShowRadio by userPreferencesRepository.discoverShowRadioFlow.collectAsStateWithLifecycle(initialValue = true)
+        val discoverShowAi by userPreferencesRepository.discoverShowAiFlow.collectAsStateWithLifecycle(initialValue = true)
         // 发现模式弹窗：让用户选择进入「漫游」或「电台」
         var showDiscoverSheet by remember { mutableStateOf(false) }
 
@@ -1013,7 +1018,8 @@ class MainActivity : ComponentActivity() {
                 Screen.EasterEgg.route,
                 Screen.WordDelimiterConfig.route,
                 Screen.ArtistWhitelistConfig.route,
-                Screen.Equalizer.route
+                Screen.Equalizer.route,
+                Screen.AiAssistant.route
             )
         }
         val isPlayerExpanded by remember {
@@ -1128,7 +1134,13 @@ class MainActivity : ComponentActivity() {
         val miniPlayerBottomMarginDp = if (isLandscape) {
             maxOf(systemNavBarInset, 8.dp)
         } else {
-            if (shouldHideBottomNavBar) systemNavBarInset else navBarOccupiedHeight
+            when {
+                shouldHideBottomNavBar -> systemNavBarInset
+                // 悬浮底栏：mini player 直接落到胶囊正上方，底部仅预留 mini 高度 + inset，
+                // 消除之前按普通底栏高度(84dp)预留造成 mini player 与悬浮导航之间的大空隙
+                navBarStyle == NavBarStyle.FLOATING -> MiniPlayerHeight + systemNavBarInset
+                else -> navBarOccupiedHeight
+            }
         }
 
         // NavigationRail 的水平 padding:使用稳定值,不依赖动画值,避免位置抖动
@@ -1217,7 +1229,7 @@ class MainActivity : ComponentActivity() {
                     // 返回/下滑收起后回到悬浮底栏（mini player 仍隐藏）。
                     // ⚠️ 仅在真正显示底部悬浮导航时隐藏 mini player；横屏/平板走 NavigationRail，
                     // 底部导航不悬浮，此时必须保留 mini player，否则平板会因设置了悬浮样式而 mini player 消失。
-                    val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
+                    val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route, Screen.AiAssistant.route) }
                     val shouldHideFloatingMini by remember(currentRoute, navBarStyle, isLandscape) {
                         derivedStateOf {
                             currentRoute in routesWithHiddenMiniPlayer
@@ -1522,24 +1534,39 @@ class MainActivity : ComponentActivity() {
                                 color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                             )
-                            DiscoverOptionRow(
-                                icon = { Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.primary) },
-                                title = stringResource(R.string.setcat_center_nav_roaming),
-                                subtitle = stringResource(R.string.discover_roaming_subtitle),
-                                onClick = {
-                                    showDiscoverSheet = false
-                                    playerViewModel.startRoamingMode()
-                                }
-                            )
-                            DiscoverOptionRow(
-                                icon = { Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.primary) },
-                                title = stringResource(R.string.setcat_center_nav_radio),
-                                subtitle = stringResource(R.string.discover_radio_subtitle),
-                                onClick = {
-                                    showDiscoverSheet = false
-                                    navController.navigateSafely(Screen.Radio.route)
-                                }
-                            )
+                            if (discoverShowRoaming) {
+                                DiscoverOptionRow(
+                                    icon = { Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.primary) },
+                                    title = stringResource(R.string.setcat_center_nav_roaming),
+                                    subtitle = stringResource(R.string.discover_roaming_subtitle),
+                                    onClick = {
+                                        showDiscoverSheet = false
+                                        playerViewModel.startRoamingMode()
+                                    }
+                                )
+                            }
+                            if (discoverShowRadio) {
+                                DiscoverOptionRow(
+                                    icon = { Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.primary) },
+                                    title = stringResource(R.string.setcat_center_nav_radio),
+                                    subtitle = stringResource(R.string.discover_radio_subtitle),
+                                    onClick = {
+                                        showDiscoverSheet = false
+                                        navController.navigateSafely(Screen.Radio.route)
+                                    }
+                                )
+                            }
+                            if (discoverShowAi) {
+                                DiscoverOptionRow(
+                                    icon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary) },
+                                    title = stringResource(R.string.discover_ai_title),
+                                    subtitle = stringResource(R.string.discover_ai_subtitle),
+                                    onClick = {
+                                        showDiscoverSheet = false
+                                        navController.navigateSafely(Screen.AiAssistant.route)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -1576,6 +1603,9 @@ class MainActivity : ComponentActivity() {
                 onDismiss = { showHearingGuardSetup = false }
             )
         }
+
+        // 启动自动检查更新（每天一次，发现新版本时弹窗）
+        AutoUpdatePrompt(userPreferencesRepository = userPreferencesRepository)
 
 Trace.endSection()
     }

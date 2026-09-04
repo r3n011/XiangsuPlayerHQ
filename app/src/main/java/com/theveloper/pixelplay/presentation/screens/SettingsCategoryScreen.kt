@@ -96,6 +96,7 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.TabletAndroid
@@ -200,6 +201,7 @@ import com.theveloper.pixelplay.data.backup.model.ModuleRestoreDetail
 import com.theveloper.pixelplay.data.backup.model.RestorePlan
 import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
+import com.theveloper.pixelplay.data.preferences.CenterNavButtonMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
@@ -1521,6 +1523,31 @@ fun SettingsCategoryScreen(
                                     },
                                     leadingIcon = { Icon(Icons.Rounded.Explore, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                                AnimatedVisibility(visible = uiState.centerNavButtonMode == CenterNavButtonMode.DISCOVER) {
+                                    Column {
+                                        SwitchSettingItem(
+                                            title = stringResource(R.string.setcat_center_nav_roaming),
+                                            subtitle = stringResource(R.string.discover_show_item_subtitle),
+                                            checked = uiState.discoverShowRoaming,
+                                            onCheckedChange = { settingsViewModel.setDiscoverShowRoaming(it) },
+                                            leadingIcon = { Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.secondary) }
+                                        )
+                                        SwitchSettingItem(
+                                            title = stringResource(R.string.setcat_center_nav_radio),
+                                            subtitle = stringResource(R.string.discover_show_item_subtitle),
+                                            checked = uiState.discoverShowRadio,
+                                            onCheckedChange = { settingsViewModel.setDiscoverShowRadio(it) },
+                                            leadingIcon = { Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.secondary) }
+                                        )
+                                        SwitchSettingItem(
+                                            title = stringResource(R.string.discover_ai_title),
+                                            subtitle = stringResource(R.string.discover_show_item_subtitle),
+                                            checked = uiState.discoverShowAi,
+                                            onCheckedChange = { settingsViewModel.setDiscoverShowAi(it) },
+                                            leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
+                                        )
+                                    }
+                                }
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_navbar_corner_title),
                                     subtitle = stringResource(R.string.setcat_navbar_corner_subtitle),

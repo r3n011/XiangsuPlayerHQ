@@ -108,6 +108,12 @@ internal class SheetVerticalDragGestureHandler(
         if (isFloatingCollapseDrag) {
             accumulatedDragYSinceStart = 0f
             onFloatingBottomBarCollapse()
+            // ⚠️ collapsePlayerSheet 在状态已是 COLLAPSED 时是 no-op（状态不变 ->
+            // LaunchedEffect 不会重新触发回弹动画），松手后 mini player 会卡在刚才
+            // 被手指下拉的位置。这里直接补一次归位动画，让悬浮 mini player 弹性回到折叠位。
+            scope.launch {
+                onAnimateSheet(false, null, 0f)
+            }
             return
         }
 

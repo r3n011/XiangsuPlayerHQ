@@ -1309,6 +1309,7 @@ fun FullPlayerContent(
                         lyricsSearchUiState = lyricsSearchUiState,
                         lyricsSyncOffset = lyricsSyncOffset,
                         lyricsFontFamily = lyricsFontFamily,
+                        lyricsFontSize = fullPlayerSlice.lyricsFontSize,
                         customPlayerBackgroundEnabled = customPlayerBackgroundEnabled,
                         customPlayerBackgroundUri = customPlayerBackgroundUri,
                         customPlayerBackgroundMode = customPlayerBackgroundMode,
@@ -4108,6 +4109,7 @@ private fun FullPlayerParallelLayout(
     lyricsSearchUiState: LyricsSearchUiState,
     lyricsSyncOffset: Int,
     lyricsFontFamily: String,
+    lyricsFontSize: String,
     customPlayerBackgroundEnabled: Boolean,
     customPlayerBackgroundUri: String?,
     customPlayerBackgroundMode: com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode,
@@ -4198,7 +4200,9 @@ private fun FullPlayerParallelLayout(
                 lyricsSyncOffset = lyricsSyncOffset,
                 onSeekTo = { playerViewModel.seekTo(it) },
                 onMoreClick = onToggleLyricsSettings,
-                gradientOverlayEnabled = lyricsGradientOverlayEnabled
+                gradientOverlayEnabled = lyricsGradientOverlayEnabled,
+                lyricsFontFamily = lyricsFontFamily,
+                lyricsFontSize = lyricsFontSize
             )
 
             // 歌词设置卡片（从右侧底部弹出）
@@ -4215,7 +4219,8 @@ private fun FullPlayerParallelLayout(
                 ) {
                     ParallelLyricsSettingsCard(
                         playerViewModel = playerViewModel,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        onDismiss = onToggleLyricsSettings
                     )
                 }
             }
@@ -4508,7 +4513,9 @@ private fun ParallelLyricsPanel(
     lyricsSyncOffset: Int,
     onSeekTo: (Long) -> Unit,
     onMoreClick: () -> Unit = {},
-    gradientOverlayEnabled: Boolean = true
+    gradientOverlayEnabled: Boolean = true,
+    lyricsFontFamily: String = "DEFAULT",
+    lyricsFontSize: String = "DEFAULT"
 ) {
     val lyrics by stablePlayerStateFlow
         .map { it.lyrics }
@@ -4524,10 +4531,25 @@ private fun ParallelLyricsPanel(
     val sheetColors = remember(colorScheme) { lyricsSheetColors(colorScheme) }
     val containerColor = sheetColors.container
     val accentColor = sheetColors.lyricHighlight
-    val textStyle = MaterialTheme.typography.titleLarge
+    // 应用字体设置（与普通模式 LyricsSheet 的映射一致）
+    val context = LocalContext.current
+    val parallelBaseFontSize = when (lyricsFontSize) {
+        "SMALL" -> 14.sp
+        "DEFAULT" -> 20.sp
+        "LARGE" -> 26.sp
+        "EXTRA_LARGE" -> 32.sp
+        else -> 20.sp
+    }
+    val parallelFontFamily = remember(lyricsFontFamily) {
+        com.theveloper.pixelplay.ui.theme.resolveLyricsFontFamily(context, lyricsFontFamily)
+    }
+    val textStyle = MaterialTheme.typography.titleLarge.copy(
+        fontFamily = parallelFontFamily,
+        fontSize = parallelBaseFontSize,
+        lineHeight = (parallelBaseFontSize.value * 1.4f).sp
+    )
 
     // Read alignment preference
-    val context = LocalContext.current
     val lyricsAlignment by remember(context) {
         context.dataStore.data.map { it[stringPreferencesKey("lyrics_alignment")] ?: "left" }
     }.collectAsStateWithLifecycle(initialValue = "left")

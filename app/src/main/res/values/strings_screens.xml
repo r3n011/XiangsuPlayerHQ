@@ -291,6 +291,9 @@
     <string name="discover_sheet_title">Discover</string>
     <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
     <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    <string name="discover_ai_title">AI Assistant</string>
+    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
     <string name="radio_recommendations">Popular stations</string>
     <string name="radio_favorite">Add to favorites</string>
     <string name="radio_unfavorite">Remove from favorites</string>

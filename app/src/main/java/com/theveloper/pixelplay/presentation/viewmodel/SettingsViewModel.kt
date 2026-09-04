@@ -155,6 +155,9 @@ data class SettingsUiState(
     val glyphMatrixEnabled: Boolean = false,
     val glyphMatrixDisplayMode: String = "NOW_PLAYING",
     val centerNavButtonMode: CenterNavButtonMode = CenterNavButtonMode.DISCOVER,
+    val discoverShowRoaming: Boolean = true,
+    val discoverShowRadio: Boolean = true,
+    val discoverShowAi: Boolean = true,
     val downloadPath: String = Environment.DIRECTORY_MUSIC,
     val transcodeStrategy: UserPreferencesRepository.TranscodeStrategy = UserPreferencesRepository.TranscodeStrategy.STREAMING,
     val transcodeCacheSizeLimitMb: Int = UserPreferencesRepository.DEFAULT_TRANSCODE_CACHE_LIMIT_MB,
@@ -756,6 +759,24 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.centerNavButtonModeFlow.collect { mode ->
                 _uiState.update { it.copy(centerNavButtonMode = mode) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.discoverShowRoamingFlow.collect { show ->
+                _uiState.update { it.copy(discoverShowRoaming = show) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.discoverShowRadioFlow.collect { show ->
+                _uiState.update { it.copy(discoverShowRadio = show) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.discoverShowAiFlow.collect { show ->
+                _uiState.update { it.copy(discoverShowAi = show) }
             }
         }
 
@@ -1938,6 +1959,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.setCenterNavButtonMode(mode)
         }
+    }
+
+    fun setDiscoverShowRoaming(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setDiscoverShowRoaming(enabled) }
+    }
+
+    fun setDiscoverShowRadio(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setDiscoverShowRadio(enabled) }
+    }
+
+    fun setDiscoverShowAi(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setDiscoverShowAi(enabled) }
     }
 
 }

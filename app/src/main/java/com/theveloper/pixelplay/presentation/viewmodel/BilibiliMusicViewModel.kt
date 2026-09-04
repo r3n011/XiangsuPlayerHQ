@@ -231,13 +231,8 @@ class BilibiliMusicViewModel @Inject constructor(
                 val resolved = runCatching { resolveBilibiliPlayable(song) }.getOrNull() ?: return@forEach
                 withContext(Dispatchers.Main) {
                     val coverToUse = song.pic.ifBlank { "" }
-                    val savedSongId = try {
-                        musicRepository.saveCloudSong(song.toLxSongInfo(resolved.cid, resolved.aid)).toString()
-                    } catch (t: Throwable) {
-                        Timber.w("saveCloudSong failed: ${t.message}")
-                        "bilibili_${song.id}"
-                    }
-                    onEnqueue(resolved.url, song.name, song.singer, coverToUse, savedSongId, resolved.bvid)
+                    // 仅排队不落库：返回稳定 id，避免把整页搜索结果灌进媒体库（真正点播的歌曲才入库）
+                    onEnqueue(resolved.url, song.name, song.singer, coverToUse, getStableSongId(song), resolved.bvid)
                 }
             }
         }

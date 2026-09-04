@@ -291,6 +291,9 @@
     <string name="discover_sheet_title">发现</string>
     <string name="discover_roaming_subtitle">收听网易云漫游，为你随机推荐歌曲</string>
     <string name="discover_radio_subtitle">收听全球网络广播电台</string>
+    <string name="discover_ai_title">AI 助手</string>
+    <string name="discover_ai_subtitle">智能歌单、歌词翻译与歌曲解读</string>
+    <string name="discover_show_item_subtitle">在发现弹窗中显示此功能</string>
     <string name="radio_recommendations">热门电台</string>
     <string name="radio_favorite">收藏</string>
     <string name="radio_unfavorite">取消收藏</string>

@@ -406,6 +406,9 @@ class UserPreferencesRepository @Inject constructor(
 
         // Navigation bar
         val CENTER_NAV_BUTTON_MODE = stringPreferencesKey("center_nav_button_mode")
+        val DISCOVER_SHOW_ROAMING = booleanPreferencesKey("discover_show_roaming")
+        val DISCOVER_SHOW_RADIO = booleanPreferencesKey("discover_show_radio")
+        val DISCOVER_SHOW_AI = booleanPreferencesKey("discover_show_ai")
 
         // Glyph Matrix
         val GLYPH_MATRIX_ENABLED = booleanPreferencesKey("glyph_matrix_enabled")
@@ -1925,6 +1928,29 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setCenterNavButtonMode(mode: CenterNavButtonMode) {
         dataStore.edit { it[PreferencesKeys.CENTER_NAV_BUTTON_MODE] = mode.storageKey }
+    }
+
+    // ─── Discover sheet visibility ──────────────────────────────────────────────
+
+    val discoverShowRoamingFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.DISCOVER_SHOW_ROAMING] ?: true }
+
+    val discoverShowRadioFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.DISCOVER_SHOW_RADIO] ?: true }
+
+    val discoverShowAiFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.DISCOVER_SHOW_AI] ?: true }
+
+    suspend fun setDiscoverShowRoaming(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.DISCOVER_SHOW_ROAMING] = enabled }
+    }
+
+    suspend fun setDiscoverShowRadio(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.DISCOVER_SHOW_RADIO] = enabled }
+    }
+
+    suspend fun setDiscoverShowAi(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.DISCOVER_SHOW_AI] = enabled }
     }
 
     // ─── Download Settings ────────────────────────────────────────────────────

@@ -124,6 +124,7 @@ import io.noties.markwon.Markwon
 import io.noties.markwon.image.ImagesPlugin
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
+import com.theveloper.pixelplay.data.github.ApkDownloadService
 import com.theveloper.pixelplay.data.github.GitHubContributorService
 import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
@@ -778,6 +779,9 @@ fun AboutScreen(
                 },
                 onDownload = { candidates ->
                     startApkDownload(candidates)
+                },
+                onBackgroundDownload = { candidates ->
+                    ApkDownloadService.start(context, candidates)
                 },
                 onOpenLanzouInBrowser = { openLanzouInBrowser() }
             )

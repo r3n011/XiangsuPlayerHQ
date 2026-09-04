@@ -52,6 +52,7 @@ import com.theveloper.pixelplay.presentation.screens.ArtistSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DailyMixScreen
 import com.theveloper.pixelplay.presentation.screens.DailyRecommendScreen
 import com.theveloper.pixelplay.presentation.screens.AiMixScreen
+import com.theveloper.pixelplay.presentation.screens.AiAssistantScreen
 import com.theveloper.pixelplay.presentation.screens.DotDeviceSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.EditTransitionScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
@@ -408,6 +409,18 @@ fun AppNavigation(
                         playlistViewModel = hiltViewModel(),
                         playerViewModel = playerViewModel,
                         navController = navController,
+                    )
+                }
+            }
+            composable(
+                Screen.AiAssistant.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    AiAssistantScreen(
+                        onBackClick = { navController.popBackStack() },
+                        onNavigateToSettings = { category ->
+                            navController.navigateSafely(Screen.SettingsCategory.createRoute(category.id))
+                        }
                     )
                 }
             }

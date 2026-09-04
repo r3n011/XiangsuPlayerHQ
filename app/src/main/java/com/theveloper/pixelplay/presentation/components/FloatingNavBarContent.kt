@@ -120,16 +120,24 @@ fun FloatingNavBarContent(
     ) {
         // === 导航胶囊组（所有导航项放在同一个胶囊容器内） ===
         Row(
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(NavGroupItemSpacing * dpiScale),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
+                // 悬浮底栏整体贴底部：胶囊组下沉到栏内容区底部，消除与屏幕下侧之间的大空隙
+                // （仅保留手势区 inset 作为安全距离）。
+                .align(Alignment.Bottom)
                 .height(NavGroupHeight * dpiScale)
                 .clip(RoundedCornerShape(percent = 50))
                 .hazeEffect(
                     state = MainActivity.LocalHazeState.current,
                     style = HazeMaterials.ultraThin(containerColor = MaterialTheme.colorScheme.surface)
                 )
-                .padding(horizontal = NavGroupPaddingHorizontal * dpiScale, vertical = 1.dp)
+                // 上下/左右内边距保持一致，让选中指示胶囊在磨砂容器内四周等距，
+                // 避免原来「上下 1dp、左右 4dp」造成的上下挤压、左右松散的观感
+                .padding(
+                    horizontal = NavGroupPaddingHorizontal * dpiScale,
+                    vertical = NavGroupPaddingVertical * dpiScale
+                )
         ) {
             otherItems.forEach { item ->
                 val isSelected = currentRoute != null && currentRoute == item.screen.route
@@ -164,7 +172,11 @@ fun FloatingNavBarContent(
 
         // === 右侧：搜索圆形按钮（独立圆） ===
         searchItem?.let { item ->
-            Box(Modifier.padding(start = 10.dp * dpiScale)) {
+            Box(
+                Modifier
+                    .align(Alignment.Bottom)
+                    .padding(start = 10.dp * dpiScale)
+            ) {
                 FloatingSearchButton(
                     item = item,
                     isSelected = currentRoute == Screen.Search.route,
@@ -291,12 +303,17 @@ private fun NowPlayingBall(
     }
 }
 
-/** 导航组胶囊高度（略高于内部导航项，形成包围胶囊） */
-private val NavGroupHeight = 54.dp
-/** 导航组胶囊横向内边距 */
-private val NavGroupPaddingHorizontal = 4.dp
 /** 胶囊固定高度 */
 private val NavPillHeight = 52.dp
+/** 导航组胶囊纵向内边距（与横向一致，保证选中指示容器四周等距）。
+ * 保持紧凑对称：既修复「上下间距过大」，又不会回到之前「上下紧/左右松」的不对称观感。 */
+private val NavGroupPaddingVertical = 2.dp
+/** 导航组胶囊高度（略高于内部导航项 + 上下内边距，形成包围胶囊） */
+private val NavGroupHeight = NavPillHeight + NavGroupPaddingVertical * 2
+/** 导航组胶囊横向内边距 */
+private val NavGroupPaddingHorizontal = 2.dp
+/** 胶囊内相邻导航项间距 */
+private val NavGroupItemSpacing = 4.dp
 /** 图标直径 */
 private val NavPillIconSize = 24.dp
 /** 图标与文字间距 */

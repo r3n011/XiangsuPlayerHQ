@@ -22,6 +22,7 @@ sealed class Screen(val route: String) {
 
     object DailyMixScreen : Screen("daily_mix")
     object AiMixScreen : Screen("ai_mix")
+    object AiAssistant : Screen("ai_assistant")
     object DailyRecommendScreen : Screen("daily_recommend")
     object ToplistDetail : Screen("toplist_detail/{entryId}") {
         fun createRoute(entryId: String) = "toplist_detail/$entryId"

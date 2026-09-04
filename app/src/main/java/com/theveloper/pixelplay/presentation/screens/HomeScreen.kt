@@ -1272,25 +1272,6 @@ fun YourMixHeader(
                     modifier = Modifier.size(36.dp)
                 )
             }
-            // AI Mix 小按钮：叠在随机播放按钮的右下角，稍微向外偏移产生部分重叠
-            Surface(
-                onClick = onAiMixClick,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 10.dp, y = 10.dp)
-                    .size(44.dp),
-                shape = NineWaveShapeInstance,
-                color = colors.surfaceContainerHigh
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.AutoAwesome,
-                        contentDescription = "AI Mix",
-                        tint = colors.primary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
         }
     }
 }

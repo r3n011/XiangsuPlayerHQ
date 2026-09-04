@@ -550,10 +550,13 @@ class LxMusicViewModel @Inject constructor(
     )
 
     /**
-     * 解析一首落雪歌曲的可播放直链（音源选择 → 封面补全 → URL 解析 → 保存云端歌曲）。
+     * 解析一首落雪歌曲的可播放直链（音源选择 → 封面补全 → URL 解析）。
      * 不更新 UI 状态，供 [playSong] 与 [enqueueAllSearchResults] 共用（静默批量解析）。
+     *
+     * @param persist 是否把歌曲写入统一媒体库。点播时传 true（真正播放的歌曲才入库）；
+     *                排队预解析时传 false（仅解析 URL，不落库，避免把整个搜索结果灌进媒体库）。
      */
-    private suspend fun resolvePlayableSong(song: LxSongInfo): LxResolvedPlayable? {
+    private suspend fun resolvePlayableSong(song: LxSongInfo, persist: Boolean = true): LxResolvedPlayable? {
         val songMap = song.toInfoMap()
         val availableSources = runCatching {
             engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
@@ -591,19 +594,23 @@ class LxMusicViewModel @Inject constructor(
         }
         if (url == null) return null
 
-        // ── 将歌曲保存到数据库，使用返回的真实 song id
-        // 同时将成功获取 URL 的音源保存到 songInfo.source，
-        // 这样从媒体库播放时可以用正确的音源重新获取播放链接
-        val songWithCover = if (coverToUse.isNotBlank() && song.pic.isBlank()) {
-            song.copy(pic = coverToUse, source = targetSource)
+        // ── 是否写入统一媒体库
+        // 点播（persist=true）：保存歌曲到数据库，使用返回的真实 song id；
+        // 排队预解析（persist=false）：只返回稳定 id，不落库，避免搜索结果整页灌入媒体库
+        val savedSongId = if (persist) {
+            val songWithCover = if (coverToUse.isNotBlank() && song.pic.isBlank()) {
+                song.copy(pic = coverToUse, source = targetSource)
+            } else {
+                song.copy(source = targetSource)
+            }
+            try {
+                musicRepository.saveCloudSong(songWithCover).toString()
+            } catch (t: Throwable) {
+                android.util.Log.w("LxPlaySong", "saveCloudSong 失败: ${t.message}")
+                getStableSongId(song)
+            }
         } else {
-            song.copy(source = targetSource)
-        }
-        val savedSongId = try {
-            musicRepository.saveCloudSong(songWithCover).toString()
-        } catch (t: Throwable) {
-            android.util.Log.w("LxPlaySong", "saveCloudSong 失败: ${t.message}")
-            "cloud_${song.id}"
+            getStableSongId(song)
         }
         android.util.Log.d("LxPlaySong", "Saved song ID: $savedSongId, source: $targetSource")
         return LxResolvedPlayable(url = url, cover = coverToUse, savedSongId = savedSongId, source = targetSource)
@@ -632,7 +639,8 @@ class LxMusicViewModel @Inject constructor(
         if (songs.size <= 1) return
         viewModelScope.launch(Dispatchers.IO) {
             songs.filter { getStableSongId(it) != excludeId }.forEach { song ->
-                val resolved = runCatching { resolvePlayableSong(song) }.getOrNull() ?: return@forEach
+                // persist=false：仅解析 URL 排队，不写入媒体库（避免搜索结果整页灌入）
+                val resolved = runCatching { resolvePlayableSong(song, persist = false) }.getOrNull() ?: return@forEach
                 withContext(Dispatchers.Main) {
                     onEnqueue(resolved.url, song.name, song.singer, resolved.cover, resolved.savedSongId)
                 }

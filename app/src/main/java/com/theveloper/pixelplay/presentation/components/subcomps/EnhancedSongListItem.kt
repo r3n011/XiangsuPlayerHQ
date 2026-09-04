@@ -168,6 +168,8 @@ fun EnhancedSongListItem(
      */
     showLoading: Boolean = false,
     loadingLabel: String? = null,
+    /** 搜索页在线歌曲封面不落盘，避免磁盘缓存暴涨 */
+    useDiskCache: Boolean = true,
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
     onFavoriteClick: () -> Unit = {},
@@ -362,6 +364,7 @@ fun EnhancedSongListItem(
                             contentDescription = song.title,
                             shape = albumShape,
                             targetSize = Size(albumArtTargetSizePx, albumArtTargetSizePx),
+                            useDiskCache = useDiskCache,
                             modifier = Modifier.fillMaxSize()
                         )
                         
