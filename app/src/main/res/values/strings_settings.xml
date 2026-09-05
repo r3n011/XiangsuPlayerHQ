@@ -224,6 +224,7 @@
     <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
     <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
     <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
+    <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
     <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
     <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
     <string name="setcat_home_collage">Home Collage</string>

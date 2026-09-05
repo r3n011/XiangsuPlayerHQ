@@ -707,6 +707,14 @@ fun UnifiedPlayerSheetV2(
                             .layout { measurable, constraints ->
                                 val targetContentHeightPx = containerHeight.roundToPx()
                                 val fraction = playerContentExpansionFraction.value.coerceIn(0f, 1f)
+                                // ⚡ 已稳定处于展开态时强制按全屏宽度测量：
+                                //   旋转/切屏后 fraction 可能残留为 <1 的旧值，导致播放器按较窄宽度测量并被左偏移，
+                                //   呈现"左侧窄列+右侧大片空白"（仅低版本安卓偶发）。处于展开且未拖动/未动画时，
+                                //   宽度必须 == 全屏宽。拖动和展开/收起动画期间仍用实时 fraction，保证平滑过渡。
+                                val effFraction = if (
+                                    currentSheetContentState == PlayerSheetState.EXPANDED &&
+                                    !isDragging && !isSheetAnimating
+                                ) 1f else fraction
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt()
                                 // 平滑过渡：折叠态按卡片宽度测量并对齐卡片左侧，展开态按全屏宽度测量并对齐屏幕左侧。
                                 // 不要用硬阈值瞬间切到全屏宽度，否则 fraction 刚离开 0 时内容会先向两侧跳变再回弹。
@@ -716,7 +724,7 @@ fun UnifiedPlayerSheetV2(
                                 // Placeable 缓存命中，FullPlayerContent 树零重测；0.25 后内容实际显示时再平滑
                                 // 展开到全屏宽。0.25 时刻 contentAlpha 恰为 0（与 FullPlayerRuntimePolicy 一致），
                                 // 宽度差异不可见，视觉完全一致。
-                                val visibleFraction = ((fraction - 0.25f) / 0.75f).coerceIn(0f, 1f)
+                                val visibleFraction = ((effFraction - 0.25f) / 0.75f).coerceIn(0f, 1f)
                                 val measureWidth = androidx.compose.ui.util.lerp(
                                     constraints.maxWidth.toFloat(),
                                     screenWidthPx,
@@ -731,7 +739,7 @@ fun UnifiedPlayerSheetV2(
                                     )
                                 )
                                 layout(constraints.maxWidth, constraints.maxHeight) {
-                                    val xOffset = (-startPaddingPx * fraction).roundToInt()
+                                    val xOffset = (-startPaddingPx * effFraction).roundToInt()
                                     placeable.placeRelative(xOffset, 0)
                                 }
                             }

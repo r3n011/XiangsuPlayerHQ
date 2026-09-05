@@ -1203,20 +1203,31 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Rounded.Layers, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
+                                // 绚丽背景依赖 Compose 硬件模糊（Android 12+ 才稳定），
+                                // 安卓 10 及以下（SDK <= 29）软件模糊既慢又易黑屏，故直接禁用这两个开关，不允许开启
+                                val vibrantBgSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_lyrics_vibrant_bg_title),
-                                    subtitle = stringResource(R.string.setcat_lyrics_vibrant_bg_desc),
+                                    subtitle = if (vibrantBgSupported)
+                                        stringResource(R.string.setcat_lyrics_vibrant_bg_desc)
+                                    else
+                                        stringResource(R.string.setcat_vibrant_bg_requires_newer),
                                     checked = uiState.lyricsVibrantBackgroundEnabled,
                                     onCheckedChange = { settingsViewModel.setLyricsVibrantBackgroundEnabled(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    enabled = vibrantBgSupported
                                 )
 
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_player_vibrant_bg_title),
-                                    subtitle = stringResource(R.string.setcat_player_vibrant_bg_desc),
+                                    subtitle = if (vibrantBgSupported)
+                                        stringResource(R.string.setcat_player_vibrant_bg_desc)
+                                    else
+                                        stringResource(R.string.setcat_vibrant_bg_requires_newer),
                                     checked = uiState.playerVibrantBackgroundEnabled,
                                     onCheckedChange = { settingsViewModel.setPlayerVibrantBackgroundEnabled(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    enabled = vibrantBgSupported
                                 )
 
                                 // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）

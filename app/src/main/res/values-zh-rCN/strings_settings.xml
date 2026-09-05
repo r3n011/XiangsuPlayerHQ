@@ -181,6 +181,7 @@
     <string name="setcat_lyrics_vibrant_bg_desc">在歌词界面后方显示旋转模糊的专辑封面背景。</string>
     <string name="setcat_player_vibrant_bg_title">播放器绚丽背景</string>
     <string name="setcat_player_vibrant_bg_desc">未设置自定义背景时，在播放器中显示旋转模糊的专辑封面背景。自定义背景图片优先级更高。</string>
+    <string name="setcat_vibrant_bg_requires_newer">该效果依赖安卓11及以上的硬件模糊，本设备已禁用。</string>
     <string name="setcat_lyrics_solid_overlay_title">歌词纯色遮罩</string>
     <string name="setcat_lyrics_solid_overlay_desc">调整歌词界面纯色遮罩的不透明度，让背景变暗以提升文字可读性。</string>
     <string name="setcat_tablet_player_layout_label">平板播放器布局</string>

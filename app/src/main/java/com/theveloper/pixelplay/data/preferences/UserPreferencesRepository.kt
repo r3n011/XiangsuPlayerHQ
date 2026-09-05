@@ -1490,17 +1490,26 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] = strength }
     }
 
+    // 绚丽背景依赖 Compose 硬件模糊（Android 12+ 才稳定），安卓10及以下(SDK<=29)软件模糊易黑屏，
+    // 因此在数据源头直接恒为 false，保证没有任何调用方能在低版本开启/渲染
+    private val vibrantBackgroundSupported: Boolean =
+        android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R
+
     val lyricsVibrantBackgroundEnabledFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] ?: true }
+            .map { it && vibrantBackgroundSupported }
 
     suspend fun setLyricsVibrantBackgroundEnabled(enabled: Boolean) {
+        if (!vibrantBackgroundSupported) return
         dataStore.edit { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] = enabled }
     }
 
     val playerVibrantBackgroundEnabledFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.PLAYER_VIBRANT_BACKGROUND_ENABLED] ?: true }
+            .map { it && vibrantBackgroundSupported }
 
     suspend fun setPlayerVibrantBackgroundEnabled(enabled: Boolean) {
+        if (!vibrantBackgroundSupported) return
         dataStore.edit { it[PreferencesKeys.PLAYER_VIBRANT_BACKGROUND_ENABLED] = enabled }
     }
 
