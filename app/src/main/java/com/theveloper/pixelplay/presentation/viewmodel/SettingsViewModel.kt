@@ -121,6 +121,7 @@ data class SettingsUiState(
     val beta05CleanInstallDisclaimerDismissed: Boolean? = null,
     val fullPlayerLoadingTweaks: FullPlayerLoadingTweaks = FullPlayerLoadingTweaks(),
     val showPlayerFileInfo: Boolean = true,
+    val showPlaybackSpeedButton: Boolean = true,
     // Developer Options
     val albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM,
     val albumArtCacheLimitMb: Int = 200,
@@ -132,6 +133,7 @@ data class SettingsUiState(
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 2.5f,
     val lyricsVibrantBackgroundEnabled: Boolean = true,
+    val playerVibrantBackgroundEnabled: Boolean = true,
     val disableBlurAllOver: Boolean = false,
     val navBarBlurEnabled: Boolean = true,
     val backupInfoDismissed: Boolean = false,
@@ -210,6 +212,7 @@ private sealed interface SettingsUiUpdate {
         val carouselStyle: String,
         val launchTab: String,
         val showPlayerFileInfo: Boolean,
+        val showPlaybackSpeedButton: Boolean,
         val tabletPlayerLayout: TabletPlayerLayout
     ) : SettingsUiUpdate
     
@@ -477,6 +480,7 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.carouselStyleFlow,
                 userPreferencesRepository.launchTabFlow,
                 userPreferencesRepository.showPlayerFileInfoFlow,
+                userPreferencesRepository.showPlaybackSpeedButtonFlow,
                 userPreferencesRepository.tabletPlayerLayoutFlow
             ) { values ->
                 SettingsUiUpdate.Group1(
@@ -501,7 +505,8 @@ class SettingsViewModel @Inject constructor(
                     carouselStyle = values[18] as String,
                     launchTab = values[19] as String,
                     showPlayerFileInfo = values[20] as Boolean,
-                    tabletPlayerLayout = values[21] as TabletPlayerLayout
+                    showPlaybackSpeedButton = values[21] as Boolean,
+                    tabletPlayerLayout = values[22] as TabletPlayerLayout
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -527,6 +532,7 @@ class SettingsViewModel @Inject constructor(
                         carouselStyle = update.carouselStyle,
                         launchTab = update.launchTab,
                         showPlayerFileInfo = update.showPlayerFileInfo,
+                        showPlaybackSpeedButton = update.showPlaybackSpeedButton,
                         tabletPlayerLayout = update.tabletPlayerLayout
                     )
                 }
@@ -656,6 +662,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.lyricsVibrantBackgroundEnabledFlow.collect { enabled ->
                 _uiState.update { it.copy(lyricsVibrantBackgroundEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.playerVibrantBackgroundEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(playerVibrantBackgroundEnabled = enabled) }
             }
         }
 
@@ -1076,6 +1087,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** 播放器底部控制栏是否显示倍速按钮 */
+    fun setShowPlaybackSpeedButton(show: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setShowPlaybackSpeedButton(show)
+        }
+    }
+
     fun setTabletPlayerLayout(layout: TabletPlayerLayout) {
         viewModelScope.launch {
             userPreferencesRepository.setTabletPlayerLayout(layout)
@@ -1313,6 +1331,12 @@ class SettingsViewModel @Inject constructor(
     fun setLyricsVibrantBackgroundEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setLyricsVibrantBackgroundEnabled(enabled)
+        }
+    }
+
+    fun setPlayerVibrantBackgroundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerVibrantBackgroundEnabled(enabled)
         }
     }
 

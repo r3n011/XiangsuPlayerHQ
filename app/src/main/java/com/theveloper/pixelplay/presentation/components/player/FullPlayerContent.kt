@@ -111,7 +111,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -169,6 +168,7 @@ import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.radio.RadioStation
 import com.theveloper.pixelplay.presentation.components.AlbumCarouselSection
 import com.theveloper.pixelplay.presentation.components.AutoScrollingTextOnDemand
+import com.theveloper.pixelplay.presentation.components.AppleMusicRotatingBackground
 import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
 import com.theveloper.pixelplay.presentation.components.LocalMaterialTheme
 import com.theveloper.pixelplay.presentation.components.lyricsSheetColors
@@ -374,6 +374,7 @@ fun FullPlayerContent(
     val lyricsGradientOverlayEnabled by playerViewModel.lyricsGradientOverlayEnabled.collectAsStateWithLifecycle()
     val lyricsSolidOverlayAlpha by playerViewModel.lyricsSolidOverlayAlpha.collectAsStateWithLifecycle()
     val lyricsVibrantBackgroundEnabled by playerViewModel.lyricsVibrantBackgroundEnabled.collectAsStateWithLifecycle()
+    val playerVibrantBackgroundEnabled by playerViewModel.playerVibrantBackgroundEnabled.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     // Tablet player layout preference
     val tabletPlayerLayout by playerViewModel.tabletPlayerLayout.collectAsStateWithLifecycle()
@@ -558,10 +559,12 @@ fun FullPlayerContent(
     )
 
     // 按窗口实际宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机模式。
-    // 使用 LocalWindowInfo（真实窗口尺寸）而非 Configuration，避免部分平板 ROM
-    // 在分屏/小窗时不更新 Configuration 导致布局不切换
+    // 使用 LocalConfiguration 判定：旋转或分屏变化都会触发 onConfigurationChanged → 重组，
+    // LocalConfiguration 可靠更新。若依赖 LocalWindowInfo.containerSize，在 Activity 声明
+    // configChanges（旋转不重建）时，部分平板旋转后不会触发重组，导致布局停留在旧方向。
     // 1:1（width == height）也按平板/横屏布局处理，避免竖屏电台封面与按钮遮挡
-    val isLandscape = with(LocalWindowInfo.current.containerSize) { width >= height }
+    val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE ||
+        LocalConfiguration.current.screenWidthDp >= LocalConfiguration.current.screenHeightDp
 
 
     // Lógica para el botón de Lyrics en el reproductor expandido
@@ -842,6 +845,7 @@ fun FullPlayerContent(
     val controlsSection: @Composable () -> Unit = {
         val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
         val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
+        val showPlaybackSpeedButton by playerViewModel.showPlaybackSpeedButton.collectAsStateWithLifecycle()
         val downloadInfo = remember(currentSong?.id, downloads) {
             currentSong?.let { song -> downloads.find { it.songId == song.id } }
         }
@@ -883,6 +887,7 @@ fun FullPlayerContent(
             playbackSpeed = playbackSpeed,
             onSpeedToggle = onSpeedToggle,
             onSpeedSet = onSpeedSet,
+            showSpeedButton = showPlaybackSpeedButton,
         )
     }
 
@@ -1250,6 +1255,18 @@ fun FullPlayerContent(
                     blurRadius = customPlayerBackgroundBlurRadius,
                     scrimAlpha = 0.25f
                 )
+                // 歌词背景那套「封面旋转 + 重模糊」氛围背景，复刻到播放器背景：
+                // 未使用自定义背景图且开启「播放器绚丽背景」开关时启用（与歌词背景分开控制，默认启用）
+                if (playerVibrantBackgroundEnabled &&
+                    !(customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank())
+                ) {
+                    song?.albumArtUriString?.let { albumArtUri ->
+                        AppleMusicRotatingBackground(
+                            albumArtUri = albumArtUri,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
             // ⚡ 播放器不透明度：背景之外的所有元素（封面、元信息、进度、控制）统一淡化
             Box(
@@ -1689,6 +1706,8 @@ private fun FullPlayerControlsSection(
     playbackSpeed: Float = 1f,
     onSpeedToggle: () -> Unit = {},
     onSpeedSet: (Float) -> Unit = {},
+    // ⚡ 底部控制栏是否显示倍速按钮
+    showSpeedButton: Boolean = true,
     // ⚡ 播放器控键透明度：0..1 alpha（100% = 完全不透明，应用到所有控制按钮）
     controlsOpacity: Float = 1f,
 ) {
@@ -1786,6 +1805,7 @@ private fun FullPlayerControlsSection(
                 playbackSpeed = playbackSpeed,
                 onSpeedToggle = onSpeedToggle,
                 onSpeedSet = onSpeedSet,
+                showSpeedButton = showSpeedButton,
             )
         }
     }
@@ -3612,6 +3632,8 @@ private fun BottomToggleRow(
     playbackSpeed: Float = 1f,
     onSpeedToggle: () -> Unit = {},
     onSpeedSet: (Float) -> Unit = {},
+    // ⚡ 底部控制栏是否显示倍速按钮
+    showSpeedButton: Boolean = true,
 ) {
     val isFavorite = isFavoriteProvider()
     val rowCorners = 60.dp
@@ -3657,7 +3679,7 @@ private fun BottomToggleRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 倍速按钮：正方形，1x 时右侧圆角匹配其他按钮，其它倍速时为完美圆形
-            if (!isRadioPlayback) {
+            if (!isRadioPlayback && showSpeedButton) {
                 val speedText = if (playbackSpeed == 1f) "1x" else "${playbackSpeed}x"
                 val isActive = playbackSpeed != 1f
                 val btnSize = 40.dp
@@ -3897,10 +3919,9 @@ private fun RadioRecommendationSection(
             .take(20)
     }
     // 仅横屏（右侧布局）显示热门电台列表；竖屏（手机或平板）不显示任何指示。
-    // 按真实窗口宽高比判定：平板小窗变窄时自动回到竖屏（手机）形态；
-    // 1:1（width == height）按横屏处理，与全屏播放器布局保持一致
-    val isLandscapeOrientation =
-        with(LocalWindowInfo.current.containerSize) { width >= height }
+    // 用 LocalConfiguration 判定（旋转可靠重组），与全屏播放器布局保持一致；
+    // 1:1（width == height）按横屏处理
+    val isLandscapeOrientation = LocalConfiguration.current.screenWidthDp >= LocalConfiguration.current.screenHeightDp
 
     if (!isLandscapeOrientation || recommendations.isEmpty()) return
 

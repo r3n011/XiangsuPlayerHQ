@@ -467,6 +467,14 @@ class PlayerViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = true
         )
+    // ⚡ 播放器绚丽背景开关（与歌词背景分离，默认启用）
+    val playerVibrantBackgroundEnabled: StateFlow<Boolean> = userPreferencesRepository
+        .playerVibrantBackgroundEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true
+        )
     /**
      * High-frequency playback position should not force global UI recomposition.
      * Keep a dedicated position flow for real-time UI elements (seek bars, lyrics timing).
@@ -778,6 +786,14 @@ class PlayerViewModel @Inject constructor(
         )
 
     val showPlayerFileInfo: StateFlow<Boolean> = userPreferencesRepository.showPlayerFileInfoFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    /** 播放器底部控制栏是否显示倍速按钮。 */
+    val showPlaybackSpeedButton: StateFlow<Boolean> = userPreferencesRepository.showPlaybackSpeedButtonFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -2900,10 +2916,16 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun loadInitialLibraryDataParallel() {
-        libraryStateHolder.loadSongsFromRepository()
-        libraryStateHolder.loadAlbumsFromRepository()
-        libraryStateHolder.loadArtistsFromRepository()
-        libraryStateHolder.loadFoldersFromRepository()
+        // 冷启动优化：媒体库(歌曲/专辑/艺术家/文件夹)的全量加载延迟到首帧渲染完成之后，
+        // 避免与首屏布局、MediaStore 扫描、播放器初始化同时争抢 CPU，导致每次打开软件卡顿。
+        // updateDailyMix 等不依赖这些 collector 的逻辑仍即时执行，不影响功能。
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(350L)
+            libraryStateHolder.loadSongsFromRepository()
+            libraryStateHolder.loadAlbumsFromRepository()
+            libraryStateHolder.loadArtistsFromRepository()
+            libraryStateHolder.loadFoldersFromRepository()
+        }
     }
 
     private fun resetAndLoadInitialData(caller: String = "Unknown") {
@@ -5358,6 +5380,24 @@ class PlayerViewModel @Inject constructor(
 
             internalPlaySongs(queueSongs, externalResult.song, context.getString(R.string.external_queue_label), null)
             showPlayer()
+        }
+    }
+
+    /**
+     * 从 AI 助手等场景直接播放一组在线歌曲（[LxSongInfo]）。
+     * 逐个写入统一媒体库得到可播放的 Song（netease:// 或 cloud://lx/ 直链），再以点击的那首开头播放。
+     */
+    fun playCloudSongs(songs: List<LxSongInfo>, queueName: String = "AI 助手") {
+        if (songs.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val ids = songs.mapNotNull { info ->
+                runCatching { musicRepository.saveCloudSong(info) }.getOrNull()
+            }.map(Long::toString).distinct()
+            if (ids.isEmpty()) return@launch
+            val playable = musicRepository.getSongsByIds(ids).first().ifEmpty { return@launch }
+            withContext(Dispatchers.Main) {
+                showAndPlaySong(playable.first(), playable, queueName, isVoluntaryPlay = false)
+            }
         }
     }
 

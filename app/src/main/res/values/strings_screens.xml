@@ -294,6 +294,10 @@
     <string name="discover_ai_title">AI Assistant</string>
     <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
     <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
     <string name="radio_recommendations">Popular stations</string>
     <string name="radio_favorite">Add to favorites</string>
     <string name="radio_unfavorite">Remove from favorites</string>

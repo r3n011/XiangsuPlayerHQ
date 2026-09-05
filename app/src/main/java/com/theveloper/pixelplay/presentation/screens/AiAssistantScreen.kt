@@ -61,6 +61,7 @@ import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.viewmodel.AiAssistantViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.AiChatMsg
 import com.theveloper.pixelplay.presentation.viewmodel.AiChatRole
+import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 
 private val assistantSuggestions = listOf(
     "给我生成一份跑步听的歌单",
@@ -73,6 +74,7 @@ private val assistantSuggestions = listOf(
 fun AiAssistantScreen(
     onBackClick: () -> Unit,
     onNavigateToSettings: (SettingsCategory) -> Unit,
+    playerViewModel: PlayerViewModel,
     viewModel: AiAssistantViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -155,7 +157,13 @@ fun AiAssistantScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(uiState.messages, key = { it.id }) { msg ->
-                    MessageBubble(msg = msg)
+                    MessageBubble(
+                        msg = msg,
+                        onPlaySong = { song, songs ->
+                            val ordered = listOf(song) + songs.filter { it.id != song.id }
+                            playerViewModel.playCloudSongs(ordered, "AI 助手")
+                        }
+                    )
                 }
             }
         }
@@ -288,7 +296,7 @@ private fun EmptyState(onSelect: (String) -> Unit) {
 }
 
 @Composable
-private fun MessageBubble(msg: AiChatMsg) {
+private fun MessageBubble(msg: AiChatMsg, onPlaySong: (LxSongInfo, List<LxSongInfo>) -> Unit) {
     val colors = MaterialTheme.colorScheme
     when (msg.role) {
         AiChatRole.USER -> {
@@ -352,7 +360,7 @@ private fun MessageBubble(msg: AiChatMsg) {
                     }
                     if (msg.songs.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
-                        SongResults(songs = msg.songs)
+                        SongResults(songs = msg.songs, onPlaySong = onPlaySong)
                     }
                 }
             }
@@ -406,7 +414,7 @@ private fun ThinkingCard(msg: AiChatMsg) {
 }
 
 @Composable
-private fun SongResults(songs: List<LxSongInfo>) {
+private fun SongResults(songs: List<LxSongInfo>, onPlaySong: (LxSongInfo, List<LxSongInfo>) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -414,7 +422,7 @@ private fun SongResults(songs: List<LxSongInfo>) {
     ) {
         Column(modifier = Modifier.padding(vertical = 6.dp)) {
             Text(
-                text = "为你找到 ${songs.size} 首",
+                text = "为你找到 ${songs.size} 首 · 点击播放",
                 style = MaterialTheme.typography.labelLarge,
                 color = colors.onSurface,
                 fontWeight = FontWeight.SemiBold,
@@ -424,6 +432,7 @@ private fun SongResults(songs: List<LxSongInfo>) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { onPlaySong(song, songs) }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

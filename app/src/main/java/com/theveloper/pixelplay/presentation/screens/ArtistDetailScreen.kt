@@ -134,7 +134,8 @@ fun ArtistDetailScreen(
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
     var showPlaylistBottomSheet by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
-    val isWideScreen = configuration.screenWidthDp >= 840
+    // 本地歌手页面扁平平板与手机保持一致的布局（在线歌手页面在 ArtistHomepageScreen，不受此影响）
+    val isWideScreen = false
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val isDarkTheme = LocalPixelPlayDarkTheme.current

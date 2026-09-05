@@ -35,7 +35,10 @@ import coil.size.Size
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.utils.LocalArtworkUri
 
-internal const val MaxSafeAlbumArtDimensionPx = 2048
+// 封面解码安全上限：软件位图（全局禁用硬件位图）每张占用 4 字节/像素，2048px 约 16MB。
+// 列表/网格/大屏实际显示极少超过 1600px，降低上限可将每张软件位图内存削减约 40%，
+// 显著减轻 Java 堆压力，避免内存缓存被大封面挤爆后整页图片变成空白。
+internal const val MaxSafeAlbumArtDimensionPx = 1600
 internal val SafeOriginalAlbumArtSize = Size(MaxSafeAlbumArtDimensionPx, MaxSafeAlbumArtDimensionPx)
 
 @OptIn(ExperimentalCoilApi::class, ExperimentalComposeUiApi::class)

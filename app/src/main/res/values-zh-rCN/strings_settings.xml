@@ -164,7 +164,7 @@
         name="setcat_album_art_palette_subtitle"
     >当前：%1$s。打开实时预览并选择风格。</string>
     <string name="setcat_custom_player_background_title">自定义播放器背景</string>
-    <string name="setcat_custom_player_background_subtitle">使用自定义图片作为播放器与歌词界面的背景。</string>
+    <string name="setcat_custom_player_background_subtitle">使用自定义图片作为播放器与歌词界面的背景。启用后优先级高于下方的动态背景效果。</string>
     <string name="setcat_custom_player_background_pick">选择背景图片</string>
     <string name="setcat_custom_player_background_change">更换背景图片</string>
     <string name="setcat_custom_player_background_remove">移除背景</string>
@@ -178,7 +178,9 @@
     <string name="setcat_lyrics_gradient_overlay_title">歌词渐变遮罩</string>
     <string name="setcat_lyrics_gradient_overlay_desc">在歌词界面上方与下方显示柔和渐变，提升文字可读性。</string>
     <string name="setcat_lyrics_vibrant_bg_title">歌词绚丽背景</string>
-    <string name="setcat_lyrics_vibrant_bg_desc">在歌词界面后方显示旋转模糊的专辑封面背景。关闭后将使用纯色背景。</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">在歌词界面后方显示旋转模糊的专辑封面背景。</string>
+    <string name="setcat_player_vibrant_bg_title">播放器绚丽背景</string>
+    <string name="setcat_player_vibrant_bg_desc">未设置自定义背景时，在播放器中显示旋转模糊的专辑封面背景。自定义背景图片优先级更高。</string>
     <string name="setcat_lyrics_solid_overlay_title">歌词纯色遮罩</string>
     <string name="setcat_lyrics_solid_overlay_desc">调整歌词界面纯色遮罩的不透明度，让背景变暗以提升文字可读性。</string>
     <string name="setcat_tablet_player_layout_label">平板播放器布局</string>
@@ -339,6 +341,10 @@
     <string
         name="setcat_show_queue_history_subtitle"
     >在队列中显示之前播放过的歌曲。</string>
+    <string name="setcat_show_speed_button_title">显示播放倍速按钮</string>
+    <string
+        name="setcat_show_speed_button_subtitle"
+    >在播放器控制栏中显示倍速（1x）按钮。关闭后隐藏该按钮，可回到播放器内手动调节倍速。</string>
     <string name="setcat_show_lyrics_track_info_title">显示歌词曲目信息</string>
     <string
         name="setcat_show_lyrics_track_info_subtitle"
@@ -754,6 +760,9 @@
     <string name="settings_search_keyword_maintenance">维护</string>
     <string name="settings_search_keyword_diagnostics">诊断</string>
     <string name="settings_search_keyword_collage">拼贴</string>
+    <string name="settings_search_keyword_speed">倍速，播放速度</string>
+    <string name="settings_search_keyword_background_image">背景图，壁纸</string>
+    <string name="settings_search_keyword_dynamic_background">动态背景，氛围</string>
     
     <!-- 设置搜索界面 -->
     <string name="settings_search_placeholder">搜索设置</string>

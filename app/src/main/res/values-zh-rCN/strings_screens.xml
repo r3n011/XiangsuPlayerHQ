@@ -294,6 +294,10 @@
     <string name="discover_ai_title">AI 助手</string>
     <string name="discover_ai_subtitle">智能歌单、歌词翻译与歌曲解读</string>
     <string name="discover_show_item_subtitle">在发现弹窗中显示此功能</string>
+    <string name="discover_none_selected_desc">一个都未勾选 —— 不显示发现按钮</string>
+    <string name="discover_single_selected_desc">仅%1$s —— 按钮直接打开该功能</string>
+    <string name="discover_multi_selected_desc">%1$s —— 点击发现按钮弹出选择</string>
+    <string name="discover_options_dialog_desc">选择底部中间“发现”按钮显示哪些功能：一个都不勾就不显示按钮；只勾一个就直接打开对应功能；勾多个则点击按钮弹出卡片挑选。</string>
     <string name="radio_recommendations">热门电台</string>
     <string name="radio_favorite">收藏</string>
     <string name="radio_unfavorite">取消收藏</string>

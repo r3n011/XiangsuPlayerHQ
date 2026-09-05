@@ -341,11 +341,16 @@ fun ArtistHomepageScreen(
             )
 
             // 渐隐遮罩：从透明到背景色
+            // 遮罩盖在背景图上会拦截点击，需与背景图同样响应点击以查看大图
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(backgroundHeight + 200.dp)
                     .background(fadeBrush)
+                    .clickable {
+                        viewingImage = uiState.backgroundUrl
+                        isViewingAvatar = false
+                    }
             )
         }
 

@@ -420,7 +420,8 @@ fun AppNavigation(
                         onBackClick = { navController.popBackStack() },
                         onNavigateToSettings = { category ->
                             navController.navigateSafely(Screen.SettingsCategory.createRoute(category.id))
-                        }
+                        },
+                        playerViewModel = playerViewModel
                     )
                 }
             }

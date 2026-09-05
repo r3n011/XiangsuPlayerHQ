@@ -170,7 +170,6 @@ import com.theveloper.pixelplay.data.github.GitHubAnnouncementPropertiesService
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.github.PlayStoreAnnouncementRemoteConfig
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
-import com.theveloper.pixelplay.data.preferences.CenterNavButtonMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.sanitizeNavBarCornerRadius
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
@@ -905,34 +904,47 @@ class MainActivity : ComponentActivity() {
         // LocalConfiguration 在 onConfigurationChanged 时可靠触发重组，容器尺寸在旋转时可能不更新
         val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
-        val centerNavButtonMode by userPreferencesRepository.centerNavButtonModeFlow.collectAsStateWithLifecycle(initialValue = CenterNavButtonMode.DISCOVER)
         val discoverShowRoaming by userPreferencesRepository.discoverShowRoamingFlow.collectAsStateWithLifecycle(initialValue = true)
         val discoverShowRadio by userPreferencesRepository.discoverShowRadioFlow.collectAsStateWithLifecycle(initialValue = true)
         val discoverShowAi by userPreferencesRepository.discoverShowAiFlow.collectAsStateWithLifecycle(initialValue = true)
         // 发现模式弹窗：让用户选择进入「漫游」或「电台」
         var showDiscoverSheet by remember { mutableStateOf(false) }
 
-        // 底部导航栏中间按钮：根据设置显示「发现 / 漫游 / 电台」，或选择不显示
-        val centerNavItem: BottomNavItem? = remember(centerNavButtonMode) {
-            when (centerNavButtonMode) {
-                CenterNavButtonMode.DISCOVER -> BottomNavItem(
-                    "Discover", R.string.nav_bar_discover,
-                    null, null,
-                    imageVectorIcon = Icons.Rounded.Explore,
-                    screen = Screen.Roaming
-                )
-                CenterNavButtonMode.ROAMING -> BottomNavItem(
+        // 底部导航栏中间按钮：由「漫游 / 电台 / AI」勾选情况决定。
+        //  - 一个都没勾选 → 不显示该按钮
+        //  - 恰好只勾选 1 个 → 直接显示那个功能的图标，点击直达
+        //  - 勾选多个 → 显示「发现」图标，点击弹出卡片供挑选
+        val discoverTargetsEnabled =
+            discoverShowRoaming || discoverShowRadio || discoverShowAi
+        val centerNavItem: BottomNavItem? = remember(
+            discoverTargetsEnabled, discoverShowRoaming, discoverShowRadio, discoverShowAi
+        ) {
+            if (!discoverTargetsEnabled) {
+                null
+            } else when {
+                discoverShowRoaming && !discoverShowRadio && !discoverShowAi -> BottomNavItem(
                     "Roaming", R.string.nav_bar_roaming,
                     R.drawable.rounded_play_arrow_24, R.drawable.rounded_play_arrow_filled_24,
                     screen = Screen.Roaming
                 )
-                CenterNavButtonMode.RADIO -> BottomNavItem(
+                discoverShowRadio && !discoverShowRoaming && !discoverShowAi -> BottomNavItem(
                     "Radio", R.string.nav_bar_radio,
                     null, null,
                     imageVectorIcon = Icons.Rounded.Radio,
                     screen = Screen.Radio
                 )
-                CenterNavButtonMode.NONE -> null
+                discoverShowAi && !discoverShowRoaming && !discoverShowRadio -> BottomNavItem(
+                    "AI", R.string.discover_ai_title,
+                    null, null,
+                    imageVectorIcon = Icons.Rounded.AutoAwesome,
+                    screen = Screen.AiAssistant
+                )
+                else -> BottomNavItem(
+                    "Discover", R.string.nav_bar_discover,
+                    null, null,
+                    imageVectorIcon = Icons.Rounded.Explore,
+                    screen = Screen.Roaming
+                )
             }
         }
 
@@ -958,11 +970,19 @@ class MainActivity : ComponentActivity() {
         }
 
         val onCenterNavClick: () -> Unit = {
-            when (centerNavButtonMode) {
-                CenterNavButtonMode.DISCOVER -> showDiscoverSheet = true
-                CenterNavButtonMode.ROAMING -> playerViewModel.startRoamingMode()
-                CenterNavButtonMode.RADIO -> Unit
-                CenterNavButtonMode.NONE -> Unit
+            // 发现目标多选：恰好只选中 1 个时直接进入该目标；选中 ≥2 个时弹菜单挑选；
+            // 一个都没选中时按钮本身不显示（此处兜底不做事）
+            val enabledCount =
+                listOf(discoverShowRoaming, discoverShowRadio, discoverShowAi).count { it }
+            if (enabledCount <= 1) {
+                when {
+                    discoverShowRoaming -> playerViewModel.startRoamingMode()
+                    discoverShowRadio -> navController.navigateSafely(Screen.Radio.route)
+                    discoverShowAi -> navController.navigateSafely(Screen.AiAssistant.route)
+                    else -> Unit
+                }
+            } else {
+                showDiscoverSheet = true
             }
         }
         val navBackStackEntry by navController.currentBackStackEntryAsState()

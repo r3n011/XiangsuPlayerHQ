@@ -201,7 +201,6 @@ import com.theveloper.pixelplay.data.backup.model.ModuleRestoreDetail
 import com.theveloper.pixelplay.data.backup.model.RestorePlan
 import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
-import com.theveloper.pixelplay.data.preferences.CenterNavButtonMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
@@ -284,6 +283,7 @@ fun SettingsCategoryScreen(
     var syncIndicatorLabel by remember { mutableStateOf<String?>(null) }
     var showClearLyricsDialog by remember { mutableStateOf(false) }
     var showRebuildDatabaseWarning by remember { mutableStateOf(false) }
+    var showDiscoverOptionsDialog by remember { mutableStateOf(false) }
     var showDownloadPathDialog by remember { mutableStateOf(false) }
     var downloadPathOptions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var showRegenerateDailyMixDialog by remember { mutableStateOf(false) }
@@ -1211,6 +1211,14 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_player_vibrant_bg_title),
+                                    subtitle = stringResource(R.string.setcat_player_vibrant_bg_desc),
+                                    checked = uiState.playerVibrantBackgroundEnabled,
+                                    onCheckedChange = { settingsViewModel.setPlayerVibrantBackgroundEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
                                 // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）
                                 val context = LocalContext.current
                                 val customBgPicker = rememberLauncherForActivityResult(
@@ -1506,48 +1514,13 @@ fun SettingsCategoryScreen(
                                         )
                                     }
                                 )
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.setcat_center_nav_title),
-                                    description = stringResource(R.string.setcat_center_nav_subtitle),
-                                    options = mapOf(
-                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.DISCOVER.name to stringResource(R.string.setcat_center_nav_discover),
-                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.ROAMING.name to stringResource(R.string.setcat_center_nav_roaming),
-                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.RADIO.name to stringResource(R.string.setcat_center_nav_radio),
-                                        com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.NONE.name to stringResource(R.string.setcat_center_nav_none)
-                                    ),
-                                    selectedKey = uiState.centerNavButtonMode.name,
-                                    onSelectionChanged = { key ->
-                                        settingsViewModel.setCenterNavButtonMode(
-                                            com.theveloper.pixelplay.data.preferences.CenterNavButtonMode.valueOf(key)
-                                        )
-                                    },
-                                    leadingIcon = { Icon(Icons.Rounded.Explore, null, tint = MaterialTheme.colorScheme.secondary) }
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_center_nav_title),
+                                    subtitle = buildDiscoverSubtitle(uiState.discoverShowRoaming, uiState.discoverShowRadio, uiState.discoverShowAi),
+                                    leadingIcon = { Icon(Icons.Rounded.Explore, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { showDiscoverOptionsDialog = true }
                                 )
-                                AnimatedVisibility(visible = uiState.centerNavButtonMode == CenterNavButtonMode.DISCOVER) {
-                                    Column {
-                                        SwitchSettingItem(
-                                            title = stringResource(R.string.setcat_center_nav_roaming),
-                                            subtitle = stringResource(R.string.discover_show_item_subtitle),
-                                            checked = uiState.discoverShowRoaming,
-                                            onCheckedChange = { settingsViewModel.setDiscoverShowRoaming(it) },
-                                            leadingIcon = { Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.secondary) }
-                                        )
-                                        SwitchSettingItem(
-                                            title = stringResource(R.string.setcat_center_nav_radio),
-                                            subtitle = stringResource(R.string.discover_show_item_subtitle),
-                                            checked = uiState.discoverShowRadio,
-                                            onCheckedChange = { settingsViewModel.setDiscoverShowRadio(it) },
-                                            leadingIcon = { Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.secondary) }
-                                        )
-                                        SwitchSettingItem(
-                                            title = stringResource(R.string.discover_ai_title),
-                                            subtitle = stringResource(R.string.discover_show_item_subtitle),
-                                            checked = uiState.discoverShowAi,
-                                            onCheckedChange = { settingsViewModel.setDiscoverShowAi(it) },
-                                            leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
-                                        )
-                                    }
-                                }
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_navbar_corner_title),
                                     subtitle = stringResource(R.string.setcat_navbar_corner_subtitle),
@@ -1846,6 +1819,13 @@ fun SettingsCategoryScreen(
                                     checked = uiState.showQueueHistory,
                                     onCheckedChange = { settingsViewModel.setShowQueueHistory(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_queue_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_show_speed_button_title),
+                                    subtitle = stringResource(R.string.setcat_show_speed_button_subtitle),
+                                    checked = uiState.showPlaybackSpeedButton,
+                                    onCheckedChange = { settingsViewModel.setShowPlaybackSpeedButton(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_timer_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                             }
 
@@ -2588,6 +2568,43 @@ fun SettingsCategoryScreen(
         )
     }
 
+    if (showDiscoverOptionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscoverOptionsDialog = false },
+            title = { Text(stringResource(R.string.setcat_center_nav_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.discover_options_dialog_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    DialogCheckRow(
+                        title = stringResource(R.string.setcat_center_nav_roaming),
+                        checked = uiState.discoverShowRoaming,
+                        onCheckedChange = { settingsViewModel.setDiscoverShowRoaming(it) }
+                    )
+                    DialogCheckRow(
+                        title = stringResource(R.string.setcat_center_nav_radio),
+                        checked = uiState.discoverShowRadio,
+                        onCheckedChange = { settingsViewModel.setDiscoverShowRadio(it) }
+                    )
+                    DialogCheckRow(
+                        title = stringResource(R.string.discover_ai_title),
+                        checked = uiState.discoverShowAi,
+                        onCheckedChange = { settingsViewModel.setDiscoverShowAi(it) }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDiscoverOptionsDialog = false }) {
+                    Text(stringResource(R.string.confirm), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        )
+    }
+
     if (showRegenerateDailyMixDialog) {
         val toastDailyMixRegenerationStarted = stringResource(R.string.toast_daily_mix_regeneration_started)
         AlertDialog(
@@ -2786,6 +2803,45 @@ private fun buildBackupSelectionSummary(context: Context, selected: Set<BackupSe
         context.getString(R.string.backup_summary_all)
     } else {
         context.getString(R.string.backup_summary_partial, selected.size, total)
+    }
+}
+
+/** 「发现按钮」设置入口的副标题：按勾选个数给出直观说明。 */
+@Composable
+private fun buildDiscoverSubtitle(showRoaming: Boolean, showRadio: Boolean, showAi: Boolean): String {
+    val names = buildList {
+        if (showRoaming) add(stringResource(R.string.setcat_center_nav_roaming))
+        if (showRadio) add(stringResource(R.string.setcat_center_nav_radio))
+        if (showAi) add(stringResource(R.string.discover_ai_title))
+    }
+    return when (names.size) {
+        0 -> stringResource(R.string.discover_none_selected_desc)
+        1 -> stringResource(R.string.discover_single_selected_desc, names[0])
+        else -> stringResource(R.string.discover_multi_selected_desc, names.joinToString("、"))
+    }
+}
+
+/** 弹窗内的一行勾选项。 */
+@Composable
+private fun DialogCheckRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

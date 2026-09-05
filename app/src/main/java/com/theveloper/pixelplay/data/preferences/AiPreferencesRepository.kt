@@ -66,6 +66,9 @@ class AiPreferencesRepository @Inject constructor(
         val AI_COMPANION_SPEED = floatPreferencesKey("ai_companion_speed")
         val AI_MIMO_API_KEY = stringPreferencesKey("ai_mimo_api_key")
 
+        // AI 助手聊天记录持久化（JSON 序列化后的消息列表）
+        val AI_ASSISTANT_CHAT_HISTORY = stringPreferencesKey("ai_assistant_chat_history")
+
         val WEB_REMOTE_ENABLED = booleanPreferencesKey("web_remote_enabled")
         val WEB_REMOTE_SYNC_MODE = booleanPreferencesKey("web_remote_sync_mode")
         val WEB_REMOTE_PORT = intPreferencesKey("web_remote_port")
@@ -328,6 +331,14 @@ class AiPreferencesRepository @Inject constructor(
 
     suspend fun setCompanionSpeed(speed: Float) {
         dataStore.edit { preferences -> preferences[Keys.AI_COMPANION_SPEED] = speed.coerceIn(0.5f, 2.0f) }
+    }
+
+    /** AI 助手聊天记录（JSON 字符串，为空表示无历史） */
+    val aiAssistantChatHistory: Flow<String> =
+        dataStore.data.map { preferences -> preferences[Keys.AI_ASSISTANT_CHAT_HISTORY] ?: "" }
+
+    suspend fun setAiAssistantChatHistory(json: String) {
+        dataStore.edit { preferences -> preferences[Keys.AI_ASSISTANT_CHAT_HISTORY] = json }
     }
 
     suspend fun setMimoApiKey(apiKey: String) {

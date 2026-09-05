@@ -201,7 +201,7 @@
     >Custom Player Background</string>
     <string
         name="setcat_custom_player_background_subtitle"
-    >Use a custom image as the background of the player and lyrics screens.</string>
+    >Use a custom image as the background of the player and lyrics screens. When enabled, it takes precedence over the dynamic album-art background below.</string>
     <string
         name="setcat_custom_player_background_pick"
     >Choose background image</string>
@@ -221,7 +221,9 @@
     <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
     <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
     <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
-    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics. When off, a solid color background is used instead.</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
+    <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
+    <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
     <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
     <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
     <string name="setcat_home_collage">Home Collage</string>
@@ -391,6 +393,10 @@
     <string
         name="setcat_show_queue_history_subtitle"
     >Show previously played songs in the queue.</string>
+    <string name="setcat_show_speed_button_title">Show playback speed button</string>
+    <string
+        name="setcat_show_speed_button_subtitle"
+    >Show the speed (1x) button in the player control bar. Disable to hide it and manually adjust speed from the player.</string>
     <string name="setcat_show_lyrics_track_info_title">Show lyrics track info</string>
     <string
         name="setcat_show_lyrics_track_info_subtitle"
@@ -851,6 +857,9 @@
     <string name="settings_search_keyword_maintenance">Maintenance</string>
     <string name="settings_search_keyword_diagnostics">Diagnostics</string>
     <string name="settings_search_keyword_collage">Collage</string>
+    <string name="settings_search_keyword_speed">Speed, playback rate</string>
+    <string name="settings_search_keyword_background_image">Background image, wallpaper</string>
+    <string name="settings_search_keyword_dynamic_background">Dynamic background, ambient</string>
     
     <!-- Settings Search UI -->
     <string name="settings_search_placeholder">Search settings</string>
