@@ -494,7 +494,7 @@ fun AutoEqFilterChip(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            leadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            iconColor = MaterialTheme.colorScheme.onPrimaryContainer,
             selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
         )
     )
