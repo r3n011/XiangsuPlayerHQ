@@ -28,15 +28,6 @@ val localProperties = Properties().apply {
     }
 }
 
-val abiSplitsRequested = providers.gradleProperty("pixelplay.enableAbiSplits")
-    .getOrElse("true")
-    .toBoolean()
-// 只在 Release / Benchmark 构建时启用 ABI 分包，Debug 直接生成通用 APK，避免 x86 虚拟机无法安装
-val isReleaseLikeTask = gradle.startParameter.taskNames.any { taskName ->
-    taskName.contains("Release", ignoreCase = true) || taskName.contains("Benchmark", ignoreCase = true)
-}
-val enableAbiSplits = abiSplitsRequested && isReleaseLikeTask
-
 val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableComposeCompilerReports")
     .getOrElse("false")
     .toBoolean()
@@ -93,16 +84,15 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 53
-        versionName = "1.5.6"
+        versionCode = 55
+        versionName = "1.5.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            // Release/Benchmark 只打包 arm64-v8a（预编译 libusb 仅提供该 ABI）；
-            // Debug 额外包含 x86，以便在 x86 模拟器上运行
-            abiFilters += if (enableAbiSplits) setOf("arm64-v8a")
-                          else setOf("arm64-v8a", "x86")
+            // Release/Benchmark 与 Debug 均打包 arm64-v8a + x86：
+            // 预编译 libusb 仅提供 arm64-v8a，其余 ABI 自动跳过 USB 独占输出（见 CMakeLists.txt）
+            abiFilters += setOf("arm64-v8a", "x86")
         }
 
 

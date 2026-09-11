@@ -3,6 +3,7 @@ package com.theveloper.pixelplay.data.ai
 
 import com.theveloper.pixelplay.data.ai.provider.AiClientFactory
 import com.theveloper.pixelplay.data.ai.provider.AiProvider
+import com.theveloper.pixelplay.data.ai.provider.AiStreamChunk
 import com.theveloper.pixelplay.data.database.AiCacheDao
 import com.theveloper.pixelplay.data.database.AiCacheEntity
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
@@ -318,6 +319,49 @@ class AiOrchestrator @Inject constructor(
             val client = clientFactory.createClient(provider, apiKey, getBaseUrl(provider))
             val requestedModel = getModel(provider).ifBlank { client.getDefaultModel() }
             return client.generateContentStream(
+                requestedModel,
+                finalSystemPrompt,
+                prompt,
+                resolvedTemperature
+            )
+        }
+
+        throw Exception(
+            if (failedProviders.all { it.contains("no API key") })
+                "No API key configured. Go to Settings → AI Integration to set up your API key."
+            else
+                "AI generation failed after trying ${failedProviders.size} providers:\n${failedProviders.joinToString("\n• ", prefix = "• ")}"
+        )
+    }
+
+    /**
+     * 带思考/推理内容区分的流式生成。与 [generateContentStream] 相同的主 provider 链
+     * 逻辑，但每个增量都标注是模型思考还是正式回答（[AiStreamChunk.isThinking]）。
+     * 流式响应不走缓存（实时性优先）。
+     */
+    suspend fun generateContentStreamWithReasoning(
+        prompt: String,
+        type: AiSystemPromptType = AiSystemPromptType.GENERAL,
+        temperature: Float = 0.7f,
+        context: String = ""
+    ): Flow<AiStreamChunk> {
+        val resolvedTemperature = resolveTemperature(type, temperature)
+        val userProviderStr = preferencesRepo.aiProvider.first()
+        val userProvider = AiProvider.fromString(userProviderStr)
+        val providersToTry = com.theveloper.pixelplay.data.ai.provider.AiProviderSupport.buildProviderChain(userProvider)
+        val failedProviders = mutableListOf<String>()
+
+        for (provider in providersToTry) {
+            val apiKey = getApiKey(provider)
+            if (apiKey.isBlank()) {
+                failedProviders.add("${provider.name}: no API key configured")
+                continue
+            }
+            val providerPersona = getBasePersona(provider)
+            val finalSystemPrompt = promptEngine.buildPrompt(providerPersona, type, context)
+            val client = clientFactory.createClient(provider, apiKey, getBaseUrl(provider))
+            val requestedModel = getModel(provider).ifBlank { client.getDefaultModel() }
+            return client.generateContentStreamWithReasoning(
                 requestedModel,
                 finalSystemPrompt,
                 prompt,

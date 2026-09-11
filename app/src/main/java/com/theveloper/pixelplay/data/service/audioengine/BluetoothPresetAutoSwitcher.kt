@@ -106,10 +106,10 @@ class BluetoothPresetAutoSwitcher @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "耳机预设切换",
+                context.getString(R.string.bluetooth_preset_switch_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "蓝牙设备连接时自动切换耳机预设的通知"
+                description = context.getString(R.string.bluetooth_preset_switch_channel_desc)
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(channel)
@@ -117,8 +117,8 @@ class BluetoothPresetAutoSwitcher @Inject constructor(
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_music_placeholder)
-            .setContentTitle("预设已切换")
-            .setContentText("已切换到 \"$presetName\" 预设")
+            .setContentTitle(context.getString(R.string.bluetooth_preset_switched))
+            .setContentText(context.getString(R.string.bluetooth_preset_switched_body, presetName))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setAutoCancel(true)
             .build()

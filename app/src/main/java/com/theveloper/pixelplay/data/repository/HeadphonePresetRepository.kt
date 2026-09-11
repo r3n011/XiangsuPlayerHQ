@@ -25,12 +25,20 @@ class HeadphonePresetRepository @Inject constructor(
         return headphonePresetDao.getPresetsByCategory(category)
     }
 
+    fun getPresetsByType(type: String): Flow<List<HeadphonePresetEntity>> {
+        return headphonePresetDao.getPresetsByType(type)
+    }
+
     fun getPresetsByBrand(brand: String): Flow<List<HeadphonePresetEntity>> {
         return headphonePresetDao.getPresetsByBrand(brand)
     }
 
     fun searchPresets(query: String): Flow<List<HeadphonePresetEntity>> {
         return headphonePresetDao.searchPresets(query)
+    }
+
+    fun getRecommendedPresets(limit: Int): Flow<List<HeadphonePresetEntity>> {
+        return headphonePresetDao.getRecommendedPresets(limit)
     }
 
     fun getAllBrands(): Flow<List<String>> {

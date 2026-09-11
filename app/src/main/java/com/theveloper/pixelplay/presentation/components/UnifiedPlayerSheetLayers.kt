@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -75,6 +76,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     playerViewModel: PlayerViewModel,
     currentPositionProvider: () -> Long,
     isFavorite: Boolean,
+    currentHorizontalPaddingStartPxProvider: () -> Float = { 0f },
+    currentHorizontalPaddingEndPxProvider: () -> Float = { 0f },
     shouldRenderFullPlayer: Boolean = true,
     onShowQueueClicked: () -> Unit,
     onQueueDragStart: () -> Unit,
@@ -101,16 +104,45 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
         CompositionLocalProvider(
             LocalMaterialTheme provides readyScheme
         ) {
+            // ⚡ 恢复原版展开动画：mini 层在 fraction<0.5 时叠在最上层且完全不透明，
+            //    0.5 后线性淡出并把上层让给 full 层（zIndex 0.5 处切换）
+            val miniPlayerZIndex by remember {
+                derivedStateOf {
+                    if (playerContentExpansionFraction.value < 0.5f) 1f else 0f
+                }
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .height(MiniPlayerHeight)
                     .graphicsLayer {
-                        // mini player 展开动画已移除移动/宽度过渡，仅保留整体淡出
-                        val f = playerContentExpansionFraction.value.coerceIn(0f, 1f)
-                        alpha = (1f - f * 1.5f).coerceIn(0f, 1f)
+                        alpha = (1f - playerContentExpansionFraction.value * 2f)
+                            .coerceIn(0f, 1f)
                     }
+                    .layout { measurable, constraints ->
+                        val fraction = playerContentExpansionFraction.value
+                        val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)
+                        val endPaddingPx = currentHorizontalPaddingEndPxProvider().toInt().coerceAtLeast(0)
+                        // ⚡ 恢复原版：展开时 mini 内容立即全宽铺满（对齐内边距），
+                        //    与 innerLayout 全屏宽测量一致，遮罩/背景覆盖全屏
+                        val targetWidth = if (fraction > 0f) {
+                            (constraints.maxWidth - startPaddingPx - endPaddingPx).coerceAtLeast(0)
+                        } else {
+                            constraints.maxWidth
+                        }
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                minWidth = targetWidth,
+                                maxWidth = targetWidth
+                            )
+                        )
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            val xOffset = if (fraction > 0f) startPaddingPx else 0
+                            placeable.placeRelative(xOffset, 0)
+                        }
+                    }
+                    .zIndex(miniPlayerZIndex)
             ) {
                 val isMiniPlayerVisible by remember {
                     derivedStateOf { playerContentExpansionFraction.value < 0.01f }
@@ -158,13 +190,16 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
 
             val fullPlayerOffset by remember {
                 derivedStateOf {
-                    // Align the on-screen threshold with the alpha start point (0.25).
-                    // At ef=0.25 the full-player contentAlpha is exactly 0, so moving
-                    // the composable on-screen here is invisible. The old threshold of
-                    // 0.35 caused the full player to suddenly appear at ~13% alpha —
-                    // a visible flash, especially on heavy screens (Home / Library).
-                    if (playerContentExpansionFraction.value <= 0.25f) IntOffset(0, 10000)
+                    // ⚡ 恢复原版：full 层在 fraction<=0.01 时移出屏幕（不可见），
+                    //    0.01 后上屏但 zIndex 为 0 被 mini 层盖住，0.5 后 zIndex 切换为
+                    //    上层并随 mini 淡出而显示，全程无"闪现"
+                    if (playerContentExpansionFraction.value <= 0.01f) IntOffset(0, 10000)
                     else IntOffset.Zero
+                }
+            }
+            val fullPlayerZIndex by remember {
+                derivedStateOf {
+                    if (playerContentExpansionFraction.value >= 0.5f) 1f else 0f
                 }
             }
             val fullPlayerRuntimePolicy = rememberFullPlayerRuntimePolicy(
@@ -186,14 +221,14 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     .graphicsLayer {
                         // Read from FullPlayerVisualState lazy getters in the draw phase;
                         // these read Animatable.value internally → re-draw only, no recomposition.
-                        val fpAlpha = fullPlayerVisualState.contentAlpha
-                        alpha = fpAlpha
-                        // ⚡ 展开动画：full 内容随展开进度从略小尺寸逐渐放大到目标尺寸进入，
-                        // 与 mini 内容（封面/歌名/歌手）向上飞行交接，形成连续放大接管
-                        scaleX = fullPlayerScale * lerp(0.96f, 1f, fpAlpha)
-                        scaleY = fullPlayerScale * lerp(0.96f, 1f, fpAlpha)
+                        // ⚡ 恢复原版：alpha（contentAlpha 随展开淡入）+ translationY（滑入）
+                        //    + bottomSheetOpenFraction 缩放，不再额外做 0.96→1 飞入缩放
+                        alpha = fullPlayerVisualState.contentAlpha
+                        translationY = fullPlayerVisualState.translationY
+                        scaleX = fullPlayerScale
+                        scaleY = fullPlayerScale
                     }
-                    .zIndex(1f)
+                    .zIndex(fullPlayerZIndex)
                     .offset { fullPlayerOffset }
             ) {
                 val latestInfrequentPlayerState = rememberUpdatedState(infrequentPlayerState)

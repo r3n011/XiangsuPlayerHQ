@@ -28,6 +28,9 @@ class LxSearchApi @Inject constructor(
     // 备用搜索 API：内置 NCM（官方加密 weapi）返回 405 操作频繁时使用
     private val BTWOA_API_BASE = "https://ncmapi.btwoa.com"
 
+    // young1024 兜底评论 API（官方接口失败时使用）
+    private val YOUNG1024_API_BASE = "http://www.young1024.com:666/"
+
     /**
      * 将 NcmApi（本地 SDK）返回的 Map 转为 JSONObject，便于复用现有解析逻辑。
      * NcmApi 直接请求网易云官方加密接口，不依赖任何外部代理服务器。
@@ -321,45 +324,65 @@ class LxSearchApi @Inject constructor(
         limit: Int = 20,
         offset: Int = 0,
         before: Long? = null
-    ): NeteaseCommentResult = withContext(Dispatchers.IO) {        if (songId.isBlank()) return@withContext NeteaseCommentResult()
-        try {
+    ): NeteaseCommentResult = withContext(Dispatchers.IO) {
+        if (songId.isBlank()) return@withContext NeteaseCommentResult()
+
+        // 优先走本地 NcmApi 官方加密接口
+        val primary = try {
             val map = NcmApi.full.commentMusic(
                 id = songId,
                 limit = limit,
                 offset = offset,
                 beforeTime = before ?: 0L,
-            ).getOrNull() ?: return@withContext NeteaseCommentResult()
+            ).getOrNull()
 
-            // 本地 SDK 返回结构：{code, hotComments:[...], comments:[...], totalCount, hasMore, time}
-            val hotComments = mutableListOf<NeteaseComment>()
-            map.ncmList("hotComments").forEach { item ->
-                (item as? Map<*, *>)?.let { hotComments.add(parseCommentFromMap(it)) }
-            }
+            if (map != null) {
+                // 本地 SDK 返回结构：{code, hotComments:[...], comments:[...], totalCount, hasMore, time}
+                val hotComments = mutableListOf<NeteaseComment>()
+                map.ncmList("hotComments").forEach { item ->
+                    (item as? Map<*, *>)?.let { hotComments.add(parseCommentFromMap(it)) }
+                }
 
-            val comments = mutableListOf<NeteaseComment>()
-            map.ncmList("comments").forEach { item ->
-                (item as? Map<*, *>)?.let { comments.add(parseCommentFromMap(it)) }
-            }
+                val comments = mutableListOf<NeteaseComment>()
+                map.ncmList("comments").forEach { item ->
+                    (item as? Map<*, *>)?.let { comments.add(parseCommentFromMap(it)) }
+                }
 
-            val hasMore = map.ncmBool("hasMore", comments.isNotEmpty())
+                val hasMore = map.ncmBool("hasMore", comments.isNotEmpty())
+                val cursor = if (comments.isNotEmpty()) comments.last().time else map.ncmLong("time", 0L)
 
-            val cursor = if (comments.isNotEmpty()) {
-                comments.last().time
+                NeteaseCommentResult(
+                    comments = comments,
+                    hotComments = hotComments,
+                    hasMore = hasMore,
+                    totalCount = map.ncmInt("totalCount", 0),
+                    cursor = cursor
+                )
             } else {
-                map.ncmLong("time", 0L)
+                NeteaseCommentResult()
             }
-
-            NeteaseCommentResult(
-                comments = comments,
-                hotComments = hotComments,
-                hasMore = hasMore,
-                totalCount = map.ncmInt("totalCount", 0),
-                cursor = cursor
-            )
         } catch (e: Exception) {
-            Timber.e(e, "获取评论异常")
+            Timber.e(e, "获取评论异常，尝试 young1024 兜底")
             NeteaseCommentResult()
         }
+
+        if (primary.comments.isNotEmpty() || primary.hotComments.isNotEmpty()) {
+            return@withContext primary
+        }
+
+        // 官方接口无数据/失败时，走 young1024 兜底链
+        // 1) /comment/music（旧版完整评论）
+        val musicFallback = fetchYoung1024SongComments(songId, limit, offset, before)
+        if (musicFallback.comments.isNotEmpty() || musicFallback.hotComments.isNotEmpty()) {
+            return@withContext musicFallback
+        }
+        // 2) /comment/new（新版评论）
+        val newFallback = fetchYoung1024NewComments(songId, limit, offset, before)
+        if (newFallback.comments.isNotEmpty() || newFallback.hotComments.isNotEmpty()) {
+            return@withContext newFallback
+        }
+        // 3) /comment/hot（热门评论）
+        return@withContext fetchYoung1024HotComments(songId, limit, offset, before)
     }
 
     /**
@@ -803,6 +826,216 @@ class LxSearchApi @Inject constructor(
             timeStr = m.ncmString("timeStr"),
             likedCount = m.ncmInt("likedCount", 0),
             liked = m.ncmBool("liked", false),
+            user = user,
+            beReplied = beReplied,
+            subReplyCount = subReplyCount
+        )
+    }
+
+    /** young1024 兜底：获取歌曲评论列表。 */
+    private suspend fun fetchYoung1024SongComments(
+        songId: String,
+        limit: Int,
+        offset: Int,
+        before: Long?
+    ): NeteaseCommentResult = withContext(Dispatchers.IO) {
+        try {
+            val url = buildString {
+                append(YOUNG1024_API_BASE)
+                append("comment/music?id=$songId&limit=$limit&offset=$offset")
+                before?.let { append("&before=$it") }
+            }
+            Timber.d("young1024 评论兜底请求: $url")
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Timber.w("young1024 评论兜底请求失败: ${response.code}")
+                return@withContext NeteaseCommentResult()
+            }
+            val body = response.body?.string() ?: return@withContext NeteaseCommentResult()
+            val root = JSONObject(body)
+            if (root.optInt("code", -1) != 200) {
+                Timber.w("young1024 评论兜底返回非 200: ${root.optInt("code")}")
+                return@withContext NeteaseCommentResult()
+            }
+
+            val hotComments = mutableListOf<NeteaseComment>()
+            root.optJSONArray("hotComments")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.let { hotComments.add(parseYoung1024Comment(it)) }
+                }
+            }
+            val comments = mutableListOf<NeteaseComment>()
+            root.optJSONArray("comments")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.let { comments.add(parseYoung1024Comment(it)) }
+                }
+            }
+            val hasMore = root.optBoolean("more", comments.isNotEmpty())
+            val cursor = if (comments.isNotEmpty()) comments.last().time else root.optLong("time", 0L)
+
+            Timber.d("young1024 评论兜底成功: ${comments.size} 条, 热评 ${hotComments.size} 条")
+            NeteaseCommentResult(
+                comments = comments,
+                hotComments = hotComments,
+                hasMore = hasMore,
+                totalCount = root.optInt("total", 0),
+                cursor = cursor
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "young1024 评论兜底异常")
+            NeteaseCommentResult()
+        }
+    }
+
+    /** young1024 兜底：新版评论接口（/comment/new?type=0&id=x&pageNo=x&pageSize=x&sortType=1） */
+    private suspend fun fetchYoung1024NewComments(
+        songId: String,
+        limit: Int,
+        offset: Int,
+        before: Long?
+    ): NeteaseCommentResult = withContext(Dispatchers.IO) {
+        try {
+            val pageNo = offset / limit + 1
+            val url = buildString {
+                append(YOUNG1024_API_BASE)
+                append("comment/new?type=0&id=$songId&pageNo=$pageNo&pageSize=$limit&sortType=1")
+                if (offset % limit != 0) append("&offset=$offset")
+                before?.let { append("&cursor=$it") }
+            }
+            Timber.d("young1024 新版评论兜底请求: $url")
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Timber.w("young1024 新版评论兜底请求失败: ${response.code}")
+                return@withContext NeteaseCommentResult()
+            }
+            val body = response.body?.string() ?: return@withContext NeteaseCommentResult()
+            val root = JSONObject(body)
+            if (root.optInt("code", -1) != 200) {
+                Timber.w("young1024 新版评论兜底返回非 200: ${root.optInt("code")}")
+                return@withContext NeteaseCommentResult()
+            }
+            // 新版结构：{code, data: {comments:[...], totalCount, hasMore, cursor}}
+            val data = root.optJSONObject("data") ?: return@withContext NeteaseCommentResult()
+            val comments = mutableListOf<NeteaseComment>()
+            data.optJSONArray("comments")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.let { comments.add(parseYoung1024Comment(it)) }
+                }
+            }
+            val hasMore = data.optBoolean("hasMore", comments.isNotEmpty())
+            val cursor = if (comments.isNotEmpty()) comments.last().time else data.optLong("cursor", 0L)
+
+            Timber.d("young1024 新版评论兜底成功: ${comments.size} 条")
+            NeteaseCommentResult(
+                comments = comments,
+                hotComments = emptyList(),
+                hasMore = hasMore,
+                totalCount = data.optInt("totalCount", 0),
+                cursor = cursor
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "young1024 新版评论兜底异常")
+            NeteaseCommentResult()
+        }
+    }
+
+    /** young1024 兜底：热门评论接口（/comment/hot?type=0&id=x&limit=x&offset=x） */
+    private suspend fun fetchYoung1024HotComments(
+        songId: String,
+        limit: Int,
+        offset: Int,
+        before: Long?
+    ): NeteaseCommentResult = withContext(Dispatchers.IO) {
+        try {
+            val url = buildString {
+                append(YOUNG1024_API_BASE)
+                append("comment/hot?type=0&id=$songId&limit=$limit&offset=$offset")
+                before?.let { append("&before=$it") }
+            }
+            Timber.d("young1024 热门评论兜底请求: $url")
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Timber.w("young1024 热门评论兜底请求失败: ${response.code}")
+                return@withContext NeteaseCommentResult()
+            }
+            val body = response.body?.string() ?: return@withContext NeteaseCommentResult()
+            val root = JSONObject(body)
+            if (root.optInt("code", -1) != 200) {
+                Timber.w("young1024 热门评论兜底返回非 200: ${root.optInt("code")}")
+                return@withContext NeteaseCommentResult()
+            }
+            val hotComments = mutableListOf<NeteaseComment>()
+            root.optJSONArray("hotComments")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.let { hotComments.add(parseYoung1024Comment(it)) }
+                }
+            }
+            val hasMore = root.optBoolean("more", hotComments.isNotEmpty())
+            val cursor = if (hotComments.isNotEmpty()) hotComments.last().time else root.optLong("cursor", 0L)
+
+            Timber.d("young1024 热门评论兜底成功: ${hotComments.size} 条")
+            NeteaseCommentResult(
+                comments = emptyList(),
+                hotComments = hotComments,
+                hasMore = hasMore,
+                totalCount = root.optInt("totalCount", 0),
+                cursor = cursor
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "young1024 热门评论兜底异常")
+            NeteaseCommentResult()
+        }
+    }
+
+    /** 从 young1024 返回的 JSONObject 解析单条评论。 */
+    private fun parseYoung1024Comment(obj: JSONObject): NeteaseComment {
+        val userObj = obj.optJSONObject("user") ?: JSONObject()
+        val user = NeteaseCommentUser(
+            userId = userObj.optLong("userId", 0L),
+            nickname = userObj.optString("nickname", ""),
+            avatarUrl = userObj.optString("avatarUrl", "")
+        )
+        val beReplied = mutableListOf<NeteaseCommentBeReplied>()
+        obj.optJSONArray("beReplied")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: continue
+                val brUser = item.optJSONObject("user") ?: JSONObject()
+                beReplied.add(
+                    NeteaseCommentBeReplied(
+                        userId = brUser.optLong("userId", 0L),
+                        nickname = brUser.optString("nickname", ""),
+                        content = item.optString("content", ""),
+                        beRepliedCommentId = item.optLong("beRepliedCommentId", 0L)
+                    )
+                )
+            }
+        }
+        val subReplyCount = obj.optInt("replyCount", 0).coerceAtLeast(obj.optInt("ciCount", 0))
+        return NeteaseComment(
+            commentId = obj.optLong("commentId", 0L),
+            content = obj.optString("content", ""),
+            time = obj.optLong("time", 0L),
+            timeStr = obj.optString("timeStr", ""),
+            likedCount = obj.optInt("likedCount", 0),
+            liked = obj.optBoolean("liked", false),
             user = user,
             beReplied = beReplied,
             subReplyCount = subReplyCount

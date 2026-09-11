@@ -123,6 +123,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
@@ -800,6 +801,26 @@ class PlayerViewModel @Inject constructor(
             initialValue = true
         )
 
+    /** 倍速变调：开启后音高随倍速自动变调（pitch == speed）。 */
+    val pitchFollowSpeed: StateFlow<Boolean> = userPreferencesRepository.pitchFollowSpeedFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    /** 切换倍速变调开关，并立即按当前倍速重新应用音高。 */
+    fun setPitchFollowSpeed(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPitchFollowSpeed(enabled)
+            // 直接用入参计算音高，避免依赖 StateFlow 异步更新造成的延迟
+            val pitch = if (enabled) _playbackSpeed.value else 1f
+            try {
+                dualPlayerEngine.setPlaybackSpeed(_playbackSpeed.value, pitch)
+            } catch (_: Exception) {}
+        }
+    }
+
     /**
      * Whether tapping the background of the player sheet toggles its state.
      * When disabled, users must use gestures or buttons to expand/collapse.
@@ -1384,6 +1405,24 @@ class PlayerViewModel @Inject constructor(
                 }
             }
             .launchIn(viewModelScope)
+
+        // ⚡ 兜底取色观察者：显式路径（onMediaItemTransition）万一遗漏（后台恢复播放、
+        //   窗口队列等场景），这里 600ms 后校验当前颜色 URI 是否与歌曲一致，
+        //   不一致则补一次取色。低优先级：已命中时直接跳过，不与显式路径竞争。
+        viewModelScope.launch {
+            stablePlayerState
+                .map { it.currentSong?.albumArtUriString }
+                .distinctUntilChanged()
+                .collectLatest { uriString ->
+                    if (uriString.isNullOrBlank()) return@collectLatest
+                    kotlinx.coroutines.delay(600)
+                    val appliedUri = themeStateHolder.currentAlbumArtUri.value
+                    if (appliedUri != uriString) {
+                        Timber.d("ColorFallback: 兜底取色 uri=${uriString.take(30)}")
+                        themeStateHolder.extractAndGenerateColorScheme(uriString.toUri(), uriString)
+                    }
+                }
+        }
 
         // ── 漫游模式：歌曲切换时自动追加 1 首歌曲
         // 每播放完一首歌曲（或手动切歌），触发加载 1 首新歌到队列末尾
@@ -4098,9 +4137,6 @@ class PlayerViewModel @Inject constructor(
             currentPositionMs = currentPosition
         )
 
-        // ⚡ 记录旧的 songUri，用于判断是否需要重新提取颜色
-        val oldSongUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
-
         // ⚡ 使用 updateStablePlayerStateIfChanged：只有值真的变化才产生新 state，
         // 避免不必要的 UI 重组导致的闪烁
         playbackStateHolder.updateStablePlayerStateIfChanged { previous ->
@@ -4125,21 +4161,18 @@ class PlayerViewModel @Inject constructor(
         }
         syncPlaybackPositionFromPlayer(mediaItem.mediaId, currentPosition)
 
-        // ⚡ 只有当 albumArtUri 真的变化了才提取颜色，避免多次回调导致
-        // 颜色被重复提取 → 动画重新启动 → 颜色跳变
+        // ⚡ 切歌必取色：不再要求 albumArtUri 必须变化。
+        //   URI 相同（同封面专辑）时走缓存命中 + updateAlbumArtThemeState 同 URI 去重，
+        //   几乎零成本且不触发重组；确保任何切歌路径（含快速连切/窗口队列/后台切歌）
+        //   都进入取色链路，避免"切歌后根本不取色"。
         val newSongUri = song.albumArtUriString
-        Log.w("PixelPlay_Debug", "  → 🎨 颜色提取检查: oldSongUri=${oldSongUri?.take(20) ?: "null"}, newSongUri=${newSongUri?.take(20) ?: "null"}")
-        if (oldSongUri != newSongUri) {
-            Log.w("PixelPlay_Debug", "  → 🎨 ✅ albumArtUri 变化，提取颜色 + 加载歌词")
-            viewModelScope.launch {
-                val uri = newSongUri?.toUri()
-                // ⚡ 关键修复：第二个参数必须是 newSongUri（当前歌曲 uri），不是 oldSongUri
-                // extractAndGenerateColorScheme 内部会用它验证 "currentSongUriString == uriString"
-                // 只有匹配才会设置 _currentAlbumArtColorSchemePair
-                themeStateHolder.extractAndGenerateColorScheme(uri, newSongUri)
-            }
-        } else {
-            Log.w("PixelPlay_Debug", "  → 🎨 ⏭️  albumArtUri 没变，不解提取颜色 (避免颜色跳变)")
+        Log.w("PixelPlay_Debug", "  → 🎨 切歌必取色: newSongUri=${newSongUri?.take(20) ?: "null"}")
+        viewModelScope.launch {
+            val uri = newSongUri?.toUri()
+            // ⚡ 关键修复：第二个参数必须是 newSongUri（当前歌曲 uri），不是 oldSongUri
+            // extractAndGenerateColorScheme 内部会用它验证 "currentSongUriString == uriString"
+            // 只有匹配才会设置 _currentAlbumArtColorSchemePair
+            themeStateHolder.extractAndGenerateColorScheme(uri, newSongUri)
         }
         // ⚡ 无论 albumArtUri 是否变化都必须加载歌词，否则同一专辑的歌曲切歌后
         // isLoadingLyrics=true 但永远不会触发实际加载，导致歌词永远卡在加载状态
@@ -5867,14 +5900,17 @@ class PlayerViewModel @Inject constructor(
     fun setPlaybackSpeed(speed: Float) {
         val clamped = speed.coerceIn(0.5f, 2f)
         _playbackSpeed.value = clamped
+        // 变调开关开启时音高跟随倍速（pitch == speed），关闭时保持原调
+        val pitch = if (pitchFollowSpeed.value) clamped else 1f
         // 直接作用于播放引擎（记住倍速并在在线流就绪时自动恢复）
         try {
-            dualPlayerEngine.setPlaybackSpeed(clamped)
+            dualPlayerEngine.setPlaybackSpeed(clamped, pitch)
         } catch (_: Exception) {}
         // 同步到 MediaSession（通知/蓝牙倍速显示）
         mediaController?.let { controller ->
             val args = Bundle().apply {
                 putFloat(MusicNotificationProvider.EXTRA_PLAYBACK_SPEED, clamped)
+                putFloat(MusicNotificationProvider.EXTRA_PLAYBACK_PITCH, pitch)
             }
             controller.sendCustomCommand(
                 SessionCommand(MusicNotificationProvider.CUSTOM_COMMAND_SET_PLAYBACK_SPEED, Bundle.EMPTY),

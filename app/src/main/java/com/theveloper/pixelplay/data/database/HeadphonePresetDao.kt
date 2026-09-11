@@ -21,11 +21,30 @@ interface HeadphonePresetDao {
     @Query("SELECT * FROM headphone_presets WHERE category = :category ORDER BY name ASC")
     fun getPresetsByCategory(category: String): Flow<List<HeadphonePresetEntity>>
 
+    @Query("SELECT * FROM headphone_presets WHERE category LIKE '%' || :type || '%' ORDER BY name ASC")
+    fun getPresetsByType(type: String): Flow<List<HeadphonePresetEntity>>
+
     @Query("SELECT * FROM headphone_presets WHERE brand = :brand ORDER BY name ASC")
     fun getPresetsByBrand(brand: String): Flow<List<HeadphonePresetEntity>>
 
     @Query("SELECT * FROM headphone_presets WHERE name LIKE '%' || :query || '%' ORDER BY name ASC")
     fun searchPresets(query: String): Flow<List<HeadphonePresetEntity>>
+
+    // 推荐预设：匹配热门耳机系列关键词（模仿 Rhythm 的 getRecommendedProfiles）
+    @Query(
+        """
+        SELECT * FROM headphone_presets
+        WHERE name LIKE '%WH-1000XM%' OR name LIKE '%WF-1000XM%' OR name LIKE '%AirPods Pro%'
+           OR name LIKE '%AirPods Max%' OR name LIKE '%HD 600%' OR name LIKE '%HD 650%'
+           OR name LIKE '%HD 800%' OR name LIKE '%HD 560S%' OR name LIKE '%IE 600%'
+           OR name LIKE '%IE 900%' OR name LIKE '%QuietComfort%' OR name LIKE '%Galaxy Buds%'
+           OR name LIKE '%Momentum%' OR name LIKE '%ATH-M50X%' OR name LIKE '%DT 770%'
+           OR name LIKE '%DT 990%' OR name LIKE '%K701%' OR name LIKE '%K702%'
+        ORDER BY display_priority DESC, name ASC
+        LIMIT :limit
+        """
+    )
+    fun getRecommendedPresets(limit: Int): Flow<List<HeadphonePresetEntity>>
 
     @Query("SELECT DISTINCT brand FROM headphone_presets ORDER BY brand ASC")
     fun getAllBrands(): Flow<List<String>>

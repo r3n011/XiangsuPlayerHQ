@@ -17,6 +17,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -279,22 +280,44 @@ class ThemeStateHolder @Inject constructor(
             )
             Log.w("PixelPlay_Debug", "  → 颜色提取完成: uriString=${uriString.take(30)}, " +
                 "校验条件: isPreload=$isPreload, currentSongUriString==uriString: ${currentSongUriString == uriString}, " +
-                "targetMatch=${targetSongUri == myTarget}, " +
-                "最终结果: ${!isPreload && currentSongUriString == uriString && targetSongUri == myTarget}")
+                "targetMatch=${targetSongUri == myTarget}, schemePair=${schemePair != null}, " +
+                "最终结果: ${!isPreload && currentSongUriString == uriString && targetSongUri == myTarget && schemePair != null}")
 
             if (!isPreload && currentSongUriString == uriString && targetSongUri == myTarget) {
-                Log.w("PixelPlay_Debug", "  → ✅ 校验通过（目标 URI 仍匹配），原子设置 schemePair=$schemePair 和 albumArtUri=$uriString")
-                updateAlbumArtThemeState(schemePair, uriString)
+                if (schemePair != null) {
+                    Log.w("PixelPlay_Debug", "  → ✅ 校验通过（目标 URI 仍匹配），原子设置 schemePair 和 albumArtUri=$uriString")
+                    updateAlbumArtThemeState(schemePair, uriString)
+                } else {
+                    // ⚡ 取色返回 null（封面加载失败/网络超时）：不清空已有颜色，
+                    // 延迟重试一次，避免"切歌后根本不取色"（背景变黑底）
+                    Log.w("PixelPlay_Debug", "  → ⚠️ 取色返回 null（封面加载失败？），保留旧色并安排重试")
+                    scheduleColorSchemeRetry(albumArtUriAsUri, myTarget)
+                }
             } else {
                 Log.w("PixelPlay_Debug", "  → ⏭️  校验未通过，不设置 schemePair (歌曲可能已变化或目标 URI 已过期")
             }
         } catch (e: Exception) {
             Log.w("PixelPlay_Debug", "  → ❌ 颜色提取异常: ${e.message}")
+            // ⚡ 异常不再清空已应用颜色，改为延迟重试一次
             if (!isPreload && albumArtUriAsUri != null && currentSongUriString == albumArtUriAsUri.toString() && targetSongUri == currentSongUriString) {
-                updateAlbumArtThemeState(null, null)
+                scheduleColorSchemeRetry(albumArtUriAsUri, currentSongUriString)
             }
         } finally {
             Trace.endSection()
+        }
+    }
+
+    /** ⚡ 取色失败后的延迟重试：目标歌曲未变且当前颜色未命中时，重新提取一次。 */
+    private fun scheduleColorSchemeRetry(uri: Uri, target: String?) {
+        val requestScope = scope ?: return
+        requestScope.launch {
+            delay(3000)
+            if (targetSongUri != target) return@launch
+            val appliedUri = _currentAlbumArtUri.value
+            if (appliedUri != uri.toString()) {
+                Log.w("PixelPlay_Debug", "  → 🔁 取色重试: ${uri.toString().take(30)}")
+                extractAndGenerateColorScheme(uri, target)
+            }
         }
     }
 

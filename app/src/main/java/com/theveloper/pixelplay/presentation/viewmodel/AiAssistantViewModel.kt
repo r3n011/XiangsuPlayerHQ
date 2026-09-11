@@ -95,6 +95,8 @@ class AiAssistantViewModel @Inject constructor(
                 // 每次 send 的独立 transcript，推进 ReAct 循环
                 val transcript = StringBuilder()
                 transcript.append("用户：$text")
+                // ⚡ 跨轮累积的模型真实思考文本，逐字写入思考块
+                val thinkingSb = StringBuilder()
                 var allSongs = emptyList<LxSongInfo>()
                 var step = 0
                 var hasToolResult = true
@@ -106,12 +108,18 @@ class AiAssistantViewModel @Inject constructor(
                     var answerId: String? = null
                     var genError: String? = null
                     val streamSucceeded = try {
-                        aiOrchestrator.generateContentStream(
+                        aiOrchestrator.generateContentStreamWithReasoning(
                             prompt = buildAgentPrompt(transcript.toString()),
                             type = AiSystemPromptType.GENERAL,
                             temperature = 0.4f
                         ).collect { chunk ->
-                            sb.append(chunk)
+                            if (chunk.isThinking) {
+                                // ⚡ 模型真实思考：逐字追加到思考块（不换行拼接）
+                                thinkingSb.append(chunk.text)
+                                updateMessage(thinkId) { it.copy(thinking = thinkingSb.toString()) }
+                                return@collect
+                            }
+                            sb.append(chunk.text)
                             val isProse = !sb.toString().trimStart().startsWith("{")
                             if (isProse && answerId == null) {
                                 answerId = newId()

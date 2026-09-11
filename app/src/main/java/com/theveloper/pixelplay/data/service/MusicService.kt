@@ -244,6 +244,9 @@ class MusicService : MediaLibraryService() {
     // 用户设置的期望倍速，在切歌/播放器重建时自动重设
     @Volatile
     private var desiredPlaybackSpeed: Float = 1f
+    // 用户设置的期望音高（变调开关开启时 == 倍速）
+    @Volatile
+    private var desiredPlaybackPitch: Float = 1f
     // Cast remote-session synchronization, extracted to a standalone coordinator.
     // Lazily built so the Hilt-injected listeningStatsTracker is ready before first use.
     private val castSyncCoordinator by lazy {
@@ -778,7 +781,12 @@ class MusicService : MediaLibraryService() {
                             1f
                         )
                         desiredPlaybackSpeed = speed
-                        session.player.playbackParameters = androidx.media3.common.PlaybackParameters(speed)
+                        desiredPlaybackPitch = args.getFloat(
+                            MusicNotificationProvider.EXTRA_PLAYBACK_PITCH,
+                            1f
+                        )
+                        session.player.playbackParameters =
+                            androidx.media3.common.PlaybackParameters(speed, desiredPlaybackPitch)
                     }
                 }
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -1407,7 +1415,8 @@ class MusicService : MediaLibraryService() {
             if (playbackState == Player.STATE_READY && desiredPlaybackSpeed != 1f) {
                 val p2 = engine.masterPlayer
                 if (p2.playbackParameters.speed != desiredPlaybackSpeed) {
-                    p2.playbackParameters = androidx.media3.common.PlaybackParameters(desiredPlaybackSpeed)
+                    p2.playbackParameters =
+                        androidx.media3.common.PlaybackParameters(desiredPlaybackSpeed, desiredPlaybackPitch)
                 }
             }
             mediaSession?.let { refreshMediaSessionUi(it) }
@@ -1507,9 +1516,10 @@ class MusicService : MediaLibraryService() {
             if (nextIndex != androidx.media3.common.C.INDEX_UNSET) {
                 runCatching { replayGainProcessor.prefetch(player.getMediaItemAt(nextIndex)) }
             }
-            // 保持倍速：切歌后重设用户期望的倍速
+            // 保持倍速：切歌后重设用户期望的倍速（含变调音高）
             if (desiredPlaybackSpeed != 1f) {
-                player.playbackParameters = androidx.media3.common.PlaybackParameters(desiredPlaybackSpeed)
+                player.playbackParameters =
+                    androidx.media3.common.PlaybackParameters(desiredPlaybackSpeed, desiredPlaybackPitch)
             }
             // Optimization: Don't force-update widgets on every rapid skip.
             // Let the debounced updater handle it to prevent UI freezes.

@@ -1,5 +1,10 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,9 +28,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ClearAll
 import androidx.compose.material.icons.rounded.MusicNote
@@ -34,10 +41,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,7 +53,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -168,59 +183,145 @@ fun AiAssistantScreen(
             }
         }
 
-        // 底部输入
+        // 底部输入（Gemini 流光边框风格）
         Surface(
             color = colors.surface,
             shadowElevation = 8.dp
         ) {
-            Row(
+            var inputFocused by remember { mutableStateOf(false) }
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.Bottom
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(24.dp)),
-                    placeholder = {
-                        Text("说点什么，或让我帮你搜歌、生成歌单、打开设置…")
-                    },
-                    shape = RoundedCornerShape(24.dp),
-                    maxLines = 4,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = colors.surfaceContainerHigh,
-                        unfocusedContainerColor = colors.surfaceContainerHigh,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    )
-                )
-                Spacer(Modifier.width(10.dp))
-                val canSend = input.isNotBlank() && !uiState.thinking
-                Surface(
-                    onClick = {
-                        val t = input.trim()
-                        if (t.isNotEmpty() && !uiState.thinking) {
-                            viewModel.send(t)
-                            input = ""
-                        }
-                    },
-                    shape = CircleShape,
-                    color = if (canSend) colors.primary else colors.surfaceContainerHighest,
-                    modifier = Modifier.size(52.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(28.dp))
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.Send,
-                            contentDescription = null,
-                            tint = if (canSend) colors.onPrimary else colors.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp)
+                    // 边框层：聚焦时显示旋转流光，否则显示微弱边框
+                    if (inputFocused) {
+                        val rotation by rememberInfiniteTransition(
+                            label = "geminiBorder"
+                        ).animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(durationMillis = 4000, easing = LinearEasing)
+                            ),
+                            label = "geminiRotation"
                         )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .graphicsLayer {
+                                    scaleX = 1.6f
+                                    scaleY = 1.6f
+                                    rotationZ = rotation
+                                }
+                                .background(
+                                    brush = Brush.sweepGradient(
+                                        colors = listOf(
+                                            Color(0xFF4285F4),
+                                            Color(0xFF9B72CB),
+                                            Color(0xFFD96570),
+                                            Color(0xFF4285F4)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(28.dp)
+                                )
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(
+                                    color = colors.outlineVariant,
+                                    shape = RoundedCornerShape(28.dp)
+                                )
+                        )
+                    }
+                    // 内容挖空层：形成 2dp 均匀边框
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(2.dp)
+                            .background(
+                                color = colors.surfaceContainerHigh,
+                                shape = RoundedCornerShape(26.dp)
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            BasicTextField(
+                                value = input,
+                                onValueChange = { input = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .onFocusChanged { inputFocused = it.isFocused }
+                                    .onPreviewKeyEvent { event ->
+                                        // Enter 发送，Shift+Enter 换行
+                                        if (event.type == KeyEventType.KeyDown &&
+                                            event.key == Key.Enter &&
+                                            !event.isShiftPressed
+                                        ) {
+                                            val t = input.trim()
+                                            if (t.isNotEmpty() && !uiState.thinking) {
+                                                viewModel.send(t)
+                                                input = ""
+                                            }
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    color = colors.onSurface
+                                ),
+                                cursorBrush = SolidColor(colors.primary),
+                                maxLines = 4,
+                                decorationBox = { innerTextField ->
+                                    Box {
+                                        if (input.isEmpty()) {
+                                            Text(
+                                                text = "说点什么，或让我帮你搜歌、生成歌单、打开设置…",
+                                                color = colors.onSurfaceVariant,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            val canSend = input.isNotBlank() && !uiState.thinking
+                            Surface(
+                                onClick = {
+                                    val t = input.trim()
+                                    if (t.isNotEmpty() && !uiState.thinking) {
+                                        viewModel.send(t)
+                                        input = ""
+                                    }
+                                },
+                                shape = CircleShape,
+                                color = if (canSend) colors.primary else colors.surfaceContainerHighest,
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowUpward,
+                                        contentDescription = null,
+                                        tint = if (canSend) colors.onPrimary else colors.onSurfaceVariant,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

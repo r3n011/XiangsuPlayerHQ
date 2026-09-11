@@ -25,8 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,22 +83,18 @@ fun HearingGuardCapsule(
             .alpha(if (state.isConfigured && !state.enabled) 0.5f else 1f)
             .clickable(onClick = onClick)
             .drawBehind {
-                // 背景填充进度（左侧直角、右侧小圆角，类似 Mini player）
+                // 背景填充进度：两端都使用正圆端（半径 = 高度一半），
+                // 贴合胶囊的 CircleShape 端部，避免左直角/小圆角破坏正圆观感
                 if (state.isConfigured && animatedProgress > 0f) {
                     val w = size.width
                     val h = size.height
                     val pw = w * animatedProgress
-                    val rightCorner = (10.dp.toPx()).coerceAtMost(pw)
-                    val path = Path().apply {
-                        moveTo(0f, 0f)
-                        lineTo(pw - rightCorner, 0f)
-                        quadraticTo(pw, 0f, pw, rightCorner)
-                        lineTo(pw, h - rightCorner)
-                        quadraticTo(pw, h, pw - rightCorner, h)
-                        lineTo(0f, h)
-                        close()
-                    }
-                    drawPath(path, color = shieldColor.copy(alpha = 0.22f))
+                    drawRoundRect(
+                        color = shieldColor.copy(alpha = 0.22f),
+                        topLeft = Offset.Zero,
+                        size = Size(pw, h),
+                        cornerRadius = CornerRadius(h / 2f, h / 2f)
+                    )
                 }
             }
             .padding(horizontal = 10.dp),

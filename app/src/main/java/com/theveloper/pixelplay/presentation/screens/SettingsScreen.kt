@@ -93,6 +93,8 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.MiniPlayerBottomSpacer
 import com.theveloper.pixelplay.presentation.components.NavBarContentHeight
+import com.theveloper.pixelplay.presentation.components.SettingsTipsCarousel
+import com.theveloper.pixelplay.presentation.components.rememberSettingsTips
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
@@ -341,6 +343,21 @@ private fun PhoneSettingsScreen(
                             inputFieldColors = searchBarInputFieldColors
                         ),
                         content = {}
+                    )
+                }
+
+                // 设置推荐栏（仅未搜索时显示，模仿 Rhythm 设置页顶部的推荐轮播）
+                if (searchQuery.isBlank()) {
+                    SettingsTipsCarousel(
+                        tips = rememberSettingsTips(uiState),
+                        onTipClick = { tip ->
+                            if (tip.category == SettingsCategory.EQUALIZER) {
+                                navController.navigateSafely(Screen.Equalizer.route)
+                            } else {
+                                navController.navigateSafely(Screen.SettingsCategory.createRoute(tip.category.id))
+                            }
+                        },
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
 
@@ -930,6 +947,20 @@ private fun TabletSettingsScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+                    )
+                }
+                item {
+                    // 设置推荐栏（平板左侧边栏顶部，模仿 Rhythm 设置页推荐轮播）
+                    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+                    SettingsTipsCarousel(
+                        tips = rememberSettingsTips(uiState),
+                        onTipClick = { tip ->
+                            if (tip.category == SettingsCategory.EQUALIZER) {
+                                detailNavController.navigateSafely(Screen.Equalizer.route)
+                            } else {
+                                detailNavController.navigateSafely(Screen.SettingsCategory.createRoute(tip.category.id))
+                            }
+                        }
                     )
                 }
                 item {

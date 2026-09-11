@@ -697,9 +697,9 @@ class DualPlayerEngine @Inject constructor(
                         }
                         bufferingStartedAtMs = 0L
                     }
-                    // 倍速恢复：在线流加载就绪后确保倍速不丢失
+                    // 倍速恢复：在线流加载就绪后确保倍速（含变调音高）不丢失
                     if (desiredPlaybackSpeed != 1f && playerA.playbackParameters.speed != desiredPlaybackSpeed) {
-                        playerA.playbackParameters = PlaybackParameters(desiredPlaybackSpeed)
+                        playerA.playbackParameters = PlaybackParameters(desiredPlaybackSpeed, desiredPlaybackPitch)
                     }
                     scheduleAudioOffloadFallbackIfNeeded(playerA)
                 }
@@ -959,11 +959,16 @@ class DualPlayerEngine @Inject constructor(
     var desiredPlaybackSpeed: Float = 1f
         private set
 
+    /** 用户期望的音高（变调开关开启时 == 倍速），引擎在每次就绪时自动恢复 */
+    var desiredPlaybackPitch: Float = 1f
+        private set
+
     /** 设置倍速，立即应用到当前活跃播放器，并记住设置以便后续恢复 */
-    fun setPlaybackSpeed(speed: Float) {
+    fun setPlaybackSpeed(speed: Float, pitch: Float = 1f) {
         val clamped = speed.coerceIn(0.5f, 2f)
         desiredPlaybackSpeed = clamped
-        val params = PlaybackParameters(clamped)
+        desiredPlaybackPitch = pitch.coerceIn(0.5f, 2f)
+        val params = PlaybackParameters(clamped, desiredPlaybackPitch)
         if (::playerA.isInitialized) playerA.playbackParameters = params
         playerB?.playbackParameters = params
     }
@@ -2020,7 +2025,7 @@ class DualPlayerEngine @Inject constructor(
         return buildPlayer().also { player ->
             player.setWakeMode(currentWakeMode)
             if (desiredPlaybackSpeed != 1f) {
-                player.playbackParameters = PlaybackParameters(desiredPlaybackSpeed)
+                player.playbackParameters = PlaybackParameters(desiredPlaybackSpeed, desiredPlaybackPitch)
             }
             playerB = player
         }

@@ -276,6 +276,7 @@ class UserPreferencesRepository @Inject constructor(
         val PLAYBACK_QUEUE_SNAPSHOT = stringPreferencesKey("playback_queue_snapshot_v1")
         val FULL_PLAYER_SHOW_FILE_INFO = booleanPreferencesKey("full_player_show_file_info")
         val FULL_PLAYER_SHOW_SPEED_BUTTON = booleanPreferencesKey("full_player_show_speed_button")
+        val PLAYER_PITCH_FOLLOW_SPEED = booleanPreferencesKey("player_pitch_follow_speed")
         val FULL_PLAYER_DELAY_ALBUM = booleanPreferencesKey("full_player_delay_album")
         val FULL_PLAYER_DELAY_METADATA = booleanPreferencesKey("full_player_delay_metadata")
         val FULL_PLAYER_DELAY_PROGRESS = booleanPreferencesKey("full_player_delay_progress")
@@ -653,6 +654,15 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setShowPlaybackSpeedButton(show: Boolean) {
         dataStore.edit { it[PreferencesKeys.FULL_PLAYER_SHOW_SPEED_BUTTON] = show }
+    }
+
+    // ─── 播放器界面：倍速变调开关（开启后音高随倍速自动变调） ────────────────────
+
+    val pitchFollowSpeedFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.PLAYER_PITCH_FOLLOW_SPEED] ?: true }
+
+    suspend fun setPitchFollowSpeed(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_PITCH_FOLLOW_SPEED] = enabled }
     }
 
     val fullPlayerLoadingTweaksFlow: Flow<FullPlayerLoadingTweaks> =

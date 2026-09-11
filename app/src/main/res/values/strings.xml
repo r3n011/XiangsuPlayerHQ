@@ -71,6 +71,8 @@
     <string name="pause_playback">Pause playback</string>
     <string name="play_playback">Play</string>
     <string name="playback_speed">Playback Speed</string>
+    <string name="playback_speed_pitch_follow">Pitch follows speed</string>
+    <string name="playback_speed_pitch_follow_desc">Shifts the pitch along with the playback speed</string>
     <string name="playlist_not_found">Playlist not found.</string>
     <string name="disc_number_header">Disc %d</string>
 
@@ -271,6 +273,19 @@
     <string name="headphone_preset_currently_active">Currently Active</string>
     <string name="headphone_preset_no_eq_bands">No EQ bands (preamp only)</string>
     <string name="headphone_preset_refresh">Refresh Presets</string>
+    <string name="headphone_preset_refreshed">Presets refreshed</string>
+    <string name="headphone_preset_refresh_failed">Failed to refresh presets: %1$s</string>
+    <string name="headphone_preset_applied">Applied \"%1$s\"</string>
+    <string name="headphone_preset_apply_failed">Failed to apply preset: %1$s</string>
+    <string name="headphone_preset_cleared">Headphone preset cleared</string>
+    <string name="headphone_preset_clear_failed">Failed to clear preset: %1$s</string>
+    <string name="headphone_preset_recommended">Recommended</string>
+    <string name="headphone_preset_recommended_subtitle">Popular models with optimized EQ</string>
+    <string name="headphone_preset_no_recommendations">No recommended presets yet. Refresh to load the latest catalog.</string>
+    <string name="bluetooth_preset_switch_channel_name">Headphone preset switch</string>
+    <string name="bluetooth_preset_switch_channel_desc">Notification for automatically switching headphone presets when Bluetooth devices connect</string>
+    <string name="bluetooth_preset_switched">Preset switched</string>
+    <string name="bluetooth_preset_switched_body">Switched to \"%1$s\" preset</string>
     <string name="action_cancel">Cancel</string>
 
     <string name="update_available_label">Update</string>

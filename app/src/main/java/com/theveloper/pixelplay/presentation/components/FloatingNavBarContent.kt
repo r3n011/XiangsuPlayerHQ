@@ -475,7 +475,8 @@ private fun FloatingSearchButton(
 
     Box(
         modifier = Modifier
-            .size(50.dp * dpiScale)
+            // 与导航胶囊组（NavGroupHeight=56dp）等高，避免矮一截导致顶边不对齐
+            .size(NavGroupHeight * dpiScale)
             .clip(CircleShape)
             .hazeEffect(
                 state = MainActivity.LocalHazeState.current,

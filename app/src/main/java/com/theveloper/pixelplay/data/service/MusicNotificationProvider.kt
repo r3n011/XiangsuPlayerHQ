@@ -20,4 +20,5 @@ object MusicNotificationProvider {
     const val EXTRA_END_OF_TRACK_ENABLED = "com.theveloper.pixelplay.extra.END_OF_TRACK_ENABLED"
     const val CUSTOM_COMMAND_SET_PLAYBACK_SPEED = "com.theveloper.pixelplay.SET_PLAYBACK_SPEED"
     const val EXTRA_PLAYBACK_SPEED = "com.theveloper.pixelplay.extra.PLAYBACK_SPEED"
+    const val EXTRA_PLAYBACK_PITCH = "com.theveloper.pixelplay.extra.PLAYBACK_PITCH"
 }

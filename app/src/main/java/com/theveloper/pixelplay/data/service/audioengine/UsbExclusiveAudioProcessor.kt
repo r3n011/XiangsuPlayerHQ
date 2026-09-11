@@ -37,6 +37,9 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
     private var inputEnded = false
     private var configured = false
 
+    /** ⚡ 复用输出 direct buffer（渲染线程串行调用，安全；容量不足才重新分配） */
+    private var cachedOutputDirect: ByteBuffer? = null
+
     private var sampleRate = 44100
     private var channelCount = 2
     private var isFloat = false
@@ -129,7 +132,13 @@ class UsbExclusiveAudioProcessor : AudioProcessor {
         }
 
         // 透传：原样拷贝到输出缓冲区（消费输入）
-        val out = ByteBuffer.allocateDirect(remaining).order(ByteOrder.nativeOrder())
+        // ⚡ 复用 direct buffer（容量不足才重新分配），消除每块一次 allocateDirect
+        var out = cachedOutputDirect
+        if (out == null || out.capacity() < remaining) {
+            out = ByteBuffer.allocateDirect(remaining).order(ByteOrder.nativeOrder())
+            cachedOutputDirect = out
+        }
+        out.clear()
         out.put(inputBuffer)
         out.flip()
         outputBuffer = out

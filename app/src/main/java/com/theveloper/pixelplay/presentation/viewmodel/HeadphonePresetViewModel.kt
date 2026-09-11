@@ -4,6 +4,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.database.BluetoothPresetBindingEntity
 import com.theveloper.pixelplay.data.database.HeadphonePresetEntity
 import com.theveloper.pixelplay.data.database.HeadphonePresetWithBands
@@ -69,6 +70,9 @@ class HeadphonePresetViewModel @Inject constructor(
     private val _activePreset = MutableStateFlow<HeadphonePresetEntity?>(null)
     val activePreset: StateFlow<HeadphonePresetEntity?> = _activePreset.asStateFlow()
 
+    private val _recommendedPresets = MutableStateFlow<List<HeadphonePresetEntity>>(emptyList())
+    val recommendedPresets: StateFlow<List<HeadphonePresetEntity>> = _recommendedPresets.asStateFlow()
+
     init {
         viewModelScope.launch(Dispatchers.IO) {
             autoEqDataImporter.importIfNeeded()
@@ -79,11 +83,20 @@ class HeadphonePresetViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            headphonePresetRepository.getAllCategories().collectLatest { _categories.value = it }
+            headphonePresetRepository.getAllCategories().collectLatest { rawCategories ->
+                _categories.value = rawCategories
+                    .mapNotNull { normalizeCategoryType(it) }
+                    .distinct()
+                    .sorted()
+            }
         }
 
         viewModelScope.launch {
             headphonePresetRepository.getAllBindings().collectLatest { _bindings.value = it }
+        }
+
+        viewModelScope.launch {
+            headphonePresetRepository.getRecommendedPresets(8).collectLatest { _recommendedPresets.value = it }
         }
 
         updatePresets()
@@ -124,10 +137,18 @@ class HeadphonePresetViewModel @Inject constructor(
             try {
                 autoEqDataImporter.forceImport()
                 updatePresets()
-                Toast.makeText(context, "耳机预设库已刷新", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.headphone_preset_refreshed),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 Timber.e(e, "HeadphonePresetViewModel: Failed to refresh presets")
-                Toast.makeText(context, "刷新失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.headphone_preset_refresh_failed, e.message),
+                    Toast.LENGTH_SHORT
+                ).show()
             } finally {
                 _isApplying.value = false
             }
@@ -180,13 +201,23 @@ class HeadphonePresetViewModel @Inject constructor(
                 equalizerManager.applyPreset(eqPreset)
 
                 equalizerPreferencesRepository.saveCustomPreset(eqPreset)
+                // 写入当前选中的均衡器预设，使调音器界面同步显示已应用的 AutoEQ
+                equalizerPreferencesRepository.setEqualizerPreset(eqPreset.name)
 
                 _activePreset.value = preset.preset
 
-                Toast.makeText(context, "已应用耳机预设: ${preset.preset.name}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.headphone_preset_applied, preset.preset.name),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 Timber.e(e, "HeadphonePresetViewModel: Failed to apply preset")
-                Toast.makeText(context, "应用预设失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.headphone_preset_apply_failed, e.message),
+                    Toast.LENGTH_SHORT
+                ).show()
             } finally {
                 _isApplying.value = false
             }
@@ -205,13 +236,34 @@ class HeadphonePresetViewModel @Inject constructor(
                 equalizerManager.applyPreset(EqualizerPreset.fromName("flat"))
                 equalizerManager.setEnabled(false)
 
+                // 重置调音器当前预设，使界面回到 FLAT 状态
+                equalizerPreferencesRepository.setEqualizerPreset("flat")
+
                 _activePreset.value = null
 
-                Toast.makeText(context, "已取消耳机预设", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.headphone_preset_cleared),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 Timber.e(e, "HeadphonePresetViewModel: Failed to clear preset")
-                Toast.makeText(context, "取消预设失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.headphone_preset_clear_failed, e.message),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
+        }
+    }
+
+    private fun normalizeCategoryType(raw: String): String? {
+        val lower = raw.lowercase()
+        return when {
+            lower.endsWith("over-ear") -> "over-ear"
+            lower.endsWith("in-ear") -> "in-ear"
+            lower.endsWith("earbud") -> "earbud"
+            else -> null
         }
     }
 
@@ -266,7 +318,7 @@ class HeadphonePresetViewModel @Inject constructor(
                     headphonePresetRepository.searchPresets(query).collectLatest { _presets.value = it }
                 }
                 category != null -> {
-                    headphonePresetRepository.getPresetsByCategory(category).collectLatest { _presets.value = it }
+                    headphonePresetRepository.getPresetsByType(category).collectLatest { _presets.value = it }
                 }
                 brand != null -> {
                     headphonePresetRepository.getPresetsByBrand(brand).collectLatest { _presets.value = it }

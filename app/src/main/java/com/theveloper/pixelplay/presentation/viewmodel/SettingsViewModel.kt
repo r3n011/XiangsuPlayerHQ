@@ -122,6 +122,7 @@ data class SettingsUiState(
     val fullPlayerLoadingTweaks: FullPlayerLoadingTweaks = FullPlayerLoadingTweaks(),
     val showPlayerFileInfo: Boolean = true,
     val showPlaybackSpeedButton: Boolean = true,
+    val pitchFollowSpeed: Boolean = true,
     // Developer Options
     val albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM,
     val albumArtCacheLimitMb: Int = 200,
@@ -213,6 +214,7 @@ private sealed interface SettingsUiUpdate {
         val launchTab: String,
         val showPlayerFileInfo: Boolean,
         val showPlaybackSpeedButton: Boolean,
+        val pitchFollowSpeed: Boolean,
         val tabletPlayerLayout: TabletPlayerLayout
     ) : SettingsUiUpdate
     
@@ -481,6 +483,7 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.launchTabFlow,
                 userPreferencesRepository.showPlayerFileInfoFlow,
                 userPreferencesRepository.showPlaybackSpeedButtonFlow,
+                userPreferencesRepository.pitchFollowSpeedFlow,
                 userPreferencesRepository.tabletPlayerLayoutFlow
             ) { values ->
                 SettingsUiUpdate.Group1(
@@ -506,7 +509,8 @@ class SettingsViewModel @Inject constructor(
                     launchTab = values[19] as String,
                     showPlayerFileInfo = values[20] as Boolean,
                     showPlaybackSpeedButton = values[21] as Boolean,
-                    tabletPlayerLayout = values[22] as TabletPlayerLayout
+                    pitchFollowSpeed = values[22] as Boolean,
+                    tabletPlayerLayout = values[23] as TabletPlayerLayout
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -533,6 +537,7 @@ class SettingsViewModel @Inject constructor(
                         launchTab = update.launchTab,
                         showPlayerFileInfo = update.showPlayerFileInfo,
                         showPlaybackSpeedButton = update.showPlaybackSpeedButton,
+                        pitchFollowSpeed = update.pitchFollowSpeed,
                         tabletPlayerLayout = update.tabletPlayerLayout
                     )
                 }
@@ -1091,6 +1096,13 @@ class SettingsViewModel @Inject constructor(
     fun setShowPlaybackSpeedButton(show: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setShowPlaybackSpeedButton(show)
+        }
+    }
+
+    /** 倍速变调：开启后音高随倍速自动变调 */
+    fun setPitchFollowSpeed(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPitchFollowSpeed(enabled)
         }
     }
 

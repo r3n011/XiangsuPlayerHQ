@@ -33,6 +33,14 @@ class HiFiEngineAudioProcessor : AudioProcessor {
     private var pendingBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var inputEnded = false
 
+    // ⚡ 可复用工作缓冲（渲染线程串行调用，单线程安全）。
+    //    消除 DSP 启用时每块 4-5 次临时分配（FloatArray/ByteArray/allocateDirect），
+    //    避免持续 GC 压力导致音频渲染线程周期性停顿 → 解码器输入堆积（queueInputBuffer
+    //    间隔拉大）与 AudioFlinger pipeline 帧堆积（"too many frames in pipeline"）。
+    private var cachedFloatWork: FloatArray? = null
+    private var cachedByteWork: ByteArray? = null
+    private var cachedDirectOutput: ByteBuffer? = null
+
     // 自定义 DSP 处理器实例
     private val replayGainProcessor = ReplayGainProcessor()
     private val parametricEQ = ParametricEQ()
@@ -115,7 +123,7 @@ class HiFiEngineAudioProcessor : AudioProcessor {
         if (completeFrames == 0) return
 
         val processBytes = completeFrames * bytesPerFrame
-        val processData = ByteArray(processBytes)
+        val processData = ensureByteWork(processBytes)
         pendingBuffer.get(processData)
 
         // 保留未使用的字节
@@ -129,27 +137,20 @@ class HiFiEngineAudioProcessor : AudioProcessor {
             pendingBuffer.clear()
         }
 
-        // 转换为 Float32 并处理
-        val floatData = if (isFloat) {
-            byteArrayToFloatArray(processData)
-        } else {
-            pcm16ToFloatArray(processData)
-        }
+        // 转换为 Float32 并处理（复用工作缓冲，零临时分配）
+        val sampleCount = processBytes / bytesPerSample
+        val floatData = ensureFloatWork(sampleCount)
+        toFloatArray(processData, floatData)
 
-        // 通过 DSP 处理链
-        pipeline.process(floatData, 0, floatData.size)
+        // 通过 DSP 处理链（length = 样本数）
+        pipeline.process(floatData, 0, sampleCount)
 
-        // 转换回原始格式
-        val outputData = if (isFloat) {
-            floatArrayToByteArray(floatData)
-        } else {
-            floatArrayToPcm16ByteArray(floatData)
-        }
+        // 转换回原始格式（复用同一工作数组，processData 已消费完可覆盖）
+        val outputData = ensureByteWork(sampleCount * bytesPerSample)
+        toByteArray(floatData, outputData)
 
-        // 存入输出缓冲区
-        outputBuffer = ByteBuffer.allocateDirect(outputData.size).order(ByteOrder.nativeOrder())
-        outputBuffer.put(outputData)
-        outputBuffer.flip()
+        // 存入输出缓冲区（复用 direct buffer，容量不足才重新分配）
+        setOutputBuffer(outputData)
     }
 
     override fun getOutput(): ByteBuffer {
@@ -173,27 +174,20 @@ class HiFiEngineAudioProcessor : AudioProcessor {
         // 处理 pending buffer 中剩余的数据
         val remaining = pendingBuffer.remaining()
         if (remaining > 0) {
-            val processData = ByteArray(remaining)
+            val processData = ensureByteWork(remaining)
             pendingBuffer.get(processData)
             pendingBuffer.clear()
 
-            val floatData = if (isFloat) {
-                byteArrayToFloatArray(processData)
-            } else {
-                pcm16ToFloatArray(processData)
-            }
+            val sampleCount = remaining / bytesPerSample
+            val floatData = ensureFloatWork(sampleCount)
+            toFloatArray(processData, floatData)
 
-            pipeline.process(floatData, 0, floatData.size)
+            pipeline.process(floatData, 0, sampleCount)
 
-            val outputData = if (isFloat) {
-                floatArrayToByteArray(floatData)
-            } else {
-                floatArrayToPcm16ByteArray(floatData)
-            }
+            val outputData = ensureByteWork(sampleCount * bytesPerSample)
+            toByteArray(floatData, outputData)
 
-            outputBuffer = ByteBuffer.allocateDirect(outputData.size).order(ByteOrder.nativeOrder())
-            outputBuffer.put(outputData)
-            outputBuffer.flip()
+            setOutputBuffer(outputData)
         } else {
             outputBuffer = AudioProcessor.EMPTY_BUFFER
         }
@@ -237,45 +231,72 @@ class HiFiEngineAudioProcessor : AudioProcessor {
         }
     }
 
-    // ── 格式转换 ──
+    // ── 格式转换（复用工作缓冲，避免热路径临时分配） ──
 
-    private fun byteArrayToFloatArray(data: ByteArray): FloatArray {
-        val sampleCount = data.size / Float.SIZE_BYTES
-        val result = FloatArray(sampleCount)
-        val bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder())
-        for (i in 0 until sampleCount) {
-            result[i] = bb.float
+    private fun ensureFloatWork(sampleCount: Int): FloatArray {
+        val existing = cachedFloatWork
+        if (existing == null || existing.size < sampleCount) {
+            val work = FloatArray(sampleCount)
+            cachedFloatWork = work
+            return work
         }
-        return result
+        return existing
     }
 
-    private fun floatArrayToByteArray(data: FloatArray): ByteArray {
-        val result = ByteArray(data.size * Float.SIZE_BYTES)
-        val bb = ByteBuffer.wrap(result).order(ByteOrder.nativeOrder())
-        for (f in data) {
-            bb.putFloat(f)
+    private fun ensureByteWork(byteCount: Int): ByteArray {
+        val existing = cachedByteWork
+        if (existing == null || existing.size < byteCount) {
+            val work = ByteArray(byteCount)
+            cachedByteWork = work
+            return work
         }
-        return result
+        return existing
     }
 
-    private fun pcm16ToFloatArray(data: ByteArray): FloatArray {
-        val sampleCount = data.size / Short.SIZE_BYTES
-        val result = FloatArray(sampleCount)
-        val bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder())
-        for (i in 0 until sampleCount) {
-            result[i] = bb.short.toFloat() / Short.MAX_VALUE.toFloat()
+    /** 写入复用输出缓冲：容量不足才重新分配（大多数情况零分配） */
+    private fun setOutputBuffer(outputData: ByteArray) {
+        var direct = cachedDirectOutput
+        if (direct == null || direct.capacity() < outputData.size) {
+            direct = ByteBuffer.allocateDirect(outputData.size).order(ByteOrder.nativeOrder())
+            cachedDirectOutput = direct
         }
-        return result
+        direct.clear()
+        direct.put(outputData)
+        direct.flip()
+        outputBuffer = direct
     }
 
-    private fun floatArrayToPcm16ByteArray(data: FloatArray): ByteArray {
-        val result = ByteArray(data.size * Short.SIZE_BYTES)
-        val bb = ByteBuffer.wrap(result).order(ByteOrder.nativeOrder())
-        for (f in data) {
-            val clamped = f.coerceIn(-1f, 1f)
-            bb.putShort((clamped * Short.MAX_VALUE).toInt()
-                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort())
+    /** PCM 字节 → Float32，写入 target（复用） */
+    private fun toFloatArray(data: ByteArray, target: FloatArray) {
+        if (isFloat) {
+            val bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder())
+            for (i in target.indices) {
+                target[i] = bb.float
+            }
+        } else {
+            val bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder())
+            for (i in target.indices) {
+                target[i] = bb.short.toFloat() / Short.MAX_VALUE.toFloat()
+            }
         }
-        return result
+    }
+
+    /** Float32 → PCM 字节，写入 target（复用） */
+    private fun toByteArray(data: FloatArray, target: ByteArray) {
+        if (isFloat) {
+            val bb = ByteBuffer.wrap(target).order(ByteOrder.nativeOrder())
+            for (f in data) {
+                bb.putFloat(f)
+            }
+        } else {
+            val bb = ByteBuffer.wrap(target).order(ByteOrder.nativeOrder())
+            for (f in data) {
+                val clamped = f.coerceIn(-1f, 1f)
+                bb.putShort(
+                    (clamped * Short.MAX_VALUE).toInt()
+                        .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                )
+            }
+        }
     }
 }

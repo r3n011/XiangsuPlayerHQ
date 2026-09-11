@@ -55,6 +55,12 @@ class AudioVisualizer @Inject constructor() {
     private val real = FloatArray(FFT_SIZE)
     private val imag = FloatArray(FFT_SIZE)
     private val lastLevels = FloatArray(BANDS)
+    // ⚡ FFT 频谱分带复用工作数组：runFft 每 ~23ms 跑一次，消除每帧 4 次临时分配
+    //    （magnitudes/bandEnergy/bandCount/newLevels），减少渲染线程 GC 压力避免帧堆积
+    private val magnitudes = FloatArray(FFT_SIZE / 2)
+    private val bandEnergy = FloatArray(BANDS)
+    private val bandCount = IntArray(BANDS)
+    private val newLevels = FloatArray(BANDS)
     private var framesUntilPublish = 0
 
     /** 自适应峰值：跟随歌曲整体响度，避免低频带持续饱和到 1 */
@@ -83,16 +89,15 @@ class AudioVisualizer @Inject constructor() {
         }
         fftRadix2(real, imag, false)
 
-        // 计算幅度并做对数分带映射
-        val magnitudes = FloatArray(n / 2)
+        // 计算幅度并做对数分带映射（复用工作数组，零临时分配）
         for (k in 0 until n / 2) {
             val re = real[k]
             val im = imag[k]
             magnitudes[k] = sqrt(re * re + im * im)
         }
 
-        val bandEnergy = FloatArray(BANDS)
-        val bandCount = IntArray(BANDS)
+        bandEnergy.fill(0f)
+        bandCount.fill(0)
         // 对数分带：bin 1..(N/2-1)，低频挤在低 bin，log 分布贴合听感
         val maxBin = n / 2 - 1
         for (k in 1..maxBin) {
@@ -102,7 +107,6 @@ class AudioVisualizer @Inject constructor() {
             bandCount[band]++
         }
 
-        val newLevels = FloatArray(BANDS)
         for (b in 0 until BANDS) {
             val avg = if (bandCount[b] > 0) bandEnergy[b] / bandCount[b] else 0f
             val db = 20f * kotlin.math.log10(avg + 1e-4f)

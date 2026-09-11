@@ -704,32 +704,18 @@ fun UnifiedPlayerSheetV2(
                             // so that it can render correctly, while reporting targetHeightPx to the outer
                             // clip/background/shadow so that they are perfectly constrained to the miniplayer card bounds.
                             // During drag/animation, we measure at stable full-screen constraints to prevent jank.
+                            // ⚡ 恢复原版展开动画：fraction 一旦 >0 内容立即按全屏宽度测量并对齐屏幕左侧
+                            //    （遮罩/背景铺满全屏），mini 层在 0.5 前保持不透明、0.5 后淡出，
+                            //    由全屏的 full 层接管。不做宽度插值，避免"展开时遮罩未覆盖全屏"。
                             .layout { measurable, constraints ->
                                 val targetContentHeightPx = containerHeight.roundToPx()
-                                val fraction = playerContentExpansionFraction.value.coerceIn(0f, 1f)
-                                // ⚡ 已稳定处于展开态时强制按全屏宽度测量：
-                                //   旋转/切屏后 fraction 可能残留为 <1 的旧值，导致播放器按较窄宽度测量并被左偏移，
-                                //   呈现"左侧窄列+右侧大片空白"（仅低版本安卓偶发）。处于展开且未拖动/未动画时，
-                                //   宽度必须 == 全屏宽。拖动和展开/收起动画期间仍用实时 fraction，保证平滑过渡。
-                                val effFraction = if (
-                                    currentSheetContentState == PlayerSheetState.EXPANDED &&
-                                    !isDragging && !isSheetAnimating
-                                ) 1f else fraction
+                                val fraction = playerContentExpansionFraction.value
                                 val startPaddingPx = currentHorizontalPaddingStartPxProvider().toInt()
-                                // 平滑过渡：折叠态按卡片宽度测量并对齐卡片左侧，展开态按全屏宽度测量并对齐屏幕左侧。
-                                // 不要用硬阈值瞬间切到全屏宽度，否则 fraction 刚离开 0 时内容会先向两侧跳变再回弹。
-                                // ⚡ 性能优化：FullPlayerContent 在 fraction<=0.25 时不可见（contentAlpha=0 + 移出屏幕），
-                                // 但此前宽度插值从 fraction=0 就开始，不可见阶段也被每帧全量重测（约 25% 动画时间）。
-                                // 现在把宽度插值映射到 0.25→1：0→0.25 期间宽度恒为卡片宽，测量约束不变 → 子级
-                                // Placeable 缓存命中，FullPlayerContent 树零重测；0.25 后内容实际显示时再平滑
-                                // 展开到全屏宽。0.25 时刻 contentAlpha 恰为 0（与 FullPlayerRuntimePolicy 一致），
-                                // 宽度差异不可见，视觉完全一致。
-                                val visibleFraction = ((effFraction - 0.25f) / 0.75f).coerceIn(0f, 1f)
-                                val measureWidth = androidx.compose.ui.util.lerp(
-                                    constraints.maxWidth.toFloat(),
-                                    screenWidthPx,
-                                    visibleFraction
-                                ).roundToInt().coerceAtLeast(0)
+                                val measureWidth = if (fraction > 0f) {
+                                    screenWidthPx.roundToInt()
+                                } else {
+                                    constraints.maxWidth
+                                }
                                 val placeable = measurable.measure(
                                     constraints.copy(
                                         minWidth = measureWidth,
@@ -739,7 +725,7 @@ fun UnifiedPlayerSheetV2(
                                     )
                                 )
                                 layout(constraints.maxWidth, constraints.maxHeight) {
-                                    val xOffset = (-startPaddingPx * effFraction).roundToInt()
+                                    val xOffset = if (fraction > 0f) -startPaddingPx else 0
                                     placeable.placeRelative(xOffset, 0)
                                 }
                             }
@@ -791,6 +777,8 @@ fun UnifiedPlayerSheetV2(
                             playerViewModel = playerViewModel,
                             currentPositionProvider = positionToDisplayProvider,
                             isFavorite = isFavorite,
+                            currentHorizontalPaddingStartPxProvider = currentHorizontalPaddingStartPxProvider,
+                            currentHorizontalPaddingEndPxProvider = currentHorizontalPaddingEndPxProvider,
                             shouldRenderFullPlayer = shouldRenderFullPlayer,
                             onShowQueueClicked = sheetActionHandlers.openQueueSheet,
                             onQueueDragStart = sheetActionHandlers.beginQueueDrag,

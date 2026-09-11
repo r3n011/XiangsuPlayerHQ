@@ -126,8 +126,8 @@ class DeckController(
         player?.seekTo(position)
     }
 
-    fun setSpeed(speed: Float) {
-        player?.playbackParameters = PlaybackParameters(speed)
+    fun setSpeed(speed: Float, pitch: Float = 1f) {
+        player?.playbackParameters = PlaybackParameters(speed, pitch)
     }
 
     fun nudge(amountMs: Long) {

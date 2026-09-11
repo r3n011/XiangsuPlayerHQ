@@ -3,10 +3,12 @@ package com.theveloper.pixelplay.data.ai.provider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -181,7 +183,29 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
         maxTokens: Int,
         presencePenalty: Float,
         frequencyPenalty: Float
-    ): Flow<String> = flow {
+    ): Flow<String> = generateContentStreamWithReasoning(
+        model = model,
+        systemPrompt = systemPrompt,
+        prompt = prompt,
+        temperature = temperature,
+        topP = topP,
+        topK = topK,
+        maxTokens = maxTokens,
+        presencePenalty = presencePenalty,
+        frequencyPenalty = frequencyPenalty
+    ).map { it.text }
+
+    override fun generateContentStreamWithReasoning(
+        model: String,
+        systemPrompt: String,
+        prompt: String,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        maxTokens: Int,
+        presencePenalty: Float,
+        frequencyPenalty: Float
+    ): Flow<AiStreamChunk> = flow {
         withContext(Dispatchers.IO) {
             val resolvedModel = model.ifBlank { DEFAULT_GEMINI_MODEL }
 
@@ -243,7 +267,12 @@ class GeminiAiClient(private val apiKey: String) : AiClient {
                                     ?.get("parts")?.jsonArray ?: continue
                                 for (part in parts) {
                                     val text = part.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: continue
-                                    if (text.isNotEmpty()) emit(text)
+                                    if (text.isEmpty()) continue
+                                    // ⚡ Gemini thinking 模型会输出 thought=true 的思考 part，
+                                    // 与正文区分开，避免思考混入正式回答
+                                    val isThinking =
+                                        part.jsonObject["thought"]?.jsonPrimitive?.booleanOrNull == true
+                                    emit(AiStreamChunk(text, isThinking))
                                 }
                             }
                         }

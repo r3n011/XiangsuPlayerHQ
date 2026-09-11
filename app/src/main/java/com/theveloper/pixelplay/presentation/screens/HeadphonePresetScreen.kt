@@ -3,8 +3,13 @@ package com.theveloper.pixelplay.presentation.screens
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.Intent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,16 +17,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Headphones
@@ -33,12 +41,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -50,10 +61,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -82,6 +95,7 @@ fun HeadphonePresetScreen(
     val selectedBrand by viewModel.selectedBrand.collectAsStateWithLifecycle()
     val isApplying by viewModel.isApplying.collectAsStateWithLifecycle()
     val activePreset by viewModel.activePreset.collectAsStateWithLifecycle()
+    val recommendedPresets by viewModel.recommendedPresets.collectAsStateWithLifecycle()
 
     var showPresetDetail by remember { mutableStateOf(false) }
     var showBluetoothDialog by remember { mutableStateOf(false) }
@@ -148,6 +162,31 @@ fun HeadphonePresetScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (searchQuery.isBlank()) {
+                if (recommendedPresets.isNotEmpty()) {
+                    item {
+                        RecommendedPresetsRow(
+                            presets = recommendedPresets,
+                            activePresetId = activePreset?.id,
+                            onPresetClick = { preset ->
+                                viewModel.selectPreset(preset.id)
+                                selectedPresetForBinding = preset
+                                showPresetDetail = true
+                            }
+                        )
+                    }
+                } else {
+                    item {
+                        Text(
+                            text = stringResource(R.string.headphone_preset_no_recommendations),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
+                }
+            }
+
             item {
                 CategoryFilterRow(
                     categories = categories,
@@ -167,6 +206,7 @@ fun HeadphonePresetScreen(
             items(presets) { preset ->
                 PresetCard(
                     preset = preset,
+                    isActive = preset.id == activePreset?.id,
                     onClick = {
                         viewModel.selectPreset(preset.id)
                         selectedPresetForBinding = preset
@@ -247,20 +287,24 @@ fun CategoryFilterRow(
         Text(
             text = stringResource(R.string.headphone_preset_categories),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp)
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             item {
-                FilterChip(
+                AutoEqFilterChip(
                     label = stringResource(R.string.headphone_preset_all),
                     isSelected = selectedCategory == null,
                     onClick = { onCategorySelected(null) }
                 )
             }
             items(categories) { category ->
-                FilterChip(
-                    label = category,
+                AutoEqFilterChip(
+                    label = category.replaceFirstChar { it.uppercase() },
                     isSelected = selectedCategory == category,
                     onClick = { onCategorySelected(category) }
                 )
@@ -279,19 +323,23 @@ fun BrandFilterRow(
         Text(
             text = stringResource(R.string.headphone_preset_brands),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp)
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             item {
-                FilterChip(
+                AutoEqFilterChip(
                     label = stringResource(R.string.headphone_preset_all),
                     isSelected = selectedBrand == null,
                     onClick = { onBrandSelected(null) }
                 )
             }
             items(brands) { brand ->
-                FilterChip(
+                AutoEqFilterChip(
                     label = brand,
                     isSelected = selectedBrand == brand,
                     onClick = { onBrandSelected(brand) }
@@ -302,35 +350,67 @@ fun BrandFilterRow(
 }
 
 @Composable
-fun FilterChip(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
+fun RecommendedPresetsRow(
+    presets: List<HeadphonePresetEntity>,
+    activePresetId: Long?,
+    onPresetClick: (HeadphonePresetEntity) -> Unit
 ) {
-    FilledTonalButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.height(36.dp)
-    ) {
-        Text(
-            text = label,
-            style = if (isSelected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = stringResource(R.string.headphone_preset_recommended),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.headphone_preset_recommended_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            if (activePresetId != null) {
+                Text(
+                    text = stringResource(R.string.headphone_preset_currently_active),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(presets, key = { it.id }) { preset ->
+                RecommendedPresetCard(
+                    preset = preset,
+                    isActive = preset.id == activePresetId,
+                    onClick = { onPresetClick(preset) }
+                )
+            }
+        }
     }
 }
 
 @Composable
-fun PresetCard(
+fun RecommendedPresetCard(
     preset: HeadphonePresetEntity,
+    isActive: Boolean,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (isActive)
+                MaterialTheme.colorScheme.primary
+            else
+                MaterialTheme.colorScheme.primaryContainer
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.width(220.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -338,42 +418,218 @@ fun PresetCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = preset.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    preset.brand?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
                 Icon(
                     imageVector = Icons.Rounded.Headphones,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (isActive)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                if (isActive) {
+                    Text(
+                        text = stringResource(R.string.headphone_preset_currently_active),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = preset.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isActive)
+                    MaterialTheme.colorScheme.onPrimary
+                else
+                    MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            preset.brand?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isActive)
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                    else
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row {
-                Text(
-                    text = preset.category,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.headphone_preset_preamp, preset.preamp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        }
+    }
+}
+
+@Composable
+fun AutoEqFilterChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isSelected) 24.dp else 12.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "autoEqChipCornerRadius"
+    )
+    FilterChip(
+        selected = isSelected,
+        onClick = onClick,
+        label = {
+            Text(
+                text = label,
+                style = if (isSelected) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+            )
+        },
+        shape = RoundedCornerShape(cornerRadius),
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            leadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    )
+}
+
+@Composable
+fun PresetCard(
+    preset: HeadphonePresetEntity,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    val displayCategory = remember(preset.category) {
+        normalizeCategoryForDisplay(preset.category)
+    }
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isActive)
+                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            else
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isActive) 2.dp else 0.dp
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                // Icon
+                Surface(
+                    shape = CircleShape,
+                    color = if (isActive)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    else
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Headphones,
+                            contentDescription = null,
+                            tint = if (isActive)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Info
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = preset.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (isActive)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        preset.brand?.let { brand ->
+                            if (brand.isNotBlank()) {
+                                Text(
+                                    text = brand,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isActive)
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        if (preset.brand?.isNotBlank() == true && displayCategory != null) {
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (displayCategory != null) {
+                            Text(
+                                text = displayCategory,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isActive)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Selection indicator
+            if (isActive) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
     }
@@ -674,4 +930,14 @@ fun BindingManagementSheet(
 private fun getPairedBluetoothDevices(context: android.content.Context): List<BluetoothDevice> {
     val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
     return bluetoothAdapter?.bondedDevices?.toList() ?: emptyList()
+}
+
+private fun normalizeCategoryForDisplay(raw: String): String? {
+    val lower = raw.lowercase()
+    return when {
+        lower.endsWith("over-ear") -> "Over-Ear"
+        lower.endsWith("in-ear") -> "In-Ear"
+        lower.endsWith("earbud") -> "Earbud"
+        else -> null
+    }
 }

@@ -11,9 +11,12 @@ import net.moriafly.ncm.ncmList
 import net.moriafly.ncm.ncmLong
 import net.moriafly.ncm.ncmObj
 import net.moriafly.ncm.ncmString
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,10 +24,15 @@ import javax.inject.Singleton
  * 私人 FM / 网易云数据 API —— 通过本地 NcmApi SDK 直连网易云官方加密接口（无需外部代理服务器）
  */
 @Singleton
-class PersonalFmApi @Inject constructor() {
+class PersonalFmApi @Inject constructor(
+    private val okHttpClient: OkHttpClient
+) {
 
     private companion object {
         private const val TAG = "PersonalFmApi"
+
+        // young1024 兜底评论 API（官方接口失败时使用）
+        private const val YOUNG1024_API_BASE = "http://www.young1024.com:666/"
     }
 
     /**
@@ -240,7 +248,8 @@ class PersonalFmApi @Inject constructor() {
             if (content.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalArgumentException("评论内容不能为空"))
             }
-            try {
+            // 官方接口优先
+            val primary = try {
                 Timber.d("$TAG: sendComment type=$type id=$id content=${content.take(20)}")
                 syncCookieToSession(cookie)
                 val result = NcmApi.full.commentSend(
@@ -253,9 +262,13 @@ class PersonalFmApi @Inject constructor() {
                 Timber.d("$TAG: sendComment type=$type id=$id success=$success")
                 Result.success(success)
             } catch (t: Throwable) {
-                Timber.e(t, "$TAG: sendComment failed type=$type id=$id")
+                Timber.e(t, "$TAG: sendComment 官方接口失败，尝试 young1024 兜底 type=$type id=$id")
                 Result.failure(t)
             }
+            if (primary.getOrNull() == true) return@withContext primary
+
+            // young1024 兜底：/comment?t=1&type=x&id=x&content=x
+            fetchYoung1024CommentAction(type, id, t = 1, content = content, cookie = cookie)
         }
     }
 
@@ -273,7 +286,8 @@ class PersonalFmApi @Inject constructor() {
             if (cookie.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法删除评论"))
             }
-            try {
+            // 官方接口优先
+            val primary = try {
                 Timber.d("$TAG: deleteComment type=$type id=$id commentId=$commentId")
                 syncCookieToSession(cookie)
                 val result = NcmApi.full.commentSend(
@@ -287,9 +301,13 @@ class PersonalFmApi @Inject constructor() {
                 Timber.d("$TAG: deleteComment type=$type id=$id commentId=$commentId success=$success")
                 Result.success(success)
             } catch (t: Throwable) {
-                Timber.e(t, "$TAG: deleteComment failed type=$type id=$id commentId=$commentId")
+                Timber.e(t, "$TAG: deleteComment 官方接口失败，尝试 young1024 兜底 type=$type id=$id commentId=$commentId")
                 Result.failure(t)
             }
+            if (primary.getOrNull() == true) return@withContext primary
+
+            // young1024 兜底：/comment?t=0&type=x&id=x&commentId=x
+            fetchYoung1024CommentAction(type, id, t = 0, commentId = commentId, cookie = cookie)
         }
     }
 
@@ -308,7 +326,8 @@ class PersonalFmApi @Inject constructor() {
             if (cookie.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法点赞"))
             }
-            try {
+            // 官方接口优先
+            val primary = try {
                 Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like")
                 syncCookieToSession(cookie)
                 val result = NcmApi.full.commentLike(
@@ -321,9 +340,13 @@ class PersonalFmApi @Inject constructor() {
                 Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like success=$success")
                 Result.success(success)
             } catch (t: Throwable) {
-                Timber.e(t, "$TAG: likeComment failed type=$type id=$id cid=$cid")
+                Timber.e(t, "$TAG: likeComment 官方接口失败，尝试 young1024 兜底 type=$type id=$id cid=$cid")
                 Result.failure(t)
             }
+            if (primary.getOrNull() == true) return@withContext primary
+
+            // young1024 兜底：/comment/like?id=x&cid=x&t=x&type=x
+            fetchYoung1024CommentLike(type, id, cid, like, cookie)
         }
     }
 
@@ -347,7 +370,8 @@ class PersonalFmApi @Inject constructor() {
             if (content.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalArgumentException("回复内容不能为空"))
             }
-            try {
+            // 官方接口优先
+            val primary = try {
                 Timber.d("$TAG: replyComment type=$type id=$id commentId=$commentId")
                 syncCookieToSession(cookie)
                 val result = NcmApi.full.commentSend(
@@ -361,9 +385,13 @@ class PersonalFmApi @Inject constructor() {
                 Timber.d("$TAG: replyComment success=$success")
                 Result.success(success)
             } catch (t: Throwable) {
-                Timber.e(t, "$TAG: replyComment failed")
+                Timber.e(t, "$TAG: replyComment 官方接口失败，尝试 young1024 兜底")
                 Result.failure(t)
             }
+            if (primary.getOrNull() == true) return@withContext primary
+
+            // young1024 兜底：/comment?t=2&type=x&id=x&commentId=x&content=x
+            fetchYoung1024CommentAction(type, id, t = 2, content = content, commentId = commentId, cookie = cookie)
         }
     }
 
@@ -387,7 +415,7 @@ class PersonalFmApi @Inject constructor() {
         time: Long = -1
     ): Result<List<com.theveloper.pixelplay.data.lx.NeteaseComment>> {
         return withContext(Dispatchers.IO) {
-            try {
+            val primary = try {
                 syncCookieToSession(cookie)
                 val map = NcmApi.full.commentFloor(
                     id = id.toString(),
@@ -395,10 +423,9 @@ class PersonalFmApi @Inject constructor() {
                     parentCommentId = commentId.toString(),
                     limit = limit,
                     time = time,
-                ).getOrNull() ?: return@withContext Result.failure(Exception("楼层接口无响应"))
-                val root = ncmMapToJson(map) ?: return@withContext Result.failure(Exception("楼层响应解析失败"))
-                val data = root.optJSONObject("data")
-                    ?: return@withContext Result.failure(Exception("楼层 data 为空"))
+                ).getOrNull() ?: throw Exception("楼层接口无响应")
+                val root = ncmMapToJson(map) ?: throw Exception("楼层响应解析失败")
+                val data = root.optJSONObject("data") ?: throw Exception("楼层 data 为空")
                 val arr = data.optJSONArray("data") ?: JSONArray()
                 val out = ArrayList<com.theveloper.pixelplay.data.lx.NeteaseComment>(arr.length())
                 for (i in 0 until arr.length()) {
@@ -408,9 +435,16 @@ class PersonalFmApi @Inject constructor() {
                 Timber.d("$TAG: getCommentReplies commentId=$commentId -> ${out.size} 条")
                 Result.success(out)
             } catch (t: Throwable) {
-                Timber.e(t, "$TAG: getCommentReplies failed commentId=$commentId")
+                Timber.e(t, "$TAG: getCommentReplies 官方接口失败，尝试 young1024 兜底 commentId=$commentId")
                 Result.failure(t)
             }
+
+            if (primary.isSuccess && (primary.getOrNull()?.isNotEmpty() == true)) {
+                return@withContext primary
+            }
+
+            // 官方接口失败/无数据时，走 young1024 兜底
+            fetchYoung1024CommentReplies(type, id, commentId, limit, time)
         }
     }
 
@@ -447,6 +481,134 @@ class PersonalFmApi @Inject constructor() {
             ),
             beReplied = beRepliedList
         )
+    }
+
+    /** young1024 兜底：获取楼层评论回复列表。 */
+    private suspend fun fetchYoung1024CommentReplies(
+        type: Int,
+        id: Long,
+        commentId: Long,
+        limit: Int,
+        time: Long
+    ): Result<List<com.theveloper.pixelplay.data.lx.NeteaseComment>> = withContext(Dispatchers.IO) {
+        try {
+            val url = buildString {
+                append(YOUNG1024_API_BASE)
+                append("comment/floor?parentCommentId=$commentId&id=$id&type=$type&limit=$limit&time=$time")
+            }
+            Timber.d("$TAG: young1024 楼层评论兜底请求: $url")
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Timber.w("$TAG: young1024 楼层评论兜底请求失败: ${response.code}")
+                return@withContext Result.failure(Exception("young1024 楼层评论兜底请求失败: ${response.code}"))
+            }
+            val body = response.body?.string()
+                ?: return@withContext Result.failure(Exception("young1024 楼层评论兜底响应为空"))
+            val root = JSONObject(body)
+            if (root.optInt("code", -1) != 200) {
+                Timber.w("$TAG: young1024 楼层评论兜底返回非 200: ${root.optInt("code")}")
+                return@withContext Result.failure(Exception("young1024 楼层评论兜底返回非 200"))
+            }
+            val data = root.optJSONObject("data")
+                ?: return@withContext Result.failure(Exception("young1024 楼层 data 为空"))
+            val arr = data.optJSONArray("data") ?: JSONArray()
+            val out = ArrayList<com.theveloper.pixelplay.data.lx.NeteaseComment>(arr.length())
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: continue
+                out.add(parseFloorReply(item))
+            }
+            Timber.d("$TAG: young1024 楼层评论兜底成功 commentId=$commentId -> ${out.size} 条")
+            Result.success(out)
+        } catch (t: Throwable) {
+            Timber.e(t, "$TAG: young1024 楼层评论兜底异常 commentId=$commentId")
+            Result.failure(t)
+        }
+    }
+
+    /** young1024 兜底：发送/回复/删除评论（/comment?t=x&type=x&id=x） */
+    private suspend fun fetchYoung1024CommentAction(
+        type: Int,
+        id: Long,
+        t: Int,
+        content: String? = null,
+        commentId: Long? = null,
+        cookie: String? = null
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val url = buildString {
+                append(YOUNG1024_API_BASE)
+                append("comment?t=$t&type=$type&id=$id")
+                if (!content.isNullOrBlank()) append("&content=${URLEncoder.encode(content, "UTF-8")}")
+                commentId?.let { append("&commentId=$it") }
+            }
+            Timber.d("$TAG: young1024 评论写操作兜底请求: $url")
+            val requestBuilder = Request.Builder().url(url)
+            if (!cookie.isNullOrBlank()) requestBuilder.header("Cookie", cookie)
+            val request = requestBuilder
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Timber.w("$TAG: young1024 评论写操作兜底请求失败: ${response.code}")
+                return@withContext Result.failure(Exception("young1024 评论写操作兜底请求失败: ${response.code}"))
+            }
+            val body = response.body?.string()
+                ?: return@withContext Result.failure(Exception("young1024 评论写操作兜底响应为空"))
+            val root = JSONObject(body)
+            val code = root.optInt("code", -1)
+            Timber.d("$TAG: young1024 评论写操作兜底结果 t=$t code=$code")
+            Result.success(code == 200)
+        } catch (e: Throwable) {
+            Timber.e(e, "$TAG: young1024 评论写操作兜底异常")
+            Result.failure(e)
+        }
+    }
+
+    /** young1024 兜底：点赞/取消点赞评论（/comment/like?id=x&cid=x&t=x&type=x） */
+    private suspend fun fetchYoung1024CommentLike(
+        type: Int,
+        id: Long,
+        cid: Long,
+        like: Boolean,
+        cookie: String?
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val t = if (like) 1 else 0
+            val url = buildString {
+                append(YOUNG1024_API_BASE)
+                append("comment/like?id=$id&cid=$cid&t=$t&type=$type")
+            }
+            Timber.d("$TAG: young1024 点赞兜底请求: $url")
+            val requestBuilder = Request.Builder().url(url)
+            if (!cookie.isNullOrBlank()) requestBuilder.header("Cookie", cookie)
+            val request = requestBuilder
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .get()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Timber.w("$TAG: young1024 点赞兜底请求失败: ${response.code}")
+                return@withContext Result.failure(Exception("young1024 点赞兜底请求失败: ${response.code}"))
+            }
+            val body = response.body?.string()
+                ?: return@withContext Result.failure(Exception("young1024 点赞兜底响应为空"))
+            val root = JSONObject(body)
+            val code = root.optInt("code", -1)
+            Timber.d("$TAG: young1024 点赞兜底结果 t=$t code=$code")
+            Result.success(code == 200)
+        } catch (e: Throwable) {
+            Timber.e(e, "$TAG: young1024 点赞兜底异常")
+            Result.failure(e)
+        }
     }
 
     // ——— 歌手相关接口 ————————————————————————————————————————————————

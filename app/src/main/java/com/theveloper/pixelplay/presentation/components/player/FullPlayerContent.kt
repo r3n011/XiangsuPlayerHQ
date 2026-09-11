@@ -35,6 +35,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -106,6 +107,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
@@ -114,6 +116,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -146,6 +149,7 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.FormatAlignLeft
 import androidx.compose.material.icons.rounded.FormatAlignRight
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.Subtitles
@@ -559,12 +563,7 @@ fun FullPlayerContent(
     )
 
     // 按窗口实际宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机模式。
-    // 使用 LocalConfiguration 判定：旋转或分屏变化都会触发 onConfigurationChanged → 重组，
-    // LocalConfiguration 可靠更新。若依赖 LocalWindowInfo.containerSize，在 Activity 声明
-    // configChanges（旋转不重建）时，部分平板旋转后不会触发重组，导致布局停留在旧方向。
-    // 1:1（width == height）也按平板/横屏布局处理，避免竖屏电台封面与按钮遮挡
-    val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE ||
-        LocalConfiguration.current.screenWidthDp >= LocalConfiguration.current.screenHeightDp
+    val isLandscape = LocalWindowInfo.current.containerSize.width >= LocalWindowInfo.current.containerSize.height
 
 
     // Lógica para el botón de Lyrics en el reproductor expandido
@@ -846,6 +845,7 @@ fun FullPlayerContent(
         val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
         val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
         val showPlaybackSpeedButton by playerViewModel.showPlaybackSpeedButton.collectAsStateWithLifecycle()
+        val pitchFollowSpeed by playerViewModel.pitchFollowSpeed.collectAsStateWithLifecycle()
         val downloadInfo = remember(currentSong?.id, downloads) {
             currentSong?.let { song -> downloads.find { it.songId == song.id } }
         }
@@ -888,6 +888,8 @@ fun FullPlayerContent(
             onSpeedToggle = onSpeedToggle,
             onSpeedSet = onSpeedSet,
             showSpeedButton = showPlaybackSpeedButton,
+            pitchFollowSpeed = pitchFollowSpeed,
+            onPitchFollowSpeedToggle = playerViewModel::setPitchFollowSpeed,
         )
     }
 
@@ -1264,6 +1266,21 @@ fun FullPlayerContent(
                         AppleMusicRotatingBackground(
                             albumArtUri = albumArtUri,
                             modifier = Modifier.fillMaxSize()
+                        )
+                        // ⚡ 绚丽背景可读性遮罩：1:1 复刻歌词界面的渐变遮罩
+                        //   （LyricsSheet 的「歌词渐变遮罩」：containerColor 上 0.4 → 下 0.95）
+                        //   顶部较通透保留氛围，底部接近实色保证标题/歌词/控件文字清晰
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            surfaceContainerLowest.copy(alpha = 0.4f),
+                                            surfaceContainerLowest.copy(alpha = 0.95f)
+                                        )
+                                    )
+                                )
                         )
                     }
                 }
@@ -1708,6 +1725,9 @@ private fun FullPlayerControlsSection(
     onSpeedSet: (Float) -> Unit = {},
     // ⚡ 底部控制栏是否显示倍速按钮
     showSpeedButton: Boolean = true,
+    // ⚡ 倍速变调：开启后音高随倍速自动变调
+    pitchFollowSpeed: Boolean = true,
+    onPitchFollowSpeedToggle: (Boolean) -> Unit = {},
     // ⚡ 播放器控键透明度：0..1 alpha（100% = 完全不透明，应用到所有控制按钮）
     controlsOpacity: Float = 1f,
 ) {
@@ -1806,6 +1826,10 @@ private fun FullPlayerControlsSection(
                 onSpeedToggle = onSpeedToggle,
                 onSpeedSet = onSpeedSet,
                 showSpeedButton = showSpeedButton,
+                // ⚡ 必须透传变调开关参数：否则 BottomToggleRow 使用默认空回调，
+                //    弹窗内开关点击无效（「关不了」）
+                pitchFollowSpeed = pitchFollowSpeed,
+                onPitchFollowSpeedToggle = onPitchFollowSpeedToggle,
             )
         }
     }
@@ -2078,63 +2102,47 @@ private fun FullPlayerPortraitContent(
         val coverSizeMethod2 = totalWidth - coverHorizontalPadding * 2
         
         // 决策规则：
-        // 如果方法一 > 方法二，采用方法二，空白用按钮拉高填补
+        // 如果方法一 > 方法二，采用方法二，多余空间由封面区吸收（居中留白）
         // 如果方法二 > 方法一，采用方法一，防止按钮被挤出
-        val coverSize: Dp
-        val bottomHeight: Dp
-        
-        if (coverSizeMethod1 > coverSizeMethod2) {
-            coverSize = coverSizeMethod2
-            bottomHeight = (totalHeight - coverSize).coerceAtLeast(bottomMinHeight)
+        val coverSize: Dp = if (coverSizeMethod1 > coverSizeMethod2) {
+            coverSizeMethod2
         } else {
-            coverSize = coverSizeMethod1
-            bottomHeight = bottomMinHeight
+            coverSizeMethod1
         }
         
         // 水平padding
         val horizontalPadding = 16.dp
         
-        // 使用Column布局：封面占固定高度，按钮占剩余所有空间
+        // ⚡ 底部区域不再用 SpaceBetween 硬撑固定高度：长屏时剩余空间会被灌进底部，
+        //    导致「进度条与播放控制按钮之间出现大空白」。改为封面区 weight(1f) 吸收
+        //    全部多余空间（封面居中，留白均匀分布在封面上下），底部内容自然高度紧凑排列。
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 封面区域 - 高度正好等于封面尺寸
+            // 封面区域 - 吸收剩余空间，封面居中
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(coverSize)
+                    .weight(1f)
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 albumCoverSection(Modifier.size(coverSize))
             }
             
-            // 控制按钮区域 - 占据剩余所有空间（至少为bottomHeight）
+            // 底部信息 + 控制区域 - 自然高度，无中间留白
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(bottomHeight)
-                    .padding(horizontal = horizontalPadding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = horizontalPadding)
+                    .padding(bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 歌曲信息和进度条
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    songMetadataSection()
-                    playerProgressSection()
-                }
-
-                // 播放控制区
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    controlsSection()
-                }
+                songMetadataSection()
+                playerProgressSection()
+                Spacer(Modifier.height(4.dp))
+                controlsSection()
             }
         }
         } // end else (普通歌曲布局)
@@ -3634,6 +3642,9 @@ private fun BottomToggleRow(
     onSpeedSet: (Float) -> Unit = {},
     // ⚡ 底部控制栏是否显示倍速按钮
     showSpeedButton: Boolean = true,
+    // ⚡ 倍速变调：开启后音高随倍速自动变调
+    pitchFollowSpeed: Boolean = true,
+    onPitchFollowSpeedToggle: (Boolean) -> Unit = {},
 ) {
     val isFavorite = isFavoriteProvider()
     val rowCorners = 60.dp
@@ -3887,6 +3898,48 @@ private fun BottomToggleRow(
                         }
                     }
                 }
+                // ⚡ 变调开关：开启后音高随倍速自动变调（pitch == speed），关闭时保持原调
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        // ⚡ 整行点击用 toggleable 统一处理：若同时保留 Row.clickable + Switch
+                        //    的 onCheckedChange，点击 Switch 时两个事件都会触发（Compose 中子
+                        //    组件不自动消费父组件点击），两次取反值相反、异步写入竞争 → 开关
+                        //    弹回/关不上。
+                        .toggleable(
+                            value = pitchFollowSpeed,
+                            onValueChange = onPitchFollowSpeedToggle
+                        )
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.MusicNote,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.playback_speed_pitch_follow),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.playback_speed_pitch_follow_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = pitchFollowSpeed,
+                        // ⚡ 交互由 Row 的 toggleable 统一处理（避免双重触发），此处仅显示状态
+                        onCheckedChange = null
+                    )
+                }
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
@@ -3919,9 +3972,7 @@ private fun RadioRecommendationSection(
             .take(20)
     }
     // 仅横屏（右侧布局）显示热门电台列表；竖屏（手机或平板）不显示任何指示。
-    // 用 LocalConfiguration 判定（旋转可靠重组），与全屏播放器布局保持一致；
-    // 1:1（width == height）按横屏处理
-    val isLandscapeOrientation = LocalConfiguration.current.screenWidthDp >= LocalConfiguration.current.screenHeightDp
+    val isLandscapeOrientation = LocalWindowInfo.current.containerSize.width >= LocalWindowInfo.current.containerSize.height
 
     if (!isLandscapeOrientation || recommendations.isEmpty()) return
 

@@ -82,6 +82,8 @@
     <string name="pause_playback">暂停播放</string>
     <string name="play_playback">播放</string>
     <string name="playback_speed">播放速度</string>
+    <string name="playback_speed_pitch_follow">变调跟随倍速</string>
+    <string name="playback_speed_pitch_follow_desc">开启后音高随倍速自动变调，关闭时保持原调</string>
     <string name="playlist_not_found">未找到播放列表。</string>
     <string name="disc_number_header">碟片 %d</string>
 
@@ -307,6 +309,23 @@
     <string name="headphone_preset_no_bindings">暂无绑定</string>
     <string name="headphone_preset_binding_preset">预设 ID: %1$d</string>
     <string name="headphone_preset_unbind">取消绑定</string>
+    <string name="headphone_preset_clear">清除预设</string>
+    <string name="headphone_preset_currently_active">当前使用中</string>
+    <string name="headphone_preset_no_eq_bands">无 EQ 频段（仅预增益）</string>
+    <string name="headphone_preset_refresh">刷新预设</string>
+    <string name="headphone_preset_refreshed">预设已更新</string>
+    <string name="headphone_preset_refresh_failed">刷新预设失败：%1$s</string>
+    <string name="headphone_preset_applied">已应用 \"%1$s\"</string>
+    <string name="headphone_preset_apply_failed">应用预设失败：%1$s</string>
+    <string name="headphone_preset_cleared">已清除耳机预设</string>
+    <string name="headphone_preset_clear_failed">清除预设失败：%1$s</string>
+    <string name="headphone_preset_recommended">推荐</string>
+    <string name="headphone_preset_recommended_subtitle">热门耳机型号的优化均衡</string>
+    <string name="headphone_preset_no_recommendations">暂无推荐预设，刷新可加载最新预设库。</string>
+    <string name="bluetooth_preset_switch_channel_name">耳机预设切换</string>
+    <string name="bluetooth_preset_switch_channel_desc">蓝牙设备连接时自动切换耳机预设的通知</string>
+    <string name="bluetooth_preset_switched">预设已切换</string>
+    <string name="bluetooth_preset_switched_body">已切换到 \"%1$s\" 预设</string>
     <string name="action_cancel">取消</string>
 
     <string name="update_available_label">更新</string>

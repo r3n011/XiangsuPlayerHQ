@@ -184,29 +184,43 @@ class ColorSchemeProcessor @Inject constructor(
 
     /**
      * Loads a small bitmap optimized for color extraction.
+     *
+     * 候选 URL 策略：先**原样**尝试（仅 trim/去反引号，保持 http/https 不变），
+     * 失败后再试 https 版本（http→https 重写）。部分图源只支持 http，
+     * 强制转 https 会导致取色失败。
      */
     private suspend fun loadBitmapForColorExtraction(uri: String, skipCache: Boolean): Bitmap? {
+        val base = uri.trim().replace("`", "")
+        val candidates = mutableListOf<String>()
+        if (base.isNotBlank()) candidates.add(base)
+        // https 版本仅在重写后有变化时追加（本地/已 https 的 URI 不会重复）
+        normalizeRemoteImageUrl(base)?.let { httpsVersion ->
+            if (httpsVersion != base) candidates.add(httpsVersion)
+        }
+        for (candidate in candidates.distinct()) {
+            val bmp = tryLoadBitmapForColorExtraction(candidate, skipCache)
+            if (bmp != null) return bmp
+        }
+        return null
+    }
+
+    /** 单个候选 URL 的取色位图加载。 */
+    private suspend fun tryLoadBitmapForColorExtraction(uri: String, skipCache: Boolean): Bitmap? {
         return try {
-            // 远程 URL 统一清洗（trim/去反引号/http→https），与 SmartImage 保持一致
-            val effectiveUri = if (uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("//")) {
-                normalizeRemoteImageUrl(uri) ?: return null
-            } else {
-                uri
-            }
             val cachePolicy = if (skipCache) CachePolicy.DISABLED else CachePolicy.ENABLED
-            val diskCachePolicy = if (LocalArtworkUri.isLocalArtworkUri(effectiveUri)) CachePolicy.DISABLED else cachePolicy
-            
+            val diskCachePolicy = if (LocalArtworkUri.isLocalArtworkUri(uri)) CachePolicy.DISABLED else cachePolicy
+
             val request = ImageRequest.Builder(context)
-                .data(effectiveUri)
+                .data(uri)
                 .allowHardware(false) // Required for pixel access
                 .size(Size(128, 128)) // Small size for fast processing
                 .bitmapConfig(Bitmap.Config.ARGB_8888)
                 .memoryCachePolicy(cachePolicy)
                 .diskCachePolicy(diskCachePolicy)
                 .build()
-            
+
             val drawable = context.imageLoader.execute(request).drawable ?: return null
-            
+
             createBitmap(
                 drawable.intrinsicWidth.coerceAtLeast(1),
                 drawable.intrinsicHeight.coerceAtLeast(1)

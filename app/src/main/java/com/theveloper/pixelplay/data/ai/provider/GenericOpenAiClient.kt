@@ -3,6 +3,7 @@ package com.theveloper.pixelplay.data.ai.provider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -149,7 +150,29 @@ class GenericOpenAiClient(
         maxTokens: Int,
         presencePenalty: Float,
         frequencyPenalty: Float
-    ): Flow<String> = flow {
+    ): Flow<String> = generateContentStreamWithReasoning(
+        model = model,
+        systemPrompt = systemPrompt,
+        prompt = prompt,
+        temperature = temperature,
+        topP = topP,
+        topK = topK,
+        maxTokens = maxTokens,
+        presencePenalty = presencePenalty,
+        frequencyPenalty = frequencyPenalty
+    ).map { it.text }
+
+    override fun generateContentStreamWithReasoning(
+        model: String,
+        systemPrompt: String,
+        prompt: String,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        maxTokens: Int,
+        presencePenalty: Float,
+        frequencyPenalty: Float
+    ): Flow<AiStreamChunk> = flow {
         withContext(Dispatchers.IO) {
             val resolvedModel = model.ifBlank { defaultModelId }
             val messagesList = mutableListOf<ChatMessage>()
@@ -214,8 +237,13 @@ class GenericOpenAiClient(
                             val choices = obj["choices"]?.jsonArray ?: return@runCatching
                             for (choice in choices) {
                                 val delta = choice.jsonObject["delta"]?.jsonObject ?: continue
+                                // ⚡ DeepSeek/o1 风格的 reasoning_content 是模型的思考内容，
+                                // 与正文 content 区分开，避免思考混入正式回答
+                                delta["reasoning_content"]?.jsonPrimitive?.contentOrNull
+                                    ?.takeIf { it.isNotEmpty() }
+                                    ?.let { emit(AiStreamChunk(it, isThinking = true)) }
                                 val chunk = delta["content"]?.jsonPrimitive?.contentOrNull ?: continue
-                                if (chunk.isNotEmpty()) emit(chunk)
+                                if (chunk.isNotEmpty()) emit(AiStreamChunk(chunk))
                             }
                         }
                     }
