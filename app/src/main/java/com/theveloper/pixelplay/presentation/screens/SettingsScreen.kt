@@ -898,6 +898,7 @@ private fun TabletSettingsScreen(
     val contentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
         MiniPlayerHeight + 8.dp
 
+    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val detailNavController = rememberNavController()
     // 监听 back stack entry（而非仅 destination），保证 arguments 里的 categoryId
     // 已就绪后才计算选中 key，避免「destination 已变但 arguments 未更新」的时序错位。
@@ -950,9 +951,11 @@ private fun TabletSettingsScreen(
                     )
                 }
                 item {
-                    // 设置推荐栏（平板左侧边栏顶部，模仿 Rhythm 设置页推荐轮播）
-                    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-                    SettingsTipsCarousel(
+                    TabletSettingsSearchAndCategories(
+                        searchQuery = "",
+                        isDark = isDark,
+                        currentDetailKey = currentDetailKey,
+                        detailNavController = detailNavController,
                         tips = rememberSettingsTips(uiState),
                         onTipClick = { tip ->
                             if (tip.category == SettingsCategory.EQUALIZER) {
@@ -961,14 +964,6 @@ private fun TabletSettingsScreen(
                                 detailNavController.navigateSafely(Screen.SettingsCategory.createRoute(tip.category.id))
                             }
                         }
-                    )
-                }
-                item {
-                    TabletSettingsSearchAndCategories(
-                        searchQuery = "",
-                        isDark = isDark,
-                        currentDetailKey = currentDetailKey,
-                        detailNavController = detailNavController
                     )
                 }
                 item {

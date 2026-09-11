@@ -1,56 +1,86 @@
 package com.theveloper.pixelplay.presentation.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsUiState
-import com.theveloper.pixelplay.R
-import androidx.compose.ui.res.stringResource
 import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * 设置页顶部的推荐卡片（轮播）
+ * 设置页顶部的推荐卡片（轮播，模仿 Rhythm 的 SettingsTipsCarousel）
  *
- * 中央卡片放大显示、两侧卡片缩小半透明，5 秒自动轮播；
- * 点击卡片跳转到对应设置分类（模仿 Rhythm 的 SettingsTipsCarousel 设计）。
+ * 加权布局：中央卡片最大、两侧卡片收窄为箭头提示；
+ * 5 秒自动轮播（弹簧动画切换），用户拖动时暂停；
+ * 点击中央卡片跳转到对应设置分类，点击侧边卡片先滚动过去。
  */
 data class SettingsTipData(
     val category: SettingsCategory,
@@ -59,6 +89,7 @@ data class SettingsTipData(
     val isPrimary: Boolean = false
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsTipsCarousel(
     tips: List<SettingsTipData>,
@@ -66,55 +97,179 @@ fun SettingsTipsCarousel(
     modifier: Modifier = Modifier
 ) {
     if (tips.isEmpty()) return
-    val pagerState = rememberPagerState(pageCount = { tips.size })
-    val scope = rememberCoroutineScope()
 
-    // 自动轮播：每 5 秒切到下一页；用户拖动中则跳过本次切换
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(5000)
-            if (pagerState.isScrollInProgress) continue
-            scope.launch {
-                pagerState.animateScrollToPage((pagerState.currentPage + 1) % tips.size)
+    val itemsCount = tips.size
+    val pagerState = rememberPagerState(pageCount = { itemsCount })
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val spacing = 4.dp
+
+    val carouselAnimationSpec = remember {
+        spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+    }
+
+    val autoScrollProgress = remember { Animatable(0f) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // 自动轮播：5 秒后弹簧切到下一页，仅在 RESUMED 状态下进行
+    LaunchedEffect(pagerState.settledPage, itemsCount, lifecycleOwner) {
+        if (itemsCount > 1) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                autoScrollProgress.snapTo(0f)
+                val startTime = System.currentTimeMillis()
+                while (true) {
+                    val elapsed = System.currentTimeMillis() - startTime
+                    val p = (elapsed.toFloat() / 5000f).coerceIn(0f, 1f)
+                    autoScrollProgress.snapTo(p)
+                    if (p >= 1f) break
+                    delay(16)
+                }
+                if (!pagerState.isScrollInProgress) {
+                    val nextStep = (pagerState.currentPage + 1) % itemsCount
+                    pagerState.animateScrollToPage(
+                        page = nextStep,
+                        animationSpec = carouselAnimationSpec
+                    )
+                }
             }
+        } else {
+            autoScrollProgress.snapTo(0f)
         }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Box(
+    val interactionSources = remember(itemsCount) { List(itemsCount) { MutableInteractionSource() } }
+
+    val expressiveSpring = spring<Float>(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessLow
+    )
+
+    val visualProgress by remember {
+        derivedStateOf { pagerState.currentPage + pagerState.currentPageOffsetFraction }
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(148.dp)
+                .padding(top = 8.dp)
         ) {
+            val totalWidthPx = constraints.maxWidth.toFloat()
+            val spacingPx = with(density) { spacing.toPx() }
+
+            // 加权卡片行：中央卡片权重最大，越远越窄直至消失
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                horizontalArrangement = Arrangement.spacedBy(spacing)
+            ) {
+                for (i in 0 until itemsCount) {
+                    val dist = (visualProgress - i).absoluteValue
+                    val currentWeight = when {
+                        dist < 1.0f -> {
+                            val maxW = if (i == 0 || i == itemsCount - 1) 0.9f else 0.82f
+                            lerp(maxW, 0.1f, dist)
+                        }
+                        dist < 2.0f -> lerp(0.1f, 0.0f, dist - 1.0f)
+                        else -> 0.0f
+                    }
+
+                    if (currentWeight > 0.005f) {
+                        val currentCornerRadius = if (dist < 1.0f) lerp(24f, 16f, dist) else 16f
+                        val currentAlpha = when {
+                            dist < 1.0f -> lerp(1f, 0.4f, dist)
+                            dist < 2.0f -> lerp(0.4f, 0f, dist - 1.0f)
+                            else -> 0f
+                        }
+
+                        val baseColor = if (tips[i].isPrimary) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.84f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        }
+
+                        SettingsTipCard(
+                            tip = tips[i],
+                            dist = dist,
+                            isToTheLeft = i < visualProgress,
+                            interactionSource = interactionSources[i],
+                            modifier = Modifier.weight(currentWeight),
+                            containerColor = baseColor.copy(alpha = currentAlpha),
+                            cornerRadius = currentCornerRadius.dp,
+                            motionSpec = expressiveSpring,
+                            onClick = { onTipClick(tips[i]) }
+                        )
+                    }
+                }
+            }
+
+            // 透明 Pager 覆盖层：负责滑动切换与命中检测（包含点击卡片）
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                beyondViewportPageCount = 1
-            ) { page ->
-                val tip = tips[page]
-                val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
-                val scale = lerp(1f, 0.92f, pageOffset)
-                val alpha = lerp(1f, 0.55f, pageOffset)
-                SettingsTipCard(
-                    tip = tip,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 4.dp, vertical = 8.dp)
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            this.alpha = alpha
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .alpha(0f)
+                    .pointerInput(itemsCount) {
+                        detectTapGestures { offset ->
+                            val tapX = offset.x
+                            var currentX = 0f
+                            val currentProgress = pagerState.currentPage + pagerState.currentPageOffsetFraction
+
+                            val renderedWeights = (0 until itemsCount).map { i ->
+                                val dist = (currentProgress - i).absoluteValue
+                                when {
+                                    dist < 1.0f -> lerp(if (i == 0 || i == itemsCount - 1) 0.9f else 0.82f, 0.1f, dist)
+                                    dist < 2.0f -> lerp(0.1f, 0.0f, dist - 1.0f)
+                                    else -> 0.0f
+                                }
+                            }
+
+                            val visibleIndices = renderedWeights.indices.filter { renderedWeights[it] > 0.005f }
+                            val totalGaps = (visibleIndices.size - 1).coerceAtLeast(0)
+                            val availableWidthForCards = totalWidthPx - (spacingPx * totalGaps)
+
+                            for (i in visibleIndices) {
+                                val weight = renderedWeights[i]
+                                val cardWidth = weight * availableWidthForCards
+
+                                if (tapX >= currentX && tapX <= currentX + cardWidth) {
+                                    coroutineScope.launch {
+                                        val press = PressInteraction.Press(offset)
+                                        interactionSources[i].emit(press)
+                                        delay(150)
+                                        interactionSources[i].emit(PressInteraction.Release(press))
+
+                                        if (pagerState.currentPage == i) {
+                                            tips[i].let(onTipClick)
+                                        } else {
+                                            pagerState.animateScrollToPage(
+                                                page = i,
+                                                animationSpec = carouselAnimationSpec
+                                            )
+                                        }
+                                    }
+                                    break
+                                }
+                                currentX += cardWidth + spacingPx
+                            }
                         }
-                        .clickable { onTipClick(tip) }
-                )
+                    }
+            ) {
+                Box(Modifier.fillMaxSize())
             }
         }
+
         // 指示点
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.padding(top = 8.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            repeat(tips.size) { i ->
+            repeat(itemsCount) { i ->
                 val selected = i == pagerState.currentPage
                 Box(
                     Modifier
@@ -131,17 +286,21 @@ fun SettingsTipsCarousel(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SettingsTipCard(
+private fun RowScope.SettingsTipCard(
     tip: SettingsTipData,
-    modifier: Modifier = Modifier
+    dist: Float,
+    isToTheLeft: Boolean,
+    interactionSource: MutableInteractionSource,
+    containerColor: Color,
+    cornerRadius: Dp,
+    modifier: Modifier = Modifier,
+    motionSpec: SpringSpec<Float>,
+    onClick: () -> Unit
 ) {
+    val isFocused = dist < 0.6f
     val isPrimary = tip.isPrimary
-    val containerColor = if (isPrimary) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.84f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest
-    }
     val contentColor = if (isPrimary) {
         MaterialTheme.colorScheme.onPrimaryContainer
     } else {
@@ -154,47 +313,108 @@ private fun SettingsTipCard(
     }
 
     Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(cornerRadius))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {}
+            ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        shape = RoundedCornerShape(cornerRadius)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = iconColor.copy(alpha = 0.14f),
-                modifier = Modifier.size(40.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
+        AnimatedContent(
+            targetState = isFocused,
+            transitionSpec = {
+                val springSpec = spring<IntOffset>(
+                    stiffness = motionSpec.stiffness,
+                    dampingRatio = motionSpec.dampingRatio
+                )
+
+                val slideIn = if (targetState) {
+                    slideInHorizontally(animationSpec = springSpec) { if (isToTheLeft) -it else it }
+                } else {
+                    slideInHorizontally(animationSpec = springSpec) { if (isToTheLeft) it else -it }
+                }
+
+                val slideOut = if (targetState) {
+                    slideOutHorizontally(animationSpec = springSpec) { if (isToTheLeft) it else -it }
+                } else {
+                    slideOutHorizontally(animationSpec = springSpec) { if (isToTheLeft) -it else it }
+                }
+
+                (fadeIn(animationSpec = springSpec) + slideIn +
+                    scaleIn(initialScale = 0.92f, animationSpec = springSpec))
+                    .togetherWith(
+                        fadeOut(animationSpec = springSpec) + slideOut +
+                            scaleOut(targetScale = 0.92f, animationSpec = springSpec)
+                    )
+            },
+            label = "TipCardContentTransition",
+            modifier = Modifier.fillMaxSize()
+        ) { focused ->
+            if (focused) {
+                // 聚焦卡片：图标 + 标题 + 描述
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = tip.category.icon ?: Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = iconColor,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = tip.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = tip.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor.copy(alpha = 0.85f),
+                        lineHeight = 18.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            } else {
+                // 侧边卡片：仅显示箭头提示，指示还有更多推荐
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = tip.category.icon ?: Icons.Rounded.AutoAwesome,
+                        imageVector = if (isToTheLeft) {
+                            Icons.Rounded.ChevronLeft
+                        } else {
+                            Icons.Rounded.ChevronRight
+                        },
                         contentDescription = null,
-                        tint = iconColor,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp),
+                        tint = contentColor.copy(alpha = 0.6f)
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = tip.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = contentColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = tip.text,
-                style = MaterialTheme.typography.bodySmall,
-                color = contentColor.copy(alpha = 0.85f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.weight(1f))
         }
     }
 }
