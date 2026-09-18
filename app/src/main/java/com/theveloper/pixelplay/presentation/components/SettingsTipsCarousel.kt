@@ -331,6 +331,10 @@ private fun RowScope.SettingsTipCard(
                     stiffness = motionSpec.stiffness,
                     dampingRatio = motionSpec.dampingRatio
                 )
+                val floatSpring = spring<Float>(
+                    stiffness = motionSpec.stiffness,
+                    dampingRatio = motionSpec.dampingRatio
+                )
 
                 val slideIn = if (targetState) {
                     slideInHorizontally(animationSpec = springSpec) { if (isToTheLeft) -it else it }
@@ -344,11 +348,11 @@ private fun RowScope.SettingsTipCard(
                     slideOutHorizontally(animationSpec = springSpec) { if (isToTheLeft) -it else it }
                 }
 
-                (fadeIn(animationSpec = springSpec) + slideIn +
-                    scaleIn(initialScale = 0.92f, animationSpec = springSpec))
+                (fadeIn(animationSpec = floatSpring) + slideIn +
+                    scaleIn(initialScale = 0.92f, animationSpec = floatSpring))
                     .togetherWith(
-                        fadeOut(animationSpec = springSpec) + slideOut +
-                            scaleOut(targetScale = 0.92f, animationSpec = springSpec)
+                        fadeOut(animationSpec = floatSpring) + slideOut +
+                            scaleOut(targetScale = 0.92f, animationSpec = floatSpring)
                     )
             },
             label = "TipCardContentTransition",

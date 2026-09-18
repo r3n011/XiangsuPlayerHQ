@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Pixel Player</string>
     <string name="app_name_change_title">App Name Change</string>
@@ -15,7 +16,6 @@
     <string name="common_cancel">Cancel</string>
     <string name="import_file">Import</string>
     <string name="search">Search</string>
-
     <string name="lyrics">Lyrics</string>
     <string name="close_lyrics_sheet">Close Lyrics Sheet</string>
     <string name="loading_lyrics">Loading lyrics…</string>
@@ -45,7 +45,6 @@
     <string name="lyrics_sync_offset_reset">Reset</string>
     <string name="lyrics_earlier">Earlier</string>
     <string name="lyrics_later">Later</string>
-
     <string name="sync_scanning">Scanning music files…</string>
     <string name="sync_processing">Processing files…</string>
     <string name="sync_files_progress">%1$d of %2$d files</string>
@@ -75,7 +74,6 @@
     <string name="playback_speed_pitch_follow_desc">Shifts the pitch along with the playback speed</string>
     <string name="playlist_not_found">Playlist not found.</string>
     <string name="disc_number_header">Disc %d</string>
-
     <string name="ai_error_api_key">Please configure a valid API key for the selected AI provider in Settings.</string>
     <string name="ai_error_generic">AI Error: %s</string>
     <string name="ai_error_quota">The selected AI provider rejected the request because the account has no credits or available quota.</string>
@@ -84,14 +82,12 @@
     <string name="ai_prompt_empty">Write an idea for your Daily Mix</string>
     <string name="ai_daily_mix_updated">Daily Mix updated with AI</string>
     <string name="ai_no_songs_for_mix">AI couldn\'t find songs for this mix</string>
-
     <string name="ai_translate_via_ai">Translate via AI</string>
     <string name="ai_lyrics_already_translated">These lyrics already have a translation</string>
     <string name="ai_lyrics_already_in_target_language">These lyrics are already in this language</string>
     <string name="ai_lyrics_api_not_configured">API is not configured</string>
     <string name="ai_lyrics_translation_success">Lyrics translated successfully!</string>
     <string name="ai_lyrics_translating">Translating lyrics...</string>
-
     <string name="ai_explain_lyrics">Explain Lyrics via AI</string>
     <string name="ai_lyrics_explaining">Analyzing lyrics meaning...</string>
     <string name="ai_lyrics_explanation_title">Lyrics Insight</string>
@@ -105,16 +101,13 @@
     <string name="setcat_ai_companion_mimo_key_hint">Enter your MiMo API Key (format: sk-xxxxx). Get from mimo.mi.com</string>
     <string name="share_clipboard_detected">Share link detected in clipboard, tap to import</string>
     <string name="ai_lyrics_no_explanation">No explanation yet</string>
-
     <string name="shortcut_shuffle_short">Shuffle</string>
     <string name="shortcut_shuffle_long">Shuffle all songs</string>
     <string name="shortcut_playlist_short">Playlist</string>
     <string name="shortcut_playlist_long">Last played playlist</string>
-
     <string name="tile_shuffle_all">Shuffle All</string>
     <string name="tile_last_playlist">Last Playlist</string>
     <string name="tile_last_playlist_unavailable">No playlist available to open</string>
-
     <string name="invalid_album_id">Invalid album ID</string>
     <string name="album_id_not_found">Album ID not found</string>
     <string name="error_loading_album">Error loading album data: %s</string>
@@ -125,10 +118,7 @@
     <string name="error_loading_artist">Error loading artist data: %s</string>
     <string name="could_not_find_artist">Could not find the artist</string>
     <string name="no_valid_songs">No valid songs found to play</string>
-
     <string name="service_processing_action">Processing playback action…</string>
-
-    <!-- Playlist bulk actions -->
     <string name="playlist_none_to_share">No playlists to share</string>
     <string name="playlist_share_chooser_title">Share playlists</string>
     <string name="playlist_share_failed">Share failed: %1$s</string>
@@ -139,8 +129,6 @@
     <string name="error_unknown">Unknown error</string>
     <string name="failed_to_play_song_url_resolve">Failed to play %1$s — unable to resolve streaming URL</string>
     <string name="unknown">Unknown</string>
-
-    <!-- Watch transfer foreground service -->
     <string name="watch_transfer_sending_n_to_watch">Sending %1$d songs to watch</string>
     <string name="watch_transfer_sending_to_watch">Sending to watch</string>
     <string name="watch_transfer_complete">Transfer complete</string>
@@ -151,15 +139,9 @@
     <string name="watch_transfer_multiple_active">Multiple active transfers</string>
     <string name="watch_transfer_preparing_transfer">Preparing transfer…</string>
     <string name="watch_transfer_starting_short">Starting</string>
-
-    <!-- Cast HTTP server -->
-
-    <!-- Web Remote server -->
     <string name="web_remote_server_channel_name">Web Remote</string>
     <string name="web_remote_server_notification_title">Web Remote Active</string>
     <string name="web_remote_server_notification_text">Access PixelPlay from any browser on your network</string>
-
-    <!-- Backup / data transfer (ViewModels) -->
     <string name="backup_invalid_format">Invalid backup: %1$s</string>
     <string name="backup_progress_preparing_restore">Preparing restore</string>
     <string name="backup_progress_starting_task">Starting restore task.</string>
@@ -175,8 +157,6 @@
     <string name="restore_partial_unresolved_format">Restore completed with unresolved issues. Failed: %1$s</string>
     <string name="models_fetch_failed">Failed to load models</string>
     <string name="dev_test_crash_message">Test crash triggered from Developer Options - This is intentional for testing the crash reporting system</string>
-
-    <!-- PlayerViewModel -->
     <string name="player_song_not_found_in_list">Song not found in current list</string>
     <string name="player_could_not_locate_song">Could not locate song</string>
     <string name="player_no_songs_in_library_toast">No songs found in library</string>
@@ -209,8 +189,6 @@
     <string name="playlist_restored_toast">Playlist restored</string>
     <string name="delete_songs_permanent_message">These songs will be permanently deleted from your device and cannot be recovered.</string>
     <string name="delete_action">Delete</string>
-
-    <!-- Sleep timer (SleepTimerStateHolder + TimerOptionsBottomSheet) -->
     <string name="sleep_timer_eot_stop_at_end_toast">Playback will stop at end of track.</string>
     <string name="sleep_timer_ui_title">Sleep timer</string>
     <string name="sleep_timer_ui_slider_label_timer">Timer</string>
@@ -223,10 +201,6 @@
     <string name="ui_format_percent_d">%1$d%%</string>
     <string name="backup_manifest_schema_v">v%1$d</string>
     <string name="backup_manifest_device_line">%1$s %2$s</string>
-
-    <!-- Batch Edit -->
-
-    <!-- Batch Edit Cover Art -->
     <string name="player_playback_error">Playback error: %1$s</string>
     <string name="nav_bar_home">Home</string>
     <string name="nav_bar_search">Search</string>
@@ -249,45 +223,100 @@
     <string name="lx_cancel">Cancel</string>
     <string name="lx_ok">OK</string>
     <string name="lx_info_title">JS engine info</string>
-
-    <!-- Headphone Preset -->
-    <string name="headphone_preset_title">Headphone Presets</string>
-    <string name="headphone_preset_search_placeholder">Search headphones…</string>
-    <string name="headphone_preset_categories">Categories</string>
-    <string name="headphone_preset_brands">Brands</string>
-    <string name="headphone_preset_all">All</string>
-    <string name="headphone_preset_bind_bluetooth">Bind to Bluetooth</string>
-    <string name="headphone_preset_apply">Apply</string>
-    <string name="headphone_preset_eq_settings">EQ Settings</string>
-    <string name="headphone_preset_preamp">Preamp: %1$.1fdB</string>
-    <string name="headphone_preset_bind_to_device">Bind to Device</string>
-    <string name="headphone_preset_apply_now">Apply Now</string>
-    <string name="headphone_preset_select_bluetooth_device">Select Bluetooth Device</string>
-    <string name="headphone_preset_no_bluetooth_devices">No Bluetooth devices found</string>
-    <string name="headphone_preset_bluetooth_settings">Bluetooth Settings</string>
-    <string name="headphone_preset_bluetooth_bindings">Bluetooth Bindings</string>
-    <string name="headphone_preset_no_bindings">No bindings yet</string>
-    <string name="headphone_preset_binding_preset">Preset ID: %1$d</string>
-    <string name="headphone_preset_unbind">Unbind</string>
-    <string name="headphone_preset_clear">Clear Preset</string>
-    <string name="headphone_preset_currently_active">Currently Active</string>
-    <string name="headphone_preset_no_eq_bands">No EQ bands (preamp only)</string>
-    <string name="headphone_preset_refresh">Refresh Presets</string>
-    <string name="headphone_preset_refreshed">Presets refreshed</string>
-    <string name="headphone_preset_refresh_failed">Failed to refresh presets: %1$s</string>
-    <string name="headphone_preset_applied">Applied \"%1$s\"</string>
-    <string name="headphone_preset_apply_failed">Failed to apply preset: %1$s</string>
-    <string name="headphone_preset_cleared">Headphone preset cleared</string>
-    <string name="headphone_preset_clear_failed">Failed to clear preset: %1$s</string>
-    <string name="headphone_preset_recommended">Recommended</string>
-    <string name="headphone_preset_recommended_subtitle">Popular models with optimized EQ</string>
-    <string name="headphone_preset_no_recommendations">No recommended presets yet. Refresh to load the latest catalog.</string>
-    <string name="bluetooth_preset_switch_channel_name">Headphone preset switch</string>
-    <string name="bluetooth_preset_switch_channel_desc">Notification for automatically switching headphone presets when Bluetooth devices connect</string>
-    <string name="bluetooth_preset_switched">Preset switched</string>
-    <string name="bluetooth_preset_switched_body">Switched to \"%1$s\" preset</string>
+    <string name="autoeq_manage">Manage AutoEQ</string>
+    <string name="autoeq_configure_desc">Configure your audio devices with optimized AutoEQ profiles for the best listening experience.</string>
+    <string name="autoeq_no_devices">No devices configured</string>
+    <string name="autoeq_add_prompt">Add your headphones or speakers to get personalized EQ settings</string>
+    <string name="autoeq_delete_device_title">Delete Device</string>
+    <string name="autoeq_import_profile">Import EQ Profile</string>
+    <string name="autoeq_import_paste_hint">Paste EQ settings from autoeq.app or other sources.</string>
+    <string name="autoeq_eq_settings_label">EQ Settings</string>
+    <string name="autoeq_failed_read_file">Failed to read file</string>
+    <string name="autoeq_no_brand">No brand</string>
+    <string name="autoeq_change_profile">Change Profile</string>
+    <string name="autoeq_configure_device">Configure Device</string>
+    <string name="autoeq_profile_applied">Applied %1$s profile</string>
+    <string name="license_autoeq_name">AutoEQ</string>
+    <string name="autoeq_picker_title">Choose AutoEQ Preset</string>
+    <string name="autoeq_picker_search_hint">Search presets…</string>
+    <string name="autoeq_clear">Clear</string>
+    <string name="autoeq_toggle_filters">Toggle filters</string>
+    <string name="autoeq_filters">Filters</string>
+    <string name="autoeq_clear_all">Clear All</string>
+    <string name="autoeq_brand">Brand</string>
+    <string name="autoeq_type">Type</string>
+    <string name="autoeq_disable">None / Disable AutoEQ</string>
+    <string name="autoeq_disable_desc">Clear headphone profile, use standard EQ presets</string>
+    <string name="autoeq_no_presets_found">No presets found</string>
+    <string name="autoeq_currently_active">Currently active</string>
+    <string name="autoeq_reset">Reset</string>
+    <string name="device_configuration_devices_configured">%1$d devices configured</string>
+    <string name="device_configuration_device_recognized">Device Recognized</string>
+    <string name="device_configuration_new_device_detected">New Device Detected</string>
+    <string name="device_configuration_configured_with">%1$s is configured with %2$s</string>
+    <string name="device_configuration_configured_no_profile">%1$s is configured</string>
+    <string name="device_configuration_connected_not_configured">%1$s is connected but not configured</string>
+    <string name="device_configuration_applied_profile">Applied %1$s profile</string>
+    <string name="device_configuration_imported_profile">Imported Profile</string>
+    <string name="device_configuration_parse_error">Could not parse EQ settings. Check the format.</string>
+    <string name="device_configuration_custom_eq">Custom EQ</string>
+    <string name="device_configuration_custom">Custom</string>
+    <string name="device_configuration_active_profile_label">Active Profile: %1$s</string>
+    <string name="device_configuration_share_subject">PixelPlay EQ Profile: %1$s</string>
+    <string name="device_configuration_share_title">Share EQ Profile</string>
+    <string name="device_configuration_edit_device">Edit Device</string>
+    <string name="device_configuration_add_device">Add Device</string>
+    <string name="device_configuration_save">Save</string>
+    <string name="device_configuration_add">Add</string>
+    <string name="device_configuration_for_device">For %1$s</string>
+    <string name="device_configuration_profiles_available">%1$d profiles available</string>
+    <string name="device_configuration_disable_compensation">Disable headphone compensation</string>
+    <string name="deviceconfiguration_delete_confirm">Are you sure you want to delete \'%1$s\'? This action cannot be undone.</string>
+    <string name="deviceconfiguration_profile_imported">Profile imported: %1$s</string>
+    <string name="deviceconfigurationbottomsheet_supported_formats_fixedbandeq_text">Supported formats:\n• FixedBandEQ text (AutoEQ)\n• JSON format\n• CSV (10 band values)</string>
+    <string name="deviceconfigurationbottomsheet_paste_eq_data_here">Paste EQ data here…</string>
+    <string name="deviceconfigurationbottomsheet_open_autoeqapp">Open autoeq.app</string>
+    <string name="deviceconfigurationbottomsheet_export_eq_profile">Export EQ Profile</string>
+    <string name="deviceconfigurationbottomsheet_copied_to_clipboard">Copied to clipboard</string>
+    <string name="deviceconfigurationbottomsheet_copy">Copy</string>
+    <string name="deviceconfigurationbottomsheet_device_name">Device Name</string>
+    <string name="deviceconfigurationbottomsheet_eg_sony_wh1000xm4">e.g., Sony WH-1000XM4</string>
+    <string name="deviceconfigurationbottomsheet_brand_optional">Brand (Optional)</string>
+    <string name="deviceconfigurationbottomsheet_eg_sony">e.g., Sony</string>
+    <string name="deviceconfigurationbottomsheet_select_autoeq_profile">Select AutoEQ Profile</string>
+    <string name="deviceconfigurationbottomsheet_find_a_profile_for">Find a profile for this device…</string>
+    <string name="deviceconfigurationbottomsheet_no_matching_profiles_found">No matching profiles found</string>
+    <string name="deviceconfiguration_clip_label">exported text</string>
+    <string name="device_mono_audio_title">Mono Audio</string>
+    <string name="device_mono_audio_desc">Downmix stereo channels to center for 1-earpiece listening.</string>
+    <string name="bottomsheet_active_device">Active</string>
+    <string name="bottomsheet_export_eq">Share your EQ settings with others or save for backup.</string>
+    <string name="bottomsheet_no_eq_export">No active EQ settings to export. Please enable the equalizer and configure it first.</string>
+    <string name="bottomsheet_device_type">Device Type</string>
+    <string name="common_none">None</string>
+    <string name="streaming_selected">Selected</string>
+    <string name="settings_mono_audio">Mono Audio</string>
+    <string name="button_edit">Edit</string>
+    <string name="button_add">Add</string>
+    <string name="button_import">Import</string>
+    <string name="button_export">Export</string>
+    <string name="button_delete">Delete</string>
+    <string name="ui_cancel">Cancel</string>
+    <string name="ui_done">Done</string>
+    <string name="ui_clear">Clear</string>
+    <string name="text_file">File</string>
+    <string name="text_paste">Paste</string>
+    <string name="autoeqsuggestiondialog_audio_device_detected">Audio Device Detected</string>
+    <string name="autoeqsuggestiondialog_saved_configuration">Saved Configuration</string>
+    <string name="autoeqsuggestiondialog_status_has_profile">This device has an AutoEQ profile configured. Would you like to apply it now?</string>
+    <string name="autoeqsuggestiondialog_status_no_profile">This device is configured but has no AutoEQ profile. Configure one now?</string>
+    <string name="autoeqsuggestiondialog_note_equalizer_is_currently">Note: Equalizer is currently disabled. Applying the profile will enable it automatically.</string>
+    <string name="autoeqsuggestiondialog_apply_profile">Apply Profile</string>
+    <string name="autoeqsuggestiondialog_dont_ask">Don\'t Ask</string>
+    <string name="autoeqsuggestiondialog_not_now">Not Now</string>
+    <string name="equalizerscreen_autoeq_profiles">AutoEQ Profiles</string>
+    <string name="eq_manage_device">Manage Device</string>
     <string name="action_cancel">Cancel</string>
-
     <string name="update_available_label">Update</string>
     <string name="update_available_title">New Version Available</string>
     <string name="update_available_body">Version %s is now available. Please download the update from our website.</string>
@@ -297,6 +326,10 @@
     <string name="update_go_download">Download</string>
     <string name="update_no_download_source">No download source available</string>
     <string name="update_no_browser">No browser found</string>
+    <string name="update_arch_arm64">64-bit</string>
+    <string name="update_arch_x86">32-bit</string>
+    <string name="update_arch_arm">32-bit ARM</string>
+    <string name="update_arch_recommended">Recommended</string>
     <string name="update_check_title">Check for Updates</string>
     <string name="update_check_subtitle">Check if a new version is available</string>
     <string name="update_auto_check_title">Auto Check Updates</string>
@@ -310,8 +343,6 @@
     <string name="about_changelog_error">Failed to load changelog</string>
     <string name="about_changelog_empty">No release notes</string>
     <string name="about_changelog_unknown_date">Unknown release date</string>
-
-    <!-- Transcode cache settings -->
     <string name="transcode_strategy_streaming">Stream while transcoding</string>
     <string name="transcode_strategy_cache_first">Transcode then play</string>
     <string name="setcat_transcode_cache_title">Transcode cache</string>
@@ -327,12 +358,8 @@
     <string name="transcode_cache_list_empty">No cached transcode songs</string>
     <string name="transcode_cache_list_clear_all">Clear all</string>
     <string name="transcode_cache_list_delete">Delete cache</string>
-
-    <!-- Toplist (排行榜) settings -->
     <string name="setcat_home_toplist_title">首页排行榜</string>
     <string name="setcat_home_toplist_subtitle">在首页展示网易云官方排行榜</string>
-
-    <!-- Toplist home section -->
     <string name="home_toplist_title">排行榜</string>
     <string name="home_toplist_subtitle">网易云官方榜单</string>
     <string name="toplist_see_all">查看全部</string>
@@ -342,4 +369,94 @@
     <string name="toplist_empty">暂无歌曲</string>
     <string name="toplist_detail_play_all">播放全部</string>
     <string name="toplist_detail_shuffle">随机播放</string>
+    <string name="onboarding_welcome_to">Welcome to</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_toggle_theme">Toggle theme</string>
+    <string name="onboarding_toggle_language">Switch language</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_finish">Get Started</string>
+    <string name="onboarding_step_of">Step %1$d of %2$d</string>
+    <string name="onboarding_step_permissions_title">Media Access</string>
+    <string name="onboarding_step_permissions_desc">Allow access to your music library so XiangsuPlayer can scan and play your local songs.</string>
+    <string name="onboarding_step_permissions_granted">Permissions granted</string>
+    <string name="onboarding_step_permissions_request">Grant permissions</string>
+    <string name="onboarding_step_equalizer_title">Studio EQ</string>
+    <string name="onboarding_step_equalizer_desc">10-band parametric EQ with Auto EQ presets for popular headphones.</string>
+    <string name="onboarding_step_hearing_title">Hearing Guard</string>
+    <string name="onboarding_step_hearing_desc">Protect your hearing with smart volume limiting and safe listening guidance.</string>
+    <string name="onboarding_step_ai_title">AI Assistant</string>
+    <string name="onboarding_step_ai_desc">Ask anything about your music — search songs, read lyrics and get recommendations.</string>
+    <string name="onboarding_step_lyrics_title">Lyrics &amp; Visuals</string>
+    <string name="onboarding_step_lyrics_desc">Real-time lyrics on a stunning aurora gradient background.</string>
+    <string name="onboarding_step_theme_title">Appearance</string>
+    <string name="onboarding_step_theme_desc">Pick your style — light, dark, or follow your system.</string>
+    <string name="onboarding_theme_follow_system">Follow system</string>
+    <string name="onboarding_theme_light">Light</string>
+    <string name="onboarding_theme_dark">Dark</string>
+    <string name="onboarding_step_finished_title">XiangsuPlayer</string>
+    <string name="onboarding_step_finished_desc">Enjoy XiangsuPlayer — your music, beautifully tuned.</string>
+    <string name="onboarding_features">Highlights</string>
+    <string name="onboarding_step_media_title">Media Library</string>
+    <string name="onboarding_step_media_desc">XiangsuPlayer scans your local music automatically. You can choose which folders are included.</string>
+    <string name="onboarding_tip_media_1">Automatic scan of all local audio</string>
+    <string name="onboarding_tip_media_2">Supports high-resolution &amp; lossless formats</string>
+    <string name="onboarding_tip_media_3">Customizable scan folders for your library</string>
+    <string name="onboarding_step_audio_title">Playback Quality</string>
+    <string name="onboarding_step_audio_desc">Fine-tune how your music sounds — from output quality to speed control.</string>
+    <string name="onboarding_tip_audio_1">High-resolution DSD/DFF transcoding</string>
+    <string name="onboarding_tip_audio_2">High sample-rate output</string>
+    <string name="onboarding_tip_audio_3">Per-song playback speed &amp; pitch control</string>
+    <string name="onboarding_step_gestures_title">Gestures</string>
+    <string name="onboarding_step_gestures_desc">Control playback with intuitive gestures on the player screen.</string>
+    <string name="onboarding_tip_gestures_1">Swipe to switch songs</string>
+    <string name="onboarding_tip_gestures_2">Tap to play or pause</string>
+    <string name="onboarding_tip_gestures_3">Drag to seek through a track</string>
+    <string name="onboarding_step_stats_title">Listening Stats</string>
+    <string name="onboarding_step_stats_desc">Track how much you listen with beautiful personal statistics.</string>
+    <string name="onboarding_tip_stats_1">Top artists &amp; albums statistics</string>
+    <string name="onboarding_tip_stats_2">Playback time tracking</string>
+    <string name="onboarding_tip_stats_3">Personal listening insights</string>
+    <string name="onboarding_tip_permissions_1">Full access to your local music</string>
+    <string name="onboarding_tip_permissions_2">Notifications for playback control</string>
+    <string name="onboarding_tip_permissions_3">Privacy-safe: no data leaves your device</string>
+    <string name="onboarding_tip_equalizer_1">10-band professional equalizer</string>
+    <string name="onboarding_tip_equalizer_2">AutoEQ presets for your headphones</string>
+    <string name="onboarding_tip_equalizer_3">Bass boost &amp; spatial audio</string>
+    <string name="onboarding_tip_hearing_1">Volume limit protects your hearing</string>
+    <string name="onboarding_tip_hearing_2">Real-time loudness monitoring</string>
+    <string name="onboarding_tip_hearing_3">Smart reminders for listening breaks</string>
+    <string name="onboarding_tip_ai_1">AI assistant built into the player</string>
+    <string name="onboarding_tip_ai_2">Smart music discovery &amp; lyrics explanations</string>
+    <string name="onboarding_tip_ai_3">Natural conversation with streaming AI</string>
+    <string name="onboarding_tip_lyrics_1">Synced lyrics with beautiful visuals</string>
+    <string name="onboarding_tip_lyrics_2">Aurora background effects</string>
+    <string name="onboarding_tip_lyrics_3">Automatic lyrics fetching</string>
+    <string name="onboarding_tip_theme_1">Light, dark &amp; dynamic color themes</string>
+    <string name="onboarding_tip_theme_2">Material You wallpaper-based colors</string>
+    <string name="onboarding_tip_theme_3">Custom accent &amp; shape presets</string>
+    <string name="onboarding_tip_finished_1">Everything is set up and ready</string>
+    <string name="onboarding_tip_finished_2">Explore your music library</string>
+    <string name="onboarding_tip_finished_3">Adjust more in Settings anytime</string>
+    <string name="onboarding_quick_enable_equalizer">Enable Equalizer</string>
+    <string name="onboarding_quick_equalizer_preset">Choose an equalizer preset</string>
+    <string name="onboarding_quick_hifi">Hi-Fi mode</string>
+    <string name="onboarding_quick_crossfade">Crossfade playback</string>
+    <string name="onboarding_quick_online_quality">Online playback quality</string>
+    <string name="onboarding_quick_media_scan">Scan media library</string>
+    <string name="onboarding_quick_media_rescan">Rescan media library</string>
+    <string name="onboarding_quick_media_scanning">Scanning…</string>
+    <string name="onboarding_quick_hearing_enable">Enable Hearing Guard</string>
+    <string name="onboarding_quick_hearing_setup">Initialize Hearing Guard setup</string>
+    <string name="onboarding_quick_hearing_reconfigure">Reconfigure Hearing Guard</string>
+    <string name="onboarding_quick_ai_provider">Choose AI provider</string>
+    <string name="onboarding_quick_ai_api_key">API Key</string>
+    <string name="onboarding_quick_ai_api_key_hint">Paste your API key here</string>
+    <string name="onboarding_quick_lyrics_aurora">Aurora lyrics background</string>
+    <string name="onboarding_quick_player_background">Player vivid background</string>
+    <string name="onboarding_quick_gesture_swipe">Swipe left/right on the cover to switch songs</string>
+    <string name="onboarding_quick_gesture_tap">Tap the cover to open the album</string>
+    <string name="onboarding_quick_finished_tap">Tap the avatar above to enter the app</string>
+    <string name="onboarding_select_language">Select Language</string>
 </resources>

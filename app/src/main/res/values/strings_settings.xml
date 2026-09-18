@@ -225,6 +225,8 @@
     <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
     <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
     <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
+    <string name="setcat_vibrant_bg_warning_title">Android version too low</string>
+    <string name="setcat_vibrant_bg_warning_message">Your Android version is lower than Android 11. This effect may not perform as expected on your device. Do you still want to enable it?</string>
     <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
     <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
     <string name="setcat_home_collage">Home Collage</string>
@@ -866,4 +868,12 @@
     <string name="settings_search_placeholder">Search settings</string>
     <string name="settings_search_no_results">No settings found</string>
     <string name="settings_search_results_count_format">%1$d results</string>
+    <string name="setcat_carousel_no_peek">No peek</string>
+    <string name="setcat_carousel_one_peek">One peek</string>
+    <string name="setcat_carousel_style_desc">How the album carousel is displayed.</string>
+    <string name="setcat_carousel_style_label">Carousel style</string>
+    <string name="setcat_download_complete">Download complete</string>
+    <string name="setcat_download_failed">Download failed</string>
+    <string name="setcat_download_progress_format">%1$.0f%%</string>
+    <string name="setcat_download_progress_title">Download progress</string>
 </resources>

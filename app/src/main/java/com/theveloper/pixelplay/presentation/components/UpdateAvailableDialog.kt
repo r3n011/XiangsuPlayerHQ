@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.components
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,7 +33,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -68,7 +72,14 @@ fun UpdateAvailableDialog(
             emptyList()
         }
     }
-    val githubUrl = updateInfo.apkUrl
+    // GitHub 下载：按设备 ABI 自动推荐架构，用户可手动切换 64/32 位
+    val deviceAbis = remember { Build.SUPPORTED_ABIS.toList() }
+    val archKeys = remember(updateInfo) { updateInfo.availableArchKeys() }
+    val recommendedArchKey = remember(updateInfo) { updateInfo.preferredArchKey(deviceAbis) }
+    var selectedArchKey by remember(updateInfo) {
+        mutableStateOf(updateInfo.preferredArchKey(deviceAbis))
+    }
+    val githubUrl = selectedArchKey?.let { updateInfo.apkUrlsByAbi[it] } ?: updateInfo.apkUrl
     val hasAnySource = lanzouCandidates.isNotEmpty() || !githubUrl.isNullOrBlank()
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
@@ -308,6 +319,54 @@ fun UpdateAvailableDialog(
                                     )
                                 }
                             }
+                            // 架构选择（64/32 位）：仅当存在多个架构的 APK 且未下载中时显示
+                            if (archKeys.size > 1 && !githubUrl.isNullOrBlank() && !isDownloading && !isInstalling) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    archKeys.forEach { key ->
+                                        val isSelected = selectedArchKey == key
+                                        val isRecommended = recommendedArchKey == key
+                                        Surface(
+                                            onClick = { selectedArchKey = key },
+                                            shape = MaterialTheme.shapes.small,
+                                            color = if (isSelected) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceContainerHigh
+                                            },
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                Text(
+                                                    text = stringResource(archLabelRes(key)),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = if (isSelected) {
+                                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                    },
+                                                )
+                                                if (isRecommended) {
+                                                    Text(
+                                                        text = stringResource(R.string.update_arch_recommended),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if (!githubUrl.isNullOrBlank()) {
                                 OutlinedButton(
                                     onClick = {
@@ -380,4 +439,11 @@ fun UpdateAvailableDialog(
             }
         }
     }
+}
+
+/** 架构键 → 显示文案资源 */
+private fun archLabelRes(key: String): Int = when (key) {
+    "x86" -> R.string.update_arch_x86
+    "arm" -> R.string.update_arch_arm
+    else -> R.string.update_arch_arm64
 }

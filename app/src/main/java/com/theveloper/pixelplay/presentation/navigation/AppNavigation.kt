@@ -46,6 +46,7 @@ import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.presentation.screens.AlbumDetailScreen
 import com.theveloper.pixelplay.presentation.screens.AccountsScreen
+import com.theveloper.pixelplay.presentation.screens.SourceMarketScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistHomepageScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistSettingsScreen
@@ -69,7 +70,6 @@ import com.theveloper.pixelplay.presentation.screens.SettingsCategoryScreen
 import com.theveloper.pixelplay.presentation.screens.ToplistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.EqualizerScreen
 import com.theveloper.pixelplay.presentation.screens.LxMusicScreen
-import com.theveloper.pixelplay.presentation.screens.HeadphonePresetScreen
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
 import kotlinx.coroutines.flow.first
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
@@ -309,6 +309,15 @@ fun AppNavigation(
                 }
             }
             composable(
+                Screen.SourceMarket.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    SourceMarketScreen(
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
                 route = Screen.SettingsCategory.route,
                 arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
             ) { backStackEntry ->
@@ -334,16 +343,6 @@ fun AppNavigation(
                         navController = navController,
                         playerViewModel = playerViewModel,
                         equalizerViewModel = hiltViewModel()
-                    )
-                }
-            }
-            composable(
-                Screen.HeadphonePreset.route,
-            ) {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
-                    HeadphonePresetScreen(
-                        navController = navController,
-                        viewModel = hiltViewModel()
                     )
                 }
             }

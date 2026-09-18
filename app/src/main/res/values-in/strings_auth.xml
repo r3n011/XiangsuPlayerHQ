@@ -70,4 +70,6 @@
     <string name="auth_error_no_cookies">Tidak ditemukan cookie. Login terlebih dahulu.</string>
     <string name="auth_error_netease_login_incomplete">Login belum terdeteksi. Selesaikan login NetEase sebelum menekan Selesai.</string>
     <string name="auth_error_qq_login_incomplete">Login belum terdeteksi. Selesaikan login QQ Music sebelum menekan Selesai.</string>
+    <string name="auth_navidrome_пароль_hint">App password also works if your server supports it.</string>
+    
 </resources>

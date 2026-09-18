@@ -1,11 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="cd_favorite">Favorite</string>
     <string name="cd_play">Play</string>
     <string name="cd_pause">Pause</string>
     <string name="cd_repeat">Repeat</string>
-
-    <!-- Lyrics more bottom sheet -->
     <string name="lyrics_more_appearance">Appearance</string>
     <string name="lyrics_more_alignment">Alignment</string>
     <string name="lyrics_more_font_size">Font Size</string>
@@ -26,10 +24,6 @@
     <string name="cd_lyrics_align_left">Align lyrics left</string>
     <string name="cd_lyrics_align_center">Align lyrics center</string>
     <string name="cd_lyrics_align_right">Align lyrics right</string>
-
-    <!-- No internet -->
-
-    <!-- Equalizer preset dialogs -->
     <string name="equalizer_save_custom_preset_title">Save custom preset</string>
     <string name="equalizer_save_custom_preset_body">Enter a name for your custom equalizer preset.</string>
     <string name="equalizer_preset_name_label">Preset name</string>
@@ -39,8 +33,6 @@
     <string name="action_rename">Rename</string>
     <string name="common_back">Back</string>
     <string name="common_playlist">Playlist</string>
-
-    <!-- AI metadata sheet -->
     <string name="ai_metadata_headline_success">Perfectly tagged!</string>
     <string name="ai_metadata_headline_default">AI metadata</string>
     <string name="ai_metadata_subtitle_generating">Consulting the Daily Mix guide…</string>
@@ -53,8 +45,6 @@
     <string name="song_field_composer">Composer</string>
     <string name="action_try_again">Try again</string>
     <string name="action_apply_changes">Apply changes</string>
-
-    <!-- Edit song metadata sheet -->
     <string name="edit_song_info_dialog_title">Editing song metadata</string>
     <string name="edit_song_info_dialog_body">Editing a song\'s metadata can affect how it\'s displayed and organized in your library. Changes are permanent and may not be reversible.</string>
     <string name="edit_song_got_it">Got it</string>
@@ -78,8 +68,6 @@
     <string name="cd_cover_art_preview">Preview of the new cover art</string>
     <string name="cd_current_song_cover_art">Current song cover art</string>
     <string name="edit_song_apply_cover_art">Apply cover art</string>
-
-    <!-- Song info bottom sheet -->
     <string name="cd_play_song_action">Play song</string>
     <string name="cd_share_song_file">Share song file</string>
     <string name="cd_add_to_queue">Add to queue</string>
@@ -108,8 +96,6 @@
     <string name="cd_add_to_favorites">Add to favorites</string>
     <string name="song_info_tab_details">Details</string>
     <string name="cd_details_tab">Details</string>
-
-    <!-- Multi-selection bottom sheet -->
     <string name="multi_selection_selected">selected</string>
     <string name="cd_play_all">Play all</string>
     <string name="action_play_all">Play all</string>
@@ -119,7 +105,6 @@
     <string name="cd_add_all_to_queue">Add all to queue</string>
     <string name="cd_delete_all_songs">Delete all</string>
     <string name="action_delete_all">Delete all</string>
-
     <string name="action_undo">Undo</string>
     <string name="create_playlist_dialog_title">New playlist</string>
     <string name="create_playlist_name_label">Playlist name</string>
@@ -136,17 +121,14 @@
     <string name="search_filter_online">Netease</string>
     <string name="search_filter_kuwo">Kuwo</string>
     <string name="search_filter_bilibili">Bilibili</string>
-
     <string name="cd_export_all">Export all</string>
     <string name="cd_merge_all">Merge all</string>
     <string name="cd_share_all">Share all</string>
     <string name="action_export">Export</string>
     <string name="action_merge">Merge</string>
-
     <string name="cd_drag_handle">Drag handle</string>
     <string name="cd_reset">Reset</string>
     <string name="action_done">Done</string>
-
     <string name="reorder_sheets_saving">Saving order…</string>
     <string name="sort_sheet_reorder_action">Reorder</string>
     <string name="reorder_songs_sheet_title">Reorder Songs</string>
@@ -155,8 +137,6 @@
     <string name="reorder_favorites_sheet_title">Reorder Liked Songs</string>
     <string name="reorder_playlists_sheet_title">Reorder Playlists</string>
     <string name="reorder_folders_sheet_title">Reorder Folders</string>
-
-    <!-- Streaming provider sheet -->
     <string name="streaming_provider_telegram_subtitle">Stream from channels &amp; chats</string>
     <string name="streaming_provider_coming_soon">Coming soon</string>
     <string name="streaming_provider_subsonic_connected">Connected · Navidrome/Airsonic</string>

@@ -103,6 +103,7 @@ import androidx.compose.material.icons.rounded.TabletAndroid
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.SpaceBar
@@ -282,6 +283,7 @@ fun SettingsCategoryScreen(
     var syncRequestObservedRunning by remember { mutableStateOf(false) }
     var syncIndicatorLabel by remember { mutableStateOf<String?>(null) }
     var showClearLyricsDialog by remember { mutableStateOf(false) }
+    var vibrantBgConfirmTarget by remember { mutableStateOf<String?>(null) } // "lyrics" / "player"，低版本开启前需警告确认
     var showRebuildDatabaseWarning by remember { mutableStateOf(false) }
     var showDiscoverOptionsDialog by remember { mutableStateOf(false) }
     var showDownloadPathDialog by remember { mutableStateOf(false) }
@@ -1203,19 +1205,24 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Rounded.Layers, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
-                                // 绚丽背景依赖 Compose 硬件模糊（Android 12+ 才稳定），
-                                // 安卓 10 及以下（SDK <= 29）软件模糊既慢又易黑屏，故直接禁用这两个开关，不允许开启
+                                // 绚丽背景在安卓10及以下（SDK <= 29）软件模糊效果一般，
+                                // 不硬性禁用：低版本默认关闭，开启时弹警告确认。
                                 val vibrantBgSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_lyrics_vibrant_bg_title),
                                     subtitle = if (vibrantBgSupported)
                                         stringResource(R.string.setcat_lyrics_vibrant_bg_desc)
                                     else
-                                        stringResource(R.string.setcat_vibrant_bg_requires_newer),
+                                        stringResource(R.string.setcat_vibrant_bg_warning_message),
                                     checked = uiState.lyricsVibrantBackgroundEnabled,
-                                    onCheckedChange = { settingsViewModel.setLyricsVibrantBackgroundEnabled(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) },
-                                    enabled = vibrantBgSupported
+                                    onCheckedChange = { enable ->
+                                        if (enable && !vibrantBgSupported) {
+                                            vibrantBgConfirmTarget = "lyrics"
+                                        } else {
+                                            settingsViewModel.setLyricsVibrantBackgroundEnabled(enable)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
                                 SwitchSettingItem(
@@ -1223,11 +1230,16 @@ fun SettingsCategoryScreen(
                                     subtitle = if (vibrantBgSupported)
                                         stringResource(R.string.setcat_player_vibrant_bg_desc)
                                     else
-                                        stringResource(R.string.setcat_vibrant_bg_requires_newer),
+                                        stringResource(R.string.setcat_vibrant_bg_warning_message),
                                     checked = uiState.playerVibrantBackgroundEnabled,
-                                    onCheckedChange = { settingsViewModel.setPlayerVibrantBackgroundEnabled(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) },
-                                    enabled = vibrantBgSupported
+                                    onCheckedChange = { enable ->
+                                        if (enable && !vibrantBgSupported) {
+                                            vibrantBgConfirmTarget = "player"
+                                        } else {
+                                            settingsViewModel.setPlayerVibrantBackgroundEnabled(enable)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
                                 // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）
@@ -2155,7 +2167,8 @@ fun SettingsCategoryScreen(
                         SettingsCategory.GLYPH_MATRIX -> {
                             val isGlyphAvailable = remember {
                                 try {
-                                    Class.forName("com.nothing.glyph.matrix.GlyphMatrixManager")
+                                    // ⚡ 官方 SDK v2.0 包名为 com.nothing.ketchum.*（旧包名 com.nothing.glyph.* 反射永远失败）
+                                    Class.forName("com.nothing.ketchum.GlyphMatrixManager")
                                     true
                                 } catch (_: Exception) {
                                     false
@@ -2382,6 +2395,40 @@ fun SettingsCategoryScreen(
                 }
             )
         }
+    }
+
+    // ⚡ 安卓10及以下开启绚丽背景前的版本过低警告确认
+    vibrantBgConfirmTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { vibrantBgConfirmTarget = null },
+            icon = {
+                Icon(Icons.Rounded.Warning, null, tint = MaterialTheme.colorScheme.error)
+            },
+            title = {
+                Text(stringResource(R.string.setcat_vibrant_bg_warning_title))
+            },
+            text = {
+                Text(stringResource(R.string.setcat_vibrant_bg_warning_message))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when (target) {
+                            "lyrics" -> settingsViewModel.setLyricsVibrantBackgroundEnabled(true)
+                            "player" -> settingsViewModel.setPlayerVibrantBackgroundEnabled(true)
+                        }
+                        vibrantBgConfirmTarget = null
+                    }
+                ) {
+                    Text(stringResource(R.string.common_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { vibrantBgConfirmTarget = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     if (showRegenerateAllPalettesDialog) {

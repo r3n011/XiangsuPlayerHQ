@@ -104,6 +104,10 @@ import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.viewmodel.EqualizerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.AutoEqViewModel
+import com.theveloper.pixelplay.data.autoeq.AutoEQProfile
+import com.theveloper.pixelplay.presentation.components.autoeq.AutoEQPresetPickerBottomSheet
+import com.theveloper.pixelplay.presentation.components.autoeq.DeviceConfigurationBottomSheet
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import dev.chrisbanes.haze.hazeSource
@@ -152,6 +156,10 @@ import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.automirrored.rounded.ViewQuilt
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.AutoMode
+import androidx.compose.material.icons.rounded.DeviceHub
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -162,7 +170,8 @@ import androidx.compose.ui.res.stringResource
 fun EqualizerScreen(
     navController: NavController,
     playerViewModel: PlayerViewModel = hiltViewModel(),
-    equalizerViewModel: EqualizerViewModel = hiltViewModel()
+    equalizerViewModel: EqualizerViewModel = hiltViewModel(),
+    autoEqViewModel: AutoEqViewModel = hiltViewModel()
 ) {
     val uiState by equalizerViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -171,6 +180,10 @@ fun EqualizerScreen(
     var showReorderSheet by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<EqualizerPreset?>(null) }
+    var showAutoEQSelector by remember { mutableStateOf(false) }
+    var showDeviceConfiguration by remember { mutableStateOf(false) }
+    var showAutoEQMenu by remember { mutableStateOf(false) }
+    val currentAutoEQProfile by autoEqViewModel.autoEQProfile.collectAsStateWithLifecycle()
     
     // Handlers
     if (showSaveDialog) {
@@ -440,21 +453,98 @@ fun EqualizerScreen(
                 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                FilledIconButton(
-                    onClick = { navController.navigate(Screen.HeadphonePreset.route) },
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Headphones,
-                        contentDescription = stringResource(R.string.headphone_preset_title)
-                    )
+                // AutoEQ entry (dropdown: profiles / device configuration)
+                Box {
+                    FilledIconButton(
+                        onClick = { showAutoEQMenu = true },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (currentAutoEQProfile.isNotEmpty() && currentAutoEQProfile != "None")
+                                Icons.Rounded.AutoMode
+                            else
+                                Icons.Rounded.Headphones,
+                            contentDescription = stringResource(R.string.equalizerscreen_autoeq_profiles)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showAutoEQMenu,
+                        onDismissRequest = { showAutoEQMenu = false },
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(R.string.equalizerscreen_autoeq_profiles),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.AutoMode,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            onClick = {
+                                showAutoEQMenu = false
+                                showAutoEQSelector = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(R.string.eq_manage_device),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.DeviceHub,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            onClick = {
+                                showAutoEQMenu = false
+                                showDeviceConfiguration = true
+                            }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
             }
+        )
+    }
+
+    // AutoEQ Preset Picker
+    if (showAutoEQSelector) {
+        AutoEQPresetPickerBottomSheet(
+            autoEqViewModel = autoEqViewModel,
+            currentProfileName = currentAutoEQProfile,
+            onDismissRequest = { showAutoEQSelector = false },
+            onProfileSelected = { profile: AutoEQProfile ->
+                autoEqViewModel.applyAutoEQProfile(profile)
+                showAutoEQSelector = false
+            }
+        )
+    }
+
+    // Device Configuration
+    if (showDeviceConfiguration) {
+        DeviceConfigurationBottomSheet(
+            autoEqViewModel = autoEqViewModel,
+            onDismiss = { showDeviceConfiguration = false }
         )
     }
 }

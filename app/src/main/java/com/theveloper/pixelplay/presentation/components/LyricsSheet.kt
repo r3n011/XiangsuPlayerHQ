@@ -1926,6 +1926,8 @@ fun LyricLineRow(
         label = "lineAlpha"
     )
 
+    val effectiveScale = scale
+
     // folia-style blur: gentle distance cue with non-linear falloff（增强模糊，让非当前行明显虚化）
     // distance 1→2dp, distance 2→4dp, distance 3→6dp, distance 4+→8dp
     val targetBlur = if (useAnimatedLyrics && animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
@@ -1968,8 +1970,8 @@ fun LyricLineRow(
     val animatedModifier = if (useAnimatedLyrics) {
         baseModifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                scaleX = effectiveScale
+                scaleY = effectiveScale
                 this.alpha = alpha
                 translationY = 0f
                 transformOrigin = TransformOrigin(

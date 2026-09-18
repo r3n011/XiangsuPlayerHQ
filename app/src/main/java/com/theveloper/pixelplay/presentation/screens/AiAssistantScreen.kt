@@ -1,10 +1,5 @@
 package com.theveloper.pixelplay.presentation.screens
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,12 +48,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.Key
@@ -186,12 +178,11 @@ fun AiAssistantScreen(
             }
         }
 
-        // 底部输入（Gemini 流光边框风格）
+        // 底部输入（静态细边框风格）
         Surface(
             color = colors.surface,
             shadowElevation = 8.dp
         ) {
-            var inputFocused by remember { mutableStateOf(false) }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -204,65 +195,25 @@ fun AiAssistantScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(28.dp))
                 ) {
-                    // 边框层：固定圆角矩形描边路径，仅旋转 sweep 渐变角度，
-                    // 避免整块矩形旋转导致两侧露底，保证光环始终连续闭合
-                    if (inputFocused) {
-                        val borderRotation by rememberInfiniteTransition(
-                            label = "geminiBorder"
-                        ).animateFloat(
-                            initialValue = 0f,
-                            targetValue = 360f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(durationMillis = 4000, easing = LinearEasing)
-                            ),
-                            label = "geminiRotation"
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .drawBehind {
-                                    val strokeWidth = 2.dp.toPx()
-                                    val inset = strokeWidth / 2f
-                                    drawRoundRect(
-                                        brush = Brush.sweepGradient(
-                                            colors = listOf(
-                                                Color(0xFF4285F4),
-                                                Color(0xFF9B72CB),
-                                                Color(0xFFD96570),
-                                                Color(0xFF4285F4)
-                                            ),
-                                            startAngle = borderRotation
-                                        ),
-                                        topLeft = Offset(inset, inset),
-                                        size = Size(
-                                            size.width - strokeWidth,
-                                            size.height - strokeWidth
-                                        ),
-                                        cornerRadius = CornerRadius(27.dp.toPx()),
-                                        style = Stroke(width = strokeWidth)
-                                    )
-                                }
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .drawBehind {
-                                    val strokeWidth = 2.dp.toPx()
-                                    val inset = strokeWidth / 2f
-                                    drawRoundRect(
-                                        color = colors.outlineVariant,
-                                        topLeft = Offset(inset, inset),
-                                        size = Size(
-                                            size.width - strokeWidth,
-                                            size.height - strokeWidth
-                                        ),
-                                        cornerRadius = CornerRadius(27.dp.toPx()),
-                                        style = Stroke(width = strokeWidth)
-                                    )
-                                }
-                        )
-                    }
+                    // 边框层：统一静态 outlineVariant 细边框
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .drawBehind {
+                                val strokeWidth = 2.dp.toPx()
+                                val inset = strokeWidth / 2f
+                                drawRoundRect(
+                                    color = colors.outlineVariant,
+                                    topLeft = Offset(inset, inset),
+                                    size = Size(
+                                        size.width - strokeWidth,
+                                        size.height - strokeWidth
+                                    ),
+                                    cornerRadius = CornerRadius(27.dp.toPx()),
+                                    style = Stroke(width = strokeWidth)
+                                )
+                            }
+                    )
                     // 内容挖空层：形成 2dp 均匀边框
                     Box(
                         modifier = Modifier
@@ -282,7 +233,6 @@ fun AiAssistantScreen(
                                 onValueChange = { input = it },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .onFocusChanged { inputFocused = it.isFocused }
                                     .onPreviewKeyEvent { event ->
                                         // Enter 发送，Shift+Enter 换行
                                         if (event.type == KeyEventType.KeyDown &&

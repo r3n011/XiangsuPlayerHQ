@@ -28,8 +28,8 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.foundation.lazy.LazyColumn
+import com.theveloper.pixelplay.rememberWindowIsLandscape
 import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.LazyListState
@@ -41,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
@@ -122,6 +123,8 @@ import com.theveloper.pixelplay.presentation.components.DailyMixSection
 import com.theveloper.pixelplay.presentation.components.FavoriteArtistsSection
 import com.theveloper.pixelplay.presentation.components.HomeGradientTopBar
 import com.theveloper.pixelplay.presentation.components.HomeOptionsBottomSheet
+import com.theveloper.pixelplay.presentation.components.HomeCardOrderSheet
+import com.theveloper.pixelplay.presentation.components.HomeCardOrderEntry
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.RecentlyPlayedSection
 import com.theveloper.pixelplay.presentation.components.RecentlyPlayedSectionMinSongsToShow
@@ -389,13 +392,43 @@ fun HomeScreen(
     var hasShownSetupHint by rememberSaveable { mutableStateOf(false) }
     var showHearingGuardRestReminder by remember { mutableStateOf(false) }
     var showAiMixSheet by remember { mutableStateOf(false) }
+    var showHomeCardOrderSheet by remember { mutableStateOf(false) }
     val aiMixViewModel: AiMixViewModel = hiltViewModel()
     val sheetState = rememberModalBottomSheetState()
-    val betaSheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
-    LocalContext.current
+    val betaSheetState = rememberModalBottomSheetState()
 
     val homeStatsOverview by statsViewModel.homeOverview.collectAsStateWithLifecycle()
+
+    // 首页内容卡片顺序（默认顺序；用户自定义顺序里缺失的卡片按默认顺序追加尾部）
+    val homeCardOrder by settingsViewModel.homeCardOrder.collectAsStateWithLifecycle()
+    val defaultHomeCardOrder = listOf(
+        "ai_recommendation", "daily_mix", "favorite_artists", "recently_played", "stats"
+    )
+    val homeCardsInOrder = remember(homeCardOrder) {
+        if (homeCardOrder.isEmpty()) {
+            defaultHomeCardOrder
+        } else {
+            defaultHomeCardOrder.sortedBy { id ->
+                homeCardOrder.indexOf(id).let { if (it < 0) Int.MAX_VALUE else it }
+            }
+        }
+    }
+
+    // 编辑弹窗的卡片条目（当前顺序 + 显示名称）
+    val homeCardOrderEntries = remember(homeCardsInOrder) {
+        homeCardsInOrder.mapNotNull { cardId ->
+            val titleRes = when (cardId) {
+                "ai_recommendation" -> R.string.home_card_ai_recommendation
+                "daily_mix" -> R.string.presentation_batch_g_daily_mix_heading
+                "favorite_artists" -> R.string.home_favorite_artists_title
+                "recently_played" -> R.string.presentation_batch_g_recently_played_title
+                "stats" -> R.string.presentation_batch_g_stats_overview_title
+                else -> null
+            }
+            titleRes?.let { HomeCardOrderEntry(cardId, context.getString(it)) }
+        }
+    }
 
     // 听力保护
     val hearingGuardViewModel: HearingGuardViewModel = hiltViewModel()
@@ -436,9 +469,8 @@ fun HomeScreen(
     }
 
     // Drawer state for sidebar
-    // 按真实窗口宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机样式。
-    // 使用 LocalWindowInfo（真实窗口尺寸）而非 Configuration，避免平板 ROM 分屏时不更新
-    val isLandscape = with(LocalWindowInfo.current.containerSize) { width > height }
+    // 与全屏播放器一致的可靠横屏判断：监听 View 全局布局（旋转/分屏时 View 尺寸必然变化）
+    val isLandscape = rememberWindowIsLandscape()
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val shouldShowCleanInstallDisclaimer =
@@ -646,33 +678,167 @@ fun HomeScreen(
                                 }
                             }
 
-                            if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
-                                item(key = "card_ai_recommendation", contentType = "card") {
-                                    Card(
-                                        modifier = Modifier.width(cardWidth).fillMaxHeight(),
-                                        shape = RoundedCornerShape(24.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                    ) {
-                                        AiRecommendationCard(
-                                            modifier = Modifier.fillMaxSize(),
-                                            playerViewModel = playerViewModel,
-                                            recentlyPlayedSongs = recentlyPlayedQueue,
-                                            isManualOnly = isAiRecommendationManualOnly,
-                                            onClickOpen = {
-                                                navController.navigateSafely(Screen.AiMixScreen.route)
+                            // 横向行内内容卡片按用户自定义顺序渲染（card_collage 固定首卡）
+                            homeCardsInOrder.forEach { cardId ->
+                                when (cardId) {
+                                    "ai_recommendation" -> if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
+                                        item(key = "card_ai_recommendation", contentType = "card") {
+                                            Card(
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                shape = RoundedCornerShape(24.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                                ),
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                            ) {
+                                                AiRecommendationCard(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    playerViewModel = playerViewModel,
+                                                    recentlyPlayedSongs = recentlyPlayedQueue,
+                                                    isManualOnly = isAiRecommendationManualOnly,
+                                                    onClickOpen = {
+                                                        navController.navigateSafely(Screen.AiMixScreen.route)
+                                                    }
+                                                )
                                             }
-                                        )
+                                        }
+                                    }
+
+                                    "daily_mix" -> if (dailyMixSongs.isNotEmpty()) {
+                                        item(key = "card_daily_mix", contentType = "card") {
+                                            DailyMixSection(
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                songs = dailyMixSongs,
+                                                onClickOpen = {
+                                                    navController.navigateSafely(Screen.DailyMixScreen.route)
+                                                },
+                                                onNavigateToAlbum = { song ->
+                                                    navController.navigateSafelyReplacing(
+                                                        route = Screen.AlbumDetail.createRoute(song.albumId),
+                                                        patternToPop = Screen.AlbumDetail.route
+                                                    )
+                                                },
+                                                onNavigateToArtist = { song ->
+                                                    navController.navigateSafelyReplacing(
+                                                        route = Screen.ArtistDetail.createRoute(song.artistId),
+                                                        patternToPop = Screen.ArtistDetail.route
+                                                    )
+                                                },
+                                                onNavigateToGenre = { song ->
+                                                    song.genre?.let {
+                                                        navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
+                                                    }
+                                                },
+                                                onNavigateToNeteaseArtistHomepage = { neteaseArtistId ->
+                                                    navController.navigateSafelyReplacing(
+                                                        route = Screen.ArtistHomepage.createRoute(neteaseArtistId),
+                                                        patternToPop = Screen.ArtistHomepage.route
+                                                    )
+                                                },
+                                                playerViewModel = playerViewModel
+                                            )
+                                        }
+                                    }
+
+                                    "favorite_artists" -> if (favoriteArtists.isNotEmpty()) {
+                                        item(key = "card_favorite_artists", contentType = "card") {
+                                            Card(
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                shape = RoundedCornerShape(24.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                                ),
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                            ) {
+                                                FavoriteArtistsSection(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .padding(top = 16.dp),
+                                                    artists = favoriteArtists,
+                                                    onArtistClick = { artist ->
+                                                        navController.navigateSafely(
+                                                            Screen.ArtistHomepage.createRoute(artist.id)
+                                                        )
+                                                    },
+                                                    isTabletMode = true
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    "recently_played" -> if (recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
+                                        item(key = "card_recently_played", contentType = "card") {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(cardWidth)
+                                                    .fillMaxHeight()
+                                            ) {
+                                                RecentlyPlayedSection(
+                                                    songs = recentlyPlayedSongs,
+                                                    onSongClick = { song ->
+                                                        if (recentlyPlayedQueue.isNotEmpty()) {
+                                                            playerViewModel.playSongs(
+                                                                songsToPlay = recentlyPlayedQueue,
+                                                                startSong = song,
+                                                                queueName = "Recently Played"
+                                                            )
+                                                        }
+                                                    },
+                                                    onOpenAllClick = {
+                                                        navController.navigateSafely(Screen.RecentlyPlayed.route)
+                                                    },
+                                                    themeStateHolder = playerViewModel.themeStateHolder,
+                                                    currentSongId = currentSong?.id,
+                                                    contentPadding = PaddingValues(start = 8.dp, end = 24.dp),
+                                                    isTabletMode = true
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    "stats" -> if (homeStatsOverview != null && !isCarModeEnabled) {
+                                        item(key = "card_stats", contentType = "card") {
+                                            StatsOverviewCard(
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                summary = homeStatsOverview,
+                                                onClick = { navController.navigateSafely(Screen.Stats.route) }
+                                            )
+                                        }
                                     }
                                 }
                             }
+                        }
+                    }
+                } else {
+                    // 内容卡片按用户自定义顺序渲染（homeCardsInOrder）
+                    homeCardsInOrder.forEach { cardId ->
+                        when (cardId) {
+                            // AI Recommendation Card - disabled in car mode for performance
+                            "ai_recommendation" -> if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
+                                item(
+                                    key = "ai_recommendation_card",
+                                    contentType = "ai_recommendation_card"
+                                ) {
+                                    AiRecommendationCard(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        playerViewModel = playerViewModel,
+                                        recentlyPlayedSongs = recentlyPlayedQueue,
+                                        isManualOnly = isAiRecommendationManualOnly,
+                                        onClickOpen = {
+                                                navController.navigateSafely(Screen.AiMixScreen.route)
+                                            }
+                                        )
+                                }
+                            }
 
-                            if (dailyMixSongs.isNotEmpty()) {
-                                item(key = "card_daily_mix", contentType = "card") {
+                            // Daily Mix
+                            "daily_mix" -> if (dailyMixSongs.isNotEmpty()) {
+                                item(
+                                    key = "daily_mix_section",
+                                    contentType = "daily_mix_section"
+                                ) {
                                     DailyMixSection(
-                                        modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                        modifier = Modifier.padding(horizontal = 16.dp),
                                         songs = dailyMixSongs,
                                         onClickOpen = {
                                             navController.navigateSafely(Screen.DailyMixScreen.route)
@@ -705,187 +871,63 @@ fun HomeScreen(
                                 }
                             }
 
-                            if (favoriteArtists.isNotEmpty()) {
-                                item(key = "card_favorite_artists", contentType = "card") {
-                                    Card(
-                                        modifier = Modifier.width(cardWidth).fillMaxHeight(),
-                                        shape = RoundedCornerShape(24.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                    ) {
-                                        FavoriteArtistsSection(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(top = 16.dp),
-                                            artists = favoriteArtists,
-                                            onArtistClick = { artist ->
-                                                navController.navigateSafely(
-                                                    Screen.ArtistHomepage.createRoute(artist.id)
+                            // ⚡ 收藏的歌手卡片（平板：自动换行上下滑动；手机：横向滑动不变）
+                            "favorite_artists" -> if (favoriteArtists.isNotEmpty()) {
+                                item(
+                                    key = "favorite_artists_section",
+                                    contentType = "favorite_artists_section"
+                                ) {
+                                    FavoriteArtistsSection(
+                                        artists = favoriteArtists,
+                                        onArtistClick = { artist ->
+                                            navController.navigateSafely(
+                                                Screen.ArtistHomepage.createRoute(artist.id)
+                                            )
+                                        },
+                                        isTabletMode = LocalConfiguration.current.screenWidthDp >= 600
+                                    )
+                                }
+                            }
+
+                            "recently_played" -> if (recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
+                                item(
+                                    key = "recently_played_section",
+                                    contentType = "recently_played_section"
+                                ) {
+                                    RecentlyPlayedSection(
+                                        songs = recentlyPlayedSongs,
+                                        onSongClick = { song ->
+                                            if (recentlyPlayedQueue.isNotEmpty()) {
+                                                playerViewModel.playSongs(
+                                                    songsToPlay = recentlyPlayedQueue,
+                                                    startSong = song,
+                                                    queueName = "Recently Played"
                                                 )
-                                            },
-                                            isTabletMode = true
-                                        )
-                                    }
+                                            }
+                                        },
+                                        onOpenAllClick = {
+                                            navController.navigateSafely(Screen.RecentlyPlayed.route)
+                                        },
+                                        themeStateHolder = playerViewModel.themeStateHolder,
+                                        currentSongId = currentSong?.id,
+                                        contentPadding = PaddingValues(start = 8.dp, end = 24.dp)
+                                    )
                                 }
                             }
 
-                            if (recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
-                                item(key = "card_recently_played", contentType = "card") {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(cardWidth)
-                                            .fillMaxHeight()
-                                    ) {
-                                        RecentlyPlayedSection(
-                                            songs = recentlyPlayedSongs,
-                                            onSongClick = { song ->
-                                                if (recentlyPlayedQueue.isNotEmpty()) {
-                                                    playerViewModel.playSongs(
-                                                        songsToPlay = recentlyPlayedQueue,
-                                                        startSong = song,
-                                                        queueName = "Recently Played"
-                                                    )
-                                                }
-                                            },
-                                            onOpenAllClick = {
-                                                navController.navigateSafely(Screen.RecentlyPlayed.route)
-                                            },
-                                            themeStateHolder = playerViewModel.themeStateHolder,
-                                            currentSongId = currentSong?.id,
-                                            contentPadding = PaddingValues(start = 8.dp, end = 24.dp),
-                                            isTabletMode = true
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (homeStatsOverview != null && !isCarModeEnabled) {
-                                item(key = "card_stats", contentType = "card") {
+                            // Stats card - disabled in car mode for performance
+                            "stats" -> if (homeStatsOverview != null && !isCarModeEnabled) {
+                                item(
+                                    key = "listening_stats_preview",
+                                    contentType = "listening_stats_preview"
+                                ) {
                                     StatsOverviewCard(
-                                        modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                        modifier = Modifier.padding(horizontal = 16.dp),
                                         summary = homeStatsOverview,
                                         onClick = { navController.navigateSafely(Screen.Stats.route) }
                                     )
                                 }
                             }
-                        }
-                    }
-                } else {
-                    // AI Recommendation Card - disabled in car mode for performance
-                    if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
-                        item(
-                            key = "ai_recommendation_card",
-                            contentType = "ai_recommendation_card"
-                        ) {
-                            AiRecommendationCard(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                playerViewModel = playerViewModel,
-                                recentlyPlayedSongs = recentlyPlayedQueue,
-                                isManualOnly = isAiRecommendationManualOnly,
-                                onClickOpen = {
-                                        navController.navigateSafely(Screen.AiMixScreen.route)
-                                    }
-                                )
-                        }
-                    }
-
-                    // Daily Mix
-                    if (dailyMixSongs.isNotEmpty()) {
-                        item(
-                            key = "daily_mix_section",
-                            contentType = "daily_mix_section"
-                        ) {
-                            DailyMixSection(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                songs = dailyMixSongs,
-                                onClickOpen = {
-                                    navController.navigateSafely(Screen.DailyMixScreen.route)
-                                },
-                                onNavigateToAlbum = { song ->
-                                    navController.navigateSafelyReplacing(
-                                        route = Screen.AlbumDetail.createRoute(song.albumId),
-                                        patternToPop = Screen.AlbumDetail.route
-                                    )
-                                },
-                                onNavigateToArtist = { song ->
-                                    navController.navigateSafelyReplacing(
-                                        route = Screen.ArtistDetail.createRoute(song.artistId),
-                                        patternToPop = Screen.ArtistDetail.route
-                                    )
-                                },
-                                onNavigateToGenre = { song ->
-                                    song.genre?.let {
-                                        navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
-                                    }
-                                },
-                                onNavigateToNeteaseArtistHomepage = { neteaseArtistId ->
-                                    navController.navigateSafelyReplacing(
-                                        route = Screen.ArtistHomepage.createRoute(neteaseArtistId),
-                                        patternToPop = Screen.ArtistHomepage.route
-                                    )
-                                },
-                                playerViewModel = playerViewModel
-                            )
-                        }
-                    }
-
-                    // ⚡ 收藏的歌手卡片（平板：自动换行上下滑动；手机：横向滑动不变）
-                    if (favoriteArtists.isNotEmpty()) {
-                        item(
-                            key = "favorite_artists_section",
-                            contentType = "favorite_artists_section"
-                        ) {
-                            FavoriteArtistsSection(
-                                artists = favoriteArtists,
-                                onArtistClick = { artist ->
-                                    navController.navigateSafely(
-                                        Screen.ArtistHomepage.createRoute(artist.id)
-                                    )
-                                },
-                                isTabletMode = LocalConfiguration.current.screenWidthDp >= 600
-                            )
-                        }
-                    }
-
-                    if (recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
-                        item(
-                            key = "recently_played_section",
-                            contentType = "recently_played_section"
-                        ) {
-                            RecentlyPlayedSection(
-                                songs = recentlyPlayedSongs,
-                                onSongClick = { song ->
-                                    if (recentlyPlayedQueue.isNotEmpty()) {
-                                        playerViewModel.playSongs(
-                                            songsToPlay = recentlyPlayedQueue,
-                                            startSong = song,
-                                            queueName = "Recently Played"
-                                        )
-                                    }
-                                },
-                                onOpenAllClick = {
-                                    navController.navigateSafely(Screen.RecentlyPlayed.route)
-                                },
-                                themeStateHolder = playerViewModel.themeStateHolder,
-                                currentSongId = currentSong?.id,
-                                contentPadding = PaddingValues(start = 8.dp, end = 24.dp)
-                            )
-                        }
-                    }
-
-                    // Stats card - disabled in car mode for performance
-                    if (homeStatsOverview != null && !isCarModeEnabled) {
-                        item(
-                            key = "listening_stats_preview",
-                            contentType = "listening_stats_preview"
-                        ) {
-                            StatsOverviewCard(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                summary = homeStatsOverview,
-                                onClick = { navController.navigateSafely(Screen.Stats.route) }
-                            )
                         }
                     }
                 }
@@ -931,16 +973,12 @@ fun HomeScreen(
                     if (!hearingGuardState.isConfigured) hasShownSetupHint = true
                     showHearingGuardStatusSheet = true
                 },
+                onEditHomeOrder = { showHomeCardOrderSheet = true },
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         } else {
             // 平板横向：像素卫士胶囊浮动在首页右上角（与手机模式一致），替代原左侧导航栏底部盾牌
-            HearingGuardCapsule(
-                state = hearingGuardState,
-                onClick = {
-                    if (!hearingGuardState.isConfigured) hasShownSetupHint = true
-                    showHearingGuardStatusSheet = true
-                },
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(
@@ -949,8 +987,31 @@ fun HomeScreen(
                             .calculateTopPadding(),
                         end = 16.dp
                     )
-                    .zIndex(10f)
-            )
+                    .zIndex(10f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 编辑首页卡片顺序按钮（位于像素卫士胶囊左侧）
+                FilledIconButton(
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    onClick = { showHomeCardOrderSheet = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Tune,
+                        contentDescription = stringResource(R.string.home_edit_card_order)
+                    )
+                }
+                HearingGuardCapsule(
+                    state = hearingGuardState,
+                    onClick = {
+                        if (!hearingGuardState.isConfigured) hasShownSetupHint = true
+                        showHearingGuardStatusSheet = true
+                    }
+                )
+            }
         }
     }
     if (showOptionsBottomSheet) {
@@ -980,6 +1041,18 @@ fun HomeScreen(
         ) {
             BetaInfoBottomSheet()
         }
+    }
+    if (showHomeCardOrderSheet) {
+        HomeCardOrderSheet(
+            entries = homeCardOrderEntries,
+            onReorder = { newOrder ->
+                settingsViewModel.setHomeCardOrder(newOrder)
+            },
+            onReset = {
+                settingsViewModel.setHomeCardOrder(emptyList())
+            },
+            onDismiss = { showHomeCardOrderSheet = false }
+        )
     }
     if (showStreamingProviderSheet) {
         val isNeteaseLoggedIn by neteaseViewModel.isLoggedIn.collectAsStateWithLifecycle()

@@ -209,6 +209,11 @@
     <string name="home_favorite_artists_title">Favorite Artists</string>
     <string name="cd_favorite_artist">Favorite artist</string>
     <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    <string name="home_edit_card_order">Edit home cards</string>
+    <string name="home_card_order_sheet_title">Customize home</string>
+    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    <string name="home_card_ai_recommendation">AI Mix</string>
 
     <!-- Streaming / cloud dashboards -->
     <string name="screen_subsonic_dashboard_title">Subsonic</string>

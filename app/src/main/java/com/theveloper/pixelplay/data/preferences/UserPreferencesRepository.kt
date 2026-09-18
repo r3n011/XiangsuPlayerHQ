@@ -206,6 +206,7 @@ class UserPreferencesRepository @Inject constructor(
         val ALLOWED_DIRECTORIES = stringSetPreferencesKey("allowed_directories")
         val BLOCKED_DIRECTORIES = stringSetPreferencesKey("blocked_directories")
         val INITIAL_SETUP_DONE = booleanPreferencesKey("initial_setup_done")
+        val HOME_CARD_ORDER = stringPreferencesKey("home_card_order")
         val PLAYER_THEME_PREFERENCE = stringPreferencesKey("player_theme_preference_v2")
         val ALBUM_ART_PALETTE_STYLE = stringPreferencesKey("album_art_palette_style_v1")
         val APP_THEME_MODE = stringPreferencesKey("app_theme_mode")
@@ -516,6 +517,19 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setInitialSetupDone(isDone: Boolean) {
         dataStore.edit { it[PreferencesKeys.INITIAL_SETUP_DONE] = isDone }
+    }
+
+    // ─── 首页卡片顺序（逗号分隔保序）─────────────────────────────────────────
+
+    val homeCardOrderFlow: Flow<List<String>> =
+        pref { it[PreferencesKeys.HOME_CARD_ORDER] ?: "" }
+            .map { raw ->
+                if (raw.isBlank()) emptyList()
+                else raw.split(",").filter { it.isNotBlank() }
+            }
+
+    suspend fun setHomeCardOrder(order: List<String>) {
+        dataStore.edit { it[PreferencesKeys.HOME_CARD_ORDER] = order.joinToString(",") }
     }
 
     // ─── Playback ─────────────────────────────────────────────────────────────
@@ -1500,26 +1514,25 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] = strength }
     }
 
-    // 绚丽背景依赖 Compose 硬件模糊（Android 12+ 才稳定），安卓10及以下(SDK<=29)软件模糊易黑屏，
-    // 因此在数据源头直接恒为 false，保证没有任何调用方能在低版本开启/渲染
-    private val vibrantBackgroundSupported: Boolean =
+    // 绚丽背景在 Android 11+（SDK>=30）硬件模糊更稳定；安卓10及以下(SDK<=29)软件模糊
+    // 效果一般。低版本不再硬性禁用，但默认关闭（需用户在设置中手动开启）。
+    private val vibrantBackgroundRecommended: Boolean =
         android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R
 
+    /** 低版本默认关闭，高版本默认开启 */
+    private fun vibrantBackgroundDefault(): Boolean = vibrantBackgroundRecommended
+
     val lyricsVibrantBackgroundEnabledFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] ?: true }
-            .map { it && vibrantBackgroundSupported }
+        pref { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] ?: vibrantBackgroundDefault() }
 
     suspend fun setLyricsVibrantBackgroundEnabled(enabled: Boolean) {
-        if (!vibrantBackgroundSupported) return
         dataStore.edit { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] = enabled }
     }
 
     val playerVibrantBackgroundEnabledFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.PLAYER_VIBRANT_BACKGROUND_ENABLED] ?: true }
-            .map { it && vibrantBackgroundSupported }
+        pref { it[PreferencesKeys.PLAYER_VIBRANT_BACKGROUND_ENABLED] ?: vibrantBackgroundDefault() }
 
     suspend fun setPlayerVibrantBackgroundEnabled(enabled: Boolean) {
-        if (!vibrantBackgroundSupported) return
         dataStore.edit { it[PreferencesKeys.PLAYER_VIBRANT_BACKGROUND_ENABLED] = enabled }
     }
 

@@ -135,7 +135,10 @@ internal fun TabScreenContent(
         Screen.CloudMusicSettings.route -> {
             ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                 CloudMusicSettingsScreen(
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onOpenMarket = {
+                        navController.navigateSafely(Screen.SourceMarket.route)
+                    }
                 )
             }
         }

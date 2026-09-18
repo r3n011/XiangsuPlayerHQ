@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object Library : Screen("library")
     object Settings : Screen("settings")
     object Accounts : Screen("settings_accounts")
+    object SourceMarket : Screen("source_market")
     object SettingsCategory : Screen("settings_category/{categoryId}") {
         fun createRoute(categoryId: String) = "settings_category/$categoryId"
     }
@@ -71,6 +72,5 @@ sealed class Screen(val route: String) {
     object CloudMusicSettings : Screen("cloud_music_settings")
     object DotDeviceSettings : Screen("dot_device_settings")
     object Roaming : Screen("roaming_action")
-    object HeadphonePreset : Screen("headphone_preset")
     object Radio : Screen("radio")
 }

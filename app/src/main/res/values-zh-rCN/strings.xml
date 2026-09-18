@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">像素播放器</string>
     <string name="app_name_change_title">应用已更名</string>
@@ -13,27 +14,18 @@
     <string name="cancel">取消</string>
     <string name="import_file">导入</string>
     <string name="search">搜索</string>
-
     <string name="lyrics">歌词</string>
     <string name="close_lyrics_sheet">关闭歌词面板</string>
     <string name="loading_lyrics">正在加载歌词……</string>
     <string name="cant_find_lyrics">找不到这首歌的歌词。</string>
-    <string name="lyrics_provided_by">歌词提供方</string>
     <string name="lrclib_uri">https://lrclib.net/</string>
-    <string name="lyrics_not_found">未找到歌词</string>
     <string name="search_lyrics_online_prompt">要在线搜索歌词吗？</string>
     <string name="search_lyrics_online">在线搜索歌词</string>
-    <string name="lyrics_custom_search_hint">我们无法自动找到歌词。你可以修改标题或艺术家后再手动搜索。</string>
     <string name="failed_to_search_for_lyrics">搜索歌词失败</string>
     <string name="failed_to_fetch_lyrics_from_remote">从远程获取歌词失败</string>
-    <string name="lyrics_fetch_timeout">连接超时。请检查你的网络连接。</string>
-    <string name="lyrics_network_error">网络错误。请检查你的网络连接。</string>
-    <string name="lyrics_server_error">服务器错误（代码 %d）。请稍后重试。</string>
     <string name="found_n_matches_format">找到 %d 个匹配结果</string>
     <string name="searched_for_x_format">已搜索 \"%s\"</string>
     <string name="searching_lyrics">正在搜索歌词……</string>
-    <string name="lyrics_already_available">Lyrics already available. Online fetch skipped.</string>
-    <string name="lyrics_embedded_already_available">已找到内嵌歌词，已跳过在线获取。</string>
     <string name="local_lrc_already_available">已找到本地 (.lrc) 歌词，已跳过在线获取。</string>
     <string name="fetch_lyrics_show_options_title">显示歌词选项</string>
     <string name="fetch_lyrics_show_options_subtitle">始终打开选择器，而不是自动应用第一个匹配结果</string>
@@ -51,7 +43,6 @@
     <string name="lyrics_sync_offset_reset">重置</string>
     <string name="lyrics_earlier">提前</string>
     <string name="lyrics_later">延后</string>
-
     <string name="sync_scanning">正在扫描音乐文件……</string>
     <string name="sync_processing">正在处理文件……</string>
     <string name="sync_files_progress">%1$d / %2$d 个文件</string>
@@ -66,12 +57,7 @@
     <string name="unknown_song_title">未知曲目</string>
     <string name="unknown_artist">未知艺术家</string>
     <string name="unknown_album">未知专辑</string>
-    <string name="artist_picker_title">选择艺术家</string>
     <string name="artist_picker_supporting_text">打开此曲目署名的任意艺术家页面。</string>
-    <string name="artist_picker_count_single">1 位艺术家</string>
-    <string name="artist_picker_count_multiple">%1$d 位艺术家</string>
-    <string name="artist_picker_primary_label">主要艺术家</string>
-    <string name="artist_picker_shortcut_label">艺术家页面</string>
     <string name="external_queue_label">快速播放</string>
     <string name="external_playback_error">无法打开该音频文件。</string>
     <string name="open_full_player">打开完整播放器</string>
@@ -86,7 +72,6 @@
     <string name="playback_speed_pitch_follow_desc">开启后音高随倍速自动变调，关闭时保持原调</string>
     <string name="playlist_not_found">未找到播放列表。</string>
     <string name="disc_number_header">碟片 %d</string>
-
     <string name="ai_error_api_key">请在「设置」中为所选 AI 提供商配置有效的 API 密钥。</string>
     <string name="ai_error_generic">AI 错误：%s</string>
     <string name="ai_error_quota">所选 AI 提供商拒绝了该请求，因为账户没有余额或可用配额。</string>
@@ -95,16 +80,13 @@
     <string name="ai_prompt_empty">为你的每日合辑写一个想法</string>
     <string name="ai_daily_mix_updated">已使用 AI 更新每日合辑</string>
     <string name="ai_no_songs_for_mix">AI 没有为这个合辑找到歌曲</string>
-
     <string name="shortcut_shuffle_short">随机播放</string>
     <string name="shortcut_shuffle_long">随机播放全部歌曲</string>
     <string name="shortcut_playlist_short">播放列表</string>
     <string name="shortcut_playlist_long">上次播放的播放列表</string>
-
     <string name="tile_shuffle_all">全部随机播放</string>
     <string name="tile_last_playlist">上次播放的列表</string>
     <string name="tile_last_playlist_unavailable">没有可打开的播放列表</string>
-
     <string name="invalid_album_id">无效的专辑 ID</string>
     <string name="album_id_not_found">未找到专辑 ID</string>
     <string name="error_loading_album">加载专辑数据时出错：%s</string>
@@ -115,14 +97,7 @@
     <string name="error_loading_artist">加载艺术家数据时出错：%s</string>
     <string name="could_not_find_artist">找不到该艺术家</string>
     <string name="no_valid_songs">未找到可播放的有效歌曲</string>
-
-    <string name="glance_widget_description">会根据尺寸自适应的响应式小组件</string>
-    <string name="widget_bar_4x1_desc">紧凑型播放器栏</string>
-    <string name="widget_control_4x2_desc">包含随机和重复的完整控制</string>
-    <string name="widget_grid_2x2_desc">极简方形播放器</string>
     <string name="service_processing_action">正在处理播放操作……</string>
-
-    <!-- Playlist bulk actions -->
     <string name="playlist_none_to_share">没有可分享的播放列表</string>
     <string name="playlist_share_chooser_title">分享播放列表</string>
     <string name="playlist_share_failed">分享失败：%1$s</string>
@@ -133,35 +108,16 @@
     <string name="error_unknown">未知错误</string>
     <string name="failed_to_play_song_url_resolve">无法播放 %1$s — 无法解析播放地址</string>
     <string name="unknown">未知</string>
-
-    <!-- Watch transfer foreground service -->
     <string name="watch_transfer_sending_n_to_watch">正在发送 %1$d 首歌曲到手表</string>
     <string name="watch_transfer_sending_to_watch">正在发送到手表</string>
     <string name="watch_transfer_complete">传输完成</string>
     <string name="watch_transfer_failed">传输失败</string>
     <string name="watch_transfer_cancelled">传输已取消</string>
     <string name="watch_transfer_preparing">正在准备手表传输</string>
-    <string name="watch_transfer_summary_n">%1$d 个传输</string>
     <string name="watch_transfer_starting">正在开始传输……</string>
     <string name="watch_transfer_multiple_active">有多个活动中的传输</string>
     <string name="watch_transfer_preparing_transfer">正在准备传输……</string>
-    <string name="watch_transfer_status_transferring">传输中</string>
-    <string name="watch_transfer_status_completed">已完成</string>
-    <string name="watch_transfer_status_failed">失败</string>
-    <string name="watch_transfer_status_cancelled">已取消</string>
-    <string name="watch_transfer_status_preparing">准备中</string>
     <string name="watch_transfer_starting_short">开始中</string>
-    <string name="watch_transfer_channel_name">手表传输</string>
-    <string name="watch_transfer_channel_description">显示手机到手表音乐传输的实时进度</string>
-
-    <!-- Cast HTTP server -->
-    <string name="cast_server_channel_name">Cast 媒体服务器</string>
-    <string name="cast_server_notification_title">正在投放到设备</string>
-    <string name="cast_server_notification_text">正在向 Cast 设备提供媒体内容</string>
-    <string name="cast_server_foreground_error">%1$s：%2$s</string>
-    <string name="cast_seek_unavailable_for_format">为避免投放进程崩溃，暂不支持调整此音频格式的播放进度。</string>
-
-    <!-- Backup / data transfer (ViewModels) -->
     <string name="backup_invalid_format">无效备份：%1$s</string>
     <string name="backup_progress_preparing_restore">正在准备恢复</string>
     <string name="backup_progress_starting_task">正在启动恢复任务。</string>
@@ -177,8 +133,6 @@
     <string name="restore_partial_unresolved_format">恢复已完成，但存在未解决的问题。失败项：%1$s</string>
     <string name="models_fetch_failed">加载模型失败</string>
     <string name="dev_test_crash_message">已从开发者选项触发测试崩溃——这是为了测试崩溃上报系统而故意设置的</string>
-
-    <!-- PlayerViewModel -->
     <string name="player_song_not_found_in_list">当前列表中未找到歌曲</string>
     <string name="player_could_not_locate_song">无法定位歌曲</string>
     <string name="player_no_songs_in_library_toast">媒体库中未找到歌曲</string>
@@ -211,30 +165,18 @@
     <string name="playlist_restored_toast">播放列表已恢复</string>
     <string name="delete_songs_permanent_message">这些歌曲将从你的设备中被永久删除，且无法恢复。</string>
     <string name="delete_action">删除</string>
-
-    <!-- Sleep timer (SleepTimerStateHolder + TimerOptionsBottomSheet) -->
-    <string name="sleep_timer_n_minutes_format">%1$d 分钟</string>
-    <string name="sleep_timer_display_eot">曲目结束时</string>
-    <string name="sleep_timer_set_for_minutes_toast">已设置 %1$d 分钟后停止。</string>
-    <string name="sleep_timer_cancelled_toast">定时器已取消。</string>
-    <string name="sleep_timer_eot_no_song_toast">无法启用「曲目结束时」：当前没有活动歌曲。</string>
-    <string name="sleep_timer_eot_song_changed_toast">「曲目结束时」定时器已停用：歌曲已从 %1$s 切换为 %2$s。</string>
     <string name="sleep_timer_eot_stop_at_end_toast">播放将在曲目结束时停止。</string>
-    <string name="sleep_timer_label_previous_track">上一曲</string>
-    <string name="sleep_timer_label_current_track">当前曲目</string>
     <string name="sleep_timer_ui_title">睡眠定时器</string>
     <string name="sleep_timer_ui_slider_label_timer">定时器</string>
     <string name="sleep_timer_ui_end_of_current_track">当前曲目结束时</string>
     <string name="sleep_timer_ui_custom_time">自定义时间</string>
     <string name="sleep_timer_ui_cancel_timer">取消定时器</string>
-    <string name="sleep_timer_ui_set_custom_duration">设置自定义时长</string>
     <string name="sleep_timer_ui_play_count_label">播放次数：%1$s</string>
     <string name="sleep_timer_ui_play_count_one_time">1 次</string>
     <string name="cd_switch_on">打开</string>
     <string name="ui_format_percent_d">%1$d%%</string>
     <string name="backup_manifest_schema_v">v%1$d</string>
     <string name="backup_manifest_device_line">%1$s %2$s</string>
-
     <string name="ai_translate_via_ai">使用 AI 翻译</string>
     <string name="ai_lyrics_already_translated">这些歌词已经有译文</string>
     <string name="ai_lyrics_already_in_target_language">这些歌词已经是当前语言</string>
@@ -250,24 +192,7 @@
     <string name="setcat_ai_companion_speed">语速</string>
     <string name="setcat_ai_companion_mimo_key_hint">输入 MiMo API Key（格式：sk-xxxxx），前往 mimo.mi.com 获取</string>
     <string name="share_clipboard_detected">检测到剪贴板中的分享链接，点击导入</string>
-
     <string name="player_playback_error">播放错误：%1$s</string>
-
-    <!-- Batch Edit -->
-    <string name="batch_edit_toolbar_title">编辑 %d 首歌曲</string>
-    <string name="batch_edit_info_message">只会更新修改过的字段。留空的字段保持原值不变。</string>
-    <string name="batch_edit_mixed_values">（多种值）</string>
-    <string name="batch_edit_optional">（可选 — 留空即可跳过）</string>
-    <string name="batch_edit_success">成功更新 %d 首歌曲</string>
-    <string name="batch_edit_partial_success">已更新 %1$d/%2$d 首歌曲。部分文件无法编辑。</string>
-    <string name="batch_edit_failed">更新歌曲失败</string>
-
-    <!-- Batch Edit Cover Art -->
-    <string name="batch_edit_cover_art_heading">批量封面</string>
-    <string name="batch_edit_cover_art_hint">这将替换所有 %d 首已选歌曲的封面</string>
-    <string name="batch_edit_set_cover_art">为所有歌曲设置封面</string>
-    <string name="batch_edit_remove_all_art">移除所有封面</string>
-    <string name="batch_edit_multiple_covers">（多种不同封面）</string>
     <string name="nav_bar_home">主页</string>
     <string name="nav_bar_search">搜索</string>
     <string name="nav_bar_roaming">漫游</string>
@@ -289,45 +214,100 @@
     <string name="lx_cancel">取消</string>
     <string name="lx_ok">好</string>
     <string name="lx_info_title">JS 引擎信息</string>
-
-    <!-- Headphone Preset -->
-    <string name="headphone_preset_title">耳机预设</string>
-    <string name="headphone_preset_search_placeholder">搜索耳机……</string>
-    <string name="headphone_preset_categories">分类</string>
-    <string name="headphone_preset_brands">品牌</string>
-    <string name="headphone_preset_all">全部</string>
-    <string name="headphone_preset_bind_bluetooth">绑定蓝牙</string>
-    <string name="headphone_preset_apply">应用</string>
-    <string name="headphone_preset_eq_settings">均衡器设置</string>
-    <string name="headphone_preset_preamp">预增益: %1$.1fdB</string>
-    <string name="headphone_preset_bind_to_device">绑定到设备</string>
-    <string name="headphone_preset_apply_now">立即应用</string>
-    <string name="headphone_preset_select_bluetooth_device">选择蓝牙设备</string>
-    <string name="headphone_preset_no_bluetooth_devices">未找到蓝牙设备</string>
-    <string name="headphone_preset_bluetooth_settings">蓝牙设置</string>
-    <string name="headphone_preset_bluetooth_bindings">蓝牙绑定</string>
-    <string name="headphone_preset_no_bindings">暂无绑定</string>
-    <string name="headphone_preset_binding_preset">预设 ID: %1$d</string>
-    <string name="headphone_preset_unbind">取消绑定</string>
-    <string name="headphone_preset_clear">清除预设</string>
-    <string name="headphone_preset_currently_active">当前使用中</string>
-    <string name="headphone_preset_no_eq_bands">无 EQ 频段（仅预增益）</string>
-    <string name="headphone_preset_refresh">刷新预设</string>
-    <string name="headphone_preset_refreshed">预设已更新</string>
-    <string name="headphone_preset_refresh_failed">刷新预设失败：%1$s</string>
-    <string name="headphone_preset_applied">已应用 \"%1$s\"</string>
-    <string name="headphone_preset_apply_failed">应用预设失败：%1$s</string>
-    <string name="headphone_preset_cleared">已清除耳机预设</string>
-    <string name="headphone_preset_clear_failed">清除预设失败：%1$s</string>
-    <string name="headphone_preset_recommended">推荐</string>
-    <string name="headphone_preset_recommended_subtitle">热门耳机型号的优化均衡</string>
-    <string name="headphone_preset_no_recommendations">暂无推荐预设，刷新可加载最新预设库。</string>
-    <string name="bluetooth_preset_switch_channel_name">耳机预设切换</string>
-    <string name="bluetooth_preset_switch_channel_desc">蓝牙设备连接时自动切换耳机预设的通知</string>
-    <string name="bluetooth_preset_switched">预设已切换</string>
-    <string name="bluetooth_preset_switched_body">已切换到 \"%1$s\" 预设</string>
+    <string name="autoeq_manage">管理 AutoEQ</string>
+    <string name="autoeq_configure_desc">使用优化的 AutoEQ 配置文件配置您的音频设备，以获得最佳聆听体验。</string>
+    <string name="autoeq_no_devices">未配置设备</string>
+    <string name="autoeq_add_prompt">添加耳机或扬声器以获得个性化 EQ 设置</string>
+    <string name="autoeq_delete_device_title">删除设备</string>
+    <string name="autoeq_import_profile">导入 EQ 配置文件</string>
+    <string name="autoeq_import_paste_hint">粘贴来自 autoeq.app 或其他来源的 EQ 设置。</string>
+    <string name="autoeq_eq_settings_label">均衡器设置</string>
+    <string name="autoeq_failed_read_file">读取文件失败</string>
+    <string name="autoeq_no_brand">无品牌</string>
+    <string name="autoeq_change_profile">更改配置文件</string>
+    <string name="autoeq_configure_device">配置设备</string>
+    <string name="autoeq_profile_applied">已应用 %1$s 配置文件</string>
+    <string name="license_autoeq_name">AutoEQ</string>
+    <string name="autoeq_picker_title">选择 AutoEQ 预设</string>
+    <string name="autoeq_picker_search_hint">搜索预设…</string>
+    <string name="autoeq_clear">清除</string>
+    <string name="autoeq_toggle_filters">切换过滤器</string>
+    <string name="autoeq_filters">过滤器</string>
+    <string name="autoeq_clear_all">全部清除</string>
+    <string name="autoeq_brand">品牌</string>
+    <string name="autoeq_type">类型</string>
+    <string name="autoeq_disable">无 / 禁用 AutoEQ</string>
+    <string name="autoeq_disable_desc">清除耳机配置文件，使用标准 EQ 预设</string>
+    <string name="autoeq_no_presets_found">未找到预设</string>
+    <string name="autoeq_currently_active">当前使用中</string>
+    <string name="autoeq_reset">重置</string>
+    <string name="device_configuration_devices_configured">已配置 %1$d 台设备</string>
+    <string name="device_configuration_device_recognized">设备已识别</string>
+    <string name="device_configuration_new_device_detected">检测到新设备</string>
+    <string name="device_configuration_configured_with">%1$s 配置为 %2$s</string>
+    <string name="device_configuration_configured_no_profile">%1$s 已配置</string>
+    <string name="device_configuration_connected_not_configured">%1$s 已连接但未配置</string>
+    <string name="device_configuration_applied_profile">已应用 %1$s 配置文件</string>
+    <string name="device_configuration_imported_profile">导入的配置文件</string>
+    <string name="device_configuration_parse_error">无法解析 EQ 设置。请检查格式。</string>
+    <string name="device_configuration_custom_eq">自定义均衡器</string>
+    <string name="device_configuration_custom">自定义</string>
+    <string name="device_configuration_active_profile_label">当前配置文件：%1$s</string>
+    <string name="device_configuration_share_subject">PixelPlay EQ 配置文件：%1$s</string>
+    <string name="device_configuration_share_title">共享 EQ 配置文件</string>
+    <string name="device_configuration_edit_device">编辑设备</string>
+    <string name="device_configuration_add_device">添加设备</string>
+    <string name="device_configuration_save">保存</string>
+    <string name="device_configuration_add">添加</string>
+    <string name="device_configuration_for_device">适用于 %1$s</string>
+    <string name="device_configuration_profiles_available">%1$d 款配置文件可用</string>
+    <string name="device_configuration_disable_compensation">禁用耳机补偿</string>
+    <string name="deviceconfiguration_delete_confirm">您确定要删除“%1$s”吗？此操作无法撤消。</string>
+    <string name="deviceconfiguration_profile_imported">已导入配置文件：%1$s</string>
+    <string name="deviceconfigurationbottomsheet_supported_formats_fixedbandeq_text">支持的格式：\n• FixedBandEQ 文本（AutoEQ）\n• JSON 格式\n• CSV（10 段频段值）</string>
+    <string name="deviceconfigurationbottomsheet_paste_eq_data_here">在此处粘贴 EQ 数据…</string>
+    <string name="deviceconfigurationbottomsheet_open_autoeqapp">打开 autoeq.app</string>
+    <string name="deviceconfigurationbottomsheet_export_eq_profile">导出 EQ 配置文件</string>
+    <string name="deviceconfigurationbottomsheet_copied_to_clipboard">已复制到剪贴板</string>
+    <string name="deviceconfigurationbottomsheet_copy">复制</string>
+    <string name="deviceconfigurationbottomsheet_device_name">设备名称</string>
+    <string name="deviceconfigurationbottomsheet_eg_sony_wh1000xm4">例如：索尼 WH-1000XM4</string>
+    <string name="deviceconfigurationbottomsheet_brand_optional">品牌（可选）</string>
+    <string name="deviceconfigurationbottomsheet_eg_sony">例如：索尼</string>
+    <string name="deviceconfigurationbottomsheet_select_autoeq_profile">选择 AutoEQ 配置文件</string>
+    <string name="deviceconfigurationbottomsheet_find_a_profile_for">查找该设备的配置文件…</string>
+    <string name="deviceconfigurationbottomsheet_no_matching_profiles_found">未找到匹配的配置文件</string>
+    <string name="deviceconfiguration_clip_label">导出的文本</string>
+    <string name="device_mono_audio_title">单声道音频</string>
+    <string name="device_mono_audio_desc">将立体声通道混合到中央，适合单耳机聆听。</string>
+    <string name="bottomsheet_active_device">活跃设备</string>
+    <string name="bottomsheet_export_eq">与他人共享您的 EQ 设置或保存备份。</string>
+    <string name="bottomsheet_no_eq_export">没有可导出的活动均衡器设置。请先启用均衡器并进行配置。</string>
+    <string name="bottomsheet_device_type">设备类型</string>
+    <string name="common_none">无</string>
+    <string name="streaming_selected">已选</string>
+    <string name="settings_mono_audio">单声道音频</string>
+    <string name="button_edit">编辑</string>
+    <string name="button_add">添加</string>
+    <string name="button_import">导入</string>
+    <string name="button_export">导出</string>
+    <string name="button_delete">删除</string>
+    <string name="ui_cancel">取消</string>
+    <string name="ui_done">完成</string>
+    <string name="ui_clear">清除</string>
+    <string name="text_file">文件</string>
+    <string name="text_paste">粘贴</string>
+    <string name="autoeqsuggestiondialog_audio_device_detected">检测到音频设备</string>
+    <string name="autoeqsuggestiondialog_saved_configuration">已保存的配置</string>
+    <string name="autoeqsuggestiondialog_status_has_profile">此设备已配置 AutoEQ 配置文件。是否立即应用？</string>
+    <string name="autoeqsuggestiondialog_status_no_profile">此设备已配置但没有 AutoEQ 配置文件。是否现在配置？</string>
+    <string name="autoeqsuggestiondialog_note_equalizer_is_currently">注意：均衡器当前已禁用。应用配置文件将自动启用它。</string>
+    <string name="autoeqsuggestiondialog_apply_profile">应用配置文件</string>
+    <string name="autoeqsuggestiondialog_dont_ask">不再询问</string>
+    <string name="autoeqsuggestiondialog_not_now">稍后再说</string>
+    <string name="equalizerscreen_autoeq_profiles">AutoEQ 配置文件</string>
+    <string name="eq_manage_device">管理设备</string>
     <string name="action_cancel">取消</string>
-
     <string name="update_available_label">更新</string>
     <string name="update_available_title">发现新版本</string>
     <string name="update_available_body">新版本 %s 已发布，请前往官网下载更新。</string>
@@ -337,6 +317,10 @@
     <string name="update_go_download">去下载</string>
     <string name="update_no_download_source">暂无可用下载源</string>
     <string name="update_no_browser">未找到可用的浏览器</string>
+    <string name="update_arch_arm64">64 位</string>
+    <string name="update_arch_x86">32 位</string>
+    <string name="update_arch_arm">32 位 ARM</string>
+    <string name="update_arch_recommended">推荐</string>
     <string name="update_check_title">检查更新</string>
     <string name="update_check_subtitle">检查是否有新版本可用</string>
     <string name="update_auto_check_title">自动检查更新</string>
@@ -349,8 +333,6 @@
     <string name="about_changelog_error">加载更新日志失败</string>
     <string name="about_changelog_empty">暂无更新内容</string>
     <string name="about_changelog_unknown_date">未知时间</string>
-
-    <!-- 转码缓存设置 -->
     <string name="transcode_strategy_streaming">边听边转码</string>
     <string name="transcode_strategy_cache_first">先转码后播放</string>
     <string name="setcat_transcode_cache_title">转码缓存</string>
@@ -366,4 +348,115 @@
     <string name="transcode_cache_list_empty">暂无转码缓存歌曲</string>
     <string name="transcode_cache_list_clear_all">全部清除</string>
     <string name="transcode_cache_list_delete">删除缓存</string>
+    <string name="onboarding_welcome_to">欢迎使用</string>
+    <string name="onboarding_get_started">开始</string>
+    <string name="onboarding_toggle_theme">切换主题</string>
+    <string name="onboarding_toggle_language">切换语言</string>
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_back">返回</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_finish">开始使用</string>
+    <string name="onboarding_step_of">第 %1$d 步，共 %2$d 步</string>
+    <string name="onboarding_step_permissions_title">媒体访问权限</string>
+    <string name="onboarding_step_permissions_desc">允许访问你的音乐媒体库，XiangsuPlayer 即可扫描并播放本地歌曲。</string>
+    <string name="onboarding_step_permissions_granted">权限已授予</string>
+    <string name="onboarding_step_permissions_request">授予权限</string>
+    <string name="onboarding_step_equalizer_title">录音室级均衡器</string>
+    <string name="onboarding_step_equalizer_desc">10 段参数均衡器，内置热门耳机 Auto EQ 预设。</string>
+    <string name="onboarding_step_hearing_title">像素卫士 · 听力保护</string>
+    <string name="onboarding_step_hearing_desc">智能音量限幅与安全聆听引导，保护你的听力。</string>
+    <string name="onboarding_step_ai_title">AI 陪伴助手</string>
+    <string name="onboarding_step_ai_desc">随时向 AI 提问：搜歌、看歌词、获取音乐推荐。</string>
+    <string name="onboarding_step_lyrics_title">歌词与绚丽背景</string>
+    <string name="onboarding_step_lyrics_desc">实时歌词搭配极光渐变绚丽背景。</string>
+    <string name="onboarding_step_theme_title">外观主题</string>
+    <string name="onboarding_step_theme_desc">选择浅色、深色或跟随系统。</string>
+    <string name="onboarding_theme_follow_system">跟随系统</string>
+    <string name="onboarding_theme_light">浅色</string>
+    <string name="onboarding_theme_dark">深色</string>
+    <string name="onboarding_step_finished_title">XiangsuPlayer</string>
+    <string name="onboarding_step_finished_desc">尽情享受 XiangsuPlayer——你的音乐，精调至臻。</string>
+    <string name="onboarding_features">亮点功能</string>
+    <string name="onboarding_step_media_title">媒体库</string>
+    <string name="onboarding_step_media_desc">XiangsuPlayer 自动扫描本地音乐，你还可以自定义包含的文件夹。</string>
+    <string name="onboarding_tip_media_1">自动扫描全部本地音频</string>
+    <string name="onboarding_tip_media_2">支持高解析度与无损格式</string>
+    <string name="onboarding_tip_media_3">可自定义媒体库扫描文件夹</string>
+    <string name="onboarding_step_audio_title">播放音质</string>
+    <string name="onboarding_step_audio_desc">精细调校声音——从输出音质到变速控制。</string>
+    <string name="onboarding_tip_audio_1">高解析度 DSD/DFF 转码</string>
+    <string name="onboarding_tip_audio_2">高采样率输出</string>
+    <string name="onboarding_tip_audio_3">逐曲变速与变调控制</string>
+    <string name="onboarding_step_gestures_title">手势控制</string>
+    <string name="onboarding_step_gestures_desc">在播放器界面用直觉手势控制播放。</string>
+    <string name="onboarding_tip_gestures_1">滑动切换歌曲</string>
+    <string name="onboarding_tip_gestures_2">轻点播放或暂停</string>
+    <string name="onboarding_tip_gestures_3">拖动进度条快进快退</string>
+    <string name="onboarding_step_stats_title">收听统计</string>
+    <string name="onboarding_step_stats_desc">用精美的个人统计追踪你的收听习惯。</string>
+    <string name="onboarding_tip_stats_1">热门艺人与专辑统计</string>
+    <string name="onboarding_tip_stats_2">播放时长统计</string>
+    <string name="onboarding_tip_stats_3">个性化收听洞察</string>
+    <string name="onboarding_tip_permissions_1">完整访问本地音乐</string>
+    <string name="onboarding_tip_permissions_2">播放控制通知</string>
+    <string name="onboarding_tip_permissions_3">隐私安全：数据不出设备</string>
+    <string name="onboarding_tip_equalizer_1">10 段专业均衡器</string>
+    <string name="onboarding_tip_equalizer_2">适配耳机的 AutoEQ 预设</string>
+    <string name="onboarding_tip_equalizer_3">低音增强与空间音效</string>
+    <string name="onboarding_tip_hearing_1">音量上限保护听力</string>
+    <string name="onboarding_tip_hearing_2">实时响度监测</string>
+    <string name="onboarding_tip_hearing_3">收听休息智能提醒</string>
+    <string name="onboarding_tip_ai_1">播放器内置 AI 助手</string>
+    <string name="onboarding_tip_ai_2">智能音乐发现与歌词讲解</string>
+    <string name="onboarding_tip_ai_3">与流式 AI 自然对话</string>
+    <string name="onboarding_tip_lyrics_1">同步歌词与绚丽视觉</string>
+    <string name="onboarding_tip_lyrics_2">极光背景特效</string>
+    <string name="onboarding_tip_lyrics_3">歌词自动获取</string>
+    <string name="onboarding_tip_theme_1">浅色、深色与动态取色主题</string>
+    <string name="onboarding_tip_theme_2">Material You 壁纸取色</string>
+    <string name="onboarding_tip_theme_3">自定义强调色与形状预设</string>
+    <string name="onboarding_tip_finished_1">一切已准备就绪</string>
+    <string name="onboarding_tip_finished_2">开始探索你的音乐库</string>
+    <string name="onboarding_tip_finished_3">随时可在设置中调整更多</string>
+    <string name="onboarding_quick_enable_equalizer">启用均衡器</string>
+    <string name="onboarding_quick_equalizer_preset">选择均衡器预设</string>
+    <string name="onboarding_quick_hifi">Hi-Fi 模式</string>
+    <string name="onboarding_quick_crossfade">交叉淡入播放</string>
+    <string name="onboarding_quick_online_quality">在线播放音质</string>
+    <string name="onboarding_quick_media_scan">立即扫描媒体库</string>
+    <string name="onboarding_quick_media_rescan">重新扫描媒体库</string>
+    <string name="onboarding_quick_media_scanning">正在扫描…</string>
+    <string name="onboarding_quick_hearing_enable">启用像素卫士</string>
+    <string name="onboarding_quick_hearing_setup">初始化像素卫士设置</string>
+    <string name="onboarding_quick_hearing_reconfigure">重新配置像素卫士</string>
+    <string name="onboarding_quick_ai_provider">选择 AI 服务商</string>
+    <string name="onboarding_quick_ai_api_key">API Key</string>
+    <string name="onboarding_quick_ai_api_key_hint">在此粘贴你的 API Key</string>
+    <string name="onboarding_quick_lyrics_aurora">歌词绚丽背景</string>
+    <string name="onboarding_quick_player_background">播放器绚丽背景</string>
+    <string name="onboarding_quick_gesture_swipe">左右滑动封面切歌</string>
+    <string name="onboarding_quick_gesture_tap">点击封面进入专辑</string>
+    <string name="onboarding_quick_finished_tap">点击上方头像进入软件</string>
+    <string name="onboarding_select_language">选择语言</string>
+    <string name="ai_explain_lyrics">使用 AI 解读歌词</string>
+    <string name="ai_lyrics_explaining">正在分析歌词含义……</string>
+    <string name="ai_lyrics_explanation_title">歌词解读</string>
+    <string name="ai_lyrics_no_explanation">暂无解读</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_confirm">确认</string>
+    <string name="home_toplist_subtitle">网易云官方榜单</string>
+    <string name="home_toplist_title">排行榜</string>
+    <string name="setcat_home_toplist_subtitle">在首页展示网易云官方排行榜</string>
+    <string name="setcat_home_toplist_title">首页排行榜</string>
+    <string name="toplist_detail_play_all">播放全部</string>
+    <string name="toplist_detail_shuffle">随机播放</string>
+    <string name="toplist_empty">暂无歌曲</string>
+    <string name="toplist_loading_failed">加载失败，点击重试</string>
+    <string name="toplist_retry">重试</string>
+    <string name="toplist_see_all">查看全部</string>
+    <string name="toplist_songs_count">%1$d 首歌曲</string>
+    <string name="update_open_settings_failed">打开安装设置失败</string>
+    <string name="web_remote_server_channel_name">网页遥控</string>
+    <string name="web_remote_server_notification_text">从局域网任意浏览器访问 PixelPlay</string>
+    <string name="web_remote_server_notification_title">网页遥控已启用</string>
 </resources>

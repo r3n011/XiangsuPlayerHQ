@@ -643,7 +643,16 @@ constructor(
         // which isn't available in the simple albumMap (which only has ID)
         val albumEntities = correctedSongs.groupBy { it.albumId }.map { (catAlbumId, songsInAlbum) ->
              val firstSong = songsInAlbum.first()
-             val representativeAlbumArt = songsInAlbum.firstNotNullOfOrNull { it.albumArtUriString }
+             // ⚡ 专辑封面优先取"用户编辑过的自定义封面"（local:// 带缓存破坏 token），
+             //    否则取第一首有封面的歌曲，避免编辑封面后专辑封面被聚合逻辑改回旧值。
+             val representativeAlbumArt = songsInAlbum
+                 .firstNotNullOfOrNull { song ->
+                     song.albumArtUriString?.takeIf {
+                         com.theveloper.pixelplay.utils.LocalArtworkUri.isLocalArtworkUri(it) &&
+                             com.theveloper.pixelplay.utils.LocalArtworkUri.extractCacheBustToken(it) != null
+                     }
+                 }
+                 ?: songsInAlbum.firstNotNullOfOrNull { it.albumArtUriString }
              val determinedAlbumArtist = chooseAlbumDisplayArtist(
                  songs = songsInAlbum,
                  preferAlbumArtist = groupByAlbumArtist
@@ -1128,7 +1137,16 @@ constructor(
                                     genre = localSong.genre ?: mediaStoreSong.genre,
                                     trackNumber = if (localSong.trackNumber != 0) localSong.trackNumber else mediaStoreSong.trackNumber,
                                     discNumber = localSong.discNumber ?: mediaStoreSong.discNumber,
-                                    albumArtUriString = mediaStoreSong.albumArtUriString
+                                    // ⚡ 用户编辑过的自定义封面（local:// 带缓存破坏 token）必须保留，
+                                    //    否则媒体库重扫后 albumArtUriString 被覆盖回默认值，导致 UI 闪回旧封面。
+                                    albumArtUriString = if (
+                                        com.theveloper.pixelplay.utils.LocalArtworkUri.isLocalArtworkUri(localSong.albumArtUriString) &&
+                                        com.theveloper.pixelplay.utils.LocalArtworkUri.extractCacheBustToken(localSong.albumArtUriString) != null
+                                    ) {
+                                        localSong.albumArtUriString
+                                    } else {
+                                        mediaStoreSong.albumArtUriString
+                                    }
                                 )
                             } else {
                                 mediaStoreSong

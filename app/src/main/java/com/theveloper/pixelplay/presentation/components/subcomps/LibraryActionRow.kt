@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -119,12 +120,14 @@ fun LibraryActionRow(
             targetState = isFoldersTab,
             label = "ActionRowContent",
             transitionSpec = {
+                // ⚡ 用固定时长 tween 代替默认 spring：默认可见性动画（StiffnessLow 弹簧）
+                //    会产生过冲/长尾，切换时左上角内容（按钮组 ↔ 面包屑）视觉上"闪一下"。
                 if (targetState) { // Transition to Folders (Breadcrumbs)
-                    slideInVertically { height -> height } + fadeIn() togetherWith
-                            slideOutVertically { height -> -height } + fadeOut()
+                    (slideInVertically(tween(200)) { height -> height } + fadeIn(tween(200))) togetherWith
+                            (slideOutVertically(tween(150)) { height -> -height } + fadeOut(tween(150)))
                 } else { // Transition to other tabs (Buttons)
-                    slideInVertically { height -> -height } + fadeIn() togetherWith
-                            slideOutVertically { height -> height } + fadeOut()
+                    (slideInVertically(tween(200)) { height -> -height } + fadeIn(tween(200))) togetherWith
+                            (slideOutVertically(tween(150)) { height -> height } + fadeOut(tween(150)))
                 }
             },
             modifier = Modifier.weight(1f)
@@ -204,15 +207,17 @@ fun LibraryActionRow(
                         visible = shouldShowImport,
                         enter = fadeIn() + expandHorizontally(
                             expandFrom = Alignment.Start,
-                            clip = false, // <— evita el 「corte」 durante la expansión
+                            // ⚡ 修复：文件夹→播放列表切换时按钮组向右过冲闪现。
+                            //   低刚度弹跳弹簧 + clip=false 会产生向右的过冲，切标签瞬间尤其刺眼。
+                            clip = true,
                             animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
                             )
                         ),
                         exit = fadeOut() + shrinkHorizontally(
                             shrinkTowards = Alignment.Start,
-                            clip = false, // <— evita el 「corte」 durante la expansión
+                            clip = true,
                             animationSpec = spring(
                                 dampingRatio = Spring.DampingRatioNoBouncy,
                                 stiffness = Spring.StiffnessMedium

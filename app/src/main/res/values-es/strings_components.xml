@@ -1,11 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="cd_favorite">Favorito</string>
     <string name="cd_play">Reproducir</string>
     <string name="cd_pause">Pausa</string>
     <string name="cd_repeat">Repetir</string>
-
-    <!-- Lyrics more bottom sheet -->
     <string name="lyrics_more_appearance">Apariencia</string>
     <string name="lyrics_more_alignment">Alineación</string>
     <string name="lyrics_more_controls">Controles</string>
@@ -20,10 +18,6 @@
     <string name="cd_lyrics_align_left">Alinear letras a la izquierda</string>
     <string name="cd_lyrics_align_center">Alinear letras al centro</string>
     <string name="cd_lyrics_align_right">Alinear letras a la derecha</string>
-
-    <!-- No internet -->
-
-    <!-- Equalizer preset dialogs -->
     <string name="equalizer_save_custom_preset_title">Guardar preset personalizado</string>
     <string name="equalizer_save_custom_preset_body">Escribe un nombre para tu preset del ecualizador.</string>
     <string name="equalizer_preset_name_label">Nombre del preset</string>
@@ -31,8 +25,6 @@
     <string name="error_name_empty">El nombre no puede estar vacío</string>
     <string name="action_save">Guardar</string>
     <string name="action_rename">Renombrar</string>
-
-    <!-- AI metadata sheet -->
     <string name="ai_metadata_headline_success">¡Etiquetado perfecto!</string>
     <string name="ai_metadata_headline_default">Metadatos con IA</string>
     <string name="ai_metadata_subtitle_generating">Consultando la guía de Daily Mix…</string>
@@ -43,7 +35,6 @@
     <string name="song_field_genre">Género</string>
     <string name="action_try_again">Reintentar</string>
     <string name="action_apply_changes">Aplicar cambios</string>
-
     <string name="edit_song_info_dialog_title">Editar metadatos de la canción</string>
     <string name="edit_song_info_dialog_body">Editar los metadatos puede cambiar cómo se muestra y organiza la canción en tu biblioteca. Los cambios son permanentes y pueden no ser reversibles.</string>
     <string name="edit_song_got_it">Entendido</string>
@@ -67,7 +58,6 @@
     <string name="cd_cover_art_preview">Vista previa de la nueva portada</string>
     <string name="cd_current_song_cover_art">Portada actual de la canción</string>
     <string name="edit_song_apply_cover_art">Aplicar portada</string>
-
     <string name="cd_play_song_action">Reproducir canción</string>
     <string name="cd_share_song_file">Compartir archivo de la canción</string>
     <string name="cd_add_to_queue">Añadir a la cola</string>
@@ -96,7 +86,6 @@
     <string name="cd_add_to_favorites">Añadir a favoritos</string>
     <string name="song_info_tab_details">Detalles</string>
     <string name="cd_details_tab">Detalles</string>
-
     <string name="multi_selection_selected">seleccionadas</string>
     <string name="cd_play_all">Reproducir todo</string>
     <string name="action_play_all">Reproducir todo</string>
@@ -106,7 +95,6 @@
     <string name="cd_add_all_to_queue">Añadir todo a la cola</string>
     <string name="cd_delete_all_songs">Eliminar todo</string>
     <string name="action_delete_all">Eliminar todo</string>
-
     <string name="action_undo">Deshacer</string>
     <string name="create_playlist_dialog_title">Nueva lista</string>
     <string name="create_playlist_name_label">Nombre de la lista</string>
@@ -115,14 +103,45 @@
     <string name="playlist_picker_add_songs_title">Añadir %1$d canciones a…</string>
     <string name="playlist_picker_select_playlists">Seleccionar listas</string>
     <string name="search_playlists_hint">Buscar listas…</string>
-
     <string name="cd_export_all">Exportar todo</string>
     <string name="cd_merge_all">Fusionar todo</string>
     <string name="cd_share_all">Compartir todo</string>
     <string name="action_export">Exportar</string>
     <string name="action_merge">Fusionar</string>
-
     <string name="cd_drag_handle">Asa para arrastrar</string>
     <string name="cd_reset">Restablecer</string>
     <string name="action_done">Hecho</string>
+    <string name="common_back">Back</string>
+    <string name="common_playlist">Playlist</string>
+    <string name="lyrics_mode_original_and_translation">Both</string>
+    <string name="lyrics_mode_original_only">Original</string>
+    <string name="lyrics_mode_translation_only">Translation</string>
+    <string name="lyrics_more_display_mode">Lyrics display</string>
+    <string name="lyrics_more_font">Font</string>
+    <string name="lyrics_more_font_size">Font Size</string>
+    <string name="reorder_albums_sheet_title">Reorder Albums</string>
+    <string name="reorder_artists_sheet_title">Reorder Artists</string>
+    <string name="reorder_favorites_sheet_title">Reorder Liked Songs</string>
+    <string name="reorder_folders_sheet_title">Reorder Folders</string>
+    <string name="reorder_playlists_sheet_title">Reorder Playlists</string>
+    <string name="reorder_sheets_saving">Saving order…</string>
+    <string name="reorder_songs_sheet_title">Reorder Songs</string>
+    <string name="search_filter_albums">Albums</string>
+    <string name="search_filter_all">All</string>
+    <string name="search_filter_artists">Artists</string>
+    <string name="search_filter_bilibili">Bilibili</string>
+    <string name="search_filter_kuwo">Kuwo</string>
+    <string name="search_filter_online">Netease</string>
+    <string name="search_filter_playlists">Playlists</string>
+    <string name="search_filter_songs">Songs</string>
+    <string name="song_field_album_artist">Album artist</string>
+    <string name="song_field_composer">Composer</string>
+    <string name="sort_sheet_reorder_action">Reorder</string>
+    <string name="streaming_provider_coming_soon">Coming soon</string>
+    <string name="streaming_provider_connected">Connected</string>
+    <string name="streaming_provider_jellyfin_connect">Connect your Jellyfin server</string>
+    <string name="streaming_provider_sign_in_to_stream">Sign in to stream</string>
+    <string name="streaming_provider_subsonic_connect">Connect Navidrome &amp; others</string>
+    <string name="streaming_provider_subsonic_connected">Connected · Navidrome/Airsonic</string>
+    <string name="streaming_provider_telegram_subtitle">Stream from channels &amp; chats</string>
 </resources>

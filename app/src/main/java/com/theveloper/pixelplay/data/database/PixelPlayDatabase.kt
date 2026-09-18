@@ -34,12 +34,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JellyfinSongEntity::class,
         JellyfinPlaylistEntity::class,
         AiCacheEntity::class,
-        AiUsageEntity::class,
-        HeadphonePresetEntity::class,
-        HeadphoneEqBandEntity::class,
-        BluetoothPresetBindingEntity::class
+        AiUsageEntity::class
     ],
-    version = 44,
+    version = 45,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -59,8 +56,6 @@ abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun jellyfinDao(): JellyfinDao
     abstract fun aiCacheDao(): AiCacheDao
     abstract fun aiUsageDao(): AiUsageDao
-    abstract fun headphonePresetDao(): HeadphonePresetDao
-    abstract fun bluetoothPresetBindingDao(): BluetoothPresetBindingDao
 
     companion object {
         // Gap-bridging no-op migrations for missing version ranges.
@@ -859,6 +854,18 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_address ON bluetooth_preset_bindings(device_address)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_device_name ON bluetooth_preset_bindings(device_name)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bluetooth_preset_bindings_preset_id ON bluetooth_preset_bindings(preset_id)")
+            }
+        }
+
+        // 44→45: AutoEQ 已完全移植为 Rhythm 方案（DataStore 存储），移除旧 DB 表
+        val MIGRATION_44_45 = object : Migration(44, 45) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS bluetooth_preset_bindings")
+                db.execSQL("DROP TABLE IF EXISTS headphone_eq_bands")
+                db.execSQL("DROP TABLE IF EXISTS headphone_presets")
+                db.execSQL("DROP TABLE IF EXISTS headphone_presets_temp")
+                db.execSQL("DROP TABLE IF EXISTS headphone_eq_bands_temp")
+                db.execSQL("DROP TABLE IF EXISTS bluetooth_preset_bindings_temp")
             }
         }
 

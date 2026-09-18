@@ -77,13 +77,8 @@ class LxMusicViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            // 首次启动把 assets 内置音源导入用户目录，再初始化引擎；
-            // 若本次同步到了新增/更新的内置 JS（如新增的第二个脚本），
-            // 引擎已就绪时必须重载，否则新脚本不会生效（脚本设置里看不到/配不了）。
-            val imported = store.ensureBundledSources()
-            if (imported.isNotEmpty() && engine.isReady()) {
-                engine.reload()
-            }
+            // 内置音源已下线：启动时仅清理旧安装残留的内置 JS 文件
+            store.cleanupLegacyBundledSources()
             autoInitIfPresent()
         }
         // 同步在线音源播放音质
@@ -628,8 +623,10 @@ class LxMusicViewModel @Inject constructor(
     }
 
     /**
-     * 把给定歌曲列表（除点击的 [excludeId] 外）全部解析并排入播放队列。
-     * 供 AI 搜索/AI Mix 等场景使用：传入 AI 精选出的完整歌单，逐首入队保证后续自动连播。
+     * 把给定歌曲列表（除点击的 [excludeId] 外）全部排入播放队列。
+     * ⚡ 不立即解析 URL，改为构造 cloud://lx/{json} 占位 URI，
+     *    由 DualPlayerEngine 的 ResolvingDataSource 在歌曲实际播放时才解析新鲜直链。
+     *    避免搜索结果批量入队时链接过期导致后续歌曲无法播放。
      */
     fun enqueueSongsList(
         songs: List<LxSongInfo>,
@@ -638,11 +635,36 @@ class LxMusicViewModel @Inject constructor(
     ) {
         if (songs.size <= 1) return
         viewModelScope.launch(Dispatchers.IO) {
+            val availableSources = runCatching {
+                engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
+            }.getOrDefault(emptyList())
             songs.filter { getStableSongId(it) != excludeId }.forEach { song ->
-                // persist=false：仅解析 URL 排队，不写入媒体库（避免搜索结果整页灌入）
-                val resolved = runCatching { resolvePlayableSong(song, persist = false) }.getOrNull() ?: return@forEach
+                // 不解析 URL，构造 cloud://lx/{json} 占位 URI
+                val targetSource = when {
+                    song.source.isNotBlank() && (availableSources.contains(song.source) ||
+                        builtInSourceSearchApi.isSupported(song.source)) -> song.source
+                    selectedSource != "all" && (availableSources.contains(selectedSource) ||
+                        builtInSourceSearchApi.isSupported(selectedSource)) -> selectedSource
+                    else -> availableSources.firstOrNull() ?: "wy"
+                }
+                val songJson = org.json.JSONObject().apply {
+                    put("id", song.id)
+                    put("songmid", song.songmid)
+                    put("hash", song.hash)
+                    put("name", song.name)
+                    put("singer", song.singer)
+                    put("artistIds", song.artistIds)
+                    put("album", song.albumName)
+                    put("pic", song.pic)
+                    put("duration", song.duration)
+                    put("source", targetSource)
+                }
+                val encoded = java.net.URLEncoder.encode(songJson.toString(), "UTF-8")
+                    .replace("+", "%20")
+                val placeholderUrl = "cloud://lx/$encoded"
+                val stableId = getStableSongId(song)
                 withContext(Dispatchers.Main) {
-                    onEnqueue(resolved.url, song.name, song.singer, resolved.cover, resolved.savedSongId)
+                    onEnqueue(placeholderUrl, song.name, song.singer, song.pic, stableId)
                 }
             }
         }

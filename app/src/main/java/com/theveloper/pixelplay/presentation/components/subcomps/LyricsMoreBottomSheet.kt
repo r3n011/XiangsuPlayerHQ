@@ -63,8 +63,12 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.presentation.components.ToggleSegmentButton
 import com.theveloper.pixelplay.ui.theme.LyricsFontDisplayNames
-import com.theveloper.pixelplay.ui.theme.resolveLyricsFontFamily
 import com.theveloper.pixelplay.ui.theme.isCustomFontKey
+import com.theveloper.pixelplay.ui.theme.isDownloadableFontKey
+import com.theveloper.pixelplay.ui.theme.isDownloadableFontDownloaded
+import com.theveloper.pixelplay.ui.theme.downloadLyricsFont
+import com.theveloper.pixelplay.ui.theme.downloadableFontForKey
+import com.theveloper.pixelplay.ui.theme.resolveLyricsFontFamily
 import com.theveloper.pixelplay.ui.theme.customFontDisplayName
 import com.theveloper.pixelplay.ui.theme.listCustomFonts
 import com.theveloper.pixelplay.ui.theme.deleteCustomFont
@@ -460,6 +464,10 @@ fun LyricsMoreBottomSheet(
                     val predefinedFonts = LyricsFontDisplayNames.keys.toList()
                     val allFontFamilies = predefinedFonts + customFonts
 
+                    // ⚡ 可下载字体的下载状态追踪
+                    var downloadingFont by remember { mutableStateOf<String?>(null) }
+                    val downloadScope = rememberCoroutineScope()
+
                     fun displayName(key: String): String =
                         if (isCustomFontKey(key)) customFontDisplayName(key)
                         else LyricsFontDisplayNames[key] ?: key
@@ -483,15 +491,36 @@ fun LyricsMoreBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         allFontFamilies.forEach { family ->
+                            val isDl = isDownloadableFontKey(family)
+                            // 可下载字体未下载到 filesDir 时显示下载标记
+                            val needsDownload = isDl && !isDownloadableFontDownloaded(sheetContext, family)
+                            val isDownloading = downloadingFont == family
                             FontOptionButton(
-                                text = displayName(family),
+                                text = displayName(family) + if (needsDownload && !isDownloading) " ⬇" else if (isDownloading) " …" else "",
                                 active = lyricsFontFamily == family,
                                 deletable = isCustomFontKey(family),
                                 activeColor = accentColor,
                                 inactiveColor = containerColor,
                                 activeContentColor = onAccentColor,
                                 inactiveContentColor = contentColor.copy(alpha = 0.78f),
-                                onClick = { onLyricsFontFamilyChange(family) },
+                                onClick = {
+                                    if (isDl && needsDownload && !isDownloading) {
+                                        // 需要下载：选中该字体 + 后台下载
+                                        onLyricsFontFamilyChange(family)
+                                        downloadingFont = family
+                                        downloadScope.launch {
+                                            val success = downloadLyricsFont(sheetContext, family)
+                                            downloadingFont = null
+                                            if (success) {
+                                                onLyricsFontFamilyChange(family)
+                                            } else {
+                                                onLyricsFontFamilyChange("DEFAULT")
+                                            }
+                                        }
+                                    } else {
+                                        onLyricsFontFamilyChange(family)
+                                    }
+                                },
                                 onDelete = { onFontLongClick(family) },
                                 modifier = Modifier
                                     .weight(1f)

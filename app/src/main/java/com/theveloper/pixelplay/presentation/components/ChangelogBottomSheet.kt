@@ -75,11 +75,9 @@ fun ChangelogBottomSheet(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    // 从 GitHub 拉取全部 Release 作为更新日志
     val updateChecker = remember { UpdateChecker() }
-    var releases by remember { mutableStateOf<List<GitHubRelease>?>(null) } // null = 加载中
+    var releases by remember { mutableStateOf<List<GitHubRelease>?>(null) }
     var loadError by remember { mutableStateOf<String?>(null) }
-    // 当前展开的版本（默认自动展开最新一版），点击标题行切换
     var expandedVersion by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -87,7 +85,7 @@ fun ChangelogBottomSheet(
             releases = list
             expandedVersion = list.firstOrNull()?.tag_name
         }.onFailure { e ->
-            loadError = e.message ?: "更新日志加载失败"
+            loadError = e.message ?: "Failed to load changelog"
             releases = emptyList()
         }
     }
@@ -137,7 +135,6 @@ fun ChangelogBottomSheet(
                 val current = releases
                 when {
                     current == null -> {
-                        // 加载中
                         item(key = "loading") {
                             Box(
                                 modifier = Modifier
@@ -152,8 +149,7 @@ fun ChangelogBottomSheet(
                     current.isEmpty() -> {
                         item(key = "empty") {
                             Text(
-                                text = loadError
-                                    ?: stringResource(R.string.about_changelog_empty),
+                                text = loadError ?: stringResource(R.string.about_changelog_empty),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -164,14 +160,12 @@ fun ChangelogBottomSheet(
                         }
                     }
                     else -> {
-                        // 所有版本都展示：默认只展开最新一版，其余显示标题、点击展开详细内容
                         itemsIndexed(current, key = { _, r -> r.tag_name }) { index, release ->
                             ChangelogReleaseItem(
                                 release = release,
                                 expanded = expandedVersion == release.tag_name,
                                 onClick = {
-                                    expandedVersion =
-                                        if (expandedVersion == release.tag_name) null else release.tag_name
+                                    expandedVersion = if (expandedVersion == release.tag_name) null else release.tag_name
                                 }
                             )
                             if (index != current.lastIndex) {
@@ -225,8 +219,7 @@ fun ChangelogBottomSheet(
                         )
                     )
                 )
-        ) {
-        }
+        ) {}
     }
 }
 
@@ -240,7 +233,6 @@ fun ChangelogReleaseItem(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 标题行整行可点击：展开 / 收起发布说明
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -284,7 +276,6 @@ private fun ReleaseBody(release: GitHubRelease) {
         )
         return
     }
-    // 用 Markdown 渲染 GitHub 发布说明（标题/列表/粗体/链接等）
     val context = LocalContext.current
     val markwon = remember {
         Markwon.builder(context)
@@ -347,6 +338,5 @@ private fun openUrl(context: Context, url: String) {
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     try {
         context.startActivity(intent)
-    } catch (_: ActivityNotFoundException) {
-    }
+    } catch (_: ActivityNotFoundException) {}
 }

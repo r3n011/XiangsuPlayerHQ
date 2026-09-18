@@ -66,10 +66,19 @@ class UpdateChecker @Inject constructor() {
 
                     val publishedAt = parseDateTime(release.published_at)
 
-                    // 解析 APK 下载链接：只取第一个 APK 资产（不区分架构）
-                    val apkUrl = release.assets
-                        .firstOrNull { it.name.lowercase().endsWith(".apk") }
-                        ?.browser_download_url
+                    // 解析 APK 下载链接：收集全部 APK 资产并按架构名归类（arm64 / x86 / arm32）
+                    val apkAssets = release.assets.filter { it.name.lowercase().endsWith(".apk") }
+                    val allApkUrls = apkAssets.map { it.browser_download_url }
+                    val apkUrlsByAbi = apkAssets.mapNotNull { asset ->
+                        val lower = asset.name.lowercase()
+                        val key = when {
+                            lower.contains("arm64") -> "arm64"
+                            lower.contains("x86_64") || lower.contains("-x86") || lower.contains("x86.") -> "x86"
+                            lower.contains("armeabi") || lower.contains("arm32") || lower.contains("-arm.") -> "arm"
+                            else -> null
+                        }
+                        key?.let { it to asset.browser_download_url }
+                    }.toMap()
 
                     Result.success(
                         UpdateInfo(
@@ -78,7 +87,9 @@ class UpdateChecker @Inject constructor() {
                             releaseUrl = release.html_url,
                             releaseName = release.name ?: release.tag_name,
                             releaseNotes = release.body ?: "",
-                            apkUrl = apkUrl
+                            apkUrl = apkAssets.firstOrNull()?.browser_download_url,
+                            allApkUrls = allApkUrls,
+                            apkUrlsByAbi = apkUrlsByAbi
                         )
                     )
                 } else {
@@ -149,9 +160,32 @@ class UpdateChecker @Inject constructor() {
         val releaseName: String,
         val releaseNotes: String,
         val apkUrl: String? = null,
+        val allApkUrls: List<String> = emptyList(),
+        val apkUrlsByAbi: Map<String, String> = emptyMap(),  // "arm64" / "x86" / "arm" → 下载 URL
         val lanzouFiles: List<LanzouCloudApi.LanzouFileInfo> = emptyList(),
         val isLanzouSynced: Boolean = false  // 蓝奏云版本号是否与 GitHub 一致
     ) {
+        /** 设备 ABI → 资产架构键 */
+        private fun abiToKey(abi: String): String? = when {
+            abi == "arm64-v8a" -> "arm64"
+            abi == "x86_64" || abi == "x86" -> "x86"
+            abi.startsWith("armeabi") -> "arm"
+            else -> null
+        }
+
+        /** 按设备 ABI 优先级返回推荐架构键；无匹配资产时返回第一个可用架构 */
+        fun preferredArchKey(deviceAbis: List<String>): String? {
+            for (abi in deviceAbis) {
+                val key = abiToKey(abi) ?: continue
+                if (apkUrlsByAbi.containsKey(key)) return key
+            }
+            return availableArchKeys().firstOrNull()
+        }
+
+        /** 可选的架构键列表（按优先级排序，供 UI 展示 64/32 位选择） */
+        fun availableArchKeys(): List<String> =
+            listOf("arm64", "x86", "arm").filter { apkUrlsByAbi.containsKey(it) }
+
         /**
          * 判断是否有更新（主判断：版本号比较）。
          *
@@ -176,6 +210,17 @@ class UpdateChecker @Inject constructor() {
         }
 
         /**
+         * 按设备 ABI 匹配优先下载链接；无匹配时回退到第一个 APK。
+         * 避免 x86 设备下错 arm64 分包。
+         */
+        fun preferredApkUrl(deviceAbis: List<String>): String? {
+            preferredArchKey(deviceAbis)?.let { key ->
+                apkUrlsByAbi[key]?.let { return it }
+            }
+            return apkUrl
+        }
+
+        /**
          * 获取可用的 APK 下载链接列表（仅对比版本号，不区分架构）
          * 优先使用蓝奏云（如果已同步），否则使用 GitHub
          */
@@ -184,7 +229,8 @@ class UpdateChecker @Inject constructor() {
             if (isLanzouSynced && lanzouFiles.isNotEmpty()) {
                 lanzouFiles.forEach { urls.add(it.downloadUrl) }
             }
-            apkUrl?.let { urls.add(it) }
+            allApkUrls.forEach { urls.add(it) }
+            if (apkUrl != null && apkUrl !in urls) urls.add(apkUrl)
             return urls
         }
     }

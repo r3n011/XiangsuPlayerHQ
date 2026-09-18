@@ -34,6 +34,8 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.NoteAdd
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -84,6 +86,7 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 @Composable
 fun CloudMusicSettingsScreen(
     onBackClick: () -> Unit,
+    onOpenMarket: () -> Unit,
     viewModel: LxMusicViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -200,6 +203,10 @@ fun CloudMusicSettingsScreen(
             }
 
             item {
+                MarketEntryCard(onOpenMarket = onOpenMarket)
+            }
+
+            item {
                 Text(
                     "已安装音源 (${state.scriptInfos.size})",
                     style = MaterialTheme.typography.titleMedium,
@@ -291,6 +298,55 @@ fun CloudMusicSettingsScreen(
                 TextButton(onClick = { pendingDelete = null }) { Text("取消") }
             }
         )
+    }
+}
+
+@Composable
+private fun MarketEntryCard(
+    onOpenMarket: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenMarket),
+        shape = AbsoluteSmoothCornerShape(20.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Storefront,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(8.dp).size(22.dp)
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "像素音源市场",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "从 GitHub 仓库下载并安装社区音源脚本",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

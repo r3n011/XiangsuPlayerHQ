@@ -93,6 +93,7 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.MiniPlayerBottomSpacer
 import com.theveloper.pixelplay.presentation.components.NavBarContentHeight
+import com.theveloper.pixelplay.presentation.components.SettingsTipData
 import com.theveloper.pixelplay.presentation.components.SettingsTipsCarousel
 import com.theveloper.pixelplay.presentation.components.rememberSettingsTips
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
@@ -115,7 +116,6 @@ import com.theveloper.pixelplay.presentation.screens.SettingsCategoryScreen
 import com.theveloper.pixelplay.presentation.screens.AccountsScreen
 import com.theveloper.pixelplay.presentation.screens.AboutScreen
 import com.theveloper.pixelplay.presentation.screens.EqualizerScreen
-import com.theveloper.pixelplay.presentation.screens.HeadphonePresetScreen
 import com.theveloper.pixelplay.presentation.screens.DeviceCapabilitiesScreen
 import com.theveloper.pixelplay.presentation.screens.CloudMusicSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DotDeviceSettingsScreen
@@ -1003,11 +1003,6 @@ private fun TabletSettingsScreen(
                         playerViewModel = playerViewModel
                     )
                 }
-                composable(Screen.HeadphonePreset.route) {
-                    HeadphonePresetScreen(
-                        navController = detailNavController
-                    )
-                }
                 composable(Screen.DeviceCapabilities.route) {
                     DeviceCapabilitiesScreen(
                         navController = detailNavController,
@@ -1027,7 +1022,8 @@ private fun TabletSettingsScreen(
                 }
                 composable(Screen.CloudMusicSettings.route) {
                     CloudMusicSettingsScreen(
-                        onBackClick = {}
+                        onBackClick = {},
+                        onOpenMarket = { outerNavController.navigateSafely(Screen.SourceMarket.route) }
                     )
                 }
                 composable(Screen.DotDeviceSettings.route) {
@@ -1423,7 +1419,9 @@ private fun TabletSettingsSearchAndCategories(
     searchQuery: String,
     isDark: Boolean,
     currentDetailKey: String,
-    detailNavController: NavController
+    detailNavController: NavController,
+    tips: List<SettingsTipData>,
+    onTipClick: (SettingsTipData) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val searchBarInputFieldColors = SearchBarDefaults.inputFieldColors(
@@ -1523,6 +1521,15 @@ private fun TabletSettingsSearchAndCategories(
                     inputFieldColors = searchBarInputFieldColors
                 ),
                 content = {}
+            )
+        }
+
+        // 设置推荐栏（搜索框下方、分类列表上方；搜索时自动隐藏，模仿 Rhythm 布局）
+        if (searchQuery.isBlank()) {
+            SettingsTipsCarousel(
+                tips = tips,
+                onTipClick = onTipClick,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
         }
 

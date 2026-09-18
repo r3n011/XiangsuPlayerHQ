@@ -81,4 +81,10 @@
         <item quantity="one">%1$d 首歌曲 • %2$s</item>
         <item quantity="other">%1$d 首歌曲 • %2$s</item>
     </plurals>
+    <string name="presentation_batch_b_ai_mix_empty">正在生成你的 AI 播放列表……</string>
+
+    
+    
+    <string name="presentation_batch_b_ai_mix_title">AI 合辑</string>
+    
 </resources>

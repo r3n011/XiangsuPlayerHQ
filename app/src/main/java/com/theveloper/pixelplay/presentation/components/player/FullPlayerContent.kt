@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import com.theveloper.pixelplay.data.model.Lyrics
+import com.theveloper.pixelplay.rememberWindowIsLandscape
 import com.theveloper.pixelplay.presentation.components.BilibiliCommentSheet
 import com.theveloper.pixelplay.presentation.components.CommentSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -116,7 +117,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -185,6 +185,11 @@ import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 import com.theveloper.pixelplay.presentation.viewmodel.RadioViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.AutoEqViewModel
+import com.theveloper.pixelplay.data.autoeq.AutoEQProfile
+import com.theveloper.pixelplay.data.autoeq.UserAudioDevice
+import com.theveloper.pixelplay.presentation.components.autoeq.AutoEQSuggestionDialog
+import com.theveloper.pixelplay.presentation.components.autoeq.DeviceConfigurationBottomSheet
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat
@@ -402,6 +407,34 @@ fun FullPlayerContent(
         queueGestureBottomExclusion.toPx()
     }
 
+    // AutoEQ device suggestion (port from Rhythm)
+    val autoEqViewModel: AutoEqViewModel = hiltViewModel()
+    val equalizerEnabled by autoEqViewModel.equalizerEnabled.collectAsStateWithLifecycle()
+    var showAutoEQSuggestion by remember { mutableStateOf(false) }
+    var showDeviceConfigFromSuggestion by remember { mutableStateOf(false) }
+    var detectedDevice by remember { mutableStateOf<UserAudioDevice?>(null) }
+
+    // Device detection and AutoEQ suggestion
+    LaunchedEffect(bluetoothName) {
+        val name = bluetoothName
+        if (!name.isNullOrBlank()) {
+            val matchedDevice = autoEqViewModel.findMatchingUserDevice(name)
+            val activeDevice = autoEqViewModel.getActiveAudioDevice()
+
+            if (matchedDevice != null && autoEqViewModel.shouldShowAutoEQSuggestion(matchedDevice.id)) {
+                // Show popup only if:
+                // 1. Device has NO preset configured (needs configuration), OR
+                // 2. Device has preset but is NOT currently active (needs to be applied)
+                val isAlreadyActive = activeDevice?.id == matchedDevice.id &&
+                    matchedDevice.autoEQProfileName != null
+                if (!isAlreadyActive) {
+                    detectedDevice = matchedDevice
+                    showAutoEQSuggestion = true
+                }
+            }
+        }
+    }
+
     var showFetchLyricsDialog by remember { mutableStateOf(false) }
     var totalDrag by remember { mutableStateOf(0f) }
 
@@ -562,11 +595,10 @@ fun FullPlayerContent(
         label = "OnTertiaryFixed"
     )
 
-    // 按窗口实际宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机模式。
-    val isLandscape = LocalWindowInfo.current.containerSize.width >= LocalWindowInfo.current.containerSize.height
-
+    // 与主页一致的可靠横屏判断：监听 View 全局布局（旋转/分屏时 View 尺寸必然变化，OnGlobalLayout 必然回调）
 
     // Lógica para el botón de Lyrics en el reproductor expandido
+    val isLandscape = rememberWindowIsLandscape()
     val latestShowLyricsSheet by rememberUpdatedState(showLyricsSheet)
     val onLyricsClick = remember {{ showLyricsSheet = true }}
 
@@ -806,6 +838,7 @@ fun FullPlayerContent(
                 currentSongId = song.id,
                 onBaseColor = playerOnBaseColor,
                 baseColor = LocalMaterialTheme.current.primaryContainer,
+                isLandscape = isLandscape,
                 onStationClick = { station ->
                     playerViewModel.playUrl(
                         url = station.streamUrl,
@@ -1292,9 +1325,10 @@ fun FullPlayerContent(
                     .graphicsLayer { alpha = contentAlpha * (customPlayerControlsOpacity / 100f) }
             ) {
                 // Check if we should use parallel layout on tablet
+                // ⚡ 竖屏时强制走手机布局，只有横屏平板才启用平行布局
                 val configuration = LocalConfiguration.current
                 val isTablet = configuration.screenWidthDp >= 840
-                val useParallelLayout = isTablet && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+                val useParallelLayout = isTablet && isLandscape && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
 
                 // 平行布局歌词设置卡片状态（在调用方管理，以便 metadata 歌词按钮可切换）
                 var showParallelLyricsSettings by remember { mutableStateOf(false) }
@@ -1392,9 +1426,10 @@ fun FullPlayerContent(
         }
     }
     // Only show lyrics sheet overlay when NOT in parallel layout
+    // ⚡ 竖屏时平行布局不生效，歌词面板正常显示
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 840
-    val useParallelLayout = isTablet && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+    val useParallelLayout = isTablet && isLandscape && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
     if (!useParallelLayout) {
     AnimatedVisibility(
         visible = showLyricsSheet,
@@ -1556,6 +1591,52 @@ fun FullPlayerContent(
                     showArtistPicker = false
                 }
             }
+        )
+    }
+
+    // AutoEQ Suggestion Dialog
+    if (showAutoEQSuggestion && detectedDevice != null) {
+        val autoEQProfiles by autoEqViewModel.autoEQProfiles.collectAsStateWithLifecycle()
+
+        AutoEQSuggestionDialog(
+            deviceName = bluetoothName ?: detectedDevice!!.name,
+            savedDevice = detectedDevice!!,
+            equalizerEnabled = equalizerEnabled,
+            onApplyProfile = {
+                // Apply the AutoEQ profile
+                val profile = autoEQProfiles
+                    .find { it.name == detectedDevice!!.autoEQProfileName }
+
+                if (profile != null) {
+                    autoEqViewModel.applyAutoEQProfile(profile)
+                    autoEqViewModel.setActiveAudioDevice(detectedDevice!!)
+                    Toast.makeText(
+                        context,
+                        "Applied ${profile.name} profile",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                showAutoEQSuggestion = false
+            },
+            onDismiss = {
+                showAutoEQSuggestion = false
+            },
+            onDontAskAgain = {
+                autoEqViewModel.dismissAutoEQSuggestion(detectedDevice!!.id)
+                showAutoEQSuggestion = false
+            },
+            onConfigureDevice = {
+                showAutoEQSuggestion = false
+                showDeviceConfigFromSuggestion = true
+            }
+        )
+    }
+
+    // Device Configuration Dialog (opened from suggestion)
+    if (showDeviceConfigFromSuggestion) {
+        DeviceConfigurationBottomSheet(
+            autoEqViewModel = autoEqViewModel,
+            onDismiss = { showDeviceConfigFromSuggestion = false }
         )
     }
 }
@@ -3956,7 +4037,8 @@ private fun RadioRecommendationSection(
     currentSongId: String,
     onBaseColor: Color,
     baseColor: Color,
-    onStationClick: (RadioStation) -> Unit
+    onStationClick: (RadioStation) -> Unit,
+    isLandscape: Boolean = false
 ) {
     val radioViewModel: RadioViewModel = hiltViewModel()
     val uiState by radioViewModel.uiState.collectAsStateWithLifecycle()
@@ -3972,7 +4054,7 @@ private fun RadioRecommendationSection(
             .take(20)
     }
     // 仅横屏（右侧布局）显示热门电台列表；竖屏（手机或平板）不显示任何指示。
-    val isLandscapeOrientation = LocalWindowInfo.current.containerSize.width >= LocalWindowInfo.current.containerSize.height
+    val isLandscapeOrientation = isLandscape
 
     if (!isLandscapeOrientation || recommendations.isEmpty()) return
 

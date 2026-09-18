@@ -563,4 +563,8 @@
     <string name="ai_state_daily_mix_updated">Daily Mix actualizado con IA</string>
     <string name="ai_state_could_not_update">No se pudo actualizar: %s</string>
     <string name="ai_state_no_songs_for_mix">La IA no pudo encontrar canciones para este mix</string>
+    <string name="song_info_download">Download</string>
+    <string name="song_info_download_failed">Download failed</string>
+    <string name="song_info_downloaded">Downloaded</string>
+    <string name="song_info_downloading_progress">Downloading %1$d%%</string>
 </resources>

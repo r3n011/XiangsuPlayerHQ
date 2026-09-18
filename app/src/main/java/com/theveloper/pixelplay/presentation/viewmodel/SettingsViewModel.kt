@@ -133,8 +133,8 @@ data class SettingsUiState(
     val useAnimatedLyrics: Boolean = true,
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 2.5f,
-    val lyricsVibrantBackgroundEnabled: Boolean = true,
-    val playerVibrantBackgroundEnabled: Boolean = true,
+    val lyricsVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
+    val playerVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
     val disableBlurAllOver: Boolean = false,
     val navBarBlurEnabled: Boolean = true,
     val backupInfoDismissed: Boolean = false,
@@ -1394,6 +1394,14 @@ class SettingsViewModel @Inject constructor(
 
     val isAiRecommendationManualOnly: StateFlow<Boolean> = aiPreferencesRepository.isAiRecommendationManualOnly
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    // 首页卡片顺序（空 = 默认顺序）
+    val homeCardOrder: StateFlow<List<String>> = userPreferencesRepository.homeCardOrderFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setHomeCardOrder(order: List<String>) {
+        viewModelScope.launch { userPreferencesRepository.setHomeCardOrder(order) }
+    }
 
     val isLyricsExplanationEnabled: StateFlow<Boolean> = aiPreferencesRepository.isLyricsExplanationEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)

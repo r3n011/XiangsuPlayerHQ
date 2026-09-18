@@ -236,4 +236,14 @@
     <string name="presentation_batch_f_remove_channel_confirm_title">Удалить канал?</string>
     <string name="presentation_batch_f_remove_channel_confirm_body">%1$s перестанет синхронизироваться, и все кэшированные треки этого канала будут удалены.</string>
     <string name="presentation_batch_f_remove_channel_confirm_action">Удалить</string>
+    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    
+    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    
+    <string name="presentation_batch_f_change">Change</string>
+    
+    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    
+    <string name="presentation_batch_f_remove">Remove</string>
+    
 </resources>

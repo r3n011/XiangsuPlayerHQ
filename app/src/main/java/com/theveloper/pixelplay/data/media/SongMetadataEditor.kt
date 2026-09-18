@@ -532,8 +532,25 @@ class SongMetadataEditor(
 
             coverArtUpdate?.let {
                 AlbumArtUtils.clearCacheForSong(context, songId)
-                storedCoverArtUri = if (it.isDeletion) null else LocalArtworkUri.buildSongUriWithTimestamp(songId)
+                storedCoverArtUri = when {
+                    it.isDeletion -> null
+                    it.bytes != null -> {
+                        // ⚡ 持久化新封面字节到本地缓存文件（filesDir/album_art），
+                        //    让 local:// 加载时优先命中该缓存，避免嵌入标签写入失败
+                        //    或媒体库重新扫描后 UI 回落到旧封面（"闪回"）。
+                        AlbumArtUtils.saveAlbumArtToCache(context, it.bytes, songId)
+                        LocalArtworkUri.buildSongUriWithTimestamp(songId)
+                    }
+                    else -> null
+                }
                 musicDao.updateSongAlbumArt(songId, storedCoverArtUri)
+                // ⚡ 同步更新所属专辑的封面，让专辑详情/专辑列表跟随变化
+                if (storedCoverArtUri != null) {
+                    val albumId = musicDao.getSongById(songId).first()?.albumId
+                    if (albumId != null && albumId > 0) {
+                        musicDao.updateAlbumArt(albumId, storedCoverArtUri)
+                    }
+                }
             }
 
             if (finalFilePath.isNotBlank()) {

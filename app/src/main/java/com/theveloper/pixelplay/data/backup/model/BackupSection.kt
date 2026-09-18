@@ -84,6 +84,13 @@ enum class BackupSection(
         description = "History of AI requests and token consumption.",
         iconRes = R.drawable.rounded_monitoring_24,
         sinceVersion = 4
+    ),
+    COOKIES(
+        key = "cookies",
+        label = "Account Cookies",
+        description = "Login session cookies for online music sources (Netease, QQ Music, Bilibili).",
+        iconRes = R.drawable.rounded_key_vertical_24,
+        sinceVersion = 4
     );
 
     companion object {

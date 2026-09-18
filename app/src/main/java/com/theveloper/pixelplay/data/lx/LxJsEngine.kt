@@ -280,6 +280,16 @@ class LxJsEngine @Inject constructor(
     /** 已成功加载的脚本文件名列表 */
     fun loadedFileNames(): List<String> = instances.keys.toList()
 
+    /** 从内存中的 JS 字节解析脚本头部简介（供音源市场展示未安装脚本信息） */
+    suspend fun scriptInfoFromBytes(bytes: ByteArray, fileName: String): LxScriptInfo =
+        withContext(Dispatchers.IO) {
+            try {
+                parseScriptInfo(fileStore.decodeJsBytes(bytes), fileName)
+            } catch (t: Throwable) {
+                LxScriptInfo(fileName = fileName, name = fileName)
+            }
+        }
+
     /** 指定脚本注册的音源（未加载时返回空） */
     fun instanceSources(fileName: String): Map<String, LxSourceInfo> =
         instances[fileName]?.sources ?: emptyMap()

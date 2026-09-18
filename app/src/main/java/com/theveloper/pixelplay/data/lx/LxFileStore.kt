@@ -25,94 +25,27 @@ class LxFileStore @Inject constructor(
     private val dir: File
         get() = File(appContext.filesDir, "lx_user_js").also { it.mkdirs() }
 
-    /** assets 内置音源所在目录（随 APK 打包，首次启动自动导入） */
-    private val bundledAssetDir = "lx_user_js"
-
-    /** 内置音源"仅首次导入"标志：导入完成后置位，用户之后删除的音源不会被自动恢复 */
-    private val bundledDoneFlag: File
-        get() = File(appContext.filesDir, "lx_user_js_bundled.flag")
-
     /**
-     * 将 assets 内置音源复制到用户目录并保持与内置版本同步：
-     *  1. 首次运行时复制内置 JS（已存在同名文件则跳过，避免覆盖用户导入的版本）；
-     *  2. 之后每次启动比对内置 JS 与用户目录同名文件内容，内置版本升级（内容不一致）时强制覆盖；
-     *     用户目录缺失但"此前从未记录过"的内置文件（新增内置音源）也会补导入，
-     *     保证"修改后的内置 JS / 新增的内置 JS"对已安装用户升级后同样生效；
-     *     已记录过却被用户主动删除的不再恢复。
-     * 返回本次实际导入/更新的文件名列表。
+     * 清理已下线的内置音源残留文件（升级后自动执行）。
+     * 内置 JS 已从 APK 移除，老用户 filesDir 中残留的旧内置文件一并清理，
+     * 不影响用户手动导入/从市场安装的其他 JS。
      */
-    suspend fun ensureBundledSources(): List<String> = withContext(Dispatchers.IO) {
-        // 无论是否首次导入都先清理已废弃的旧内置音源（见 [cleanupLegacyBundledSources]），
-        // 保证"内置 JS 只保留全豆要"，已安装用户升级后也会执行清理。
-        cleanupLegacyBundledSources()
-        val imported = mutableListOf<String>()
-        val names = appContext.assets.list(bundledAssetDir)
-            ?.filter { it.endsWith(".js", ignoreCase = true) }
-            ?: emptyList()
-        // 1. 首次导入
-        if (!bundledDoneFlag.exists()) {
-            try {
-                for (name in names) {
-                    val target = File(dir, name)
-                    if (target.exists() && target.length() > 0) continue
-                    if (copyBundledToUser(name)) imported.add(name)
-                }
-                bundledDoneFlag.writeText(names.joinToString("\n"))
-            } catch (t: Throwable) {
-                // assets 不存在或读取失败时静默跳过（不阻塞正常功能）
-            }
-        }
-        // 2. 内置更新检测：同名内置文件内容不一致即视为内置版本升级，强制覆盖；
-        //    用户目录缺失且从未记录过的文件（新增内置音源）也补导入。
-        //    记录名单写入 bundledDoneFlag，后续启动据此区分"新增"与"用户已删除"，避免误恢复。
-        val knownNames = runCatching {
-            bundledDoneFlag.readText().lineSequence().filter { it.isNotBlank() }.toSet()
-        }.getOrDefault(emptySet())
-        try {
-            for (name in names) {
-                val target = File(dir, name)
-                if (!target.exists() || target.length() == 0L) {
-                    if (name !in knownNames && copyBundledToUser(name)) imported.add(name)
-                    continue
-                }
-                val bundledBytes = appContext.assets.open("$bundledAssetDir/$name").use { it.readBytes() }
-                val userBytes = target.readBytes()
-                if (!bundledBytes.contentEquals(userBytes)) {
-                    target.writeBytes(bundledBytes)
-                    imported.add(name)
-                }
-            }
-        } catch (t: Throwable) {
-            // 内置比对失败静默跳过（不阻塞正常功能）
-        }
-        // 写回最新内置名单：下次启动即可识别"用户删除过"的文件，避免误恢复
-        try { bundledDoneFlag.writeText(names.joinToString("\n")) } catch (t: Throwable) {}
-        imported
-    }
-
-    /** 将单个 assets 内置 JS 复制到用户目录，成功返回 true */
-    private fun copyBundledToUser(name: String): Boolean {
-        val target = File(dir, name)
-        appContext.assets.open("$bundledAssetDir/$name").use { src ->
-            target.outputStream().use { dst -> src.copyTo(dst) }
-        }
-        return target.exists() && target.length() > 0
-    }
-
-    /** 兼容旧的单文件入口（userapi.js） */
-    fun defaultJsFile(): File = File(dir, "userapi.js")
-
-    /**
-     * 删除已废弃的旧内置音源文件：当内置列表移除某个音源后，
-     * 旧安装中 filesDir 残留的同名文件一并清理（不影响用户手动导入的其他 JS）。
-     */
-    private fun cleanupLegacyBundledSources() {
-        val legacyNames = listOf("lx音源快速.js")
+    fun cleanupLegacyBundledSources() {
+        val legacyNames = listOf(
+            "lx音源快速.js",
+            "(推荐)全豆要-聚合音源 v4.1.js",
+            "全豆要-聚合音源 v9.3 93网易云音质修复版.js"
+        )
         for (name in legacyNames) {
             val f = File(dir, name)
             if (f.exists()) f.delete()
         }
+        // 旧版"内置导入完成"标志已无意义，一并删除避免残留
+        runCatching { File(appContext.filesDir, "lx_user_js_bundled.flag").delete() }
     }
+
+    /** 兼容旧的单文件入口（userapi.js） */
+    fun defaultJsFile(): File = File(dir, "userapi.js")
 
     /** 目录下所有 JS 文件（按文件名排序） */
     fun listFiles(): List<File> =
@@ -183,6 +116,21 @@ class LxFileStore @Inject constructor(
             }
         }
 
+    /**
+     * 写入内存中的 JS 字节（供音源市场安装），自动生成唯一文件名。
+     * 返回实际写入的文件名（失败返回 null）
+     */
+    suspend fun writeBytes(bytes: ByteArray, baseName: String): String? =
+        withContext(Dispatchers.IO) {
+            try {
+                val target = File(dir, uniqueName(baseName))
+                target.writeBytes(bytes)
+                if (target.exists() && target.length() > 0) target.name else null
+            } catch (t: Throwable) {
+                null
+            }
+        }
+
     /** 读取指定文件内容（自动检测 UTF-8 / GBK 编码，避免中文乱码） */
     suspend fun content(file: File): String? = withContext(Dispatchers.IO) {
         try {
@@ -205,7 +153,7 @@ class LxFileStore @Inject constructor(
         } catch (t: Throwable) { null }
     }
 
-    private fun decodeJsBytes(bytes: ByteArray): String {
+    internal fun decodeJsBytes(bytes: ByteArray): String {
         // 先用严格 UTF-8 解码；若遇非法字节（常见于 GBK 编码的 JS），回退 GBK。
         return try {
             Charsets.UTF_8.newDecoder()

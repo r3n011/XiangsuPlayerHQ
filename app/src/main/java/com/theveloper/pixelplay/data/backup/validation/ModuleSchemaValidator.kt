@@ -60,7 +60,8 @@ class ModuleSchemaValidator @Inject constructor(
 
         // Per-module validation
         when (section) {
-            BackupSection.PLAYLISTS -> {
+            BackupSection.PLAYLISTS,
+            BackupSection.COOKIES -> {
                 // Already handled above for object/legacy compatibility.
             }
             BackupSection.FAVORITES -> validateFavorites(jsonElement.asJsonArray, errors)

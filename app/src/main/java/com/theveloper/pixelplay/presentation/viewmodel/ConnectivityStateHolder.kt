@@ -49,8 +49,7 @@ data class BluetoothAudioDeviceState(
  */
 @Singleton
 class ConnectivityStateHolder @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val bluetoothPresetAutoSwitcher: com.theveloper.pixelplay.data.service.audioengine.BluetoothPresetAutoSwitcher
+    @ApplicationContext private val context: Context
 ) {
     // WiFi State
     private val _isWifiEnabled = MutableStateFlow(false)
@@ -312,10 +311,6 @@ class ConnectivityStateHolder @Inject constructor(
         _bluetoothAudioDeviceStates.value = bluetoothDevices
         _bluetoothAudioDevices.value = bluetoothDevices.map(BluetoothAudioDeviceState::name)
         updateBluetoothName(connectedDevices.map(BluetoothAudioDeviceState::name))
-        
-        connectedDevices.firstOrNull()?.let { device ->
-            bluetoothPresetAutoSwitcher.onBluetoothDeviceConnected(device.name, device.address)
-        }
     }
 
     @SuppressLint("MissingPermission")

@@ -80,4 +80,10 @@
     <plurals name="presentation_batch_b_songs_dot_duration">
         <item quantity="other">곡 %1$d개 • %2$s</item>
     </plurals>
+    <string name="presentation_batch_b_ai_mix_empty">Generating your AI playlist...</string>
+
+    
+    
+    <string name="presentation_batch_b_ai_mix_title">AI Mix</string>
+    
 </resources>

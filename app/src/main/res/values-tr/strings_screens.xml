@@ -235,4 +235,119 @@
     <string name="toast_added_to_queue">Sıraya eklendi</string>
     <string name="toast_playing_next">Sırada oynatılacak</string>
     <string name="error_share_song_format">Şarkı paylaşılamadı: %1$s</string>
+    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    
+    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
+    
+    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    
+    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    
+    <string name="about_acknowledgements_title">Acknowledgements</string>
+    
+    <string name="cd_back">Back</string>
+    
+    <string name="cd_favorite_artist">Favorite artist</string>
+    
+    <string name="cd_radio_open">Radio</string>
+
+    <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    
+    <string name="content_description_exit">Exit</string>
+    
+    <string name="content_description_next">Next</string>
+
+    
+    
+    <string name="content_description_play_pause">Play/Pause</string>
+    
+    <string name="content_description_previous">Previous</string>
+    
+    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    
+    <string name="discover_ai_title">AI Assistant</string>
+    
+    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    
+    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    
+    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
+    
+    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    
+    <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
+    
+    <string name="discover_sheet_title">Discover</string>
+    
+    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    
+    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    
+    <string name="home_card_ai_recommendation">AI Mix</string>
+
+    
+    
+    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    
+    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    
+    <string name="home_card_order_sheet_title">Customize home</string>
+    
+    <string name="home_edit_card_order">Edit home cards</string>
+    
+    <string name="home_favorite_artists_title">Favorite Artists</string>
+    
+    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    
+    <string name="radio_all">All</string>
+    
+    <string name="radio_country_picker_title">Select country</string>
+    
+    <string name="radio_favorite">Add to favorites</string>
+    
+    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    
+    <string name="radio_live_badge">LIVE</string>
+    
+    <string name="radio_more_countries">More</string>
+    
+    <string name="radio_no_results">No stations found</string>
+    
+    <string name="radio_recommendations">Popular stations</string>
+    
+    <string name="radio_retry">Retry</string>
+    
+    <string name="radio_search">Search</string>
+    
+    <string name="radio_search_hint">Search stations, countries or tags</string>
+    
+    <string name="radio_title">Radio</string>
+    
+    <string name="radio_top">Top</string>
+    
+    <string name="radio_unfavorite">Remove from favorites</string>
+    
+    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
+    
+    <string name="tab_folders">Folders</string>
+    
+    <string name="tab_history">History</string>
+    
+    <string name="tab_liked">Liked</string>
+    
+    <string name="tab_playlists">Playlists</string>
+    
+    <string name="third_party_notices_action">Notices</string>
+    
+    <string name="third_party_notices_close">Close</string>
+    
+    
+    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    
+    <string name="third_party_notices_title">Third-Party Notices</string>
+    
+    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+
+    
+    
 </resources>

@@ -77,6 +77,11 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
+# AutoEQ：Gson 反射序列化/反序列化（autoeq_profiles.json 数据库 + 用户设备持久化）。
+# R8 裁剪/混淆字段会导致 release 构建下数据库丢失、用户设备列表为空（debug 正常）。
+-keep class com.theveloper.pixelplay.data.autoeq.** { *; }
+-dontwarn com.theveloper.pixelplay.data.autoeq.**
+
 # =============================================================================
 # 三、第三方库规则（仅保留确有反射 / JNI / ServiceLoader 需求的部分）
 # =============================================================================
@@ -113,6 +118,11 @@
 -dontwarn com.kyant.taglib.**
 -keep class org.jaudiotagger.** { *; }
 -dontwarn org.jaudiotagger.**
+
+# Nothing Glyph Matrix SDK v2.0（com.nothing.ketchum.*）：GlyphMatrixController 通过反射加载，
+# 若不 keep，R8 会把仅反射引用的 SDK 类从 DEX 中裁剪 → 运行时 ClassNotFoundException → 误判"不支持"
+-keep class com.nothing.ketchum.** { *; }
+-dontwarn com.nothing.ketchum.**
 
 # ExoPlayer FFmpeg/MIDI：native 解码器 JNI 反射
 -keep class androidx.media3.decoder.ffmpeg.** { *; }

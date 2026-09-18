@@ -1,3 +1,4 @@
+import com.android.build.api.variant.FilterConfiguration
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -28,6 +29,13 @@ val localProperties = Properties().apply {
     }
 }
 
+// 是否启用 ABI 分包：仅 Release/Benchmark 构建时打 x86 + arm64-v8a 两个 split APK，
+// Debug 构建生成通用 APK（含两 ABI）以支持 x86/x86_64 模拟器直接安装
+val isAbiSplitEnabled = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("Release", ignoreCase = true) ||
+        taskName.contains("Benchmark", ignoreCase = true)
+}
+
 val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableComposeCompilerReports")
     .getOrElse("false")
     .toBoolean()
@@ -45,6 +53,9 @@ android {
 
     androidResources {
         noCompress.add("tflite")
+        // autoeq_profiles.json 约 1.5MB > 1MB 阈值：不压缩直接存入 APK，
+        // 避免 release 构建下压缩 asset 读取失败导致 AutoEQ 数据库丢失
+        noCompress.add("json")
     }
 
     packaging {
@@ -84,15 +95,18 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 55
-        versionName = "1.5.8"
+        versionCode = 56
+        versionName = "1.5.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            // Release/Benchmark 与 Debug 均打包 arm64-v8a + x86：
-            // 预编译 libusb 仅提供 arm64-v8a，其余 ABI 自动跳过 USB 独占输出（见 CMakeLists.txt）
-            abiFilters += setOf("arm64-v8a", "x86")
+            // Debug 通用包用 abiFilters 限定 arm64-v8a + x86（含预编译 libusb 的 arm64，
+            // x86 自动跳过 USB 独占输出，见 CMakeLists.txt）；
+            // Release/Benchmark 分包时由 splits 控制 ABI，不可再设 abiFilters（二者冲突）
+            if (!isAbiSplitEnabled) {
+                abiFilters += setOf("arm64-v8a", "x86")
+            }
         }
 
 
@@ -175,7 +189,16 @@ android {
         checkReleaseBuilds = false
     }
 
-
+    // ABI 分包：Release/Benchmark 产出 x86 与 arm64-v8a 两个 split APK；
+    // Debug（isEnable=false）产出通用 APK
+    splits {
+        abi {
+            isEnable = isAbiSplitEnabled
+            reset()
+            include("arm64-v8a", "x86")
+            isUniversalApk = false
+        }
+    }
 
     bundle {
         abi.enableSplit = true
@@ -192,8 +215,11 @@ androidComponents {
         val variantName = variant.name
 
         variant.outputs.forEach { output ->
-            val currentName = output.outputFileName.toString()
-            val abi = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64").find { currentName.contains(it) }
+            // 从 output 的过滤器读取 ABI（AGP 9 分包时默认文件名不含 ABI，不能靠文件名猜测）。
+            // AGP 9 已移除 OutputFilter，改用 FilterConfiguration（filterType + identifier）。
+            val abi = output.filters
+                .firstOrNull { it.filterType == FilterConfiguration.FilterType.ABI }
+                ?.identifier
             val abiSuffix = abi?.let {
                 "-" + it.replace("arm64-v8a", "arm64").replace("armeabi-v7a", "arm32")
             } ?: ""
@@ -242,6 +268,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
+    implementation("androidx.graphics:graphics-shapes:1.0.1")
     implementation(libs.androidx.constraintlayout.compose)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.animation)

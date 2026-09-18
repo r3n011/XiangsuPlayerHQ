@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="changelog_title">更新日志</string>
+    <string name="changelog_view_github">在 GitHub 上查看</string>
+    <string name="changelog_sec_improvements">改进</string>
+    <string name="changelog_sec_fixes">修复</string>
+    <string name="changelog_sec_whats_new">新功能</string>
+    <string name="changelog_sec_added">新增</string>
+    <string-array name="changelog_020_added">
+        <item>Chromecast 支持，可从设备投射音频。</item>
+        <item>应用内更新日志，随时了解最新功能。</item>
+        <item>支持 .LRC 歌词文件，包括内嵌和外部文件。</item>
+        <item>离线歌词支持。</item>
+        <item>同步歌词（与歌曲同步显示）。</item>
+        <item>全新页面，可查看完整播放队列。</item>
+        <item>支持从队列中重新排序和移除歌曲。</item>
+        <item>迷你播放器手势（下滑关闭）。</item>
+        <item>新增更多 Material 动画。</item>
+        <item>新增自定义外观和风格的设置选项。</item>
+        <item>新增清除缓存的设置。</item>
+    </string-array>
+    <string-array name="changelog_020_improvements">
+        <item>全面重新设计用户界面。</item>
+        <item>全面重新设计播放器。</item>
+        <item>优化音乐库性能。</item>
+        <item>提升应用启动速度。</item>
+        <item>AI 现在提供更优的推荐结果。</item>
+    </string-array>
+    <string-array name="changelog_020_fixes">
+        <item>修复标签编辑器中的多个 Bug。</item>
+        <item>修复播放通知未清除的 Bug。</item>
+        <item>修复导致应用崩溃的多个 Bug。</item>
+    </string-array>
+    <string-array name="changelog_030_whats_new">
+        <item>全新的收听统计中心，提供更深入的收听洞察。</item>
+        <item>推出浮动快捷播放器，可即时打开和预览本地文件。</item>
+        <item>新增文件夹标签页，支持树形浏览和播放列表视图。</item>
+    </string-array>
+    <string-array name="changelog_030_improvements">
+        <item>优化整体 Material 3 界面，体验更简洁一致。</item>
+        <item>元数据编辑现支持更换封面图。</item>
+        <item>优化全局动画和过渡效果，导航更流畅。</item>
+        <item>改进艺术家页面布局，展示更丰富的详情。</item>
+        <item>升级 DailyMix 和 YourMix 生成算法，选择更多样化。</item>
+        <item>增强 AI 歌单生成能力。</item>
+        <item>提升搜索相关性和展示效果，发现更快捷。</item>
+        <item>扩展对更多音频文件格式的支持。</item>
+    </string-array>
+    <string-array name="changelog_030_fixes">
+        <item>修复元数据异常问题，确保歌曲详情在各处保持准确。</item>
+        <item>恢复通知快捷操作，确保可可靠地跳转回播放界面。</item>
+    </string-array>
+    <string-array name="changelog_040_improvements">
+        <item>导航大幅重新设计</item>
+        <item>新增文件浏览器，用于选择源目录</item>
+        <item>新增连接和投射功能</item>
+        <item>远程设备间无缝续播</item>
+        <item>歌曲间无缝过渡</item>
+        <item>交叉淡入淡出控制</item>
+        <item>新增自定义过渡效果功能（仅限播放列表）</item>
+        <item>关闭应用后继续播放</item>
+        <item>界面优化</item>
+        <item>改进统计功能</item>
+        <item>重新设计队列控制，功能更丰富</item>
+        <item>改进不同文件类型的播放和元数据编辑支持</item>
+        <item>改进权限控制器</item>
+        <item>小幅 Bug 修复</item>
+    </string-array>
+    <string-array name="changelog_050_improvements">
+        <item>Material 3 Expressive 界面更新</item>
+        <item>10 段均衡器及音效</item>
+        <item>全新音乐库同步流程</item>
+        <item>AI 集成（Gemini 模型）</item>
+        <item>M3U 播放列表导入/导出</item>
+        <item>Deezer 艺术家图片集成</item>
+        <item>自定义播放列表封面</item>
+        <item>设置架构重构</item>
+        <item>队列及播放器动画</item>
+        <item>Baseline Profile 及性能优化</item>
+        <item>改进歌词系统，支持同步偏移</item>
+    </string-array>
+    <string-array name="changelog_050_fixes">
+        <item>投射稳定性改进</item>
+        <item>播放器面板稳定性改进</item>
+        <item>常规 Bug 修复及清理</item>
+    </string-array>
+    <string-array name="changelog_060_whats_new">
+        <item>新增 Android Auto 支持，可在车内播放。</item>
+        <item>Wear OS 支持上线，含改进的手表到手机播放控制。</item>
+        <item>云端集成扩展，改进 Telegram、网易云音乐、QQ 音乐和 Google 云端硬盘支持。</item>
+        <item>最近播放和持久队列恢复功能，随时接续收听。</item>
+        <item>新增备份与恢复 v3 及账户管理工具。</item>
+        <item>歌词更智能，支持手动搜索回退和存储改进。</item>
+    </string-array>
+    <string-array name="changelog_060_improvements">
+        <item>全面优化启动、音乐库、队列和播放器交互性能。</item>
+        <item>重新设计播放器、投射、歌词、艺术家和风格页面，使用更流畅。</item>
+        <item>导航和搜索流程更可靠，路由处理更安全。</item>
+        <item>改进更多设备和格式的音频播放兼容性。</item>
+        <item>扩展歌曲、专辑和播放列表的多选操作。</item>
+    </string-array>
+    <string-array name="changelog_060_fixes">
+        <item>队列和随机播放行为更稳定可预测。</item>
+        <item>修复多个后台播放和投射的边缘情况。</item>
+        <item>修复睡眠定时器、文件标签页导航和专辑艺术家崩溃问题。</item>
+        <item>改进小组件加载和服务稳定性，减少过热/内存问题。</item>
+        <item>全面 Bug 修复和界面打磨。</item>
+    </string-array>
+    <string-array name="changelog_070_whats_new">
+        <item>Wear OS：音乐传输、本地播放、队列同步和手表远程控制。</item>
+        <item>AI：Groq AI 和 OpenRouter（实验性）集成，含 Token 优化。</item>
+        <item>云端：新增 Jellyfin 支持。</item>
+        <item>歌词：同步翻译及专用开关、酷狗 LRC 格式支持、文本对齐自定义和远程加载改进。</item>
+        <item>界面/体验：紧凑导航栏模式、基于专辑封面的动态主题、长标题跑马灯和新排序选项。</item>
+        <item>Telegram：原生话题支持和增强显示模式。</item>
+    </string-array>
+    <string-array name="changelog_070_improvements">
+        <item>音频引擎：全面重构，支持更多格式（MIDI、ALAC、M4A）及解码器优化。</item>
+        <item>能效：大幅降低能耗、修复过热问题和后台任务优化（SyncWorker）。</item>
+        <item>数据库：大规模查询优化和重新设计封面缓存以防止数据丢失。</item>
+        <item>启动：通过 Baseline Profile 优化缩短加载时间。</item>
+    </string-array>
+    <string-array name="changelog_070_fixes">
+        <item>播放：修复 Opus/MP3 卡顿、交叉淡入淡出时的 ReplayGain 错误和三星解码器启动问题。</item>
+        <item>稳定性：消除启动、艺术家导航和 Android 12+ 设备上的崩溃。</item>
+        <item>界面：修复封面闪烁、非拉丁文字溢出和导航栏/迷你播放器行为。</item>
+        <item>安全：加强凭据处理、存储权限和媒体服务器通信安全。</item>
+    </string-array>
+    <string-array name="changelog_070_added">
+        <item>本地化：西班牙语、法语、俄语、简体中文、印尼语、意大利语</item>
+    </string-array>
+    <string-array name="changelog_075_whats_new">
+        <item>Google 云端硬盘集成，含播放器生命周期管理。</item>
+        <item>批量歌曲元数据编辑（标签和封面）。</item>
+        <item>AI 歌词翻译，可自定义 Wear OS 偏好设置。</item>
+        <item>卡顿诊断工具和搜索页面多选功能。</item>
+        <item>新增阿拉伯语和土耳其语支持，含本地化 http URL 局域网选项。</item>
+    </string-array>
+    <string-array name="changelog_075_improvements">
+        <item>大幅省电（音频卸载和界面轮询门控）。</item>
+        <item>优化队列管理（更快的插入和显式索引）。</item>
+        <item>过渡页面的 Material 3 Expressive 运动动画。</item>
+        <item>重构音乐库同步，采用节流扫描。</item>
+    </string-array>
+    <string-array name="changelog_075_fixes">
+        <item>修复播放卡顿/跳帧延迟和缓冲问题。</item>
+        <item>修复外部歌曲删除同步和元数据一致性问题。</item>
+        <item>修复 Wear OS 和手机上的内存问题、崩溃和布局异常。</item>
+    </string-array>
+</resources>

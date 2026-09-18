@@ -55,7 +55,7 @@ class BackupFormatDetector {
         return Format.UNKNOWN
     }
 
-    fun readHeader(inputStream: InputStream, size: Int = 8): ByteArray {
+    fun readHeader(inputStream: InputStream, size: Int = 128): ByteArray {
         val buffer = ByteArray(size)
         val bytesRead = inputStream.read(buffer)
         return if (bytesRead < size) buffer.copyOf(bytesRead) else buffer

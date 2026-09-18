@@ -23,6 +23,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
@@ -112,6 +113,7 @@ fun HomeGradientTopBar(
     disableBlurAllOver: Boolean = false,
     hearingGuardState: com.theveloper.pixelplay.data.hearingguard.HearingGuardState = com.theveloper.pixelplay.data.hearingguard.HearingGuardState(),
     onHearingGuardClick: () -> Unit = {},
+    onEditHomeOrder: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -152,6 +154,22 @@ fun HomeGradientTopBar(
                 modifier = Modifier.padding(end = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // 编辑首页卡片顺序按钮（位于像素卫士胶囊左侧）
+                if (onEditHomeOrder != null) {
+                    FilledIconButton(
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        onClick = onEditHomeOrder
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Tune,
+                            contentDescription = stringResource(R.string.home_edit_card_order)
+                        )
+                    }
+                }
+
                 // 听力保护胶囊
                 com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardCapsule(
                     state = hearingGuardState,

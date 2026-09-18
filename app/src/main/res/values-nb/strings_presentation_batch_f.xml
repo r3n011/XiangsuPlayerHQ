@@ -228,4 +228,20 @@
         <item quantity="one">%d emne</item>
         <item quantity="other">%d emner</item>
     </plurals>
+    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    
+    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    
+    <string name="presentation_batch_f_change">Change</string>
+    
+    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    
+    <string name="presentation_batch_f_remove">Remove</string>
+    
+    <string name="presentation_batch_f_remove_channel_confirm_action">Remove</string>
+    
+    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s will stop syncing and all cached songs from this channel will be removed.</string>
+    
+    <string name="presentation_batch_f_remove_channel_confirm_title">Remove channel?</string>
+    
 </resources>

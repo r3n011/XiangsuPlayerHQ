@@ -108,6 +108,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -1138,19 +1139,64 @@ class PlayerViewModel @Inject constructor(
         val requestToken = fullQueuePlaybackToken
 
         fullQueuePlaybackJob = viewModelScope.launch {
+            // Cast 投屏场景需要一次性把完整队列传给远端，保留原逻辑（先建队列再播放）。
+            if (castStateHolder.castSession.value?.remoteMediaClient != null) {
+                try {
+                    val sortedIds = sortedIdsProvider()
+                    throwIfFullQueuePlaybackRequestIsStale(requestToken)
+
+                    val fullQueue = resolvePlaybackQueueFromSortedIds(sortedIds)
+                    throwIfFullQueuePlaybackRequestIsStale(requestToken)
+
+                    showAndPlaySong(
+                        song = song,
+                        contextSongs = fullQueue.ifEmpty { listOf(song) },
+                        queueName = queueName,
+                        isVoluntaryPlay = isVoluntaryPlay,
+                        cancelPendingQueueBuild = false
+                    )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    if (requestToken != fullQueuePlaybackToken) {
+                        return@launch
+                    }
+
+                    Timber.e(error, failureMessage, song.id)
+                    val fallbackQueue = libraryStateHolder.allSongs.value.takeIf { songs ->
+                        songs.isNotEmpty() && songs.any { it.id == song.id }
+                    } ?: listOf(song)
+                    showAndPlaySong(
+                        song = song,
+                        contextSongs = fallbackQueue,
+                        queueName = queueName,
+                        isVoluntaryPlay = isVoluntaryPlay,
+                        cancelPendingQueueBuild = false
+                    )
+                }
+                return@launch
+            }
+
+            // 本地播放：先立即播放当前歌曲（秒响应，不再等全库队列解析），
+            // 再在后台解析全库队列并分段回填，避免大媒体库播放卡顿数秒。
             try {
+                showAndPlaySong(
+                    song = song,
+                    contextSongs = listOf(song),
+                    queueName = queueName,
+                    isVoluntaryPlay = isVoluntaryPlay,
+                    cancelPendingQueueBuild = false
+                )
+
                 val sortedIds = sortedIdsProvider()
                 throwIfFullQueuePlaybackRequestIsStale(requestToken)
 
                 val fullQueue = resolvePlaybackQueueFromSortedIds(sortedIds)
                 throwIfFullQueuePlaybackRequestIsStale(requestToken)
 
-                showAndPlaySong(
-                    song = song,
-                    contextSongs = fullQueue.ifEmpty { listOf(song) },
-                    queueName = queueName,
-                    isVoluntaryPlay = isVoluntaryPlay,
-                    cancelPendingQueueBuild = false
+                fillPlaybackQueueInBackground(
+                    fullQueue = fullQueue,
+                    startSongId = song.id
                 )
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -1163,13 +1209,60 @@ class PlayerViewModel @Inject constructor(
                 val fallbackQueue = libraryStateHolder.allSongs.value.takeIf { songs ->
                     songs.isNotEmpty() && songs.any { it.id == song.id }
                 } ?: listOf(song)
-                showAndPlaySong(
-                    song = song,
-                    contextSongs = fallbackQueue,
-                    queueName = queueName,
-                    isVoluntaryPlay = isVoluntaryPlay,
-                    cancelPendingQueueBuild = false
+                // 若首曲尚未成功开始播放，则用 fallback 队列重试播放；否则仅后台回填队列
+                val playbackStarted = playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id
+                if (!playbackStarted) {
+                    showAndPlaySong(
+                        song = song,
+                        contextSongs = fallbackQueue,
+                        queueName = queueName,
+                        isVoluntaryPlay = isVoluntaryPlay,
+                        cancelPendingQueueBuild = false
+                    )
+                } else {
+                    fillPlaybackQueueInBackground(
+                        fullQueue = fallbackQueue,
+                        startSongId = song.id
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 后台把全库队列分段回填到播放器：等首曲进入播放状态后再准备 MediaItem 并分批
+     * addMediaItems，避免队列构建与首曲初始化争抢 CPU/主线程导致卡顿。
+     * 仅在当前仍在播放 startSongId 时才生效（用户已切走则跳过）。
+     */
+    private fun fillPlaybackQueueInBackground(
+        fullQueue: List<Song>,
+        startSongId: String
+    ) {
+        if (fullQueue.size <= 1) return
+
+        pendingQueueSegmentsJob?.cancel()
+        pendingQueueSegmentsJob = viewModelScope.launch {
+            awaitPlaybackReady(dualPlayerEngine.masterPlayer, timeoutMs = 4_000L)
+            if (!isActive) return@launch
+
+            val segments = preparePlaybackQueueSegments(
+                songsToPlay = fullQueue,
+                startSongId = startSongId,
+                playlistId = null
+            )
+            withContext(Dispatchers.Main.immediate) {
+                attachPreparedQueueSegmentsIfCurrent(
+                    player = dualPlayerEngine.masterPlayer,
+                    startSongId = startSongId,
+                    preparedSegments = segments
                 )
+                // 仅当当前仍停留在 startSongId 时才更新 UI 队列，避免覆盖用户已切走的新队列
+                if (
+                    playbackStateHolder.stablePlayerState.value.currentSong?.id == startSongId &&
+                    fullQueue.any { it.id == startSongId }
+                ) {
+                    _playerUiState.update { it.copy(currentPlaybackQueue = fullQueue.toPlaybackQueue()) }
+                }
             }
         }
     }
@@ -1725,6 +1818,13 @@ class PlayerViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = true
         )
+
+    /** 新手引导媒体库扫描：立即全量重扫本地媒体库 */
+    fun rescanLibrary() {
+        viewModelScope.launch {
+            syncManager.fullSync()
+        }
+    }
 
     private val _isInitialDataLoaded = MutableStateFlow(false)
 
@@ -4333,10 +4433,16 @@ class PlayerViewModel @Inject constructor(
                     startProgressUpdates()
                 }
 
-                // 漫游歌曲：检测 URL 是否过期（网络播放失败的典型场景），
-                // 如果是 HTTP 源且 neteaseId 存在，尝试刷新 URL
+                // 漫游歌曲：检查 VIP 预加载缓存，有则立即替换为完整 URL。
+                // ⚡ 不再在此调用 refreshRoamingSongUrl 将 netease:// 替换为 HTTP 直链
+                //    ——DualPlayerEngine 的 ResolvingDataSource 会在播放时自动解析 netease://，
+                //    提前替换会导致 HTTP 直链过期后重播失败（"放着放着就没歌了"的根因）。
                 if (song.id.startsWith("roaming_") && song.neteaseId != null) {
-                    viewModelScope.launch { refreshRoamingSongUrl(song) }
+                    val currentIndex = mediaController?.currentMediaItemIndex
+                        ?: playbackStateHolder.stablePlayerState.value.currentMediaItemIndex
+                    if (currentIndex >= 0) {
+                        applyPendingVipFullUrlIfAvailable(song.id, currentIndex)
+                    }
                 }
             } else {
                 // ⚡ 核心修复：即使 resolveSongFromMediaItem 返回 null，也不要立即清空
@@ -6191,11 +6297,20 @@ class PlayerViewModel @Inject constructor(
         if (sanitizedUrl.isBlank()) return
         val id = songId.takeIf { !it.isNullOrBlank() } ?: "cloud://${System.currentTimeMillis()}"
         val parsedNeteaseId = id.toLongOrNull()
-        val contentUri = if (parsedNeteaseId != null && parsedNeteaseId > 0) {
-            "netease://$parsedNeteaseId"
-        } else {
-            sanitizedUrl
+        // ⚡ 占位/自定义 scheme（cloud://lx/{json}、netease://、bilibili://、qq:// 等）
+        //    必须原样保留，由 DualPlayerEngine 懒解析。否则 stableId（hash 数字串）会被
+        //    toLongOrNull 误判成网易云 id，把占位覆盖成 netease://{hash} → 播放时解析失败跳歌。
+        val contentUri = when {
+            sanitizedUrl.startsWith("netease://", ignoreCase = true) ||
+                sanitizedUrl.startsWith("cloud://", ignoreCase = true) ||
+                sanitizedUrl.startsWith("qq://", ignoreCase = true) ||
+                sanitizedUrl.startsWith("kw://", ignoreCase = true) ||
+                sanitizedUrl.startsWith("bilibili://", ignoreCase = true) -> sanitizedUrl
+            parsedNeteaseId != null && parsedNeteaseId > 0 -> "netease://$parsedNeteaseId"
+            else -> sanitizedUrl
         }
+        // neteaseId 只从最终 contentUri 提取（hash 不等于真实网易云 id）
+        val effectiveNeteaseId = contentUri.removePrefix("netease://").toLongOrNull()?.takeIf { it > 0 }
         val song = Song(
             id = id,
             title = title.ifBlank { "Cloud Track" },
@@ -6210,7 +6325,7 @@ class PlayerViewModel @Inject constructor(
             mimeType = null,
             bitrate = null,
             sampleRate = null,
-            neteaseId = parsedNeteaseId?.takeIf { it > 0 },
+            neteaseId = effectiveNeteaseId,
             bilibiliBvid = bilibiliBvid?.takeIf { it.isNotBlank() }
         )
         addSongToQueue(song)
@@ -6780,11 +6895,18 @@ class PlayerViewModel @Inject constructor(
                     }
                 } else {
                     val parsedNeteaseId = id.toLongOrNull()
-                    val contentUri = if (parsedNeteaseId != null && parsedNeteaseId > 0) {
-                        "netease://$parsedNeteaseId"
-                    } else {
-                        sanitizedUrl
+                    // ⚡ 占位/自定义 scheme 必须保留（懒解析），不能被 stableId(hash) 覆盖成 netease://{hash}
+                    val contentUri = when {
+                        sanitizedUrl.startsWith("netease://", ignoreCase = true) ||
+                            sanitizedUrl.startsWith("cloud://", ignoreCase = true) ||
+                            sanitizedUrl.startsWith("qq://", ignoreCase = true) ||
+                            sanitizedUrl.startsWith("kw://", ignoreCase = true) ||
+                            sanitizedUrl.startsWith("bilibili://", ignoreCase = true) -> sanitizedUrl
+                        parsedNeteaseId != null && parsedNeteaseId > 0 -> "netease://$parsedNeteaseId"
+                        else -> sanitizedUrl
                     }
+                    // neteaseId 只从最终 contentUri 提取（hash 不等于真实网易云 id）
+                    val effectiveNeteaseId = contentUri.removePrefix("netease://").toLongOrNull()?.takeIf { it > 0 }
                     tempSong = com.theveloper.pixelplay.data.model.Song(
                         id = id,
                         title = title.ifBlank { "Cloud Track" },
@@ -6799,7 +6921,7 @@ class PlayerViewModel @Inject constructor(
                         mimeType = null,
                         bitrate = null,
                         sampleRate = null,
-                        neteaseId = parsedNeteaseId?.takeIf { it > 0 },
+                        neteaseId = effectiveNeteaseId,
                         bilibiliBvid = bilibiliBvid?.takeIf { it.isNotBlank() }
                     )
                 }
@@ -6908,8 +7030,8 @@ class PlayerViewModel @Inject constructor(
 
         // 初始加载：1 首正在播放 + 4 首预加载 = 5 首
         private const val ROAMING_PRELOAD_COUNT = 5
-        // 备用批量加载：剩余歌曲少于此数时触发（主要用于快速切歌场景）
-        private const val ROAMING_REFRESH_THRESHOLD = 2
+        // ⚡ 增大阈值：队列剩余 ≤4 首时就开始补充，避免来不及加载导致断流
+        private const val ROAMING_REFRESH_THRESHOLD = 4
     }
 
     // ─── 网易云每日推荐 ────────────────────────────────────────────────────
@@ -7325,89 +7447,19 @@ class PlayerViewModel @Inject constructor(
 
                 Timber.d("startRoamingMode: Got ${details.size} details, VIP=${details.count { it.isVip }}")
 
-                // 3. 先对**所有歌曲**统一尝试落雪 lxJsEngine（网易云在线歌曲落雪优先，音质更高）
-                val songUrlMap = mutableMapOf<Long, String>()
-                val lxReady = try {
-                    lxJsEngine.ready()
-                } catch (t: Throwable) {
-                    Timber.w(t, "startRoamingMode: lxJsEngine.ready() failed")
-                    false
-                }
-                if (lxReady) {
-                    Timber.d("startRoamingMode: Trying lxJsEngine for ${details.size} songs")
-                    val lxResults = kotlinx.coroutines.coroutineScope {
-                        details.map { detail ->
-                            async(Dispatchers.IO) {
-                                val songIdStr = detail.id.toString()
-                                val songTitle = detail.name
-                                val songArtist = detail.artistString
-                                val songAlbum = detail.albumName
-                                val songCover = detail.albumPic
-                                val songInfo = mapOf<String, Any?>(
-                                    "id" to songIdStr,
-                                    "vid" to songIdStr,
-                                    "songmid" to songIdStr,
-                                    "hash" to songIdStr,
-                                    "name" to songTitle,
-                                    "singer" to songArtist,
-                                    "artists" to songArtist,
-                                    "album" to songAlbum,
-                                    "albumName" to songAlbum,
-                                    "duration" to detail.duration,
-                                    "pic" to songCover,
-                                    "cover" to songCover
-                                )
-                                val url = try {
-                                    lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
-                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
-                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
-                                } catch (t: Throwable) {
-                                    Timber.w(t, "startRoamingMode: lxJsEngine.getPlayUrl failed for song=${detail.id}")
-                                    null
-                                }
-                                detail.id to url
-                            }
-                        }.awaitAll()
-                    }
-                    for ((id, url) in lxResults) {
-                        if (url != null && url.isNotBlank()) {
-                            songUrlMap[id] = url
-                        }
-                    }
-                    Timber.d("startRoamingMode: lxJsEngine resolved ${songUrlMap.size}/${details.size} songs")
-                } else {
-                    Timber.w("startRoamingMode: lxJsEngine not ready")
-                }
+                // ⚡ 3. 不再立即解析 HTTP 直链（会过期），改为 netease:// 占位 URI。
+                //    DualPlayerEngine 的 ResolvingDataSource 在歌曲实际播放时才解析新鲜直链。
+                //    这样队列中的歌曲永远不会因 URL 过期而无法播放。
 
-                // 4. 落雪未解析的歌曲用官方 neteaseRepository 兜底
-                val unresolvedDetails = details.filter { it.id !in songUrlMap }
-                if (unresolvedDetails.isNotEmpty()) {
-                    Timber.d("startRoamingMode: Trying neteaseRepository for ${unresolvedDetails.size} unresolved songs")
-                    val neteaseResults = kotlinx.coroutines.coroutineScope {
-                        unresolvedDetails.map { detail ->
-                            async(Dispatchers.IO) {
-                                val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
-                                detail.id to url
-                            }
-                        }.awaitAll()
-                    }
-                    for ((id, url) in neteaseResults) {
-                        if (url != null && url.isNotBlank()) {
-                            songUrlMap[id] = url
-                        }
-                    }
-                    Timber.d("startRoamingMode: neteaseRepository resolved additional ${neteaseResults.count { (_, u) -> !u.isNullOrBlank() }} songs")
-                }
-
-                // 5. 过滤出有 URL 的歌曲，按原始推荐顺序播放
-                val orderedDetails = details.filter { it.id in songUrlMap }
+                // 4. 直接使用所有详情（无需 URL 过滤），按原始推荐顺序播放
+                val orderedDetails = details
                 if (orderedDetails.isEmpty()) {
-                    Timber.e("startRoamingMode: All ${details.size} songs failed to resolve URL (VIP=${details.count { it.isVip }}, lxReady=${lxJsEngine.isReady()})")
-                    _toastEvents.emit("无法获取歌曲播放地址（可能需要VIP音源或落雪JS脚本）")
+                    Timber.e("startRoamingMode: No song details available")
+                    _toastEvents.emit("暂无推荐歌曲")
                     return@launch
                 }
 
-                Timber.d("startRoamingMode: Successfully resolved ${orderedDetails.size}/${details.size} songs (VIP=${details.count { it.isVip }})")
+                Timber.d("startRoamingMode: Using ${orderedDetails.size} songs with netease:// lazy resolution")
 
                 // ⚡ 修复：增加"标题+歌手"去重，防止同一首歌（不同专辑/不同版本）重复出现
                 // 同时检查：相邻歌曲不能完全相同
@@ -7424,9 +7476,10 @@ class PlayerViewModel @Inject constructor(
                 }
 
                 // 6. 构造 Song 对象列表（取前 ROAMING_PRELOAD_COUNT 首）
+                // ⚡ 使用 netease:// 占位 URI，由 DualPlayerEngine 在播放时才解析真实直链
                 val finalDetails = deduplicatedDetails.take(ROAMING_PRELOAD_COUNT)
                 val songsToPlay = finalDetails.mapIndexed { index, detail ->
-                    val url = songUrlMap[detail.id] ?: ""
+                    val neteaseUri = "netease://${detail.id}"
                     Song(
                         id = "roaming_${detail.id}",
                         title = detail.name,
@@ -7435,8 +7488,8 @@ class PlayerViewModel @Inject constructor(
                         artists = emptyList(),
                         album = detail.albumName,
                         albumId = 0L,
-                        path = url,
-                        contentUriString = url,
+                        path = "",
+                        contentUriString = neteaseUri,
                         albumArtUriString = detail.albumPic.takeIf { it.isNotBlank() },
                         duration = detail.duration,
                         genre = null,
@@ -7759,93 +7812,23 @@ class PlayerViewModel @Inject constructor(
                     }
                 }
 
-                // 1. 先对**所有歌曲**统一尝试落雪 lxJsEngine（网易云在线歌曲落雪优先，音质更高）
-                val songUrlMap = mutableMapOf<Long, String>()
-                val lxReady = try {
-                    lxJsEngine.ready()
-                } catch (t: Throwable) {
-                    Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.ready() failed")
-                    false
-                }
-                if (lxReady) {
-                    Timber.d("loadMoreRoamingSongs: Trying lxJsEngine for ${uniqueDetails.size} songs")
-                    val lxResults = kotlinx.coroutines.coroutineScope {
-                        uniqueDetails.map { detail ->
-                            async(Dispatchers.IO) {
-                                val songIdStr = detail.id.toString()
-                                val songTitle = detail.name
-                                val songArtist = detail.artistString
-                                val songAlbum = detail.albumName
-                                val songCover = detail.albumPic
-                                val songInfo = mapOf<String, Any?>(
-                                    "id" to songIdStr,
-                                    "vid" to songIdStr,
-                                    "songmid" to songIdStr,
-                                    "hash" to songIdStr,
-                                    "name" to songTitle,
-                                    "singer" to songArtist,
-                                    "artists" to songArtist,
-                                    "album" to songAlbum,
-                                    "albumName" to songAlbum,
-                                    "duration" to detail.duration,
-                                    "pic" to songCover,
-                                    "cover" to songCover
-                                )
-                                val url = try {
-                                    lxJsEngine.getPlayUrl("wy", songInfo, preferredLxQuality())
-                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "320k")
-                                        ?: lxJsEngine.getPlayUrl("wy", songInfo, "128k")
-                                } catch (t: Throwable) {
-                                    Timber.w(t, "loadMoreRoamingSongs: lxJsEngine.getPlayUrl failed for song=${detail.id}")
-                                    null
-                                }
-                                detail.id to url
-                            }
-                        }.awaitAll()
-                    }
-                    for ((id, url) in lxResults) {
-                        if (url != null && url.isNotBlank()) {
-                            songUrlMap[id] = url
-                        }
-                    }
-                    Timber.d("loadMoreRoamingSongs: lxJsEngine resolved ${songUrlMap.size}/${uniqueDetails.size} songs")
-                } else {
-                    Timber.w("loadMoreRoamingSongs: lxJsEngine not ready")
-                }
+                // ⚡ 不再立即解析 HTTP 直链（会过期），改为 netease:// 占位 URI。
+                //    DualPlayerEngine 的 ResolvingDataSource 在歌曲实际播放时才解析新鲜直链。
 
-                // 2. 落雪未解析的歌曲用官方 neteaseRepository 兜底
-                val unresolvedDetails = uniqueDetails.filter { it.id !in songUrlMap }
-                if (unresolvedDetails.isNotEmpty()) {
-                    Timber.d("loadMoreRoamingSongs: Trying neteaseRepository for ${unresolvedDetails.size} unresolved songs")
-                    val neteaseResults = kotlinx.coroutines.coroutineScope {
-                        unresolvedDetails.map { detail ->
-                            async(Dispatchers.IO) {
-                                val url = neteaseRepository.getSongUrl(detail.id, preferredNeteaseQuality()).getOrNull()
-                                detail.id to url
-                            }
-                        }.awaitAll()
-                    }
-                    for ((id, url) in neteaseResults) {
-                        if (url != null && url.isNotBlank()) {
-                            songUrlMap[id] = url
-                        }
-                    }
-                    Timber.d("loadMoreRoamingSongs: neteaseRepository resolved additional ${neteaseResults.count { (_, u) -> !u.isNullOrBlank() }} songs")
-                }
-
-                // 3. 过滤出有 URL 的歌曲，按原始推荐顺序，取前 count 首
-                val orderedDetails = uniqueDetails.filter { it.id in songUrlMap }.take(count)
+                // 2. 直接使用所有详情（无需 URL 过滤），按原始推荐顺序取前 count 首
+                val orderedDetails = uniqueDetails.take(count)
                 if (orderedDetails.isEmpty()) {
-                    Timber.w("loadMoreRoamingSongs: All ${uniqueDetails.size} songs failed to resolve URL")
+                    Timber.w("loadMoreRoamingSongs: No unique songs available")
                     return@launch
                 }
 
-                Timber.d("loadMoreRoamingSongs: Successfully resolved ${orderedDetails.size}/${uniqueDetails.size} songs (requested count=$count)")
+                Timber.d("loadMoreRoamingSongs: Adding ${orderedDetails.size} songs with netease:// lazy resolution")
 
                 // 构造 Song 对象并追加到队列
+                // ⚡ 使用 netease:// 占位 URI，由 DualPlayerEngine 在播放时才解析真实直链
                 val existingQueueSize = _playerUiState.value.currentPlaybackQueue.size
                 val newSongsWithVip = orderedDetails.mapIndexed { localIndex, detail ->
-                    val url = songUrlMap[detail.id] ?: ""
+                    val neteaseUri = "netease://${detail.id}"
                     val song = Song(
                         id = "roaming_${detail.id}",
                         title = detail.name,
@@ -7854,8 +7837,8 @@ class PlayerViewModel @Inject constructor(
                         artists = emptyList(),
                         album = detail.albumName,
                         albumId = 0L,
-                        path = url,
-                        contentUriString = url,
+                        path = "",
+                        contentUriString = neteaseUri,
                         albumArtUriString = detail.albumPic.takeIf { it.isNotBlank() },
                         duration = detail.duration,
                         genre = null,
@@ -7933,11 +7916,91 @@ class PlayerViewModel @Inject constructor(
                 enginePlayer.addMediaItems(newMediaItems)
 
             } catch (t: Throwable) {
-                Timber.e(t, "loadMoreRoamingSongs failed")
+                Timber.e(t, "loadMoreRoamingSongs failed, retrying in 3s")
+                // ⚡ 失败后延迟重试一次，避免因网络波动导致队列耗尽
+                try {
+                    kotlinx.coroutines.delay(3000)
+                    loadMoreRoamingSongsInternal(count)
+                } catch (t2: Throwable) {
+                    Timber.e(t2, "loadMoreRoamingSongs retry also failed")
+                }
             } finally {
                 _isRoamingLoading.value = false
             }
         }
+    }
+
+    /** loadMoreRoamingSongs 的内部实现（供重试调用，不检查 _isRoamingLoading 互斥锁） */
+    private suspend fun loadMoreRoamingSongsInternal(count: Int) {
+        val cookie = neteaseRepository.getCookieString()
+        if (cookie.isBlank()) return
+        val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie).getOrNull() ?: return
+        if (songIds.isEmpty()) return
+
+        val existingQueue = _playerUiState.value.currentPlaybackQueue
+        val existingNeteaseIds = existingQueue.mapNotNull { it.neteaseId }.toSet()
+        val existingTitleArtistKeys = existingQueue.map { song ->
+            "${song.title.trim().lowercase()}|${song.displayArtist.trim().lowercase()}"
+        }.toSet()
+
+        val newIds = songIds.filter { it !in existingNeteaseIds }.take(count * 8)
+        if (newIds.isEmpty()) return
+
+        val details = personalFmApi.fetchSongDetails(newIds, cookie).getOrNull() ?: return
+        if (details.isEmpty()) return
+
+        val seenKeysInBatch = mutableSetOf<String>()
+        val uniqueDetails = details.filter { detail ->
+            val key = "${detail.name.trim().lowercase()}|${detail.artistString.trim().lowercase()}"
+            if (key in existingTitleArtistKeys || key in seenKeysInBatch) false
+            else { seenKeysInBatch.add(key); true }
+        }
+
+        val orderedDetails = uniqueDetails.take(count)
+        if (orderedDetails.isEmpty()) return
+
+        val existingQueueSize = _playerUiState.value.currentPlaybackQueue.size
+        val newSongs = orderedDetails.mapIndexed { localIndex, detail ->
+            Song(
+                id = "roaming_${detail.id}",
+                title = detail.name,
+                artist = detail.artistString,
+                artistId = 0L,
+                artists = emptyList(),
+                album = detail.albumName,
+                albumId = 0L,
+                path = "",
+                contentUriString = "netease://${detail.id}",
+                albumArtUriString = detail.albumPic.takeIf { it.isNotBlank() },
+                duration = detail.duration,
+                genre = null,
+                lyrics = null,
+                isFavorite = false,
+                trackNumber = 0,
+                discNumber = null,
+                year = 0,
+                dateAdded = System.currentTimeMillis(),
+                dateModified = 0L,
+                mimeType = null,
+                bitrate = null,
+                sampleRate = null,
+                telegramFileId = null,
+                telegramChatId = null,
+                neteaseId = detail.id,
+                gdriveFileId = null,
+                qqMusicMid = null,
+                navidromeId = null,
+                jellyfinId = null
+            )
+        }
+
+        val combinedQueue = _playerUiState.value.currentPlaybackQueue + newSongs
+        _playerUiState.update { it.copy(currentPlaybackQueue = combinedQueue.toPlaybackQueue()) }
+
+        val enginePlayer = dualPlayerEngine.masterPlayer
+        val newMediaItems = newSongs.map { com.theveloper.pixelplay.utils.MediaItemBuilder.build(it) }
+        enginePlayer.addMediaItems(newMediaItems)
+        Timber.d("loadMoreRoamingSongsInternal: Added ${newSongs.size} songs on retry")
     }
 
     /**

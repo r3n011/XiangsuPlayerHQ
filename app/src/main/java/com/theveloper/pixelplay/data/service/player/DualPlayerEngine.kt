@@ -1575,50 +1575,33 @@ class DualPlayerEngine @Inject constructor(
             mediaItemRetryCount[mediaId] = retries + 1
             Timber.tag("DualPlayerEngine").w("Playback error for $mediaId (non-proxy). errorCode=${error.errorCode}")
 
-            // 漫游歌曲（roaming_ 前缀）播放的是落雪返回的带签名临时直链，会过期失效。
-            // 失效后对同一 URL 重试必然再次失败 → 走到 MAX_RETRIES 就"自动跳歌"。
-            // 因此报错后先重新走落雪引擎取一条新链接并原地重放，取不到才交给后续逻辑。
+            // 漫游歌曲（roaming_ 前缀）播放失败时重新解析 URL 并原地重放。
+            // 走完整解析链：lxJsEngine → neteaseStreamProxy 兜底（与 ResolvingDataSource
+            // 路径一致），避免 lxJsEngine 单点失败就直接跳歌。
             if (mediaId.startsWith("roaming_") && retries < MAX_RETRIES_PER_ITEM - 1) {
                 val numericId = mediaId.removePrefix("roaming_").toLongOrNull()
                 if (numericId != null) {
                     val wasPlayingBefore = wasPlaying
+                    // 清除过期的缓存条目和代理缓存，确保拿到新鲜直链
+                    val neteaseUri = "netease://$numericId"
+                    resolvedUriCache.remove(neteaseUri)
+                    invalidateProxyStreamCaches()
                     scope.launch(Dispatchers.Main) {
-                        val freshUrl = withContext(Dispatchers.IO) {
+                        val freshUri = withContext(Dispatchers.IO) {
                             try {
-                                val songMap = mapOf<String, Any?>(
-                                    "id" to numericId.toString(),
-                                    "vid" to numericId.toString(),
-                                    "songmid" to numericId.toString(),
-                                    "hash" to numericId.toString(),
-                                    "source" to "wy"
-                                )
-                                val chain = when (musicQualityLxValue) {
-                                    "24bit" -> listOf("24bit", "flac", "320k", "128k")
-                                    "flac" -> listOf("flac", "24bit", "320k", "128k")
-                                    "320k" -> listOf("320k", "128k")
-                                    "128k" -> listOf("128k")
-                                    else -> listOf(musicQualityLxValue, "320k", "128k")
-                                }
-                                var url: String? = null
-                                for (q in chain) {
-                                    if (!url.isNullOrBlank()) break
-                                    url = lxJsEngine.getPlayUrl("wy", songMap, q)
-                                }
-                                url
+                                resolveNeteaseUriAsync(neteaseUri)
                             } catch (t: Throwable) {
                                 Timber.tag("DualPlayerEngine").w(t, "Roaming re-resolve failed for $mediaId")
                                 null
                             }
                         }
-                        if (freshUrl.isNullOrBlank() || !::playerA.isInitialized) {
-                            if (freshUrl.isNullOrBlank()) {
-                                // 重新解析也失败 → 跳到下一首（与重试耗尽行为一致）
-                                runCatching {
-                                    if (player.hasNextMediaItem()) {
-                                        player.seekToNextMediaItem()
-                                        player.prepare()
-                                        if (wasPlayingBefore) player.playWhenReady = true
-                                    }
+                        if (freshUri == null || freshUri.toString() == neteaseUri || !::playerA.isInitialized) {
+                            // 全链路解析失败 → 跳到下一首
+                            runCatching {
+                                if (player.hasNextMediaItem()) {
+                                    player.seekToNextMediaItem()
+                                    player.prepare()
+                                    if (wasPlayingBefore) player.playWhenReady = true
                                 }
                             }
                             return@launch
@@ -1628,7 +1611,7 @@ class DualPlayerEngine @Inject constructor(
                             val currentIndex = player.currentMediaItemIndex
                             val currentPosition = player.currentPosition
                             val newItem = player.currentMediaItem
-                                ?.buildUpon()?.setUri(freshUrl)?.build()
+                                ?.buildUpon()?.setUri(freshUri)?.build()
                             if (newItem != null) {
                                 // ⚡ 必须先取快照再 stop/clear：clearMediaItems 后时间线为空，
                                 //    ensureQueueSnapshot() 会刷新成空列表导致重试落空。

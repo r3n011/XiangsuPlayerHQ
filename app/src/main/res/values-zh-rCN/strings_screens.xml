@@ -207,6 +207,11 @@
     <string name="cd_contributor_avatar">%1$s 的头像</string>
     <string name="cd_contributor_icon">%1$s 的图标</string>
     <string name="home_favorite_artists_title">收藏的歌手</string>
+    <string name="home_edit_card_order">编辑首页卡片</string>
+    <string name="home_card_order_sheet_title">自定义首页</string>
+    <string name="home_card_order_reset_dialog_title">重置卡片顺序？</string>
+    <string name="home_card_order_reset_dialog_body">将恢复首页卡片的默认顺序。</string>
+    <string name="home_card_ai_recommendation">AI 推荐</string>
     <string name="cd_favorite_artist">收藏歌手</string>
     <string name="cd_unfavorite_artist">取消收藏</string>
 

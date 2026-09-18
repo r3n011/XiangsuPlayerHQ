@@ -41,7 +41,6 @@ class GlyphMatrixController @Inject constructor(
 ) {
     companion object {
         private const val TAG = "GlyphMatrixController"
-        private const val MATRIX_SIZE = 25 // Phone (3) is 25x25
         private const val FRAME_DELAY_MS = 33L
         // Default faint idle color (grey) so the matrix is never fully dark.
         private val IDLE_BASE = Color.rgb(70, 70, 70)
@@ -49,12 +48,22 @@ class GlyphMatrixController @Inject constructor(
         private val WHITE = Color.rgb(240, 240, 240)
     }
 
+    /** 矩阵尺寸由设备决定：Phone (3)=25，Phone (4a) Pro=13（Common.getDeviceMatrixLength） */
+    private val matrixSize: Int by lazy {
+        runCatching {
+            val commonClass = Class.forName("com.nothing.ketchum.Common")
+            commonClass.getMethod("getDeviceMatrixLength").invoke(null) as? Int
+        }.getOrNull() ?: 25
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // Try to load Glyph Matrix SDK classes dynamically
+    // ⚡ 官方 SDK v2.0（glyph-matrix-sdk-2.0.aar）的包名是 com.nothing.ketchum.*，
+    //    不要用 com.nothing.glyph.*（旧版包名，反射永远找不到 → 误判不支持）
     private val glyphManagerClass: Class<*>? by lazy {
         try {
-            Class.forName("com.nothing.glyph.matrix.GlyphMatrixManager")
+            Class.forName("com.nothing.ketchum.GlyphMatrixManager")
         } catch (_: ClassNotFoundException) {
             Timber.tag(TAG).d("Glyph Matrix SDK not available on this device")
             null
@@ -63,13 +72,13 @@ class GlyphMatrixController @Inject constructor(
 
     private val glyphClass: Class<*>? by lazy {
         try {
-            Class.forName("com.nothing.glyph.Glyph")
+            Class.forName("com.nothing.ketchum.Glyph")
         } catch (_: ClassNotFoundException) { null }
     }
 
     /** 从 GlyphToy 反射读取背部按钮长按事件常量（EVENT_CHANGE） */
     private fun glyphToyEventChange(): String? = runCatching {
-        Class.forName("com.nothing.glyph.GlyphToy")
+        Class.forName("com.nothing.ketchum.GlyphToy")
             .getField("EVENT_CHANGE")
             .get(null)?.toString()
     }.getOrNull()
@@ -118,7 +127,7 @@ class GlyphMatrixController @Inject constructor(
             val getInstanceMethod = mgrClass.getMethod("getInstance", Context::class.java)
             managerInstance = getInstanceMethod.invoke(null, context)
 
-            val callbackClass = Class.forName("com.nothing.glyph.matrix.GlyphMatrixManager\$Callback")
+            val callbackClass = Class.forName("com.nothing.ketchum.GlyphMatrixManager\$Callback")
             val initMethod = mgrClass.getMethod("init", callbackClass)
             val callback = java.lang.reflect.Proxy.newProxyInstance(
                 mgrClass.classLoader,
@@ -159,10 +168,17 @@ class GlyphMatrixController @Inject constructor(
 
     private fun registerDevice() {
         try {
-            val device23112 = glyphClass?.getField("DEVICE_23112")?.get(null) as? String
-            val device25111p = glyphClass?.getField("DEVICE_25111p")?.get(null) as? String
+            val commonClass = Class.forName("com.nothing.ketchum.Common")
+            val is25111p = runCatching { commonClass.getMethod("is25111p").invoke(null) as? Boolean }
+                .getOrNull() == true
+            // Phone (4a) Pro → DEVICE_25111p（13x13）；其余（Phone 3 等）→ DEVICE_23112（25x25）
+            val deviceId = if (is25111p) {
+                glyphClass?.getField("DEVICE_25111p")?.get(null) as? String ?: "DEVICE_25111p"
+            } else {
+                glyphClass?.getField("DEVICE_23112")?.get(null) as? String ?: "DEVICE_23112"
+            }
             val registerMethod = glyphManagerClass!!.getMethod("register", String::class.java)
-            registerMethod.invoke(managerInstance, device23112 ?: "DEVICE_23112")
+            registerMethod.invoke(managerInstance, deviceId)
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to register device")
         }
@@ -231,7 +247,7 @@ class GlyphMatrixController @Inject constructor(
     private fun renderNowPlaying(song: Song?) {
         if (!isInitialized && !isPreviewEnabled()) return
         try {
-            val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
+            val frame = IntArray(matrixSize * matrixSize)
             val color = if (song != null) {
                 val hash = (song.title + song.artist).hashCode()
                 Color.rgb(
@@ -241,15 +257,15 @@ class GlyphMatrixController @Inject constructor(
                 )
             } else IDLE_BASE
 
-            val center = MATRIX_SIZE / 2
-            for (y in 0 until MATRIX_SIZE) {
-                for (x in 0 until MATRIX_SIZE) {
+            val center = matrixSize / 2
+            for (y in 0 until matrixSize) {
+                for (x in 0 until matrixSize) {
                     val dx = x - center
                     val dy = y - center
                     val dist = sqrt((dx * dx + dy * dy).toDouble())
                     if (dist < center.toDouble()) {
                         val brightness = (1.0 - dist / center).coerceIn(0.2, 1.0)
-                        frame[y * MATRIX_SIZE + x] = Color.rgb(
+                        frame[y * matrixSize + x] = Color.rgb(
                             (Color.red(color) * brightness).toInt(),
                             (Color.green(color) * brightness).toInt(),
                             (Color.blue(color) * brightness).toInt()
@@ -288,26 +304,26 @@ class GlyphMatrixController @Inject constructor(
 
     // 简化索引：对 25 段频谱取谁作为第 x 列（低频靠左）
     private fun levelAt(lv: FloatArray, col: Int): Float {
-        val idx = ((col.toFloat() / (MATRIX_SIZE - 1)) * (AudioVisualizer.BANDS - 1)).toInt()
+        val idx = ((col.toFloat() / (matrixSize - 1)) * (AudioVisualizer.BANDS - 1)).toInt()
             .coerceIn(0, AudioVisualizer.BANDS - 1)
         return lv[idx]
     }
 
     // ── idle 呼吸：无声时柔和明暗脉动 ──
     private fun idleFrame(): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
-        val center = MATRIX_SIZE / 2
+        val frame = IntArray(matrixSize * matrixSize)
+        val center = matrixSize / 2
         phase += 0.04
         val breathe = (sin(phase).toFloat() + 1f) / 2f
         val radius = 3 + breathe * 4f
-        for (y in 0 until MATRIX_SIZE) {
-            for (x in 0 until MATRIX_SIZE) {
+        for (y in 0 until matrixSize) {
+            for (x in 0 until matrixSize) {
                 val dx = x - center
                 val dy = y - center
                 val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
                 val v = (1f - (dist - radius).coerceIn(0f, 3f) / 3f).coerceIn(0f, 1f)
                 val b = (v * (0.25f + 0.75f * breathe)).toInt().coerceIn(0, 255)
-                frame[y * MATRIX_SIZE + x] = Color.rgb(b, b, b * 3 / 4)
+                frame[y * matrixSize + x] = Color.rgb(b, b, b * 3 / 4)
             }
         }
         return frame
@@ -315,14 +331,14 @@ class GlyphMatrixController @Inject constructor(
 
     // ── VISUALIZER：真实频谱柱 ──
     private fun renderBars(lv: FloatArray): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
-        for (x in 0 until MATRIX_SIZE) {
+        val frame = IntArray(matrixSize * matrixSize)
+        for (x in 0 until matrixSize) {
             val level = levelAt(lv, x)
-            val height = (level * (MATRIX_SIZE - 4)).toInt().coerceIn(0, MATRIX_SIZE - 4)
-            for (y in 0 until MATRIX_SIZE) {
-                if (y < (MATRIX_SIZE - 1) - height) continue
-                val t = y.toFloat() / MATRIX_SIZE
-                frame[y * MATRIX_SIZE + x] = spectrumColor(t)
+            val height = (level * (matrixSize - 4)).toInt().coerceIn(0, matrixSize - 4)
+            for (y in 0 until matrixSize) {
+                if (y < (matrixSize - 1) - height) continue
+                val t = y.toFloat() / matrixSize
+                frame[y * matrixSize + x] = spectrumColor(t)
             }
         }
         return frame
@@ -338,20 +354,20 @@ class GlyphMatrixController @Inject constructor(
 
     // ── WAVEFORM：频谱驱动镜像波形 ──
     private fun renderWaveform(lv: FloatArray): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
-        val center = (MATRIX_SIZE - 1) / 2
+        val frame = IntArray(matrixSize * matrixSize)
+        val center = (matrixSize - 1) / 2
         // 对每一列取频谱电平，映射为波峰位置，上下对称
-        val peaks = IntArray(MATRIX_SIZE)
-        for (x in 0 until MATRIX_SIZE) {
+        val peaks = IntArray(matrixSize)
+        for (x in 0 until matrixSize) {
             val level = levelAt(lv, x)
-            peaks[x] = (level * (MATRIX_SIZE / 2 - 1)).toInt().coerceIn(0, MATRIX_SIZE / 2 - 1)
+            peaks[x] = (level * (matrixSize / 2 - 1)).toInt().coerceIn(0, matrixSize / 2 - 1)
         }
-        for (y in 0 until MATRIX_SIZE) {
-            for (x in 0 until MATRIX_SIZE) {
+        for (y in 0 until matrixSize) {
+            for (x in 0 until matrixSize) {
                 val dist = abs(y - center)
                 if (dist <= peaks[x]) {
-                    val t = dist.toFloat() / (MATRIX_SIZE / 2)
-                    frame[y * MATRIX_SIZE + x] = spectrumColor(t)
+                    val t = dist.toFloat() / (matrixSize / 2)
+                    frame[y * matrixSize + x] = spectrumColor(t)
                 }
             }
         }
@@ -368,12 +384,12 @@ class GlyphMatrixController @Inject constructor(
 
     // ── RING：旋转的频谱辐射圆（满屏大圆环） ──
     private fun renderRing(lv: FloatArray): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
-        val maxR = (MATRIX_SIZE - 1) / 2f
+        val frame = IntArray(matrixSize * matrixSize)
+        val maxR = (matrixSize - 1) / 2f
         val cols = AudioVisualizer.BANDS
         val rot = phase
-        for (y in 0 until MATRIX_SIZE) {
-            for (x in 0 until MATRIX_SIZE) {
+        for (y in 0 until matrixSize) {
+            for (x in 0 until matrixSize) {
                 val dx = x - maxR
                 val dy = y - maxR
                 val dist = sqrt(dx * dx + dy * dy)
@@ -391,7 +407,7 @@ class GlyphMatrixController @Inject constructor(
                     // 中心暗、边缘亮，形成向外辐射的大圆环
                     val t = (dist / maxR).toFloat()
                     val b = (0.12f + t * 0.88f) * (0.4f + 0.6f * l)
-                    frame[y * MATRIX_SIZE + x] = spectrumColor(b)
+                    frame[y * matrixSize + x] = spectrumColor(b)
                 }
             }
         }
@@ -409,8 +425,8 @@ class GlyphMatrixController @Inject constructor(
 
     // ── PULSE：低频鼓点驱动的脉冲扩散 ──
     private fun renderPulse(lv: FloatArray): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
-        val center = (MATRIX_SIZE - 1) / 2
+        val frame = IntArray(matrixSize * matrixSize)
+        val center = (matrixSize - 1) / 2
         // 取低频能量作为鼓点脉冲
         var bass = 0f
         val bassCount = min(6, AudioVisualizer.BANDS)
@@ -418,8 +434,8 @@ class GlyphMatrixController @Inject constructor(
         bass /= bassCount
         val radius = 1 + (bass * 10f).toInt()
 
-        for (y in 0 until MATRIX_SIZE) {
-            for (x in 0 until MATRIX_SIZE) {
+        for (y in 0 until matrixSize) {
+            for (x in 0 until matrixSize) {
                 val dx = x - center
                 val dy = y - center
                 val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
@@ -428,7 +444,7 @@ class GlyphMatrixController @Inject constructor(
                 val edge = abs(ringPhase)
                 val v = (1f - edge).coerceIn(0f, 1f) * (0.35f + 0.65f * bass)
                 if (v > 0f) {
-                    frame[y * MATRIX_SIZE + x] = spectrumColor(v)
+                    frame[y * matrixSize + x] = spectrumColor(v)
                 }
             }
         }
@@ -445,15 +461,15 @@ class GlyphMatrixController @Inject constructor(
 
     // ── ARTWORK：点阵显示专辑封面（播放旋转 / 暂停冻结 / 无封面用 Logo） ──
     private fun renderArtwork(): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
+        val frame = IntArray(matrixSize * matrixSize)
         val src = ensureArtwork() ?: return idleFrame()
         if (isPlaying) artworkAngle = (artworkAngle + 0.06) % (2 * PI)
         val rot = artworkAngle
-        val cell = MATRIX_SIZE
+        val cell = matrixSize
         val cosR = cos(rot)
         val sinR = sin(rot)
-        for (y in 0 until MATRIX_SIZE) {
-            for (x in 0 until MATRIX_SIZE) {
+        for (y in 0 until matrixSize) {
+            for (x in 0 until matrixSize) {
                 val u = (x + 0.5f) / cell - 0.5f
                 val v = (y + 0.5f) / cell - 0.5f
                 val ux = (u * cosR - v * sinR) * 2f
@@ -464,7 +480,7 @@ class GlyphMatrixController @Inject constructor(
                 val c = runCatching { src.getPixel(sx, sy) }.getOrDefault(Color.BLACK)
                 val g = (0.299f * Color.red(c) + 0.587f * Color.green(c) + 0.114f * Color.blue(c)).toInt()
                     .coerceIn(0, 255)
-                frame[y * MATRIX_SIZE + x] = Color.rgb(g, g, g)
+                frame[y * matrixSize + x] = Color.rgb(g, g, g)
             }
         }
         return frame
@@ -479,21 +495,21 @@ class GlyphMatrixController @Inject constructor(
 
     // ── TITLE：点阵滚动显示歌名 ──
     private fun renderTitle(): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
+        val frame = IntArray(matrixSize * matrixSize)
         val title = currentSong?.title?.takeIf { it.isNotBlank() } ?: "PixelPlay"
         titleScrollX = (titleScrollX - 0.25f)
         // 文本总宽度：字符宽3 + 间距1
         val textWidth = title.length * 4
         // 取模滚动，保证无缝循环
-        val total = textWidth + MATRIX_SIZE
+        val total = textWidth + matrixSize
         val scroll = ((titleScrollX % total) + total) % total
-        for (y in 0 until MATRIX_SIZE) {
-            for (x in 0 until MATRIX_SIZE) {
-                val idx = y * MATRIX_SIZE + x
+        for (y in 0 until matrixSize) {
+            for (x in 0 until matrixSize) {
+                val idx = y * matrixSize + x
                 val charRow = (y - 9) / 5
                 // 字符垂直居中（25 行，行高 5 → 上下各留 10/2=5）
-                if (y < (MATRIX_SIZE - 5) / 2 || y >= (MATRIX_SIZE + 5) / 2) continue
-                val localY = y - (MATRIX_SIZE - 5) / 2
+                if (y < (matrixSize - 5) / 2 || y >= (matrixSize + 5) / 2) continue
+                val localY = y - (matrixSize - 5) / 2
                 val px = ((x + scroll) % total).toInt()
                 if (px >= textWidth) continue
                 val charIdx = px / 4
@@ -516,17 +532,17 @@ class GlyphMatrixController @Inject constructor(
 
     // ── PROGRESS：点阵大百分比显示（如 "50%"） ──
     private fun renderProgress(): IntArray {
-        val frame = IntArray(MATRIX_SIZE * MATRIX_SIZE)
+        val frame = IntArray(matrixSize * matrixSize)
         val percent = if (durationMs > 0) (positionMs * 100 / durationMs).toInt() else 0
         val percentText = "${percent.coerceIn(0, 100)}%"
         val charW = 3
         val step = charW + 1
         val textWidth = percentText.length * step - 1
-        val startX = (MATRIX_SIZE - textWidth) / 2
-        val startY = (MATRIX_SIZE - 5) / 2
-        for (y in 0 until MATRIX_SIZE) {
-            for (x in 0 until MATRIX_SIZE) {
-                val idx = y * MATRIX_SIZE + x
+        val startX = (matrixSize - textWidth) / 2
+        val startY = (matrixSize - 5) / 2
+        for (y in 0 until matrixSize) {
+            for (x in 0 until matrixSize) {
+                val idx = y * matrixSize + x
                 if (x in startX until (startX + textWidth) && y in startY until (startY + 5)) {
                     val charIdx = (x - startX) / step
                     val colInChar = (x - startX) % step

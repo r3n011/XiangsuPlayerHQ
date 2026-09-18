@@ -70,4 +70,6 @@
     <string name="auth_error_no_cookies">Aucun cookie trouvé. Connectez-vous d\'abord.</string>
     <string name="auth_error_netease_login_incomplete">Connexion non détectée. Terminez la connexion NetEase avant d\'appuyer sur Terminé.</string>
     <string name="auth_error_qq_login_incomplete">Connexion non détectée. Terminez la connexion QQ Music avant d\'appuyer sur Terminé.</string>
+    <string name="auth_navidrome_пароль_hint">App password also works if your server supports it.</string>
+    
 </resources>

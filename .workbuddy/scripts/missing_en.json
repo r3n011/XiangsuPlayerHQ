@@ -1,0 +1,1052 @@
+[
+ {
+  "basename": "strings.xml",
+  "name": "artist_picker_count_multiple",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "%1$d 位艺术家"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "artist_picker_count_single",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "1 位艺术家"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "artist_picker_primary_label",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "主要艺术家"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "artist_picker_shortcut_label",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "艺术家页面"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "artist_picker_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "选择艺术家"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_cover_art_heading",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "批量封面"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_cover_art_hint",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "这将替换所有 %d 首已选歌曲的封面"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_failed",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "更新歌曲失败"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_info_message",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "只会更新修改过的字段。留空的字段保持原值不变。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_mixed_values",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "（多种值）"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_multiple_covers",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "（多种不同封面）"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_optional",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "（可选 — 留空即可跳过）"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_partial_success",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已更新 %1$d/%2$d 首歌曲。部分文件无法编辑。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_remove_all_art",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "移除所有封面"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_set_cover_art",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "为所有歌曲设置封面"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_success",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "成功更新 %d 首歌曲"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "batch_edit_toolbar_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "编辑 %d 首歌曲"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "cast_seek_unavailable_for_format",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "为避免投放进程崩溃，暂不支持调整此音频格式的播放进度。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "cast_server_channel_name",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "Cast 媒体服务器"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "cast_server_foreground_error",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "%1$s：%2$s"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "cast_server_notification_text",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "正在向 Cast 设备提供媒体内容"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "cast_server_notification_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "正在投放到设备"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "glance_widget_description",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "会根据尺寸自适应的响应式小组件"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_already_available",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "Lyrics already available. Online fetch skipped."
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_custom_search_hint",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "我们无法自动找到歌词。你可以修改标题或艺术家后再手动搜索。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_embedded_already_available",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已找到内嵌歌词，已跳过在线获取。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_fetch_timeout",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "连接超时。请检查你的网络连接。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_network_error",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "网络错误。请检查你的网络连接。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_not_found",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "未找到歌词"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_provided_by",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "歌词提供方"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "lyrics_server_error",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "服务器错误（代码 %d）。请稍后重试。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_cancelled_toast",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "定时器已取消。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_display_eot",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "曲目结束时"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_eot_no_song_toast",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "无法启用「曲目结束时」：当前没有活动歌曲。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_eot_song_changed_toast",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "「曲目结束时」定时器已停用：歌曲已从 %1$s 切换为 %2$s。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_label_current_track",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "当前曲目"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_label_previous_track",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "上一曲"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_n_minutes_format",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "%1$d 分钟"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_set_for_minutes_toast",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已设置 %1$d 分钟后停止。"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "sleep_timer_ui_set_custom_duration",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "设置自定义时长"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_channel_description",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "显示手机到手表音乐传输的实时进度"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_channel_name",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "手表传输"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_status_cancelled",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已取消"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_status_completed",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已完成"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_status_failed",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "失败"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_status_preparing",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "准备中"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_status_transferring",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "传输中"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "watch_transfer_summary_n",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "%1$d 个传输"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "widget_bar_4x1_desc",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "紧凑型播放器栏"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "widget_control_4x2_desc",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "包含随机和重复的完整控制"
+ },
+ {
+  "basename": "strings.xml",
+  "name": "widget_grid_2x2_desc",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "极简方形播放器"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "edit_song_cover_art_heading",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "封面图"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "edit_song_cover_art_hint",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "选择一张方形图片并微调它，让封面图在整个应用中都能有良好显示效果。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "edit_song_crop_dialog_hint",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "使用双指缩放和拖动手势来找到理想构图。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "edit_song_crop_dialog_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "调整封面图"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "edit_song_toolbar_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "编辑歌曲"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "edit_song_unable_to_load_image",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "无法加载所选图片"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "equalizer_action_save_new",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "保存新预设"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "home_option_dj_mashup",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "DJ Mashup"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "multi_selection_playlists_count_upper",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "%1$d 个播放列表"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "multi_selection_songs_count_upper",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "%1$d 首歌曲"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "no_internet_dialog_message",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "此内容需要网络连接。请检查你的网络设置后重试。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "no_internet_dialog_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "无网络连接"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "offline_screen_message",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "请检查你的网络连接，然后重试以访问此内容。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "offline_screen_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "你当前处于离线状态"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "playlist_dismissed_message",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "播放列表已关闭"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "reorder_tabs_reordering",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "正在重新排序标签……"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "reorder_tabs_reset_dialog_body",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "要将标签顺序重置为默认值吗？"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "reorder_tabs_reset_dialog_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "重置顺序"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "reorder_tabs_sheet_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "重新排序媒体库标签"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_checking_watch",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "正在检查手表"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_download",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "下载"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_download_failed",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "下载失败"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_downloaded",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已下载"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_downloading_progress",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "下载中 %1$d%%"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_ringtone_failed",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "无法更改声音：%1$s"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_ringtone_local_only",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "只有本地歌曲可用作系统声音。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_ringtone_missing_file",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "无法准备此音频文件。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_ringtone_permission_missing",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "未开启修改系统设置。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_ringtone_permission_prompt",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "开启修改系统设置，然后返回 XiangsuPlayer 自动完成。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_ringtone_success",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已将「%1$s」设为铃声"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_send_to_watch",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "发送到手表"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_share_chooser_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "通过以下方式分享歌曲文件"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tab_info_badge",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "信息"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tab_options",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "选项"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tab_options_badge",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "选项"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_alarm_label",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "闹钟声音"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_alarm_subtitle",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "时钟闹钟"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_alarm_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "闹钟声音"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_confirm_action",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "设置声音"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_confirm_body",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "将「%1$s」设为%2$s？"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_confirm_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "确认声音更改"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_notification_label",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "通知声音"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_notification_subtitle",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "消息和应用提醒"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_notification_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "通知声音"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_picker_body",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "选择 XiangsuPlayer 要安装此声音的位置。"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_picker_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "将这首歌用作"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_ringtone_label",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "铃声"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_ringtone_subtitle",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "来电"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_ringtone_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "手机铃声"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_tone_success",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已将「%1$s」设为%2$s"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_transfer_in_progress",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "正在传输"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_transferring_percent",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "正在传输 %1$d%%"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_transferring_to_watch",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "正在传输到手表"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "song_info_watch_unavailable",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "手表不可用"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "widget_album_art",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "专辑封面"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "widget_album_art_placeholder",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "专辑封面占位图"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "widget_preview_artist",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "艺术家"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "widget_preview_song_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "歌曲标题"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "widget_tap_to_open",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "点按打开"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "widget_tap_to_play",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "点按播放"
+ },
+ {
+  "basename": "strings_components.xml",
+  "name": "widget_wavy_progress_bar_desc",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "进度条，%1$d%%"
+ },
+ {
+  "basename": "strings_presentation_batch_a.xml",
+  "name": "auth_gdrive_connect_subtitle",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "直接从你的 Google Drive 串流播放音乐文件"
+ },
+ {
+  "basename": "strings_presentation_batch_a.xml",
+  "name": "auth_gdrive_connect_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "连接 Google Drive"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_description",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "描述你想要的氛围、情绪或活动，让 AI 从你的媒体库中为你策划理想的播放列表。"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_generate",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "生成播放列表"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_generating",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "生成中……"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_headline_daily_mix",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "每日合辑"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_headline_perfect",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "精准策划"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_max_songs",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "最多歌曲数"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_min_songs",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "最少歌曲数"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_prompt_placeholder",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "例如：轻松的夜晚氛围、充满活力的健身节奏……"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_ready_to_play",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "可立即播放"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_section_size",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "播放列表大小"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_status_default",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "声音旅程已生成！"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_subtitle_generator",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "AI 播放列表生成器"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_subtitle_journey_ready",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "你的声音旅程已准备就绪"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "ai_playlist_tap_to_retry",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "点击重试"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "library_action_new",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "新建"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "library_error_loading_songs",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "加载歌曲时出错"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "library_no_songs_in_library_message",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "你的媒体库中没有找到歌曲。"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "library_no_songs_rescan_hint",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "如果你的设备上有音乐，请尝试在设置中重新扫描媒体库。"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "library_storage_filter_all_songs",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "全部歌曲"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "library_storage_filter_offline",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "本地"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "library_storage_filter_online",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "云端"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "lyrics_synced_badge",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "已同步"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "song_picker_action_add",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "添加"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "song_picker_error_load_failed",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "加载歌曲失败"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "song_picker_filter_favorites",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "喜爱的歌曲"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "song_picker_load_more",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "加载更多"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "song_picker_search_label",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "搜索或筛选歌曲……"
+ },
+ {
+  "basename": "strings_presentation_batch_c.xml",
+  "name": "song_picker_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "添加歌曲"
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_carousel_no_peek",
+  "type": "string",
+  "src_lang": "values-de",
+  "src_value": "Kein Peek"
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_carousel_one_peek",
+  "type": "string",
+  "src_lang": "values-de",
+  "src_value": "Ein Peek"
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_carousel_style_desc",
+  "type": "string",
+  "src_lang": "values-de",
+  "src_value": "Wie das Album-Karussell dargestellt wird."
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_carousel_style_label",
+  "type": "string",
+  "src_lang": "values-de",
+  "src_value": "Karussell-Stil"
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_download_complete",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "下载完成"
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_download_failed",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "下载失败"
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_download_progress_format",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "%1$.0f%%"
+ },
+ {
+  "basename": "strings_settings.xml",
+  "name": "setcat_download_progress_title",
+  "type": "string",
+  "src_lang": "zh-rCN",
+  "src_value": "下载进度"
+ }
+]

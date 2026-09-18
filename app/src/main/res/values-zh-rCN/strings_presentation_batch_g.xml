@@ -465,8 +465,8 @@
     <string name="presentation_batch_g_cast_cd_refresh_connections">刷新连接</string>
     <string name="presentation_batch_g_cast_cd_refresh_devices">刷新设备</string>
     <string name="presentation_batch_g_cast_nearby_devices">附近设备</string>
-    <string name="presentation_batch_g_cast_nearby_title">Nearby devices</string>
-    <string name="presentation_batch_g_cast_nearby_desc">Required to detect and control connected Bluetooth audio devices.</string>
+    <string name="presentation_batch_g_cast_nearby_title">附近设备</string>
+    <string name="presentation_batch_g_cast_nearby_desc">用于检测和控制已连接的蓝牙音频设备。</string>
     <string name="presentation_batch_g_cast_tap_to_connect">点按即可连接</string>
     <string name="presentation_batch_g_cast_no_devices_yet">还没有设备</string>
     <string name="presentation_batch_g_cast_disconnect">断开连接</string>

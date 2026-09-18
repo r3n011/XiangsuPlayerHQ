@@ -1,57 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <!-- Library list errors -->
-    <string name="library_error_loading_songs">Gagal memuat lagu</string>
     <string name="library_error_loading_albums">Gagal memuat album</string>
     <string name="library_error_loading_artists">Gagal memuat artis</string>
     <string name="library_retry">Coba lagi</string>
-
-    <!-- Library empty (paginated) -->
-    <string name="library_no_songs_in_library_message">Tidak ditemukan lagu di pustaka Anda.</string>
-    <string name="library_no_songs_rescan_hint">Coba pindai ulang pustaka Anda di pengaturan jika Anda memiliki musik di perangkat Anda.</string>
     <string name="cd_no_songs_in_library">Tidak ditemukan lagu</string>
-
-    <!-- Library action row -->
-    <string name="library_action_new">Baru</string>
     <string name="cd_create_new_playlist">Buat playlist baru</string>
     <string name="cd_import_m3u_playlist">Impor playlist M3U</string>
     <string name="cd_locate_current_song">Temukan lagu saat ini</string>
-    <string name="library_storage_filter_all_songs">Semua lagu</string>
-    <string name="library_storage_filter_online">Online</string>
-    <string name="library_storage_filter_offline">Offline</string>
     <string name="cd_sort_options">Opsi pengurutan</string>
-
-    <!-- Fetch lyrics (manual search fields) -->
-    <string name="lyrics_synced_badge">SYNCED</string>
     <string name="song_field_artist_optional">Artis (opsional)</string>
-
-    <!-- Song picker -->
-    <string name="song_picker_title">Tambah lagu</string>
     <string name="cd_confirm_add_songs">Tambah lagu terpilih</string>
-    <string name="song_picker_action_add">Tambah</string>
-    <string name="song_picker_search_label">Cari lagu…</string>
-    <string name="song_picker_filter_favorites">Disukai</string>
-    <string name="song_picker_error_load_failed">Gagal memuat lagu</string>
-    <string name="song_picker_load_more">Muat lebih banyak</string>
-
-    <!-- AI playlist sheet -->
     <string name="cd_ai">AI</string>
-    <string name="ai_playlist_headline_perfect">Perfectly Curated</string>
-    <string name="ai_playlist_headline_daily_mix">Daily Mix</string>
-    <string name="ai_playlist_subtitle_journey_ready">Perjalanan sonik Anda sudah siap</string>
-    <string name="ai_playlist_subtitle_generator">Generator Playlist AI</string>
-    <string name="ai_playlist_description">Jelaskan getaran, suasana hati, atau aktivitas dan biarkan AI menciptakan playlist yang sempurna dari pustaka Anda.</string>
-    <string name="ai_playlist_section_size">Ukuran playlist</string>
-    <string name="ai_playlist_min_songs">Lagu min</string>
-    <string name="ai_playlist_max_songs">Lagu maks</string>
-    <string name="ai_playlist_prompt_placeholder">misal. Getaran malam santai, energi latihan yang ceria…</string>
-    <string name="ai_playlist_tap_to_retry">Ketuk untuk Mencoba Lagi</string>
-    <string name="ai_playlist_status_default">Perjalanan sonik disintesis!</string>
-    <string name="ai_playlist_generating">Menghasilkan…</string>
-    <string name="ai_playlist_ready_to_play">Siap Diputar</string>
-    <string name="ai_playlist_generate">Hasilkan Playlist</string>
-    
-    <!-- Library Empty State -->
     <string name="lib_empty_songs_all_title">Belum ada lagu</string>
     <string name="lib_empty_songs_all_subtitle">Tambahkan musik ke perangkat Anda atau sinkronkan sumber cloud untuk mulai mendengarkan.</string>
     <string name="lib_empty_songs_offline_title">Tidak ditemukan lagu lokal</string>
@@ -80,4 +39,12 @@
     <string name="lib_empty_folders_subtitle">Folder penyimpanan internal dengan musik akan muncul di sini.</string>
     <string name="lib_empty_playlists_title">Belum ada playlist</string>
     <string name="lib_empty_playlists_subtitle">Buat playlist pertama Anda untuk mengatur pustaka Anda.</string>
+    <string name="daily_recommend_error">Failed to load daily recommend</string>
+    <string name="daily_recommend_play_cd">Play daily recommend</string>
+    <string name="daily_recommend_retry">Retry</string>
+    <string name="daily_recommend_songs_count">%1$d songs today</string>
+    <string name="daily_recommend_subtitle">Personalized picks, updated daily</string>
+    <string name="daily_recommend_title">Daily Recommend</string>
+    <string name="lib_empty_history_subtitle">Songs you play will show up here.</string>
+    <string name="lib_empty_history_title">No playback history yet</string>
 </resources>

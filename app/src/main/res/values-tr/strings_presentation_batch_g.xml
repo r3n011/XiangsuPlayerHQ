@@ -608,4 +608,136 @@ Karakter sınırlayıcılardan kaçmak için ters eğik çizgi (\) kullanılabil
         <item>Endonezce</item>
         <item>İtalyanca</item>
     </string-array>
+    <string name="artist_whitelist_add">Add</string>
+    
+    <string name="artist_whitelist_add_title">Add Artist</string>
+    
+    <string name="artist_whitelist_current_title">Current Whitelist</string>
+    
+    <string name="artist_whitelist_empty">No artists in whitelist</string>
+    
+    <string name="artist_whitelist_hint">Enter artist name, e.g. AC/DC</string>
+    
+    <string name="artist_whitelist_remove">Remove %1$s</string>
+    
+    <string name="artist_whitelist_reset">Reset</string>
+    
+    <string name="artist_whitelist_reset_cancel">Cancel</string>
+    
+    <string name="artist_whitelist_reset_confirm">Reset</string>
+    
+    <string name="artist_whitelist_reset_dialog_body">This will clear all whitelisted artists. A library rescan is required to take effect.</string>
+    
+    <string name="artist_whitelist_reset_dialog_title">Reset whitelist?</string>
+    
+    <string name="artist_whitelist_section_subtitle">Artists in the whitelist are kept intact during library scanning and will never be split by delimiters. Use it for artist names that contain /, &amp;, + etc. (e.g. AC/DC, Tones &amp; I).</string>
+    
+    <string name="artist_whitelist_section_title">About</string>
+    
+    <string name="artist_whitelist_toast_added">Added to whitelist</string>
+    
+    <string name="artist_whitelist_toast_invalid">Artist already exists or name is invalid</string>
+    
+    <string name="artist_whitelist_toolbar_title">Artist Split Whitelist</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_description">Off by default. Records a short lag timeline for beta troubleshooting.</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_expires">Active until %1$s</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_mark_lag">Mark lag now</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_marked">Lag moment marked</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_title">Advanced performance diagnostics</string>
+    
+    <string name="device_capabilities_format_custom_decoder">PixelPlayer in-house DSD decoder</string>
+    
+    <string name="presentation_batch_g_artist_item_whitelist">Artist Split Whitelist</string>
+    
+    <string name="presentation_batch_g_artist_whitelist_current_prefix">Current: %1$s</string>
+    
+    <string name="presentation_batch_g_artist_whitelist_none">Not set</string>
+    
+    <string-array name="presentation_batch_g_changelog_080_fixes">
+        <item>Fixed the home screen not resetting to the top when returning from other pages.</item>
+        <item>Fixed Bilibili tracks in playback history failing to play.</item>
+    </string-array>
+    
+    
+    
+    <string-array name="presentation_batch_g_changelog_080_improvements">
+        <item>Lyrics: Fixed long lyric lines being clipped on phone screens with more accurate line-wrap measurement.</item>
+        <item>Player: The mini player now transitions with a springy sliding animation when the bottom bar is hidden.</item>
+        <item>Device capabilities: The format counter now includes the software-decoded DFF/DSF/DIF formats.</item>
+        <item>Localization: Completed Chinese translations for the cloud streaming sheet and appearance settings (disable blur, show scrollbar, collage patterns, show lyrics track info).</item>
+        <item>Settings: Moved the "Show lyrics track info" option into the lyrics section of appearance settings.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_080_whats_new">
+        <item>Lyrics: The dynamic lyrics blur effect is now enabled by default (adjustable in developer settings).</item>
+        <item>Dot Mode: The bottom navigation bar is now automatically hidden in Dot e-ink mode when using online sources.</item>
+    </string-array>
+    
+    <string name="sort_option_album">Album</string>
+    
+    <string name="sort_option_album_desc">Album (Z-A)</string>
+    
+    <string name="sort_option_artist">Artist</string>
+    
+    <string name="sort_option_artist_desc">Artist (Z-A)</string>
+    
+    <string name="sort_option_custom_order">Custom Order</string>
+    
+    <string name="sort_option_date_added">Date Added</string>
+    
+    <string name="sort_option_date_added_oldest">Date Added (Oldest First)</string>
+    
+    <string name="sort_option_date_created">Date Created</string>
+    
+    <string name="sort_option_date_created_oldest">Date Created (Oldest First)</string>
+    
+    <string name="sort_option_date_liked">Date Liked</string>
+    
+    <string name="sort_option_date_liked_oldest">Date Liked (Oldest First)</string>
+    
+    <string name="sort_option_default_order">Default Order</string>
+    
+    <string name="sort_option_duration">Duration</string>
+    
+    <string name="sort_option_duration_shortest">Duration (Shortest First)</string>
+    
+    <string name="sort_option_fewest_songs">Fewest Songs</string>
+    
+    <string name="sort_option_fewest_subfolders">Fewest Subfolders</string>
+    
+    <string name="sort_option_most_songs">Most Songs</string>
+    
+    <string name="sort_option_most_subfolders">Most Subfolders</string>
+    
+    <string name="sort_option_name">Name</string>
+    
+    <string name="sort_option_name_az">Name (A-Z)</string>
+    
+    <string name="sort_option_name_za">Name (Z-A)</string>
+    
+    <string name="sort_option_number_of_songs">Number of Songs</string>
+    
+    <string name="sort_option_number_of_songs_fewest">Number of Songs (Fewest)</string>
+    
+    <string name="sort_option_number_of_songs_most">Number of Songs (Most)</string>
+    
+    <string name="sort_option_release_year">Release Year</string>
+    
+    <string name="sort_option_release_year_oldest">Release Year (Oldest First)</string>
+    
+    <string name="sort_option_song_count">Song Count</string>
+    
+    <string name="sort_option_subfolder_count">Subfolder Count</string>
+
+    <string name="sort_option_title">Title</string>
+    
+    <string name="sort_option_title_az">Title (A-Z)</string>
+    
+    <string name="sort_option_title_za">Title (Z-A)</string>
+    
 </resources>

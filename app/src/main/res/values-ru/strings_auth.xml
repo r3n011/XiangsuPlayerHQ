@@ -70,4 +70,6 @@
     <string name="auth_error_no_cookies">Cookies не найдены. Сначала войдите в аккаунт.</string>
     <string name="auth_error_netease_login_incomplete">Вход ещё не обнаружен. Завершите вход в NetEase перед нажатием «Готово».</string>
     <string name="auth_error_qq_login_incomplete">Вход ещё не обнаружен. Завершите вход в QQ Music перед нажатием «Готово».</string>
+    <string name="auth_navidrome_пароль_hint">App password also works if your server supports it.</string>
+    
 </resources>

@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
+import android.view.ViewTreeObserver
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
 import androidx.compose.ui.geometry.CornerRadius
@@ -117,6 +118,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -143,6 +145,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.theveloper.pixelplay.presentation.screens.onboarding.OnboardingScreen
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardViewModel
 import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardViewModel
@@ -228,9 +231,6 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalWindowInfo
-import android.content.res.Configuration
 
 
 @Immutable
@@ -247,6 +247,29 @@ private data class DismissUndoBarSlice(
     val isVisible: Boolean = false,
     val durationMillis: Long = 4000L
 )
+
+/**
+ * 可靠的窗口横屏判断（与主页一致）。
+ * 直接监听 View 全局布局：旋转/分屏时 View 尺寸必然变化，OnGlobalLayout 必然回调；
+ * 不依赖 LocalConfiguration/LocalWindowInfo 的配置更新机制（configChanges 旋转不重建 Activity 时不更新）。
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+internal fun rememberWindowIsLandscape(): Boolean {
+    val view = LocalView.current
+    var isLandscape by remember { mutableStateOf(view.width > view.height) }
+    DisposableEffect(view) {
+        val listener = ViewTreeObserver.OnGlobalLayoutListener {
+            val newValue = view.width > view.height
+            if (newValue != isLandscape) isLandscape = newValue
+        }
+        view.viewTreeObserver.addOnGlobalLayoutListener(listener)
+        onDispose {
+            view.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+        }
+    }
+    return isLandscape
+}
 
 @UnstableApi
 @AndroidEntryPoint
@@ -443,9 +466,13 @@ class MainActivity : ComponentActivity() {
             val permissionState = rememberMultiplePermissionsState(permissions = permissions)
             val permissionsValid = permissionState.allPermissionsGranted
 
+            // 首次启动（新手引导未完成）时不自动弹权限，由引导页的权限步骤处理
+            val initialSetupDone by userPreferencesRepository.initialSetupDoneFlow
+                .collectAsStateWithLifecycle(initialValue = true)
+
             // Auto-request permissions when app starts and permissions are not granted
             LaunchedEffect(Unit) {
-                if (!permissionsValid && !isBenchmarkMode) {
+                if (!permissionsValid && !isBenchmarkMode && initialSetupDone) {
                     permissionState.launchMultiplePermissionRequest()
                 }
             }
@@ -455,8 +482,6 @@ class MainActivity : ComponentActivity() {
                 if (permissionsValid) {
                      LogUtils.i(this, "Permissions granted. Starting sync.")
                      mainViewModel.startSync()
-                     // Mark setup as complete to prevent showing setup screen in future
-                     userPreferencesRepository.setInitialSetupDone(true)
                 }
             }
 
@@ -506,8 +531,21 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             } else {
-                                // Show main app content directly (no setup screen)
-                                MainAppContent(playerViewModel, mainViewModel)
+                                // 首次启动：展示新手引导；完成后进入主界面
+                                if (!initialSetupDone) {
+                                    val onboardingScope = rememberCoroutineScope()
+                                    OnboardingScreen(
+                                        themePreferencesRepository = themePreferencesRepository,
+                                        userPreferencesRepository = userPreferencesRepository,
+                                        onFinished = {
+                                            onboardingScope.launch {
+                                                userPreferencesRepository.setInitialSetupDone(true)
+                                            }
+                                        }
+                                    )
+                                } else {
+                                    MainAppContent(playerViewModel, mainViewModel)
+                                }
                             }
                         }
 
@@ -900,9 +938,20 @@ class MainActivity : ComponentActivity() {
         Trace.beginSection("MainActivity.MainUI")
 
         // 按窗口实际宽高比判定横屏/平板布局：平板小窗/分屏变窄时自动切换为手机模式。
-        // 使用 LocalConfiguration 而非容器尺寸：Activity 声明了 configChanges，旋转不会重建，
-        // LocalConfiguration 在 onConfigurationChanged 时可靠触发重组，容器尺寸在旋转时可能不更新
-        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        // ⚡ 直接监听 View 全局布局：旋转/分屏时 View 尺寸必然变化，OnGlobalLayout 必然回调，
+        // 不依赖 LocalConfiguration/LocalWindowInfo 的配置更新机制（部分 Compose 版本旋转后不触发重组）。
+        val mainView = LocalView.current
+        var isLandscape by remember { mutableStateOf(mainView.width > mainView.height) }
+        DisposableEffect(mainView) {
+            val listener = ViewTreeObserver.OnGlobalLayoutListener {
+                val newValue = mainView.width > mainView.height
+                if (newValue != isLandscape) isLandscape = newValue
+            }
+            mainView.viewTreeObserver.addOnGlobalLayoutListener(listener)
+            onDispose {
+                mainView.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+            }
+        }
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
         val discoverShowRoaming by userPreferencesRepository.discoverShowRoamingFlow.collectAsStateWithLifecycle(initialValue = true)
         val discoverShowRadio by userPreferencesRepository.discoverShowRadioFlow.collectAsStateWithLifecycle(initialValue = true)
@@ -1012,6 +1061,7 @@ class MainActivity : ComponentActivity() {
         val routesWithHiddenNavigationBar = remember {
             setOf(
                 Screen.Accounts.route,
+                Screen.SourceMarket.route,
                 Screen.PlaylistDetail.route,
                 Screen.DailyMixScreen.route,
                 Screen.DailyRecommendScreen.route,

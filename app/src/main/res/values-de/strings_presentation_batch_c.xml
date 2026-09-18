@@ -1,56 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <!-- Library list errors -->
-    <string name="library_error_loading_songs">Fehler beim Laden der Songs</string>
     <string name="library_error_loading_albums">Fehler beim Laden der Alben</string>
     <string name="library_error_loading_artists">Fehler beim Laden der Künstler</string>
     <string name="library_retry">Erneut versuchen</string>
-
-    <!-- Library empty (paginated) -->
-    <string name="library_no_songs_in_library_message">Keine Songs in der Bibliothek gefunden.</string>
-    <string name="library_no_songs_rescan_hint">Musik auf dem Gerät? Rescan unter Einstellungen starten.</string>
     <string name="cd_no_songs_in_library">Keine Songs gefunden</string>
-
-    <!-- Library action row -->
-    <string name="library_action_new">Neu</string>
     <string name="cd_create_new_playlist">Neue Playlist erstellen</string>
     <string name="cd_import_m3u_playlist">M3U-Playlist importieren</string>
     <string name="cd_locate_current_song">Aktuellen Song suchen</string>
-    <string name="library_storage_filter_all_songs">Alle Songs</string>
-    <string name="library_storage_filter_online">Online</string>
-    <string name="library_storage_filter_offline">Offline</string>
     <string name="cd_sort_options">Sortieroptionen</string>
-
-    <!-- Fetch lyrics (manual search fields) -->
-    <string name="lyrics_synced_badge">SYNCHRONISIERT</string>
     <string name="song_field_artist_optional">Künstler (optional)</string>
-
-    <!-- Song picker -->
-    <string name="song_picker_title">Songs hinzufügen</string>
     <string name="cd_confirm_add_songs">Ausgewählte Songs hinzufügen</string>
-    <string name="song_picker_action_add">Hinzufügen</string>
-    <string name="song_picker_search_label">Songs suchen…</string>
-    <string name="song_picker_error_load_failed">Songs konnten nicht geladen werden</string>
-    <string name="song_picker_load_more">Mehr laden</string>
-
-    <!-- AI playlist sheet -->
     <string name="cd_ai">KI</string>
-    <string name="ai_playlist_headline_perfect">Perfekt kuratiert</string>
-    <string name="ai_playlist_headline_daily_mix">Daily Mix</string>
-    <string name="ai_playlist_subtitle_journey_ready">Dein Klangerlebnis ist bereit</string>
-    <string name="ai_playlist_subtitle_generator">KI-Playlist-Generator</string>
-    <string name="ai_playlist_description">Stimmung, Vibe oder Aktivität beschreiben – die KI sucht die passenden Songs aus deiner Bibliothek.</string>
-    <string name="ai_playlist_section_size">Playlist-Größe</string>
-    <string name="ai_playlist_min_songs">Min. Songs</string>
-    <string name="ai_playlist_max_songs">Max. Songs</string>
-    <string name="ai_playlist_prompt_placeholder">z. B. Entspannter Abend, energiegeladenes Workout…</string>
-    <string name="ai_playlist_tap_to_retry">Antippen zum Wiederholen</string>
-    <string name="ai_playlist_status_default">Playlist fertig!</string>
-    <string name="ai_playlist_generating">Wird generiert…</string>
-    <string name="ai_playlist_ready_to_play">Bereit zum Abspielen</string>
-    <string name="ai_playlist_generate">Playlist generieren</string>
-
-    <!-- Library Empty State -->
     <string name="lib_empty_songs_all_title">Noch keine Songs</string>
     <string name="lib_empty_songs_all_subtitle">Musik hinzufügen oder eine Cloud-Quelle synchronisieren.</string>
     <string name="lib_empty_songs_offline_title">Keine lokalen Songs gefunden</string>
@@ -79,4 +39,12 @@
     <string name="lib_empty_folders_subtitle">Ordner im internen Speicher mit Musik erscheinen hier.</string>
     <string name="lib_empty_playlists_title">Noch keine Playlists</string>
     <string name="lib_empty_playlists_subtitle">Erste Playlist erstellen und loslegen.</string>
+    <string name="daily_recommend_error">Failed to load daily recommend</string>
+    <string name="daily_recommend_play_cd">Play daily recommend</string>
+    <string name="daily_recommend_retry">Retry</string>
+    <string name="daily_recommend_songs_count">%1$d songs today</string>
+    <string name="daily_recommend_subtitle">Personalized picks, updated daily</string>
+    <string name="daily_recommend_title">Daily Recommend</string>
+    <string name="lib_empty_history_subtitle">Songs you play will show up here.</string>
+    <string name="lib_empty_history_title">No playback history yet</string>
 </resources>

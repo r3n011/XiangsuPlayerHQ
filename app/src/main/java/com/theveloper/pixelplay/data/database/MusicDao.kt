@@ -1747,6 +1747,9 @@ interface MusicDao {
     @Query("UPDATE songs SET album_art_uri_string = :albumArtUri WHERE id = :songId")
     suspend fun updateSongAlbumArt(songId: Long, albumArtUri: String?)
 
+    @Query("UPDATE albums SET album_art_uri_string = :albumArtUri WHERE id = :albumId")
+    suspend fun updateAlbumArt(albumId: Long, albumArtUri: String?)
+
     @Query("UPDATE songs SET title = :title WHERE id = :songId")
     suspend fun updateSongTitle(songId: Long, title: String)
 

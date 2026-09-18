@@ -498,4 +498,271 @@
         <item>Italia</item>
     </string-array>
     <string name="presentation_batch_g_cast_nearby_title">Perangkat terdekat</string>
+    <string name="artist_whitelist_add">Add</string>
+    
+    <string name="artist_whitelist_add_title">Add Artist</string>
+    
+    <string name="artist_whitelist_current_title">Current Whitelist</string>
+    
+    <string name="artist_whitelist_empty">No artists in whitelist</string>
+    
+    <string name="artist_whitelist_hint">Enter artist name, e.g. AC/DC</string>
+    
+    <string name="artist_whitelist_remove">Remove %1$s</string>
+    
+    <string name="artist_whitelist_reset">Reset</string>
+    
+    <string name="artist_whitelist_reset_cancel">Cancel</string>
+    
+    <string name="artist_whitelist_reset_confirm">Reset</string>
+    
+    <string name="artist_whitelist_reset_dialog_body">This will clear all whitelisted artists. A library rescan is required to take effect.</string>
+    
+    <string name="artist_whitelist_reset_dialog_title">Reset whitelist?</string>
+    
+    <string name="artist_whitelist_section_subtitle">Artists in the whitelist are kept intact during library scanning and will never be split by delimiters. Use it for artist names that contain /, &amp;, + etc. (e.g. AC/DC, Tones &amp; I).</string>
+    
+    <string name="artist_whitelist_section_title">About</string>
+    
+    <string name="artist_whitelist_toast_added">Added to whitelist</string>
+    
+    <string name="artist_whitelist_toast_invalid">Artist already exists or name is invalid</string>
+    
+    <string name="artist_whitelist_toolbar_title">Artist Split Whitelist</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_description">Off by default. Records a short lag timeline for beta troubleshooting.</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_expires">Active until %1$s</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_mark_lag">Mark lag now</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_marked">Lag moment marked</string>
+    
+    <string name="device_capabilities_advanced_diagnostics_title">Advanced performance diagnostics</string>
+    
+    <string name="device_capabilities_format_custom_decoder">PixelPlayer in-house DSD decoder</string>
+    
+    <string name="device_capabilities_report_copied">Report copied to clipboard</string>
+    
+    <string name="device_capabilities_report_copy">Copy</string>
+    
+    <string name="device_capabilities_report_description">Generate a shareable diagnostic report to help us classify playback or scan lag. It contains only device, library, and timing data — no file paths, titles, or artists.</string>
+    
+    <string name="device_capabilities_report_generate">Generate report</string>
+    
+    <string name="device_capabilities_report_regenerate">Regenerate</string>
+    
+    <string name="device_capabilities_report_share">Share</string>
+    
+    <string name="device_capabilities_report_share_title">PixelPlay performance report</string>
+    
+    <string name="device_capabilities_report_title">Performance report</string>
+    
+    <string name="presentation_batch_g_artist_item_whitelist">Artist Split Whitelist</string>
+    
+    <string name="presentation_batch_g_artist_whitelist_current_prefix">Current: %1$s</string>
+    
+    <string name="presentation_batch_g_artist_whitelist_none">Not set</string>
+    
+    <string name="presentation_batch_g_beta_sheet_report_body">Share steps to reproduce, expected results, actual results, and your device/OS details.</string>
+    
+    <string-array name="presentation_batch_g_changelog_020_added">
+        <item>Chromecast support for casting audio from your device.</item>
+        <item>In-app changelog to keep you updated on the latest features.</item>
+        <item>Support for .LRC files, both embedded and external.</item>
+        <item>Offline lyrics support.</item>
+        <item>Synchronized lyrics (synced with the song).</item>
+        <item>New screen to view the full queue.</item>
+        <item>Reorder and remove songs from the queue.</item>
+        <item>Mini-player gestures (swipe down to close).</item>
+        <item>Added more material animations.</item>
+        <item>New settings to customize the look and feel.</item>
+        <item>New settings to clear the cache.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_020_changed">
+        <item>Complete redesign of the user interface.</item>
+        <item>Complete redesign of the player.</item>
+        <item>Performance improvements in the library.</item>
+        <item>Improved application startup speed.</item>
+        <item>The AI now provides better results.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_020_fixed">
+        <item>Fixed various bugs in the tag editor.</item>
+        <item>Fixed a bug where the playback notification was not clearing.</item>
+        <item>Fixed several bugs that caused the app to crash.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_030_fixes">
+        <item>Resolved metadata quirks so song details stay accurate everywhere.</item>
+        <item>Restored notification shortcuts so they reliably jump back into playback.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_030_improvements">
+        <item>Refined the overall Material 3 UI for a cleaner and more cohesive experience.</item>
+        <item>Metadata editing now supports cover art change.</item>
+        <item>Smoothed out animations and transitions across the app for more fluid navigation.</item>
+        <item>Enhanced the artist screen layout with richer details and polish.</item>
+        <item>Upgraded DailyMix and YourMix generation with smarter, more diverse selections.</item>
+        <item>Strengthened the AI playlist generation.</item>
+        <item>Improved search relevance and presentation for faster discovery.</item>
+        <item>Expanded support for a broader range of audio file formats.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_030_whats_new">
+        <item>Introduced a richer listening stats hub with deeper insights into your sessions.</item>
+        <item>Launched a floating quick player to instantly open and preview local files.</item>
+        <item>Added a folders tab with a tree-style navigator and playlist-ready view.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_040_highlights">
+        <item>Major navigation redesign</item>
+        <item>New file explorer for choosing source directories</item>
+        <item>New Connectivity and casting functionalities</item>
+        <item>Seamless continuity between remote devices</item>
+        <item>Gapless transition between songs</item>
+        <item>Crossfade control</item>
+        <item>New Custom Transitions feature (only for playlists)</item>
+        <item>Keep playing after closed the app</item>
+        <item>UI Optimizations</item>
+        <item>Improved stats feature</item>
+        <item>Redesigned Queue control with more features</item>
+        <item>Improved different filetypes support for playing and metadata editing</item>
+        <item>Improved permission controller</item>
+        <item>Minor bug fixes</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_050_fixes">
+        <item>Casting Stability Improvements</item>
+        <item>Player Sheet Stability</item>
+        <item>General Bug Fixes &amp; Cleanup</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_050_highlights">
+        <item>Material 3 Expressive UI Update</item>
+        <item>10-band Equalizer &amp; Effects</item>
+        <item>New Library Sync Flow</item>
+        <item>AI Integration (Gemini Models)</item>
+        <item>M3U Playlist Import/Export</item>
+        <item>Deezer Artist Artwork Integration</item>
+        <item>Custom Playlist Covers</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_050_improvements">
+        <item>Settings Architecture Refactor</item>
+        <item>Queue &amp; Player Animations</item>
+        <item>Baseline Profiles &amp; Performance</item>
+        <item>Better Lyrics System with Sync Offset</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_060_fixes">
+        <item>Queue and shuffle behavior is now more stable and predictable.</item>
+        <item>Several background playback and casting edge cases were fixed.</item>
+        <item>Sleep Timer, Files tab navigation, and album artist crash issues were fixed.</item>
+        <item>Widget loading and service stability were improved to reduce overheating/memory issues.</item>
+        <item>General bug fixes and UI polish across the app.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_060_improvements">
+        <item>Big performance pass across startup, library, queue, and player interactions.</item>
+        <item>Player, Cast, Lyrics, Artist, and Genre surfaces were redesigned for smoother use.</item>
+        <item>Navigation and search flows are more reliable, with safer route handling.</item>
+        <item>Audio playback compatibility improved for more devices and formats.</item>
+        <item>Multi-selection workflows were expanded across songs, albums, and playlists.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_060_whats_new">
+        <item>Android Auto support is now available for in-car playback.</item>
+        <item>Wear OS support is live, including better watch-to-phone playback controls.</item>
+        <item>Cloud integrations expanded with Telegram, NetEase, QQ Music, and Google Drive improvements.</item>
+        <item>Recently Played and persistent queue restoration keep your listening session ready.</item>
+        <item>Backup &amp; Restore v3 and account management tools are now included.</item>
+        <item>Lyrics got smarter with manual search fallback and storage improvements.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_080_fixes">
+        <item>Fixed the home screen not resetting to the top when returning from other pages.</item>
+        <item>Fixed Bilibili tracks in playback history failing to play.</item>
+    </string-array>
+    
+    
+    
+    <string-array name="presentation_batch_g_changelog_080_improvements">
+        <item>Lyrics: Fixed long lyric lines being clipped on phone screens with more accurate line-wrap measurement.</item>
+        <item>Player: The mini player now transitions with a springy sliding animation when the bottom bar is hidden.</item>
+        <item>Device capabilities: The format counter now includes the software-decoded DFF/DSF/DIF formats.</item>
+        <item>Localization: Completed Chinese translations for the cloud streaming sheet and appearance settings (disable blur, show scrollbar, collage patterns, show lyrics track info).</item>
+        <item>Settings: Moved the "Show lyrics track info" option into the lyrics section of appearance settings.</item>
+    </string-array>
+    
+    <string-array name="presentation_batch_g_changelog_080_whats_new">
+        <item>Lyrics: The dynamic lyrics blur effect is now enabled by default (adjustable in developer settings).</item>
+        <item>Dot Mode: The bottom navigation bar is now automatically hidden in Dot e-ink mode when using online sources.</item>
+    </string-array>
+    
+    <string name="presentation_batch_g_changelog_sec_whats_new">What\'s New</string>
+    
+    <string name="sort_option_album">Album</string>
+    
+    <string name="sort_option_album_desc">Album (Z-A)</string>
+    
+    <string name="sort_option_artist">Artist</string>
+    
+    <string name="sort_option_artist_desc">Artist (Z-A)</string>
+    
+    <string name="sort_option_custom_order">Custom Order</string>
+    
+    <string name="sort_option_date_added">Date Added</string>
+    
+    <string name="sort_option_date_added_oldest">Date Added (Oldest First)</string>
+    
+    <string name="sort_option_date_created">Date Created</string>
+    
+    <string name="sort_option_date_created_oldest">Date Created (Oldest First)</string>
+    
+    <string name="sort_option_date_liked">Date Liked</string>
+    
+    <string name="sort_option_date_liked_oldest">Date Liked (Oldest First)</string>
+    
+    <string name="sort_option_default_order">Default Order</string>
+    
+    <string name="sort_option_duration">Duration</string>
+    
+    <string name="sort_option_duration_shortest">Duration (Shortest First)</string>
+    
+    <string name="sort_option_fewest_songs">Fewest Songs</string>
+    
+    <string name="sort_option_fewest_subfolders">Fewest Subfolders</string>
+    
+    <string name="sort_option_most_songs">Most Songs</string>
+    
+    <string name="sort_option_most_subfolders">Most Subfolders</string>
+    
+    <string name="sort_option_name">Name</string>
+    
+    <string name="sort_option_name_az">Name (A-Z)</string>
+    
+    <string name="sort_option_name_za">Name (Z-A)</string>
+    
+    <string name="sort_option_number_of_songs">Number of Songs</string>
+    
+    <string name="sort_option_number_of_songs_fewest">Number of Songs (Fewest)</string>
+    
+    <string name="sort_option_number_of_songs_most">Number of Songs (Most)</string>
+    
+    <string name="sort_option_release_year">Release Year</string>
+    
+    <string name="sort_option_release_year_oldest">Release Year (Oldest First)</string>
+    
+    <string name="sort_option_song_count">Song Count</string>
+    
+    <string name="sort_option_subfolder_count">Subfolder Count</string>
+
+    <string name="sort_option_title">Title</string>
+    
+    <string name="sort_option_title_az">Title (A-Z)</string>
+    
+    <string name="sort_option_title_za">Title (Z-A)</string>
+    
 </resources>

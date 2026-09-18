@@ -37,6 +37,26 @@ class EqualizerPreferencesRepository @Inject constructor(
         val VIEW_MODE = stringPreferencesKey("equalizer_view_mode")
         val CUSTOM_PRESETS = stringPreferencesKey("custom_presets_json")
         val PINNED_PRESETS = stringPreferencesKey("pinned_presets_json")
+        val AUTO_EQ_PROFILE = stringPreferencesKey("autoeq_profile")
+        val USER_AUDIO_DEVICES = stringPreferencesKey("user_audio_devices")
+        val ACTIVE_AUDIO_DEVICE_ID = stringPreferencesKey("active_audio_device_id")
+        val DISMISSED_AUTO_EQ_SUGGESTIONS = stringPreferencesKey("dismissed_autoeq_suggestions")
+    }
+
+    val autoEQProfileFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.AUTO_EQ_PROFILE] ?: ""
+    }
+
+    val userAudioDevicesFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[Keys.USER_AUDIO_DEVICES]
+    }
+
+    val activeAudioDeviceIdFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[Keys.ACTIVE_AUDIO_DEVICE_ID]
+    }
+
+    val dismissedAutoEQSuggestionsFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[Keys.DISMISSED_AUTO_EQ_SUGGESTIONS]
     }
 
     val equalizerViewModeFlow: Flow<EqualizerViewMode> = dataStore.data.map { preferences ->
@@ -211,6 +231,38 @@ class EqualizerPreferencesRepository @Inject constructor(
             preferences[Keys.LOUDNESS_DISMISSED] = dismissed
         }
 
+    suspend fun setAutoEQProfile(profileName: String) =
+        dataStore.edit { preferences ->
+            preferences[Keys.AUTO_EQ_PROFILE] = profileName
+        }
+
+    suspend fun setUserAudioDevices(devicesJson: String?) =
+        dataStore.edit { preferences ->
+            if (devicesJson != null) {
+                preferences[Keys.USER_AUDIO_DEVICES] = devicesJson
+            } else {
+                preferences.remove(Keys.USER_AUDIO_DEVICES)
+            }
+        }
+
+    suspend fun setActiveAudioDeviceId(deviceId: String?) =
+        dataStore.edit { preferences ->
+            if (deviceId != null) {
+                preferences[Keys.ACTIVE_AUDIO_DEVICE_ID] = deviceId
+            } else {
+                preferences.remove(Keys.ACTIVE_AUDIO_DEVICE_ID)
+            }
+        }
+
+    suspend fun setDismissedAutoEQSuggestions(dismissedDevices: String?) =
+        dataStore.edit { preferences ->
+            if (dismissedDevices != null) {
+                preferences[Keys.DISMISSED_AUTO_EQ_SUGGESTIONS] = dismissedDevices
+            } else {
+                preferences.remove(Keys.DISMISSED_AUTO_EQ_SUGGESTIONS)
+            }
+        }
+
     suspend fun setPinnedPresets(presetNames: List<String>) =
         dataStore.edit { preferences ->
             preferences[Keys.PINNED_PRESETS] = json.encodeToString(presetNames)
@@ -222,6 +274,21 @@ class EqualizerPreferencesRepository @Inject constructor(
         current.add(preset)
         dataStore.edit { preferences ->
             preferences[Keys.CUSTOM_PRESETS] = json.encodeToString(current)
+        }
+    }
+
+    /**
+     * 原子保存自定义预设并立即选为当前预设。
+     * 一次 DataStore edit 同时写入 customPresets 与 equalizer_preset，
+     * 避免两次独立写入导致调音器 combine 读到旧列表而回落 FLAT 的竞态。
+     */
+    suspend fun saveCustomPresetAndSelect(preset: EqualizerPreset) {
+        val current = customPresetsFlow.first().toMutableList()
+        current.removeAll { it.name == preset.name }
+        current.add(preset)
+        dataStore.edit { preferences ->
+            preferences[Keys.CUSTOM_PRESETS] = json.encodeToString(current)
+            preferences[Keys.EQUALIZER_PRESET] = preset.name
         }
     }
 
