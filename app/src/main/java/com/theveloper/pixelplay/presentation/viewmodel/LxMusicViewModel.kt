@@ -11,6 +11,8 @@ import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.lx.LxSearchResult
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import com.theveloper.pixelplay.data.lx.LxArtistInfo
+import com.theveloper.pixelplay.data.lx.LxPlaylistInfo
+import com.theveloper.pixelplay.data.lx.LxPlaylistSearchResult
 import com.theveloper.pixelplay.data.lx.LxScriptInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
 import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
@@ -59,6 +61,21 @@ data class LxUiState(
     val artistResults: List<LxArtistInfo> = emptyList(),
     val artistIsEnd: Boolean = true,
     val artistError: String? = null,
+    // ⚡ 歌单搜索相关字段
+    val searchingPlaylists: Boolean = false,
+    val playlistResults: List<LxPlaylistInfo> = emptyList(),
+    val playlistIsEnd: Boolean = true,
+    val playlistError: String? = null,
+    /** 正在「保存到本地」的在线歌单 id（其列表项显示加载指示） */
+    val savingPlaylistId: String? = null,
+    // ⚡ 在线歌单预览面板（点击歌单项打开，可试听）
+    val previewPlaylist: LxPlaylistInfo? = null,
+    val previewSongs: List<LxSongInfo> = emptyList(),
+    val previewLoading: Boolean = false,
+    val previewLoadingMore: Boolean = false,
+    val previewIsEnd: Boolean = true,
+    val previewError: String? = null,
+    val previewTotal: Int = 0,
 )
 
 @HiltViewModel
@@ -70,6 +87,7 @@ class LxMusicViewModel @Inject constructor(
     private val builtInSourceSearchApi: BuiltInSourceSearchApi,
     private val musicRepository: MusicRepository,
     private val userPreferencesRepository: com.theveloper.pixelplay.data.preferences.UserPreferencesRepository,
+    private val playlistPreferencesRepository: com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository,
 ) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(LxUiState())
@@ -77,8 +95,9 @@ class LxMusicViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            // 内置音源已下线：启动时仅清理旧安装残留的内置 JS 文件
-            store.cleanupLegacyBundledSources()
+            // 注意：不要再清理"内置音源残留"——内置 JS 早已从 APK 移除，
+            // 该清理名单（v4.1 / v9.3 等）与用户自己导入的文件同名，
+            // 每次启动会把用户的音源插件删掉 → 直链解析回落到内置源 → 部分歌曲 410。
             autoInitIfPresent()
         }
         // 同步在线音源播放音质
@@ -441,7 +460,270 @@ class LxMusicViewModel @Inject constructor(
     }
 
     /**
-     * 按所选音源搜索（模仿落雪原版单源搜索方案）：
+     * ⚡ 在线歌单搜索（模仿落雪 songlist 搜索的数据实现）。
+     * - wy / all：网易云官方歌单搜索（type=1000）
+     * - tx / kg / mg / kw：内置源官方歌单搜索
+     * - 其他落雪 JS 源：暂不支持，返回空结果
+     * 独立的分页状态（_playlistCurrentPage / _lastPlaylistKeyword），
+     * 不影响歌曲搜索与歌手搜索的状态。
+     */
+    private var _playlistCurrentPage = 1
+    private var _lastPlaylistKeyword: String? = null
+    /** 最近一次歌单搜索实际使用的音源（供分页加载更多时保持同一音源） */
+    private var _lastPlaylistSource: String = "wy"
+    private val _playlistPageSize = 15
+
+    /** 在线歌单预览面板的当前页（kg/tx 不分页，mg 内部钳制 30，kw 支持大页） */
+    private var _previewPage = 1
+    private val PREVIEW_PAGE_SIZE = 1000
+
+    fun searchPlaylists(source: String? = null) {
+        val kw = keyword.trim()
+        if (kw.isBlank()) return
+        val effectiveSource = source ?: selectedSource
+        // ⚡ 新搜索重置分页状态
+        _playlistCurrentPage = 1
+        _lastPlaylistKeyword = kw
+        _lastPlaylistSource = effectiveSource
+        _uiState.value = _uiState.value.copy(
+            searchingPlaylists = true,
+            playlistError = null,
+            playlistIsEnd = false,
+            playlistResults = emptyList()
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = searchPlaylistsBySource(effectiveSource, kw, page = 1, pageSize = _playlistPageSize)
+                _uiState.value = _uiState.value.copy(
+                    searchingPlaylists = false,
+                    playlistResults = result.list,
+                    playlistIsEnd = result.isEnd,
+                    playlistError = if (result.list.isEmpty()) "无相关歌单（请换关键词）" else null
+                )
+            } catch (t: Throwable) {
+                _uiState.value = _uiState.value.copy(
+                    searchingPlaylists = false,
+                    playlistResults = emptyList(),
+                    playlistIsEnd = true,
+                    playlistError = "歌单搜索失败: ${t.message ?: t.javaClass.simpleName}"
+                )
+            }
+        }
+    }
+
+    /**
+     * ⚡ 加载下一页歌单搜索结果（无限滚动）
+     */
+    fun loadMorePlaylists() {
+        val kw = _lastPlaylistKeyword?.trim() ?: keyword.trim()
+        if (kw.isBlank()) return
+        // 防重复：正在搜索/加载更多时不触发；已到最后一页时不触发
+        if (_uiState.value.searchingPlaylists || _uiState.value.isLoadingMore || _uiState.value.playlistIsEnd) return
+        if (_uiState.value.playlistResults.isEmpty()) return
+
+        val nextPage = _playlistCurrentPage + 1
+        _uiState.value = _uiState.value.copy(isLoadingMore = true, playlistError = null)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = searchPlaylistsBySource(_lastPlaylistSource, kw, page = nextPage, pageSize = _playlistPageSize)
+                // ⚡ 追加到现有结果列表，使用 LinkedHashSet 去重
+                val existingIds = _uiState.value.playlistResults.mapTo(LinkedHashSet()) { it.id }
+                val newItems = result.list.filterNot { it.id in existingIds }
+
+                _playlistCurrentPage = nextPage
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    playlistResults = _uiState.value.playlistResults + newItems,
+                    playlistIsEnd = result.isEnd
+                )
+            } catch (t: Throwable) {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    playlistError = "加载更多失败: ${t.message ?: t.javaClass.simpleName}"
+                )
+            }
+        }
+    }
+
+    /**
+     * 拉取在线歌单歌曲的统一入口（供「保存到本地」与「预览」共用）：
+     * - wy / all：走网易云官方歌单详情（[LxSearchApi.getPlaylistSongs]）
+     * - tx / kg / mg / kw 等内置源：走 [BuiltInSourceSearchApi.getPlaylistSongs]
+     */
+    private suspend fun fetchPlaylistSongs(
+        playlist: LxPlaylistInfo,
+        page: Int = 1,
+        pageSize: Int = 1000
+    ): LxSearchResult {
+        val source = playlist.source.ifBlank { "wy" }
+        return if (source != "wy" && source != "all" && builtInSourceSearchApi.isSupported(source)) {
+            builtInSourceSearchApi.getPlaylistSongs(source, playlist.id, page, pageSize)
+        } else {
+            searchApi.getPlaylistSongs(playlist.id, source)
+        }
+    }
+
+    // ── 在线歌单预览（点击歌单项打开，可试听） ─────────────────────────────
+
+    /** 打开在线歌单预览面板并加载首批歌曲 */
+    fun openPlaylistPreview(playlist: LxPlaylistInfo) {
+        if (_uiState.value.previewLoading) return
+        _uiState.value = _uiState.value.copy(
+            previewPlaylist = playlist,
+            previewSongs = emptyList(),
+            previewLoading = true,
+            previewLoadingMore = false,
+            previewIsEnd = true,
+            previewError = null,
+            previewTotal = 0
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = fetchPlaylistSongs(playlist, page = 1, pageSize = PREVIEW_PAGE_SIZE)
+                _uiState.value = _uiState.value.copy(
+                    previewLoading = false,
+                    previewSongs = result.list,
+                    previewIsEnd = result.isEnd || result.list.isEmpty(),
+                    previewTotal = if (result.total > 0) result.total else result.list.size,
+                    previewError = if (result.list.isEmpty()) "获取歌单歌曲失败，请稍后重试" else null
+                )
+            } catch (t: Throwable) {
+                Timber.e(t, "openPlaylistPreview failed")
+                _uiState.value = _uiState.value.copy(
+                    previewLoading = false,
+                    previewIsEnd = true,
+                    previewError = "加载失败: ${t.message ?: t.javaClass.simpleName}"
+                )
+            }
+        }
+    }
+
+    /** 预览面板滚动到底加载更多（kg/tx 一次返回全部，仅 mg/kw 需要翻页） */
+    fun loadMorePlaylistPreview() {
+        val state = _uiState.value
+        val playlist = state.previewPlaylist ?: return
+        if (state.previewLoading || state.previewLoadingMore || state.previewIsEnd) return
+        _previewPage += 1
+        val page = _previewPage
+        _uiState.value = state.copy(previewLoadingMore = true)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = fetchPlaylistSongs(playlist, page = page, pageSize = PREVIEW_PAGE_SIZE)
+                val existing = _uiState.value.previewSongs.mapTo(LinkedHashSet()) { getStableSongId(it) }
+                val newItems = result.list.filter { getStableSongId(it) !in existing }
+                _uiState.value = _uiState.value.copy(
+                    previewLoadingMore = false,
+                    previewSongs = _uiState.value.previewSongs + newItems,
+                    previewIsEnd = result.isEnd || result.list.isEmpty(),
+                    previewTotal = if (result.total > 0) result.total else _uiState.value.previewSongs.size + newItems.size
+                )
+            } catch (t: Throwable) {
+                Timber.e(t, "loadMorePlaylistPreview failed")
+                _previewPage -= 1
+                _uiState.value = _uiState.value.copy(previewLoadingMore = false)
+            }
+        }
+    }
+
+    /** 关闭预览面板 */
+    fun closePlaylistPreview() {
+        _previewPage = 1
+        _uiState.value = _uiState.value.copy(
+            previewPlaylist = null,
+            previewSongs = emptyList(),
+            previewLoading = false,
+            previewLoadingMore = false,
+            previewIsEnd = true,
+            previewError = null,
+            previewTotal = 0
+        )
+    }
+
+    /** 试听预览面板中的歌曲（并整单排队） */
+    fun playPreviewSong(
+        song: LxSongInfo,
+        onOpenPlayer: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit,
+        onEnqueue: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit = { _, _, _, _, _ -> }
+    ) {
+        playSong(song, onOpenPlayer)
+        enqueueSongsList(_uiState.value.previewSongs, getStableSongId(song), onEnqueue)
+    }
+
+    /**
+     * ⚡ 把在线歌单保存为本地歌单：拉取歌单歌曲 → 逐首写入统一媒体库（生成可播放的 Song）
+     * → 创建本地歌单，之后可从「本地歌单」进入 playlist_detail 路由查看/播放。
+     */
+    fun savePlaylistToLocal(
+        playlist: LxPlaylistInfo,
+        onResult: (Boolean, String) -> Unit = { _, _ -> }
+    ) {
+        if (_uiState.value.savingPlaylistId != null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(savingPlaylistId = playlist.id)
+            var savedCount = 0
+            try {
+                val result = fetchPlaylistSongs(playlist)
+                if (result.list.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        onResult(false, "获取歌单歌曲失败，请稍后重试")
+                    }
+                    return@launch
+                }
+
+                val songIds = ArrayList<String>(result.list.size)
+                result.list.forEach { song ->
+                    val saved = runCatching {
+                        musicRepository.saveCloudSong(song.copy(source = song.source.ifBlank { "wy" }))
+                    }.getOrNull()
+                    if (saved != null) songIds.add(saved.toString())
+                }
+                savedCount = songIds.size
+                if (songIds.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        onResult(false, "保存歌曲失败，请稍后重试")
+                    }
+                    return@launch
+                }
+
+                playlistPreferencesRepository.createPlaylist(
+                    name = playlist.name.ifBlank { "在线歌单" },
+                    songIds = songIds,
+                    coverImageUri = playlist.cover.ifBlank { null },
+                    source = "ONLINE"
+                )
+                withContext(Dispatchers.Main) {
+                    onResult(true, "已保存到本地歌单「${playlist.name}」($savedCount 首)")
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "savePlaylistToLocal failed")
+                withContext(Dispatchers.Main) {
+                    onResult(false, "保存失败: ${t.message ?: t.javaClass.simpleName}")
+                }
+            } finally {
+                _uiState.value = _uiState.value.copy(savingPlaylistId = null)
+            }
+        }
+    }
+
+    private suspend fun searchPlaylistsBySource(
+        source: String,
+        kw: String,
+        page: Int,
+        pageSize: Int
+    ): LxPlaylistSearchResult {
+        val result = when {
+            source == "wy" || source == "all" -> searchApi.searchPlaylists(kw, page = page, pageSize = pageSize)
+            builtInSourceSearchApi.isSupported(source) ->
+                builtInSourceSearchApi.searchPlaylists(source, kw, page, pageSize)
+            else -> LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        }
+        // 网易云结果已自带 source，其余统一标记为所选音源
+        return if (source == "wy" || source == "all") result
+        else result.copy(list = result.list.map { it.copy(source = source) })
+    }
+
+    /**
+     * 按所选音源搜索（模仿落雪原版单源搜索方案，支持 wy/tx/kg/mg 等内置源与落雪 JS 源）：
      * - wy / all（默认）：网易云官方搜索 API（原版，保持不动；仅播放走落雪）
      * - tx / kg / mg（内置源）：落雪同款官方搜索（不依赖 JS，QQ音乐/酷狗/咪咕）
      * - 其他落雪音源：走 JS 引擎 engine.search 搜索该源，不支持搜索时返回空结果
@@ -553,6 +835,11 @@ class LxMusicViewModel @Inject constructor(
      */
     private suspend fun resolvePlayableSong(song: LxSongInfo, persist: Boolean = true): LxResolvedPlayable? {
         val songMap = song.toInfoMap()
+        // ⚡ 与媒体库播放（DualPlayerEngine.resolveCloudLxUriAsync）对齐：先确保 JS 音源引擎就绪。
+        //    冷启动瞬间 getSources() 为空会被误判成"没装插件"而退化到内置源（酷我官方直链，
+        //    部分歌曲带"酷我音乐已为您开启免费听歌权限"语音）。未导入任何脚本时立即返回。
+        runCatching { engine.awaitReady(15_000) }
+        val lxReady = engine.isReady()
         val availableSources = runCatching {
             engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
         }.getOrDefault(emptyList())
@@ -581,9 +868,20 @@ class LxMusicViewModel @Inject constructor(
             android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=$preferredQuality)")
             resolvePlayUrlWithQualityChain("wy", songMap, preferredQuality)
         } else if (builtInSourceSearchApi.isSupported(targetSource)) {
-            // 内置源（QQ音乐/酷狗/咪咕）：官方播放接口 + 溯音酷我兜底
-            android.util.Log.d("LxPlaySong", "Built-in source $targetSource, preferredQuality=$preferredQuality")
-            builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality)
+            // ★ 插件优先、内置源兜底（与媒体库播放 DualPlayerEngine 保持一致）：
+            //   内置源 tx/mg/kw 会落到酷我官方直链，部分歌曲的试听流带
+            //   "酷我音乐已为您开启免费听歌权限"语音；用户导入的 JS 插件
+            //   （全豆要 v9.x 等，内部自带星海/溯音多源 fallback）返回的直链无此问题。
+            val pluginUrl = if (lxReady) {
+                resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality)
+            } else null
+            if (pluginUrl != null) {
+                android.util.Log.d("LxPlaySong", "Built-in source $targetSource resolved via LxJsEngine (plugin first)")
+                pluginUrl
+            } else {
+                android.util.Log.d("LxPlaySong", "Built-in source $targetSource, fallback to builtIn (quality=$preferredQuality)")
+                builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality)
+            }
         } else {
             resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality)
         }

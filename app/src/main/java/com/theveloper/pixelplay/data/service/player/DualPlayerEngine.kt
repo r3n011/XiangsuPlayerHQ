@@ -38,6 +38,7 @@ import androidx.media3.extractor.mp3.Mp3Extractor
 import androidx.media3.extractor.flac.FlacExtractor
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
 import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
+import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.TransitionSettings
 import com.theveloper.pixelplay.data.telegram.TelegramRepository
 import com.theveloper.pixelplay.utils.envelope
@@ -1868,11 +1869,10 @@ class DualPlayerEngine @Inject constructor(
                                     } else null
                                 }
                                 "qqmusic" -> {
-                                    if (qqMusicStreamProxy.ensureReady(5_000L)) {
-                                        qqMusicStreamProxy.resolveQqMusicUri(originalUri)
-                                            ?.takeIf { it.isNotBlank() }
-                                            ?.let { Uri.parse(it) }
-                                    } else null
+                                    // 与 resolveCloudUri 走同一条三级解析链（官方代理+vkey /
+                                    // 落雪 tx 源 / 内置源官方接口），避免数据源层只走代理
+                                    // 导致上游不可用时必然 404。
+                                    resolveQqMusicUriAsync(originalUri)
                                 }
                                 "telegram" -> {
                                     telegramRepository.resolveTelegramUri(originalUri)?.first
@@ -2315,11 +2315,100 @@ class DualPlayerEngine @Inject constructor(
         neteaseStreamProxy.resolveNeteaseUri(uriString)?.let { Uri.parse(it) }
     }
 
+    /**
+     * 解析 `qqmusic://{songMid}`（QQ 音乐歌单同步进媒体库后的歌曲）。
+     *
+     * 解析链（与网易云对齐，避免"QQ 歌单里的音乐播放不了"）：
+     * 1. 官方链路：本地代理 + QQ vkey（需已登录 QQ 音乐；VIP/失效曲目 purl 为空）。
+     *    ⚠️ 代理只负责生成 127.0.0.1 地址、并不校验上游，因此必须先探测上游能否
+     *    解析出真实直链；否则会先返回一个必然 404 的代理地址，后面的兜底永远不可达。
+     * 2. 落雪 JS 引擎 `tx` 源（已安装音源插件时可用，音质更高）。
+     * 3. 内置源官方接口（溯音酷我，按"歌名 歌手"精确搜索，无需 QQ 登录）。
+     */
     private suspend fun resolveQqMusicUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!qqMusicStreamProxy.ensureReady(5_000L)) return@withContext null
-        qqMusicStreamProxy.warmUpStreamUrl(uriString)
-        qqMusicStreamProxy.resolveQqMusicUri(uriString)?.let { Uri.parse(it) }
+        if (!connectivityStateHolder.isOnline.value) {
+            connectivityStateHolder.triggerOfflineBlockedEvent()
+            return@withContext null
+        }
+        val midUri = Uri.parse(uriString)
+        val songMid = (midUri.host ?: midUri.path?.removePrefix("/"))?.trim().orEmpty()
+        if (songMid.isBlank()) return@withContext null
+
+        // ① 官方链路（代理 + vkey）
+        if (qqMusicStreamProxy.ensureReady(5_000L) &&
+            !qqMusicStreamProxy.resolveAndCacheStreamUrl(songMid).isNullOrBlank()
+        ) {
+            qqMusicStreamProxy.resolveQqMusicUri(uriString)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { return@withContext Uri.parse(it) }
+        }
+        android.util.Log.w(
+            "DualPlayerEngine",
+            "resolveQqMusicUri: 官方 vkey 不可用 (songMid=$songMid) -> 走落雪/内置源兜底"
+        )
+
+        // ② 落雪 JS 引擎 tx 源（无须歌名/歌手，只需 songmid）。
+        //    超时给 5s：只为兜住"首次播放时引擎还在初始化"，未安装插件时不至于
+        //    在兜底前白等太久（awaitReady 未就绪会一直等到超时）。
+        if (lxJsEngine.awaitReady(5_000)) {
+            val songMap = mapOf<String, Any?>(
+                "id" to songMid,
+                "vid" to songMid,
+                "songmid" to songMid,
+                "hash" to songMid,
+                "source" to "tx"
+            )
+            val chain = MusicQualityCatalog.resolveChain(
+                target = musicQualityLxValue,
+                available = availableQualitiesFor("tx")
+            )
+            for (q in chain) {
+                val lxUrl = runCatching { lxJsEngine.getPlayUrl("tx", songMap, q) }.getOrNull()
+                if (!lxUrl.isNullOrBlank()) return@withContext Uri.parse(lxUrl)
+            }
+        } else {
+            android.util.Log.w("DualPlayerEngine", "resolveQqMusicUri: 落雪引擎未就绪，跳过 lx tx 源")
+        }
+
+        // ③ 内置源官方接口（溯音酷我）：需要"歌名 + 歌手"，从媒体库按 contentUri 反查
+        val song = loadSongByContentUri("qqmusic://$songMid")
+        if (song != null && song.title.isNotBlank()) {
+            val lxSongInfo = com.theveloper.pixelplay.data.lx.LxSongInfo(
+                id = songMid,
+                songmid = songMid,
+                hash = songMid,
+                name = song.title,
+                singer = song.artist,
+                duration = song.duration,
+                pic = song.albumArtUriString.orEmpty(),
+                source = "tx"
+            )
+            val chain = MusicQualityCatalog.resolveChain(
+                target = musicQualityLxValue,
+                available = availableQualitiesFor("tx")
+            )
+            for (q in chain) {
+                val url = builtInSourceSearchApi.resolvePlayUrl("tx", lxSongInfo, q)
+                if (!url.isNullOrBlank()) {
+                    android.util.Log.d(
+                        "DualPlayerEngine",
+                        "resolveQqMusicUri: 内置源兜底命中 songMid=$songMid quality=$q"
+                    )
+                    return@withContext Uri.parse(url)
+                }
+            }
+        }
+        android.util.Log.w("DualPlayerEngine", "resolveQqMusicUri: 所有链路均失败 songMid=$songMid")
+        null
     }
+
+    /** 按 contentUriString 反查媒体库中的歌曲（用于给 QQ 歌曲做"歌名+歌手"兜底解析） */
+    private suspend fun loadSongByContentUri(contentUri: String): Song? = runCatching {
+        musicRepository.getSongIdByContentUri(contentUri)?.let { songId ->
+            musicRepository.getSong(songId.toString()).first()
+        }
+    }.getOrNull()
+
 
     private suspend fun resolveNavidromeUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
         if (!navidromeStreamProxy.ensureReady(5_000L)) return@withContext null
@@ -2397,10 +2486,21 @@ class DualPlayerEngine @Inject constructor(
                 "resolveCloudLxUri: savedSource=$savedSource targetSources=$targetSources song=${songMap["name"]}"
             )
 
-            // 等待落雪引擎就绪（首次播放引擎可能还在初始化，多等几秒避免直接失败）
-            if (!lxJsEngine.awaitReady(15_000)) {
-                android.util.Log.w("DualPlayerEngine", "resolveCloudLxUri: 等待落雪引擎就绪超时(15s)")
-                return@withContext null
+            // 等待落雪引擎就绪（首次播放引擎可能还在初始化，多等几秒避免直接失败）。
+            // ★ 引擎未就绪时不能直接返回 null：内置源（tx/kg/mg/kw）由
+            //   builtInSourceSearchApi 官方接口兜底，无需安装 JS 插件即可播放
+            //   （排行榜歌曲在未安装音源插件时正是靠这条链路）。
+            // ⚡ 插件优先：只要用户导入的 JS 音源注册了目标音源，就等待引擎就绪。
+            //   否则冷启动瞬间 isReady()=false，会退化成内置源 → 仍可能出现 410。
+            val pluginSources = lxJsEngine.getSources().keys
+            val needsLxEngine = targetSources.any { it in pluginSources } ||
+                targetSources.any { !builtInSourceSearchApi.isSupported(it) }
+            val lxReady = if (needsLxEngine) lxJsEngine.awaitReady(15_000) else lxJsEngine.isReady()
+            if (!lxReady) {
+                android.util.Log.w(
+                    "DualPlayerEngine",
+                    "resolveCloudLxUri: 落雪引擎未就绪，改走内置源官方接口兜底 (targetSources=$targetSources)"
+                )
             }
 
             // ★: 网易云歌曲（纯数字 id + source=wy）落雪引擎优先（音质更高），
@@ -2436,18 +2536,27 @@ class DualPlayerEngine @Inject constructor(
                     var resolved: String? = null
                     for (q in chain) {
                         if (resolved != null) break
-                        resolved = builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, q)
-                            ?: lxJsEngine.getPlayUrl(source, songMap, q)
+                        // ★ 用户导入的 JS 音源插件优先：全豆要 v9.x 等插件内部自带
+                        //   多源 fallback 链（星海/Huibq/溯音/聆川/长青/念心 SVIP）并对
+                        //   结果做校验，比内置第三方聚合稳得多。
+                        // 说明：此前把内置源排在插件前面，插件形同虚设；而内置第三方
+                        //   聚合返回的酷我签名直链部分已失效 → HTTP 410 Gone →
+                        //   ExoPlayer errorCode 2004。仅当插件未安装/未就绪或全部失败时，
+                        //   才回落到内置官方接口（tx/mg/kw 走酷我官方直链兜底）。
+                        resolved = if (lxReady) lxJsEngine.getPlayUrl(source, songMap, q) else null
+                            // 引擎未就绪时不再调用 lx：getPlayUrl 内部 awaitReady 会阻塞
+                            // 15s/次，未装插件时整条音质链会被卡住数十秒。
+                            ?: builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, q)
                     }
                     resolved
-                } else {
+                } else if (lxReady) {
                     var resolved: String? = null
                     for (q in chain) {
                         if (resolved != null) break
                         resolved = lxJsEngine.getPlayUrl(source, songMap, q)
                     }
                     resolved
-                }
+                } else null
                 if (url != null) {
                     android.util.Log.d("DualPlayerEngine", "resolveCloudLxUri: got url from source=$source")
                     break

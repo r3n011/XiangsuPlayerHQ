@@ -168,7 +168,21 @@ class QqMusicApiService @Inject constructor(
 
     // ─── Song Data ─────────────────────────────────────────────────────
 
-    suspend fun getSongDownloadUrl(songMid: String, songtype: Int = 0, filename: String? = null): String = withContext(Dispatchers.IO) {
+    /**
+     * 请求歌曲直链（vkey）。
+     *
+     * @param filenames 可选的具体文件名列表，格式为 `{音质代码}{media_mid}{扩展名}`，
+     *   例如 `F000003OUlho2HcRHC.flac` / `M800003OUlho2HcRHC.mp3`。
+     *   支持一次传入多个候选档位，服务器会按顺序在 `midurlinfo` 中逐个返回 purl，
+     *   这样可以只用一个请求就探测完整条音质候选链（含 VIP 无权限时的空 purl）。
+     * @param quality 期望音质代码（如 `F000`/`M800`/`M500`），作为服务端提示。
+     */
+    suspend fun getSongDownloadUrl(
+        songMid: String,
+        songtype: Int = 0,
+        filenames: List<String>? = null,
+        quality: String? = null
+    ): String = withContext(Dispatchers.IO) {
         val uin = extractUin()
         val keyst = extractKeyst()
         val param = mutableMapOf<String, Any>(
@@ -180,8 +194,11 @@ class QqMusicApiService @Inject constructor(
             "platform" to "20",
             "xcdn" to 1
         )
-        if (filename != null) {
-            param["filename"] = listOf(filename)
+        if (!filenames.isNullOrEmpty()) {
+            param["filename"] = filenames
+        }
+        if (!quality.isNullOrBlank()) {
+            param["quality"] = quality
         }
         val payload = JSONObject(
             mapOf(

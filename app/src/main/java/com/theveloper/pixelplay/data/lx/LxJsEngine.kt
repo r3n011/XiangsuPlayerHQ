@@ -219,6 +219,9 @@ class LxJsEngine @Inject constructor(
         // 触发一次加载（ready() 内部有 mutex 保护，多个协程同时调用只加载一次）
         runCatching { ready() }
         if (isReady()) return true
+        // ⚡ 用户根本没导入任何音源脚本时永远不可能就绪，直接返回：
+        //   否则下面的轮询会白等满 timeoutMs（getPlayUrl 每个音质一次 → 整条链卡数十秒）。
+        if (runCatching { fileStore.listFiles().isEmpty() }.getOrDefault(false)) return false
         val deadline = System.currentTimeMillis() + timeoutMs
         while (!isReady() && System.currentTimeMillis() < deadline) {
             delay(150)

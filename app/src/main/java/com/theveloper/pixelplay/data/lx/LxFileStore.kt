@@ -25,25 +25,6 @@ class LxFileStore @Inject constructor(
     private val dir: File
         get() = File(appContext.filesDir, "lx_user_js").also { it.mkdirs() }
 
-    /**
-     * 清理已下线的内置音源残留文件（升级后自动执行）。
-     * 内置 JS 已从 APK 移除，老用户 filesDir 中残留的旧内置文件一并清理，
-     * 不影响用户手动导入/从市场安装的其他 JS。
-     */
-    fun cleanupLegacyBundledSources() {
-        val legacyNames = listOf(
-            "lx音源快速.js",
-            "(推荐)全豆要-聚合音源 v4.1.js",
-            "全豆要-聚合音源 v9.3 93网易云音质修复版.js"
-        )
-        for (name in legacyNames) {
-            val f = File(dir, name)
-            if (f.exists()) f.delete()
-        }
-        // 旧版"内置导入完成"标志已无意义，一并删除避免残留
-        runCatching { File(appContext.filesDir, "lx_user_js_bundled.flag").delete() }
-    }
-
     /** 兼容旧的单文件入口（userapi.js） */
     fun defaultJsFile(): File = File(dir, "userapi.js")
 

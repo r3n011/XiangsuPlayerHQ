@@ -1,8 +1,10 @@
 package com.theveloper.pixelplay.data.qqmusic
 
 import android.net.Uri
+import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.stream.CloudStreamProxy
 import com.theveloper.pixelplay.data.stream.CloudStreamSecurity
+import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import timber.log.Timber
 import javax.inject.Inject
@@ -11,6 +13,7 @@ import javax.inject.Singleton
 @Singleton
 class QqMusicStreamProxy @Inject constructor(
     private val repository: QqMusicRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     okHttpClient: OkHttpClient
 ) : CloudStreamProxy<String>(okHttpClient) {
 
@@ -35,8 +38,15 @@ class QqMusicStreamProxy @Inject constructor(
 
     override fun formatIdForUrl(id: String): String = id
 
-    override suspend fun resolveStreamUrl(id: String): String? =
-        repository.getSongUrl(id).getOrNull()
+    override suspend fun resolveStreamUrl(id: String): String? {
+        // 使用用户设置的首选音质（无损/320k 等），无对应权限时按档位向下回退
+        val quality = try {
+            userPreferencesRepository.musicQualityValueFlow.first()
+        } catch (_: Exception) {
+            null
+        }
+        return repository.getSongUrl(id, quality).getOrNull()
+    }
 
     // QQ Music URIs may use host or path: qqmusic://songMid or qqmusic:///songMid
     override fun extractIdFromUri(uri: Uri): String? =

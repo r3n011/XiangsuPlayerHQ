@@ -174,7 +174,76 @@ class QqMusicRepository @Inject constructor(
         }
     }
 
-    suspend fun getSongUrl(songMid: String): Result<String> {
+    /** QQ 音乐音质档位：purl 文件名前缀 + 扩展名。 */
+    private data class QqQuality(val code: String, val ext: String)
+
+    /**
+     * 用户偏好音质 → QQ 音乐音质候选链（高 → 低）。
+     * 高音质档位若账号无权限（非 VIP/绿钻），服务器返回空 purl，会自动向下回退。
+     */
+    private fun qqQualityCandidates(preference: String?): List<QqQuality> =
+        when (preference?.trim()?.lowercase()) {
+            "128k", "192k" -> listOf(QqQuality("M500", ".mp3"))
+            "320k" -> listOf(QqQuality("M800", ".mp3"), QqQuality("M500", ".mp3"))
+            // "flac"/"24bit"/"hires"/"jymaster" 等无损及以上偏好，以及未设置偏好时，都从 SQ 无损开始探测
+            else -> listOf(
+                QqQuality("F000", ".flac"),
+                QqQuality("M800", ".mp3"),
+                QqQuality("M500", ".mp3")
+            )
+        }
+
+    /** 音质代码优劣排序，数字越小音质越高。 */
+    private fun qualityRank(code: String): Int = when (code) {
+        "AI00" -> 0; "RS01" -> 1
+        "F000" -> 2
+        "O801" -> 3; "O800" -> 4; "O600" -> 5
+        "M800" -> 6
+        "C600" -> 7; "M500" -> 8
+        "C400" -> 9; "C200" -> 10
+        else -> 11
+    }
+
+    /** purl 形如 `C400{media_mid}.m4a?vkey=...`，取出最后一段路径。 */
+    private fun purlPath(purl: String): String = purl.substringBefore("?").substringAfterLast("/")
+
+    /** 从 purl 提取实际音质代码（文件名前 4 位，如 `F000`/`M800`/`C400`）。 */
+    private fun purlCode(purl: String): String = purlPath(purl).take(4)
+
+    /** purl 可能是相对路径，补全为可播放的完整 URL。 */
+    private fun normalizePurl(purl: String): String =
+        if (purl.startsWith("http")) purl else "https://ws.stream.qqmusic.qq.com/$purl"
+
+    /** 从默认 purl 的文件名中还原 media_mid（`C400{media_mid}.m4a` → `{media_mid}`）。 */
+    private fun extractMediaMid(purl: String): String =
+        purlPath(purl).removePrefix(purlCode(purl)).substringBefore(".")
+
+    /**
+     * 一次性请求整条音质候选链，返回第一个真实返回且音质代码匹配的 purl（无则 null）。
+     * 只占用 1 次请求，避免逐档串行探测导致播放前长时间等待。
+     */
+    private suspend fun resolveHigherQualityPurl(
+        songMid: String,
+        mediaMid: String,
+        candidates: List<QqQuality>
+    ): String? {
+        if (candidates.isEmpty()) return null
+        return runCatching {
+            val filenames = candidates.map { "${it.code}$mediaMid${it.ext}" }
+            val purls = requestPurls(songMid, filenames, candidates.first().code)
+            candidates.indices.firstNotNullOfOrNull { index ->
+                val purl = purls.firstOrNull { it.filename == filenames[index] }?.purl
+                    ?: purls.getOrNull(index)?.purl.orEmpty()
+                purl.takeIf { it.isNotBlank() && purlCode(it) == candidates[index].code }
+            }
+        }.getOrNull()
+    }
+
+    /**
+     * 解析歌曲直链，按 [qualityPreference]（来自用户音质设置，如 "flac"/"320k"/"128k"）
+     * 优先返回高音质直链；账号无对应权限时逐级回退，最终兜底默认 m4a 直链。
+     */
+    suspend fun getSongUrl(songMid: String, qualityPreference: String? = null): Result<String> {
         val now = System.currentTimeMillis()
         val lastAttempt = lastSongUrlAttemptAtMs[songMid]
         if (lastAttempt != null && now - lastAttempt < songUrlRequestCooldownMs) {
@@ -195,32 +264,39 @@ class QqMusicRepository @Inject constructor(
 
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                // Phase 1: Request without filename to get default M4A URL and discover media_mid.
+                // Step 1: 不带 filename 请求，拿默认直链（通常为 C400 128k m4a），并从中还原 media_mid。
                 val defaultPurl = requestPurl(songMid)
 
                 if (defaultPurl.isBlank()) {
                     throw IllegalStateException("No playable URL for songMid=$songMid (empty purl)")
                 }
 
-                val defaultUrl = if (defaultPurl.startsWith("http")) defaultPurl
-                    else "https://ws.stream.qqmusic.qq.com/$defaultPurl"
+                val defaultUrl = normalizePurl(defaultPurl)
+                val defaultCode = purlCode(defaultPurl)
 
-                // Extract media_mid from purl (format: "C400{mediaMid}.m4a?vkey=...")
-                val mediaMid = defaultPurl.substringBefore("?").drop(4).substringBefore(".")
-                if (mediaMid.isNotBlank()) {
-                    // Phase 2: Try MP3 320kbps with discovered media_mid.
-                    val mp3Filename = "M500${mediaMid}.mp3"
-                    val mp3Purl = requestPurl(songMid, filename = mp3Filename)
-                    if (mp3Purl.isNotBlank()) {
-                        Timber.d("Resolved QQ Music MP3 URL for songMid=$songMid")
-                        return@runCatching if (mp3Purl.startsWith("http")) mp3Purl
-                            else "https://ws.stream.qqmusic.qq.com/$mp3Purl"
-                    }
-                    Timber.d("MP3 unavailable for songMid=$songMid, falling back to M4A")
+                val mediaMid = extractMediaMid(defaultPurl)
+                if (mediaMid.isBlank()) {
+                    Timber.w("QQ Music: media_mid not found in purl, using default URL for songMid=$songMid")
+                    return@runCatching defaultUrl
                 }
 
-                // Fallback: use the default M4A URL.
-                Timber.d("Resolved QQ Music M4A URL for songMid=$songMid")
+                val candidates = qqQualityCandidates(qualityPreference)
+
+                // 默认直链本身已达到目标档位（或更高）时，无需再探测，避免反向降级。
+                if (qualityRank(defaultCode) <= qualityRank(candidates.first().code)) {
+                    Timber.d("QQ Music: default quality $defaultCode already satisfies request for songMid=$songMid")
+                    return@runCatching defaultUrl
+                }
+
+                // Step 2: 一次请求探测整条候选链，取第一个真实可用（有权限）的更高音质直链。
+                val higherPurl = resolveHigherQualityPurl(songMid, mediaMid, candidates)
+                if (higherPurl != null) {
+                    Timber.d("QQ Music: resolved ${purlCode(higherPurl)} for songMid=$songMid")
+                    return@runCatching normalizePurl(higherPurl)
+                }
+
+                // Step 3: 无更高音质权限时回退默认直链。
+                Timber.d("QQ Music: no higher quality available for songMid=$songMid, falling back to $defaultCode")
                 defaultUrl
             }
         }
@@ -230,27 +306,53 @@ class QqMusicRepository @Inject constructor(
         return result
     }
 
-    /**
-     * Make a single vkey request and return the purl string (empty if unavailable).
-     * Respects the global rate-limit mutex.
-     */
-    private suspend fun requestPurl(songMid: String, filename: String? = null): String {
+    /** 一条 vkey 响应中的文件名与直链（purl）配对。 */
+    private data class QqPurl(val filename: String, val purl: String)
+
+    /** 全局请求节流，避免高频 vkey 请求触发风控。 */
+    private suspend fun throttleSongUrlRequest() {
         qqSongUrlRequestMutex.withLock {
             val now = System.currentTimeMillis()
             val waitMs = globalSongUrlRequestIntervalMs - (now - lastGlobalSongUrlRequestAtMs)
             if (waitMs > 0) delay(waitMs)
             lastGlobalSongUrlRequestAtMs = System.currentTimeMillis()
         }
+    }
 
-        val raw = api.getSongDownloadUrl(songMid, filename = filename)
-        val root = JSONObject(raw)
-        return root
+    /**
+     * Make a single vkey request and return the purl string (empty if unavailable).
+     * Respects the global rate-limit mutex.
+     */
+    private suspend fun requestPurl(songMid: String, filename: String? = null): String {
+        throttleSongUrlRequest()
+        val raw = api.getSongDownloadUrl(songMid, filenames = filename?.let { listOf(it) })
+        return parsePurls(raw).firstOrNull()?.purl.orEmpty()
+    }
+
+    /**
+     * 一次请求多个候选 filename，按响应顺序返回 purl 列表。
+     * 无权限的档位在响应中表现为空 purl。
+     */
+    private suspend fun requestPurls(songMid: String, filenames: List<String>, quality: String?): List<QqPurl> {
+        if (filenames.isEmpty()) return emptyList()
+        throttleSongUrlRequest()
+        val raw = api.getSongDownloadUrl(songMid, filenames = filenames, quality = quality)
+        return parsePurls(raw)
+    }
+
+    private fun parsePurls(raw: String): List<QqPurl> {
+        val array = JSONObject(raw)
             .optJSONObject("req_0")
             ?.optJSONObject("data")
             ?.optJSONArray("midurlinfo")
-            ?.optJSONObject(0)
-            ?.optString("purl", "")
-            .orEmpty()
+            ?: return emptyList()
+        return (0 until array.length()).map { index ->
+            val item = array.optJSONObject(index)
+            QqPurl(
+                filename = item?.optString("filename", "").orEmpty(),
+                purl = item?.optString("purl", "").orEmpty()
+            )
+        }
     }
 
     suspend fun logout() {

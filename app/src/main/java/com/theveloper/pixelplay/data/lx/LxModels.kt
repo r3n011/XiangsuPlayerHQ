@@ -45,6 +45,29 @@ data class LxArtistSearchResult(
     val total: Int = 0
 )
 
+/**
+ * 在线歌单搜索结果条目（对齐落雪 ListInfoItem 的统一结构）。
+ */
+@Serializable
+data class LxPlaylistInfo(
+    val id: String = "",
+    val name: String = "",
+    val cover: String = "",
+    val author: String = "",
+    val trackCount: Int = 0,
+    val playCount: Long = 0L,
+    val description: String = "",
+    /** 来源标识：wy / tx / kg / kw / mg */
+    val source: String = ""
+)
+
+@Serializable
+data class LxPlaylistSearchResult(
+    val isEnd: Boolean = true,
+    val list: List<LxPlaylistInfo> = emptyList(),
+    val total: Int = 0
+)
+
 @Serializable
 data class LxSourceInfo(
     val name: String = "",
@@ -112,6 +135,16 @@ data class NeteaseCommentBeReplied(
     val nickname: String = "",
     val content: String = "",
     val beRepliedCommentId: Long = 0L
+)
+
+/**
+ * 楼中楼回复分页结果：服务端（/resource/comment/floor/get）单次最多返回 10 条，
+ * 需用 [nextTime] 作为游标继续翻页。
+ */
+data class NeteaseRepliesPage(
+    val replies: List<NeteaseComment> = emptyList(),
+    val hasMore: Boolean = false,
+    val nextTime: Long = -1L
 )
 
 /**

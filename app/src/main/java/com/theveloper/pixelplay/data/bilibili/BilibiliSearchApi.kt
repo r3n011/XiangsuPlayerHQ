@@ -98,10 +98,8 @@ class BilibiliSearchApi @Inject constructor(
         return try {
             val request = Request.Builder()
                 .url(SPI_API)
-                .header("User-Agent", BILI_HD_UA)
-                .header("env", "prod")
-                .header("app-key", "android64")
-                .header("x-bili-aurora-zone", "sh001")
+                // ⚡ spi 是 web 接口：必须用浏览器 UA，用 HD 客户端 UA 会被风控（实测 -352）
+                .header("User-Agent", BASE_UA)
                 .header("Referer", "https://www.bilibili.com/")
                 .get()
                 .build()
@@ -845,11 +843,12 @@ class BilibiliSearchApi @Inject constructor(
             }
             Timber.d("Bilibili comments URL: $url")
             builder.url(url)
+            // ⚡ 关键修复：评论接口是 web 接口，必须用浏览器 UA。
+            // 之前误用 BILI_HD_UA（BiliDroid HD 客户端 UA）请求 /x/v2/reply/main，
+            // 会被 B 站风控返回 {"code":-352}，导致评论区「无法加载」。
+            // 实测：仅把 UA 换成浏览器 UA 即 code:0；app-key/env/x-bili-aurora-zone 均非触发因素。
             builder
-                .header("User-Agent", BILI_HD_UA)
-                .header("env", "prod")
-                .header("app-key", "android64")
-                .header("x-bili-aurora-zone", "sh001")
+                .header("User-Agent", BASE_UA)
                 .header("Origin", "https://www.bilibili.com")
                 .header("Referer", "https://www.bilibili.com/video/av$aid")
             // ⚡ 显式设置 Cookie 头：对齐 PiliPlus 未登录时 options.cookie=''，
@@ -877,7 +876,7 @@ class BilibiliSearchApi @Inject constructor(
         }
     }
 
-    /** PiliPlus 同款匿名配方：web UA + app-key 头 + 无 Cookie（对齐 ReplyHttp.replyList options: cookie=''） */
+    /** 兜底匿名配方：web UA + 无 Cookie（对齐 PiliPlus ReplyHttp.replyList options: cookie=''） */
     private suspend fun fetchCommentPageWeb(
         aid: Long,
         offset: String,
@@ -891,9 +890,6 @@ class BilibiliSearchApi @Inject constructor(
             val request = Request.Builder()
                 .url(url)
                 .header("User-Agent", BASE_UA)
-                .header("env", "prod")
-                .header("app-key", "android64")
-                .header("x-bili-aurora-zone", "sh001")
                 // ⚡ 对齐 PiliPlus：显式设置空 Cookie，防止 BilibiliHeaderInterceptor
                 // 自动添加残留登录 cookie 导致风控拦截；补充 Referer/Origin 防止 WAF 拒绝。
                 .header("Cookie", "")
@@ -999,6 +995,13 @@ class BilibiliSearchApi @Inject constructor(
         val replyControl = item.optJSONObject("reply_control")
         val isUpTop = replyControl?.optBoolean("is_up_top", false)
             ?: item.optBoolean("is_up_top", false)
+        // 点赞/点踩态：reply_control.action（PiliPlus replyControl.action，0=未操作 1=已赞 2=已踩）
+        // 兜底：reply_control.like_state（web 接口，1=已赞）
+        val action = when {
+            replyControl?.has("action") == true -> replyControl.optInt("action", 0)
+            replyControl?.optInt("like_state", 0) == 1 -> 1
+            else -> 0
+        }
         return BilibiliComment(
             rpid = item.optLong("rpid", 0L),
             mid = mid,
@@ -1015,7 +1018,14 @@ class BilibiliSearchApi @Inject constructor(
             parent = item.optLong("parent", 0L),
             isUp = upMid > 0L && mid == upMid,
             isUpTop = isUpTop,
-            liked = replyControl?.optInt("like_state", 0) == 1,
+            liked = action == 1,
+            action = action,
+            // member.vip.vipType（2=年度大会员，昵称用 vipColor）
+            vipType = member?.optJSONObject("vip")?.optInt("vipType", 0) ?: 0,
+            // reply_control.location（如「IP属地：上海」）
+            location = replyControl?.optString("location", "") ?: "",
+            // 对话 id（楼中楼会话根）
+            dialog = item.optLong("dialog", 0L),
             emotes = parseEmotes(content),
             pictures = parsePictures(content),
             subReplies = parseSubReplies(item, upMid)
@@ -1099,6 +1109,7 @@ class BilibiliSearchApi @Inject constructor(
      *
      * @param root 顶层评论 rpid
      * @param page 页码（从 1 开始）
+     * @param sort 排序（1=按热度，0=按时间，对齐 PiliPlus ReplySortType）
      */
     suspend fun getReplyReplies(
         oid: Long,
@@ -1106,17 +1117,18 @@ class BilibiliSearchApi @Inject constructor(
         page: Int = 1,
         csrf: String? = null,
         cookie: String = "",
-        isLoggedIn: Boolean = false
+        isLoggedIn: Boolean = false,
+        sort: Int = 1
     ): BilibiliReplyRepliesResult {
         return withContext(Dispatchers.IO) {
             try {
-                var result = fetchReplyRepliesPage(oid, root, page, csrf, cookie, isLoggedIn)
+                var result = fetchReplyRepliesPage(oid, root, page, csrf, cookie, isLoggedIn, sort)
                 // 已登录会话失效（-101 未登录等）：降级匿名重试（对齐 getComments 的自愈逻辑）
                 if (isLoggedIn && (result.error.contains("-101") || result.error.contains("未登录") ||
                         result.error.contains("-352") || result.error.contains("-403") || result.error.contains("-412"))
                 ) {
                     Timber.w("Bilibili reply-replies session invalid, fallback to anonymous: ${result.error}")
-                    result = fetchReplyRepliesPage(oid, root, page, null, "", isLoggedIn = false)
+                    result = fetchReplyRepliesPage(oid, root, page, null, "", isLoggedIn = false, sort = sort)
                 }
                 result
             } catch (e: Exception) {
@@ -1132,22 +1144,22 @@ class BilibiliSearchApi @Inject constructor(
         page: Int,
         csrf: String?,
         cookie: String,
-        isLoggedIn: Boolean
+        isLoggedIn: Boolean,
+        sort: Int = 1
     ): BilibiliReplyRepliesResult {
         return try {
             val sessionCookie = buildSessionCookie(cookie)
             val pn = page.coerceAtLeast(1)
+            val sortParam = if (sort == 0) 0 else 1
             val query = StringBuilder()
-                .append("oid=$oid&root=$root&pn=$pn&type=1&sort=1")
+                .append("oid=$oid&root=$root&pn=$pn&type=1&sort=$sortParam")
             if (isLoggedIn && !csrf.isNullOrBlank()) query.append("&csrf=$csrf")
             val url = "$REPLY_REPLY_API?$query"
             Timber.d("Bilibili reply-reply URL: $url")
             val builder = Request.Builder()
                 .url(url)
-                .header("User-Agent", BILI_HD_UA)
-                .header("env", "prod")
-                .header("app-key", "android64")
-                .header("x-bili-aurora-zone", "sh001")
+                // ⚡ 同评论主列表：楼中楼也是 web 接口，统一用浏览器 UA（HD UA 有风控风险）
+                .header("User-Agent", BASE_UA)
                 .header("Origin", "https://www.bilibili.com")
                 .header("Referer", "https://www.bilibili.com/video/av$oid")
             // ⚡ 显式设置 Cookie 头（同 fetchCommentPage），防止 BilibiliHeaderInterceptor 注入错误 cookie

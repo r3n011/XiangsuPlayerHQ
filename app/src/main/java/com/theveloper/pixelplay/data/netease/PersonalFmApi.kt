@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.data.netease
 
+import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.moriafly.ncm.NcmApi
@@ -25,7 +26,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class PersonalFmApi @Inject constructor(
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val neteaseApi: NeteaseApiService,
 ) {
 
     private companion object {
@@ -231,6 +233,42 @@ class PersonalFmApi @Inject constructor(
         else -> net.moriafly.ncm.NcmModulesFull.CmtType.SONG
     }
 
+    /** 评论 threadId（对齐 NeteaseCloudMusicApi module/comment*.js 的 threadId = type + id） */
+    private fun threadOf(type: Int, id: Long): String = toCmtType(type).prefix + id
+
+    /**
+     * 保证 App 自带 weapi 客户端持有登录态。
+     * persistedCookies 已由登录流程写入；此处仅在缺失时用调用方传入的 cookie 补齐，
+     * 避免出现在「页面上看得到登录态、写操作却提示未登录」的不一致。
+     */
+    private fun ensureWeapiLogin(cookie: String?) {
+        if (cookie.isNullOrBlank() || neteaseApi.hasLogin()) return
+        try {
+            val map = cookie.split(';')
+                .map { it.trim() }
+                .filter { '=' in it }
+                .associate { val (k, v) = it.split('=', limit = 2); k to v }
+            if (map.isNotEmpty()) neteaseApi.setPersistedCookies(map)
+        } catch (t: Throwable) {
+            Timber.w(t, "$TAG: ensureWeapiLogin failed")
+        }
+    }
+
+    /**
+     * 调用 App 自带 weapi 客户端（NeteaseApiService，与登录流程同一条已验证可用的链路）。
+     * 路径对齐 NeteaseCloudMusicApi：'/api/xxx' → '/weapi/xxx'。
+     */
+    private fun callWeapi(path: String, params: Map<String, Any>): JSONObject? {
+        val raw = neteaseApi.callWeApi(path, params)
+        if (raw.isBlank()) return null
+        return try {
+            JSONObject(raw)
+        } catch (t: Throwable) {
+            Timber.w(t, "$TAG: weapi 响应解析失败 $path")
+            null
+        }
+    }
+
     /**
      * 发送评论到歌曲/专辑/歌单等（本地 SDK 直连官方加密接口）
      * 对应网易云官方的 /comment?t=1 接口
@@ -248,18 +286,17 @@ class PersonalFmApi @Inject constructor(
             if (content.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalArgumentException("评论内容不能为空"))
             }
-            // 官方接口优先
+            // 官方接口优先（走 App 自带 weapi 客户端）
             val primary = try {
                 Timber.d("$TAG: sendComment type=$type id=$id content=${content.take(20)}")
                 syncCookieToSession(cookie)
-                val result = NcmApi.full.commentSend(
-                    type = toCmtType(type),
-                    id = id.toString(),
-                    content = content,
-                    t = 1,
-                ).getOrNull()
-                val success = result != null && result.ncmInt("code", -1) == 200
-                Timber.d("$TAG: sendComment type=$type id=$id success=$success")
+                ensureWeapiLogin(cookie)
+                val root = callWeapi(
+                    "/resource/comments/add",
+                    mapOf("threadId" to threadOf(type, id), "content" to content),
+                )
+                val success = root != null && root.optInt("code", -1) == 200
+                Timber.d("$TAG: sendComment type=$type id=$id success=$success code=${root?.optInt("code")}")
                 Result.success(success)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: sendComment 官方接口失败，尝试 young1024 兜底 type=$type id=$id")
@@ -286,18 +323,16 @@ class PersonalFmApi @Inject constructor(
             if (cookie.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法删除评论"))
             }
-            // 官方接口优先
+            // 官方接口优先（走 App 自带 weapi 客户端）
             val primary = try {
                 Timber.d("$TAG: deleteComment type=$type id=$id commentId=$commentId")
                 syncCookieToSession(cookie)
-                val result = NcmApi.full.commentSend(
-                    type = toCmtType(type),
-                    id = id.toString(),
-                    content = "",
-                    t = 0,
-                    commentId = commentId.toString(),
-                ).getOrNull()
-                val success = result != null && result.ncmInt("code", -1) == 200
+                ensureWeapiLogin(cookie)
+                val root = callWeapi(
+                    "/resource/comments/delete",
+                    mapOf("threadId" to threadOf(type, id), "commentId" to commentId.toString()),
+                )
+                val success = root != null && root.optInt("code", -1) == 200
                 Timber.d("$TAG: deleteComment type=$type id=$id commentId=$commentId success=$success")
                 Result.success(success)
             } catch (t: Throwable) {
@@ -326,18 +361,17 @@ class PersonalFmApi @Inject constructor(
             if (cookie.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法点赞"))
             }
-            // 官方接口优先
+            // 官方接口优先（走 App 自带 weapi 客户端）
             val primary = try {
                 Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like")
                 syncCookieToSession(cookie)
-                val result = NcmApi.full.commentLike(
-                    id = id.toString(),
-                    cid = cid.toString(),
-                    type = toCmtType(type),
-                    t = if (like) 1 else 0,
-                ).getOrNull()
-                val success = result != null && result.ncmInt("code", -1) == 200
-                Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like success=$success")
+                ensureWeapiLogin(cookie)
+                val root = callWeapi(
+                    if (like) "/v1/comment/like" else "/v1/comment/unlike",
+                    mapOf("threadId" to threadOf(type, id), "commentId" to cid.toString()),
+                )
+                val success = root != null && root.optInt("code", -1) == 200
+                Timber.d("$TAG: likeComment type=$type id=$id cid=$cid like=$like success=$success code=${root?.optInt("code")}")
                 Result.success(success)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: likeComment 官方接口失败，尝试 young1024 兜底 type=$type id=$id cid=$cid")
@@ -370,19 +404,21 @@ class PersonalFmApi @Inject constructor(
             if (content.isBlank()) {
                 return@withContext Result.failure<Boolean>(IllegalArgumentException("回复内容不能为空"))
             }
-            // 官方接口优先
+            // 官方接口优先（走 App 自带 weapi 客户端）
             val primary = try {
                 Timber.d("$TAG: replyComment type=$type id=$id commentId=$commentId")
                 syncCookieToSession(cookie)
-                val result = NcmApi.full.commentSend(
-                    type = toCmtType(type),
-                    id = id.toString(),
-                    content = content,
-                    t = 2,
-                    commentId = commentId.toString(),
-                ).getOrNull()
-                val success = result != null && result.ncmInt("code", -1) == 200
-                Timber.d("$TAG: replyComment success=$success")
+                ensureWeapiLogin(cookie)
+                val root = callWeapi(
+                    "/resource/comments/reply",
+                    mapOf(
+                        "threadId" to threadOf(type, id),
+                        "commentId" to commentId.toString(),
+                        "content" to content,
+                    ),
+                )
+                val success = root != null && root.optInt("code", -1) == 200
+                Timber.d("$TAG: replyComment success=$success code=${root?.optInt("code")}")
                 Result.success(success)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: replyComment 官方接口失败，尝试 young1024 兜底")
@@ -402,50 +438,95 @@ class PersonalFmApi @Inject constructor(
      * @param id 资源 ID
      * @param commentId 主评论 ID
      * @param cookie 用户 cookie（未登录也能看）
-     * @param limit 每页条数
+     * @param limit 每页条数（服务端封顶 10 条）
      * @param time 游标（第一页传 -1）
-     * @return 回复列表（楼中楼里也可能含 beReplied 表示"回复某人的回复"）
+     * @return 分页结果（楼中楼里也可能含 beReplied 表示"回复某人的回复"）
      */
     suspend fun getCommentReplies(
         type: Int,
         id: Long,
         commentId: Long,
         cookie: String? = null,
-        limit: Int = 10,
+        limit: Int = 20,
         time: Long = -1
-    ): Result<List<com.theveloper.pixelplay.data.lx.NeteaseComment>> {
+    ): Result<com.theveloper.pixelplay.data.lx.NeteaseRepliesPage> {
         return withContext(Dispatchers.IO) {
             val primary = try {
                 syncCookieToSession(cookie)
-                val map = NcmApi.full.commentFloor(
-                    id = id.toString(),
-                    type = toCmtType(type),
-                    parentCommentId = commentId.toString(),
-                    limit = limit,
-                    time = time,
-                ).getOrNull() ?: throw Exception("楼层接口无响应")
-                val root = ncmMapToJson(map) ?: throw Exception("楼层响应解析失败")
-                val data = root.optJSONObject("data") ?: throw Exception("楼层 data 为空")
-                val arr = data.optJSONArray("data") ?: JSONArray()
+                ensureWeapiLogin(cookie)
+                val root = callWeapi(
+                    "/resource/comment/floor/get",
+                    mapOf(
+                        "parentCommentId" to commentId.toString(),
+                        "threadId" to threadOf(type, id),
+                        "time" to time.toString(),
+                        "limit" to limit.toString(),
+                    ),
+                ) ?: throw Exception("楼层接口无响应")
+                val data = root.optJSONObject("data") ?: root
+                val arr = extractFloorArray(data)
                 val out = ArrayList<com.theveloper.pixelplay.data.lx.NeteaseComment>(arr.length())
                 for (i in 0 until arr.length()) {
                     val item = arr.optJSONObject(i) ?: continue
                     out.add(parseFloorReply(item))
                 }
-                Timber.d("$TAG: getCommentReplies commentId=$commentId -> ${out.size} 条")
-                Result.success(out)
+                val page = buildRepliesPage(data, out, limit, time)
+                Timber.d(
+                    "$TAG: getCommentReplies commentId=$commentId -> ${page.replies.size} 条, " +
+                        "hasMore=${page.hasMore}, nextTime=${page.nextTime}"
+                )
+                Result.success(page)
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: getCommentReplies 官方接口失败，尝试 young1024 兜底 commentId=$commentId")
                 Result.failure(t)
             }
 
-            if (primary.isSuccess && (primary.getOrNull()?.isNotEmpty() == true)) {
+            if (primary.isSuccess && (primary.getOrNull()?.replies?.isNotEmpty() == true)) {
                 return@withContext primary
             }
 
             // 官方接口失败/无数据时，走 young1024 兜底
             fetchYoung1024CommentReplies(type, id, commentId, limit, time)
         }
+    }
+
+    /**
+     * 组装楼中楼分页结果。服务端单次最多返回 10 条，因此优先读取响应里的
+     * hasMore/more 与 time 游标；缺失时用"返回条数是否达到上限"兜底判断。
+     */
+    private fun buildRepliesPage(
+        data: JSONObject,
+        replies: List<com.theveloper.pixelplay.data.lx.NeteaseComment>,
+        limit: Int,
+        requestTime: Long
+    ): com.theveloper.pixelplay.data.lx.NeteaseRepliesPage {
+        val explicitHasMore = when {
+            data.has("hasMore") -> data.optBoolean("hasMore", false)
+            data.has("more") -> data.optBoolean("more", false)
+            else -> null
+        }
+        val nextTime = data.optLong("time", 0L).takeIf { it > 0L && it != requestTime }
+            ?: replies.lastOrNull()?.time?.takeIf { it > 0L }
+            ?: -1L
+        val hasMore = explicitHasMore
+            ?: (replies.size >= limit.coerceAtLeast(1) && nextTime > 0L)
+        return com.theveloper.pixelplay.data.lx.NeteaseRepliesPage(
+            replies = replies,
+            hasMore = hasMore && replies.isNotEmpty() && nextTime > 0L,
+            nextTime = nextTime
+        )
+    }
+
+    /**
+     * 楼层评论接口（/api/resource/comment/floor/get）不同版本返回的数组字段名不一致，
+     * 依次尝试 comments / data / hotComments，避免因字段名不同导致"看不到回复"。
+     */
+    private fun extractFloorArray(data: JSONObject): JSONArray {
+        for (key in arrayOf("comments", "data", "hotComments")) {
+            val arr = data.optJSONArray(key)
+            if (arr != null) return arr
+        }
+        return JSONArray()
     }
 
     /** 解析楼中楼单条回复（含 beReplied） */
@@ -490,7 +571,7 @@ class PersonalFmApi @Inject constructor(
         commentId: Long,
         limit: Int,
         time: Long
-    ): Result<List<com.theveloper.pixelplay.data.lx.NeteaseComment>> = withContext(Dispatchers.IO) {
+    ): Result<com.theveloper.pixelplay.data.lx.NeteaseRepliesPage> = withContext(Dispatchers.IO) {
         try {
             val url = buildString {
                 append(YOUNG1024_API_BASE)
@@ -515,16 +596,16 @@ class PersonalFmApi @Inject constructor(
                 Timber.w("$TAG: young1024 楼层评论兜底返回非 200: ${root.optInt("code")}")
                 return@withContext Result.failure(Exception("young1024 楼层评论兜底返回非 200"))
             }
-            val data = root.optJSONObject("data")
-                ?: return@withContext Result.failure(Exception("young1024 楼层 data 为空"))
-            val arr = data.optJSONArray("data") ?: JSONArray()
+            val data = root.optJSONObject("data") ?: root
+            val arr = extractFloorArray(data)
             val out = ArrayList<com.theveloper.pixelplay.data.lx.NeteaseComment>(arr.length())
             for (i in 0 until arr.length()) {
                 val item = arr.optJSONObject(i) ?: continue
                 out.add(parseFloorReply(item))
             }
-            Timber.d("$TAG: young1024 楼层评论兜底成功 commentId=$commentId -> ${out.size} 条")
-            Result.success(out)
+            val page = buildRepliesPage(data, out, limit, time)
+            Timber.d("$TAG: young1024 楼层评论兜底成功 commentId=$commentId -> ${page.replies.size} 条")
+            Result.success(page)
         } catch (t: Throwable) {
             Timber.e(t, "$TAG: young1024 楼层评论兜底异常 commentId=$commentId")
             Result.failure(t)

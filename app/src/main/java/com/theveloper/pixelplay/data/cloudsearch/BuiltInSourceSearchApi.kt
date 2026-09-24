@@ -1,8 +1,9 @@
 package com.theveloper.pixelplay.data.cloudsearch
 
+import com.theveloper.pixelplay.data.lx.LxPlaylistInfo
+import com.theveloper.pixelplay.data.lx.LxPlaylistSearchResult
 import com.theveloper.pixelplay.data.lx.LxSearchResult
 import com.theveloper.pixelplay.data.lx.LxSongInfo
-import com.theveloper.pixelplay.data.qq.QQSearchApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -10,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.net.URLEncoder
@@ -23,12 +25,12 @@ import javax.inject.Singleton
  * - tx QQ音乐：u.y.qq.com + zzcSign 签名（移植落雪 tx/utils/crypto.js）
  * - mg 咪咕：jadeite.migu.cn + MD5 签名（移植落雪 mg/musicSearch.js）
  *
- * 播放 URL：优先源官方接口（酷狗 hash），失败/无版权时用溯音酷我（"歌名 歌手"）兜底。
+ * 播放 URL：优先源官方接口（酷狗 hash / 酷我 mobi.s 官方直链），
+ * tx/mg 无匿名官方直链时用酷我官方直链兜底（不再依赖已失效的第三方聚合 oiapi）。
  */
 @Singleton
 class BuiltInSourceSearchApi @Inject constructor(
-    private val okHttpClient: OkHttpClient,
-    private val qqSearchApi: QQSearchApi
+    private val okHttpClient: OkHttpClient
 ) {
     private companion object {
         private const val TAG = "BuiltInSearch"
@@ -38,6 +40,7 @@ class BuiltInSourceSearchApi @Inject constructor(
 
         // ─── 酷狗 ───
         private const val KG_SEARCH_URL = "https://songsearch.kugou.com/song_search_v2"
+        private const val KG_PLAYLIST_SEARCH_URL = "http://msearchcdn.kugou.com/api/v3/search/special"
         private const val KG_PLAY_URL = "http://m.kugou.com/app/i/getSongInfo.php"
 
         // ─── QQ音乐 ───
@@ -66,6 +69,29 @@ class BuiltInSourceSearchApi @Inject constructor(
         private const val MG_TEA_DELTA = 2654435769L
 
         private const val SUPPORTED_SOURCES = "tx,kg,mg,kw"
+
+        // ─── 歌单详情（对齐落雪 musicSdk.*.songList.getListDetail）───
+        private const val KG_PLAYLIST_PAGE = "http://www2.kugou.kugou.com/yueku/v9/special/single/"
+        private const val KG_GATEWAY_AUDIO_URL = "http://gateway.kugou.com/v2/album_audio/audio"
+        private val KG_LIST_DATA_REGEX = Regex("global\\.data = (\\[.+\\]);")
+        private const val TX_PLAYLIST_DETAIL_URL =
+            "https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg"
+        private const val TX_PLAYLIST_SEARCH_URL =
+            "http://c.y.qq.com/soso/fcgi-bin/client_music_search_songlist"
+        private const val MG_PLAYLIST_SONGS_URL =
+            "https://app.c.nf.migu.cn/MIGUM3.0/resource/playlist/song/v2.0"
+        /** 咪咕歌单详情接口单页上限 */
+        private const val MG_MAX_PAGE_SIZE = 100
+        private const val KW_PLAYLIST_DETAIL_URL = "http://nplserver.kuwo.cn/pl.svc"
+        /** 酷我官方直链接口（落雪 kw 音源同源，br 取 320kmp3/128kmp3/2000flac） */
+        private const val KW_MOBI_URL = "http://mobi.kuwo.cn/mobi.s"
+        private const val KW_APP_SOURCE = "kwplayer_ar_5.1.0.0_B_jiakong_vh.apk"
+        private const val MG_IOS_UA =
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 " +
+                "(KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
+
+        /** QQ音乐 soso 接口返回的文本带 HTML 实体（如 `&#32;` / `&amp;`） */
+        private val HTML_ENTITY_REGEX = Regex("&#(x?)([0-9a-fA-F]+);|&(amp|lt|gt|quot|apos|nbsp);")
     }
 
     /** 内置源是否支持 */
@@ -303,40 +329,91 @@ class BuiltInSourceSearchApi @Inject constructor(
 
     /**
      * 播放 URL 解析：
-     * - kg：酷狗官方 hash → URL（按音质传 br），空（付费/失效）则溯音酷我兜底
-     * - tx/mg：溯音酷我（"歌名 歌手"）兜底
+     * - kg：酷狗官方 hash → URL（按音质传 br；付费/无版权时 url 为空，继续走酷我）
+     * - kw：酷我官方直链（mobi.s convert_url_with_sign，用歌曲自身的 rid）
+     * - tx/mg：无匿名官方直链，用 "歌名 歌手" 在酷我搜到最匹配的一首再取酷我官方直链兜底
+     *
+     * 说明：旧实现把 tx/mg/kw 全部交给第三方聚合 `oiapi.net/api/Kuwo`，它返回的是
+     * 带签名的酷我限时链（`bitrate$320`），服务端已判定失效 → HTTP 410 Gone → ExoPlayer 2004。
+     * 现改为直接用酷我官方接口，并在返回前做一次 Range 校验，避免把失效链接交给播放器。
+     *
      * @param quality 落雪音质值："24bit" / "flac" / "320k" / "128k"
      */
     suspend fun resolvePlayUrl(source: String, song: LxSongInfo, quality: String = "320k"): String? = withContext(Dispatchers.IO) {
         try {
             if (source == "kg" && song.hash.isNotBlank()) {
                 val official = getKgPlayUrl(song.hash, qualityToKgBr(quality))
-                if (!official.isNullOrBlank()) {
+                if (!official.isNullOrBlank() && isPlayable(official)) {
                     Timber.d("$TAG: kg official URL ok for '${song.name}' (quality=$quality)")
                     return@withContext official
                 }
             }
-            // 溯音酷我兜底："歌名 歌手" 精确搜索拿 URL（按音质传 br）
-            val fallback = qqSearchApi.getPlayUrl(
-                QQSearchApi.QQSong(
-                    id = 0L, rid = "", title = song.name, album = "",
-                    singer = song.singer, cover = "", durationSec = 0
-                ),
-                br = qualityToKwBr(quality)
-            ).getOrNull()
-            Timber.d("$TAG: fallback URL source=$source song='${song.name}' quality=$quality: ${fallback != null}")
-            fallback
+            // 酷我官方直链兜底：kw 直接用 rid；tx/mg 先按 "歌名 歌手" 搜一首
+            val rid = song.id.takeIf { source == "kw" && it.matches(Regex("\\d+")) }
+                ?: findKwRid(song.name, song.singer)
+            if (rid.isNullOrBlank()) {
+                Timber.d("$TAG: no kw rid for source=$source song='${song.name}'")
+                return@withContext null
+            }
+            for (br in qualityToKwBrChain(quality)) {
+                val u = getKwPlayUrl(rid, br)
+                if (!u.isNullOrBlank() && isPlayable(u)) {
+                    Timber.d("$TAG: kw direct URL ok source=$source song='${song.name}' br=$br")
+                    return@withContext u
+                }
+            }
+            Timber.d("$TAG: kw direct URL failed source=$source song='${song.name}' quality=$quality")
+            null
         } catch (t: Throwable) {
             Timber.e(t, "$TAG: resolvePlayUrl failed source=$source")
             null
         }
     }
 
-    /** 音质 → 溯音酷我 br：1(FLAC) / 5(320k) / 7(128k) */
-    private fun qualityToKwBr(quality: String): Int = when (quality) {
-        "flac", "24bit", "lossless", "hires" -> 1
-        "128k", "128" -> 7
-        else -> 5
+    /**
+     * 音质 → 酷我 mobi.s 的 br 候选链（从高到低，逐个校验，保证最终一定能播）。
+     * 注意：酷我无损（2000flac）对部分歌曲需会员，取不到时自动降到 320k/128k mp3。
+     */
+    private fun qualityToKwBrChain(quality: String): List<String> {
+        val target = when (quality.lowercase()) {
+            "flac", "24bit", "flac24bit", "lossless", "hires", "master", "atmos" -> "2000flac"
+            "128k", "128" -> "128kmp3"
+            else -> "320kmp3"
+        }
+        return listOf(target, "320kmp3", "128kmp3").distinct()
+    }
+
+    /** 酷我官方直链：mobi.s convert_url_with_sign（返回 data.url，带签名） */
+    private suspend fun getKwPlayUrl(rid: String, br: String): String? {
+        val url = "$KW_MOBI_URL?f=web&source=$KW_APP_SOURCE&type=convert_url_with_sign&br=$br&rid=$rid"
+        val body = httpGet(url) ?: return null
+        val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
+        if (root.optInt("code", -1) != 200) return null
+        return root.optJSONObject("data")?.optString("url", "")?.takeIf { it.startsWith("http") }
+    }
+
+    /** 用 "歌名 歌手" 在酷我搜索，返回最匹配一首的 rid（tx/mg 等无匿名直链音源的兜底） */
+    private suspend fun findKwRid(name: String, singer: String): String? {
+        val primary = "$name $singer".trim()
+        val r = runCatching { searchKw(primary, 1, 5) }.getOrNull()
+        r?.list?.firstOrNull()?.id?.takeIf { it.isNotBlank() }?.let { return it }
+        if (primary != name.trim()) {
+            return runCatching { searchKw(name.trim(), 1, 5) }.getOrNull()
+                ?.list?.firstOrNull()?.id?.takeIf { it.isNotBlank() }
+        }
+        return null
+    }
+
+    /** 校验直链真的可播（Range: bytes=0-1，接受 2xx/206），避免把 410 等失效链接交给 ExoPlayer */
+    private suspend fun isPlayable(url: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder()
+                .url(url)
+                .header("Range", "bytes=0-1")
+                .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36")
+                .build()
+            okHttpClient.newCall(request).execute().use { resp -> resp.isSuccessful }
+        }.getOrDefault(false)
     }
 
     /** 音质 → 酷狗官方 br：999000(无损) / 320000 / 128000 */
@@ -559,7 +636,7 @@ class BuiltInSourceSearchApi @Inject constructor(
     }
 
     /** 构造 QQ 搜索请求 JSON（字段顺序必须与落雪一致，sign 依赖序列化字符串） */
-    private fun buildTxSearchJson(keyword: String, page: Int, pageSize: Int): String {
+    private fun buildTxSearchJson(keyword: String, page: Int, pageSize: Int, searchType: Int = 0): String {
         val comm = "\"comm\":{" +
             "\"ct\":\"11\",\"cv\":\"14090508\",\"v\":\"14090508\",\"tmeAppID\":\"qqmusic\"," +
             "\"phonetype\":\"EBG-AN10\",\"deviceScore\":\"553.47\",\"devicelevel\":\"50\"," +
@@ -570,7 +647,7 @@ class BuiltInSourceSearchApi @Inject constructor(
             "\"nettype\":\"1020\",\"v4ip\":\"\"}"
         val req = "\"req\":{\"module\":\"music.search.SearchCgiService\"," +
             "\"method\":\"DoSearchForQQMusicMobile\",\"param\":{" +
-            "\"search_type\":0,\"searchid\":\"${(1..16).map { (0..9).random() }.joinToString("")}\"," +
+            "\"search_type\":$searchType,\"searchid\":\"${(1..16).map { (0..9).random() }.joinToString("")}\"," +
             "\"query\":\"${escapeJson(keyword)}\",\"page_num\":$page,\"num_per_page\":$pageSize," +
             "\"highlight\":0,\"nqc_flag\":0,\"multi_zhida\":0,\"cat\":2,\"grp\":1,\"sin\":0,\"sem\":0}}"
         return "{$comm,$req}"
@@ -683,7 +760,7 @@ class BuiltInSourceSearchApi @Inject constructor(
                     }
                 }
                 var img = data.optString("img3").ifBlank { data.optString("img2").ifBlank { data.optString("img1") } }
-                if (img.isNotBlank() && !img.startsWith("http")) img = "http://d.musicapp.migu.cn$img"
+                img = normalizeMgImageUrl(img)
 
                 list.add(
                     LxSongInfo(
@@ -694,7 +771,8 @@ class BuiltInSourceSearchApi @Inject constructor(
                         name = name,
                         singer = singerNames.joinToString(" / "),
                         albumName = data.optString("album", ""),
-                        duration = data.optLong("duration", 0L) / 1000L,
+                        // 咪咕返回的 duration 单位已是「秒」（如 270）
+                        duration = data.optLong("duration", 0L),
                         pic = img,
                         source = "mg"
                     )
@@ -709,7 +787,685 @@ class BuiltInSourceSearchApi @Inject constructor(
         )
     }
 
+    // ─── 歌单搜索（对齐落雪 musicSdk.*.songList.search）───────────────────
+
+    /**
+     * 内置源歌单搜索：
+     * - kw：search.kuwo.cn 的 ft=playlist
+     * - kg：msearchcdn.kugou.com/api/v3/search/special
+     * - tx：u.y.qq.com 歌单搜索（best-effort）
+     * - mg：jadeite.migu.cn 歌单搜索（best-effort）
+     * 各源字段差异较大，全部容错解析，失败返回空列表而不抛异常。
+     */
+    suspend fun searchPlaylists(source: String, keyword: String, page: Int, pageSize: Int): LxPlaylistSearchResult {
+        if (keyword.isBlank()) return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        return withContext(Dispatchers.IO) {
+            try {
+                when (source) {
+                    "kw" -> searchPlaylistsKw(keyword, page, pageSize)
+                    "kg" -> searchPlaylistsKg(keyword, page, pageSize)
+                    "tx" -> searchPlaylistsTx(keyword, page, pageSize)
+                    "mg" -> searchPlaylistsMg(keyword, page, pageSize)
+                    else -> LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "$TAG: searchPlaylists failed source=$source")
+                LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+        }
+    }
+
+    /**
+     * 内置源歌单详情：拉取歌单内的歌曲列表（供「预览」与「保存到本地」使用）。
+     * 四个内置源均实现，对齐落雪 musicSdk.{kg,tx,mg,kw}.songList.getListDetail。
+     * 各源字段差异较大，全部容错解析，失败返回空结果而不抛异常。
+     * @param page/pageSize 仅 mg / kw 分页有效（kg / tx 一次返回全部）
+     */
+    suspend fun getPlaylistSongs(
+        source: String,
+        playlistId: String,
+        page: Int = 1,
+        pageSize: Int = 1000
+    ): LxSearchResult {
+        if (playlistId.isBlank()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        return withContext(Dispatchers.IO) {
+            try {
+                when (source) {
+                    "kg" -> getKgPlaylistSongs(playlistId)
+                    "tx" -> getTxPlaylistSongs(playlistId)
+                    "mg" -> getMgPlaylistSongs(playlistId, page, pageSize)
+                    "kw" -> getKwPlaylistSongs(playlistId, page, pageSize)
+                    else -> LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "$TAG: getPlaylistSongs failed source=$source id=$playlistId")
+                LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+        }
+    }
+
+    private suspend fun searchPlaylistsKw(keyword: String, page: Int, pageSize: Int): LxPlaylistSearchResult {
+        val encoded = URLEncoder.encode(keyword, "UTF-8")
+        val url = "$KW_SEARCH_URL?client=kt&all=$encoded&pn=${page - 1}&rn=$pageSize" +
+            "&uid=794762570&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1" +
+            "&newver=1&ft=playlist&cluster=0&strategy=2012&encoding=utf8&rformat=json" +
+            "&vermerge=1&mobi=1"
+        val body = httpGet(url) ?: return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val root = JSONObject(body)
+        if (root.optString("SHOW") == "0") return LxPlaylistSearchResult(isEnd = true)
+        val abslist = root.optJSONArray("abslist") ?: return LxPlaylistSearchResult(isEnd = true)
+        val list = mutableListOf<LxPlaylistInfo>()
+        for (i in 0 until abslist.length()) {
+            val item = abslist.optJSONObject(i) ?: continue
+            val id = item.optString("playlistid").ifBlank { item.optString("PLAYLISTID") }
+            if (id.isBlank()) continue
+            val name = item.optString("name").ifBlank { item.optString("PLAYLISTNAME") }
+            if (name.isBlank()) continue
+            val pic = item.optString("pic").ifBlank { item.optString("hts_MVPIC") }
+                .ifBlank { item.optString("MVPIC") }
+            list.add(
+                LxPlaylistInfo(
+                    id = id,
+                    name = name,
+                    cover = pic,
+                    author = item.optString("nickname").ifBlank { item.optString("NICKNAME") },
+                    trackCount = item.optInt("songnum", item.optInt("SONGNUM", 0)),
+                    playCount = item.optLong("playcnt", item.optLong("PLAYCNT", 0L)),
+                    description = item.optString("intro", ""),
+                    source = "kw"
+                )
+            )
+        }
+        val total = root.optInt("TOTAL", list.size)
+        return LxPlaylistSearchResult(
+            isEnd = page * pageSize >= total || list.isEmpty(),
+            list = list,
+            total = total
+        )
+    }
+
+    private suspend fun searchPlaylistsKg(keyword: String, page: Int, pageSize: Int): LxPlaylistSearchResult {
+        val encoded = URLEncoder.encode(keyword, "UTF-8")
+        val url = "$KG_PLAYLIST_SEARCH_URL?keyword=$encoded&page=$page&pagesize=$pageSize&showtype=10"
+        val body = httpGet(url) ?: return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val root = JSONObject(body)
+        val data = root.optJSONObject("data") ?: return LxPlaylistSearchResult(isEnd = true)
+        val info = data.optJSONArray("info") ?: return LxPlaylistSearchResult(isEnd = true)
+        val list = mutableListOf<LxPlaylistInfo>()
+        for (i in 0 until info.length()) {
+            val item = info.optJSONObject(i) ?: continue
+            val id = item.optString("specialid")
+            if (id.isBlank()) continue
+            val name = item.optString("specialname")
+            if (name.isBlank()) continue
+            list.add(
+                LxPlaylistInfo(
+                    id = id,
+                    name = name,
+                    cover = item.optString("imgurl", "").replace("{size}", "480"),
+                    author = item.optString("nickname", ""),
+                    trackCount = item.optInt("songcount", 0),
+                    playCount = item.optLong("playcount", 0L),
+                    description = item.optString("intro", ""),
+                    source = "kg"
+                )
+            )
+        }
+        val total = data.optInt("total", list.size)
+        return LxPlaylistSearchResult(
+            isEnd = page * pageSize >= total || list.isEmpty(),
+            list = list,
+            total = total
+        )
+    }
+
+    private suspend fun searchPlaylistsTx(keyword: String, page: Int, pageSize: Int): LxPlaylistSearchResult {
+        repeat(3) { attempt ->
+            val r = runCatching { searchPlaylistsTxOnce(keyword, page, pageSize) }.getOrNull()
+            if (r != null) return r
+            if (attempt < 2) delay(200L * (1 shl attempt))
+        }
+        return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+    }
+
+    /**
+     * QQ音乐歌单搜索。
+     *
+     * 走 soso 老接口（与落雪 `musicSdk/tx/songList.js` 一致）：纯 GET、无需签名。
+     * 之前用 `u.y.qq.com/cgi-bin/musics.fcg` + `searchType=3` 的签名接口在真机上恒空，
+     * 因为该接口的歌单结果并不在 `req.data.body.item_playlist` 下。
+     */
+    private suspend fun searchPlaylistsTxOnce(
+        keyword: String,
+        page: Int,
+        pageSize: Int
+    ): LxPlaylistSearchResult? {
+        val url = "$TX_PLAYLIST_SEARCH_URL?page_no=${(page - 1).coerceAtLeast(0)}" +
+            "&num_per_page=$pageSize&format=json&query=${URLEncoder.encode(keyword, "UTF-8")}" +
+            "&remoteplace=txt.yqq.playlist&inCharset=utf8&outCharset=utf-8"
+        val body = httpGetHeaders(
+            url,
+            mapOf(
+                "User-Agent" to "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)",
+                "Referer" to "http://y.qq.com/portal/search.html"
+            )
+        ) ?: return null
+
+        val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
+        if (root.optInt("code", -1) != 0) return null
+        val data = root.optJSONObject("data") ?: return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val items = data.optJSONArray("list")
+            ?: return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+
+        val list = mutableListOf<LxPlaylistInfo>()
+        for (i in 0 until items.length()) {
+            val item = items.optJSONObject(i) ?: continue
+            val id = item.optString("dissid").ifBlank { item.optString("docid") }
+            if (id.isBlank() || id == "0") continue
+            val name = decodeHtmlEntities(item.optString("dissname"))
+            if (name.isBlank()) continue
+            list.add(
+                LxPlaylistInfo(
+                    id = id,
+                    name = name,
+                    cover = item.optString("imgurl"),
+                    author = decodeHtmlEntities(item.optJSONObject("creator")?.optString("name").orEmpty()),
+                    trackCount = item.optInt("song_count", 0),
+                    playCount = item.optLong("listennum", 0L),
+                    description = decodeHtmlEntities(item.optString("introduction")).replace("<br>", "\n"),
+                    source = "tx"
+                )
+            )
+        }
+        val total = data.optInt("sum", list.size)
+        return LxPlaylistSearchResult(
+            isEnd = if (total > 0) page * pageSize >= total else list.size < pageSize,
+            list = list,
+            total = total
+        )
+    }
+
+    private suspend fun searchPlaylistsMg(keyword: String, page: Int, pageSize: Int): LxPlaylistSearchResult {
+        val time = System.currentTimeMillis().toString()
+        val sign = md5("$keyword$MG_SIGNATURE_MD5$MG_APP_SECRET$MG_DEVICE_ID$time")
+        val encoded = URLEncoder.encode(keyword, "UTF-8")
+        val url = "$MG_SEARCH_URL?isCorrect=0&isCopyright=1" +
+            "&searchSwitch=%7B%22song%22%3A0%2C%22album%22%3A0%2C%22singer%22%3A0%2C%22tagSong%22%3A0%2C%22mvSong%22%3A0%2C%22bestShow%22%3A0%2C%22songlist%22%3A1%2C%22lyricSong%22%3A0%7D" +
+            "&pageSize=$pageSize&text=$encoded&pageNo=$page&sort=0&sid=USS"
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("uiVersion", "A_music_3.6.1")
+            .addHeader("deviceId", MG_DEVICE_ID)
+            .addHeader("timestamp", time)
+            .addHeader("sign", sign)
+            .addHeader("channel", "0146921")
+            .addHeader(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; U; Android 11.0.0; zh-cn; MI 11 Build/OPR1.170623.032) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30"
+            )
+            .build()
+        val body = runCatching {
+            okHttpClient.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) null else resp.body?.string()
+            }
+        }.getOrNull() ?: return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+
+        val root = JSONObject(body)
+        if (root.optString("code") != "000000") return LxPlaylistSearchResult(isEnd = true)
+        val listData = root.optJSONObject("songlistResultData")
+            ?: root.optJSONObject("songListResultData")
+            ?: return LxPlaylistSearchResult(isEnd = true)
+        // 咪咕歌单搜索的列表层是「扁平数组」（result），部分版本会包一层分组（resultList）
+        val flat = listData.optJSONArray("result")
+        val grouped = listData.optJSONArray("resultList")
+
+        val datas = mutableListOf<JSONObject>()
+        if (flat != null) {
+            for (i in 0 until flat.length()) {
+                flat.optJSONObject(i)?.let { datas.add(it) }
+            }
+        } else if (grouped != null) {
+            for (g in 0 until grouped.length()) {
+                val group = grouped.optJSONArray(g) ?: continue
+                for (i in 0 until group.length()) {
+                    group.optJSONObject(i)?.let { datas.add(it) }
+                }
+            }
+        }
+
+        val list = mutableListOf<LxPlaylistInfo>()
+        for (data in datas) {
+            val id = data.optString("id").ifBlank { data.optString("playlistId") }
+                .ifBlank { data.optString("songlistId") }
+            if (id.isBlank() || id == "0") continue
+            val name = data.optString("name").ifBlank { data.optString("title") }
+                .ifBlank { data.optString("songlistName") }
+            if (name.isBlank()) continue
+            var img = data.optString("musicListPicUrl")
+                .ifBlank { data.optString("img3") }.ifBlank { data.optString("img2") }
+                .ifBlank { data.optString("img1") }.ifBlank { data.optString("pic") }
+            img = normalizeMgImageUrl(img)
+            list.add(
+                LxPlaylistInfo(
+                    id = id,
+                    name = name,
+                    cover = img,
+                    author = data.optString("userName").ifBlank { data.optString("nickName") }
+                        .ifBlank { data.optString("nickname") },
+                    trackCount = data.optInt("musicNum", data.optInt("songNum", 0)),
+                    playCount = data.optLong("playNum", data.optLong("playCount", 0L)),
+                    description = data.optString("summary").ifBlank { data.optString("desc") }
+                        .ifBlank { data.optString("intro") },
+                    source = "mg"
+                )
+            )
+        }
+        val total = listData.optInt("totalCount", list.size)
+        return LxPlaylistSearchResult(
+            isEnd = page * pageSize >= total || list.isEmpty(),
+            list = list,
+            total = total
+        )
+    }
+
+    // ─── 歌单详情实现 ────────────────────────────────────────────────────
+
+    /** 酷狗：special/single 页面拿 hash 列表 → gateway 批量换歌曲详情 */
+    private suspend fun getKgPlaylistSongs(playlistId: String): LxSearchResult {
+        val id = playlistId.removePrefix("id_")
+        var hashes: List<String> = emptyList()
+        for (attempt in 0 until 3) {
+            val html = httpGet("$KG_PLAYLIST_PAGE$id-5-9999.html")
+            if (html != null) {
+                KG_LIST_DATA_REGEX.find(html)?.let { hashes = parseKgHashList(it.groupValues[1]) }
+            }
+            if (hashes.isNotEmpty()) break
+            if (attempt < 2) delay(300L * (1 shl attempt))
+        }
+        if (hashes.isEmpty()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val list = getKgMusicInfos(hashes)
+        if (list.isEmpty()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        return LxSearchResult(list = list, isEnd = true, total = list.size)
+    }
+
+    /** 解析 `global.data = [{hash:"..."}, ...]` */
+    private fun parseKgHashList(json: String): List<String> {
+        return try {
+            val arr = JSONArray(json)
+            val out = ArrayList<String>(arr.length())
+            for (i in 0 until arr.length()) {
+                val h = arr.optJSONObject(i)?.optString("hash", "") ?: ""
+                if (h.isNotBlank()) out.add(h)
+            }
+            out
+        } catch (t: Throwable) {
+            Timber.w(t, "$TAG: parse kg hash list failed")
+            emptyList()
+        }
+    }
+
+    /** 按 hash 批量取酷狗歌曲详情（每批 100），对齐落雪 filterData2 字段映射 */
+    private suspend fun getKgMusicInfos(hashes: List<String>): List<LxSongInfo> {
+        val unique = hashes.distinct()
+        if (unique.isEmpty()) return emptyList()
+        val out = ArrayList<LxSongInfo>(unique.size)
+        val seenAudioIds = HashSet<String>()
+        unique.chunked(100).forEach { batch ->
+            for (item in postKgAudioBatch(batch)) {
+                val audio = item.optJSONObject("audio_info") ?: continue
+                val audioId = audio.optString("audio_id", "")
+                if (audioId.isNotBlank() && !seenAudioIds.add(audioId)) continue
+                val name = item.optString("songname", "")
+                if (name.isBlank()) continue
+                val hash = audio.optString("hash", "")
+                if (hash.isBlank()) continue
+                out.add(
+                    LxSongInfo(
+                        id = hash,
+                        hash = hash,
+                        name = name,
+                        singer = item.optString("author_name", ""),
+                        albumName = item.optJSONObject("album_info")?.optString("album_name", "") ?: "",
+                        duration = audio.optString("timelength", "0").toLongOrNull()?.div(1000L) ?: 0L,
+                        source = "kg"
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    private suspend fun postKgAudioBatch(hashes: List<String>): List<JSONObject> {
+        val dataArr = JSONArray()
+        hashes.forEach { h -> dataArr.put(JSONObject().put("hash", h)) }
+        val body = JSONObject().apply {
+            put("area_code", "1")
+            put("show_privilege", 1)
+            put("show_album_info", "1")
+            put("is_publish", "")
+            put("appid", 1005)
+            put("clientver", 11451)
+            put("mid", "1")
+            put("dfid", "-")
+            put("clienttime", System.currentTimeMillis())
+            put("key", "OIlwieks28dk2k092lksi2UIkp")
+            put("fields", "album_info,author_name,audio_info,ori_audio_name,base,songname")
+            put("data", dataArr)
+        }
+        val request = Request.Builder()
+            .url(KG_GATEWAY_AUDIO_URL)
+            .addHeader("KG-THash", "13a3164")
+            .addHeader("KG-RC", "1")
+            .addHeader("KG-Fake", "0")
+            .addHeader("KG-RF", "00869891")
+            .addHeader("User-Agent", "Android712-AndroidPhone-11451-376-0-FeeCacheUpdate-wifi")
+            .addHeader("x-router", "kmr.service.kugou.com")
+            .post(body.toString().toRequestBody("application/json;charset=UTF-8".toMediaType()))
+            .build()
+        val text = runCatching {
+            okHttpClient.newCall(request).execute().use { resp ->
+                if (resp.isSuccessful) resp.body?.string() else null
+            }
+        }.getOrNull() ?: return emptyList()
+        val root = runCatching { JSONObject(text) }.getOrNull() ?: return emptyList()
+        val errCode = when {
+            root.has("error_code") -> root.optInt("error_code", 0)
+            root.has("errcode") -> root.optInt("errcode", 0)
+            root.has("err_code") -> root.optInt("err_code", 0)
+            else -> 0
+        }
+        if (errCode != 0) return emptyList()
+        val arr = root.optJSONArray("data") ?: return emptyList()
+        val out = ArrayList<JSONObject>(arr.length())
+        for (i in 0 until arr.length()) {
+            // body.data 是「数组的数组」，每项取 [0]（落雪 data.map(s => s[0])）
+            val item = arr.optJSONArray(i)?.optJSONObject(0) ?: arr.optJSONObject(i)
+            if (item != null) out.add(item)
+        }
+        return out
+    }
+
+    /** QQ音乐：fcg_ucc_getcdinfo_byids_cp（落雪 tx/songList.js getListDetail） */
+    private suspend fun getTxPlaylistSongs(playlistId: String): LxSearchResult {
+        val id = Regex("(\\d+)").find(playlistId)?.groupValues?.get(1) ?: playlistId
+        val url = "$TX_PLAYLIST_DETAIL_URL?type=1&json=1&utf8=1&onlysong=0&new_format=1" +
+            "&disstid=$id&loginUin=0&hostUin=0&format=json&inCharset=utf8&outCharset=utf-8" +
+            "&notice=0&platform=yqq.json&needNewCode=0"
+        var songlist: JSONArray? = null
+        for (attempt in 0 until 3) {
+            val body = httpGetHeaders(
+                url,
+                mapOf(
+                    "Origin" to "https://y.qq.com",
+                    "Referer" to "https://y.qq.com/n/yqq/playsquare/$id.html",
+                    "User-Agent" to "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36"
+                )
+            )
+            if (body != null) {
+                val root = runCatching { JSONObject(body) }.getOrNull()
+                if (root != null && root.optInt("code", -1) == 0) {
+                    songlist = root.optJSONArray("cdlist")?.optJSONObject(0)?.optJSONArray("songlist")
+                    if (songlist != null) break
+                    // code==0 但无歌曲：合法空响应，不再重试
+                    return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+            }
+            if (attempt < 2) delay(300L * (1 shl attempt))
+        }
+        val songs = songlist ?: return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val list = ArrayList<LxSongInfo>(songs.length())
+        for (i in 0 until songs.length()) {
+            val item = songs.optJSONObject(i) ?: continue
+            val mid = item.optString("mid", "")
+            val name = item.optString("title", "").ifBlank { item.optString("name", "") }
+            if (mid.isBlank() || name.isBlank()) continue
+            val singers = item.optJSONArray("singer")
+            val singerNames = mutableListOf<String>()
+            if (singers != null) {
+                for (j in 0 until singers.length()) {
+                    singers.optJSONObject(j)?.optString("name", "")
+                        ?.takeIf { it.isNotBlank() }?.let { singerNames.add(it) }
+                }
+            }
+            val album = item.optJSONObject("album")
+            val albumMid = album?.optString("mid", "") ?: ""
+            val albumName = album?.optString("name", "") ?: ""
+            var pic = ""
+            if (albumMid.isNotBlank() && albumMid != "空") {
+                pic = "https://y.gtimg.cn/music/photo_new/T002R300x300M000$albumMid.jpg"
+            } else if (singers != null && singers.length() > 0) {
+                val singerMid = singers.optJSONObject(0)?.optString("mid", "")
+                if (!singerMid.isNullOrBlank()) {
+                    pic = "https://y.gtimg.cn/music/photo_new/T001R300x300M000$singerMid.jpg"
+                }
+            }
+            list.add(
+                LxSongInfo(
+                    id = mid,
+                    songmid = mid,
+                    name = name,
+                    singer = singerNames.joinToString(" / "),
+                    albumName = albumName,
+                    duration = item.optLong("interval", 0L),
+                    pic = pic,
+                    source = "tx"
+                )
+            )
+        }
+        return LxSearchResult(list = list, isEnd = true, total = list.size)
+    }
+
+    /**
+     * 咪咕：MIGUM3.0 resource/playlist/song/v2.0（落雪 mg/songList.js）
+     *
+     * 咪咕接口单页最多 100 首，而「保存整张歌单」会一次要 1000 首，因此这里在大页长时逐页拉取。
+     */
+    private suspend fun getMgPlaylistSongs(playlistId: String, page: Int, pageSize: Int): LxSearchResult {
+        val requested = if (pageSize > 0) pageSize else 30
+        if (requested <= MG_MAX_PAGE_SIZE) return getMgPlaylistSongsPage(playlistId, page, requested)
+
+        val merged = LinkedHashMap<String, LxSongInfo>()
+        var total = 0
+        var current = page
+        while (merged.size < requested) {
+            val r = getMgPlaylistSongsPage(playlistId, current, MG_MAX_PAGE_SIZE)
+            if (r.total > 0) total = r.total
+            val before = merged.size
+            r.list.forEach { merged.putIfAbsent(it.id, it) }
+            if (r.list.isEmpty() || r.isEnd || merged.size == before) break
+            current += 1
+        }
+        val list = merged.values.take(requested)
+        val effectiveTotal = if (total > 0) total else list.size
+        return LxSearchResult(
+            list = list,
+            isEnd = list.isEmpty() || merged.size >= effectiveTotal,
+            total = effectiveTotal
+        )
+    }
+
+    private suspend fun getMgPlaylistSongsPage(playlistId: String, page: Int, pageSize: Int): LxSearchResult {
+        val size = pageSize.coerceIn(1, MG_MAX_PAGE_SIZE)
+        val url = "$MG_PLAYLIST_SONGS_URL?pageNo=$page&pageSize=$size&playlistId=$playlistId"
+        var songArr: JSONArray? = null
+        var total = 0
+        for (attempt in 0 until 3) {
+            val body = httpGetHeaders(
+                url,
+                mapOf(
+                    "User-Agent" to MG_IOS_UA,
+                    "Referer" to "https://m.music.migu.cn/",
+                    "channel" to "0146921"
+                )
+            )
+            if (body != null) {
+                val root = runCatching { JSONObject(body) }.getOrNull()
+                if (root != null && root.optString("code") == "000000") {
+                    val data = root.optJSONObject("data")
+                    songArr = data?.optJSONArray("songList")
+                    total = data?.optInt("totalCount", 0) ?: 0
+                    break
+                }
+            }
+            if (attempt < 2) delay(300L * (1 shl attempt))
+        }
+        val songs = songArr ?: return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val list = ArrayList<LxSongInfo>(songs.length())
+        val seen = HashSet<String>()
+        for (i in 0 until songs.length()) {
+            val data = songs.optJSONObject(i) ?: continue
+            val songId = data.optString("songId", "")
+            if (songId.isBlank() || !seen.add(songId)) continue
+            val name = data.optString("songName", "").ifBlank { data.optString("name", "") }
+            if (name.isBlank()) continue
+            val singerNames = mutableListOf<String>()
+            val singers = data.optJSONArray("singerList")
+            if (singers != null) {
+                for (j in 0 until singers.length()) {
+                    singers.optJSONObject(j)?.optString("name", "")
+                        ?.takeIf { it.isNotBlank() }?.let { singerNames.add(it) }
+                }
+            }
+            var img = data.optString("img3").ifBlank { data.optString("img2").ifBlank { data.optString("img1") } }
+            img = normalizeMgImageUrl(img)
+            list.add(
+                LxSongInfo(
+                    id = songId,
+                    songmid = songId,
+                    // 咪咕歌词需要 copyrightId（与 searchMg 一致）
+                    hash = data.optString("copyrightId", ""),
+                    name = name,
+                    singer = singerNames.joinToString(" / "),
+                    albumName = data.optString("album", ""),
+                    // 咪咕返回的 duration 单位已是「秒」（如 270）
+                    duration = data.optLong("duration", 0L),
+                    pic = img,
+                    source = "mg"
+                )
+            )
+        }
+        val effectiveTotal = if (total > 0) total else list.size
+        return LxSearchResult(
+            list = list,
+            isEnd = page * size >= effectiveTotal || list.isEmpty(),
+            total = effectiveTotal
+        )
+    }
+
+    /** 酷我：nplserver pl.svc getlistinfo（落雪 kw/songList.js） */
+    private suspend fun getKwPlaylistSongs(playlistId: String, page: Int, pageSize: Int): LxSearchResult {
+        val id = normalizeKwPlaylistId(playlistId) ?: return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val size = if (pageSize in 1..1000) pageSize else 1000
+        val url = "$KW_PLAYLIST_DETAIL_URL?op=getlistinfo&pid=$id&pn=${page - 1}&rn=$size" +
+            "&encode=utf8&keyset=pl2012&identity=kuwo&pcmp4=1&vipver=MUSIC_9.0.5.0_W1&newver=1"
+        var musiclist: JSONArray? = null
+        var total = 0
+        var rn = size
+        for (attempt in 0 until 3) {
+            val body = httpGet(url)
+            if (body != null) {
+                val root = runCatching { JSONObject(body) }.getOrNull()
+                if (root != null && root.optString("result") == "ok" && root.has("musiclist")) {
+                    musiclist = root.optJSONArray("musiclist")
+                    total = root.optInt("total", 0)
+                    rn = root.optInt("rn", size).coerceAtLeast(1)
+                    break
+                }
+            }
+            if (attempt < 2) delay(300L * (1 shl attempt))
+        }
+        val songs = musiclist ?: return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val list = ArrayList<LxSongInfo>(songs.length())
+        for (i in 0 until songs.length()) {
+            val item = songs.optJSONObject(i) ?: continue
+            val rid = item.optString("id", "").ifBlank { item.optString("rid", "") }
+            val name = item.optString("name", "")
+            if (rid.isBlank() || name.isBlank()) continue
+            list.add(
+                LxSongInfo(
+                    id = rid,
+                    songmid = rid,
+                    name = name,
+                    singer = item.optString("artist", ""),
+                    albumName = item.optString("album", ""),
+                    duration = item.optLong("duration", 0L),
+                    pic = item.optString("pic", ""),
+                    source = "kw"
+                )
+            )
+        }
+        val effectiveTotal = if (total > 0) total else list.size
+        return LxSearchResult(
+            list = list,
+            isEnd = page * rn >= effectiveTotal || list.isEmpty(),
+            total = effectiveTotal
+        )
+    }
+
+    /**
+     * 归一化酷我歌单 id：
+     * - 裸数字 pid 直接可用
+     * - 落雪的 `digest-{8|5}__{id}` 形式取 `__` 后的部分
+     * - 含 `/playlist(_detail)/{id}` 的链接剥出数字
+     */
+    private fun normalizeKwPlaylistId(raw: String): String? {
+        val s = raw.trim()
+        if (s.isEmpty()) return null
+        if (s.startsWith("digest-")) {
+            val idx = s.indexOf("__")
+            if (idx >= 0) return s.substring(idx + 2).takeIf { it.isNotBlank() }
+        }
+        if (s.all { it.isDigit() }) return s
+        return Regex("/playlist(?:_detail)?/(\\d+)").find(s)?.groupValues?.get(1)
+            ?: Regex("(\\d+)").find(s)?.groupValues?.get(1)
+    }
+
     // ─── 工具 ───────────────────────────────────────────────────────────
+
+    /** 咪咕图片可能是相对路径（/data/oss/...）或协议相对（//d.musicapp.migu.cn/...），统一补全 */
+    private fun normalizeMgImageUrl(raw: String): String {
+        val img = raw.trim()
+        if (img.isEmpty()) return ""
+        return when {
+            img.startsWith("http") -> img
+            img.startsWith("//") -> "http:$img"
+            else -> "http://d.musicapp.migu.cn$img"
+        }
+    }
+
+    /** 解码 HTML 实体（QQ音乐歌单名/简介里常见 `&#32;`、`&amp;` 等） */
+    private fun decodeHtmlEntities(raw: String): String {
+        if (raw.isEmpty() || !raw.contains('&')) return raw
+        return HTML_ENTITY_REGEX.replace(raw) { m ->
+            val num = m.groupValues[2]
+            if (num.isNotEmpty()) {
+                val code = if (m.groupValues[1] == "x") num.toIntOrNull(16) else num.toIntOrNull()
+                if (code != null && code > 0 && code <= 0x10FFFF) String(Character.toChars(code)) else m.value
+            } else {
+                when (m.groupValues[3]) {
+                    "amp" -> "&"
+                    "lt" -> "<"
+                    "gt" -> ">"
+                    "quot" -> "\""
+                    "apos" -> "'"
+                    "nbsp" -> " "
+                    else -> m.value
+                }
+            }
+        }
+    }
+
+    /** GET + 自定义请求头（歌单详情各源需要不同的 UA / Referer / Origin） */
+    private suspend fun httpGetHeaders(url: String, headers: Map<String, String>): String? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val builder = Request.Builder().url(url)
+                headers.forEach { (k, v) -> builder.addHeader(k, v) }
+                okHttpClient.newCall(builder.build()).execute().use { resp ->
+                    if (resp.isSuccessful) resp.body?.string() else null
+                }
+            }.getOrNull()
+        }
 
     private suspend fun httpGet(url: String): String? = withContext(Dispatchers.IO) {
         runCatching {

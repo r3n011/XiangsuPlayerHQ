@@ -142,6 +142,9 @@ interface MusicDao {
     @Query("SELECT * FROM artists WHERE id IN (:artistIds)")
     suspend fun getArtistsByIds(artistIds: List<Long>): List<ArtistEntity>
 
+    @Query("SELECT * FROM albums WHERE id IN (:albumIds)")
+    suspend fun getAlbumsByIds(albumIds: List<Long>): List<AlbumEntity>
+
     @Transaction
     suspend fun insertSongs(songs: List<SongEntity>) {
         if (songs.isEmpty()) return
@@ -226,6 +229,19 @@ interface MusicDao {
     @Query("SELECT id FROM songs WHERE source_type = 0")
     suspend fun getAllMediaStoreSongIds(): List<Long>
 
+    /**
+     * IDs of user-saved cloud songs (songs saved from online playlists / LX sources).
+     *
+     * These live outside the MediaStore scan (parent_directory_path = 'cloud'), so automatic
+     * sync, full rebuild and per-source cleanup passes must never delete them - otherwise a
+     * saved online playlist silently loses every song after a refresh.
+     */
+    @Query("SELECT id FROM songs WHERE parent_directory_path = 'cloud'")
+    suspend fun getUserCloudSongIds(): List<Long>
+
+    @Query("SELECT * FROM songs WHERE parent_directory_path = 'cloud'")
+    suspend fun getUserCloudSongs(): List<SongEntity>
+
     @Query("DELETE FROM songs WHERE id IN (:songIds)")
     suspend fun deleteSongsByIds(songIds: List<Long>)
 
@@ -279,7 +295,9 @@ interface MusicDao {
     @Transaction
     suspend fun deleteSongsAndRelatedData(songIds: List<Long>) {
         if (songIds.isEmpty()) return
-        songIds.chunked(CROSS_REF_BATCH_SIZE).forEach { chunk ->
+        val deletableIds = withoutUserCloudSongs(songIds)
+        if (deletableIds.isEmpty()) return
+        deletableIds.chunked(CROSS_REF_BATCH_SIZE).forEach { chunk ->
             deleteCrossRefsBySongIds(chunk)
             deleteFavoritesBySongIds(chunk)
             deleteLyricsBySongIds(chunk)
@@ -287,6 +305,17 @@ interface MusicDao {
         }
         deleteOrphanedAlbums()
         deleteOrphanedArtists()
+    }
+
+    /**
+     * Strips user-saved cloud songs (see [getUserCloudSongIds]) from a deletion request so that
+     * source cleanup / sync never wipes songs the user explicitly saved from an online playlist.
+     */
+    private suspend fun withoutUserCloudSongs(songIds: List<Long>): List<Long> {
+        val protectedIds = getUserCloudSongIds()
+        if (protectedIds.isEmpty()) return songIds
+        val protectedSet = protectedIds.toHashSet()
+        return songIds.filterNot { it in protectedSet }
     }
 
     @Transaction
@@ -368,7 +397,7 @@ interface MusicDao {
         // Only allow explicit deletions if the list is non-empty.
         // During general refresh, deletedSongIds strictly contains local MediaStore IDs only.
         if (deletedSongIds.isNotEmpty()) {
-            deletedSongIds.chunked(CROSS_REF_BATCH_SIZE).forEach { chunk ->
+            withoutUserCloudSongs(deletedSongIds).chunked(CROSS_REF_BATCH_SIZE).forEach { chunk ->
                 deleteCrossRefsBySongIds(chunk)
                 deleteFavoritesBySongIds(chunk)
                 deleteLyricsBySongIds(chunk)
@@ -1864,6 +1893,9 @@ interface MusicDao {
     @Query("SELECT * FROM song_artist_cross_ref WHERE song_id = :songId")
     suspend fun getCrossRefsForSong(songId: Long): List<SongArtistCrossRef>
 
+    @Query("SELECT * FROM song_artist_cross_ref WHERE song_id IN (:songIds)")
+    suspend fun getCrossRefsForSongIds(songIds: List<Long>): List<SongArtistCrossRef>
+
     /**
      * Get the primary artist for a song.
      */
@@ -1963,9 +1995,20 @@ interface MusicDao {
         artists: List<ArtistEntity>,
         crossRefs: List<SongArtistCrossRef>
     ) {
-        // Save current cloud songs before clearing to prevent accidental data loss
-        // Only clear if we have new songs to insert, or we are explicitly asked to REBUILD everything.
-        // We handle this logic at the worker/repository level to be more precise.
+        // User-saved cloud songs are not part of the MediaStore scan, so a plain clear would delete
+        // them and empty every saved online playlist. Snapshot them together with their
+        // albums / artists / cross-refs and restore everything right after the rebuild.
+        val preservedSongs = getUserCloudSongs()
+        val preservedSongIds = preservedSongs.map { it.id }
+        val preservedCrossRefs = if (preservedSongIds.isEmpty()) {
+            emptyList()
+        } else {
+            preservedSongIds.chunked(CROSS_REF_BATCH_SIZE).flatMap { getCrossRefsForSongIds(it) }
+        }
+        val preservedAlbums = preservedSongs.map { it.albumId }.distinct()
+            .takeIf { it.isNotEmpty() }?.let { getAlbumsByIds(it) } ?: emptyList()
+        val preservedArtists = preservedSongs.map { it.artistId }.distinct()
+            .takeIf { it.isNotEmpty() }?.let { getArtistsByIds(it) } ?: emptyList()
 
         clearAllSongArtistCrossRefs()
         clearAllSongs()
@@ -1977,6 +2020,15 @@ interface MusicDao {
         insertSongs(songs)
         crossRefs.chunked(CROSS_REF_BATCH_SIZE).forEach { chunk ->
             insertSongArtistCrossRefs(chunk)
+        }
+
+        if (preservedSongs.isNotEmpty()) {
+            insertArtists(preservedArtists)
+            insertAlbums(preservedAlbums)
+            insertSongs(preservedSongs)
+            preservedCrossRefs.chunked(CROSS_REF_BATCH_SIZE).forEach { chunk ->
+                insertSongArtistCrossRefs(chunk)
+            }
         }
     }
 

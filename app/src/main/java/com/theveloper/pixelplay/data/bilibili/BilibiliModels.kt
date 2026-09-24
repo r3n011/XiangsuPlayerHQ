@@ -58,6 +58,11 @@ data class BilibiliComment(
     val isUp: Boolean = false,
     val isUpTop: Boolean = false,
     val liked: Boolean = false,
+    // —— 对齐 PiliPlus replyControl.action / member.vip / reply_control.location / dialog ——
+    val action: Int = 0,          // 0=未操作 1=已赞 2=已踩
+    val vipType: Int = 0,         // member.vip.vipType（2=年度大会员）
+    val location: String = "",    // reply_control.location（如「IP属地：上海」）
+    val dialog: Long = 0L,        // 对话 id（楼中楼会话根）
     val emotes: Map<String, String> = emptyMap(),
     val pictures: List<String> = emptyList(),
     val subReplies: List<BilibiliComment> = emptyList()

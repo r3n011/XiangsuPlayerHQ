@@ -732,6 +732,180 @@ class LxSearchApi @Inject constructor(
         }
     }
 
+    /**
+     * 网易云歌单搜索（type=1000，本地 SDK 直连官方加密接口）。
+     * 返回 JSON 中 result.playlists 数组，每项包含 id / name / coverImgUrl / creator.nickname /
+     * trackCount / playCount / description。支持真正的 limit/offset 分页。
+     */
+    suspend fun searchPlaylists(keyword: String, page: Int = 1, pageSize: Int = 15): LxPlaylistSearchResult {
+        if (keyword.isBlank()) {
+            return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val offset = (page - 1) * pageSize
+                val map = NcmApi.search(keyword, type = 1000, limit = pageSize, offset = offset).getOrNull()
+                if (map != null) {
+                    val code = (map["code"] as? Number)?.toInt() ?: 200
+                    if (code != 405) {
+                        val root = ncmMapToJson(map)
+                            ?: return@withContext LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                        return@withContext parsePlaylistSearchResponse(root.toString(), pageSize, offset)
+                    }
+                    // code == 405（操作频繁/被风控）→ 走 btwoa 备用 API
+                    Timber.w("内置 NCM 歌单搜索返回 405 操作频繁，切换 btwoa 备用 API 搜索: $keyword")
+                } else {
+                    Timber.w("内置 NCM 歌单搜索失败，切换 btwoa 备用 API 搜索: $keyword")
+                }
+
+                val url = "$BTWOA_API_BASE/cloudsearch?keywords=${URLEncoder.encode(keyword, "UTF-8")}" +
+                        "&limit=$pageSize&offset=$offset&type=1000"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .get()
+                    .build()
+
+                val response = okHttpClient.newCall(request).execute()
+                val body = response.body?.string()
+                response.close()
+                if (!response.isSuccessful || body.isNullOrBlank()) {
+                    Timber.e("btwoa 备用歌单搜索失败: HTTP ${response.code}")
+                    return@withContext LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+                parsePlaylistSearchResponse(body, pageSize, offset)
+            } catch (e: Exception) {
+                Timber.e(e, "歌单搜索API请求异常")
+                LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+        }
+    }
+
+    private fun parsePlaylistSearchResponse(
+        body: String,
+        pageSize: Int = 15,
+        offset: Int = 0
+    ): LxPlaylistSearchResult {
+        return try {
+            val obj = JSONObject(body)
+            if (obj.optInt("code", -1) != 200) {
+                Timber.w("歌单搜索返回非成功 code: ${obj.optInt("code", -1)}")
+                return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+            val result = obj.optJSONObject("result")
+                ?: return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            val playlists = result.optJSONArray("playlists")
+                ?: return LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+            val total = result.optInt("playlistCount", playlists.length())
+
+            val list = mutableListOf<LxPlaylistInfo>()
+            for (i in 0 until playlists.length()) {
+                val item = playlists.optJSONObject(i) ?: continue
+                val id = item.optLong("id", 0L)
+                val name = item.optString("name", "").trim()
+                if (id <= 0L || name.isBlank()) continue
+                list.add(
+                    LxPlaylistInfo(
+                        id = id.toString(),
+                        name = name,
+                        cover = item.optString("coverImgUrl", "").trim().replace("`", ""),
+                        author = item.optJSONObject("creator")?.optString("nickname", "")?.trim() ?: "",
+                        trackCount = item.optInt("trackCount", 0),
+                        playCount = item.optLong("playCount", 0L),
+                        description = item.optString("description", "").trim().replace("`", ""),
+                        source = "wy"
+                    )
+                )
+            }
+
+            val isEnd = list.isEmpty() || (offset + list.size) >= total
+            LxPlaylistSearchResult(list = list, isEnd = isEnd, total = total)
+        } catch (e: Exception) {
+            Timber.e(e, "歌单搜索结果解析失败")
+            LxPlaylistSearchResult(list = emptyList(), isEnd = true, total = 0)
+        }
+    }
+
+    /**
+     * 在线歌单详情：拉取歌单内的歌曲列表（供「保存到本地」使用）。
+     * 目前实现网易云（wy）：内置 SDK 的 weapi /api/v6/playlist/detail，
+     * 失败回退 btwoa 镜像（与官方 cloudsearch 同源，返回结构一致）。
+     * 其他内置源（tx/kg/mg/kw）歌单详情接口差异较大，暂不实现，返回空结果。
+     */
+    suspend fun getPlaylistSongs(playlistId: String, source: String = "wy"): LxSearchResult {
+        if (playlistId.isBlank()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val src = source.ifBlank { "wy" }
+        if (src != "wy" && src != "all") return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val map = NcmApi.playlistDetail(playlistId).getOrNull()
+                val root = map?.let { ncmMapToJson(it) }
+                if (root != null) {
+                    val parsed = parsePlaylistSongsResponse(root)
+                    if (parsed.list.isNotEmpty()) return@withContext parsed
+                }
+                Timber.w("内置 NCM 歌单详情无结果，切换 btwoa 备用 API: $playlistId")
+
+                val url = "$BTWOA_API_BASE/playlist/detail?id=$playlistId"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .get()
+                    .build()
+                val response = okHttpClient.newCall(request).execute()
+                val body = response.body?.string()
+                response.close()
+                if (!response.isSuccessful || body.isNullOrBlank()) {
+                    Timber.e("btwoa 备用歌单详情失败: HTTP ${response.code}")
+                    return@withContext LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+                }
+                parsePlaylistSongsResponse(JSONObject(body))
+            } catch (e: Exception) {
+                Timber.e(e, "歌单详情API请求异常")
+                LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+        }
+    }
+
+    /**
+     * 解析歌单详情响应（/api/v6/playlist/detail）。
+     * 歌曲数组字段在不同响应中不一致，依次尝试：
+     * playlist.tracks → _songs_detail.songs（SDK 附加的完整歌曲详情）→ 顶层 songs。
+     */
+    private fun parsePlaylistSongsResponse(root: JSONObject): LxSearchResult {
+        return try {
+            if (root.optInt("code", -1) != 200) {
+                Timber.w("歌单详情返回非成功 code: ${root.optInt("code", -1)}")
+                return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+            val playlist = root.optJSONObject("playlist")
+            var tracks = playlist?.optJSONArray("tracks")
+            if (tracks == null || tracks.length() == 0) {
+                tracks = root.optJSONObject("_songs_detail")?.optJSONArray("songs")
+            }
+            if (tracks == null || tracks.length() == 0) {
+                tracks = root.optJSONArray("songs")
+            }
+            if (tracks == null || tracks.length() == 0) {
+                return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+            }
+
+            val list = mutableListOf<LxSongInfo>()
+            for (i in 0 until tracks.length()) {
+                val item = tracks.optJSONObject(i) ?: continue
+                val info = parseSongInfo(item)
+                if (info.id.isBlank() || info.name.isBlank()) continue
+                list.add(info.copy(source = "wy"))
+            }
+            LxSearchResult(isEnd = true, list = list, total = list.size)
+        } catch (e: Exception) {
+            Timber.e(e, "歌单详情解析失败")
+            LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        }
+    }
+
     private fun parseSongInfo(obj: JSONObject): LxSongInfo {
         val id = obj.optString("id", "")
         val name = obj.optString("name", "未知歌曲")

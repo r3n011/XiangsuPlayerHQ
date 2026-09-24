@@ -77,6 +77,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -207,10 +208,15 @@ fun BilibiliCommentSheet(
                 hasMoreState.value = result.hasMore
                 nextOffsetState.value = result.nextOffset
                 upMidState.longValue = result.upMid
-                // 点赞态对齐：以服务端 reply_control.like_state 为准
+                // 点赞/点踩态对齐：以服务端 reply_control.action 为准（1=已赞 2=已踩）
                 likedRpids.clear()
-                result.topComments.forEach { if (it.liked) likedRpids[it.rpid] = true }
-                result.comments.forEach { if (it.liked) likedRpids[it.rpid] = true }
+                hatedRpids.clear()
+                (result.topComments + result.comments).forEach {
+                    when (it.action) {
+                        1 -> likedRpids[it.rpid] = true
+                        2 -> hatedRpids[it.rpid] = true
+                    }
+                }
             }
         } catch (t: Throwable) {
             Timber.e(t, "Bilibili 首次加载评论失败")
@@ -1217,7 +1223,8 @@ private fun BilibiliCommentRow(
                         text = comment.nickname.ifBlank { "匿名用户" },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
-                        color = colorScheme.onSurface,
+                        // 大会员昵称用粉色调（对齐 PiliPlus colorScheme.vipColor）
+                        color = if (comment.vipType == 2) vipNickColor(colorScheme) else colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -1303,7 +1310,8 @@ private fun BilibiliCommentRow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = formatCommentTime(comment.ctime),
+                        text = formatCommentTime(comment.ctime) +
+                            if (comment.location.isNotBlank()) " • ${comment.location}" else "",
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant
                     )
@@ -1431,7 +1439,8 @@ private fun BilibiliSubReplyRow(
                     text = comment.nickname.ifBlank { "匿名用户" },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
-                    color = colorScheme.onSurface,
+                    // 大会员昵称用粉色调（对齐 PiliPlus colorScheme.vipColor）
+                    color = if (comment.vipType == 2) vipNickColor(colorScheme) else colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -1489,7 +1498,8 @@ private fun BilibiliSubReplyRow(
             Spacer(modifier = Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = formatCommentTime(comment.ctime),
+                    text = formatCommentTime(comment.ctime) +
+                        if (comment.location.isNotBlank()) " • ${comment.location}" else "",
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurfaceVariant
                 )
@@ -1788,6 +1798,10 @@ private fun BilibiliFilterDialog(
         }
     )
 }
+
+// 大会员昵称色（对齐 PiliPlus colorScheme.vipColor：亮色 0xFFFF6699 / 暗色 0xFFD44E7D）
+private fun vipNickColor(colorScheme: androidx.compose.material3.ColorScheme): Color =
+    if (colorScheme.surface.luminance() > 0.5f) Color(0xFFFF6699) else Color(0xFFD44E7D)
 
 private fun formatCommentTime(ctime: Long): String {
     if (ctime <= 0L) return ""

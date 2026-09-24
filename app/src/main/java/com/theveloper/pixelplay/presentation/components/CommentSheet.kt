@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.components
 
+import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -88,6 +89,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import timber.log.Timber
 
 /**
@@ -146,21 +148,45 @@ fun CommentSheet(
     val expandedReplies = remember { mutableStateOf<Set<Long>>(emptySet()) }
     val repliesLoading = remember { mutableStateOf<Set<Long>>(emptySet()) }
     val repliesError = remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
+    // 楼中楼分页：服务端单次最多返回 10 条，用时间游标继续翻页
+    val repliesHasMore = remember { mutableStateOf<Map<Long, Boolean>>(emptyMap()) }
+    val repliesTimeCursor = remember { mutableStateOf<Map<Long, Long>>(emptyMap()) }
 
-    /** 懒加载某条评论下的楼中楼回复 */
-    suspend fun loadReplies(commentId: Long) {
+    /** 懒加载某条评论下的楼中楼回复；[loadMore] = true 时按时间游标追加下一页 */
+    suspend fun loadReplies(commentId: Long, loadMore: Boolean = false) {
         if (repliesLoading.value.contains(commentId)) return
-        if (repliesState.value.containsKey(commentId)) return
+        if (!loadMore && repliesState.value.containsKey(commentId)) return
+        val startTime = if (loadMore) (repliesTimeCursor.value[commentId] ?: -1L) else -1L
         repliesLoading.value = repliesLoading.value + commentId
-        repliesError.value = repliesError.value - commentId
+        if (!loadMore) {
+            repliesError.value = repliesError.value - commentId
+            repliesHasMore.value = repliesHasMore.value - commentId
+            repliesTimeCursor.value = repliesTimeCursor.value - commentId
+        }
         try {
-            val list = personalFmApi?.getCommentReplies(
+            val page = personalFmApi?.getCommentReplies(
                 type = 0,
                 id = songIdLong,
                 commentId = commentId,
                 cookie = cookie,
-            )?.getOrNull() ?: emptyList()
-            repliesState.value = repliesState.value + (commentId to list)
+                time = startTime,
+            )?.getOrNull()
+            val fetched = page?.replies ?: emptyList()
+            val existing = if (loadMore) (repliesState.value[commentId] ?: emptyList()) else emptyList()
+            val merged = (existing + fetched).distinctBy { it.commentId }
+            repliesState.value = repliesState.value + (commentId to merged)
+            // 重新加载成功后清除上一次的错误（如"加载更多"失败）
+            repliesError.value = repliesError.value - commentId
+            // 返回空 / 游标未推进 → 判定没有更多，避免死循环
+            val cursor = page?.nextTime ?: -1L
+            val hasMore = page?.hasMore == true &&
+                fetched.isNotEmpty() &&
+                cursor > 0L &&
+                cursor != startTime
+            repliesHasMore.value = repliesHasMore.value + (commentId to hasMore)
+            if (cursor > 0L) {
+                repliesTimeCursor.value = repliesTimeCursor.value + (commentId to cursor)
+            }
         } catch (t: Throwable) {
             Timber.e(t, "加载楼中楼失败 commentId=$commentId")
             repliesError.value = repliesError.value + (commentId to (t.message ?: "加载失败"))
@@ -172,6 +198,45 @@ fun CommentSheet(
     // —— 点赞本地状态: 记录哪些评论被本地点赞 ——
     val likedState = remember { mutableStateOf<Map<Long, Boolean>>(emptyMap()) }
     val likedCountState = remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+
+    // —— 点赞状态持久化：重启后仍保留用户自己的点赞态 ——
+    val context = LocalContext.current
+    val likesPrefs = remember { context.getSharedPreferences(LIKES_PREFS_NAME, Context.MODE_PRIVATE) }
+    val likesStoreKey = remember(songId) { "song_$songId" }
+    val persistedLiked = remember(songId) {
+        mutableStateOf(readLikedOverrides(likesPrefs, "song_$songId"))
+    }
+
+    /** 点赞：先乐观更新，服务端成功后再落盘持久化 */
+    suspend fun toggleLike(comment: NeteaseComment, isLiked: Boolean) {
+        val cid = comment.commentId
+        val prevLiked = likedState.value[cid] ?: comment.liked
+        val prevCount = likedCountState.value[cid] ?: comment.likedCount
+        likedState.value = likedState.value + (cid to isLiked)
+        likedCountState.value = likedCountState.value + (cid to (prevCount + if (isLiked) 1 else -1))
+
+        val ok = try {
+            personalFmApi?.likeComment(
+                type = 0,
+                id = songIdLong,
+                cid = cid,
+                like = isLiked,
+                cookie = cookie ?: ""
+            )?.getOrDefault(false) == true
+        } catch (t: Throwable) {
+            Timber.e(t, "点赞失败")
+            false
+        }
+
+        if (ok) {
+            writeLikedOverride(likesPrefs, likesStoreKey, cid, isLiked)
+            persistedLiked.value = persistedLiked.value + (cid to isLiked)
+        } else {
+            // 失败回滚
+            likedState.value = likedState.value + (cid to prevLiked)
+            likedCountState.value = likedCountState.value + (cid to prevCount)
+        }
+    }
 
     // —— 辅助：懒加载用户头像 ——
     suspend fun fetchUserAvatarsIfNeeded(list: List<NeteaseComment>) {
@@ -223,12 +288,14 @@ fun CommentSheet(
             val firstPageUsers = (result.hotComments + result.comments)
             fetchUserAvatarsIfNeeded(firstPageUsers)
 
-            // 同步服务器返回的 liked 状态到本地缓存
+            // 同步服务器返回的 liked 状态到本地缓存（本地覆盖表优先，保证重启后点赞态不丢）
+            val overrides = persistedLiked.value
             val likedMap = mutableMapOf<Long, Boolean>()
             val countMap = mutableMapOf<Long, Int>()
             for (c in result.hotComments + result.comments) {
-                likedMap[c.commentId] = c.liked
-                countMap[c.commentId] = c.likedCount
+                val override = overrides[c.commentId]
+                likedMap[c.commentId] = override ?: c.liked
+                countMap[c.commentId] = mergeLikeCount(c.likedCount, c.liked, override)
             }
             likedState.value = likedMap
             likedCountState.value = countMap
@@ -275,12 +342,14 @@ fun CommentSheet(
                         if (result.cursor > 0L) beforeState.value = result.cursor
                         fetchUserAvatarsIfNeeded(result.comments)
 
-                        // 同步新加载评论的 liked 状态
+                        // 同步新加载评论的 liked 状态（本地覆盖表优先）
+                        val overrides = persistedLiked.value
                         val newLikedMap = likedState.value.toMutableMap()
                         val newCountMap = likedCountState.value.toMutableMap()
                         for (c in result.comments) {
-                            newLikedMap[c.commentId] = c.liked
-                            newCountMap[c.commentId] = c.likedCount
+                            val override = overrides[c.commentId]
+                            newLikedMap[c.commentId] = override ?: c.liked
+                            newCountMap[c.commentId] = mergeLikeCount(c.likedCount, c.liked, override)
                         }
                         likedState.value = newLikedMap
                         likedCountState.value = newCountMap
@@ -654,39 +723,7 @@ fun CommentSheet(
                                     showLike = isLoggedIn && personalFmApi != null && songIdLong > 0L,
                                     canDelete = isLoggedIn && personalFmApi != null && currentUserId > 0L && comment.user.userId == currentUserId,
                                     onLikeToggle = { isLiked ->
-                                        scope.launch {
-                                            // 先本地更新 UI（乐观更新）
-                                            val curLikedMap = likedState.value.toMutableMap()
-                                            val curCountMap = likedCountState.value.toMutableMap()
-                                            curLikedMap[comment.commentId] = isLiked
-                                            curCountMap[comment.commentId] = (curCountMap[comment.commentId] ?: comment.likedCount) + if (isLiked) 1 else -1
-                                            likedState.value = curLikedMap
-                                            likedCountState.value = curCountMap
-
-                                            try {
-                                                val cookieVal = cookie ?: ""
-                                                val success = personalFmApi!!.likeComment(
-                                                    type = 0,
-                                                    id = songIdLong,
-                                                    cid = comment.commentId,
-                                                    like = isLiked,
-                                                    cookie = cookieVal
-                                                ).getOrDefault(false)
-                                                if (!success) {
-                                                    // 失败，回滚
-                                                    curLikedMap[comment.commentId] = !isLiked
-                                                    curCountMap[comment.commentId] = (curCountMap[comment.commentId] ?: comment.likedCount) + if (!isLiked) 1 else -1
-                                                    likedState.value = curLikedMap
-                                                    likedCountState.value = curCountMap
-                                                }
-                                            } catch (t: Throwable) {
-                                                Timber.e(t, "点赞失败")
-                                                curLikedMap[comment.commentId] = !isLiked
-                                                curCountMap[comment.commentId] = (curCountMap[comment.commentId] ?: comment.likedCount) + if (!isLiked) 1 else -1
-                                                likedState.value = curLikedMap
-                                                likedCountState.value = curCountMap
-                                            }
-                                        }
+                                        scope.launch { toggleLike(comment, isLiked) }
                                     },
                                     onDelete = {
                                         scope.launch {
@@ -728,6 +765,10 @@ fun CommentSheet(
                                             }
                                         }
                                     },
+                                    hasMoreReplies = repliesHasMore.value[comment.commentId] == true,
+                                    onLoadMoreReplies = {
+                                        scope.launch { loadReplies(comment.commentId, loadMore = true) }
+                                    },
                                     showDivider = true
                                 )
                             }
@@ -763,37 +804,7 @@ fun CommentSheet(
                                     showLike = isLoggedIn && personalFmApi != null && songIdLong > 0L,
                                     canDelete = isLoggedIn && personalFmApi != null && currentUserId > 0L && comment.user.userId == currentUserId,
                                     onLikeToggle = { isLiked ->
-                                        scope.launch {
-                                            val curLikedMap = likedState.value.toMutableMap()
-                                            val curCountMap = likedCountState.value.toMutableMap()
-                                            curLikedMap[comment.commentId] = isLiked
-                                            curCountMap[comment.commentId] = (curCountMap[comment.commentId] ?: comment.likedCount) + if (isLiked) 1 else -1
-                                            likedState.value = curLikedMap
-                                            likedCountState.value = curCountMap
-
-                                            try {
-                                                val cookieVal = cookie ?: ""
-                                                val success = personalFmApi!!.likeComment(
-                                                    type = 0,
-                                                    id = songIdLong,
-                                                    cid = comment.commentId,
-                                                    like = isLiked,
-                                                    cookie = cookieVal
-                                                ).getOrDefault(false)
-                                                if (!success) {
-                                                    curLikedMap[comment.commentId] = !isLiked
-                                                    curCountMap[comment.commentId] = (curCountMap[comment.commentId] ?: comment.likedCount) + if (!isLiked) 1 else -1
-                                                    likedState.value = curLikedMap
-                                                    likedCountState.value = curCountMap
-                                                }
-                                            } catch (t: Throwable) {
-                                                Timber.e(t, "点赞失败")
-                                                curLikedMap[comment.commentId] = !isLiked
-                                                curCountMap[comment.commentId] = (curCountMap[comment.commentId] ?: comment.likedCount) + if (!isLiked) 1 else -1
-                                                likedState.value = curLikedMap
-                                                likedCountState.value = curCountMap
-                                            }
-                                        }
+                                        scope.launch { toggleLike(comment, isLiked) }
                                     },
                                     onDelete = {
                                         scope.launch {
@@ -833,6 +844,10 @@ fun CommentSheet(
                                                 loadReplies(comment.commentId)
                                             }
                                         }
+                                    },
+                                    hasMoreReplies = repliesHasMore.value[comment.commentId] == true,
+                                    onLoadMoreReplies = {
+                                        scope.launch { loadReplies(comment.commentId, loadMore = true) }
                                     },
                                     showDivider = true
                                 )
@@ -935,6 +950,8 @@ private fun CommentRow(
     isRepliesLoading: Boolean = false,
     repliesError: String? = null,
     onToggleReplies: () -> Unit = {},
+    hasMoreReplies: Boolean = false,
+    onLoadMoreReplies: () -> Unit = {},
     showDivider: Boolean = true
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1105,10 +1122,15 @@ private fun CommentRow(
         }
 
         // —— 楼中楼：展开入口 + 回复列表（无需登录即可查看）——
-        if (showFloor) {
-            androidx.compose.material3.TextButton(
-                onClick = onToggleReplies,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 2.dp)
+        // 仅当"已展开 / 服务端报告有回复 / 已加载到回复"时才显示入口，避免无回复的死交互
+        if (showFloor && (isRepliesExpanded || comment.subReplyCount > 0 || replies.isNotEmpty())) {
+            Row(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onToggleReplies)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = if (isRepliesExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
@@ -1121,7 +1143,6 @@ private fun CommentRow(
                     text = when {
                         isRepliesExpanded -> "收起回复"
                         comment.subReplyCount > 0 -> "查看回复 (${comment.subReplyCount})"
-                        replies.isNotEmpty() -> "查看回复"
                         else -> "查看回复"
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -1134,7 +1155,7 @@ private fun CommentRow(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 72.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
+                            .padding(start = 72.dp, end = 16.dp, top = 2.dp, bottom = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         CircularProgressIndicator(
@@ -1154,14 +1175,14 @@ private fun CommentRow(
                         text = repliesError,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 4.dp, bottom = 6.dp)
+                        modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 2.dp, bottom = 4.dp)
                     )
                 } else if (replies.isEmpty()) {
                     Text(
                         text = "暂无回复",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 4.dp, bottom = 6.dp)
+                        modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 2.dp, bottom = 4.dp)
                     )
                 } else {
                     replies.forEachIndexed { index, reply ->
@@ -1176,6 +1197,36 @@ private fun CommentRow(
                                 modifier = Modifier.padding(start = 72.dp),
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
+
+                    // —— 回复分页：服务端单次最多 10 条，提供"加载更多回复" ——
+                    if (hasMoreReplies) {
+                        Row(
+                            modifier = Modifier
+                                .padding(start = 72.dp, top = 2.dp, bottom = 2.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(enabled = !isRepliesLoading, onClick = onLoadMoreReplies)
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isRepliesLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            Text(
+                                text = when {
+                                    isRepliesLoading -> "加载中…"
+                                    !repliesError.isNullOrBlank() -> "加载失败，点击重试"
+                                    else -> "加载更多回复"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -1204,6 +1255,56 @@ private fun formatCompactCount(count: Int): String {
 }
 
 // —————————————————————————————————————————————————
+// 点赞状态持久化
+//   网易云的 /comment/like 是幂等写操作，但服务端返回的 liked 不一定实时同步，
+//   重启后会出现"点赞了但状态丢失"。这里用本地覆盖表记录用户自己的点赞态。
+// —————————————————————————————————————————————————
+private const val LIKES_PREFS_NAME = "netease_comment_likes"
+
+/** 读取某首歌的点赞覆盖表：commentId -> liked */
+private fun readLikedOverrides(prefs: android.content.SharedPreferences, key: String): Map<Long, Boolean> {
+    val raw = prefs.getString(key, null) ?: return emptyMap()
+    return try {
+        val obj = JSONObject(raw)
+        val out = mutableMapOf<Long, Boolean>()
+        val keys = obj.keys()
+        while (keys.hasNext()) {
+            val k = keys.next()
+            val cid = k.toLongOrNull() ?: continue
+            out[cid] = obj.optBoolean(k, false)
+        }
+        out
+    } catch (t: Throwable) {
+        Timber.w(t, "读取点赞状态失败")
+        emptyMap()
+    }
+}
+
+/** 写入单条评论的点赞态到本地覆盖表 */
+private fun writeLikedOverride(
+    prefs: android.content.SharedPreferences,
+    key: String,
+    commentId: Long,
+    liked: Boolean
+) {
+    try {
+        val current = readLikedOverrides(prefs, key).toMutableMap()
+        current[commentId] = liked
+        val obj = JSONObject()
+        current.forEach { (cid, v) -> obj.put(cid.toString(), v) }
+        prefs.edit().putString(key, obj.toString()).apply()
+    } catch (t: Throwable) {
+        Timber.w(t, "保存点赞状态失败")
+    }
+}
+
+/** 本地覆盖态与服务器态不一致时，修正点赞数展示 */
+private fun mergeLikeCount(serverLikedCount: Int, serverLiked: Boolean, override: Boolean?): Int {
+    if (override == null || override == serverLiked) return serverLikedCount
+    return (serverLikedCount + if (override) 1 else -1).coerceAtLeast(0)
+}
+
+// —————————————————————————————————————————————————
 // 楼中楼单条回复行（与头像对齐缩进，紧凑样式，含"回复 @某某"提示）
 // —————————————————————————————————————————————————
 @Composable
@@ -1216,7 +1317,7 @@ private fun FloorReplyItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 72.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = 72.dp, end = 16.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.Top
     ) {
         val avatarUrl = reply.user.avatarUrl.ifBlank { null }

@@ -3772,7 +3772,7 @@ private fun BottomToggleRow(
         ) {
             // 倍速按钮：正方形，1x 时右侧圆角匹配其他按钮，其它倍速时为完美圆形
             if (!isRadioPlayback && showSpeedButton) {
-                val speedText = if (playbackSpeed == 1f) "1x" else "${playbackSpeed}x"
+                val speedText = formatPlaybackSpeed(playbackSpeed)
                 val isActive = playbackSpeed != 1f
                 val btnSize = 40.dp
                 val halfSize = btnSize / 2
@@ -4025,6 +4025,18 @@ private fun BottomToggleRow(
             }
         }
     }
+}
+
+/**
+ * 格式化倍速显示：四舍五入到 2 位小数并去掉多余尾零，避免 float 浮点误差
+ * 显示成 10 位小数（如 1.1000000238x）。1.0 → "1x"，1.1 → "1.1x"，0.75 → "0.75x"。
+ */
+private fun formatPlaybackSpeed(speed: Float): String {
+    val normalized = Math.round(speed * 100) / 100.0
+    val text = String.format(java.util.Locale.ROOT, "%.2f", normalized)
+        .trimEnd('0')
+        .trimEnd('.')
+    return "${text}x"
 }
 
 /**

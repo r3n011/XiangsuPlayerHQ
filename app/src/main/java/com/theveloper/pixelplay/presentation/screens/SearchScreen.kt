@@ -29,6 +29,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.rounded.ContentPaste
@@ -63,6 +67,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Card
@@ -75,6 +80,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.layout.heightIn
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,6 +99,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -123,7 +132,9 @@ import com.theveloper.pixelplay.presentation.viewmodel.BilibiliMusicViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.BilibiliUiState
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import com.theveloper.pixelplay.data.lx.LxArtistInfo
+import com.theveloper.pixelplay.data.lx.LxPlaylistInfo
 import android.util.Log
+import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.PlaylistPlay
@@ -132,6 +143,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -195,6 +207,11 @@ fun SearchScreen(
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
     var searchQuery by rememberSaveable { mutableStateOf(playerViewModel.searchQuery) }
+    // ⚡ 在线搜索仅在「提交」时触发（回车/搜索按钮），避免边输入边请求触发接口风控；
+    //    submittedQuery 记录最近一次提交的关键词，在线搜索的 LaunchedEffect 只依赖它。
+    var submittedQuery by rememberSaveable { mutableStateOf(playerViewModel.searchQuery) }
+    // ⚡ 提交计数：即使关键词与上次相同（如失败后重试），点击搜索/回车也能再次触发在线搜索
+    var submitTick by rememberSaveable { mutableStateOf(0) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -330,6 +347,27 @@ fun SearchScreen(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = SearchUiSlice())
     val currentFilter = searchUiState.selectedSearchFilter
+    // ⚡ 在线子分类归一化：网易云（ONLINE）含「歌曲/歌手/歌单」，其余在线源仅「歌曲/歌单」，
+    //    当用户从网易云切到其他在线源时把残留的「歌手」（1）归一为「歌曲」（0）。
+    val onlineSubTab = when {
+        currentFilter == SearchFilterType.ONLINE -> onlineSearchTab
+        onlineSearchTab == 2 -> 2
+        else -> 0
+    }
+    // ⚡ 搜索范围（本地 / 在线）：单排展示，左侧固定切换卡片决定右侧显示哪一组筛选按钮；
+    //    各自记住最后一次的选择，来回切换时不丢失。
+    val isOnlineScope = when (currentFilter) {
+        SearchFilterType.ONLINE,
+        SearchFilterType.KUWO_MUSIC,
+        SearchFilterType.BILIBILI_MUSIC,
+        SearchFilterType.LX_MUSIC -> true
+        else -> false
+    }
+    var lastLocalFilter by rememberSaveable { mutableStateOf(SearchFilterType.ALL) }
+    var lastOnlineFilter by rememberSaveable { mutableStateOf(SearchFilterType.ONLINE) }
+    LaunchedEffect(currentFilter) {
+        if (isOnlineScope) lastOnlineFilter = currentFilter else lastLocalFilter = currentFilter
+    }
     val onlineSearchState by lxViewModel.uiState.collectAsStateWithLifecycle()
     val toplistUiState by toplistViewModel.uiState.collectAsStateWithLifecycle()
     val genres by playerViewModel.genres.collectAsStateWithLifecycle()
@@ -352,46 +390,60 @@ fun SearchScreen(
         }
     }
 
-    // Search debouncing is centralized in SearchStateHolder.
-    LaunchedEffect(searchQuery, currentFilter, onlineSearchTab, onlineSearchState.selectedSource) {
+    // ⚡ 本地搜索：保留原有「边输入边搜」体验（SearchStateHolder 内部有 300ms 防抖）
+    LaunchedEffect(searchQuery, currentFilter) {
+        when (currentFilter) {
+            SearchFilterType.ALL,
+            SearchFilterType.SONGS,
+            SearchFilterType.ALBUMS,
+            SearchFilterType.ARTISTS,
+            SearchFilterType.PLAYLISTS,
+            SearchFilterType.AI_SEARCH -> playerViewModel.performSearch(searchQuery)
+            else -> Unit
+        }
+    }
+
+    // ⚡ 在线搜索：仅在「提交」（回车 / 搜索按钮）后触发，避免边输入边请求触发接口风控。
+    //    切筛选或切子分类时，用最近一次提交的关键词重新搜索。
+    LaunchedEffect(submittedQuery, submitTick, currentFilter, onlineSubTab, onlineSearchState.selectedSource) {
+        val kw = submittedQuery
+        if (kw.isBlank()) return@LaunchedEffect
         when (currentFilter) {
             SearchFilterType.ONLINE -> {
-                // 网易云：固定使用官方搜索（原版不动）
+                // 网易云：固定使用官方搜索
                 // ⚡ 不修改 selectedSource，避免把用户在其他音源上选中的状态悄悄改回网易云
-                if (searchQuery.isNotBlank()) {
-                    lxViewModel.keyword = searchQuery
-                    // ⚡ 根据子分类选择歌曲搜索或歌手搜索
-                    if (onlineSearchTab == 1) {
-                        lxViewModel.searchArtists()
-                    } else {
-                        lxViewModel.search(source = "wy")
-                    }
+                lxViewModel.keyword = kw
+                when (onlineSubTab) {
+                    1 -> lxViewModel.searchArtists()
+                    2 -> lxViewModel.searchPlaylists(source = "wy")
+                    else -> lxViewModel.search(source = "wy")
                 }
             }
             SearchFilterType.LX_MUSIC -> {
                 // 落雪：按主标签栏选中的音源走 JS 引擎搜索
-                if (searchQuery.isNotBlank()) {
-                    lxViewModel.keyword = searchQuery
-                    lxViewModel.search()
-                }
+                lxViewModel.keyword = kw
+                if (onlineSubTab == 2) lxViewModel.searchPlaylists() else lxViewModel.search()
             }
             SearchFilterType.KUWO_MUSIC -> {
-                if (searchQuery.isNotBlank()) {
-                    qqViewModel.keyword = searchQuery
-                    qqViewModel.search()
-                }
+                qqViewModel.keyword = kw
+                qqViewModel.search()
             }
             SearchFilterType.BILIBILI_MUSIC -> {
-                if (searchQuery.isNotBlank()) {
-                    bilibiliViewModel.keyword = searchQuery
-                    bilibiliViewModel.search()
-                }
+                bilibiliViewModel.keyword = kw
+                bilibiliViewModel.search()
             }
-            else -> {
-                playerViewModel.performSearch(searchQuery)
-            }
+            else -> Unit
         }
     }
+    // ⚡ 提交搜索（回车 / 点击搜索按钮）：在线源据此触发请求，避免边输入边搜
+    val submitOnlineSearch: () -> Unit = {
+        val q = searchQuery.trim()
+        if (q.isNotBlank()) playerViewModel.onSearchQuerySubmitted(q)
+        submittedQuery = q
+        submitTick++
+        keyboardController?.hide()
+    }
+
     val searchResults = searchUiState.searchResults
     val handleSongMoreOptionsClick: (Song) -> Unit = { song ->
         playerViewModel.selectSongForInfo(song)
@@ -467,12 +519,24 @@ fun SearchScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Search,
-                            contentDescription = stringResource(R.string.cd_search_icon),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        // ⚡ 点击放大镜图标 = 提交搜索（在线源仅提交时请求）
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { submitOnlineSearch() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = stringResource(R.string.cd_search_icon),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                         BasicTextField(
                             value = searchQuery,
                             onValueChange = {
@@ -504,6 +568,8 @@ fun SearchScreen(
                                 fontSize = MaterialTheme.typography.bodyLarge.fontSize
                             ),
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { submitOnlineSearch() }),
                             decorationBox = { innerTextField ->
                                 Box {
                                     if (searchQuery.isEmpty()) {
@@ -594,92 +660,115 @@ fun SearchScreen(
                             .fillMaxSize()
                             .padding(horizontal = 16.dp)
                     ) {
+                        // ⚡ 单排筛选栏：左侧固定「本地 / 在线」切换卡片，右侧为当前分组的可横向滚动筛选按钮
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(
-                                    top = 8.dp,
-                                    bottom = 8.dp,
-                                    start = 8.dp,
-                                    end = 8.dp
-                                ),
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            SearchFilterChip(SearchFilterType.ALL, currentFilter, playerViewModel)
-                            SearchFilterChip(SearchFilterType.SONGS, currentFilter, playerViewModel)
-                            SearchFilterChip(SearchFilterType.ALBUMS, currentFilter, playerViewModel)
-                            SearchFilterChip(SearchFilterType.ARTISTS, currentFilter, playerViewModel)
-                            SearchFilterChip(SearchFilterType.PLAYLISTS, currentFilter, playerViewModel)
-                            SearchFilterChip(SearchFilterType.ONLINE, currentFilter, playerViewModel)
-                            SearchFilterChip(SearchFilterType.BILIBILI_MUSIC, currentFilter, playerViewModel)
-                            // ⚡ 内置音源（落雪同款官方搜索，不依赖 JS 导入）：酷我/QQ音乐/酷狗/咪咕
-                            LxSourceFilterChip(
-                                sourceKey = "kw",
-                                sourceName = "酷我",
-                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
-                                    onlineSearchState.selectedSource == "kw",
-                                onClick = {
-                                    lxViewModel.selectedSource = "kw"
-                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                            SearchScopeToggle(
+                                isOnline = isOnlineScope,
+                                onScopeChange = { online ->
+                                    playerViewModel.updateSearchFilter(
+                                        if (online) lastOnlineFilter else lastLocalFilter
+                                    )
                                 }
                             )
-                            LxSourceFilterChip(
-                                sourceKey = "tx",
-                                sourceName = "QQ音乐",
-                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
-                                    onlineSearchState.selectedSource == "tx",
-                                onClick = {
-                                    lxViewModel.selectedSource = "tx"
-                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
-                                }
-                            )
-                            LxSourceFilterChip(
-                                sourceKey = "kg",
-                                sourceName = "酷狗",
-                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
-                                    onlineSearchState.selectedSource == "kg",
-                                onClick = {
-                                    lxViewModel.selectedSource = "kg"
-                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
-                                }
-                            )
-                            LxSourceFilterChip(
-                                sourceKey = "mg",
-                                sourceName = "咪咕",
-                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
-                                    onlineSearchState.selectedSource == "mg",
-                                onClick = {
-                                    lxViewModel.selectedSource = "mg"
-                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
-                                }
-                            )
-                            // ⚡ 落雪音源：与网易云/酷我/B站同一排标签；只显示支持 musicSearch 的源（对齐落雪逻辑），点击后走 JS 引擎搜索该源
-                            onlineSearchState.sources.entries
-                                .filter { (_, info) -> info.actions.contains("musicSearch") }
-                                .forEach { (key, info) ->
+                            val filterScrollState = rememberScrollState()
+                            LaunchedEffect(isOnlineScope) { filterScrollState.scrollTo(0) }
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .horizontalScroll(filterScrollState),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (isOnlineScope) {
+                                    // 在线组：网易云 / B站 + 内置音源（酷我/QQ音乐/酷狗/咪咕）+ 落雪 JS 音源
+                                    SearchFilterChip(SearchFilterType.ONLINE, currentFilter, playerViewModel)
+                                    SearchFilterChip(SearchFilterType.BILIBILI_MUSIC, currentFilter, playerViewModel)
+                                    // ⚡ 内置音源（落雪同款官方搜索，不依赖 JS 导入）：酷我/QQ音乐/酷狗/咪咕
                                     LxSourceFilterChip(
-                                        sourceKey = key,
-                                        sourceName = info.name.ifBlank { key },
+                                        sourceKey = "kw",
+                                        sourceName = "酷我",
                                         selected = currentFilter == SearchFilterType.LX_MUSIC &&
-                                            onlineSearchState.selectedSource == key,
+                                            onlineSearchState.selectedSource == "kw",
                                         onClick = {
-                                            lxViewModel.selectedSource = key
+                                            lxViewModel.selectedSource = "kw"
                                             playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
                                         }
                                     )
+                                    LxSourceFilterChip(
+                                        sourceKey = "tx",
+                                        sourceName = "QQ音乐",
+                                        selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                            onlineSearchState.selectedSource == "tx",
+                                        onClick = {
+                                            lxViewModel.selectedSource = "tx"
+                                            playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                        }
+                                    )
+                                    LxSourceFilterChip(
+                                        sourceKey = "kg",
+                                        sourceName = "酷狗",
+                                        selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                            onlineSearchState.selectedSource == "kg",
+                                        onClick = {
+                                            lxViewModel.selectedSource = "kg"
+                                            playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                        }
+                                    )
+                                    LxSourceFilterChip(
+                                        sourceKey = "mg",
+                                        sourceName = "咪咕",
+                                        selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                            onlineSearchState.selectedSource == "mg",
+                                        onClick = {
+                                            lxViewModel.selectedSource = "mg"
+                                            playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                        }
+                                    )
+                                    // ⚡ 落雪音源：只显示支持 musicSearch 的源（对齐落雪逻辑），点击后走 JS 引擎搜索该源
+                                    onlineSearchState.sources.entries
+                                        .filter { (_, info) -> info.actions.contains("musicSearch") }
+                                        .forEach { (key, info) ->
+                                            LxSourceFilterChip(
+                                                sourceKey = key,
+                                                sourceName = info.name.ifBlank { key },
+                                                selected = currentFilter == SearchFilterType.LX_MUSIC &&
+                                                    onlineSearchState.selectedSource == key,
+                                                onClick = {
+                                                    lxViewModel.selectedSource = key
+                                                    playerViewModel.updateSearchFilter(SearchFilterType.LX_MUSIC)
+                                                }
+                                            )
+                                        }
+                                } else {
+                                    // 本地组：仅搜索本机媒体库
+                                    SearchFilterChip(SearchFilterType.ALL, currentFilter, playerViewModel)
+                                    SearchFilterChip(SearchFilterType.SONGS, currentFilter, playerViewModel)
+                                    SearchFilterChip(SearchFilterType.ALBUMS, currentFilter, playerViewModel)
+                                    SearchFilterChip(SearchFilterType.ARTISTS, currentFilter, playerViewModel)
+                                    SearchFilterChip(SearchFilterType.PLAYLISTS, currentFilter, playerViewModel)
                                 }
+                            }
                         }
                         Crossfade(
                             targetState = when {
                                 currentFilter == SearchFilterType.ONLINE ->
-                                    if (onlineSearchTab == 1) {
-                                        Triple("online_artist", true, onlineSearchState.searchingArtists)
-                                    } else {
-                                        Triple("online", true, onlineSearchState.searching)
+                                    when (onlineSubTab) {
+                                        1 -> Triple("online_artist", true, onlineSearchState.searchingArtists)
+                                        2 -> Triple("online_playlist", true, onlineSearchState.searchingPlaylists)
+                                        else -> Triple("online", true, onlineSearchState.searching)
                                     }
                                 currentFilter == SearchFilterType.LX_MUSIC ->
-                                    Triple("lx", true, onlineSearchState.searching)
+                                    if (onlineSubTab == 2) {
+                                        Triple("lx_playlist", true, onlineSearchState.searchingPlaylists)
+                                    } else {
+                                        Triple("lx", true, onlineSearchState.searching)
+                                    }
                                 currentFilter == SearchFilterType.KUWO_MUSIC ->
                                     Triple("qq", true, qqViewModel.uiState.value.searching)
                                 currentFilter == SearchFilterType.BILIBILI_MUSIC ->
@@ -690,19 +779,53 @@ fun SearchScreen(
                             animationSpec = tween(durationMillis = 190),
                             label = "search_results_fade"
                         ) { (mode, isEmpty, isSearching) ->
-                            // ⚡ 歌手子 tab 的 mode 为 "online_artist"，需与歌曲 tab 走同一渲染分支（含子分类切换）
-                            if (mode == "online" || mode == "online_artist") {
+                            // ⚡ 网易云子分类：歌曲 / 歌手 / 歌单，走同一渲染分支（含子分类切换）
+                            if (mode == "online" || mode == "online_artist" || mode == "online_playlist") {
                                 Column(modifier = Modifier.fillMaxSize()) {
-                                    // ⚡ 网易云子分类：歌曲 / 歌手
                                     OnlineSearchSubTabs(
-                                        selectedTab = onlineSearchTab,
+                                        selectedTab = onlineSubTab,
+                                        showArtistTab = true,
                                         onTabSelected = { onlineSearchTab = it }
                                     )
-                                    if (onlineSearchTab == 0) {
-                                        OnlineSearchResults(
+                                    when (onlineSubTab) {
+                                        // ⚡ 歌手
+                                        1 -> OnlineArtistResults(
                                             state = onlineSearchState,
                                             isSearching = isSearching as Boolean,
-                                            searchQuery = searchQuery,
+                                            // ⚡ 在线搜索改为提交触发，空态文案应以「已提交关键词」为准
+                                            searchQuery = submittedQuery,
+                                            colorScheme = colorScheme,
+                                            onLoadMore = { lxViewModel.loadMoreArtists() },
+                                            onArtistClick = { artist ->
+                                                artist.id.toLongOrNull()?.let { artistId ->
+                                                    if (artistId > 0L) {
+                                                        navController.navigateSafely(
+                                                            Screen.ArtistHomepage.createRoute(artistId)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        )
+                                        // ⚡ 歌单
+                                        2 -> OnlinePlaylistResults(
+                                            state = onlineSearchState,
+                                            isSearching = isSearching as Boolean,
+                                            searchQuery = submittedQuery,
+                                            colorScheme = colorScheme,
+                                            onLoadMore = { lxViewModel.loadMorePlaylists() },
+                                            savingPlaylistId = onlineSearchState.savingPlaylistId,
+                                            onSavePlaylist = { pl ->
+                                                lxViewModel.savePlaylistToLocal(pl) { _, msg ->
+                                                    playerViewModel.sendToast(msg)
+                                                }
+                                            },
+                                            onPlaylistClick = { pl -> lxViewModel.openPlaylistPreview(pl) }
+                                        )
+                                        // ⚡ 歌曲
+                                        else -> OnlineSearchResults(
+                                            state = onlineSearchState,
+                                            isSearching = isSearching as Boolean,
+                                            searchQuery = submittedQuery,
                                             onPlaySong = { song ->
                                                 lxViewModel.playSong(song) { url, name, singer, cover, songId ->
                                                     playerViewModel.playUrl(url, name, singer, cover, songId)
@@ -725,27 +848,10 @@ fun SearchScreen(
                                             loadingSongId = onlineSearchState.loadingSongId,
                                             loadingStep = onlineSearchState.progressLabel
                                         )
-                                    } else {
-                                        OnlineArtistResults(
-                                            state = onlineSearchState,
-                                            isSearching = isSearching as Boolean,
-                                            searchQuery = searchQuery,
-                                            colorScheme = colorScheme,
-                                            onLoadMore = { lxViewModel.loadMoreArtists() },
-                                            onArtistClick = { artist ->
-                                                artist.id.toLongOrNull()?.let { artistId ->
-                                                    if (artistId > 0L) {
-                                                        navController.navigateSafely(
-                                                            Screen.ArtistHomepage.createRoute(artistId)
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        )
                                     }
                                 }
-                            } else if (mode == "lx") {
-                                // ⚡ 落雪音源搜索结果：直接展示所选音源的搜索结果
+                            } else if (mode == "lx" || mode == "lx_playlist") {
+                                // ⚡ 落雪音源搜索结果：直接展示所选音源的搜索结果（歌曲 / 歌单）
                                 val lxSourceLabel = run {
                                     val key = onlineSearchState.selectedSource
                                     when (key) {
@@ -757,38 +863,62 @@ fun SearchScreen(
                                         else -> onlineSearchState.sources[key]?.name?.ifBlank { key } ?: "音源"
                                     }
                                 }
-                                OnlineSearchResults(
-                                    state = onlineSearchState,
-                                    isSearching = isSearching as Boolean,
-                                    searchQuery = searchQuery,
-                                    searchSourceLabel = lxSourceLabel,
-                                    onPlaySong = { song ->
-                                        lxViewModel.playSong(song) { url, name, singer, cover, songId ->
-                                            playerViewModel.playUrl(url, name, singer, cover, songId)
-                                        }
-                                        lxViewModel.enqueueAllSearchResults(
-                                            lxViewModel.getStableSongId(song)
-                                        ) { url, name, singer, cover, songId ->
-                                            playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
-                                        }
-                                    },
-                                    favoriteIds = favoriteSongIds,
-                                    onToggleFavorite = { song ->
-                                        lxViewModel.toggleFavoriteForSong(song)
-                                    },
-                                    stableIdFn = { song -> lxViewModel.getStableSongId(song) },
-                                    colorScheme = colorScheme,
-                                    onLoadMore = { lxViewModel.loadMore() },
-                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
-                                    isPlaying = stablePlayerState.isPlaying,
-                                    loadingSongId = onlineSearchState.loadingSongId,
-                                    loadingStep = onlineSearchState.progressLabel
-                                )
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    OnlineSearchSubTabs(
+                                        selectedTab = onlineSubTab,
+                                        showArtistTab = false,
+                                        onTabSelected = { onlineSearchTab = it }
+                                    )
+                                    if (onlineSubTab == 2) {
+                                        OnlinePlaylistResults(
+                                            state = onlineSearchState,
+                                            isSearching = isSearching as Boolean,
+                                            searchQuery = submittedQuery,
+                                            colorScheme = colorScheme,
+                                            onLoadMore = { lxViewModel.loadMorePlaylists() },
+                                            savingPlaylistId = onlineSearchState.savingPlaylistId,
+                                            onSavePlaylist = { pl ->
+                                                lxViewModel.savePlaylistToLocal(pl) { _, msg ->
+                                                    playerViewModel.sendToast(msg)
+                                                }
+                                            },
+                                            onPlaylistClick = { pl -> lxViewModel.openPlaylistPreview(pl) }
+                                        )
+                                    } else {
+                                        OnlineSearchResults(
+                                            state = onlineSearchState,
+                                            isSearching = isSearching as Boolean,
+                                            searchQuery = submittedQuery,
+                                            searchSourceLabel = lxSourceLabel,
+                                            onPlaySong = { song ->
+                                                lxViewModel.playSong(song) { url, name, singer, cover, songId ->
+                                                    playerViewModel.playUrl(url, name, singer, cover, songId)
+                                                }
+                                                lxViewModel.enqueueAllSearchResults(
+                                                    lxViewModel.getStableSongId(song)
+                                                ) { url, name, singer, cover, songId ->
+                                                    playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                                }
+                                            },
+                                            favoriteIds = favoriteSongIds,
+                                            onToggleFavorite = { song ->
+                                                lxViewModel.toggleFavoriteForSong(song)
+                                            },
+                                            stableIdFn = { song -> lxViewModel.getStableSongId(song) },
+                                            colorScheme = colorScheme,
+                                            onLoadMore = { lxViewModel.loadMore() },
+                                            currentPlayingSongId = stablePlayerState.currentSong?.id,
+                                            isPlaying = stablePlayerState.isPlaying,
+                                            loadingSongId = onlineSearchState.loadingSongId,
+                                            loadingStep = onlineSearchState.progressLabel
+                                        )
+                                    }
+                                }
                             } else if (mode == "qq") {
                                 QQSearchResults(
                                     state = qqViewModel.uiState.collectAsStateWithLifecycle().value,
                                     isSearching = isSearching as Boolean,
-                                    searchQuery = searchQuery,
+                                    searchQuery = submittedQuery,
                                     onPlaySong = { song ->
                                         qqViewModel.playSong(song) { url, name, singer, cover, songId ->
                                             playerViewModel.playUrl(url, name, singer, cover, songId)
@@ -809,7 +939,7 @@ fun SearchScreen(
                                 BilibiliSearchResults(
                                     state = bilibiliViewModel.uiState.collectAsStateWithLifecycle().value,
                                     isSearching = isSearching as Boolean,
-                                    searchQuery = searchQuery,
+                                    searchQuery = submittedQuery,
                                     onPlaySong = { song ->
                                         bilibiliViewModel.playSong(song) { url, name, singer, cover, songId, bvid ->
                                             playerViewModel.playUrl(url, name, singer, cover, songId, bilibiliBvid = bvid)
@@ -943,6 +1073,33 @@ fun SearchScreen(
                     playerViewModel.generateAiMetadata(currentSong, fields)
                 },
             )
+            if (onlineSearchState.previewPlaylist != null) {
+                OnlinePlaylistPreviewSheet(
+                    state = onlineSearchState,
+                    colorScheme = colorScheme,
+                    currentPlayingSongId = stablePlayerState.currentSong?.id,
+                    isPlaying = stablePlayerState.isPlaying,
+                    stableIdFn = { song -> lxViewModel.getStableSongId(song) },
+                    onDismiss = { lxViewModel.closePlaylistPreview() },
+                    onLoadMore = { lxViewModel.loadMorePlaylistPreview() },
+                    onPlaySong = { song ->
+                        lxViewModel.playPreviewSong(
+                            song,
+                            onOpenPlayer = { url, name, singer, cover, songId ->
+                                playerViewModel.playUrl(url, name, singer, cover, songId)
+                            },
+                            onEnqueue = { url, name, singer, cover, songId ->
+                                playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                            }
+                        )
+                    },
+                    onSavePlaylist = { pl ->
+                        lxViewModel.savePlaylistToLocal(pl) { _, msg ->
+                            playerViewModel.sendToast(msg)
+                        }
+                    }
+                )
+            }
             if (showPlaylistBottomSheet) {
                 val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -1569,6 +1726,53 @@ fun SearchResultPlaylistItem(
     }
 }
 
+// ⚡ 搜索范围切换卡片：固定在最左侧的单张卡片内切换「本地 / 在线」
+@Composable
+private fun SearchScopeToggle(
+    isOnline: Boolean,
+    onScopeChange: (Boolean) -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.height(32.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SearchScopeSegment(label = "本地", selected = !isOnline) { onScopeChange(false) }
+            SearchScopeSegment(label = "在线", selected = isOnline) { onScopeChange(true) }
+        }
+    }
+}
+
+@Composable
+private fun SearchScopeSegment(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .clip(CircleShape)
+            .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun SearchFilterChip(
@@ -1860,10 +2064,11 @@ private fun OnlineSearchResults(
     }
 }
 
-// ⚡ 网易云在线搜索子分类切换：歌曲 / 歌手
+// ⚡ 在线搜索子分类切换：歌曲 / 歌手 / 歌单（歌手仅网易云提供）
 @Composable
 private fun OnlineSearchSubTabs(
     selectedTab: Int,
+    showArtistTab: Boolean,
     onTabSelected: (Int) -> Unit
 ) {
     Row(
@@ -1872,39 +2077,52 @@ private fun OnlineSearchSubTabs(
             .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        FilterChip(
+        OnlineSubTabChip(
             selected = selectedTab == 0,
-            onClick = { onTabSelected(0) },
-            label = { Text("歌曲") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Rounded.MusicNote,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            label = "歌曲",
+            icon = Icons.Rounded.MusicNote,
+            onClick = { onTabSelected(0) }
         )
-        FilterChip(
-            selected = selectedTab == 1,
-            onClick = { onTabSelected(1) },
-            label = { Text("歌手") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Rounded.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+        if (showArtistTab) {
+            OnlineSubTabChip(
+                selected = selectedTab == 1,
+                label = "歌手",
+                icon = Icons.Rounded.Person,
+                onClick = { onTabSelected(1) }
             )
+        }
+        OnlineSubTabChip(
+            selected = selectedTab == 2,
+            label = "歌单",
+            icon = Icons.Rounded.LibraryMusic,
+            onClick = { onTabSelected(2) }
         )
     }
+}
+
+@Composable
+private fun OnlineSubTabChip(
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    )
 }
 
 // ⚡ 网易云歌手搜索结果列表
@@ -2140,6 +2358,494 @@ private fun UnifiedOnlineArtistItem(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
+
+// ⚡ 在线歌单搜索结果列表（对齐歌曲/歌手列表的分页与底部状态行）
+@Composable
+private fun OnlinePlaylistResults(
+    state: LxUiState,
+    isSearching: Boolean,
+    searchQuery: String,
+    colorScheme: androidx.compose.material3.ColorScheme,
+    onLoadMore: () -> Unit = {},
+    savingPlaylistId: String? = null,
+    onSavePlaylist: (LxPlaylistInfo) -> Unit = {},
+    onPlaylistClick: (LxPlaylistInfo) -> Unit = {}
+) {
+    val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
+    when {
+        isSearching -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    androidx.compose.material3.CircularProgressIndicator(color = colorScheme.primary)
+                    Spacer(Modifier.height(12.dp))
+                    Text("正在搜索歌单…", color = colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        state.playlistError != null && state.playlistResults.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    state.playlistError ?: "",
+                    color = colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        state.playlistResults.isEmpty() && searchQuery.isBlank() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("输入关键词搜索歌单", color = colorScheme.onSurfaceVariant)
+            }
+        }
+        state.playlistResults.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("没有找到相关歌单", color = colorScheme.onSurfaceVariant)
+            }
+        }
+        else -> {
+            val listState = rememberLazyListState()
+            LaunchedEffect(listState, state.playlistIsEnd, state.isLoadingMore, state.playlistResults.size) {
+                snapshotFlow {
+                    val visibleItemsInfo = listState.layoutInfo.visibleItemsInfo
+                    val totalItems = state.playlistResults.size
+                    if (visibleItemsInfo.isEmpty()) return@snapshotFlow false
+                    val lastVisibleIndex = visibleItemsInfo.last().index
+                    lastVisibleIndex >= totalItems - 5 && !state.playlistIsEnd && !state.isLoadingMore
+                }
+                    .distinctUntilChanged()
+                    .filter { it }
+                    .collect { onLoadMore() }
+            }
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(
+                    top = 4.dp,
+                    bottom = MiniPlayerHeight + systemBarPaddingBottom
+                )
+            ) {
+                items(items = state.playlistResults, key = { it.source + "_" + it.id }) { playlist ->
+                    UnifiedOnlinePlaylistItem(
+                        playlist = playlist,
+                        colorScheme = colorScheme,
+                        isSaving = playlist.id == savingPlaylistId,
+                        onSaveClick = { onSavePlaylist(playlist) },
+                        onClick = { onPlaylistClick(playlist) }
+                    )
+                }
+                item {
+                    val footerModifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                    when {
+                        state.isLoadingMore -> {
+                            Column(
+                                modifier = footerModifier,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    color = colorScheme.primary,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "加载更多…",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        state.playlistIsEnd -> {
+                            Box(modifier = footerModifier, contentAlignment = Alignment.Center) {
+                                Text(
+                                    "—— 没有更多了 ——",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        state.playlistError != null -> {
+                            Box(modifier = footerModifier, contentAlignment = Alignment.Center) {
+                                Text(
+                                    state.playlistError ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ⚡ 单条歌单搜索结果项：点击进入预览（可试听），右侧提供「保存到本地」入口
+@Composable
+private fun UnifiedOnlinePlaylistItem(
+    playlist: LxPlaylistInfo,
+    colorScheme: androidx.compose.material3.ColorScheme,
+    isSaving: Boolean = false,
+    onSaveClick: () -> Unit = {},
+    onClick: () -> Unit = {}
+) {
+    // 复用软件已有的歌单封面组件（支持远程封面 URL / 4 宫格拼图）
+    val coverPreview = remember(playlist.id, playlist.cover) {
+        Playlist(
+            id = playlist.id,
+            name = playlist.name,
+            songIds = emptyList(),
+            coverImageUri = playlist.cover.ifBlank { null },
+            source = "LOCAL"
+        )
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlaylistCover(
+                playlist = coverPreview,
+                playlistSongs = emptyList(),
+                size = 48.dp
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = playlist.name,
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = GoogleSansRounded),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = buildString {
+                        if (playlist.author.isNotBlank()) append(playlist.author)
+                        if (playlist.trackCount > 0) {
+                            if (isNotEmpty()) append(" · ")
+                            append("${playlist.trackCount} 首")
+                        }
+                        val plays = formatPlayCount(playlist.playCount)
+                        if (plays.isNotEmpty()) {
+                            if (isNotEmpty()) append(" · ")
+                            append(plays)
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (playlist.description.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = playlist.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            // 「保存到本地」：把在线歌单歌曲写入媒体库并创建本地歌单
+            Box(
+                modifier = Modifier.size(40.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSaving) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = colorScheme.primary
+                    )
+                } else {
+                    IconButton(onClick = onSaveClick) {
+                        Icon(
+                            imageVector = Icons.Rounded.Download,
+                            contentDescription = "保存到本地",
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ⚡ 播放量格式化：1.2万 / 3.4亿
+private fun formatPlayCount(count: Long): String {
+    if (count <= 0L) return ""
+    return when {
+        count >= 100_000_000L -> String.format("%.1f亿", count / 100_000_000.0)
+        count >= 10_000L -> String.format("%.1f万", count / 10_000.0)
+        else -> count.toString()
+    }
+}
+
+/**
+ * ⚡ 在线歌单预览面板：点击搜索结果里的歌单后弹出，展示歌单歌曲并可试听。
+ * 复用软件已有的歌单封面组件与歌曲列表视觉，四源（wy/tx/kg/mg/kw）通用。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OnlinePlaylistPreviewSheet(
+    state: LxUiState,
+    colorScheme: androidx.compose.material3.ColorScheme,
+    currentPlayingSongId: String?,
+    isPlaying: Boolean,
+    stableIdFn: (LxSongInfo) -> String,
+    onDismiss: () -> Unit,
+    onLoadMore: () -> Unit,
+    onPlaySong: (LxSongInfo) -> Unit,
+    onSavePlaylist: (LxPlaylistInfo) -> Unit
+) {
+    val playlist = state.previewPlaylist ?: return
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coverPreview = remember(playlist.id, playlist.cover) {
+        Playlist(
+            id = playlist.id,
+            name = playlist.name,
+            songIds = emptyList(),
+            coverImageUri = playlist.cover.ifBlank { null },
+            source = "LOCAL"
+        )
+    }
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState, state.previewIsEnd, state.previewLoadingMore, state.previewSongs.size) {
+        snapshotFlow {
+            val info = listState.layoutInfo.visibleItemsInfo
+            if (info.isEmpty()) return@snapshotFlow false
+            info.last().index >= state.previewSongs.size - 3 &&
+                !state.previewIsEnd && !state.previewLoadingMore && !state.previewLoading
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect { onLoadMore() }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colorScheme.surfaceContainerLow
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // 头部：封面 + 标题 + 作者/曲数/播放量 + 简介
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PlaylistCover(
+                    playlist = coverPreview,
+                    playlistSongs = emptyList(),
+                    size = 76.dp
+                )
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = playlist.name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = GoogleSansRounded),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = buildString {
+                            if (playlist.author.isNotBlank()) append(playlist.author)
+                            val cnt = if (state.previewTotal > 0) state.previewTotal else playlist.trackCount
+                            if (cnt > 0) {
+                                if (isNotEmpty()) append(" · ")
+                                append("$cnt 首")
+                            }
+                            val plays = formatPlayCount(playlist.playCount)
+                            if (plays.isNotEmpty()) {
+                                if (isNotEmpty()) append(" · ")
+                                append(plays)
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (playlist.description.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = playlist.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            // 操作行：播放全部 / 保存到本地
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val canPlay = state.previewSongs.isNotEmpty()
+                FilledIconButton(
+                    onClick = { state.previewSongs.firstOrNull()?.let(onPlaySong) },
+                    enabled = canPlay
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = "播放全部",
+                        tint = colorScheme.onPrimary
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                TextButton(
+                    onClick = { state.previewSongs.firstOrNull()?.let(onPlaySong) },
+                    enabled = canPlay
+                ) {
+                    Text("播放全部")
+                }
+                Spacer(Modifier.weight(1f))
+                val isSaving = state.savingPlaylistId == playlist.id
+                TextButton(
+                    onClick = { onSavePlaylist(playlist) },
+                    enabled = !isSaving && state.previewSongs.isNotEmpty()
+                ) {
+                    if (isSaving) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = colorScheme.primary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Download,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text("保存到本地")
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                thickness = 0.5.dp,
+                color = colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+            when {
+                state.previewLoading -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 220.dp)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        androidx.compose.material3.CircularProgressIndicator(color = colorScheme.primary)
+                        Spacer(Modifier.height(12.dp))
+                        Text("正在加载歌单歌曲…", color = colorScheme.onSurfaceVariant)
+                    }
+                }
+                state.previewError != null && state.previewSongs.isEmpty() -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 220.dp)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = state.previewError ?: "",
+                        color = colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                state.previewSongs.isEmpty() -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 220.dp)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("该歌单暂无可播放歌曲", color = colorScheme.onSurfaceVariant)
+                }
+                else -> LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp)
+                ) {
+                    items(items = state.previewSongs, key = { stableIdFn(it) }) { song ->
+                        UnifiedOnlineSongItem(
+                            title = song.name,
+                            subtitle = song.singer,
+                            coverUrl = song.pic.ifBlank { null },
+                            isFavorite = false,
+                            onToggleFavorite = null,
+                            isPlaying = isPlaying,
+                            isCurrentSong = currentPlayingSongId == stableIdFn(song),
+                            showLoading = state.loadingSongId == song.id,
+                            loadingLabel = if (state.loadingSongId == song.id) state.progressLabel else null,
+                            onClick = { onPlaySong(song) }
+                        )
+                    }
+                    if (state.previewLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

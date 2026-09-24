@@ -306,7 +306,13 @@ class MusicDownloadService @Inject constructor(
                 neteaseRepository.get().getSongUrl(song.neteaseId, quality).getOrNull()
             }
             song.qqMusicMid != null -> {
-                qqMusicRepository.get().getSongUrl(song.qqMusicMid).getOrNull()
+                // 使用用户设置的首选音质（无损/320k 等），无对应权限时按档位向下回退
+                val quality = try {
+                    userPreferencesRepository.musicQualityValueFlow.first()
+                } catch (_: Exception) {
+                    null
+                }
+                qqMusicRepository.get().getSongUrl(song.qqMusicMid, quality).getOrNull()
             }
             song.navidromeId != null -> {
                 navidromeRepository.get().getStreamUrl(song.navidromeId)

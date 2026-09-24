@@ -524,14 +524,14 @@ object NcmModulesFull {
 
     enum class CmtType(val prefix: String, val code: Int) {
         SONG("R_SO_4_", 0),
-        ALBUM("R_AL_3_", 2),
-        PLAYLIST("R_PL_0_", 2),
+        ALBUM("R_AL_3_", 3),
+        PLAYLIST("A_PL_0_", 2),
         PLAYLIST_DESC("R_A_1002_", 2),
         MV("R_MV_5_", 1),
-        DJ("R_DJ_7_", 1),
-        EVENT("R_EV_8_", 5),
+        DJ("A_DJ_1_", 4),
+        EVENT("A_EV_2_", 6),
         VOICE("R_VO_6_", 2),
-        VIDEO("R_VO_", 5),
+        VIDEO("R_VI_62_", 5),
     }
 
     private fun threadOf(type: CmtType, id: String) = type.prefix + id
@@ -618,8 +618,8 @@ object NcmModulesFull {
         t: Int = 1,
         commentId: String? = null,
     ) : Result<Map<String, Any?>> = when (t) {
-        // 删除评论（comment.js t=0）；发/删/回均走 eapi（对齐 api-enhanced comment.js）
-        0 -> rawEapi(
+        // 删除评论（comment.js t=0）；发/删/回均走 weapi（对齐原版 comment.js L28 createOption(query,'weapi')）
+        0 -> rawWeapi(
             "/api/resource/comments/delete",
             buildMap<String, Any?> {
                 put("threadId", threadOf(type, id))
@@ -627,7 +627,7 @@ object NcmModulesFull {
             }
         )
         // 回复评论（comment.js t=2）
-        2 -> rawEapi(
+        2 -> rawWeapi(
             "/api/resource/comments/reply",
             buildMap<String, Any?> {
                 put("threadId", threadOf(type, id))
@@ -636,7 +636,7 @@ object NcmModulesFull {
             }
         )
         // 发评论（comment.js t=1）
-        else -> rawEapi(
+        else -> rawWeapi(
             "/api/resource/comments/add",
             buildMap<String, Any?> {
                 put("threadId", threadOf(type, id))
