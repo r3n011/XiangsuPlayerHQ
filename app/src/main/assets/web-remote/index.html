@@ -956,6 +956,68 @@
       #mineView .mv-play { width: 50px; height: 50px; }
       #mineView .mv-ctrl-btn { width: 40px; height: 40px; }
     }
+    /* ═══ 玻璃视图歌词：MineRadio 舞台歌词 DOM 近似（居中聚光当前行 + 卡拉OK扫光 + 上下文行弱化） ═══
+       动效参数对位 MineRadio 08-lyrics-display-modes.js glass 档：enter 0.62 / exit 0.52 / slide 0.38 / sweep 0.72 */
+    #mineView #mvLyrics {
+      position: absolute; left: 0; right: 0; top: 45%;
+      transform: translateY(-50%);
+      z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 14px;
+      padding: 0 7vw; pointer-events: none;
+      opacity: 0; transition: opacity 0.52s ease;
+    }
+    #mineView #mvLyrics.on { opacity: 1; }
+    /* 歌词聚光时让位给舞台：顶部 eyebrow 提示淡出 */
+    #mineView #mvCenterInfo { transition: opacity 0.52s ease; }
+    #mineView:has(#mvLyrics.on) #mvCenterInfo { opacity: 0; }
+    #mineView .mvly-slot { position: relative; max-width: 100%; text-align: center; }
+    #mineView .mvly-slot.is-empty { visibility: hidden; }
+    #mineView .mvly-line {
+      margin: 0;
+      transition: transform 0.52s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.52s ease, filter 0.52s ease;
+    }
+    #mineView .mvly-text {
+      margin: 0; font-weight: 700; line-height: 1.32; letter-spacing: 0.5px;
+      font-size: clamp(17px, 2vw, 23px);
+      color: rgba(255, 255, 255, 0.34);
+      text-shadow: 0 2px 22px rgba(0, 0, 0, 0.45);
+      overflow-wrap: anywhere;
+    }
+    #mineView .mvly-trans {
+      margin: 4px 0 0; font-size: 15px; font-weight: 500;
+      color: rgba(255, 255, 255, 0.5); opacity: 0;
+      transition: opacity 0.52s ease;
+    }
+    /* 当前槽位：聚光 + 玻璃胶囊 + 卡拉OK扫光（--mvly-p 为进度百分比） */
+    #mineView .mvly-slot.is-cur .mvly-line {
+      padding: 14px 30px; border-radius: 22px;
+      background: rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      backdrop-filter: blur(16px) saturate(1.35); -webkit-backdrop-filter: blur(16px) saturate(1.35);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 34px rgba(0, 0, 0, 0.24);
+    }
+    #mineView .mvly-slot.is-cur .mvly-text {
+      font-size: clamp(26px, 3.6vw, 44px);
+      color: rgba(255, 255, 255, 0.32);
+      background: linear-gradient(90deg, #fff var(--mvly-p, 0%), rgba(255, 255, 255, 0.32) var(--mvly-p, 0%));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+    }
+    #mineView .mvly-slot.is-cur .mvly-trans { opacity: 1; }
+    /* 近端 / 远端上下文行（弱化 + 轻微漂移） */
+    #mineView .mvly-slot.is-near { opacity: 0.75; }
+    #mineView .mvly-slot.is-far { opacity: 0.5; }
+    #mineView .mvly-slot.is-far .mvly-text { font-size: 15px; color: rgba(255, 255, 255, 0.16); text-shadow: none; }
+    /* 换行动画（glass enter 0.62 / slide 0.38） */
+    #mineView .mvly-slot.mvly-anim .mvly-line { animation: mvlyEnter 0.62s cubic-bezier(0.22, 1, 0.36, 1); }
+    @keyframes mvlyEnter {
+      from { opacity: 0; transform: translateY(24px) scale(0.965); filter: blur(6px); }
+      to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+    @media (max-width: 760px) {
+      #mineView #mvLyrics { top: 40%; gap: 10px; }
+      #mineView .mvly-slot.is-cur .mvly-text { font-size: clamp(22px, 6vw, 30px); }
+      #mineView .mvly-slot.is-cur .mvly-line { padding: 10px 20px; border-radius: 18px; }
+    }
     /* ═══ Folia 视图：1:1 复刻 folia（封面环境光背景 + 底部字幕覆盖层 + 玻璃胶囊 Dock + 歌词时间轴弹窗） ═══ */
     #foliaView { display: none; position: relative; min-height: 100vh; overflow: hidden; background: #09090b; color: #e4e4e7; font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; }
     body.style-folia #foliaView { display: block; }
@@ -1734,6 +1796,7 @@
     <div id="mvAlbumBg"></div>
     <canvas id="fxCanvasParticles" class="fx-canvas" aria-label="专辑封面粒子壁纸"></canvas>
     <div id="mvVignette"></div>
+    <div id="mvLyrics" aria-live="off"></div>
     <div id="mvTopRight">
       <div class="device-switch" title="音频输出">
         <button class="device-chip device-phone-btn selected" type="button" title="手机播放">
@@ -2152,6 +2215,8 @@
     let streamingPlayRequested = false;
     let pollingInterval = null;
     let wsReconnectAttempts = 0;
+    let wsReconnectTimer = null;
+    let wsPingTimer = null;
     let lastStateUpdate = 0;
     let isUserGestureActive = false;
 
@@ -2330,22 +2395,36 @@
     }
 
     function connectWebSocket() {
+      /* 重连防抖：清掉挂起的重连定时器；旧 socket 先摘掉 onclose 再关闭，
+         否则旧连接的 onclose 也会排一条重连 → 出现多个并行重连循环互相打架 */
+      if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+      if (wsPingTimer) { clearInterval(wsPingTimer); wsPingTimer = null; }
       if (ws) {
+        ws.onclose = null; ws.onopen = null; ws.onmessage = null; ws.onerror = null;
         try { ws.close(); } catch(e) {}
         ws = null;
       }
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-      ws.onopen = () => {
+      const sock = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      ws = sock;
+      sock.onopen = () => {
+        if (ws !== sock) return;
         console.log('WebSocket connected');
         wsReconnectAttempts = 0;
         loadPlayerState();
+        /* 2s 应用层心跳：服务端回 __pong__。保持双向流量，防中间设备回收"空闲"连接 */
+        if (wsPingTimer) clearInterval(wsPingTimer);
+        wsPingTimer = setInterval(() => {
+          if (ws !== sock || sock.readyState !== WebSocket.OPEN) return;
+          try { sock.send('__ping__'); } catch (e) {}
+        }, 2000);
       };
-      ws.onmessage = (event) => {
+      sock.onmessage = (event) => {
+        if (ws !== sock) return;
         lastStateUpdate = Date.now();
         try {
           const msg = JSON.parse(event.data);
-          console.log('WebSocket message:', msg);
+          if (msg.action === '__pong__') return;  /* 心跳应答，静默 */
           if (msg.action === 'reload') {
             location.reload();
           } else if (msg.action === 'setThemeColor' && msg.color) {
@@ -2357,15 +2436,17 @@
           console.error('WebSocket message error:', error);
         }
       };
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      sock.onclose = (event) => {
+        if (ws !== sock) return;  /* 过期实例（已被新连接顶掉），忽略 */
+        console.warn(`WebSocket disconnected (code=${event.code}${event.reason ? ', reason=' + event.reason : ''})`);
+        if (wsPingTimer) { clearInterval(wsPingTimer); wsPingTimer = null; }
         wsReconnectAttempts++;
         const delay = Math.min(5000, Math.pow(2, wsReconnectAttempts) * 1000);
-        setTimeout(connectWebSocket, delay);
+        wsReconnectTimer = setTimeout(connectWebSocket, delay);
       };
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        wsReconnectAttempts++;
+      sock.onerror = () => {
+        if (ws !== sock) return;
+        console.error('WebSocket error');
       };
     }
 
@@ -4661,6 +4742,152 @@ void main(){
     wireSwitch();
     wireGesture();
     window.addEventListener('resize', function () { try { pendolo.resize(); } catch (e) {} });
+    raf = requestAnimationFrame(loop);
+  })();
+  </script>
+  <script>
+  /* ── 玻璃视图歌词引擎（MineRadio 舞台歌词 DOM 近似） ──
+     数据复用全局 __foliaTimeline（renderLyrics 对所有主题无条件构建），
+     位置经 __fxSyncProgress / __fxSyncPlaying 包装捕获，RAF 本地插值收敛（同 folia 引擎策略）。
+     仅 body.style-glass 时渲染，不侵入主 IIFE 与 folia 引擎逻辑。 */
+  (function () {
+    var stage = document.getElementById('mvLyrics');
+    if (!stage) return;
+
+    /* 5 个固定槽位：远/近/当前/近/远，换行只改内容与类名，过渡由 CSS 接管 */
+    var OFFSETS = [-2, -1, 0, 1, 2];
+    var slots = OFFSETS.map(function () {
+      var root = document.createElement('div');
+      root.className = 'mvly-slot is-empty';
+      var line = document.createElement('div');
+      line.className = 'mvly-line';
+      var txt = document.createElement('p');
+      txt.className = 'mvly-text';
+      var trans = document.createElement('p');
+      trans.className = 'mvly-trans';
+      line.appendChild(txt); line.appendChild(trans);
+      root.appendChild(line);
+      stage.appendChild(root);
+      return { root: root, txt: txt, trans: trans };
+    });
+
+    var timelineRef = null;   /* 上次看到的 __foliaTimeline 引用（引用变化 = 歌词重建） */
+    var dispIdx = -999;       /* 已渲染的中心行索引（-999 = 待重绘） */
+    var srvPos = 0, srvAt = 0, playing = false;
+    var curPos = -1;
+    var raf = 0, lastT = performance.now();
+
+    function offsetClass(offset) {
+      if (offset === 0) return 'is-cur';
+      if (offset === -1 || offset === 1) return 'is-near';
+      return 'is-far';
+    }
+
+    function setSlot(slot, lineIdx, centerIdx) {
+      var tl = window.__foliaTimeline || [];
+      var item = lineIdx >= 0 && lineIdx < tl.length ? tl[lineIdx] : null;
+      if (!item || !item.text) {
+        slot.root.className = 'mvly-slot is-empty ' + offsetClass(lineIdx - centerIdx);
+        slot.txt.textContent = '\u00A0';
+        slot.trans.textContent = '';
+        return;
+      }
+      slot.root.className = 'mvly-slot ' + offsetClass(lineIdx - centerIdx);
+      slot.txt.textContent = item.text;
+      slot.trans.textContent = item.translation || '';
+    }
+
+    function render(centerIdx) {
+      if (centerIdx === dispIdx) return;
+      dispIdx = centerIdx;
+      slots.forEach(function (slot, i) {
+        setSlot(slot, centerIdx + OFFSETS[i], centerIdx);
+        slot.root.classList.remove('mvly-anim');
+      });
+      void stage.offsetWidth;  /* 强制 reflow 后统一入场（glass enter 0.62s） */
+      slots.forEach(function (slot) { slot.root.classList.add('mvly-anim'); });
+    }
+
+    /* 卡拉OK扫光进度：当前行时长 = 下一行起点 - 当前行起点（末行按 5s 估算） */
+    function sweep(centerIdx, pos) {
+      var tl = window.__foliaTimeline || [];
+      var cur = tl[centerIdx];
+      if (!cur) return;
+      var end = tl[centerIdx + 1] ? tl[centerIdx + 1].timeMs : cur.timeMs + 5000;
+      var span = Math.max(400, end - cur.timeMs);
+      var p = Math.max(0, Math.min(1, (pos - cur.timeMs) / span)) * 100;
+      slots[2].root.style.setProperty('--mvly-p', p.toFixed(2) + '%');
+    }
+
+    function findIdx(pos) {
+      var tl = window.__foliaTimeline || [];
+      var lo = 0, hi = tl.length - 1, r = -1;
+      while (lo <= hi) {
+        var mid = (lo + hi) >> 1;
+        if (tl[mid].timeMs <= pos) { r = mid; lo = mid + 1; } else { hi = mid - 1; }
+      }
+      return r;
+    }
+
+    function loop(now) {
+      raf = requestAnimationFrame(loop);
+      var dt = Math.min(0.1, Math.max(0, (now - lastT) / 1000));
+      lastT = now;
+      if (document.hidden) return;
+      if (!document.body.classList.contains('style-glass')) {
+        dispIdx = -999; curPos = -1;
+        stage.classList.remove('on');
+        return;
+      }
+
+      /* 歌词重建检测（renderLyrics / clear 每次生成新数组引用） */
+      if (window.__foliaTimeline !== timelineRef) {
+        timelineRef = window.__foliaTimeline;
+        dispIdx = -999;
+        slots.forEach(function (s) { s.root.style.removeProperty('--mvly-p'); });
+      }
+      if (!(window.__foliaTimeline || []).length) {
+        dispIdx = -999;
+        stage.classList.remove('on');
+        return;
+      }
+
+      /* 位置插值：本地估算收敛于服务端推进值（偏差 >1.4s 直接硬跳） */
+      var est = playing ? srvPos + (performance.now() - srvAt) : srvPos;
+      if (curPos < 0) curPos = est;
+      else if (Math.abs(est - curPos) > 1400) curPos = est;
+      else curPos += (est - curPos) * Math.min(1, dt * 8);
+
+      var idx = findIdx(curPos);
+      if (idx < 0) {
+        dispIdx = -999;
+        stage.classList.remove('on');
+        return;
+      }
+      stage.classList.add('on');
+      render(idx);
+      sweep(idx, curPos);
+    }
+
+    /* 包装全局同步源（folia 引擎已包一层，此处再包一层互不冲突） */
+    var sp = window.__fxSyncProgress;
+    window.__fxSyncProgress = function (p, d) {
+      if (sp) sp(p, d);
+      if (typeof p === 'number' && isFinite(p)) { srvPos = p; srvAt = performance.now(); }
+    };
+    var pl = window.__fxSyncPlaying;
+    window.__fxSyncPlaying = function (v) {
+      if (pl) pl(v);
+      playing = !!v;
+      if (playing) srvAt = performance.now();
+    };
+    /* 主题切入玻璃时复位插值状态 */
+    var rsr = window.__remoteStyleReady;
+    window.__remoteStyleReady = function (theme) {
+      if (rsr) rsr(theme);
+      if (theme === 'glass') { curPos = -1; dispIdx = -999; }
+    };
+
     raf = requestAnimationFrame(loop);
   })();
   </script>

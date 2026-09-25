@@ -42,6 +42,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -77,7 +82,33 @@ class WebRemoteServerService : LifecycleService() {
     private var isAudioOnDevice: Boolean = true
     private var themeColor: String = "#6750A4"
 
-    private val activeConnections = java.util.concurrent.CopyOnWriteArrayList<DefaultWebSocketSession>()
+    private val activeConnections = java.util.concurrent.CopyOnWriteArrayList<WsClient>()
+
+    /**
+     * 单连接发送保护：Ktor 的 WebSocketSession 不允许并发 send（会抛
+     * "Another send is already in progress"），且僵死连接的 send 会永久挂起、
+     * 卡死整个广播循环。因此每个连接独享 Mutex 串行化 + withTimeout 兜底，
+     * 发送失败立即剔除该客户端，绝不让一个坏连接拖垮所有人。
+     */
+    private inner class WsClient(val session: DefaultWebSocketSession) {
+        val sendMutex = Mutex()
+        var firstFrameLogged = false
+        suspend fun sendText(json: String): Boolean = try {
+            sendMutex.withLock {
+                withTimeout(3000L) { session.send(Frame.Text(json)) }
+            }
+            if (!firstFrameLogged) {
+                firstFrameLogged = true
+                Timber.i("WS first frame written to client session (active=${activeConnections.size})")
+            }
+            true
+        } catch (e: Exception) {
+            Timber.w(e, "WS send failed, dropping client")
+            runCatching { session.close() }
+            activeConnections.remove(this)
+            false
+        }
+    }
 
     val activeConnectionsCount: Int
         get() = activeConnections.size
@@ -167,7 +198,7 @@ class WebRemoteServerService : LifecycleService() {
                 lifecycleScope.launch {
                     val broadcast = """{"action":"setThemeColor","color":"$newColor"}"""
                     activeConnections.forEach { conn ->
-                        runCatching { conn.send(Frame.Text(broadcast)) }
+                        launch { conn.sendText(broadcast) }
                     }
                 }
                 return START_STICKY
@@ -240,6 +271,9 @@ class WebRemoteServerService : LifecycleService() {
         Timber.i("Starting web remote server at http://$serverAddress with PIN $currentPin")
 
         try {
+            // ⚡ WS 稳定性：曾尝试 Netty 引擎但 netty 4.2.x 需要 minSdk 26+（D8 拒绝 MethodHandle 指令，
+            //   项目 minSdk=23 无法编译）。回退 CIO 引擎，稳定性靠：pingPeriod 心跳 + WsClient 串行化
+            //   发送 + 客户端 2s 应用层心跳。
             server = embeddedServer(CIO, port = resolvedPort) {
                 install(DefaultHeaders)
                 install(ContentNegotiation) {
@@ -248,7 +282,11 @@ class WebRemoteServerService : LifecycleService() {
                 install(CORS) {
                     anyHost()
                 }
-                install(WebSockets)
+                install(WebSockets) {
+                    // 心跳保活：裸装无 ping 时，NAT/路由器会把"看似空闲"的连接掐掉（表现为连上几秒即断）
+                    pingPeriod = 15.seconds
+                    timeout = 30.seconds
+                }
 
                 routing {
                     get("/") {
@@ -458,6 +496,14 @@ class WebRemoteServerService : LifecycleService() {
                             val songs = musicRepository.getSongsByIds(listOf(songId)).first()
                             Timber.i("  Found ${songs.size} songs for ID: $songId")
                             song = songs.firstOrNull()
+                            // ⚡ 在线歌曲 id 同 albumArt：getSongsByIds 查不到 → 回退当前播放歌曲
+                            if (song == null) {
+                                val state = playbackStateHolder.stablePlayerState.first()
+                                state.currentSong?.takeIf { it.id == songId }?.let { currentSong ->
+                                    Timber.i("  Falling back to current playing song for lyrics: ${currentSong.title}")
+                                    song = currentSong
+                                }
+                            }
                         }
                         
                         if (song != null) {
@@ -503,6 +549,15 @@ class WebRemoteServerService : LifecycleService() {
                             val songs = musicRepository.getSongsByIds(listOf(songId)).first()
                             Timber.i("  Found ${songs.size} songs for ID: $songId")
                             song = songs.firstOrNull()
+                            // ⚡ 在线歌曲 id（netease_xxx / cloud://lx/...）getSongsByIds 只按纯数字 id 查，
+                            //    永远查不到 → 一律 404。回退到当前播放歌曲（coverUrl 正是用它的 id 构造的）。
+                            if (song == null || song!!.albumArtUriString == null) {
+                                val state = playbackStateHolder.stablePlayerState.first()
+                                state.currentSong?.takeIf { it.id == songId }?.let { currentSong ->
+                                    Timber.i("  Falling back to current playing song: ${currentSong.title}, albumArt=${currentSong.albumArtUriString}")
+                                    song = currentSong
+                                }
+                            }
                         }
                         
                         if (song != null && song!!.albumArtUriString != null) {
@@ -581,6 +636,14 @@ class WebRemoteServerService : LifecycleService() {
                             val songs = musicRepository.getSongsByIds(listOf(songId)).first()
                             Timber.i("  Found ${songs.size} songs for ID: $songId")
                             song = songs.firstOrNull()
+                            // ⚡ 在线歌曲 id 同 albumArt：getSongsByIds 查不到 → 回退当前播放歌曲
+                            if (song == null) {
+                                val state = playbackStateHolder.stablePlayerState.first()
+                                state.currentSong?.takeIf { it.id == songId }?.let { currentSong ->
+                                    Timber.i("  Falling back to current playing song: ${currentSong.title}")
+                                    song = currentSong
+                                }
+                            }
                         }
                         
                         if (song != null) {
@@ -679,10 +742,13 @@ class WebRemoteServerService : LifecycleService() {
                                         file.inputStream().use { it.copyTo(this) }
                                     }
                                 } else {
-                                    val streamUrl: String? = if (song!!.neteaseId != null) {
-                                        neteaseStreamProxy.resolveAndCacheStreamUrl(song!!.neteaseId)
-                                    } else if (!song!!.qqMusicMid.isNullOrBlank()) {
-                                        qqMusicStreamProxy.resolveAndCacheStreamUrl(song!!.qqMusicMid)
+                                    // ⚡ song 是 var 且被兜底 lambda 捕获修改过，无法对其属性 smart cast，
+                                    //    先快照到局部 val，让 neteaseId/qqMusicMid 的 smart cast 成立
+                                    val resolved = song
+                                    val streamUrl: String? = if (resolved?.neteaseId != null) {
+                                        neteaseStreamProxy.resolveAndCacheStreamUrl(resolved!!.neteaseId)
+                                    } else if (!resolved?.qqMusicMid.isNullOrBlank()) {
+                                        qqMusicStreamProxy.resolveAndCacheStreamUrl(resolved!!.qqMusicMid)
                                     } else {
                                         null
                                     }
@@ -740,24 +806,37 @@ class WebRemoteServerService : LifecycleService() {
 
                     webSocket("/ws") {
                         val clientIp = call.request.local.remoteHost
-                        Timber.i("WebSocket client connected from IP: $clientIp")
-                        activeConnections.add(this)
+                        Timber.i("WebSocket session opened from IP: $clientIp")
+                        val client = WsClient(this)
+                        activeConnections.add(client)
+                        Timber.i("WS active connections: ${activeConnections.size}")
                         syncPlayerVolume()
                         try {
                             for (frame in incoming) {
                                 when (frame) {
                                     is Frame.Text -> {
                                         val text = frame.readText()
-                                        handleWebSocketMessage(text)
+                                        if (text == "__ping__") {
+                                            // 客户端 2s 心跳：直接回 pong，不走消息解码（防未知 action 噪音）
+                                            client.sendText("""{"action":"__pong__"}""")
+                                        } else {
+                                            handleWebSocketMessage(text)
+                                        }
                                     }
                                     is Frame.Binary, is Frame.Close, is Frame.Ping, is Frame.Pong -> {}
                                 }
                             }
                         } catch (e: Exception) {
-                            Timber.e(e, "WebSocket error")
+                            Timber.e(e, "WebSocket incoming loop error (this names the killer)")
                         } finally {
-                            Timber.i("WebSocket client disconnected from IP: $clientIp")
-                            activeConnections.remove(this)
+                            // closeReason 在异常断开（1006）时可能永不完成，必须带超时，否则 handler 泄漏
+                            val closeReasonInfo = withTimeoutOrNull(1000L) { closeReason.await() }
+                            Timber.i(
+                                "WS client $clientIp left (code=${closeReasonInfo?.code?.toString() ?: "?"}, " +
+                                    "reason=${closeReasonInfo?.message ?: "n/a"}" +
+                                    "${if (closeReasonInfo == null) ", abnormal: no close frame" else ""})"
+                            )
+                            activeConnections.remove(client)
                             if (activeConnections.isEmpty()) {
                                 isAudioOnDevice = true
                                 Timber.i("All web remote clients disconnected, switching back to phone playback")
@@ -901,8 +980,9 @@ class WebRemoteServerService : LifecycleService() {
             themeColor = themeColor
         )
         val json = Json.encodeToString(playerState)
-        activeConnections.forEach { connection ->
-            runCatching { connection.send(Frame.Text(json)) }
+        // 逐连接串行发送（Mutex+超时在 WsClient 内），坏连接超时即被剔除，不阻塞其它客户端
+        activeConnections.forEach { client ->
+            client.sendText(json)
         }
     }
 
@@ -981,7 +1061,7 @@ class WebRemoteServerService : LifecycleService() {
                         lifecycleScope.launch {
                             val broadcast = """{"action":"setThemeColor","color":"$color"}"""
                             activeConnections.forEach { conn ->
-                                runCatching { conn.send(Frame.Text(broadcast)) }
+                                launch { conn.sendText(broadcast) }
                             }
                             delay(200)
                             broadcastCurrentState()

@@ -141,6 +141,7 @@ fun CollapsibleCommonTopBar(
                 FilledIconButton(
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        // 布局按旧版：按钮贴顶 4dp
                         .padding(start = 12.dp, top = 4.dp)
                         .zIndex(1f),
                     onClick = onBackClick,
@@ -160,7 +161,7 @@ fun CollapsibleCommonTopBar(
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 4.dp), // Align with back button
+                    .padding(top = 4.dp), // 与返回按钮同高（旧版布局）
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 actions()
@@ -170,8 +171,8 @@ fun CollapsibleCommonTopBar(
                 title = title,
                 collapseFraction = collapseFraction,
                 modifier = Modifier.fillMaxSize(),
-                // ⚡ 毛玻璃样式：隐藏副标题（否则副标题会把胶囊顶得上移），主标题垂直居中
-                subtitle = if (blurStyleEnabled) null else subtitle,
+                // 副标题照常传入（旧版布局）；收起时由 fadeSubtitleOnCollapse 自动淡出
+                subtitle = subtitle,
                 collapsedTitleStartPadding = effectiveCollapsedTitleStartPadding,
                 expandedTitleStartPadding = expandedTitleStartPadding,
                 collapsedTitleEndPadding = collapsedTitleEndPadding,
@@ -191,8 +192,9 @@ fun CollapsibleCommonTopBar(
                 titleWidthCompressionThreshold = titleWidthCompressionThreshold,
                 titleMinWidthAxis = titleMinWidthAxis,
                 supportingContent = supportingContent,
-                collapsedTitleCapsule = blurStyleEnabled,
-                collapsedTitleVerticalBias = if (blurStyleEnabled) 0f else -1f
+                collapsedTitleCapsule = blurStyleEnabled
+                // 垂直布局按旧版（ExpressiveTopBarContent 默认 -1f=贴顶），不传即走旧版；
+                // 新样式与旧版的唯一差异：收起标题胶囊 + 左侧加大起始 padding 避开返回按钮
             )
         }
     }

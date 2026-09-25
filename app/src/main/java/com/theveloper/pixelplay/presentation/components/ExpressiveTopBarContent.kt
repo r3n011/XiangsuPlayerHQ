@@ -53,7 +53,7 @@ fun ExpressiveTopBarContent(
     collapsedTitleEndPadding: Dp = 24.dp,
     expandedTitleEndPadding: Dp = 24.dp,
     containerHeightRange: Pair<Dp, Dp> = 88.dp to 56.dp,
-    // ⚡ 收起态标题垂直位置：-1=贴顶（旧样式），0=垂直居中（毛玻璃胶囊样式用）
+    // ⚡ 收起态标题垂直位置：0=栏内垂直居中（现默认），-1=贴顶（旧行为）
     collapsedTitleVerticalBias: Float = -1f,
     titleStyle: TextStyle = MaterialTheme.typography.headlineMedium,
     titleScaleRange: Pair<Float, Float> = 1.2f to 0.8f,
@@ -95,21 +95,8 @@ fun ExpressiveTopBarContent(
     val titleFontWeight = FontWeight.Bold
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        // ⚡ 收起态（胶囊样式）标题容器中心对齐返回按钮中心（top 4dp + 40dp/2 = 24dp）：
-        //   反解 BiasAlignment 垂直偏移（offset = (parentH - childH) * (bias+1) / 2）。
-        //   parentH 为 statusBarsPadding 之后的实际可用高度（如收起顶栏 64dp+状态栏时此处为 64dp）。
-        val resolvedCollapsedTitleVerticalBias = if (collapsedTitleCapsule) {
-            val collapsedChildHeight = containerHeightRange.second
-            val denominator = maxHeight - collapsedChildHeight
-            if (denominator > 1.dp) {
-                2f * ((24.dp - collapsedChildHeight / 2) / denominator) - 1f
-            } else {
-                titleVerticalBiasTarget
-            }
-        } else {
-            titleVerticalBiasTarget
-        }
-        val titleVerticalBias = lerp(1f, resolvedCollapsedTitleVerticalBias, clampedFraction)
+        // ⚡ 收起态垂直位置由 collapsedTitleVerticalBias 直接决定（-1=贴顶，旧版布局；0=栏内居中）。
+        val titleVerticalBias = lerp(1f, titleVerticalBiasTarget, clampedFraction)
         val animatedTitleAlignment = BiasAlignment(horizontalBias = -1f, verticalBias = titleVerticalBias)
         val availableTitleWidthPx = with(density) {
             (maxWidth - titlePaddingStart - titlePaddingEnd).coerceAtLeast(0.dp).roundToPx()
