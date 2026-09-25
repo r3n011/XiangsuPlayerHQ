@@ -191,6 +191,18 @@
     <string name="setcat_tablet_player_layout_desc">选择平板上播放器的布局方式。</string>
     <string name="setcat_tablet_layout_vertical">传统布局</string>
     <string name="setcat_tablet_layout_parallel">平行布局（播放器 + 歌词）</string>
+    <string name="setcat_player_style_label">播放器样式</string>
+    <string name="setcat_player_style_desc">在全屏播放器的经典布局与 Expressive 布局（移植自 Rhythm）之间切换。</string>
+    <string name="setcat_player_style_classic">经典</string>
+    <string name="setcat_player_style_expressive">Expressive</string>
+    <string name="setcat_player_controls_group">播放器控制</string>
+    <string name="setcat_expressive_group_title">Expressive 播放器</string>
+    <string name="setcat_expressive_accent_title">强调色背景</string>
+    <string name="setcat_expressive_accent_desc">控制卡片与切换按钮使用封面强调色玻璃配色。</string>
+    <string name="setcat_expressive_merge_title">合并控件</string>
+    <string name="setcat_expressive_merge_desc">把收藏、随机、循环、歌词与队列按钮合并进控制卡片。</string>
+    <string name="setcat_transport_flat_style_title">控制按钮无色块样式</string>
+    <string name="setcat_transport_flat_style_subtitle">上一曲 / 播放 / 下一曲显示为纯图标，不带圆形色块背景</string>
     <string name="setcat_home_collage">主页拼贴</string>
     <string name="setcat_collage_pattern_label">拼贴图案</string>
     <string
@@ -214,6 +226,10 @@
     <string
         name="setcat_disable_blur_all_over_subtitle"
     >关闭应用内所有模糊效果，节省电量和系统资源。</string>
+    <string name="setcat_new_top_bar_title">新版顶栏</string>
+    <string
+        name="setcat_new_top_bar_subtitle"
+    >顶栏使用渐进模糊遮罩与收起标题胶囊；关闭后各页面统一回退为纯色顶栏。</string>
     <string name="setcat_show_scrollbar_title">显示滚动条</string>
     <string
         name="setcat_show_scrollbar_subtitle"

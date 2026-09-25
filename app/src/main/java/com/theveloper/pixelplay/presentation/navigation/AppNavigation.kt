@@ -254,27 +254,7 @@ fun AppNavigation(
                 )
             }
             composable(
-                Screen.CloudMusicSettings.route,
-                enterTransition = { mainRootEnterTransition(
-                    fromRoute = initialState.destination.route,
-                    toRoute = targetState.destination.route,
-                    fallback = enterTransition()
-                ) },
-                exitTransition = { mainRootExitTransition(
-                    fromRoute = initialState.destination.route,
-                    toRoute = targetState.destination.route,
-                    fallback = exitTransition()
-                ) },
-                popEnterTransition = { mainRootEnterTransition(
-                    fromRoute = initialState.destination.route,
-                    toRoute = targetState.destination.route,
-                    fallback = popEnterTransition()
-                ) },
-                popExitTransition = { mainRootExitTransition(
-                    fromRoute = initialState.destination.route,
-                    toRoute = targetState.destination.route,
-                    fallback = popExitTransition()
-                ) }
+                Screen.CloudMusicSettings.route
             ) {
                 TabScreenContent(
                     route = Screen.CloudMusicSettings.route,
@@ -442,6 +422,7 @@ fun AppNavigation(
                     }
                 }
             }
+            // ⚡ 在线歌单不再进独立详情页：点击直接整单入队播放并打开播放列表（队列）界面
             composable(
                 route = Screen.AlbumDetail.route,
                 arguments = listOf(navArgument("albumId") { type = NavType.StringType }),
@@ -714,8 +695,7 @@ private val MainTabRoutes: Set<String> = setOf(
     Screen.Home.route,
     Screen.Search.route,
     Screen.Library.route,
-    Screen.Settings.route,
-    Screen.CloudMusicSettings.route
+    Screen.Settings.route
 )
 
 private enum class MainRootDirection {

@@ -202,6 +202,9 @@
     <string name="about_acknowledgements_miniaudio_desc">音频播放由 miniaudio 驱动</string>
     <string name="about_acknowledgements_lanzou_desc">更新接入由 LanzouAPI 驱动</string>
     <string name="about_acknowledgements_folia_desc">灵动歌词动效设计参考 Folia Major (AGPL-3.0)</string>
+    <string name="about_acknowledgements_mineradio_desc">Web 远控「玻璃」样式界面参考（MineRadio）</string>
+    <string name="about_acknowledgements_reactor_desc">Web 远控「仪表」样式与堆芯可视化参考（Reactor Audio Visualizer）</string>
+    <string name="about_acknowledgements_rhythm_desc">重要感谢：为软件提供创意支持与部分 UI 参考（Rhythm）</string>
     <string name="cd_open_github_profile">打开 GitHub 个人主页</string>
     <string name="cd_open_telegram">打开 Telegram</string>
     <string name="cd_contributor_avatar">%1$s 的头像</string>

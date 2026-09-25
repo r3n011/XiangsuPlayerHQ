@@ -819,7 +819,19 @@ fun SearchScreen(
                                                     playerViewModel.sendToast(msg)
                                                 }
                                             },
-                                            onPlaylistClick = { pl -> lxViewModel.openPlaylistPreview(pl) }
+                                            onPlaylistClick = { pl ->
+                                                // ⚡ 点歌单 → 整单入队播放（模仿 lx-music：占位懒解析），
+                                                //    直接打开软件已有的播放列表（队列）界面，不再进独立详情页
+                                                lxViewModel.loadPlaylistToQueue(pl) { seeds ->
+                                                    val songs = seeds.mapNotNull {
+                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                    }
+                                                    if (songs.isNotEmpty()) {
+                                                        playerViewModel.playSongs(songs, songs.first(), pl.name.ifBlank { "在线歌单" })
+                                                        playerViewModel.requestOpenQueueSheet()
+                                                    }
+                                                }
+                                            }
                                         )
                                         // ⚡ 歌曲
                                         else -> OnlineSearchResults(
@@ -827,13 +839,17 @@ fun SearchScreen(
                                             isSearching = isSearching as Boolean,
                                             searchQuery = submittedQuery,
                                             onPlaySong = { song ->
-                                                lxViewModel.playSong(song) { url, name, singer, cover, songId ->
-                                                    playerViewModel.playUrl(url, name, singer, cover, songId)
-                                                }
-                                                lxViewModel.enqueueAllSearchResults(
-                                                    lxViewModel.getStableSongId(song)
-                                                ) { url, name, singer, cover, songId ->
-                                                    playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                                // ⚡ 原子建队：点击歌曲 + 其余搜索结果一次性传入 playSongs。
+                                                //    此前 playUrl（重置队列）与逐首 enqueue 并发执行，先后
+                                                //    顺序不定导致播放列表时而只剩单曲、时而丢失部分结果。
+                                                lxViewModel.playSearchResultWithQueue(song) { seeds, startIndex ->
+                                                    val songs = seeds.mapNotNull {
+                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                    }
+                                                    val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
+                                                    if (start != null) {
+                                                        playerViewModel.playSongs(songs, start, "Cloud Play")
+                                                    }
                                                 }
                                             },
                                             favoriteIds = favoriteSongIds,
@@ -882,7 +898,19 @@ fun SearchScreen(
                                                     playerViewModel.sendToast(msg)
                                                 }
                                             },
-                                            onPlaylistClick = { pl -> lxViewModel.openPlaylistPreview(pl) }
+                                            onPlaylistClick = { pl ->
+                                                // ⚡ 点歌单 → 整单入队播放（模仿 lx-music：占位懒解析），
+                                                //    直接打开软件已有的播放列表（队列）界面，不再进独立详情页
+                                                lxViewModel.loadPlaylistToQueue(pl) { seeds ->
+                                                    val songs = seeds.mapNotNull {
+                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                    }
+                                                    if (songs.isNotEmpty()) {
+                                                        playerViewModel.playSongs(songs, songs.first(), pl.name.ifBlank { "在线歌单" })
+                                                        playerViewModel.requestOpenQueueSheet()
+                                                    }
+                                                }
+                                            }
                                         )
                                     } else {
                                         OnlineSearchResults(
@@ -891,13 +919,17 @@ fun SearchScreen(
                                             searchQuery = submittedQuery,
                                             searchSourceLabel = lxSourceLabel,
                                             onPlaySong = { song ->
-                                                lxViewModel.playSong(song) { url, name, singer, cover, songId ->
-                                                    playerViewModel.playUrl(url, name, singer, cover, songId)
-                                                }
-                                                lxViewModel.enqueueAllSearchResults(
-                                                    lxViewModel.getStableSongId(song)
-                                                ) { url, name, singer, cover, songId ->
-                                                    playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                                // ⚡ 原子建队：点击歌曲 + 其余搜索结果一次性传入 playSongs。
+                                                //    此前 playUrl（重置队列）与逐首 enqueue 并发执行，先后
+                                                //    顺序不定导致播放列表时而只剩单曲、时而丢失部分结果。
+                                                lxViewModel.playSearchResultWithQueue(song) { seeds, startIndex ->
+                                                    val songs = seeds.mapNotNull {
+                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                    }
+                                                    val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
+                                                    if (start != null) {
+                                                        playerViewModel.playSongs(songs, start, "Cloud Play")
+                                                    }
                                                 }
                                             },
                                             favoriteIds = favoriteSongIds,
@@ -1073,33 +1105,6 @@ fun SearchScreen(
                     playerViewModel.generateAiMetadata(currentSong, fields)
                 },
             )
-            if (onlineSearchState.previewPlaylist != null) {
-                OnlinePlaylistPreviewSheet(
-                    state = onlineSearchState,
-                    colorScheme = colorScheme,
-                    currentPlayingSongId = stablePlayerState.currentSong?.id,
-                    isPlaying = stablePlayerState.isPlaying,
-                    stableIdFn = { song -> lxViewModel.getStableSongId(song) },
-                    onDismiss = { lxViewModel.closePlaylistPreview() },
-                    onLoadMore = { lxViewModel.loadMorePlaylistPreview() },
-                    onPlaySong = { song ->
-                        lxViewModel.playPreviewSong(
-                            song,
-                            onOpenPlayer = { url, name, singer, cover, songId ->
-                                playerViewModel.playUrl(url, name, singer, cover, songId)
-                            },
-                            onEnqueue = { url, name, singer, cover, songId ->
-                                playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
-                            }
-                        )
-                    },
-                    onSavePlaylist = { pl ->
-                        lxViewModel.savePlaylistToLocal(pl) { _, msg ->
-                            playerViewModel.sendToast(msg)
-                        }
-                    }
-                )
-            }
             if (showPlaylistBottomSheet) {
                 val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -2613,240 +2618,6 @@ private fun formatPlayCount(count: Long): String {
         count >= 100_000_000L -> String.format("%.1f亿", count / 100_000_000.0)
         count >= 10_000L -> String.format("%.1f万", count / 10_000.0)
         else -> count.toString()
-    }
-}
-
-/**
- * ⚡ 在线歌单预览面板：点击搜索结果里的歌单后弹出，展示歌单歌曲并可试听。
- * 复用软件已有的歌单封面组件与歌曲列表视觉，四源（wy/tx/kg/mg/kw）通用。
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun OnlinePlaylistPreviewSheet(
-    state: LxUiState,
-    colorScheme: androidx.compose.material3.ColorScheme,
-    currentPlayingSongId: String?,
-    isPlaying: Boolean,
-    stableIdFn: (LxSongInfo) -> String,
-    onDismiss: () -> Unit,
-    onLoadMore: () -> Unit,
-    onPlaySong: (LxSongInfo) -> Unit,
-    onSavePlaylist: (LxPlaylistInfo) -> Unit
-) {
-    val playlist = state.previewPlaylist ?: return
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val coverPreview = remember(playlist.id, playlist.cover) {
-        Playlist(
-            id = playlist.id,
-            name = playlist.name,
-            songIds = emptyList(),
-            coverImageUri = playlist.cover.ifBlank { null },
-            source = "LOCAL"
-        )
-    }
-    val listState = rememberLazyListState()
-    LaunchedEffect(listState, state.previewIsEnd, state.previewLoadingMore, state.previewSongs.size) {
-        snapshotFlow {
-            val info = listState.layoutInfo.visibleItemsInfo
-            if (info.isEmpty()) return@snapshotFlow false
-            info.last().index >= state.previewSongs.size - 3 &&
-                !state.previewIsEnd && !state.previewLoadingMore && !state.previewLoading
-        }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect { onLoadMore() }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = colorScheme.surfaceContainerLow
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // 头部：封面 + 标题 + 作者/曲数/播放量 + 简介
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PlaylistCover(
-                    playlist = coverPreview,
-                    playlistSongs = emptyList(),
-                    size = 76.dp
-                )
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = playlist.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = GoogleSansRounded),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = buildString {
-                            if (playlist.author.isNotBlank()) append(playlist.author)
-                            val cnt = if (state.previewTotal > 0) state.previewTotal else playlist.trackCount
-                            if (cnt > 0) {
-                                if (isNotEmpty()) append(" · ")
-                                append("$cnt 首")
-                            }
-                            val plays = formatPlayCount(playlist.playCount)
-                            if (plays.isNotEmpty()) {
-                                if (isNotEmpty()) append(" · ")
-                                append(plays)
-                            }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (playlist.description.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = playlist.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            // 操作行：播放全部 / 保存到本地
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val canPlay = state.previewSongs.isNotEmpty()
-                FilledIconButton(
-                    onClick = { state.previewSongs.firstOrNull()?.let(onPlaySong) },
-                    enabled = canPlay
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = "播放全部",
-                        tint = colorScheme.onPrimary
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                TextButton(
-                    onClick = { state.previewSongs.firstOrNull()?.let(onPlaySong) },
-                    enabled = canPlay
-                ) {
-                    Text("播放全部")
-                }
-                Spacer(Modifier.weight(1f))
-                val isSaving = state.savingPlaylistId == playlist.id
-                TextButton(
-                    onClick = { onSavePlaylist(playlist) },
-                    enabled = !isSaving && state.previewSongs.isNotEmpty()
-                ) {
-                    if (isSaving) {
-                        androidx.compose.material3.CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = colorScheme.primary
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Rounded.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(6.dp))
-                    Text("保存到本地")
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 20.dp),
-                thickness = 0.5.dp,
-                color = colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
-            when {
-                state.previewLoading -> Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 220.dp)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        androidx.compose.material3.CircularProgressIndicator(color = colorScheme.primary)
-                        Spacer(Modifier.height(12.dp))
-                        Text("正在加载歌单歌曲…", color = colorScheme.onSurfaceVariant)
-                    }
-                }
-                state.previewError != null && state.previewSongs.isEmpty() -> Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 220.dp)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = state.previewError ?: "",
-                        color = colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                state.previewSongs.isEmpty() -> Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 220.dp)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("该歌单暂无可播放歌曲", color = colorScheme.onSurfaceVariant)
-                }
-                else -> LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 460.dp),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp)
-                ) {
-                    items(items = state.previewSongs, key = { stableIdFn(it) }) { song ->
-                        UnifiedOnlineSongItem(
-                            title = song.name,
-                            subtitle = song.singer,
-                            coverUrl = song.pic.ifBlank { null },
-                            isFavorite = false,
-                            onToggleFavorite = null,
-                            isPlaying = isPlaying,
-                            isCurrentSong = currentPlayingSongId == stableIdFn(song),
-                            showLoading = state.loadingSongId == song.id,
-                            loadingLabel = if (state.loadingSongId == song.id) state.progressLabel else null,
-                            onClick = { onPlaySong(song) }
-                        )
-                    }
-                    if (state.previewLoadingMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                androidx.compose.material3.CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

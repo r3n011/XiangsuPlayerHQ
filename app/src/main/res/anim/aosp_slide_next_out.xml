@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 新页面进入时旧页退出：向左 1/3 屏滑出 + 淡出（对齐 aospSharedAxisExit，350ms） -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="true"
+    android:interpolator="@android:interpolator/decelerate_cubic">
+    <translate
+        android:fromXDelta="0"
+        android:toXDelta="-33%"
+        android:duration="350" />
+    <alpha
+        android:fromAlpha="1.0"
+        android:toAlpha="0.0"
+        android:duration="350" />
+</set>

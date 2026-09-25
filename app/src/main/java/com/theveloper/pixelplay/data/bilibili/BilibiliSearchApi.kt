@@ -84,6 +84,12 @@ class BilibiliSearchApi @Inject constructor(
         return URLEncoder.encode(input, "UTF-8").replace("+", "%20")
     }
 
+    /** ⚡ 对齐 PiliPlus Request 指纹头：env/app-key/x-bili-aurora-zone（web 接口风控指纹） */
+    private fun Request.Builder.piliPlusFingerprint(): Request.Builder = this
+        .header("env", "prod")
+        .header("app-key", "android64")
+        .header("x-bili-aurora-zone", "sh001")
+
     // 匿名 buvid3/buvid4 会话缓存（web 接口风控兜底）
     private var sAnonymousBuvid: String? = null
 
@@ -764,12 +770,15 @@ class BilibiliSearchApi @Inject constructor(
      * 获取视频评论（对齐 PiliPlus 的 web 未登录接口 /x/v2/reply/main）。
      *
      * 自愈回退链（对齐 PiliPlus AccountManager 的会话容错）：
-     *  1. 首选客户端配方：已登录走 /x/v2/reply 传统分页；未登录走 /x/v2/reply/main 游标
-     *  2. 已登录但会话失效/被风控（-101 未登录 / -352 / -403 / -412）→ 降级匿名重试
-     *  3. 匿名仍被风控 → 换 PiliPlus 同款「无 Cookie web 配方」重试（ReplyHttp.options cookie=''）
+     *  1. 首选客户端配方：已登录走 /x/v2/reply 传统分页（返回服务端点赞态）；未登录走 /x/v2/reply/main 游标
+     *  2. 登录态配方失败（-101 未登录 / -400 请求错误 / -352 / -403 / -412 等）→ 改用
+     *     「带登录 cookie 的 /main 游标」：/main 是 web 端现役接口，对 TV 登录 cookie
+     *     （/x/passport-tv-login 签发）的兼容性比传统接口好，且仍返回服务端点赞态
+     *  3. 仍失败 → 匿名 buvid 会话
+     *  4. 匿名仍被风控 → PiliPlus 同款「无 Cookie web 配方」
      *
      * @param aid 视频 av 号（oid）
-     * @param offset 游标分页偏移（首次传空串）
+     * @param offset 游标分页偏移（首次传空串；legacy 分页为页码字符串，游标接口为 base64/JSON 游标）
      * @param mode 排序：3=按热度，2=按时间
      */
     suspend fun getComments(
@@ -781,15 +790,20 @@ class BilibiliSearchApi @Inject constructor(
     ): BilibiliCommentResult {
         return withContext(Dispatchers.IO) {
             try {
-                // 已登录但 cookie 已清空/空：直接按匿名处理，避免走已登录分支被 -101 拦截
                 val useLogin = isLoggedIn && cookie.isNotBlank()
+                // 1. 首选配方
                 var result = fetchCommentPage(aid, offset, mode, cookie, useLogin)
-                // 2. 已登录会话失效/被风控：降级匿名重试
-                if (useLogin && (result.isAuthError || result.isRiskBlocked)) {
-                    Timber.w("Bilibili comments session invalid, fallback to anonymous: ${result.error}")
+                // 2. 登录态失败 → 带登录 cookie 的 /main 游标
+                if (useLogin && result.error.isNotBlank()) {
+                    Timber.w("Bilibili comments logged-in request failed (${result.error}), fallback to /main cursor with cookie")
+                    result = fetchCommentPage(aid, offset, mode, cookie, isLoggedIn = false)
+                }
+                // 3. 仍失败 → 匿名 buvid 会话
+                if (result.error.isNotBlank() && cookie.isNotBlank()) {
+                    Timber.w("Bilibili comments with-cookie request failed (${result.error}), fallback to anonymous")
                     result = fetchCommentPage(aid, offset, mode, "", isLoggedIn = false)
                 }
-                // 3. 匿名仍被风控：换 PiliPlus 同款无 Cookie 配方重试
+                // 4. 风控 → 无 Cookie web 配方
                 if (result.isRiskBlocked) {
                     Timber.w("Bilibili comments risk-blocked, retry with PiliPlus-style no-cookie request: ${result.error}")
                     val web = fetchCommentPageWeb(aid, offset, mode)
@@ -803,17 +817,12 @@ class BilibiliSearchApi @Inject constructor(
         }
     }
 
-    /** 会话失效类错误码（-101 未登录 / -404 / -352 / -403） */
-    private val BilibiliCommentResult.isAuthError: Boolean
-        get() = error.contains("-101") || error.contains("未登录") ||
-            error.contains("-404") || error.contains("-352") || error.contains("-403")
-
     /** 风控拦截类错误码（-412 / -352 / -403 或 HTTP 412/403） */
     private val BilibiliCommentResult.isRiskBlocked: Boolean
         get() = error.contains("-412") || error.contains("-352") ||
             error.contains("-403") || error.contains("HTTP 412") || error.contains("HTTP 403")
 
-    /** 客户端配方：B站 HD 客户端 UA + app-key 头 + buvid/登录 cookie */
+    /** 客户端配方：浏览器 UA + buvid/登录 cookie；登录失败时自动降级 /main 游标 */
     private suspend fun fetchCommentPage(
         aid: Long,
         offset: String,
@@ -827,9 +836,13 @@ class BilibiliSearchApi @Inject constructor(
             // 对齐 PiliPlus reply.dart 双分支：
             //  - 未登录：/x/v2/reply/main 游标接口（无 need_top、无 plat=1，抗风控）
             //  - 已登录：/x/v2/reply?oid&type&sort&pn&ps 传统分页
+            // ⚡ 分页语义自动识别：getComments 的降级链会在 legacy（页码整数）与
+            //    /main 游标（base64/JSON 串）之间切换，必须按 offset 实际格式判定，
+            //    否则降级后"加载更多"拿到的游标会被 legacy 分支误当页码 → 永远重复第一页。
+            val offsetIsCursor = offset.isNotBlank() && offset.toIntOrNull() == null
             val url: String
             var isCursorMode = false
-            if (!isLoggedIn) {
+            if (!isLoggedIn || offsetIsCursor) {
                 isCursorMode = true
                 // pagination_str 含 { " } 等非法 URL 字符，必须百分号编码
                 // （PiliPlus 用 dio 自动编码 queryParameters；OkHttp 的 HttpUrl 解析非法字符会抛异常）
@@ -851,6 +864,7 @@ class BilibiliSearchApi @Inject constructor(
                 .header("User-Agent", BASE_UA)
                 .header("Origin", "https://www.bilibili.com")
                 .header("Referer", "https://www.bilibili.com/video/av$aid")
+                .piliPlusFingerprint()
             // ⚡ 显式设置 Cookie 头：对齐 PiliPlus 未登录时 options.cookie=''，
             // 防止 BilibiliHeaderInterceptor 自动添加残留的登录 cookie 导致风控拦截 (-352/-412)。
             // 已登录时使用完整 cookie；未登录时使用匿名 buvid 或空串。
@@ -895,6 +909,7 @@ class BilibiliSearchApi @Inject constructor(
                 .header("Cookie", "")
                 .header("Origin", "https://www.bilibili.com")
                 .header("Referer", "https://www.bilibili.com/video/av$aid")
+                .piliPlusFingerprint()
                 .get()
                 .build()
             val response = okHttpClient.newCall(request).execute()
@@ -1162,6 +1177,7 @@ class BilibiliSearchApi @Inject constructor(
                 .header("User-Agent", BASE_UA)
                 .header("Origin", "https://www.bilibili.com")
                 .header("Referer", "https://www.bilibili.com/video/av$oid")
+                .piliPlusFingerprint()
             // ⚡ 显式设置 Cookie 头（同 fetchCommentPage），防止 BilibiliHeaderInterceptor 注入错误 cookie
             builder.header("Cookie", sessionCookie)
             val response = okHttpClient.newCall(builder.get().build()).execute()

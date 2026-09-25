@@ -1,5 +1,6 @@
 import com.android.build.api.variant.FilterConfiguration
 import java.text.SimpleDateFormat
+import java.util.Base64
 import java.util.Date
 import java.util.Locale
 import java.util.Properties
@@ -27,6 +28,22 @@ val localProperties = Properties().apply {
     if (propFile.exists()) {
         propFile.inputStream().use { load(it) }
     }
+}
+
+/**
+ * 对敏感字符串做 XOR + Base64 混淆，避免明文常量进入 BuildConfig / DEX 字符串常量池。
+ *
+ * 注意：这是「混淆」而非「加密」——密钥随包内置，只能提高提取门槛（挡住 `strings` 之类的
+ * 静态提取），无法抵御针对 APK 的逆向分析。运行时由 GitHubToken 用同一密钥解码还原。
+ */
+fun obfuscateSecret(raw: String, key: String = "pixelplay-gh-token-v1"): String {
+    if (raw.isEmpty()) return ""
+    val rawBytes = raw.toByteArray(Charsets.UTF_8)
+    val keyBytes = key.toByteArray(Charsets.UTF_8)
+    val xored = ByteArray(rawBytes.size) { i ->
+        (rawBytes[i].toInt() xor keyBytes[i % keyBytes.size].toInt()).toByte()
+    }
+    return Base64.getEncoder().encodeToString(xored)
 }
 
 // 是否启用 ABI 分包：仅 Release/Benchmark 构建时打 x86 + arm64-v8a 两个 split APK，
@@ -95,8 +112,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 57
-        versionName = "1.6.0"
+        versionCode = 58
+        versionName = "1.6.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -122,7 +139,10 @@ android {
         val githubToken = localProperties.getProperty("github.token")?.ifEmpty { null } ?: ""
         buildConfigField("int", "TELEGRAM_API_ID", telegramApiId)
         buildConfigField("String", "TELEGRAM_API_HASH", "\"$telegramApiHash\"")
-        buildConfigField("String", "GITHUB_TOKEN", "\"$githubToken\"")
+        // GitHub PAT 不以明文写入 BuildConfig：构建期先 XOR + Base64 混淆再注入，
+        // 运行时由 com.theveloper.pixelplay.data.github.GitHubToken 解码，
+        // 避免通过 strings / DEX 字符串常量池直接提取到明文 token。
+        buildConfigField("String", "GITHUB_TOKEN_OBF", "\"${obfuscateSecret(githubToken)}\"")
     }
 
     signingConfigs {
@@ -370,6 +390,12 @@ dependencies {
         exclude(group = "androidx.compose.runtime")
         exclude(group = "androidx.compose.ui")
     }
+
+    // 友盟移动统计 U-App
+    // asms 是友盟全部业务 SDK 共用的公共基础组件，整个工程只声明一次（新增其它友盟产品时无需重复添加）
+    implementation(libs.umeng.asms)
+    // 统计业务 SDK：提供 UMConfigure 初始化与 MobclickAgent 埋点能力
+    implementation(libs.umeng.common)
 
     // Nothing Glyph Matrix SDK
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))

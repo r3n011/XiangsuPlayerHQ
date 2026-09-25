@@ -3,6 +3,8 @@ package com.theveloper.pixelplay.presentation.components.scoped
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -77,11 +79,23 @@ internal class SheetMotionController(
         )
     }
 
+    /**
+     * 把 mini player 平移到最新 collapsed 目标（保持当前展开比例不变）。
+     * ⚡ 弹簧动画（带过冲）：导航栏隐藏/显示导致 collapsed 目标变化时，
+     *   mini player 下移/上移以带过冲的 spring 过渡，不再瞬跳。
+     * 已就位（首帧组合/展开态）时无操作。
+     */
     suspend fun syncToExpansion(collapsedY: Float) {
         val adjustedY = collapsedY + (expandedY - collapsedY) * expansionFraction.value
         if (translationY.value == adjustedY && !translationY.isRunning) return
         mutex.mutate {
-            translationY.snapTo(adjustedY)
+            translationY.animateTo(
+                targetValue = adjustedY,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
         }
     }
 }

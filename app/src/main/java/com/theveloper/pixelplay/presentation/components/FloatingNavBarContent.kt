@@ -88,6 +88,8 @@ fun FloatingNavBarContent(
     currentSong: Song?,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
+    // ⚡ 遵守「导航栏模糊」与「禁用所有模糊」设置：关闭时用不透明 surface 底色替代磨砂
+    blurEnabled: Boolean = true,
     onSearchIconDoubleTap: () -> Unit = {},
     onCenterNavClick: () -> Unit = {},
     onNowPlayingClick: () -> Unit = {},
@@ -128,9 +130,17 @@ fun FloatingNavBarContent(
                 .align(Alignment.Bottom)
                 .height(NavGroupHeight * dpiScale)
                 .clip(RoundedCornerShape(percent = 50))
-                .hazeEffect(
-                    state = MainActivity.LocalHazeState.current,
-                    style = HazeMaterials.ultraThin(containerColor = MaterialTheme.colorScheme.surface)
+                .then(
+                    if (blurEnabled) {
+                        Modifier.hazeEffect(
+                            state = MainActivity.LocalHazeState.current,
+                            style = HazeMaterials.ultraThin(containerColor = MaterialTheme.colorScheme.surface)
+                        )
+                    } else {
+                        Modifier.background(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+                        )
+                    }
                 )
                 // 上下/左右内边距保持一致，让选中指示胶囊在磨砂容器内四周等距，
                 // 避免原来「上下 1dp、左右 4dp」造成的上下挤压、左右松散的观感
@@ -181,6 +191,7 @@ fun FloatingNavBarContent(
                     item = item,
                     isSelected = currentRoute == Screen.Search.route,
                     dpiScale = dpiScale,
+                    blurEnabled = blurEnabled,
                     onClick = {
                         val itemRoute = Screen.Search.route
                         val isAlreadySelected = latestCurrentRoute == itemRoute
@@ -451,6 +462,7 @@ private fun FloatingSearchButton(
     item: BottomNavItem,
     isSelected: Boolean,
     dpiScale: Float = 1f,
+    blurEnabled: Boolean = true,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -478,9 +490,15 @@ private fun FloatingSearchButton(
             // 与导航胶囊组（NavGroupHeight=56dp）等高，避免矮一截导致顶边不对齐
             .size(NavGroupHeight * dpiScale)
             .clip(CircleShape)
-            .hazeEffect(
-                state = MainActivity.LocalHazeState.current,
-                style = HazeMaterials.ultraThin(containerColor = backgroundColor)
+            .then(
+                if (blurEnabled) {
+                    Modifier.hazeEffect(
+                        state = MainActivity.LocalHazeState.current,
+                        style = HazeMaterials.ultraThin(containerColor = backgroundColor)
+                    )
+                } else {
+                    Modifier.background(backgroundColor)
+                }
             )
             .clickable(
                 interactionSource = interactionSource,

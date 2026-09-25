@@ -151,9 +151,12 @@
         name="setcat_smooth_corners_subtitle"
     >Use complex shaped corners effectively improving aesthetics but may affect performance on low-end devices</string>
     <string name="setcat_disable_blur_all_over_title">Disable Blur Effects</string>
-    <string
-        name="setcat_disable_blur_all_over_subtitle"
+    <string name="setcat_disable_blur_all_over_subtitle"
     >Turn off blur effects across the app to save battery and resources.</string>
+    <string name="setcat_new_top_bar_title">New Top Bar Style</string>
+    <string
+        name="setcat_new_top_bar_subtitle"
+    >Top bars use a progressive blur mask with a collapsed title capsule. Turn off to use a plain solid top bar everywhere.</string>
     <string name="setcat_show_scrollbar_title">Show Scrollbar</string>
     <string
         name="setcat_show_scrollbar_subtitle"
@@ -172,6 +175,18 @@
     >Choose the layout for the player on tablets.</string>
     <string name="setcat_tablet_layout_vertical">Vertical</string>
     <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
+    <string name="setcat_player_style_label">Player style</string>
+    <string name="setcat_player_style_desc">Switch the full-screen player between the classic layout and the Expressive layout (ported from Rhythm).</string>
+    <string name="setcat_player_style_classic">Classic</string>
+    <string name="setcat_player_style_expressive">Expressive</string>
+    <string name="setcat_player_controls_group">Player controls</string>
+    <string name="setcat_expressive_group_title">Expressive player</string>
+    <string name="setcat_expressive_accent_title">Accent background</string>
+    <string name="setcat_expressive_accent_desc">Tint the control card and toggle buttons with the album accent color glass.</string>
+    <string name="setcat_expressive_merge_title">Merge controls</string>
+    <string name="setcat_expressive_merge_desc">Merge the favorite, shuffle, repeat, lyrics and queue buttons into the control card.</string>
+    <string name="setcat_transport_flat_style_title">Flat control buttons</string>
+    <string name="setcat_transport_flat_style_subtitle">Show previous / play / next as plain icons without colored backgrounds</string>
     <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
     <string
         name="setcat_custom_palette_enabled_subtitle"

@@ -25,6 +25,8 @@ import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
@@ -99,6 +101,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -108,6 +111,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -146,11 +150,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.FormatAlignLeft
 import androidx.compose.material.icons.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.Slider
@@ -191,6 +204,7 @@ import com.theveloper.pixelplay.data.autoeq.UserAudioDevice
 import com.theveloper.pixelplay.presentation.components.autoeq.AutoEQSuggestionDialog
 import com.theveloper.pixelplay.presentation.components.autoeq.DeviceConfigurationBottomSheet
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
+import com.theveloper.pixelplay.data.preferences.PlayerStyle
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat
 import com.theveloper.pixelplay.utils.LyricsImportFailureReason
@@ -387,6 +401,14 @@ fun FullPlayerContent(
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     // Tablet player layout preference
     val tabletPlayerLayout by playerViewModel.tabletPlayerLayout.collectAsStateWithLifecycle()
+    // ⚡ 播放器样式（经典 / Expressive）：Expressive 移植自 Rhythm 的 expressive player
+    val playerStyle by playerViewModel.playerStyle.collectAsStateWithLifecycle()
+    val playerAccentBackground by playerViewModel.playerAccentBackground.collectAsStateWithLifecycle()
+    val playerMergeControls by playerViewModel.playerMergeControls.collectAsStateWithLifecycle()
+    // ⚡ 倍速状态：Expressive 布局与平行布局左侧栏需要和经典控制栏一样显示倍速按钮
+    val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
+    val showPlaybackSpeedButton by playerViewModel.showPlaybackSpeedButton.collectAsStateWithLifecycle()
+    val pitchFollowSpeed by playerViewModel.pitchFollowSpeed.collectAsStateWithLifecycle()
     val gradientEdgeColor by androidx.compose.animation.animateColorAsState(
         targetValue = LocalMaterialTheme.current.primaryContainer,
         animationSpec = tween(durationMillis = 400),
@@ -535,18 +557,34 @@ fun FullPlayerContent(
     val playerAccentColor = LocalMaterialTheme.current.primary
     val playerOnAccentColor = LocalMaterialTheme.current.onPrimary
 
-    val transportPlayPauseColors = TransportButtonColors(
-        container = LocalMaterialTheme.current.tertiaryFixedDim,
-        content = LocalMaterialTheme.current.onTertiaryFixed
-    )
-    val transportSkipColors = TransportButtonColors(
-        container = LocalMaterialTheme.current.secondaryFixedDim,
-        content = LocalMaterialTheme.current.onSecondaryFixed
-    )
-    val transportSkipButtonColors = TransportButtonColors(
-        container = playerAccentColor,
-        content = playerOnAccentColor
-    )
+    // ⚡ 无色块样式（用户可选）：上一曲/播放/下一曲渲染为纯图标，
+    //   不带色块背景（容器透明、图标统一用背景色），对齐设置里的开关
+    val transportFlatStyle by playerViewModel.transportControlsFlatStyle.collectAsStateWithLifecycle()
+
+    val transportPlayPauseColors = if (transportFlatStyle) {
+        TransportButtonColors(container = Color.Transparent, content = playerOnBaseColor)
+    } else {
+        TransportButtonColors(
+            container = LocalMaterialTheme.current.tertiaryFixedDim,
+            content = LocalMaterialTheme.current.onTertiaryFixed
+        )
+    }
+    val transportSkipColors = if (transportFlatStyle) {
+        TransportButtonColors(container = Color.Transparent, content = playerOnBaseColor)
+    } else {
+        TransportButtonColors(
+            container = LocalMaterialTheme.current.secondaryFixedDim,
+            content = LocalMaterialTheme.current.onSecondaryFixed
+        )
+    }
+    val transportSkipButtonColors = if (transportFlatStyle) {
+        TransportButtonColors(container = Color.Transparent, content = playerOnBaseColor)
+    } else {
+        TransportButtonColors(
+            container = playerAccentColor,
+            content = playerOnAccentColor
+        )
+    }
     val progressActiveColor = playerOnBaseColor
 
     val placeholderColor = playerOnBaseColor.copy(alpha = 0.1f)
@@ -896,6 +934,7 @@ fun FullPlayerContent(
             onNext = onNextWithOptimisticCarousel,
             transportPlayPauseColors = transportPlayPauseColors,
             transportSkipColors = transportSkipButtonColors,
+            transportFlatStyle = transportFlatStyle,
             isShuffleEnabledProvider = isShuffleEnabledProvider,
             shuffleTransitionInProgress = shuffleTransitionInProgress,
             repeatModeProvider = repeatModeProvider,
@@ -1333,6 +1372,60 @@ fun FullPlayerContent(
                 // 平行布局歌词设置卡片状态（在调用方管理，以便 metadata 歌词按钮可切换）
                 var showParallelLyricsSettings by remember { mutableStateOf(false) }
 
+                // ⚡ Expressive 播放器内容（可复用）：平板/竖屏时整屏渲染；平行布局时作为「左侧播放器」
+                //   showLyricsButton = false 用于平行布局（右侧已是歌词面板，避免歌词按钮点了没反应）
+                val expressivePlayerContent: @Composable (PaddingValues, Boolean) -> Unit = { innerPadding, showLyricsButton ->
+                    // ⚡ 下载/评论状态：Expressive 底部胶囊行需要与经典控制栏一致
+                    val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
+                    val downloadInfo = remember(song.id, downloads) {
+                        downloads.find { it.songId == song.id }
+                    }
+                    val isOnlineSong = playerViewModel.isOnlineSong(song)
+                    val canShowComment = resolveCommentSongId(song).isNotBlank() ||
+                        !song.resolveBilibiliBvid().isNullOrBlank()
+                    FullPlayerExpressiveContent(
+                        paddingValues = innerPadding,
+                        song = song,
+                        songArtists = currentSongArtists,
+                        currentQueueIndex = currentQueueIndex,
+                        albumCoverSection = albumCoverSection,
+                        isPlayingProvider = isPlayingProvider,
+                        isRadioPlayback = isRadioPlayback,
+                        onPlayPause = onPlayPause,
+                        onPrevious = onPreviousWithOptimisticCarousel,
+                        onNext = onNextWithOptimisticCarousel,
+                        playerProgressSection = playerProgressSection,
+                        isShuffleEnabledProvider = isShuffleEnabledProvider,
+                        onShuffleToggle = onShuffleToggle,
+                        repeatModeProvider = repeatModeProvider,
+                        onRepeatToggle = onRepeatToggle,
+                        isFavoriteProvider = isFavoriteProvider,
+                        onFavoriteToggle = onFavoriteToggle,
+                        onLyricsClick = onLyricsClick,
+                        onArtistClick = onSongMetadataArtistClick,
+                        transportFlatStyle = transportFlatStyle,
+                        playerAccentBackground = playerAccentBackground,
+                        playerMergeControls = playerMergeControls,
+                        playerOnBaseColor = playerOnBaseColor,
+                        playerAccentColor = playerAccentColor,
+                        playerOnAccentColor = playerOnAccentColor,
+                        playbackSpeed = playbackSpeed,
+                        showSpeedButton = showPlaybackSpeedButton,
+                        onSpeedToggle = onSpeedToggle,
+                        onSpeedSet = onSpeedSet,
+                        pitchFollowSpeed = pitchFollowSpeed,
+                        onPitchFollowSpeedToggle = playerViewModel::setPitchFollowSpeed,
+                        showLyricsButton = showLyricsButton,
+                        isOnlineSong = isOnlineSong,
+                        onDownloadClick = onDownloadClick,
+                        downloadProgress = downloadInfo?.progress.takeIf { it != 0f || downloadInfo?.isComplete == false },
+                        isDownloadComplete = downloadInfo?.isComplete == true,
+                        isDownloadFailed = downloadInfo?.isFailed == true,
+                        showCommentButton = canShowComment,
+                        onCommentClick = onCommentClick
+                    )
+                }
+
                 if (useParallelLayout) {
                     // 平行布局专用 metadata section：隐藏歌词按钮（歌词面板右下角有设置入口）
                     val parallelSongMetadataSection: @Composable () -> Unit = {
@@ -1367,6 +1460,10 @@ fun FullPlayerContent(
                         paddingValues = paddingValues,
                         albumCoverSection = albumCoverSection,
                         songMetadataSection = parallelSongMetadataSection,
+                        // ⚡ 平行布局 + Expressive：左侧播放器改走 Expressive 样式，右侧仍为歌词
+                        expressiveLeftContent = if (playerStyle == PlayerStyle.EXPRESSIVE) {
+                            { expressivePlayerContent(PaddingValues(0.dp), false) }
+                        } else null,
                         showLyricsSettings = showParallelLyricsSettings,
                         onToggleLyricsSettings = { showParallelLyricsSettings = !showParallelLyricsSettings },
                         playerProgressSection = playerProgressSection,
@@ -1403,6 +1500,11 @@ fun FullPlayerContent(
                         lyricsExplanationEnabled = isLyricsExplanationGloballyEnabled || isLyricsExplanationSessionEnabled,
                         onDismissExplanation = { playerViewModel.clearLyricsExplanation() }
                     )
+                } else if (playerStyle == PlayerStyle.EXPRESSIVE && (isTablet || !isLandscape)) {
+                    // ⚡ Expressive 样式（移植自 Rhythm）：大封面 + 超大标题 + 控制卡片两行布局
+                    //   ⚡ 平板上 Expressive 也要生效：此前 isLandscape 分支在前，导致
+                    //   「传统布局 + Expressive」在平板横屏时被经典横屏布局吞掉。
+                    expressivePlayerContent(paddingValues, true)
                 } else if (isLandscape) {
                     FullPlayerLandscapeContent(
                         paddingValues = paddingValues,
@@ -1806,6 +1908,8 @@ private fun FullPlayerControlsSection(
     onSpeedSet: (Float) -> Unit = {},
     // ⚡ 底部控制栏是否显示倍速按钮
     showSpeedButton: Boolean = true,
+    // ⚡ 控制按钮无色块样式（电台路径的播放/暂停也去色块）
+    transportFlatStyle: Boolean = false,
     // ⚡ 倍速变调：开启后音高随倍速自动变调
     pitchFollowSpeed: Boolean = true,
     onPitchFollowSpeedToggle: (Boolean) -> Unit = {},
@@ -1893,8 +1997,12 @@ private fun FullPlayerControlsSection(
                 showRadioPlayPause = isRadioPlayback,
                 radioIsPlayingProvider = isPlayingProvider,
                 onRadioPlayPause = onPlayPause,
-                radioPlayPauseColor = transportPlayPauseColors.container,
-                radioPlayPauseContentColor = transportPlayPauseColors.content,
+                radioPlayPauseColor = if (transportFlatStyle) Color.Transparent else transportPlayPauseColors.container,
+                radioPlayPauseContentColor = if (transportFlatStyle) {
+                    LocalMaterialTheme.current.onPrimaryContainer
+                } else {
+                    transportPlayPauseColors.content
+                },
                 surfaceContainerLowest = surfaceContainerLowest,
                 onSurface = onSurface,
                 primaryFixed = primaryFixed,
@@ -2227,6 +2335,457 @@ private fun FullPlayerPortraitContent(
             }
         }
         } // end else (普通歌曲布局)
+    }
+}
+
+/**
+ * Expressive 播放器布局（移植自 Rhythm 的 expressive player，默认主题）：
+ * - 大方形封面居上（播放时 1.0 / 暂停时缩小的 MediumBouncy 弹簧缩放）
+ * - 超大 Black 字重标题（按队列方向横向滑入）+ 中等字重歌手（可点击）
+ * - 控制卡片（圆角 32dp）：第一行 = 宽播放/暂停键 + 下一曲；第二行 = 上一曲 + 进度区
+ * - 底部功能胶囊：收藏 / 随机 / 循环 / 歌词 / 下载 / 评论（电台时隐藏随机、循环；队列按钮由顶部工具栏提供）
+ */
+@Composable
+private fun FullPlayerExpressiveContent(
+    paddingValues: PaddingValues,
+    song: Song,
+    songArtists: List<Artist>,
+    currentQueueIndex: Int?,
+    albumCoverSection: @Composable (Modifier) -> Unit,
+    isPlayingProvider: () -> Boolean,
+    isRadioPlayback: Boolean,
+    onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    playerProgressSection: @Composable () -> Unit,
+    isShuffleEnabledProvider: () -> Boolean,
+    onShuffleToggle: () -> Unit,
+    repeatModeProvider: () -> Int,
+    onRepeatToggle: () -> Unit,
+    isFavoriteProvider: () -> Boolean,
+    onFavoriteToggle: () -> Unit,
+    onLyricsClick: () -> Unit,
+    onArtistClick: () -> Unit,
+    transportFlatStyle: Boolean,
+    playerAccentBackground: Boolean,
+    playerMergeControls: Boolean,
+    playerOnBaseColor: Color,
+    playerAccentColor: Color,
+    playerOnAccentColor: Color,
+    // ⚡ 倍速：Expressive 布局此前完全没有倍速按钮，补齐后可受「显示播放倍速按钮」开关控制
+    playbackSpeed: Float = 1f,
+    showSpeedButton: Boolean = true,
+    onSpeedToggle: () -> Unit = {},
+    onSpeedSet: (Float) -> Unit = {},
+    pitchFollowSpeed: Boolean = true,
+    onPitchFollowSpeedToggle: (Boolean) -> Unit = {},
+    // ⚡ 平行布局下右侧已是歌词面板，此处隐藏歌词按钮（与平行布局的 metadata 处理一致）
+    showLyricsButton: Boolean = true,
+    // ⚡ 下载按钮：与经典控制栏一致（仅在线歌曲显示，含进度/完成/失败三态）
+    isOnlineSong: Boolean = false,
+    onDownloadClick: () -> Unit = {},
+    downloadProgress: Float? = null,
+    isDownloadComplete: Boolean = false,
+    isDownloadFailed: Boolean = false,
+    // ⚡ 评论按钮：仅网易云 / B 站来源歌曲显示
+    showCommentButton: Boolean = false,
+    onCommentClick: () -> Unit = {}
+) {
+    val isPlaying = isPlayingProvider()
+    var showSpeedSheet by remember { mutableStateOf(false) }
+    // Rhythm：播放 1.0 / 暂停 0.85，MediumBouncy + Low stiffness 弹簧（叠加封面自身暂停缩放）
+    val artworkScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0.92f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ExpressiveArtworkScale"
+    )
+
+    // 队列方向：决定标题滑入方向（下一曲从右滑入，上一曲从左滑入）
+    val lastQueueIndexState = remember { mutableIntStateOf(Int.MIN_VALUE) }
+    val queueDirection = remember(currentQueueIndex) {
+        val last = lastQueueIndexState.intValue
+        lastQueueIndexState.intValue = currentQueueIndex ?: 0
+        if (last == Int.MIN_VALUE || (currentQueueIndex ?: 0) >= last) 1 else -1
+    }
+
+    // Rhythm：标题按长度自适应字号 + 紧字距
+    val titleLength = song.title.length
+    val titleTextStyle = when {
+        titleLength > 32 -> MaterialTheme.typography.headlineSmall
+        titleLength > 24 -> MaterialTheme.typography.headlineMedium
+        else -> MaterialTheme.typography.displaySmall
+    }.copy(fontWeight = FontWeight.Black, letterSpacing = when {
+        titleLength > 32 -> (-0.6).sp
+        titleLength > 24 -> (-1.0).sp
+        else -> (-1.5).sp
+    })
+
+    val artistLabel = songArtists.firstOrNull()?.name?.takeIf { it.isNotBlank() } ?: song.artist
+
+    val playContainer = if (transportFlatStyle) Color.Transparent else playerAccentColor
+    val playContent = if (transportFlatStyle) playerOnBaseColor else playerOnAccentColor
+    val skipContainer = if (transportFlatStyle) {
+        Color.Transparent
+    } else if (playerAccentBackground) {
+        // 强调色背景：切换圆钮改用强调色玻璃（对应 Rhythm accentGlass）
+        playerAccentColor.copy(alpha = 0.18f)
+    } else {
+        LocalMaterialTheme.current.secondaryFixedDim
+    }
+    val skipContent = if (transportFlatStyle) playerOnBaseColor else LocalMaterialTheme.current.onSecondaryFixed
+    val cardColor = if (playerAccentBackground) {
+        // 强调色背景：卡片使用强调色玻璃（对应 Rhythm accentGlassStrong）
+        playerAccentColor.copy(alpha = 0.28f)
+    } else {
+        playerOnBaseColor.copy(alpha = 0.08f)
+    }
+
+    // 底部功能胶囊内容（收藏/随机/循环/歌词/下载/评论）：独立胶囊与合并进控制卡两种形态复用
+    val functionPillRow: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val favorite = isFavoriteProvider()
+            // ⚡ 倍速按钮：此前 Expressive 布局缺失该按钮（即使开启「显示播放倍速按钮」也不显示）
+            if (!isRadioPlayback && showSpeedButton) {
+                val isSpeedActive = playbackSpeed != 1f
+                Box(
+                    modifier = Modifier
+                        .height(38.dp)
+                        .widthIn(min = 52.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(
+                            if (isSpeedActive) playerAccentColor
+                            else playerOnBaseColor.copy(alpha = 0.10f)
+                        )
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { onSpeedToggle() },
+                                onLongPress = { showSpeedSheet = true }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = formatPlaybackSpeed(playbackSpeed),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSpeedActive) playerOnAccentColor else playerOnBaseColor.copy(alpha = 0.85f)
+                    )
+                }
+            }
+            IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(44.dp)) {
+                Icon(
+                    imageVector = if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = stringResource(R.string.cd_favorite),
+                    tint = if (favorite) MaterialTheme.colorScheme.error else playerOnBaseColor.copy(alpha = 0.75f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            if (!isRadioPlayback) {
+                IconButton(onClick = onShuffleToggle, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Shuffle,
+                        contentDescription = stringResource(R.string.queue_cd_toggle_shuffle_action),
+                        tint = if (isShuffleEnabledProvider()) playerAccentColor else playerOnBaseColor.copy(alpha = 0.75f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                IconButton(onClick = onRepeatToggle, modifier = Modifier.size(44.dp)) {
+                    val repeatMode = repeatModeProvider()
+                    Icon(
+                        imageVector = if (repeatMode == 1) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                        contentDescription = stringResource(R.string.cd_repeat),
+                        tint = if (repeatMode != 0) playerAccentColor else playerOnBaseColor.copy(alpha = 0.75f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            if (showLyricsButton) {
+                IconButton(onClick = onLyricsClick, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Subtitles,
+                        contentDescription = stringResource(R.string.lyrics),
+                        tint = playerOnBaseColor.copy(alpha = 0.75f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            // ⚡ 下载按钮：与经典控制栏一致，仅在线歌曲显示；下载中显示环形进度，完成/失败切换图标
+            if (!isRadioPlayback && isOnlineSong) {
+                val isDownloading = downloadProgress != null && !isDownloadComplete && !isDownloadFailed
+                IconButton(onClick = onDownloadClick, modifier = Modifier.size(44.dp)) {
+                    if (isDownloading) {
+                        CircularProgressIndicator(
+                            progress = { downloadProgress / 100f },
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = playerAccentColor,
+                            trackColor = playerOnBaseColor.copy(alpha = 0.25f)
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    isDownloadComplete -> R.drawable.rounded_check_circle_24
+                                    isDownloadFailed -> R.drawable.rounded_close_24
+                                    else -> R.drawable.rounded_download_24
+                                }
+                            ),
+                            contentDescription = "Download",
+                            tint = if (isDownloadComplete) playerAccentColor
+                            else playerOnBaseColor.copy(alpha = 0.75f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+            // ⚡ 评论按钮：仅网易云 / B 站来源歌曲显示（与经典 metadata 区块一致）
+            if (!isRadioPlayback && showCommentButton) {
+                IconButton(onClick = onCommentClick, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        painter = painterResource(R.drawable.rounded_mode_comment_24),
+                        contentDescription = "Comments",
+                        tint = playerOnBaseColor.copy(alpha = 0.75f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentAlignment = Alignment.Center
+    ) {
+        // ⚡ 平板横屏下 Expressive 铺满整屏会把标题/控制卡片拉得过宽 → 限制内容最大宽度并居中
+        val contentMaxWidth = 640.dp
+        // 封面尺寸计算与经典布局一致：高度余量 vs 宽度余量取小
+        val totalHeight = maxHeight
+        val totalWidth = if (maxWidth < contentMaxWidth) maxWidth else contentMaxWidth
+        val coverHorizontalPadding = 12.dp
+        val metadataControlsHeight = 320.dp
+        val coverSizeMethod1 = (totalHeight - metadataControlsHeight).coerceAtLeast(100.dp)
+        val coverSizeMethod2 = totalWidth - coverHorizontalPadding * 2
+        val coverSize: Dp = if (coverSizeMethod1 > coverSizeMethod2) coverSizeMethod2 else coverSizeMethod1
+        // Rhythm：控制按钮尺寸随屏宽自适应（0.18f，44-72dp）
+        val controlButtonSize = (totalWidth * 0.18f).coerceIn(44.dp, 72.dp)
+
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .widthIn(max = contentMaxWidth)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 封面区：吸收剩余空间，居中，带播放态缩放
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                BoxWithConstraints(contentAlignment = Alignment.Center) {
+                    // ⚡ 高度不足时（如平板横屏）收缩封面，避免溢出被裁切
+                    val fittedCoverSize = minOf(coverSize, maxWidth, maxHeight)
+                    Box(
+                        modifier = Modifier
+                            .size(fittedCoverSize)
+                            .graphicsLayer {
+                                scaleX = artworkScale
+                                scaleY = artworkScale
+                            }
+                    ) {
+                        albumCoverSection(Modifier.fillMaxSize())
+                    }
+                }
+            }
+
+            // 底部：标题 / 控制卡片 / 功能胶囊
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 12.dp)
+            ) {
+                // 超大标题 + 歌手（按队列方向滑动切换）
+                AnimatedContent(
+                    targetState = song,
+                    transitionSpec = {
+                        (slideInHorizontally(tween(420, easing = FastOutSlowInEasing)) { fullWidth -> fullWidth * queueDirection } +
+                            fadeIn(tween(380, easing = FastOutSlowInEasing))).togetherWith(
+                            slideOutHorizontally(tween(420, easing = FastOutSlowInEasing)) { fullWidth -> -fullWidth * queueDirection } +
+                                fadeOut(tween(320))
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().clipToBounds(),
+                    contentAlignment = Alignment.CenterStart,
+                    label = "ExpressiveSongInfoSlide"
+                ) { targetSong ->
+                    Column {
+                        Text(
+                            text = targetSong.title,
+                            style = titleTextStyle.copy(color = playerOnBaseColor),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = artistLabel,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = playerOnBaseColor.copy(alpha = 0.72f)
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clipToBounds()
+                                .clickable(onClick = onArtistClick)
+                                .padding(top = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 控制卡片（Rhythm：圆角 32dp Surface，播放+下一曲 / 上一曲+进度 两行）
+                Surface(
+                    shape = RoundedCornerShape(32.dp),
+                    color = cardColor,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 16.dp,
+                                bottom = if (isRadioPlayback) 16.dp else 8.dp
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 宽播放/暂停按钮（Rhythm 特征：weight(1f) 的大按钮）
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(controlButtonSize)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(playContainer)
+                                    .clickable(onClick = onPlayPause),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                        contentDescription = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
+                                        tint = playContent,
+                                        modifier = Modifier.size(controlButtonSize * 0.4f)
+                                    )
+                                    Text(
+                                        text = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = playContent,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                            if (!isRadioPlayback) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(controlButtonSize)
+                                        .clip(CircleShape)
+                                        .background(skipContainer)
+                                        .clickable(onClick = onNext),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.SkipNext,
+                                        contentDescription = stringResource(R.string.next_track),
+                                        tint = skipContent,
+                                        modifier = Modifier.size(controlButtonSize * 0.45f)
+                                    )
+                                }
+                            }
+                        }
+
+                        if (!isRadioPlayback) {
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(controlButtonSize)
+                                        .clip(CircleShape)
+                                        .background(skipContainer)
+                                        .clickable(onClick = onPrevious),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.SkipPrevious,
+                                        contentDescription = stringResource(R.string.previous_track),
+                                        tint = skipContent,
+                                        modifier = Modifier.size(controlButtonSize * 0.45f)
+                                    )
+                                }
+                                // 进度区：复用现有进度条（含时间标签 / 音质信息 / 拖动 seek）
+                                Box(modifier = Modifier.weight(1f)) {
+                                    playerProgressSection()
+                                }
+                            }
+                        }
+                        if (playerMergeControls) {
+                            // 合并控件：功能胶囊直接嵌入控制卡片（模仿 Rhythm merge controls）
+                            Spacer(Modifier.height(4.dp))
+                            functionPillRow()
+                        }
+                    }
+                }
+
+                if (!playerMergeControls) {
+                    Spacer(Modifier.height(12.dp))
+
+                    // 底部功能胶囊（Rhythm：grouped pill）
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = cardColor,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        functionPillRow()
+                    }
+                }
+            }
+        }
+    }
+
+    // ⚡ 倍速详细调节弹窗（长按倍速按钮弹出），与经典控制栏复用同一弹窗
+    if (showSpeedSheet) {
+        PlaybackSpeedSheet(
+            playbackSpeed = playbackSpeed,
+            onSpeedSet = onSpeedSet,
+            pitchFollowSpeed = pitchFollowSpeed,
+            onPitchFollowSpeedToggle = onPitchFollowSpeedToggle,
+            onDismiss = { showSpeedSheet = false }
+        )
     }
 }
 
@@ -3900,129 +4459,150 @@ private fun BottomToggleRow(
 
     // 倍速详细调节底部弹窗
     if (showSpeedSheet) {
-        @OptIn(ExperimentalMaterial3Api::class)
-        ModalBottomSheet(
-            onDismissRequest = { showSpeedSheet = false },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        PlaybackSpeedSheet(
+            playbackSpeed = playbackSpeed,
+            onSpeedSet = onSpeedSet,
+            pitchFollowSpeed = pitchFollowSpeed,
+            onPitchFollowSpeedToggle = onPitchFollowSpeedToggle,
+            onDismiss = { showSpeedSheet = false }
+        )
+    }
+}
+
+/**
+ * 倍速详细调节底部弹窗（可复用）：经典控制栏与 Expressive 功能胶囊共用。
+ * 包含滑杆（0.5x~2.0x）、预设倍速与「音高随倍速变调」开关。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaybackSpeedSheet(
+    playbackSpeed: Float,
+    onSpeedSet: (Float) -> Unit,
+    pitchFollowSpeed: Boolean,
+    onPitchFollowSpeedToggle: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            Text(
+                text = stringResource(R.string.playback_speed),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            var sliderValue by remember(playbackSpeed) { mutableStateOf(playbackSpeed) }
+            val displayText = String.format("%.1fx", sliderValue)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.playback_speed),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "0.5x",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                var sliderValue by remember(playbackSpeed) { mutableStateOf(playbackSpeed) }
-                val displayText = String.format("%.1fx", sliderValue)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "0.5x",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = displayText,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "2.0x",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Slider(
-                    value = sliderValue,
-                    onValueChange = { sliderValue = it },
-                    onValueChangeFinished = { onSpeedSet(sliderValue) },
-                    valueRange = 0.5f..2f,
-                    steps = 14
+                Text(
+                    text = displayText,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf(0.5f, 0.8f, 1f, 1.2f, 1.5f).forEach { preset ->
-                        val isSelected = sliderValue == preset
-                        FilledTonalButton(
-                            onClick = {
-                                sliderValue = preset
-                                onSpeedSet(preset)
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = if (isSelected)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = if (isSelected)
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSurface
-                            ),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = "${preset}x",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    }
-                }
-                // ⚡ 变调开关：开启后音高随倍速自动变调（pitch == speed），关闭时保持原调
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        // ⚡ 整行点击用 toggleable 统一处理：若同时保留 Row.clickable + Switch
-                        //    的 onCheckedChange，点击 Switch 时两个事件都会触发（Compose 中子
-                        //    组件不自动消费父组件点击），两次取反值相反、异步写入竞争 → 开关
-                        //    弹回/关不上。
-                        .toggleable(
-                            value = pitchFollowSpeed,
-                            onValueChange = onPitchFollowSpeedToggle
-                        )
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.playback_speed_pitch_follow),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = stringResource(R.string.playback_speed_pitch_follow_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = pitchFollowSpeed,
-                        // ⚡ 交互由 Row 的 toggleable 统一处理（避免双重触发），此处仅显示状态
-                        onCheckedChange = null
-                    )
-                }
-                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "2.0x",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+            Slider(
+                value = sliderValue,
+                onValueChange = { sliderValue = it },
+                onValueChangeFinished = { onSpeedSet(sliderValue) },
+                valueRange = 0.5f..2f,
+                steps = 14
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(0.5f, 0.8f, 1f, 1.2f, 1.5f).forEach { preset ->
+                    val isSelected = sliderValue == preset
+                    FilledTonalButton(
+                        onClick = {
+                            sliderValue = preset
+                            onSpeedSet(preset)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = if (isSelected)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        ),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "${preset}x",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+            // ⚡ 变调开关：开启后音高随倍速自动变调（pitch == speed），关闭时保持原调
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    // ⚡ 整行点击用 toggleable 统一处理：若同时保留 Row.clickable + Switch
+                    //    的 onCheckedChange，点击 Switch 时两个事件都会触发（Compose 中子
+                    //    组件不自动消费父组件点击），两次取反值相反、异步写入竞争 → 开关
+                    //    弹回/关不上。
+                    .toggleable(
+                        value = pitchFollowSpeed,
+                        onValueChange = onPitchFollowSpeedToggle
+                    )
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.playback_speed_pitch_follow),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(R.string.playback_speed_pitch_follow_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = pitchFollowSpeed,
+                    // ⚡ 交互由 Row 的 toggleable 统一处理（避免双重触发），此处仅显示状态
+                    onCheckedChange = null
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -4301,7 +4881,9 @@ private fun FullPlayerParallelLayout(
     isExplainingLyrics: Boolean,
     lyricsExplanation: String?,
     lyricsExplanationEnabled: Boolean,
-    onDismissExplanation: () -> Unit
+    onDismissExplanation: () -> Unit,
+    // ⚡ 平行布局 + Expressive：左侧直接渲染 Expressive 播放器（右侧仍为歌词）
+    expressiveLeftContent: (@Composable () -> Unit)? = null
 ) {
 
     Row(
@@ -4309,39 +4891,50 @@ private fun FullPlayerParallelLayout(
             .fillMaxSize()
             .padding(paddingValues)
     ) {
-        // Left side: Player controls — scrollable to prevent overflow
-        androidx.compose.foundation.rememberScrollState().let { scrollState ->
-            Column(
+        if (expressiveLeftContent != null) {
+            // ⚡ 左侧播放器切换为 Expressive 样式（由调用方根据 playerStyle 决定）
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
             ) {
-                // Album cover — smaller to leave room for controls
-                Box(
+                expressiveLeftContent()
+            }
+        } else {
+            // Left side: Player controls — scrollable to prevent overflow
+            androidx.compose.foundation.rememberScrollState().let { scrollState ->
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .aspectRatio(1f)
-                        .padding(bottom = 16.dp)
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    albumCoverSection(Modifier.fillMaxSize())
+                    // Album cover — smaller to leave room for controls
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .aspectRatio(1f)
+                            .padding(bottom = 16.dp)
+                    ) {
+                        albumCoverSection(Modifier.fillMaxSize())
+                    }
+
+                    // Song metadata
+                    songMetadataSection()
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Progress bar
+                    playerProgressSection()
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Controls
+                    controlsSection()
                 }
-
-                // Song metadata
-                songMetadataSection()
-
-                Spacer(Modifier.height(12.dp))
-
-                // Progress bar
-                playerProgressSection()
-
-                Spacer(Modifier.height(8.dp))
-
-                // Controls
-                controlsSection()
             }
         }
 

@@ -962,12 +962,14 @@ fun HomeScreen(
         //    必须置于外层 Box 内部：Modifier.align 依赖 BoxScope 接收者。
         if (!isLandscape) {
             val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
+            val useNewTopBar by playerViewModel.useNewTopBar.collectAsStateWithLifecycle()
             HomeGradientTopBar(
                 onTelegramClick = {
                     showStreamingProviderSheet = true
                 },
                 isScrolled = isScrolledPastThreshold.value,
                 disableBlurAllOver = disableBlurAllOver,
+                useNewTopBar = useNewTopBar,
                 hearingGuardState = hearingGuardState,
                 onHearingGuardClick = {
                     if (!hearingGuardState.isConfigured) hasShownSetupHint = true

@@ -635,31 +635,6 @@ fun AboutScreen(
                 )
             }
 
-            // 开发团队分组：维护者 + 固定成员（开源贡献者已展示在顶部头像墙，不再重复列表）
-            item(key = "contributors_header") {
-                AboutSectionHeader(
-                    title = stringResource(R.string.about_maintainer_title),
-                    subtitle = stringResource(R.string.about_maintainer_subtitle),
-                    modifier = Modifier.padding(top = 24.dp),
-                )
-            }
-
-            itemsIndexed(
-                items = teamContributors,
-                key = { _, contributor -> "team_${contributor.id}" },
-            ) { index, contributor ->
-                ContributorCard(
-                    contributor = contributor,
-                    shape = expressiveListShape(index = index, count = teamContributors.size),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = if (index == 0) 0.dp else 3.dp),
-                    showContributionCount = contributor.contributions != null,
-                    onCardClick = contributor.githubUrl?.let { url -> { openUrl(context, url) } },
-                )
-            }
-
             item(key = "bottom_spacer") {
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -1427,6 +1402,9 @@ private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
     val blurProjectUrl = "https://github.com/shiqizhenyes/PixelPlayer/tree/feat/gaussian_blur_effect_playingEqIconV2"
     val miniaudioUrl = "https://github.com/mackron/miniaudio"
     val lanzouApiUrl = "https://github.com/124019/LanzouAPI"
+    val mineradioUrl = "https://github.com/XxHuberrr/Mineradio"
+    val reactorUrl = "https://github.com/wzk112/reactor-audio-visualizer"
+    val rhythmUrl = "https://github.com/cromaguy/Rhythm"
 
     Surface(
         modifier = modifier,
@@ -1482,6 +1460,30 @@ private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
             AcknowledgementItem(
                 description = stringResource(R.string.about_acknowledgements_lanzou_desc),
                 url = lanzouApiUrl,
+                context = context
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AcknowledgementItem(
+                description = stringResource(R.string.about_acknowledgements_mineradio_desc),
+                url = mineradioUrl,
+                context = context
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AcknowledgementItem(
+                description = stringResource(R.string.about_acknowledgements_reactor_desc),
+                url = reactorUrl,
+                context = context
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AcknowledgementItem(
+                description = stringResource(R.string.about_acknowledgements_rhythm_desc),
+                url = rhythmUrl,
                 context = context
             )
         }

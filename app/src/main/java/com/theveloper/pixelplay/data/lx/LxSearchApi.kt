@@ -988,10 +988,12 @@ class LxSearchApi @Inject constructor(
                 beRepliedCommentId = br.ncmLong("beRepliedCommentId", 0L)
             )
         }
-        // 主评论下回复总数（ciCount / replyCount 兼容解析）
-        val subReplyCount = m.ncmInt("ciCount", 0).coerceAtLeast(
-            m.ncmInt("replyCount", 0)
-        )
+        // 主评论下回复总数：官方接口字段是 rcount，兼容 ciCount / replyCount（第三方代理）
+        // ⚡ 此前漏读 rcount 导致官方接口返回的评论 subReplyCount 恒为 0，
+        //    有回复的评论不显示「查看回复」入口
+        val subReplyCount = m.ncmInt("rcount", 0)
+            .coerceAtLeast(m.ncmInt("ciCount", 0))
+            .coerceAtLeast(m.ncmInt("replyCount", 0))
 
         return NeteaseComment(
             commentId = m.ncmLong("commentId", 0L),
@@ -1202,7 +1204,9 @@ class LxSearchApi @Inject constructor(
                 )
             }
         }
-        val subReplyCount = obj.optInt("replyCount", 0).coerceAtLeast(obj.optInt("ciCount", 0))
+        val subReplyCount = obj.optInt("rcount", 0)
+            .coerceAtLeast(obj.optInt("replyCount", 0))
+            .coerceAtLeast(obj.optInt("ciCount", 0))
         return NeteaseComment(
             commentId = obj.optLong("commentId", 0L),
             content = obj.optString("content", ""),

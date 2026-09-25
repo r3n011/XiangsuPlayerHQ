@@ -79,6 +79,7 @@ import coil.request.ImageRequest
 import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.lx.NeteaseComment
 import com.theveloper.pixelplay.data.lx.NeteaseCommentResult
+import com.theveloper.pixelplay.data.lx.NeteaseCommentUser
 import com.theveloper.pixelplay.data.lx.NeteaseUserDetail
 import com.theveloper.pixelplay.data.netease.PersonalFmApi
 import com.theveloper.pixelplay.presentation.components.scoped.LyricsPredictiveBackHandler
@@ -136,6 +137,8 @@ fun CommentSheet(
     val commentText = remember { mutableStateOf("") }
     val isSending = remember { mutableStateOf(false) }
     val sendError = remember { mutableStateOf<String?>(null) }
+    // ⚡ 发评成功后本地插入的新评论 id：行内做两次高亮脉冲提示
+    val highlightedCommentId = remember { mutableStateOf<Long?>(null) }
     val isLoggedIn = cookie?.isNotBlank() == true
     val songIdLong = songId.toLongOrNull() ?: 0L
 
@@ -232,10 +235,53 @@ fun CommentSheet(
             writeLikedOverride(likesPrefs, likesStoreKey, cid, isLiked)
             persistedLiked.value = persistedLiked.value + (cid to isLiked)
         } else {
-            // 失败回滚
+            // 失败回滚 + 明确提示：此前静默回滚，用户只看到红心"过一会儿自己消失"
             likedState.value = likedState.value + (cid to prevLiked)
             likedCountState.value = likedCountState.value + (cid to prevCount)
+            android.widget.Toast.makeText(
+                context,
+                if (!isLoggedIn) "点赞失败：请先登录网易云账户" else "点赞失败：请检查网易云登录状态或网络",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
+    }
+
+    /**
+     * ⚡ 发评成功后本地即时插入新评论并返回其列表 index（无需等服务端刷新）：
+     * 官方接口刷新常有索引延迟，导致"必须重新进入评论页才能看到刚发的评论"。
+     * @return LazyColumn 中的目标 index；-1 表示未插入
+     */
+    suspend fun insertMyCommentLocally(newCommentId: Long, content: String): Int {
+        if (songIdLong <= 0L || currentUserId <= 0L) return -1
+        // 补全当前用户信息（昵称/头像），失败时用占位
+        val me: NeteaseUserDetail? = try {
+            withContext(Dispatchers.IO) { api.getUserDetail(currentUserId) }
+        } catch (t: Throwable) {
+            Timber.w(t, "获取当前用户信息失败，使用占位头像")
+            null
+        }
+        val myComment = NeteaseComment(
+            commentId = newCommentId.takeIf { it > 0L } ?: -System.currentTimeMillis(),
+            content = content,
+            time = System.currentTimeMillis(),
+            timeStr = "刚刚",
+            likedCount = 0,
+            liked = false,
+            user = NeteaseCommentUser(
+                userId = currentUserId,
+                nickname = me?.nickname.orEmpty().ifBlank { "我" },
+                avatarUrl = me?.avatarUrl.orEmpty()
+            )
+        )
+        // 服务端索引若已建好（重复打开等场景），不重复插入
+        commentsState.value.firstOrNull { it.commentId == myComment.commentId }?.let { return -1 }
+        // 热评在前面时：[hot_header, 热评…, regular_header, 新评论…] → index = 热评数 + 2；否则 1
+        val hotCount = hotCommentsState.value.size
+        val index = if (hotCount > 0) hotCount + 2 else 1
+        commentsState.value = listOf(myComment) + commentsState.value
+        likedState.value = likedState.value + (myComment.commentId to false)
+        likedCountState.value = likedCountState.value + (myComment.commentId to 0)
+        return index
     }
 
     // —— 辅助：懒加载用户头像 ——
@@ -278,8 +324,8 @@ fun CommentSheet(
             val result: NeteaseCommentResult = withContext(Dispatchers.IO) {
                 api.getSongComments(songId = songId, limit = pageSize, offset = 0, before = null)
             }
-            commentsState.value = result.comments
-            hotCommentsState.value = result.hotComments
+            commentsState.value = result.comments.distinctBy { it.commentId }
+            hotCommentsState.value = result.hotComments.distinctBy { it.commentId }
             val serverHasMore = result.hasMore
             val heuristicHasMore = result.comments.size >= pageSize
             hasMoreState.value = serverHasMore || heuristicHasMore
@@ -337,7 +383,10 @@ fun CommentSheet(
                         )
                     }
                     if (result.comments.isNotEmpty()) {
-                        commentsState.value = commentsState.value + result.comments
+                        // ⚡ 去重合并：服务端分页偶发返回重复评论 → LazyColumn 重复 key 直接崩溃
+                        val existing = commentsState.value.associateBy { it.commentId }
+                        val merged = (existing + result.comments.associateBy { it.commentId }).values.toList()
+                        commentsState.value = merged
                         offsetState.value += result.comments.size
                         if (result.cursor > 0L) beforeState.value = result.cursor
                         fetchUserAvatarsIfNeeded(result.comments)
@@ -558,47 +607,47 @@ fun CommentSheet(
                                             scope.launch {
                                                 try {
                                                     val cookieVal = cookie ?: ""
-                                                    val success = if (replyId != null) {
-                                                        personalFmApi.replyComment(
+                                                    if (replyId != null) {
+                                                        // 回复：走楼中楼，成功后刷新该层回复（若已展开）
+                                                        val ok = personalFmApi.replyComment(
                                                             type = 0,
                                                             id = songIdLong,
                                                             commentId = replyId,
                                                             content = content,
                                                             cookie = cookieVal
                                                         ).getOrDefault(false)
+                                                        if (ok) {
+                                                            commentText.value = ""
+                                                            replyToCommentId.value = null
+                                                            replyToNickname.value = null
+                                                            if (expandedReplies.value.contains(replyId)) {
+                                                                repliesState.value = repliesState.value + (replyId to emptyList())
+                                                                loadReplies(replyId)
+                                                            }
+                                                        } else {
+                                                            sendError.value = "发送失败，请检查网易云登录状态"
+                                                        }
                                                     } else {
-                                                        personalFmApi.sendComment(
+                                                        // ⚡ 主评论：本地即时插入 + 滚动定位 + 高亮两次。
+                                                        //   官方索引延迟导致刷新拉不到刚发的评论，
+                                                        //   体验为"必须重新进入评论页才能看到"
+                                                        val newCid = personalFmApi.sendComment(
                                                             type = 0,
                                                             id = songIdLong,
                                                             content = content,
                                                             cookie = cookieVal
-                                                        ).getOrDefault(false)
-                                                    }
-                                                    if (success) {
-                                                        commentText.value = ""
-                                                        replyToCommentId.value = null
-                                                        replyToNickname.value = null
-                                                        try {
-                                                            val result = withContext(Dispatchers.IO) {
-                                                                api.getSongComments(songId = songId, limit = pageSize, offset = 0, before = null)
+                                                        ).getOrDefault(-1L)
+                                                        if (newCid >= 0L) {
+                                                            commentText.value = ""
+                                                            val index = insertMyCommentLocally(newCid, content)
+                                                            if (index >= 0) {
+                                                                listState.animateScrollToItem(index)
+                                                                highlightedCommentId.value = commentsState.value
+                                                                    .firstOrNull()?.commentId
                                                             }
-                                                            commentsState.value = result.comments
-                                                            hotCommentsState.value = result.hotComments
-                                                            offsetState.value = result.comments.size
-                                                            val likedMap = mutableMapOf<Long, Boolean>()
-                                                            val countMap = mutableMapOf<Long, Int>()
-                                                            for (c in result.hotComments + result.comments) {
-                                                                likedMap[c.commentId] = c.liked
-                                                                countMap[c.commentId] = c.likedCount
-                                                            }
-                                                            likedState.value = likedMap
-                                                            likedCountState.value = countMap
-                                                            listState.animateScrollToItem(0)
-                                                        } catch (t: Throwable) {
-                                                            Timber.w(t, "刷新评论失败")
+                                                        } else {
+                                                            sendError.value = "发送失败，请检查网易云登录状态"
                                                         }
-                                                    } else {
-                                                        sendError.value = "发送失败，请稍后重试"
                                                     }
                                                 } catch (t: Throwable) {
                                                     Timber.e(t, "发送评论失败")
@@ -769,6 +818,8 @@ fun CommentSheet(
                                     onLoadMoreReplies = {
                                         scope.launch { loadReplies(comment.commentId, loadMore = true) }
                                     },
+                                    highlight = highlightedCommentId.value == comment.commentId,
+                                    onHighlightFinished = { highlightedCommentId.value = null },
                                     showDivider = true
                                 )
                             }
@@ -849,6 +900,8 @@ fun CommentSheet(
                                     onLoadMoreReplies = {
                                         scope.launch { loadReplies(comment.commentId, loadMore = true) }
                                     },
+                                    highlight = highlightedCommentId.value == comment.commentId,
+                                    onHighlightFinished = { highlightedCommentId.value = null },
                                     showDivider = true
                                 )
                             }
@@ -952,9 +1005,28 @@ private fun CommentRow(
     onToggleReplies: () -> Unit = {},
     hasMoreReplies: Boolean = false,
     onLoadMoreReplies: () -> Unit = {},
+    /** 发评成功后的定位提示：背景以主题色脉冲两次 */
+    highlight: Boolean = false,
+    onHighlightFinished: () -> Unit = {},
     showDivider: Boolean = true
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // ⚡ 高亮脉冲：highlight=true 时背景淡入淡出两个来回，提示"已发出"
+    val highlightPulse = remember { Animatable(0f) }
+    LaunchedEffect(highlight) {
+        if (highlight) {
+            repeat(2) {
+                highlightPulse.snapTo(0f)
+                highlightPulse.animateTo(1f, androidx.compose.animation.core.tween(260))
+                highlightPulse.animateTo(0f, androidx.compose.animation.core.tween(260))
+            }
+            onHighlightFinished()
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(primaryColor.copy(alpha = 0.14f * highlightPulse.value))
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1054,6 +1126,35 @@ private fun CommentRow(
                         }
                     }
 
+                    // ⚡ 楼中楼入口：固定显示在「回复」按钮右侧（对齐网易云官方布局），
+                    //   无论是否有回复都可见——展开后在此处变为「收起回复」
+                    if (showFloor) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(onClick = onToggleReplies)
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isRepliesExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = when {
+                                    isRepliesExpanded -> "收起回复"
+                                    comment.subReplyCount > 0 -> "查看回复 (${comment.subReplyCount})"
+                                    else -> "查看回复"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.weight(1f))
 
                     // —— 删除按钮（仅当前用户自己的评论）——
@@ -1121,37 +1222,9 @@ private fun CommentRow(
             }
         }
 
-        // —— 楼中楼：展开入口 + 回复列表（无需登录即可查看）——
-        // 仅当"已展开 / 服务端报告有回复 / 已加载到回复"时才显示入口，避免无回复的死交互
-        if (showFloor && (isRepliesExpanded || comment.subReplyCount > 0 || replies.isNotEmpty())) {
-            Row(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClick = onToggleReplies)
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (isRepliesExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(2.dp))
-                Text(
-                    text = when {
-                        isRepliesExpanded -> "收起回复"
-                        comment.subReplyCount > 0 -> "查看回复 (${comment.subReplyCount})"
-                        else -> "查看回复"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            if (isRepliesExpanded) {
-                if (isRepliesLoading && replies.isEmpty()) {
+        // ── 楼中楼回复列表（展开后显示） ──
+        if (showFloor && isRepliesExpanded) {
+            if (isRepliesLoading && replies.isEmpty()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1231,7 +1304,6 @@ private fun CommentRow(
                         }
                     }
                 }
-            }
         }
 
         // 评论之间用细线分割，与头像起始对齐（16dp 外边距 + 40dp 头像 + 16dp 间距）

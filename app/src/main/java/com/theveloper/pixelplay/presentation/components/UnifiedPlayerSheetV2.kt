@@ -88,6 +88,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -432,6 +433,19 @@ fun UnifiedPlayerSheetV2(
     val queueHiddenOffsetPx = queueSheetState.queueHiddenOffsetPx
     val queueSheetController = queueSheetState.queueSheetController
     val onQueueSheetHeightPxChange = queueSheetState.onQueueSheetHeightPxChange
+
+    /* ⚡ 外部请求打开播放列表（在线歌单点击入队后）：展开播放器 + 打开队列 */
+    LaunchedEffect(playerViewModel) {
+        playerViewModel.openQueueRequest.collect { requestId ->
+            // StateFlow 在订阅瞬间会重放当前值，初值 0L 并非真实请求，
+            // 否则冷启动挂载本组件时会立刻展开全屏播放器（表现为一打开 App 就全屏）
+            if (requestId <= 0L) return@collect
+            playerViewModel.showPlayer()
+            playerViewModel.expandPlayerSheet()
+            delay(450L) // 等播放器展开动画过半，队列滑入更自然
+            queueSheetController.animate(true)
+        }
+    }
 
     val castSheetState = rememberCastSheetState()
     val sheetBackAndDragState = rememberSheetBackAndDragState(

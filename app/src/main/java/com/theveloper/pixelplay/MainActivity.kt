@@ -35,6 +35,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.annotation.CallSuper
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -129,6 +130,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -195,6 +198,7 @@ import com.theveloper.pixelplay.presentation.components.UnifiedPlayerSheetV2
 import com.theveloper.pixelplay.presentation.components.calculatePlayerSheetCollapsedTargetY
 import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHeight
 import com.theveloper.pixelplay.presentation.components.resolveNavBarSurfaceHeight
+import com.theveloper.pixelplay.presentation.components.resolveNavigationBarBottomSpacing
 import com.theveloper.pixelplay.presentation.components.sanitizeNavigationBarBottomInset
 import com.theveloper.pixelplay.presentation.components.AutoUpdatePrompt
 import com.theveloper.pixelplay.presentation.navigation.AppNavigation
@@ -298,6 +302,12 @@ class MainActivity : ComponentActivity() {
     private val _pendingPlaylistNavigation = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private val _pendingShuffleAll = kotlinx.coroutines.flow.MutableStateFlow(false)
 
+    /**
+     * 系统启动画面放行条件：真实内容（onboarding / 主界面）组合完成后置 true。
+     * 仅主线程读写（pre-draw 回调与 Compose 重组同在主线程）。
+     */
+    private var isContentReady = false
+
     private val requestAllFilesAccessLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { _ ->
         // Handle the result in onResume
     }
@@ -317,6 +327,12 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 系统 splash：主内容组合完成（isContentReady）前一直显示启动图标，
+        // 启动期间的重组/布局/首帧绘制成本全部被启动画面遮盖。
+        // 必须在 super.onCreate() 之前调用。
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition { !isContentReady }
+
         android.util.Log.i("PixelPlay", "=== MainActivity.onCreate START ===")
         android.util.Log.i("PixelPlay", "Device SDK: ${android.os.Build.VERSION.SDK_INT}, Model: ${android.os.Build.MODEL}")
         LogUtils.d(this, "onCreate")
@@ -466,13 +482,15 @@ class MainActivity : ComponentActivity() {
             val permissionState = rememberMultiplePermissionsState(permissions = permissions)
             val permissionsValid = permissionState.allPermissionsGranted
 
-            // 首次启动（新手引导未完成）时不自动弹权限，由引导页的权限步骤处理
+            // 首次启动（新手引导未完成）时不自动弹权限，由引导页的权限步骤处理。
+            // initialValue = null：显式区分「偏好尚未加载」与「已加载且为 true」，
+            // 避免全新安装时在数据落位前误触发权限请求。
             val initialSetupDone by userPreferencesRepository.initialSetupDoneFlow
-                .collectAsStateWithLifecycle(initialValue = true)
+                .collectAsStateWithLifecycle(initialValue = null)
 
             // Auto-request permissions when app starts and permissions are not granted
             LaunchedEffect(Unit) {
-                if (!permissionsValid && !isBenchmarkMode && initialSetupDone) {
+                if (!permissionsValid && !isBenchmarkMode && initialSetupDone == true) {
                     permissionState.launchMultiplePermissionRequest()
                 }
             }
@@ -498,41 +516,41 @@ class MainActivity : ComponentActivity() {
                     darkTheme = useDarkTheme,
                     colorSchemePairOverride = globalColorSchemePair
                 ) {
-                    var splashFinished by remember { mutableStateOf(false) }
-
-                    LaunchedEffect(Unit) {
-                        delay(500)
-                        splashFinished = true
+                    // 偏好就绪后放行系统启动画面：主内容的组合/布局/首帧绘制
+                    // 全部发生在启动画面遮盖之下，用户感知为「图标 splash → 主界面」。
+                    LaunchedEffect(initialSetupDone) {
+                        if (initialSetupDone != null) {
+                            // 再等一帧：让同一 DataStore 的主题/配色流尽量先落位，避免首帧配色闪变
+                            withFrameNanos { }
+                            isContentReady = true
+                        }
                     }
 
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        AnimatedContent(
-                            targetState = splashFinished,
-                            transitionSpec = {
-                                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(300))
-                            },
-                            label = "SplashTransition"
-                        ) { isFinished ->
-                            if (!isFinished) {
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    PixelPlaySplashScreen()
-                                    // 预热复杂矢量图（pixelplay_base_monochrome 含超长 path，
-                                    // 首绘生成 DrawCache 需 ~600ms）。在启动 splash 阶段提前绘制，
-                                    // 避免展开播放器（封面加载前 AlbumPlaceholder）时主线程卡顿。
-                                    // 透明 tint 不影响 DrawCache 缓存内容（缓存不应用 colorFilter）。
-                                    Icon(
-                                        painter = painterResource(R.drawable.pixelplay_base_monochrome),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(86.dp),
-                                        tint = Color.Transparent
-                                    )
-                                }
-                            } else {
-                                // 首次启动：展示新手引导；完成后进入主界面
-                                if (!initialSetupDone) {
+                        // 预热复杂矢量图（pixelplay_base_monochrome 含超长 path，
+                        // 首绘生成 DrawCache 需 ~600ms）。本次首绘发生在系统启动画面
+                        // 遮盖下的第一帧，成本不可见；后续展开播放器（封面加载前
+                        // AlbumPlaceholder）不再卡顿。
+                        // 透明 tint 不影响 DrawCache 缓存内容（缓存不应用 colorFilter）。
+                        Icon(
+                            painter = painterResource(R.drawable.pixelplay_base_monochrome),
+                            contentDescription = null,
+                            modifier = Modifier.size(86.dp),
+                            tint = Color.Transparent
+                        )
+
+                        // 首次启动：展示新手引导；完成后进入主界面。
+                        // null = 偏好未加载，内容暂不组合（由系统启动画面遮盖）。
+                        Crossfade(
+                            targetState = initialSetupDone,
+                            animationSpec = tween(250),
+                            label = "ContentGate"
+                        ) { setupDone ->
+                            when (setupDone) {
+                                false -> {
                                     val onboardingScope = rememberCoroutineScope()
                                     OnboardingScreen(
                                         themePreferencesRepository = themePreferencesRepository,
@@ -543,9 +561,9 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     )
-                                } else {
-                                    MainAppContent(playerViewModel, mainViewModel)
                                 }
+                                true -> MainAppContent(playerViewModel, mainViewModel)
+                                null -> {}
                             }
                         }
 
@@ -738,47 +756,6 @@ class MainActivity : ComponentActivity() {
             dismissActionLabel = dismissActionLabel ?: fallback.dismissActionLabel,
             linkPendingMessage = linkPendingMessage ?: fallback.linkPendingMessage,
         )
-    }
-
-    @Composable
-    private fun PixelPlaySplashScreen() {
-        val colorScheme = MaterialTheme.colorScheme
-        var textVisible by remember { mutableStateOf(false) }
-
-        LaunchedEffect(Unit) {
-            delay(50)
-            textVisible = true
-        }
-
-        val textAlpha by animateFloatAsState(
-            targetValue = if (textVisible) 1f else 0f,
-            animationSpec = tween(400, easing = LinearOutSlowInEasing),
-            label = "SplashTextAlpha"
-        )
-        val textScale by animateFloatAsState(
-            targetValue = if (textVisible) 1f else 0.9f,
-            animationSpec = tween(400, easing = LinearOutSlowInEasing),
-            label = "SplashTextScale"
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(colorScheme.surface),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Xiangsu Player",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onSurface,
-                modifier = Modifier.graphicsLayer {
-                    alpha = textAlpha
-                    scaleX = textScale
-                    scaleY = textScale
-                }
-            )
-        }
     }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -1003,7 +980,7 @@ class MainActivity : ComponentActivity() {
                 BottomNavItem("Search", R.string.nav_bar_search, R.drawable.rounded_search_24, R.drawable.rounded_search_24, screen = Screen.Search),
                 centerNavItem,
                 BottomNavItem("Library", R.string.nav_bar_library, R.drawable.rounded_library_music_24, R.drawable.round_library_music_24, screen = Screen.Library),
-                BottomNavItem("Settings", R.string.settings_top_bar_title, R.drawable.rounded_settings_24, R.drawable.rounded_settings_24, screen = Screen.Settings)
+                BottomNavItem("Settings", R.string.settings_top_bar_title, R.drawable.rounded_settings_24, R.drawable.rounded_settings_fill_24, screen = Screen.Settings)
             ).filterNotNull().toImmutableList()
         }
 
@@ -1158,18 +1135,22 @@ class MainActivity : ComponentActivity() {
         // ⚡ 使用 getBottom(density) 而非 asPaddingValues().calculateBottomPadding()
         // 后者在部分设备上会返回 0，导致导航栏紧贴屏幕底部边缘
         val densityValue = LocalDensity.current
-        val systemNavBarInset = run {
+        val rawSystemNavBarInset = run {
             val px = WindowInsets.navigationBars.getBottom(densityValue)
             sanitizeNavigationBarBottomInset(with(densityValue) { px.toDp() })
         }
+        // ⚡ 用户隐藏「小白条」（手势提示条）后，系统会上报 0 inset，悬浮/默认底栏会贴到屏幕下边缘；
+        // 这里用最小间距兜底（全宽样式本就延伸到底边，不参与兜底）。
+        val systemNavBarInset = resolveNavigationBarBottomSpacing(rawSystemNavBarInset, navBarStyle)
 
         LaunchedEffect(hapticsEnabled, rootView) {
             rootView.isHapticFeedbackEnabled = hapticsEnabled
             rootView.rootView?.isHapticFeedbackEnabled = hapticsEnabled
         }
 
+        // ⚡ 水平留白只跟随系统真实 inset（不要用底部兜底间距，否则隐藏小白条后会多出横向内缩）
         val horizontalPadding = if (navBarStyle == NavBarStyle.DEFAULT) {
-            if (systemNavBarInset > 30.dp) 14.dp else systemNavBarInset
+            if (rawSystemNavBarInset > 30.dp) 14.dp else rawSystemNavBarInset
         } else {
             0.dp
         }
@@ -1933,6 +1914,8 @@ Trace.endSection()
                     isPlaying = isPlaying,
                     onNowPlayingClick = onNowPlayingClick,
                     miniPlayerVisible = miniPlayerVisible,
+                    // ⚡ 悬浮底栏同样遵守「导航栏模糊」+「禁用所有模糊」设置
+                    blurEnabled = navBarBlurEnabledState && !disableBlurAllOverState,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(

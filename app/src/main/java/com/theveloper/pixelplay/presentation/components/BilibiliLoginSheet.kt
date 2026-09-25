@@ -2,7 +2,6 @@ package com.theveloper.pixelplay.presentation.components
 
 import android.graphics.Bitmap
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -343,7 +342,7 @@ fun BilibiliLoginSheet(
         }
     }
 
-    BackHandler { onBackClick() }
+    // ⚡ 不再拦截返回键：放行系统预测返回（手势跟手），松手后关闭登录页
 
     // 极验人机验证对话框（B 站短信风控，实现对齐 PiliPlus GeetestWebviewDialog）
     activeCaptcha?.let { challenge ->

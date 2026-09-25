@@ -98,6 +98,21 @@ enum class TabletPlayerLayout(val storageKey: String) {
 }
 
 /**
+ * 全屏播放器样式。
+ * - [CLASSIC]：软件现有经典样式（轮播封面 + 三键控制 + 底部功能行）
+ * - [EXPRESSIVE]：移植自 Rhythm 的 Expressive 样式（大封面 + 超大标题 + 控制卡片两行布局）
+ */
+enum class PlayerStyle(val storageKey: String) {
+    CLASSIC("classic"),
+    EXPRESSIVE("expressive");
+
+    companion object {
+        fun fromStorageKey(key: String?): PlayerStyle =
+            entries.firstOrNull { it.storageKey == key } ?: CLASSIC
+    }
+}
+
+/**
  * 在线音源音质目录：识别音源脚本注册的 qualitys（音源实际支持的音质），
  * 而不是硬编码固定档位。用于音质设置选项动态化 + 播放时按音源向下匹配。
  */
@@ -371,7 +386,11 @@ class UserPreferencesRepository @Inject constructor(
         // 对外广播歌词：把系统媒体歌名刷新为当前歌词（应用外显示歌词）
         val EXTERNAL_LYRICS_BROADCAST_ENABLED = booleanPreferencesKey("external_lyrics_broadcast_enabled")
         val DISABLE_BLUR_ALL_OVER = booleanPreferencesKey("disable_blur_all_over")
+        // 新版顶栏样式：渐进模糊遮罩 + 收起标题胶囊（首页与各页面通用）
+        val USE_NEW_TOP_BAR = booleanPreferencesKey("use_new_top_bar")
         val NAV_BAR_BLUR_ENABLED = booleanPreferencesKey("nav_bar_blur_enabled")
+        // 播放器控制按钮无色块样式：上一曲/播放/下一曲显示为纯图标（无色块背景）
+        val TRANSPORT_CONTROLS_FLAT_STYLE = booleanPreferencesKey("transport_controls_flat_style")
         // View preferences
         val IS_GENRE_GRID_VIEW = booleanPreferencesKey("is_genre_grid_view")
         val IS_ALBUMS_LIST_VIEW = booleanPreferencesKey("is_albums_list_view")
@@ -431,6 +450,11 @@ class UserPreferencesRepository @Inject constructor(
 
         // Tablet player layout
         val TABLET_PLAYER_LAYOUT = stringPreferencesKey("tablet_player_layout")
+
+        // Full player style (classic / expressive)
+        val PLAYER_STYLE = stringPreferencesKey("player_style")
+        val PLAYER_ACCENT_BACKGROUND = booleanPreferencesKey("player_accent_background")
+        val PLAYER_MERGE_CONTROLS = booleanPreferencesKey("player_merge_controls")
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────
@@ -782,6 +806,31 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setTabletPlayerLayout(layout: TabletPlayerLayout) {
         dataStore.edit { it[PreferencesKeys.TABLET_PLAYER_LAYOUT] = layout.storageKey }
+    }
+
+    // ─── Full player style ────────────────────────────────────────────────────
+
+    val playerStyleFlow: Flow<PlayerStyle> =
+        pref { PlayerStyle.fromStorageKey(it[PreferencesKeys.PLAYER_STYLE]) }
+
+    suspend fun setPlayerStyle(style: PlayerStyle) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_STYLE] = style.storageKey }
+    }
+
+    // ─── Expressive player options（移植自 Rhythm 的样式专属设置项） ──────────
+
+    val playerAccentBackgroundFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.PLAYER_ACCENT_BACKGROUND] ?: false }
+
+    suspend fun setPlayerAccentBackground(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_ACCENT_BACKGROUND] = enabled }
+    }
+
+    val playerMergeControlsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.PLAYER_MERGE_CONTROLS] ?: false }
+
+    suspend fun setPlayerMergeControls(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_MERGE_CONTROLS] = enabled }
     }
 
     // ─── Transitions ──────────────────────────────────────────────────────────
@@ -1581,6 +1630,30 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
     suspend fun setDisableBlurAllOver(disabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.DISABLE_BLUR_ALL_OVER] = disabled
+        }
+    }
+
+    /** 新版顶栏（渐进模糊遮罩 + 收起标题胶囊），关闭后统一回退为纯色顶栏 */
+    val useNewTopBarFlow: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.USE_NEW_TOP_BAR] ?: true
+        }
+
+    suspend fun setUseNewTopBar(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.USE_NEW_TOP_BAR] = enabled
+        }
+    }
+
+    /** 播放器控制按钮无色块样式（纯图标，无色块背景） */
+    val transportControlsFlatStyleFlow: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.TRANSPORT_CONTROLS_FLAT_STYLE] ?: false
+        }
+
+    suspend fun setTransportControlsFlatStyle(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.TRANSPORT_CONTROLS_FLAT_STYLE] = enabled
         }
     }
 

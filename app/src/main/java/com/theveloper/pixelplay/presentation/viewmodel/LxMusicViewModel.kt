@@ -68,14 +68,6 @@ data class LxUiState(
     val playlistError: String? = null,
     /** 正在「保存到本地」的在线歌单 id（其列表项显示加载指示） */
     val savingPlaylistId: String? = null,
-    // ⚡ 在线歌单预览面板（点击歌单项打开，可试听）
-    val previewPlaylist: LxPlaylistInfo? = null,
-    val previewSongs: List<LxSongInfo> = emptyList(),
-    val previewLoading: Boolean = false,
-    val previewLoadingMore: Boolean = false,
-    val previewIsEnd: Boolean = true,
-    val previewError: String? = null,
-    val previewTotal: Int = 0,
 )
 
 @HiltViewModel
@@ -473,10 +465,6 @@ class LxMusicViewModel @Inject constructor(
     private var _lastPlaylistSource: String = "wy"
     private val _playlistPageSize = 15
 
-    /** 在线歌单预览面板的当前页（kg/tx 不分页，mg 内部钳制 30，kw 支持大页） */
-    private var _previewPage = 1
-    private val PREVIEW_PAGE_SIZE = 1000
-
     fun searchPlaylists(source: String? = null) {
         val kw = keyword.trim()
         if (kw.isBlank()) return
@@ -546,7 +534,7 @@ class LxMusicViewModel @Inject constructor(
     }
 
     /**
-     * 拉取在线歌单歌曲的统一入口（供「保存到本地」与「预览」共用）：
+     * 拉取在线歌单歌曲的统一入口（供「保存到本地」与「整队入列」共用）：
      * - wy / all：走网易云官方歌单详情（[LxSearchApi.getPlaylistSongs]）
      * - tx / kg / mg / kw 等内置源：走 [BuiltInSourceSearchApi.getPlaylistSongs]
      */
@@ -556,98 +544,18 @@ class LxMusicViewModel @Inject constructor(
         pageSize: Int = 1000
     ): LxSearchResult {
         val source = playlist.source.ifBlank { "wy" }
-        return if (source != "wy" && source != "all" && builtInSourceSearchApi.isSupported(source)) {
+        val result = if (source != "wy" && source != "all" && builtInSourceSearchApi.isSupported(source)) {
             builtInSourceSearchApi.getPlaylistSongs(source, playlist.id, page, pageSize)
         } else {
             searchApi.getPlaylistSongs(playlist.id, source)
         }
+        // ⚡ 统一标记音源：内置源返回的歌曲可能不带 source，落库时会被误判为网易云
+        //   （酷狗/QQ 等平台的数字 id 会被存成 netease://{假id} → 播放时永远解析失败）。
+        //   以歌单自身来源为准补齐，保证保存到本地后能走对解析链路。
+        return result.copy(list = result.list.map { it.copy(source = source) })
     }
 
-    // ── 在线歌单预览（点击歌单项打开，可试听） ─────────────────────────────
-
-    /** 打开在线歌单预览面板并加载首批歌曲 */
-    fun openPlaylistPreview(playlist: LxPlaylistInfo) {
-        if (_uiState.value.previewLoading) return
-        _uiState.value = _uiState.value.copy(
-            previewPlaylist = playlist,
-            previewSongs = emptyList(),
-            previewLoading = true,
-            previewLoadingMore = false,
-            previewIsEnd = true,
-            previewError = null,
-            previewTotal = 0
-        )
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val result = fetchPlaylistSongs(playlist, page = 1, pageSize = PREVIEW_PAGE_SIZE)
-                _uiState.value = _uiState.value.copy(
-                    previewLoading = false,
-                    previewSongs = result.list,
-                    previewIsEnd = result.isEnd || result.list.isEmpty(),
-                    previewTotal = if (result.total > 0) result.total else result.list.size,
-                    previewError = if (result.list.isEmpty()) "获取歌单歌曲失败，请稍后重试" else null
-                )
-            } catch (t: Throwable) {
-                Timber.e(t, "openPlaylistPreview failed")
-                _uiState.value = _uiState.value.copy(
-                    previewLoading = false,
-                    previewIsEnd = true,
-                    previewError = "加载失败: ${t.message ?: t.javaClass.simpleName}"
-                )
-            }
-        }
-    }
-
-    /** 预览面板滚动到底加载更多（kg/tx 一次返回全部，仅 mg/kw 需要翻页） */
-    fun loadMorePlaylistPreview() {
-        val state = _uiState.value
-        val playlist = state.previewPlaylist ?: return
-        if (state.previewLoading || state.previewLoadingMore || state.previewIsEnd) return
-        _previewPage += 1
-        val page = _previewPage
-        _uiState.value = state.copy(previewLoadingMore = true)
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val result = fetchPlaylistSongs(playlist, page = page, pageSize = PREVIEW_PAGE_SIZE)
-                val existing = _uiState.value.previewSongs.mapTo(LinkedHashSet()) { getStableSongId(it) }
-                val newItems = result.list.filter { getStableSongId(it) !in existing }
-                _uiState.value = _uiState.value.copy(
-                    previewLoadingMore = false,
-                    previewSongs = _uiState.value.previewSongs + newItems,
-                    previewIsEnd = result.isEnd || result.list.isEmpty(),
-                    previewTotal = if (result.total > 0) result.total else _uiState.value.previewSongs.size + newItems.size
-                )
-            } catch (t: Throwable) {
-                Timber.e(t, "loadMorePlaylistPreview failed")
-                _previewPage -= 1
-                _uiState.value = _uiState.value.copy(previewLoadingMore = false)
-            }
-        }
-    }
-
-    /** 关闭预览面板 */
-    fun closePlaylistPreview() {
-        _previewPage = 1
-        _uiState.value = _uiState.value.copy(
-            previewPlaylist = null,
-            previewSongs = emptyList(),
-            previewLoading = false,
-            previewLoadingMore = false,
-            previewIsEnd = true,
-            previewError = null,
-            previewTotal = 0
-        )
-    }
-
-    /** 试听预览面板中的歌曲（并整单排队） */
-    fun playPreviewSong(
-        song: LxSongInfo,
-        onOpenPlayer: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit,
-        onEnqueue: (url: String, title: String, artist: String, cover: String, songId: String) -> Unit = { _, _, _, _, _ -> }
-    ) {
-        playSong(song, onOpenPlayer)
-        enqueueSongsList(_uiState.value.previewSongs, getStableSongId(song), onEnqueue)
-    }
+    // ── 在线歌单：保存到本地 / 整队入列 ─────────────────────────────────
 
     /**
      * ⚡ 把在线歌单保存为本地歌单：拉取歌单歌曲 → 逐首写入统一媒体库（生成可播放的 Song）
@@ -673,7 +581,11 @@ class LxMusicViewModel @Inject constructor(
                 val songIds = ArrayList<String>(result.list.size)
                 result.list.forEach { song ->
                     val saved = runCatching {
-                        musicRepository.saveCloudSong(song.copy(source = song.source.ifBlank { "wy" }))
+                        // ⚡ 缺失 source 时以歌单自身来源兜底（而非一律 "wy"），防止非网易云
+                        //   平台的歌曲被误存成 netease://{id} 导致播放解析失败
+                        musicRepository.saveCloudSong(
+                            song.copy(source = song.source.ifBlank { playlist.source.ifBlank { "wy" } })
+                        )
                     }.getOrNull()
                     if (saved != null) songIds.add(saved.toString())
                 }
@@ -933,37 +845,148 @@ class LxMusicViewModel @Inject constructor(
     ) {
         if (songs.size <= 1) return
         viewModelScope.launch(Dispatchers.IO) {
-            val availableSources = runCatching {
-                engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
-            }.getOrDefault(emptyList())
             songs.filter { getStableSongId(it) != excludeId }.forEach { song ->
-                // 不解析 URL，构造 cloud://lx/{json} 占位 URI
-                val targetSource = when {
-                    song.source.isNotBlank() && (availableSources.contains(song.source) ||
-                        builtInSourceSearchApi.isSupported(song.source)) -> song.source
-                    selectedSource != "all" && (availableSources.contains(selectedSource) ||
-                        builtInSourceSearchApi.isSupported(selectedSource)) -> selectedSource
-                    else -> availableSources.firstOrNull() ?: "wy"
-                }
-                val songJson = org.json.JSONObject().apply {
-                    put("id", song.id)
-                    put("songmid", song.songmid)
-                    put("hash", song.hash)
-                    put("name", song.name)
-                    put("singer", song.singer)
-                    put("artistIds", song.artistIds)
-                    put("album", song.albumName)
-                    put("pic", song.pic)
-                    put("duration", song.duration)
-                    put("source", targetSource)
-                }
-                val encoded = java.net.URLEncoder.encode(songJson.toString(), "UTF-8")
-                    .replace("+", "%20")
-                val placeholderUrl = "cloud://lx/$encoded"
+                val placeholderUrl = buildLxPlaceholderUri(song, pickSourceForSong(song))
                 val stableId = getStableSongId(song)
                 withContext(Dispatchers.Main) {
                     onEnqueue(placeholderUrl, song.name, song.singer, song.pic, stableId)
                 }
+            }
+        }
+    }
+
+    /** 为歌曲选定解析音源：歌曲自带 → 用户所选 → 引擎已注册源兜底 */
+    private fun pickSourceForSong(song: LxSongInfo): String {
+        val availableSources = runCatching {
+            engine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
+        }.getOrDefault(emptyList())
+        return when {
+            song.source.isNotBlank() && (availableSources.contains(song.source) ||
+                builtInSourceSearchApi.isSupported(song.source)) -> song.source
+            selectedSource != "all" && (availableSources.contains(selectedSource) ||
+                builtInSourceSearchApi.isSupported(selectedSource)) -> selectedSource
+            else -> availableSources.firstOrNull() ?: "wy"
+        }
+    }
+
+    /** 构造 cloud://lx/{json} 占位 URI：由播放引擎在实际播放时才解析新鲜直链 */
+    private fun buildLxPlaceholderUri(song: LxSongInfo, targetSource: String): String {
+        val songJson = org.json.JSONObject().apply {
+            put("id", song.id)
+            put("songmid", song.songmid)
+            put("hash", song.hash)
+            put("name", song.name)
+            put("singer", song.singer)
+            put("artistIds", song.artistIds)
+            put("album", song.albumName)
+            put("pic", song.pic)
+            put("duration", song.duration)
+            put("source", targetSource)
+        }
+        val encoded = java.net.URLEncoder.encode(songJson.toString(), "UTF-8")
+            .replace("+", "%20")
+        return "cloud://lx/$encoded"
+    }
+
+    /** 队列种子：url 可为真实直链或 cloud://lx 占位 URI，由 PlayerViewModel.buildCloudSong 转为 Song */
+    data class CloudQueueSeed(
+        val url: String,
+        val title: String,
+        val artist: String,
+        val cover: String,
+        val songId: String
+    )
+
+    /**
+     * ⚡ 在线歌单 → 播放列表（模仿 lx-music 背后逻辑）：
+     * 拉取歌单全部歌曲，整单转为 cloud://lx 占位种子交给调用方入队播放——
+     * 点播时才由引擎/内置源解析真实直链。UI 直接复用软件已有的播放列表（队列）界面。
+     */
+    fun loadPlaylistToQueue(
+        playlist: LxPlaylistInfo,
+        onQueueReady: (List<CloudQueueSeed>) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(progress = 0.2f, progressLabel = "加载歌单…")
+            val songs = runCatching { fetchPlaylistSongs(playlist) }.getOrNull()?.list.orEmpty()
+            if (songs.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    _uiState.value = _uiState.value.copy(progress = null, progressLabel = null)
+                }
+                onQueueReady(emptyList())
+                return@launch
+            }
+            val seeds = songs.map { song ->
+                val source = pickSourceForSong(song)
+                CloudQueueSeed(
+                    url = buildLxPlaceholderUri(song, source),
+                    title = song.name,
+                    artist = song.singer,
+                    cover = song.pic,
+                    songId = getStableSongId(song)
+                )
+            }
+            withContext(Dispatchers.Main) {
+                _uiState.value = _uiState.value.copy(progress = null, progressLabel = null)
+                onQueueReady(seeds)
+            }
+        }
+    }
+
+    /**
+     * ⚡ 搜索结果点击播放 + 整列入队（原子建队，修复竞态）：
+     * 解析 [song] 的真实直链后，把「点击歌曲 + 其余搜索结果占位」一次性交给 [onPlayQueue]
+     * 构建完整队列。此前 playSong（playUrl 会重置队列）与 enqueueAllSearchResults（逐首
+     * 追加）并发执行，先后顺序不定导致播放列表时而只剩单曲、时而丢失部分结果。
+     */
+    fun playSearchResultWithQueue(
+        song: LxSongInfo,
+        onPlayQueue: (List<CloudQueueSeed>, Int) -> Unit
+    ) {
+        val results = _uiState.value.results
+        val index = results.indexOfFirst { getStableSongId(it) == getStableSongId(song) }.takeIf { it >= 0 } ?: 0
+        playSongListWithQueue(results, index, onPlayQueue)
+    }
+
+    /**
+     * 解析 [songs] 中 [startIndex] 这一首（persist=true 落库）后原子建队：
+     * 点击歌曲用真实直链，其余歌曲用 cloud://lx 占位懒解析。
+     * 由搜索结果、在线歌单详情页共用。
+     */
+    fun playSongListWithQueue(
+        songs: List<LxSongInfo>,
+        startIndex: Int,
+        onPlayQueue: (List<CloudQueueSeed>, Int) -> Unit
+    ) {
+        val clicked = songs.getOrNull(startIndex) ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(
+                progress = 0.2f,
+                progressLabel = "获取播放链接…",
+                loadingSongId = clicked.id
+            )
+            val resolved = resolvePlayableSong(clicked, persist = true)
+            if (resolved == null) {
+                withContext(Dispatchers.Main) {
+                    _uiState.value = _uiState.value.copy(
+                        progress = null, progressLabel = null, loadingSongId = null,
+                        error = "无法获取播放链接（音源: ${clicked.source.ifBlank { "unknown" }}），请换一首或换音源"
+                    )
+                }
+                return@launch
+            }
+            val clickedKey = getStableSongId(clicked)
+            val seeds = ArrayList<CloudQueueSeed>(songs.size)
+            // 点击的歌曲：真实直链（已落库，savedSongId 即数据库歌曲 id）
+            seeds.add(CloudQueueSeed(resolved.url, clicked.name, clicked.singer, resolved.cover, resolved.savedSongId))
+            songs.forEachIndexed { index, s ->
+                if (index == startIndex || getStableSongId(s) == clickedKey) return@forEachIndexed
+                val source = pickSourceForSong(s)
+                seeds.add(CloudQueueSeed(buildLxPlaceholderUri(s, source), s.name, s.singer, s.pic, getStableSongId(s)))
+            }
+            withContext(Dispatchers.Main) {
+                _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
+                onPlayQueue(seeds, 0)
             }
         }
     }

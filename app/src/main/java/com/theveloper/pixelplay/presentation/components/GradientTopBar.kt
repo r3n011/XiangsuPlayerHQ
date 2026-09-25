@@ -111,6 +111,7 @@ fun HomeGradientTopBar(
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
     disableBlurAllOver: Boolean = false,
+    useNewTopBar: Boolean = true,
     hearingGuardState: com.theveloper.pixelplay.data.hearingguard.HearingGuardState = com.theveloper.pixelplay.data.hearingguard.HearingGuardState(),
     onHearingGuardClick: () -> Unit = {},
     onEditHomeOrder: (() -> Unit)? = null,
@@ -120,6 +121,10 @@ fun HomeGradientTopBar(
 
     PixelPlayStatusBarStyle(color = surfaceContainerHigh)
 
+    // ⚡ 新版顶栏（渐进模糊遮罩 + 半透明底色）仅在「开启新版顶栏」且未「禁用模糊效果」时生效；
+    //   否则回退为与其它页面一致的纯色顶栏（不透明 surfaceContainerHighest）。
+    val blurStyleEnabled = useNewTopBar && !disableBlurAllOver
+
     val animatedAlpha by animateFloatAsState(
         targetValue = if (isScrolled) 1f else 0f,
         animationSpec = tween(durationMillis = 300),
@@ -128,9 +133,13 @@ fun HomeGradientTopBar(
 
     TopAppBar(
         modifier = modifier
-            .background(surfaceContainerHigh.copy(alpha = animatedAlpha * 0.4f))
+            .background(
+                surfaceContainerHigh.copy(
+                    alpha = if (blurStyleEnabled) animatedAlpha * 0.4f else animatedAlpha
+                )
+            )
             .then(
-                if (!disableBlurAllOver) {
+                if (blurStyleEnabled) {
                     Modifier.hazeEffect(
                         state = MainActivity.LocalHazeState.current,
                         style = HazeMaterials.regular()

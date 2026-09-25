@@ -168,11 +168,10 @@ fun NeteaseWebLoginScreen(
         }
     }
 
-    BackHandler(enabled = true) {
-        when {
-            webView?.canGoBack() == true -> webView?.goBack()
-            else -> showExitDialog = true
-        }
+    // ⚡ 仅在 WebView 有历史时拦截返回（页内后退）；其余状态放行系统预测返回，
+    //   与「首页卡片 → 详情页」的手势返回手感一致。顶栏返回按钮仍走退出确认对话框。
+    BackHandler(enabled = webView?.canGoBack() == true) {
+        webView?.goBack()
     }
 
     fun captureAndSubmitCookies() {

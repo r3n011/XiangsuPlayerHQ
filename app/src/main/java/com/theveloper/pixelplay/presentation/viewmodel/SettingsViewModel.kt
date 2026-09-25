@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Environment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.backup.BackupManager
@@ -36,6 +37,7 @@ import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
+import com.theveloper.pixelplay.data.preferences.PlayerStyle
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -136,6 +138,7 @@ data class SettingsUiState(
     val lyricsVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
     val playerVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
     val disableBlurAllOver: Boolean = false,
+    val useNewTopBar: Boolean = true,
     val navBarBlurEnabled: Boolean = true,
     val backupInfoDismissed: Boolean = false,
     val isDataTransferInProgress: Boolean = false,
@@ -154,6 +157,7 @@ data class SettingsUiState(
     val songFilterEnabled: Boolean = false,
     val songFilterKeywords: List<UserPreferencesRepository.SongFilterKeyword> = emptyList(),
     val showLyricsTrackInfo: Boolean = true,
+    val transportControlsFlatStyle: Boolean = false,
     val carModeEnabled: Boolean = false,
     val glyphMatrixEnabled: Boolean = false,
     val glyphMatrixDisplayMode: String = "NOW_PLAYING",
@@ -167,6 +171,9 @@ data class SettingsUiState(
     val transcodeAutoCleanupEnabled: Boolean = true,
     val transcodeCleanupThresholdPercent: Int = 80,
     val tabletPlayerLayout: TabletPlayerLayout = TabletPlayerLayout.VERTICAL,
+    val playerStyle: PlayerStyle = PlayerStyle.CLASSIC,
+    val playerAccentBackground: Boolean = false,
+    val playerMergeControls: Boolean = false,
 )
 
 data class FailedSongInfo(
@@ -215,7 +222,10 @@ private sealed interface SettingsUiUpdate {
         val showPlayerFileInfo: Boolean,
         val showPlaybackSpeedButton: Boolean,
         val pitchFollowSpeed: Boolean,
-        val tabletPlayerLayout: TabletPlayerLayout
+        val tabletPlayerLayout: TabletPlayerLayout,
+        val playerStyle: PlayerStyle,
+        val playerAccentBackground: Boolean,
+        val playerMergeControls: Boolean
     ) : SettingsUiUpdate
     
     data class Group2(
@@ -245,9 +255,11 @@ private sealed interface SettingsUiUpdate {
         val animatedLyricsBlurEnabled: Boolean,
         val animatedLyricsBlurStrength: Float,
         val disableBlurAllOver: Boolean,
+        val useNewTopBar: Boolean,
         val navBarBlurEnabled: Boolean,
         val showScrollbar: Boolean,
-        val showLyricsTrackInfo: Boolean
+        val showLyricsTrackInfo: Boolean,
+        val transportControlsFlatStyle: Boolean
     ) : SettingsUiUpdate
 }
 
@@ -484,7 +496,10 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.showPlayerFileInfoFlow,
                 userPreferencesRepository.showPlaybackSpeedButtonFlow,
                 userPreferencesRepository.pitchFollowSpeedFlow,
-                userPreferencesRepository.tabletPlayerLayoutFlow
+                userPreferencesRepository.tabletPlayerLayoutFlow,
+                userPreferencesRepository.playerStyleFlow,
+                userPreferencesRepository.playerAccentBackgroundFlow,
+                userPreferencesRepository.playerMergeControlsFlow
             ) { values ->
                 SettingsUiUpdate.Group1(
                     appRebrandDialogShown = values[0] as Boolean,
@@ -510,7 +525,10 @@ class SettingsViewModel @Inject constructor(
                     showPlayerFileInfo = values[20] as Boolean,
                     showPlaybackSpeedButton = values[21] as Boolean,
                     pitchFollowSpeed = values[22] as Boolean,
-                    tabletPlayerLayout = values[23] as TabletPlayerLayout
+                    tabletPlayerLayout = values[23] as TabletPlayerLayout,
+                    playerStyle = values[24] as PlayerStyle,
+                    playerAccentBackground = values[25] as Boolean,
+                    playerMergeControls = values[26] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -538,7 +556,10 @@ class SettingsViewModel @Inject constructor(
                         showPlayerFileInfo = update.showPlayerFileInfo,
                         showPlaybackSpeedButton = update.showPlaybackSpeedButton,
                         pitchFollowSpeed = update.pitchFollowSpeed,
-                        tabletPlayerLayout = update.tabletPlayerLayout
+                        tabletPlayerLayout = update.tabletPlayerLayout,
+                        playerStyle = update.playerStyle,
+                        playerAccentBackground = update.playerAccentBackground,
+                        playerMergeControls = update.playerMergeControls
                     )
                 }
             }
@@ -575,7 +596,9 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.navBarBlurEnabledFlow,
                 userPreferencesRepository.showScrollbarFlow,
                 userPreferencesRepository.showLyricsTrackInfoFlow,
-                userPreferencesRepository.externalLyricsBroadcastEnabledFlow
+                userPreferencesRepository.externalLyricsBroadcastEnabledFlow,
+                userPreferencesRepository.transportControlsFlatStyleFlow,
+                userPreferencesRepository.useNewTopBarFlow
             ) { values ->
                 SettingsUiUpdate.Group2(
                     keepPlayingInBackground = values[0] as Boolean,
@@ -606,7 +629,9 @@ class SettingsViewModel @Inject constructor(
                     navBarBlurEnabled = values[25] as Boolean,
                     showScrollbar = values[26] as Boolean,
                     showLyricsTrackInfo = values[27] as Boolean,
-                    externalLyricsBroadcastEnabled = values[28] as Boolean
+                    externalLyricsBroadcastEnabled = values[28] as Boolean,
+                    transportControlsFlatStyle = values[29] as Boolean,
+                    useNewTopBar = values[30] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -636,10 +661,12 @@ class SettingsViewModel @Inject constructor(
                         animatedLyricsBlurEnabled = update.animatedLyricsBlurEnabled,
                         animatedLyricsBlurStrength = update.animatedLyricsBlurStrength,
                         disableBlurAllOver = update.disableBlurAllOver,
+                        useNewTopBar = update.useNewTopBar,
                         navBarBlurEnabled = update.navBarBlurEnabled,
                         showScrollbar = update.showScrollbar,
                         showLyricsTrackInfo = update.showLyricsTrackInfo,
-                        externalLyricsBroadcastEnabled = update.externalLyricsBroadcastEnabled
+                        externalLyricsBroadcastEnabled = update.externalLyricsBroadcastEnabled,
+                        transportControlsFlatStyle = update.transportControlsFlatStyle
                     )
                 }
             }
@@ -1112,6 +1139,24 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setPlayerStyle(style: PlayerStyle) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerStyle(style)
+        }
+    }
+
+    fun setPlayerAccentBackground(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerAccentBackground(enabled)
+        }
+    }
+
+    fun setPlayerMergeControls(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerMergeControls(enabled)
+        }
+    }
+
     fun setShowScrollbar(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setShowScrollbar(enabled)
@@ -1358,9 +1403,21 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setUseNewTopBar(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setUseNewTopBar(enabled)
+        }
+    }
+
     fun setNavBarBlurEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setNavBarBlurEnabled(enabled)
+        }
+    }
+
+    fun setTransportControlsFlatStyle(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTransportControlsFlatStyle(enabled)
         }
     }
 
@@ -1573,7 +1630,8 @@ class SettingsViewModel @Inject constructor(
                 val intent = android.content.Intent(context, com.theveloper.pixelplay.data.service.http.WebRemoteServerService::class.java)
                 intent.action = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.ACTION_UPDATE_THEME
                 intent.putExtra("themeColor", color)
-                context.startForegroundService(intent)
+                // API 26 以下没有 Context.startForegroundService，统一用 ContextCompat 兜底
+                ContextCompat.startForegroundService(context, intent)
             }
         }
     }
@@ -1583,7 +1641,8 @@ class SettingsViewModel @Inject constructor(
         intent.action = com.theveloper.pixelplay.data.service.http.WebRemoteServerService.ACTION_START_SERVER
         intent.putExtra("audioOnDevice", isWebRemoteAudioOnDevice.value)
         intent.putExtra("themeColor", webRemoteThemeColor.value)
-        context.startForegroundService(intent)
+        // API 26 以下没有 Context.startForegroundService，统一用 ContextCompat 兜底
+        ContextCompat.startForegroundService(context, intent)
     }
 
     fun stopWebRemoteServer() {

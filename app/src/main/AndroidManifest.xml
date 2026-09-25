@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- 友盟移动统计 U-App：用于采集设备标识与网络状态 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission
@@ -62,10 +64,19 @@
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
+        <!-- 友盟移动统计 U-App 配置 -->
+        <meta-data
+            android:name="UMENG_APPKEY"
+            android:value="6ab67c9a6545637cd6f19cae" />
+        <meta-data
+            android:name="UMENG_CHANNEL"
+            android:value="GooglePlay" />
         <activity
-            android:name=".SplashActivity"
+            android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.PixelPlay.Simple"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.App.Starting"
+            android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -73,16 +84,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.APP_MUSIC" />
             </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.PixelPlay"
-            android:launchMode="singleTop"
-            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
-            android:windowSoftInputMode="adjustResize">
+            <!-- 友盟埋点验证 scheme：必须使用独立的 intent-filter，且 scheme 固定为 "um." + AppKey，不可修改 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="um.6ab67c9a6545637cd6f19cae" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MUSIC_PLAYER" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -113,21 +121,21 @@
             android:name=".presentation.telegram.auth.TelegramLoginActivity"
             android:exported="false"
             android:label="Telegram Login"
-            android:theme="@style/Theme.PixelPlay"
+            android:theme="@style/Theme.PixelPlay.Login"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".presentation.bilibili.auth.BilibiliLoginActivity"
             android:exported="false"
             android:label="Bilibili Login"
-            android:theme="@style/Theme.PixelPlay"
+            android:theme="@style/Theme.PixelPlay.Login"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".presentation.netease.auth.NeteaseLoginActivity"
             android:exported="false"
             android:label="Netease Login"
-            android:theme="@style/Theme.PixelPlay"
+            android:theme="@style/Theme.PixelPlay.Login"
             android:windowSoftInputMode="adjustResize" />
 
         <activity

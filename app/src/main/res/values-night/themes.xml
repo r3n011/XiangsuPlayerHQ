@@ -6,10 +6,10 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <!-- Splash screen theme can still extend Theme.SplashScreen -->
+    <!-- 与 values/themes.xml 的 Theme.App.Starting 保持一致（DayNight 基类自动解析暗色背景） -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-<!--        <item name="windowSplashScreenBackground">@color/pixel_play_purple_dark</item>-->
-<!--        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>-->
-<!--        <item name="postSplashScreenTheme">@style/Theme.PixelPlay</item>-->
+        <item name="windowSplashScreenBackground">?android:attr/colorBackground</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.PixelPlay</item>
     </style>
 </resources>

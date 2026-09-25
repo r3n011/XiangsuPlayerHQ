@@ -73,6 +73,8 @@ class PlaybackStateHolder @Inject constructor(
         // UI 的 currentSong 与播放器当前媒体错位容忍窗口：交叉淡化/预加载期间
         // 短暂错位属正常，超过该窗口仍未恢复则强制触发上层重同步，防止进度条冻结。
         private const val MEDIA_MISMATCH_RESYNC_MS = 1500L
+        /** 错位持续超过该窗口且重同步无效时，放弃阻塞、按播放器实际位置采样 */
+        private const val MEDIA_MISMATCH_OVERRIDE_MS = 2L * MEDIA_MISMATCH_RESYNC_MS
     }
 
     private var scope: CoroutineScope? = null
@@ -123,6 +125,7 @@ class PlaybackStateHolder @Inject constructor(
     // 进度自愈：UI 的 currentSong 与播放器当前媒体长时间错位时，触发上层
     // syncDisplayedMediaItemIfChanged 重新对齐，避免进度条因 media mismatch 永久冻结。
     private var mediaMismatchSinceMs = 0L
+    private var mediaMismatchResyncRequested = false
     private var onUiMediaDesync: (() -> Unit)? = null
 
     fun setUiMediaDesyncHandler(handler: (() -> Unit)?) {
@@ -256,7 +259,22 @@ class PlaybackStateHolder @Inject constructor(
             dualPlayerEngine.masterPlayer
         }
     }
-    
+
+    /**
+     * 本地播放器时间线快照：(mediaItemCount, currentMediaItemIndex)。
+     * 用于「上下曲失灵自愈」判断：Cast 活跃或播放器不可用时返回 null（跳过修复逻辑）。
+     */
+    fun localTimelineSnapshot(): Pair<Int, Int>? {
+        if (castStateHolder.castSession.value?.remoteMediaClient != null) return null
+        return try {
+            val player = activeLocalPlayer()
+            val count = player.mediaItemCount
+            if (count >= 0) Pair(count, player.currentMediaItemIndex) else null
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
     /**
      * Update player state. The update lambda receives the current state and returns a new state.
      * Uses MutableStateFlow.update for atomic, thread-safe updates.
@@ -745,13 +763,19 @@ class PlaybackStateHolder @Inject constructor(
                         if (hasMediaMismatch) {
                             // ⚡ 有界错位（治本）：短暂错位（交叉淡化/预加载窗口）跳过该 tick；
                             // 超过 MEDIA_MISMATCH_RESYNC_MS 仍未恢复 → 说明 UI 的 currentSong
-                            // 与播放器不同步，强制触发上层重同步（syncDisplayedMediaItemIfChanged），
-                            // 避免进度条因 mismatch 永久冻结。
+                            // 与播放器不同步，强制触发上层重同步（syncDisplayedMediaItemIfChanged）。
+                            // 再超过 MEDIA_MISMATCH_OVERRIDE_MS 仍错位（重同步无法纠正，例如
+                            // 文件管理器拉起播放的外部歌曲不在媒体库中）→ 放弃阻塞，按播放器
+                            // 实际位置继续采样——宁可短暂与 UI 歌名不一致，也不能让进度条永久冻结。
                             val nowMs = SystemClock.elapsedRealtime()
                             if (mediaMismatchSinceMs == 0L) {
                                 mediaMismatchSinceMs = nowMs
-                            } else if (nowMs - mediaMismatchSinceMs >= MEDIA_MISMATCH_RESYNC_MS) {
-                                mediaMismatchSinceMs = 0L
+                                mediaMismatchResyncRequested = false
+                            }
+                            if (!mediaMismatchResyncRequested &&
+                                nowMs - mediaMismatchSinceMs >= MEDIA_MISMATCH_RESYNC_MS
+                            ) {
+                                mediaMismatchResyncRequested = true
                                 Timber.tag(TAG).w(
                                     "Media mismatch persisted (%s vs %s), requesting UI re-sync",
                                     visibleSong?.id,
@@ -759,10 +783,14 @@ class PlaybackStateHolder @Inject constructor(
                                 )
                                 onUiMediaDesync?.invoke()
                             }
-                            delay(tickMs)
-                            continue
+                            if (nowMs - mediaMismatchSinceMs < MEDIA_MISMATCH_OVERRIDE_MS) {
+                                delay(tickMs)
+                                continue
+                            }
+                            // fall through：按播放器实际位置采样
                         } else {
                             mediaMismatchSinceMs = 0L
+                            mediaMismatchResyncRequested = false
                         }
 
                         val currentPosition = controller.currentPosition.coerceAtLeast(0L)

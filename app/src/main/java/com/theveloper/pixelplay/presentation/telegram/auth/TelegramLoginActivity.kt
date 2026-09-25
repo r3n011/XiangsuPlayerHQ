@@ -189,7 +189,11 @@ fun TelegramLoginScreen(
         resolveTelegramVisualStep(authState, uiState.phoneEditMode)
     }
 
-    BackHandler(enabled = true) {
+    // ⚡ 仅在「验证码 / 两步验证」步骤拦截返回（回退到手机号输入）；其余状态放行系统
+    //   预测返回，与「首页卡片 → 详情页」的手势返回手感一致
+    val interceptBackForStep = authState is TdApi.AuthorizationStateWaitCode ||
+        authState is TdApi.AuthorizationStateWaitPassword
+    BackHandler(enabled = interceptBackForStep) {
         if (!viewModel.handleBackNavigation(authState)) {
             onFinish()
         }

@@ -278,15 +278,17 @@ class PersonalFmApi @Inject constructor(
      * @param cookie 用户的网易云 cookie（必须登录才能发送评论）
      * @return 是否发送成功
      */
-    suspend fun sendComment(type: Int, id: Long, content: String, cookie: String): Result<Boolean> {
+    suspend fun sendComment(type: Int, id: Long, content: String, cookie: String): Result<Long> {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             if (cookie.isBlank()) {
-                return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法发送评论"))
+                return@withContext Result.failure<Long>(IllegalStateException("网易云未登录，无法发送评论"))
             }
             if (content.isBlank()) {
-                return@withContext Result.failure<Boolean>(IllegalArgumentException("评论内容不能为空"))
+                return@withContext Result.failure<Long>(IllegalArgumentException("评论内容不能为空"))
             }
             // 官方接口优先（走 App 自带 weapi 客户端）
+            // ⚡ 返回新评论的 commentId（官方响应 data.commentId），供评论页即时插入展示；
+            //   0 表示成功但响应里没有 id
             val primary = try {
                 Timber.d("$TAG: sendComment type=$type id=$id content=${content.take(20)}")
                 syncCookieToSession(cookie)
@@ -296,17 +298,29 @@ class PersonalFmApi @Inject constructor(
                     mapOf("threadId" to threadOf(type, id), "content" to content),
                 )
                 val success = root != null && root.optInt("code", -1) == 200
-                Timber.d("$TAG: sendComment type=$type id=$id success=$success code=${root?.optInt("code")}")
-                Result.success(success)
+                val newId = extractNewCommentId(root)
+                Timber.d("$TAG: sendComment type=$type id=$id success=$success code=${root?.optInt("code")} newId=$newId")
+                if (success) Result.success(newId)
+                else Result.failure(IllegalStateException("官方接口返回 code=${root?.optInt("code")}"))
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: sendComment 官方接口失败，尝试 young1024 兜底 type=$type id=$id")
                 Result.failure(t)
             }
-            if (primary.getOrNull() == true) return@withContext primary
+            if (primary.isSuccess) return@withContext primary
 
-            // young1024 兜底：/comment?t=1&type=x&id=x&content=x
-            fetchYoung1024CommentAction(type, id, t = 1, content = content, cookie = cookie)
+            // young1024 兜底：/comment?t=1&type=x&id=x&content=x（响应不含评论 id，返回 0）
+            val fallback = fetchYoung1024CommentAction(type, id, t = 1, content = content, cookie = cookie)
+            if (fallback.getOrDefault(false)) Result.success(0L)
+            else Result.failure(fallback.exceptionOrNull() ?: IllegalStateException("发送评论失败"))
         }
+    }
+
+    /** 从发评/回复响应中提取新评论的 commentId（兼容 data.commentId / data.commentInfo.commentId） */
+    private fun extractNewCommentId(root: org.json.JSONObject?): Long {
+        if (root == null) return 0L
+        val data = root.optJSONObject("data") ?: return 0L
+        return data.optLong("commentId", 0L).takeIf { it > 0 }
+            ?: data.optJSONObject("commentInfo")?.optLong("commentId", 0L) ?: 0L
     }
 
     /**
@@ -975,10 +989,14 @@ class PersonalFmApi @Inject constructor(
                                     val userObj = dataObj?.optJSONObject("user")
 
                                     // 头像：先从 artist 查找，再从 user 查找
+                                    // ⚡ /artist/head/info/get 的 artist 对象使用 avatar / cover 字段
+                                    //   （没有 picUrl/img1v1Url），此前漏读 → 在线歌手头像永远为空
                                     val picUrl = sequenceOf(
                                         artistObj.optString("picUrl"),
                                         artistObj.optString("img1v1Url"),
                                         artistObj.optString("avatarUrl"),
+                                        artistObj.optString("avatar"),
+                                        artistObj.optString("cover"),
                                         userObj?.optString("avatarUrl") ?: "",
                                         userObj?.optString("img1v1Url") ?: "",
                                         userObj?.optJSONObject("avatarDetail")?.optString("userImageUrl") ?: ""

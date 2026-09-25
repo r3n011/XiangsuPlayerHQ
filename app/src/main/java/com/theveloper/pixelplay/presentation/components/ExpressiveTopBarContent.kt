@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -52,6 +53,7 @@ fun ExpressiveTopBarContent(
     collapsedTitleEndPadding: Dp = 24.dp,
     expandedTitleEndPadding: Dp = 24.dp,
     containerHeightRange: Pair<Dp, Dp> = 88.dp to 56.dp,
+    // ⚡ 收起态标题垂直位置：-1=贴顶（旧样式），0=垂直居中（毛玻璃胶囊样式用）
     collapsedTitleVerticalBias: Float = -1f,
     titleStyle: TextStyle = MaterialTheme.typography.headlineMedium,
     titleScaleRange: Pair<Float, Float> = 1.2f to 0.8f,
@@ -66,17 +68,23 @@ fun ExpressiveTopBarContent(
     enableExpandedTitleWidthCompression: Boolean = true,
     titleWidthCompressionThreshold: Dp? = null,
     titleMinWidthAxis: Float = DefaultTopBarTitleCompressedWidthAxis,
-    supportingContent: (@Composable () -> Unit)? = null
+    supportingContent: (@Composable () -> Unit)? = null,
+    // ⚡ 收起态标题胶囊：collapseFraction 后段在标题背后淡入一个胶囊底（毛玻璃顶栏样式用）
+    collapsedTitleCapsule: Boolean = false
 ) {
     val clampedFraction = collapseFraction.coerceIn(0f, 1f)
     val titleScale = lerp(titleScaleRange.first, titleScaleRange.second, clampedFraction)
     val titlePaddingStart = lerp(expandedTitleStartPadding, collapsedTitleStartPadding, clampedFraction)
     val titlePaddingEnd = lerp(expandedTitleEndPadding, collapsedTitleEndPadding, clampedFraction)
-    val titleVerticalBias = lerp(1f, collapsedTitleVerticalBias, clampedFraction)
-    val animatedTitleAlignment = BiasAlignment(horizontalBias = -1f, verticalBias = titleVerticalBias)
+    val titleVerticalBiasTarget = collapsedTitleVerticalBias
     val titleContainerHeight = lerp(containerHeightRange.first, containerHeightRange.second, clampedFraction)
     val subtitleAlpha = if (fadeSubtitleOnCollapse) 1f - clampedFraction else 1f
     val subtitleMaxLines = if (clampedFraction < 0.5f) expandedSubtitleMaxLines else collapsedSubtitleMaxLines
+    // ⚡ 胶囊淡入：收起最后 45% 行程内出现（0.55→1.0），带轻微下坠回正（ease-out）
+    val capsuleRaw = ((clampedFraction - 0.55f) / 0.45f).coerceIn(0f, 1f)
+    val capsuleAlpha = if (collapsedTitleCapsule) capsuleRaw * capsuleRaw * (3f - 2f * capsuleRaw) else 0f
+    // ⚡ 胶囊底色与返回按钮（FilledIconButton surfaceContainerLow）一致
+    val capsuleColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.94f * capsuleAlpha)
     val titleFontSize = (titleFontSizeRange?.let { lerp(it.first, it.second, clampedFraction) } ?: titleStyle.fontSize) * titleScale
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
@@ -87,6 +95,22 @@ fun ExpressiveTopBarContent(
     val titleFontWeight = FontWeight.Bold
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // ⚡ 收起态（胶囊样式）标题容器中心对齐返回按钮中心（top 4dp + 40dp/2 = 24dp）：
+        //   反解 BiasAlignment 垂直偏移（offset = (parentH - childH) * (bias+1) / 2）。
+        //   parentH 为 statusBarsPadding 之后的实际可用高度（如收起顶栏 64dp+状态栏时此处为 64dp）。
+        val resolvedCollapsedTitleVerticalBias = if (collapsedTitleCapsule) {
+            val collapsedChildHeight = containerHeightRange.second
+            val denominator = maxHeight - collapsedChildHeight
+            if (denominator > 1.dp) {
+                2f * ((24.dp - collapsedChildHeight / 2) / denominator) - 1f
+            } else {
+                titleVerticalBiasTarget
+            }
+        } else {
+            titleVerticalBiasTarget
+        }
+        val titleVerticalBias = lerp(1f, resolvedCollapsedTitleVerticalBias, clampedFraction)
+        val animatedTitleAlignment = BiasAlignment(horizontalBias = -1f, verticalBias = titleVerticalBias)
         val availableTitleWidthPx = with(density) {
             (maxWidth - titlePaddingStart - titlePaddingEnd).coerceAtLeast(0.dp).roundToPx()
         }
@@ -148,11 +172,27 @@ fun ExpressiveTopBarContent(
                     color = contentColor,
                     maxLines = maxLines,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.graphicsLayer {
-                        // Removed scaleX/scaleY scaling from graphicsLayer to allow proper ellipsis during layout.
-                        // Scaling font size directly ensures Text component is measured with correct constraints.
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) // Scale from left center
-                    }
+                    modifier = Modifier
+                        // ⚡ 收起态胶囊底：绘制在标题背后、向外扩 12/6dp，不影响文本布局
+                        .drawBehind {
+                            if (capsuleAlpha > 0.01f) {
+                                val padH = 13.dp.toPx()
+                                val padV = 6.dp.toPx()
+                                val w = size.width + padH * 2f
+                                val h = size.height + padV * 2f
+                                drawRoundRect(
+                                    color = capsuleColor,
+                                    topLeft = androidx.compose.ui.geometry.Offset(-padH, -padV),
+                                    size = androidx.compose.ui.geometry.Size(w, h),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2f, h / 2f)
+                                )
+                            }
+                        }
+                        .graphicsLayer {
+                            // Removed scaleX/scaleY scaling from graphicsLayer to allow proper ellipsis during layout.
+                            // Scaling font size directly ensures Text component is measured with correct constraints.
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) // Scale from left center
+                        }
                 )
                 if (!subtitle.isNullOrEmpty()) {
                     Text(

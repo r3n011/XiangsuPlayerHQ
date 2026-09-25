@@ -47,11 +47,10 @@ internal fun statusColor(colors: ColorScheme, progress: Float): Color = when {
 }
 
 /**
- * 听力保护胶囊组件
+ * 听力保护按钮（首页顶栏）
  *
- * 未配置时显示 "像素卫士"（盾牌 + 文字）
- * 已配置时显示 "盾牌图标 + 剩余分钟"，进度以背景填充呈现
- * （类似 Mini player 的背景填充进度条：左侧直角、右侧小圆角，低透明度铺底）
+ * 与顶栏其它按钮（FilledIconButton：40dp 圆形 + surfaceContainerHigh 底）样式一致，
+ * 纯图标（无文字）；听力进度以背景填充呈现（保留状态色）。
  */
 @Composable
 fun HearingGuardCapsule(
@@ -61,7 +60,6 @@ fun HearingGuardCapsule(
 ) {
     val surfaceHigh = MaterialTheme.colorScheme.surfaceContainerHigh
     val onSurface = MaterialTheme.colorScheme.onSurface
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
     val progress = state.dailyProgress.coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
@@ -72,19 +70,18 @@ fun HearingGuardCapsule(
     val shieldColor by animateColorAsState(
         targetValue = statusColor(MaterialTheme.colorScheme, progress),
         animationSpec = tween(400),
-        label = "capsule_icon_color"
+        label = "capsule_fill_color"
     )
 
     Box(
         modifier = modifier
-            .height(40.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(surfaceHigh)
             .alpha(if (state.isConfigured && !state.enabled) 0.5f else 1f)
             .clickable(onClick = onClick)
             .drawBehind {
-                // 背景填充进度：两端都使用正圆端（半径 = 高度一半），
-                // 贴合胶囊的 CircleShape 端部，避免左直角/小圆角破坏正圆观感
+                // 背景填充进度：端部半径 = 高度一半，贴合 CircleShape 轮廓
                 if (state.isConfigured && animatedProgress > 0f) {
                     val w = size.width
                     val h = size.height
@@ -96,48 +93,14 @@ fun HearingGuardCapsule(
                         cornerRadius = CornerRadius(h / 2f, h / 2f)
                     )
                 }
-            }
-            .padding(horizontal = 10.dp),
+            },
         contentAlignment = Alignment.Center
     ) {
-        if (!state.isConfigured) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Shield,
-                    contentDescription = null,
-                    tint = statusColor(MaterialTheme.colorScheme, 0f),
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "像素卫士",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = onSurface,
-                    fontSize = 11.sp
-                )
-            }
-        } else {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Shield,
-                    contentDescription = null,
-                    tint = shieldColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "${state.remainingMinutes}min",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = onSurfaceVariant,
-                    fontSize = 10.sp
-                )
-            }
-        }
+        Icon(
+            imageVector = Icons.Rounded.Shield,
+            contentDescription = null,
+            tint = onSurface,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }

@@ -1,6 +1,5 @@
 package com.theveloper.pixelplay.data.github
 
-import com.theveloper.pixelplay.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -51,8 +50,9 @@ class UpdateChecker @Inject constructor() {
 
                 connection.requestMethod = "GET"
                 connection.addRequestProperty("Accept", "application/vnd.github.v3+json")
-                if (BuildConfig.GITHUB_TOKEN.isNotBlank()) {
-                    connection.addRequestProperty("Authorization", "token ${BuildConfig.GITHUB_TOKEN}")
+                val githubToken = GitHubToken.value
+                if (githubToken.isNotBlank()) {
+                    connection.addRequestProperty("Authorization", "token $githubToken")
                     Timber.d("Using GitHub PAT for authenticated release check")
                 }
                 connection.connectTimeout = 15000
@@ -116,8 +116,9 @@ class UpdateChecker @Inject constructor() {
 
                 connection.requestMethod = "GET"
                 connection.addRequestProperty("Accept", "application/vnd.github.v3+json")
-                if (BuildConfig.GITHUB_TOKEN.isNotBlank()) {
-                    connection.addRequestProperty("Authorization", "token ${BuildConfig.GITHUB_TOKEN}")
+                val githubToken = GitHubToken.value
+                if (githubToken.isNotBlank()) {
+                    connection.addRequestProperty("Authorization", "token $githubToken")
                 }
                 connection.connectTimeout = 15000
                 connection.readTimeout = 15000

@@ -1,9 +1,9 @@
 package com.theveloper.pixelplay.data.sourcemarket
 
 import android.content.Context
-import com.theveloper.pixelplay.BuildConfig
 import com.theveloper.pixelplay.data.github.GitHubRelease
 import com.theveloper.pixelplay.data.github.GitHubReleaseAsset
+import com.theveloper.pixelplay.data.github.GitHubToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -56,8 +56,9 @@ class SourceMarketRepository @Inject constructor(
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.addRequestProperty("Accept", "application/vnd.github.v3+json")
-            if (BuildConfig.GITHUB_TOKEN.isNotBlank()) {
-                connection.addRequestProperty("Authorization", "token ${BuildConfig.GITHUB_TOKEN}")
+            val githubToken = GitHubToken.value
+            if (githubToken.isNotBlank()) {
+                connection.addRequestProperty("Authorization", "token $githubToken")
             }
             connection.connectTimeout = 15_000
             connection.readTimeout = 15_000

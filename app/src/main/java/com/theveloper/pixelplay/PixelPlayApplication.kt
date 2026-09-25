@@ -14,6 +14,7 @@ import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.memory.MemoryCache
+import com.theveloper.pixelplay.data.analytics.UmengAnalytics
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnosticsController
 import com.theveloper.pixelplay.data.lx.LxJsEngine
@@ -154,6 +155,17 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 }
             } catch (t: Throwable) {
                 android.util.Log.e("PixelPlay", "Failed to init Timber: ${t.message}")
+            }
+
+            // 友盟移动统计 U-App：preInit 必须最早执行且在主线程，随后立即完成正式初始化与埋点上报。
+            // 注意：当前工程没有隐私政策同意流程，故紧随 preInit 调用 init；
+            // 若后续引入隐私门控，应把 init 挪到用户同意之后（preInit 可保留在此处）。
+            try {
+                UmengAnalytics.preInit(this)
+                UmengAnalytics.init(this)
+                UmengAnalytics.sendOnboardingTestEvent(this)
+            } catch (t: Throwable) {
+                android.util.Log.e("PixelPlay", "Failed to init Umeng analytics: ${t.message}")
             }
 
             // 网易云本地 SDK 初始化（App 进程内直接调官方接口，无需外部代理服务器）

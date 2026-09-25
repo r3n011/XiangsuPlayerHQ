@@ -72,6 +72,23 @@ internal fun sanitizeNavigationBarBottomInset(systemNavBarInset: Dp): Dp {
     return systemNavBarInset.coerceIn(0.dp, MaxNavigationBarBottomInset)
 }
 
+// ⚡ 用户隐藏系统「小白条」（手势提示条）后，navigationBars inset 会上报为 0，
+// 底部导航栏随即贴到屏幕下边缘；这里给出兜底间距，保持导航栏与屏幕底边的留白。
+internal val MinNavigationBarBottomSpacing = 16.dp
+
+/**
+ * 隐藏「小白条」导致 inset 为 0 时的兜底：非全宽样式使用最小间距，
+ * 全宽样式（FULL_WIDTH）本就贴底，保持原值。
+ */
+internal fun resolveNavigationBarBottomSpacing(
+    systemNavBarInset: Dp,
+    navBarStyle: String
+): Dp = when {
+    navBarStyle == NavBarStyle.FULL_WIDTH -> systemNavBarInset
+    systemNavBarInset > 0.dp -> systemNavBarInset
+    else -> MinNavigationBarBottomSpacing
+}
+
 internal fun calculatePlayerSheetCollapsedTargetY(
     containerHeightPx: Float,
     collapsedContentHeightPx: Float,
@@ -128,7 +145,13 @@ private fun PlayerInternalNavigationItemsRow(
     ).let { inset ->
         // Some devices report 0 inset when the system nav bar exists.
         // Use a minimum fallback to prevent items sticking to the screen edge.
-        if (inset <= 0.dp && bottomBarPadding > 0.dp) bottomBarPadding else inset
+        // ⚡ 隐藏「小白条」时 inset 与 bottomBarPadding 都可能为 0（全宽样式），
+        // 此时使用最小兜底间距，避免导航项贴到屏幕下边缘。
+        when {
+            inset > 0.dp -> inset
+            bottomBarPadding > 0.dp -> bottomBarPadding
+            else -> MinNavigationBarBottomSpacing
+        }
     }
     val innerRowPadding = (navBarInsetPadding - bottomBarPadding).coerceAtLeast(0.dp)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
@@ -301,7 +324,8 @@ fun PlayerInternalNavigationBar(
     currentSong: Song? = null,
     isPlaying: Boolean = false,
     onNowPlayingClick: () -> Unit = {},
-    miniPlayerVisible: Boolean = false
+    miniPlayerVisible: Boolean = false,
+    blurEnabled: Boolean = true
 ) {
     // 悬浮底栏模式：使用 FloatingNavBarContent
     if (navBarStyle == NavBarStyle.FLOATING) {
@@ -311,6 +335,7 @@ fun PlayerInternalNavigationBar(
             currentRoute = currentRoute,
             currentSong = currentSong,
             isPlaying = isPlaying,
+            blurEnabled = blurEnabled,
             onSearchIconDoubleTap = onSearchIconDoubleTap,
             onCenterNavClick = onCenterNavClick,
             onNowPlayingClick = onNowPlayingClick,

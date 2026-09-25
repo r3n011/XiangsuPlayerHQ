@@ -15,6 +15,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
@@ -24,9 +26,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import com.theveloper.pixelplay.ui.theme.PixelPlayStatusBarStyle
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.preferences.dataStore
+import com.theveloper.pixelplay.MainActivity
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun CollapsibleCommonTopBar(
@@ -64,22 +74,62 @@ fun CollapsibleCommonTopBar(
     // solidAlpha goes from 0 to 1 as collapseFraction goes from 0 to 0.5 (approx).
     // Actually GenreDetailScreen uses: (collapseFraction * 2f).coerceIn(0f, 1f)
     val solidAlpha = (collapseFraction * 2f).coerceIn(0f, 1f)
-    
-    val backgroundColor = containerColor ?: MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = solidAlpha)
+
+    // ⚡ 顶栏风格：同时满足「开启新版顶栏」且未开启「禁用模糊」时，使用首页同款渐进模糊遮罩
+    //   + 收起标题胶囊；否则回退为原有纯色遮罩样式。
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val blurPrefs by remember(context) {
+        context.dataStore.data
+            .map { prefs ->
+                (prefs[booleanPreferencesKey("disable_blur_all_over")] ?: false) to
+                    (prefs[booleanPreferencesKey("use_new_top_bar")] ?: true)
+            }
+    }.collectAsStateWithLifecycle(initialValue = false to true)
+    val blurStyleEnabled = blurPrefs.second && !blurPrefs.first
+
+    // ⚡ 胶囊会在标题文字左侧外扩 13dp：启用胶囊时加大收起标题起始 padding，
+    //   保证胶囊与返回按钮（start 12dp + 40dp，右缘约 52dp）之间保有 ≥14dp 间隔
+    val effectiveCollapsedTitleStartPadding = if (blurStyleEnabled) {
+        (collapsedTitleStartPadding + 14.dp).coerceAtLeast(80.dp)
+    } else {
+        collapsedTitleStartPadding
+    }
+
+    val backgroundColor = when {
+        containerColor != null -> containerColor
+        blurStyleEnabled -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = solidAlpha * 0.35f)
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = solidAlpha)
+    }
     val statusBarFallbackColor = backgroundColor.compositeOver(MaterialTheme.colorScheme.surface)
 
     if (syncStatusBarWithContainer) {
         PixelPlayStatusBarStyle(color = statusBarFallbackColor)
     }
     // We can also fade the content color if we want, but usually onSurface is fine.
-    // GenreDetail interpolates content color, but for standard screens onSurface is usually correct for both states 
+    // GenreDetail interpolates content color, but for standard screens onSurface is usually correct for both states
     // (transparent surface vs surfaceContainer).
-    
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(headerHeight)
             .background(backgroundColor)
+            .then(
+                // ⚡ 渐进模糊遮罩（与 HomeGradientTopBar 同款）：随收起进度淡入
+                if (blurStyleEnabled && solidAlpha > 0.02f) {
+                    Modifier.hazeEffect(
+                        state = MainActivity.LocalHazeState.current,
+                        style = HazeMaterials.regular()
+                    ) {
+                        progressive = HazeProgressive.verticalGradient(
+                            startIntensity = 1f,
+                            endIntensity = 0f
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .zIndex(5f)
     ) {
         Box(
@@ -120,8 +170,9 @@ fun CollapsibleCommonTopBar(
                 title = title,
                 collapseFraction = collapseFraction,
                 modifier = Modifier.fillMaxSize(),
-                subtitle = subtitle,
-                collapsedTitleStartPadding = collapsedTitleStartPadding,
+                // ⚡ 毛玻璃样式：隐藏副标题（否则副标题会把胶囊顶得上移），主标题垂直居中
+                subtitle = if (blurStyleEnabled) null else subtitle,
+                collapsedTitleStartPadding = effectiveCollapsedTitleStartPadding,
                 expandedTitleStartPadding = expandedTitleStartPadding,
                 collapsedTitleEndPadding = collapsedTitleEndPadding,
                 expandedTitleEndPadding = expandedTitleEndPadding,
@@ -139,7 +190,9 @@ fun CollapsibleCommonTopBar(
                 enableExpandedTitleWidthCompression = enableExpandedTitleWidthCompression,
                 titleWidthCompressionThreshold = titleWidthCompressionThreshold,
                 titleMinWidthAxis = titleMinWidthAxis,
-                supportingContent = supportingContent
+                supportingContent = supportingContent,
+                collapsedTitleCapsule = blurStyleEnabled,
+                collapsedTitleVerticalBias = if (blurStyleEnabled) 0f else -1f
             )
         }
     }

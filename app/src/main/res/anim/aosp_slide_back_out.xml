@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 返回时当前页退出：向右滑出全屏 + 淡出（对齐 aospSharedAxisPopExit，350ms） -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="true"
+    android:interpolator="@android:interpolator/accelerate_cubic">
+    <translate
+        android:fromXDelta="0"
+        android:toXDelta="100%"
+        android:duration="350" />
+    <alpha
+        android:fromAlpha="1.0"
+        android:toAlpha="0.0"
+        android:duration="350" />
+</set>

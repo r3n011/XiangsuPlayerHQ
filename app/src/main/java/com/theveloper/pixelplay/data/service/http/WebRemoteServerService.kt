@@ -194,6 +194,8 @@ class WebRemoteServerService : LifecycleService() {
     }
 
     private fun createNotificationChannel() {
+        // NotificationChannel 是 API 26 才有的类，低版本机型（如 Android 7.1）直接跳过，避免崩溃
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Web Remote",

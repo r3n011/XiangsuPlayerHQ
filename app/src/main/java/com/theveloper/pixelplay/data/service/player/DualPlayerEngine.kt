@@ -435,7 +435,15 @@ class DualPlayerEngine @Inject constructor(
                 // ⚡ 用户暂停：过渡中的 incoming 播放器必须同步暂停。
                 //    交叉淡入淡出期间点击暂停，若只停 playerA（对外暴露的 master），
                 //    playerB 里的 incoming 曲目仍会继续以淡入音量出声 → 「暂停后还在出声」。
-                if (transitionRunning) {
+                //
+                //    ⚡ 但必须排除 pauseAtEndOfMediaItems 触发的「曲尾自动暂停」
+                //   （reason = END_OF_MEDIA_ITEM）：淡出窗口内旧曲到达 EOS 时 ExoPlayer
+                //   会置 playWhenReady=false，这不是用户暂停——若此时把正在淡入的
+                //   incoming 一并暂停，fade 结束 swap 后新曲就停在暂停态，表现为
+                //   「单曲/列表循环 + 淡入淡出时，淡入到下一曲歌曲会暂停」。
+                if (transitionRunning &&
+                    reason != Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM
+                ) {
                     playerB?.let { auxiliaryPlayer ->
                         if (auxiliaryPlayer.playWhenReady || auxiliaryPlayer.isPlaying) {
                             auxiliaryPlayer.playWhenReady = false
@@ -954,7 +962,33 @@ class DualPlayerEngine @Inject constructor(
     }
 
     private var isReleased = false
-    private val resolvedUriCache = LruCache<String, Uri>(100)
+
+    /**
+     * 解析后的真实直链缓存（占位 URI → 直链）。
+     * ⚡ 带 TTL：网易云/QQ/酷我等直链有时效（通常 10-30 分钟），过期后返回 403/410。
+     *   此前无 TTL——歌曲播放一半退出后重播，无条件命中旧直链导致播放失败，
+     *   且部分错误恢复路径（非代理类错误）不清缓存，失败会反复复现。
+     *   现在 TTL 过期的条目视为未解析，强制走完整解析链拿新鲜直链。
+     */
+    private val resolvedUriCache = LruCache<String, ResolvedUriEntry>(100)
+
+    /** 直链缓存有效期：与各流媒体代理内部的 15 分钟 TTL 对齐 */
+    private val resolvedUriTtlMs: Long = 15L * 60_000L
+
+    private class ResolvedUriEntry(val uri: Uri, val atMs: Long)
+
+    private fun getFreshResolvedUri(key: String): Uri? {
+        val entry = resolvedUriCache.get(key) ?: return null
+        if (SystemClock.elapsedRealtime() - entry.atMs > resolvedUriTtlMs) {
+            resolvedUriCache.remove(key)
+            return null
+        }
+        return entry.uri
+    }
+
+    private fun putResolvedUri(key: String, uri: Uri) {
+        resolvedUriCache.put(key, ResolvedUriEntry(uri, SystemClock.elapsedRealtime()))
+    }
 
     /** 用户期望的倍速，引擎在每次就绪时自动恢复 */
     var desiredPlaybackSpeed: Float = 1f
@@ -1846,7 +1880,7 @@ class DualPlayerEngine @Inject constructor(
                 val scheme = uri.scheme
                 if (scheme in CLOUD_PROXY_SCHEMES) {
                     val originalUri = uri.toString()
-                    val cached = resolvedUriCache.get(originalUri)
+                    val cached = getFreshResolvedUri(originalUri)
                     if (cached != null) {
                         // Validate: cached URI pointing to 127.0.0.1 must match current proxy port
                         if (cached.host == "127.0.0.1" && isLocalhostProxyUriStale(cached)) {
@@ -1890,7 +1924,7 @@ class DualPlayerEngine @Inject constructor(
                         }
                     }
                     if (resolvedNow != null && resolvedNow.toString().isNotBlank()) {
-                        resolvedUriCache.put(originalUri, resolvedNow)
+                        putResolvedUri(originalUri, resolvedNow)
                         return dataSpec.buildUpon().setUri(resolvedNow).build()
                     }
                     Timber.tag("DualPlayerEngine").w(
@@ -2224,7 +2258,7 @@ class DualPlayerEngine @Inject constructor(
 
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
         val uriString = uri.toString()
-        resolvedUriCache.get(uriString)?.let { return@withContext it }
+        getFreshResolvedUri(uriString)?.let { return@withContext it }
 
         val resolved: Uri? = when (uri.scheme) {
             "telegram" -> resolveTelegramUriAsync(uri, uriString)
@@ -2239,7 +2273,7 @@ class DualPlayerEngine @Inject constructor(
         }
 
         if (resolved != null) {
-            resolvedUriCache.put(uriString, resolved)
+            putResolvedUri(uriString, resolved)
             return@withContext resolved
         }
         uri
@@ -2446,8 +2480,11 @@ class DualPlayerEngine @Inject constructor(
             val songMap = mutableMapOf<String, Any?>()
             songMap["id"] = json.optString("id", "")
             songMap["vid"] = json.optString("id", "")
-            songMap["songmid"] = json.optString("songmid", songMap["id"] as String)
-            songMap["hash"] = json.optString("hash", songMap["id"] as String)
+            // ⚡ 空串也要兜底：optString 的默认值仅在 key 缺失时生效，
+            //   占位 JSON 里 songmid/hash 可能是 ""（如酷我歌单歌曲无 hash），
+            //   必须像 LxMusicViewModel.toInfoMap 一样用 ifBlank 回落到 id
+            songMap["songmid"] = json.optString("songmid", "").ifBlank { songMap["id"] as String }
+            songMap["hash"] = json.optString("hash", "").ifBlank { songMap["id"] as String }
             songMap["name"] = json.optString("name", "")
             val singerValue = json.optString("singer", "")
             songMap["singer"] = singerValue
@@ -2543,7 +2580,12 @@ class DualPlayerEngine @Inject constructor(
                         //   聚合返回的酷我签名直链部分已失效 → HTTP 410 Gone →
                         //   ExoPlayer errorCode 2004。仅当插件未安装/未就绪或全部失败时，
                         //   才回落到内置官方接口（tx/mg/kw 走酷我官方直链兜底）。
-                        resolved = if (lxReady) lxJsEngine.getPlayUrl(source, songMap, q) else null
+                        // ⚡ 插件优先、内置官方接口兜底（与 LxMusicViewModel.resolvePlayableSong 一致）。
+                        //   注意 Kotlin 优先级：`if (a) x else null ?: y` 会解析成
+                        //   `if (a) x else (null ?: y)`——插件就绪但解析失败时内置兜底
+                        //   永远不执行，队列占位歌曲（整单入队/搜索排队）会全部解析失败，
+                        //   必须给 if 表达式加括号后再走 elvis。
+                        resolved = (if (lxReady) lxJsEngine.getPlayUrl(source, songMap, q) else null)
                             // 引擎未就绪时不再调用 lx：getPlayUrl 内部 awaitReady 会阻塞
                             // 15s/次，未装插件时整条音质链会被卡住数十秒。
                             ?: builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, q)
@@ -2643,7 +2685,7 @@ class DualPlayerEngine @Inject constructor(
      * 未解析或缓存值不是网络流时返回 null。
      */
     fun getResolvedStreamUri(uri: Uri): Uri? {
-        val cached = resolvedUriCache.get(uri.toString()) ?: return null
+        val cached = getFreshResolvedUri(uri.toString()) ?: return null
         val scheme = cached.scheme?.lowercase()
         return if (scheme == "http" || scheme == "https") cached else null
     }

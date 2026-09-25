@@ -77,6 +77,7 @@ import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
+import com.theveloper.pixelplay.data.preferences.PlayerStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
@@ -882,6 +883,34 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    // 全屏播放器样式（经典 / Expressive）
+    val playerStyle: StateFlow<PlayerStyle> = userPreferencesRepository.playerStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = PlayerStyle.CLASSIC
+        )
+
+    fun setPlayerStyle(style: PlayerStyle) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerStyle(style)
+        }
+    }
+
+    val playerAccentBackground: StateFlow<Boolean> = userPreferencesRepository.playerAccentBackgroundFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    val playerMergeControls: StateFlow<Boolean> = userPreferencesRepository.playerMergeControlsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     // Lyrics sync offset - now managed by LyricsStateHolder
     val currentSongLyricsSyncOffset: StateFlow<Int> = lyricsStateHolder.currentSongSyncOffset
 
@@ -982,12 +1011,36 @@ class PlayerViewModel @Inject constructor(
             initialValue = false
         )
 
+    /** 新版顶栏（渐进模糊遮罩 + 收起标题胶囊）开关 */
+    val useNewTopBar: StateFlow<Boolean> = userPreferencesRepository.useNewTopBarFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
     val navBarBlurEnabled: StateFlow<Boolean> = userPreferencesRepository.navBarBlurEnabledFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = true
         )
+
+    /** 播放器控制按钮无色块样式（纯图标） */
+    val transportControlsFlatStyle: StateFlow<Boolean> =
+        userPreferencesRepository.transportControlsFlatStyleFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    /** ⚡ 请求打开播放列表（队列）界面：在线歌单点击后入队播放时触发 */
+    private val _openQueueRequest = MutableStateFlow(0L)
+    val openQueueRequest: StateFlow<Long> = _openQueueRequest.asStateFlow()
+    fun requestOpenQueueSheet() {
+        _openQueueRequest.value += 1L
+    }
 
 
 
@@ -1251,13 +1304,18 @@ class PlayerViewModel @Inject constructor(
                 playlistId = null
             )
             withContext(Dispatchers.Main.immediate) {
-                attachPreparedQueueSegmentsIfCurrent(
+                // ⚡ 队列未实际写入播放器时（守卫条件不满足而静默跳过）不同步 UI 队列：
+                //    否则 UI 显示完整队列而播放器时间线只有 1 首，seekToNext/seekToPrevious
+                //    会因「无下一/上一窗口」被 Media3 静默忽略 → 上下曲按钮失灵（偶发）。
+                //    此时不更新 UI，交由 nextSong/previousSong 的失步自愈兜底。
+                val attached = attachPreparedQueueSegmentsIfCurrent(
                     player = dualPlayerEngine.masterPlayer,
                     startSongId = startSongId,
                     preparedSegments = segments
                 )
-                // 仅当当前仍停留在 startSongId 时才更新 UI 队列，避免覆盖用户已切走的新队列
+                // 仅当队列已写入且当前仍停留在 startSongId 时才更新 UI 队列，避免覆盖用户已切走的新队列
                 if (
+                    attached &&
                     playbackStateHolder.stablePlayerState.value.currentSong?.id == startSongId &&
                     fullQueue.any { it.id == startSongId }
                 ) {
@@ -5620,10 +5678,10 @@ class PlayerViewModel @Inject constructor(
         player: Player,
         startSongId: String,
         preparedSegments: PreparedPlaybackQueueSegments
-    ) {
-        if (player.currentMediaItem?.mediaId != startSongId) return
-        if (player.mediaItemCount != 1) return
-        if (player.getMediaItemAt(0).mediaId != startSongId) return
+    ): Boolean {
+        if (player.currentMediaItem?.mediaId != startSongId) return false
+        if (player.mediaItemCount != 1) return false
+        if (player.getMediaItemAt(0).mediaId != startSongId) return false
 
         val batchSize = 200
 
@@ -5652,6 +5710,7 @@ class PlayerViewModel @Inject constructor(
         playbackStateHolder.updateStablePlayerState {
             it.copy(currentMediaItemIndex = preparedSegments.currentIndex)
         }
+        return true
     }
 
 
@@ -6292,11 +6351,35 @@ class PlayerViewModel @Inject constructor(
         songId: String? = null,
         bilibiliBvid: String? = null
     ) {
+        val song = buildCloudSong(url, title, artist, cover, songId, bilibiliBvid) ?: return
+        addSongToQueue(song)
+    }
+
+    /**
+     * 由云端/在线播放参数构造队列用 Song，供 [enqueueCloudSong] 与「搜索结果整列播放」
+     * 的原子建队共用。占位/自定义 scheme（cloud://lx/{json}、netease://、bilibili:// 等）
+     * 原样保留，由 DualPlayerEngine 懒解析新鲜直链。
+     * 返回 null 表示参数无效（url 为空）。
+     */
+    fun buildCloudSong(
+        url: String,
+        title: String,
+        artist: String = "",
+        cover: String = "",
+        songId: String? = null,
+        bilibiliBvid: String? = null
+    ): Song? {
         val sanitizedUrl = url.trim()
             .replace("[\\x00-\\x1F\\x7F]".toRegex(), "")
-        if (sanitizedUrl.isBlank()) return
+        if (sanitizedUrl.isBlank()) return null
         val id = songId.takeIf { !it.isNullOrBlank() } ?: "cloud://${System.currentTimeMillis()}"
         val parsedNeteaseId = id.toLongOrNull()
+        // ⚡ 真实直链（http/https）优先保留：搜索点播传入的 songId 是 getStableSongId()/
+        //    stablePositiveHash() 生成的 19 位纯数字哈希，会被 toLongOrNull() 误判成网易云 id。
+        //    若此时用哈希覆盖掉已解析好的可播放直链（改写成 netease://{哈希}），代理会拿哈希
+        //    去请求网易云官方 API → 404 → ExoPlayer ERROR_CODE_IO_BAD_HTTP_STATUS 跳歌。
+        val isDirectPlayableUrl = sanitizedUrl.startsWith("http://", ignoreCase = true) ||
+            sanitizedUrl.startsWith("https://", ignoreCase = true)
         // ⚡ 占位/自定义 scheme（cloud://lx/{json}、netease://、bilibili://、qq:// 等）
         //    必须原样保留，由 DualPlayerEngine 懒解析。否则 stableId（hash 数字串）会被
         //    toLongOrNull 误判成网易云 id，把占位覆盖成 netease://{hash} → 播放时解析失败跳歌。
@@ -6306,12 +6389,12 @@ class PlayerViewModel @Inject constructor(
                 sanitizedUrl.startsWith("qq://", ignoreCase = true) ||
                 sanitizedUrl.startsWith("kw://", ignoreCase = true) ||
                 sanitizedUrl.startsWith("bilibili://", ignoreCase = true) -> sanitizedUrl
-            parsedNeteaseId != null && parsedNeteaseId > 0 -> "netease://$parsedNeteaseId"
+            !isDirectPlayableUrl && parsedNeteaseId != null && parsedNeteaseId > 0 -> "netease://$parsedNeteaseId"
             else -> sanitizedUrl
         }
         // neteaseId 只从最终 contentUri 提取（hash 不等于真实网易云 id）
         val effectiveNeteaseId = contentUri.removePrefix("netease://").toLongOrNull()?.takeIf { it > 0 }
-        val song = Song(
+        return Song(
             id = id,
             title = title.ifBlank { "Cloud Track" },
             artist = artist.ifBlank { "Unknown Artist" },
@@ -6328,7 +6411,6 @@ class PlayerViewModel @Inject constructor(
             neteaseId = effectiveNeteaseId,
             bilibiliBvid = bilibiliBvid?.takeIf { it.isNotBlank() }
         )
-        addSongToQueue(song)
     }
 
     fun addSongNextToQueue(song: Song) {
@@ -6895,14 +6977,17 @@ class PlayerViewModel @Inject constructor(
                     }
                 } else {
                     val parsedNeteaseId = id.toLongOrNull()
-                    // ⚡ 占位/自定义 scheme 必须保留（懒解析），不能被 stableId(hash) 覆盖成 netease://{hash}
+                    // ⚡ 占位/自定义 scheme 必须保留（懒解析），不能被 stableId(hash) 覆盖成 netease://{hash}；
+                    //    真实直链（http/https）同样必须优先保留，理由见 buildCloudSong。
+                    val isDirectPlayableUrl = sanitizedUrl.startsWith("http://", ignoreCase = true) ||
+                        sanitizedUrl.startsWith("https://", ignoreCase = true)
                     val contentUri = when {
                         sanitizedUrl.startsWith("netease://", ignoreCase = true) ||
                             sanitizedUrl.startsWith("cloud://", ignoreCase = true) ||
                             sanitizedUrl.startsWith("qq://", ignoreCase = true) ||
                             sanitizedUrl.startsWith("kw://", ignoreCase = true) ||
                             sanitizedUrl.startsWith("bilibili://", ignoreCase = true) -> sanitizedUrl
-                        parsedNeteaseId != null && parsedNeteaseId > 0 -> "netease://$parsedNeteaseId"
+                        !isDirectPlayableUrl && parsedNeteaseId != null && parsedNeteaseId > 0 -> "netease://$parsedNeteaseId"
                         else -> sanitizedUrl
                     }
                     // neteaseId 只从最终 contentUri 提取（hash 不等于真实网易云 id）
@@ -8068,13 +8153,50 @@ class PlayerViewModel @Inject constructor(
             // 直接用 playbackStateHolder 切歌（队列内切歌，无缝）
             playbackStateHolder.nextSong()
         } else {
+            // ⚡ 上下曲失灵自愈：全库后台队列回填失败/未完成时，播放器时间线可能仍只有
+            //    单曲而 UI 队列已显示多首 —— seekToNext 会因「无下一窗口」被 Media3 静默
+            //    忽略，表现为点击下一曲无反应（媒体库偶发问题）。检测到失步即以 UI 队列
+            //    重建播放器并直接跳到目标曲。
+            if (repairQueueIfNeededAndSkip(forward = true)) return
             playbackStateHolder.nextSong()
         }
     }
 
     fun previousSong() {
         beginSongTransitionLock()
+        // ⚡ 同 nextSong：时间线与 UI 队列失步时自愈（见 repairQueueIfNeededAndSkip 注释）
+        if (repairQueueIfNeededAndSkip(forward = false)) return
         playbackStateHolder.previousSong()
+    }
+
+    /**
+     * 队列失步自愈：播放器时间线 ≤1 首而 UI 队列 >1 首时，以 UI 队列重建播放器并跳到
+     * 目标曲。返回 true 表示已处理，调用方无需再走常规切歌路径。
+     */
+    private fun repairQueueIfNeededAndSkip(forward: Boolean): Boolean {
+        val timeline = playbackStateHolder.localTimelineSnapshot() ?: return false
+        val queue = _playerUiState.value.currentPlaybackQueue
+        if (timeline.first > 1 || queue.size <= 1) return false
+
+        val current = playbackStateHolder.stablePlayerState.value.currentSong
+        val currentIndex = current?.let { song -> queue.indexOfFirst { it.id == song.id } } ?: -1
+        val target = if (forward) {
+            queue.getOrNull(currentIndex + 1)
+                ?: queue.firstOrNull()?.takeIf {
+                    playbackStateHolder.stablePlayerState.value.repeatMode == Player.REPEAT_MODE_ALL
+                }
+        } else {
+            queue.getOrNull(currentIndex - 1) ?: queue.lastOrNull()
+        } ?: return false
+
+        Timber.w(
+            "QueueRepair: 播放器时间线(%d首)与UI队列(%d首)失步，重建队列并跳转 forward=%s",
+            timeline.first, queue.size, forward
+        )
+        // 取消仍在进行的分段回填，避免与重建过程交错写入同一播放器
+        pendingQueueSegmentsJob?.cancel()
+        playSongs(queue.toList(), target, _playerUiState.value.currentQueueSourceName)
+        return true
     }
 
     private fun startProgressUpdates() {

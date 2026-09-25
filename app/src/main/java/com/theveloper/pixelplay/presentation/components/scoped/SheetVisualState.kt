@@ -126,7 +126,9 @@ internal fun rememberSheetVisualState(
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
             } else if (navBarStyle == NavBarStyle.FLOATING) {
-                28.dp
+                // ⚡ mini player 圆角跟随用户设置的导航栏圆角：悬浮底栏不应擅自改变
+                //   mini player 的形状（此前硬编码 28.dp，开了悬浮底栏圆角就变小）
+                navBarCornerRadiusDp
             } else {
                 navBarCornerRadiusDp
             }
@@ -196,7 +198,8 @@ internal fun rememberSheetVisualState(
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
             } else if (navBarStyle == NavBarStyle.FLOATING) {
-                28.dp
+                // ⚡ 与顶部圆角一致：跟随用户设置，悬浮底栏不改变 mini player 形状
+                navBarCornerRadiusDp
             } else {
                 navBarCornerRadiusDp
             }

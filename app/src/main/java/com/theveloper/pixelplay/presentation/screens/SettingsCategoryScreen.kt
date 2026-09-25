@@ -86,6 +86,7 @@ import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.BlurOff
+import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
@@ -113,9 +114,12 @@ import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.MergeType
 import androidx.compose.material.icons.rounded.Palette
+import com.theveloper.pixelplay.presentation.components.ExpressiveButtonGroup
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -210,6 +214,7 @@ import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
+import com.theveloper.pixelplay.data.preferences.PlayerStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -1126,6 +1131,13 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Rounded.BlurOff, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_new_top_bar_title),
+                                    subtitle = stringResource(R.string.setcat_new_top_bar_subtitle),
+                                    checked = uiState.useNewTopBar,
+                                    onCheckedChange = { settingsViewModel.setUseNewTopBar(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.BlurOn, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
                                     title = stringResource(R.string.setcat_show_scrollbar_title),
                                     subtitle = stringResource(R.string.setcat_show_scrollbar_subtitle),
                                     checked = uiState.showScrollbar,
@@ -1159,6 +1171,94 @@ fun SettingsCategoryScreen(
                                     onSelectionChanged = { key -> settingsViewModel.setTabletPlayerLayout(TabletPlayerLayout.fromStorageKey(key)) },
                                     leadingIcon = { Icon(Icons.Rounded.TabletAndroid, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+
+                                // 播放器样式：经典 / Expressive（模仿 Rhythm 的 ExpressiveButtonGroup 切换）
+                                val isExpressiveStyleActive = uiState.playerStyle == PlayerStyle.EXPRESSIVE
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Rounded.Album,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = stringResource(R.string.setcat_player_style_label),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.setcat_player_style_desc),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(12.dp))
+                                    ExpressiveButtonGroup(
+                                        items = listOf(
+                                            stringResource(R.string.setcat_player_style_classic),
+                                            stringResource(R.string.setcat_player_style_expressive)
+                                        ),
+                                        selectedIndex = if (isExpressiveStyleActive) 1 else 0,
+                                        onItemClick = { index ->
+                                            settingsViewModel.setPlayerStyle(if (index == 1) PlayerStyle.EXPRESSIVE else PlayerStyle.CLASSIC)
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                // 经典样式专属：播放器控制（模仿 Rhythm 的 Player Controls 分组）
+                                if (!isExpressiveStyleActive) {
+                                    Text(
+                                        text = stringResource(R.string.setcat_player_controls_group),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                                    )
+                                    // ⚡ 控制按钮无色块样式：上一曲/播放/下一曲渲染为纯图标
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_transport_flat_style_title),
+                                        subtitle = stringResource(R.string.setcat_transport_flat_style_subtitle),
+                                        checked = uiState.transportControlsFlatStyle,
+                                        onCheckedChange = settingsViewModel::setTransportControlsFlatStyle,
+                                        leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                }
+
+                                // Expressive 样式专属（模仿 Rhythm 的 settings_expressive_player 分组，全部映射真实功能）
+                                if (isExpressiveStyleActive) {
+                                    Text(
+                                        text = stringResource(R.string.setcat_expressive_group_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                                    )
+                                    // 强调色背景：控制卡片与功能胶囊改用封面强调色玻璃
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_expressive_accent_title),
+                                        subtitle = stringResource(R.string.setcat_expressive_accent_desc),
+                                        checked = uiState.playerAccentBackground,
+                                        onCheckedChange = settingsViewModel::setPlayerAccentBackground,
+                                        leadingIcon = { Icon(Icons.Rounded.Palette, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                    // 合并控件：底部功能胶囊并入控制卡片
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_expressive_merge_title),
+                                        subtitle = stringResource(R.string.setcat_expressive_merge_desc),
+                                        checked = uiState.playerMergeControls,
+                                        onCheckedChange = settingsViewModel::setPlayerMergeControls,
+                                        leadingIcon = { Icon(Icons.Rounded.MergeType, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                }
 
                                 // ⚡ 播放器不透明度（独立设置项：应用到播放器/歌词界面除背景外的所有元素）
                                 Column(
