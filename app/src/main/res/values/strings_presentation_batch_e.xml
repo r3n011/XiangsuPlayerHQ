@@ -48,7 +48,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Design artwork, icon, shape and pick songs yourself.</string>
     <string name="presentation_batch_e_creation_mode_ai">With AI</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Generate a curated playlist with advanced controls.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Requires a Gemini API key configured in settings.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Requires an API key configured in settings.</string>
     <string name="presentation_batch_e_setup_api_key">Set up API key</string>
 
     <!-- AI playlist lab -->

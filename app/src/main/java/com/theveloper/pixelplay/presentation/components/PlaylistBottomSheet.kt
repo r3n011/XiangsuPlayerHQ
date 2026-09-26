@@ -193,6 +193,9 @@ fun PlaylistBottomSheet(
                 )
 
                 if (showCreatePlaylistDialog) {
+                    // stringResource 只能在 @Composable 作用域调用，而 onGenerateClick 是普通 lambda，
+                    // 所以在这里先取出来
+                    val missingApiKeyHint = stringResource(R.string.toast_set_ai_provider_api_key_first)
                     CreatePlaylistDialogRedesigned(
                         onDismiss = { showCreatePlaylistDialog = false },
                         onCreate = { name ->
@@ -207,7 +210,7 @@ fun PlaylistBottomSheet(
                             if (hasActiveAiProviderApiKey) {
                                 playerViewModel.showAiPlaylistSheet()
                             } else {
-                                playerViewModel.sendToast("Set your Gemini API key first")
+                                playerViewModel.sendToast(missingApiKeyHint)
                             }
                         }
                     )

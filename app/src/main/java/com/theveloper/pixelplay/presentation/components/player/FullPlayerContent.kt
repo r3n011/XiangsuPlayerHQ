@@ -205,6 +205,7 @@ import com.theveloper.pixelplay.presentation.components.autoeq.AutoEQSuggestionD
 import com.theveloper.pixelplay.presentation.components.autoeq.DeviceConfigurationBottomSheet
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.preferences.PlayerStyle
+import com.theveloper.pixelplay.data.service.visualizer.WaveformPeaks
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.utils.AudioMetaUtils.mimeTypeToFormat
 import com.theveloper.pixelplay.utils.LyricsImportFailureReason
@@ -220,7 +221,9 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import timber.log.Timber
 import java.util.Locale
 import kotlin.math.roundToLong
-import com.theveloper.pixelplay.presentation.components.WavySliderExpressive
+import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
+import com.theveloper.pixelplay.presentation.components.PlayerThumbStyle
+import com.theveloper.pixelplay.presentation.components.StyledPlayerSeekBar
 import com.theveloper.pixelplay.presentation.components.ToggleSegmentButton
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -409,6 +412,13 @@ fun FullPlayerContent(
     val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
     val showPlaybackSpeedButton by playerViewModel.showPlaybackSpeedButton.collectAsStateWithLifecycle()
     val pitchFollowSpeed by playerViewModel.pitchFollowSpeed.collectAsStateWithLifecycle()
+    // ⚡ 自定义播放进度条：轨道样式 / 滑块样式 / 播放时滑块旋转（对齐 Rhythm）
+    val progressStyleRaw by playerViewModel.playerProgressStyle.collectAsStateWithLifecycle()
+    val progressThumbStyleRaw by playerViewModel.playerProgressThumbStyle.collectAsStateWithLifecycle()
+    val progressThumbRotate by playerViewModel.playerProgressThumbRotate.collectAsStateWithLifecycle()
+    // ⚡ WAVEFORM 进度条的真实波形（从歌曲音频提取的桶峰值）：
+    //   在线音源边播边累积，本地文件整轨提前分析；未分析到的段落由 UI 回退到合成波形。
+    val waveformPeaks by playerViewModel.waveformPeaks.collectAsStateWithLifecycle()
     val gradientEdgeColor by androidx.compose.animation.animateColorAsState(
         targetValue = LocalMaterialTheme.current.primaryContainer,
         animationSpec = tween(durationMillis = 400),
@@ -907,7 +917,11 @@ fun FullPlayerContent(
                 playerOnBaseColor = playerOnBaseColor,
                 allowRealtimeUpdates = allowRealtimeUpdates,
                 isSheetDragGestureActive = isSheetDragGestureActive,
-                loadingTweaks = loadingTweaks
+                loadingTweaks = loadingTweaks,
+                progressStyle = PlayerProgressStyle.fromStorage(progressStyleRaw),
+                progressThumbStyle = PlayerThumbStyle.fromStorage(progressThumbStyleRaw),
+                rotateThumbWhenPlaying = progressThumbRotate,
+                waveformPeaks = waveformPeaks
             )
         }
     }
@@ -2044,9 +2058,22 @@ private fun FullPlayerProgressSection(
     playerOnBaseColor: Color,
     allowRealtimeUpdates: Boolean,
     isSheetDragGestureActive: Boolean,
-    loadingTweaks: FullPlayerLoadingTweaks
+    loadingTweaks: FullPlayerLoadingTweaks,
+    progressStyle: PlayerProgressStyle,
+    progressThumbStyle: PlayerThumbStyle,
+    rotateThumbWhenPlaying: Boolean,
+    waveformPeaks: WaveformPeaks? = null
 ) {
     val isMetadataForCurrentSong = playbackMetadataMediaId == song.id
+    // 只采用属于当前歌曲的波形，避免切歌瞬间把上一首的波形画到新歌上
+    val waveformForCurrentSong = waveformPeaks?.takeIf { it.songId == song.id }?.peaks
+    // ⚡ 渐变进度条（PlayerProgressStyle.GRADIENT）跟随播放器取色（封面取色），
+    //   而非整个应用的主题色 —— 与其它进度条样式保持一致。
+    val progressGradientColors = listOf(
+        LocalMaterialTheme.current.primary,
+        LocalMaterialTheme.current.secondary,
+        LocalMaterialTheme.current.tertiary
+    )
     val audioMimeType = if (isMetadataForCurrentSong) {
         playbackMetadataMimeType ?: song.mimeType
     } else {
@@ -2087,10 +2114,15 @@ private fun FullPlayerProgressSection(
         activeTrackColor = progressActiveColor,
         inactiveTrackColor = playerOnBaseColor.copy(alpha = 0.2f),
         thumbColor = progressActiveColor,
+        gradientColors = progressGradientColors,
         timeTextColor = playerOnBaseColor,
         allowRealtimeUpdates = allowRealtimeUpdates,
         isSheetDragGestureActive = isSheetDragGestureActive,
-        loadingTweaks = loadingTweaks
+        loadingTweaks = loadingTweaks,
+        progressStyle = progressStyle,
+        progressThumbStyle = progressThumbStyle,
+        rotateThumbWhenPlaying = rotateThumbWhenPlaying,
+        waveformPeaks = waveformForCurrentSong
     )
 }
 
@@ -3240,10 +3272,15 @@ private fun PlayerProgressBarSection(
     activeTrackColor: Color,
     inactiveTrackColor: Color,
     thumbColor: Color,
+    gradientColors: List<Color>,
     timeTextColor: Color,
     allowRealtimeUpdates: Boolean = true,
     isSheetDragGestureActive: Boolean = false,
     loadingTweaks: FullPlayerLoadingTweaks? = null,
+    progressStyle: PlayerProgressStyle,
+    progressThumbStyle: PlayerThumbStyle,
+    rotateThumbWhenPlaying: Boolean,
+    waveformPeaks: FloatArray? = null,
     modifier: Modifier = Modifier
 ) {
     val progressSectionHorizontalInset = 0.dp
@@ -3341,7 +3378,6 @@ private fun PlayerProgressBarSection(
         }
     }
 
-    val interactionSource = remember { MutableInteractionSource() }
     val shouldAnimateWavyProgress by remember(shouldRunRealtimeUpdates, isPlayingProvider) {
         derivedStateOf { shouldRunRealtimeUpdates && isPlayingProvider() }
     }
@@ -3435,7 +3471,11 @@ private fun PlayerProgressBarSection(
                     thumbColor = thumbColor,
                     activeTrackColor = activeTrackColor,
                     inactiveTrackColor = inactiveTrackColor,
-                    interactionSource = interactionSource,
+                    gradientColors = gradientColors,
+                    progressStyle = progressStyle,
+                    progressThumbStyle = progressThumbStyle,
+                    rotateThumbWhenPlaying = rotateThumbWhenPlaying,
+                    waveformPeaks = waveformPeaks,
                     isPlaying = shouldAnimateWavyProgress,
                     isVisible = isVisible,
                     trackEdgePadding = progressSectionHorizontalInset
@@ -3464,7 +3504,11 @@ private fun EfficientSlider(
     thumbColor: Color,
     activeTrackColor: Color,
     inactiveTrackColor: Color,
-    interactionSource: MutableInteractionSource,
+    gradientColors: List<Color>,
+    progressStyle: PlayerProgressStyle,
+    progressThumbStyle: PlayerThumbStyle,
+    rotateThumbWhenPlaying: Boolean,
+    waveformPeaks: FloatArray? = null,
     isPlaying: Boolean,
     isVisible: Boolean,
     trackEdgePadding: Dp
@@ -3484,14 +3528,18 @@ private fun EfficientSlider(
         }
     }
 
-    WavySliderExpressive(
+    StyledPlayerSeekBar(
         value = { valueState.value },
         onValueChange = onValueChangeWithHaptics,
         onValueCommit = onValueCommit,
-        interactionSource = interactionSource,
+        style = progressStyle,
+        thumbStyle = progressThumbStyle,
+        rotateThumbWhenPlaying = rotateThumbWhenPlaying,
         activeTrackColor = activeTrackColor,
         inactiveTrackColor = inactiveTrackColor,
         thumbColor = thumbColor,
+        gradientColors = gradientColors,
+        waveformPeaks = waveformPeaks,
         isPlaying = isPlaying,
         isVisible = isVisible,
         trackEdgePadding = trackEdgePadding,

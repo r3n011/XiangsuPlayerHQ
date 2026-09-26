@@ -164,6 +164,10 @@
     <string
         name="setcat_album_art_palette_subtitle"
     >当前：%1$s。打开实时预览并选择风格。</string>
+    <string name="setcat_player_progress_bar_title">播放进度条</string>
+    <string
+        name="setcat_player_progress_bar_subtitle"
+    >当前：%1$s。可自定义轨道样式、滑块样式与播放时旋转。</string>
     <string name="setcat_custom_player_background_title">自定义播放器背景</string>
     <string name="setcat_custom_player_background_subtitle">使用自定义图片作为播放器与歌词界面的背景。启用后优先级高于下方的动态背景效果。</string>
     <string name="setcat_custom_player_background_pick">选择背景图片</string>
@@ -308,6 +312,44 @@
     <string
         name="setcat_headphones_resume_subtitle"
     >如果是因为拔下耳机而暂停播放，耳机重新连接后将自动恢复。</string>
+    <string name="setcat_audio_focus">音频焦点</string>
+    <string
+        name="setcat_audio_focus_resume_call_title"
+    >结束通话后继续播放</string>
+    <string
+        name="setcat_audio_focus_resume_call_subtitle"
+    >挂断后继续播放（若因来电而暂停）。</string>
+    <string
+        name="setcat_audio_focus_transient_title"
+    >短暂音频焦点变化/通话</string>
+    <string
+        name="setcat_audio_focus_transient_subtitle"
+    >当音频焦点暂时发生变化时暂停播放（比如通话、通知、导航等）。</string>
+    <string
+        name="setcat_audio_focus_gain_title"
+    >聚焦增益的恢复</string>
+    <string
+        name="setcat_audio_focus_gain_subtitle"
+    >恢复焦点后继续。如果禁用，播放器将保持暂停状态。</string>
+    <string
+        name="setcat_audio_focus_duck_title"
+    >降低音量</string>
+    <string
+        name="setcat_audio_focus_duck_subtitle"
+    >允许在短暂音频焦点时降低音量。这个选项会被音频输出设置所覆盖。</string>
+    <string
+        name="setcat_audio_focus_permanent_title"
+    >永久音频焦点变化</string>
+    <string
+        name="setcat_audio_focus_permanent_subtitle"
+    >在有长时间音频焦点变化时暂停（如其他播放器播放音乐、游戏播放音乐）。</string>
+    <string
+        name="setcat_audio_focus_hint_cast"
+    >Chromecast 输出可能会完全忽略通话与短暂音频焦点变化。</string>
+    <string
+        name="setcat_audio_focus_hint_bg"
+    >在 Android 8 以上系统中，播放器在暂停播放状态下会被系统终止。为了避免该情况，请使用「始终显示通知」选项。</string>
+    <string name="setcat_audio_focus_reset">恢复默认值</string>
     <string name="setcat_bluetooth_lyrics">蓝牙歌词</string>
     <string name="setcat_queue_transitions">队列与过渡</string>
     <string name="setcat_crossfade_label">淡入淡出</string>
@@ -705,6 +747,8 @@
     <string name="car_mode_action_search_desc">查找歌曲</string>
     <string name="car_mode_action_roaming">漫游</string>
     <string name="car_mode_action_roaming_desc">网易云漫游</string>
+    <string name="car_mode_action_radio">打开电台</string>
+    <string name="car_mode_action_radio_desc">在线电台</string>
     <string name="car_mode_action_library">音乐库</string>
     <string name="car_mode_action_library_desc">你的音乐</string>
     <string name="car_mode_action_settings">设置</string>
@@ -776,6 +820,7 @@
     <string name="settings_search_keyword_aaudio">AAudio</string>
     <string name="settings_search_keyword_car_mode">车载模式</string>
     <string name="settings_search_keyword_transcode">转码</string>
+    <string name="settings_search_keyword_audio_focus">音频焦点</string>
     <string name="settings_search_keyword_download">下载</string>
     <string name="settings_search_keyword_daily_mix">每日合辑</string>
     <string name="settings_search_keyword_stats">统计</string>

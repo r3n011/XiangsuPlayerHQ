@@ -38,6 +38,8 @@ import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.preferences.PlayerStyle
+import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
+import com.theveloper.pixelplay.presentation.components.PlayerThumbStyle
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -96,6 +98,12 @@ data class SettingsUiState(
     val keepPlayingInBackground: Boolean = true,
     val disableCastAutoplay: Boolean = false,
     val resumeOnHeadsetReconnect: Boolean = false,
+    // 音频焦点
+    val focusPauseOnTransientLoss: Boolean = true,
+    val focusPauseOnPermanentLoss: Boolean = false,
+    val focusResumeAfterGain: Boolean = false,
+    val focusDuckOnTransientLoss: Boolean = false,
+    val focusResumeAfterCall: Boolean = true,
     val showQueueHistory: Boolean = true,
     val isCrossfadeEnabled: Boolean = false,
     val hiFiModeEnabled: Boolean = false,
@@ -259,9 +267,21 @@ private sealed interface SettingsUiUpdate {
         val navBarBlurEnabled: Boolean,
         val showScrollbar: Boolean,
         val showLyricsTrackInfo: Boolean,
-        val transportControlsFlatStyle: Boolean
+        val transportControlsFlatStyle: Boolean,
+        val focusPauseOnTransientLoss: Boolean,
+        val focusPauseOnPermanentLoss: Boolean,
+        val focusResumeAfterGain: Boolean,
+        val focusDuckOnTransientLoss: Boolean,
+        val focusResumeAfterCall: Boolean
     ) : SettingsUiUpdate
 }
+
+// ⚡ 自定义播放进度条：轨道样式 / 滑块样式 / 播放时滑块旋转（对齐 Rhythm）
+data class PlayerProgressPreferences(
+    val style: String = PlayerProgressStyle.default.storageKey,
+    val thumbStyle: String = PlayerThumbStyle.default.storageKey,
+    val rotateThumb: Boolean = false
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -283,6 +303,23 @@ class SettingsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    // ⚡ 自定义播放进度条偏好（轨道样式 / 滑块样式 / 播放时滑块旋转）
+    val playerProgressPreferences: StateFlow<PlayerProgressPreferences> = combine(
+        userPreferencesRepository.playerProgressStyleFlow,
+        userPreferencesRepository.playerProgressThumbStyleFlow,
+        userPreferencesRepository.playerProgressThumbRotateFlow
+    ) { style, thumbStyle, rotateThumb ->
+        PlayerProgressPreferences(
+            style = style,
+            thumbStyle = thumbStyle,
+            rotateThumb = rotateThumb
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        PlayerProgressPreferences()
+    )
 
     // AI Provider State
     val aiProvider: StateFlow<String> = aiPreferencesRepository.aiProvider
@@ -598,7 +635,12 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.showLyricsTrackInfoFlow,
                 userPreferencesRepository.externalLyricsBroadcastEnabledFlow,
                 userPreferencesRepository.transportControlsFlatStyleFlow,
-                userPreferencesRepository.useNewTopBarFlow
+                userPreferencesRepository.useNewTopBarFlow,
+                userPreferencesRepository.focusPauseOnTransientLossFlow,
+                userPreferencesRepository.focusPauseOnPermanentLossFlow,
+                userPreferencesRepository.focusResumeAfterGainFlow,
+                userPreferencesRepository.focusDuckOnTransientLossFlow,
+                userPreferencesRepository.focusResumeAfterCallFlow
             ) { values ->
                 SettingsUiUpdate.Group2(
                     keepPlayingInBackground = values[0] as Boolean,
@@ -631,7 +673,12 @@ class SettingsViewModel @Inject constructor(
                     showLyricsTrackInfo = values[27] as Boolean,
                     externalLyricsBroadcastEnabled = values[28] as Boolean,
                     transportControlsFlatStyle = values[29] as Boolean,
-                    useNewTopBar = values[30] as Boolean
+                    useNewTopBar = values[30] as Boolean,
+                    focusPauseOnTransientLoss = values[31] as Boolean,
+                    focusPauseOnPermanentLoss = values[32] as Boolean,
+                    focusResumeAfterGain = values[33] as Boolean,
+                    focusDuckOnTransientLoss = values[34] as Boolean,
+                    focusResumeAfterCall = values[35] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -666,7 +713,12 @@ class SettingsViewModel @Inject constructor(
                         showScrollbar = update.showScrollbar,
                         showLyricsTrackInfo = update.showLyricsTrackInfo,
                         externalLyricsBroadcastEnabled = update.externalLyricsBroadcastEnabled,
-                        transportControlsFlatStyle = update.transportControlsFlatStyle
+                        transportControlsFlatStyle = update.transportControlsFlatStyle,
+                        focusPauseOnTransientLoss = update.focusPauseOnTransientLoss,
+                        focusPauseOnPermanentLoss = update.focusPauseOnPermanentLoss,
+                        focusResumeAfterGain = update.focusResumeAfterGain,
+                        focusDuckOnTransientLoss = update.focusDuckOnTransientLoss,
+                        focusResumeAfterCall = update.focusResumeAfterCall
                     )
                 }
             }
@@ -1001,6 +1053,19 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ⚡ 自定义播放进度条：一次性保存轨道样式 / 滑块样式 / 旋转开关
+    fun setPlayerProgressPreferences(
+        style: PlayerProgressStyle,
+        thumbStyle: PlayerThumbStyle,
+        rotateThumb: Boolean
+    ) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerProgressStyle(style.storageKey)
+            userPreferencesRepository.setPlayerProgressThumbStyle(thumbStyle.storageKey)
+            userPreferencesRepository.setPlayerProgressThumbRotate(rotateThumb)
+        }
+    }
+
     // ⚡ 应用级调色盘开关（关闭 = 壁纸取色）
     fun setAppPaletteEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -1190,6 +1255,48 @@ class SettingsViewModel @Inject constructor(
     fun setResumeOnHeadsetReconnect(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setResumeOnHeadsetReconnect(enabled)
+        }
+    }
+
+    // ─── 音频焦点 ────────────────────────────────────────────────
+    fun setFocusPauseOnTransientLoss(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFocusPauseOnTransientLoss(enabled)
+        }
+    }
+
+    fun setFocusPauseOnPermanentLoss(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFocusPauseOnPermanentLoss(enabled)
+        }
+    }
+
+    fun setFocusResumeAfterGain(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFocusResumeAfterGain(enabled)
+        }
+    }
+
+    fun setFocusDuckOnTransientLoss(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFocusDuckOnTransientLoss(enabled)
+        }
+    }
+
+    fun setFocusResumeAfterCall(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFocusResumeAfterCall(enabled)
+        }
+    }
+
+    /** 把「音频焦点」各项恢复为默认值。 */
+    fun resetAudioFocusSettings() {
+        viewModelScope.launch {
+            userPreferencesRepository.setFocusResumeAfterCall(true)
+            userPreferencesRepository.setFocusPauseOnTransientLoss(true)
+            userPreferencesRepository.setFocusResumeAfterGain(false)
+            userPreferencesRepository.setFocusDuckOnTransientLoss(false)
+            userPreferencesRepository.setFocusPauseOnPermanentLoss(false)
         }
     }
 

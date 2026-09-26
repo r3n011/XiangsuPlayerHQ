@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- QueueBottomSheet -->
     <string name="presentation_batch_e_queue_empty">Очередь пуста.</string>
@@ -51,7 +51,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Настройте обложку, иконку, форму и выберите песни сами.</string>
     <string name="presentation_batch_e_creation_mode_ai">С помощью ИИ</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Создайте плейлист с расширенными настройками ИИ.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Требуется API-ключ Gemini, настроенный в параметрах.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Требуется API-ключ, настроенный в параметрах.</string>
     <string name="presentation_batch_e_setup_api_key">Настроить API-ключ</string>
 
     <!-- AI playlist lab -->

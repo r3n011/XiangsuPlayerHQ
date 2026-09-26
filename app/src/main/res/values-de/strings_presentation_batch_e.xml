@@ -47,7 +47,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Cover, Icon, Form und Songs selbst wählen.</string>
     <string name="presentation_batch_e_creation_mode_ai">Mit KI</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Mit erweiterten Optionen kuratieren lassen.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Erfordert einen Gemini API Key in den Einstellungen.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Erfordert einen API Key in den Einstellungen.</string>
     <string name="presentation_batch_e_setup_api_key">API Key einrichten</string>
 
     <!-- AI playlist lab -->

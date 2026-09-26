@@ -126,6 +126,8 @@ import com.theveloper.pixelplay.presentation.screens.ArtistWhitelistConfigScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
+import com.theveloper.pixelplay.presentation.screens.PlayerProgressStyleSettingsScreen
+import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
 
 // SettingsTopBar removed, replaced by CollapsibleCommonTopBar
 
@@ -497,6 +499,7 @@ private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
         stringResource(R.string.settings_search_keyword_aaudio) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_car_mode) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_transcode) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_audio_focus) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_download) to SettingsCategory.BEHAVIOR,
         stringResource(R.string.settings_search_keyword_daily_mix) to SettingsCategory.DEVELOPER,
         stringResource(R.string.settings_search_keyword_stats) to SettingsCategory.DEVELOPER,
@@ -577,6 +580,12 @@ private fun getSettingsItemIndex(): List<Pair<String, SettingsCategory>> = listO
     stringResource(R.string.setcat_cast) to SettingsCategory.PLAYBACK,
     stringResource(R.string.setcat_headphones) to SettingsCategory.PLAYBACK,
     stringResource(R.string.setcat_headphones_resume_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_audio_focus) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_audio_focus_resume_call_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_audio_focus_transient_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_audio_focus_gain_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_audio_focus_duck_title) to SettingsCategory.PLAYBACK,
+    stringResource(R.string.setcat_audio_focus_permanent_title) to SettingsCategory.PLAYBACK,
     stringResource(R.string.setcat_queue_transitions) to SettingsCategory.PLAYBACK,
     stringResource(R.string.setcat_hifi_mode_title) to SettingsCategory.PLAYBACK,
     stringResource(R.string.setcat_usb_exclusive_mode_title) to SettingsCategory.PLAYBACK,
@@ -1043,6 +1052,18 @@ private fun TabletSettingsScreen(
                     PaletteStyleSettingsScreen(
                         playerViewModel = playerViewModel,
                         onBackClick = { detailNavController.popBackStack() }
+                    )
+                }
+                composable(Screen.PlayerProgressStyle.route) {
+                    PlayerProgressStyleSettingsScreen(
+                        playerViewModel = playerViewModel,
+                        onBackClick = { detailNavController.popBackStack() }
+                    )
+                }
+                composable(Screen.EasterEgg.route) {
+                    EasterEggScreen(
+                        viewModel = playerViewModel,
+                        onNavigationIconClick = { detailNavController.popBackStack() }
                     )
                 }
                 composable(Screen.Experimental.route) {

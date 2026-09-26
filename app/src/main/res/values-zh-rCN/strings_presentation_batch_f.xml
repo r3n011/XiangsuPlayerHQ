@@ -236,4 +236,43 @@
         <item quantity="one">%d 个话题</item>
         <item quantity="other">%d 个话题</item>
     </plurals>
+
+    <!-- 自定义播放进度条 -->
+    <string name="presentation_batch_f_progress_title">播放进度条</string>
+    <string name="presentation_batch_f_progress_track_heading">轨道样式</string>
+    <string name="presentation_batch_f_progress_track_subtitle">选择播放进度条的绘制方式。</string>
+    <string name="presentation_batch_f_progress_thumb_heading">滑块样式</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">选择拖动歌曲进度时的手柄形状。</string>
+    <string name="presentation_batch_f_progress_rotate_title">播放时旋转</string>
+    <string name="presentation_batch_f_progress_rotate_subtitle">播放过程中让滑块持续旋转。</string>
+
+    <string name="presentation_batch_f_progress_style_normal">标准</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">常见的标准进度条。</string>
+    <string name="presentation_batch_f_progress_style_wavy">波浪</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">带动态波动的波浪线条。</string>
+    <string name="presentation_batch_f_progress_style_rounded">圆角</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">胶囊形状的进度条。</string>
+    <string name="presentation_batch_f_progress_style_thin">细线</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">纤细优雅的线条。</string>
+    <string name="presentation_batch_f_progress_style_thick">粗条</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">厚重醒目的粗进度条。</string>
+    <string name="presentation_batch_f_progress_style_gradient">渐变</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">多色渐变填充。</string>
+    <string name="presentation_batch_f_progress_style_segmented">分段</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">由分段色块组成的进度条。</string>
+    <string name="presentation_batch_f_progress_style_dots">圆点</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">由圆点组成的指示条。</string>
+    <string name="presentation_batch_f_progress_style_waveform">波形</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">模拟音频振幅的竖条波形。</string>
+
+    <string name="presentation_batch_f_progress_thumb_none">无</string>
+    <string name="presentation_batch_f_progress_thumb_default">默认</string>
+    <string name="presentation_batch_f_progress_thumb_circle">圆形</string>
+    <string name="presentation_batch_f_progress_thumb_square">方形</string>
+    <string name="presentation_batch_f_progress_thumb_pill">胶囊</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">菱形</string>
+    <string name="presentation_batch_f_progress_thumb_flower">花朵</string>
+    <string name="presentation_batch_f_progress_thumb_heart">心形</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">饼干</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">蓬松</string>
 </resources>

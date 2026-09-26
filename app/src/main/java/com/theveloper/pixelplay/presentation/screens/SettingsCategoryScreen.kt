@@ -80,6 +80,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.LinearScale
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Style
@@ -87,6 +88,7 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.BlurOff
 import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
@@ -113,6 +115,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.ViewCarousel
+import androidx.compose.material.icons.rounded.VolumeDown
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Info
@@ -225,6 +228,7 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.FileExplorerDialog
 import com.theveloper.pixelplay.presentation.components.GlyphMatrixPreview
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.navigation.Screen
@@ -1537,6 +1541,18 @@ fun SettingsCategoryScreen(
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely(Screen.PaletteStyle.route) }
                                 )
+                                // ⚡ 自定义播放进度条：轨道样式 / 滑块样式 / 播放时旋转（对齐 Rhythm）
+                                val playerProgressPrefs by settingsViewModel.playerProgressPreferences.collectAsStateWithLifecycle()
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_player_progress_bar_title),
+                                    subtitle = stringResource(
+                                        R.string.setcat_player_progress_bar_subtitle,
+                                        stringResource(PlayerProgressStyle.fromStorage(playerProgressPrefs.style).labelResId)
+                                    ),
+                                    leadingIcon = { Icon(Icons.Outlined.LinearScale, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { navController.navigateSafely(Screen.PlayerProgressStyle.route) }
+                                )
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_home_collage)) {
@@ -1826,6 +1842,50 @@ fun SettingsCategoryScreen(
                                     checked = uiState.resumeOnHeadsetReconnect,
                                     onCheckedChange = { settingsViewModel.setResumeOnHeadsetReconnect(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_headphones_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_audio_focus)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_audio_focus_resume_call_title),
+                                    subtitle = stringResource(R.string.setcat_audio_focus_resume_call_subtitle),
+                                    checked = uiState.focusResumeAfterCall,
+                                    onCheckedChange = { settingsViewModel.setFocusResumeAfterCall(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Call, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SettingsHintCard(text = stringResource(R.string.setcat_audio_focus_hint_cast))
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_audio_focus_transient_title),
+                                    subtitle = stringResource(R.string.setcat_audio_focus_transient_subtitle),
+                                    checked = uiState.focusPauseOnTransientLoss,
+                                    onCheckedChange = { settingsViewModel.setFocusPauseOnTransientLoss(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Timer, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_audio_focus_gain_title),
+                                    subtitle = stringResource(R.string.setcat_audio_focus_gain_subtitle),
+                                    checked = uiState.focusResumeAfterGain,
+                                    onCheckedChange = { settingsViewModel.setFocusResumeAfterGain(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Sync, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_audio_focus_duck_title),
+                                    subtitle = stringResource(R.string.setcat_audio_focus_duck_subtitle),
+                                    checked = uiState.focusDuckOnTransientLoss,
+                                    onCheckedChange = { settingsViewModel.setFocusDuckOnTransientLoss(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.VolumeDown, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SettingsHintCard(text = stringResource(R.string.setcat_audio_focus_hint_bg))
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_audio_focus_permanent_title),
+                                    subtitle = stringResource(R.string.setcat_audio_focus_permanent_subtitle),
+                                    checked = uiState.focusPauseOnPermanentLoss,
+                                    onCheckedChange = { settingsViewModel.setFocusPauseOnPermanentLoss(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Warning, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SettingsResetItem(
+                                    title = stringResource(R.string.setcat_audio_focus_reset),
+                                    onClick = { settingsViewModel.resetAudioFocusSettings() }
                                 )
                             }
 
@@ -4193,5 +4253,60 @@ private fun SettingsSubsection(
     }
     if (addBottomSpace) {
         Spacer(modifier = Modifier.height(10.dp))
+    }
+}
+
+/** 「音频焦点」等设置项内的深色提示卡片（左侧竖条 + 小字说明）。 */
+@Composable
+private fun SettingsHintCard(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 3.dp, end = 10.dp)
+                    .size(width = 3.dp, height = 16.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** 居中的文字按钮行，用于「恢复默认值」。 */
+@Composable
+private fun SettingsResetItem(
+    title: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        )
     }
 }

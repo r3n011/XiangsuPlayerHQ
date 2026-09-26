@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import android.os.Build
+import android.os.SystemClock
 import android.widget.Toast
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.Lyrics
@@ -115,6 +116,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.layout.onSizeChanged
 
 import com.theveloper.pixelplay.data.model.SyncedLine
@@ -1592,25 +1594,41 @@ fun SyncedLyricsList(
     // 拖动时取消模糊效果，停止后5秒恢复
     var blurDisabledByDrag by remember { mutableStateOf(false) }
     var isUserInteracting by remember { mutableStateOf(false) }
+    var blurRestoreDeadlineMs by remember { mutableLongStateOf(0L) }
 
-    // 检测滚动状态，仅在用户手动拖动时禁用模糊
+    // 重新开始 5 秒倒计时
+    fun postponeBlurRestore() {
+        blurDisabledByDrag = true
+        blurRestoreDeadlineMs = SystemClock.uptimeMillis() + 5000L
+    }
+
+    // 检测滚动状态，仅在用户手动拖动时禁用模糊（自动滚动不禁用）
     LaunchedEffect(listState.isScrollInProgress) {
         if (listState.isScrollInProgress && isUserInteracting) {
-            blurDisabledByDrag = true
-        } else if (listState.isScrollInProgress && !isUserInteracting) {
-            // 自动滚动，不禁用模糊
-        } else if (blurDisabledByDrag) {
-            // 停止滚动后等待5秒恢复模糊
-            kotlinx.coroutines.delay(5000L)
-            blurDisabledByDrag = false
+            postponeBlurRestore()
         }
     }
 
-    // 点击歌词跳转后5秒恢复模糊
+    // 点击歌词跳转后重新计时
     LaunchedEffect(currentLineIndex) {
         if (blurDisabledByDrag && lastAutoScrolledLineIndex != currentLineIndex) {
-            kotlinx.coroutines.delay(5000L)
-            blurDisabledByDrag = false
+            postponeBlurRestore()
+        }
+    }
+
+    // 恢复倒计时用单一轮询实现，绝不能再把 delay 挂在 isScrollInProgress / currentLineIndex 上：
+    // 歌词跟着播放自动滚动时这两个 key 每几秒就会变化一次，LaunchedEffect 被反复重启、delay 一直被取消，
+    // 于是"歌词一直在滚 → 模糊永远回不来"。改成"截止时间戳 + 轮询"后与自动滚动完全解耦。
+    LaunchedEffect(blurDisabledByDrag) {
+        while (blurDisabledByDrag) {
+            if (isUserInteracting) {
+                // 手指仍按住 → 持续续期，松手后 5 秒才恢复
+                blurRestoreDeadlineMs = SystemClock.uptimeMillis() + 5000L
+            } else if (SystemClock.uptimeMillis() >= blurRestoreDeadlineMs) {
+                blurDisabledByDrag = false
+                break
+            }
+            delay(200L)
         }
     }
 

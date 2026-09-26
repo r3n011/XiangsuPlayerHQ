@@ -3,6 +3,7 @@ package com.theveloper.pixelplay.presentation.navigation
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavOptionsBuilder
+import timber.log.Timber
 
 private fun NavController.isReadyForNavigation(): Boolean {
     return runCatching {
@@ -16,12 +17,27 @@ private fun NavController.isReadyForNavigation(): Boolean {
     }.getOrDefault(false)
 }
 
+/**
+ * Runs [block]; if the destination is not registered in the current navigation graph,
+ * returns false instead of crashing with IllegalArgumentException.
+ */
+private inline fun NavController.runNavigateCatching(route: String, block: () -> Unit): Boolean {
+    return try {
+        block()
+        true
+    } catch (e: IllegalArgumentException) {
+        Timber.w(e, "navigateSafely: route '%s' not found in navigation graph", route)
+        false
+    }
+}
+
 fun NavController.navigateSafely(route: String): Boolean {
     if (!isReadyForNavigation()) return false
-    navigate(route) {
-        launchSingleTop = true
+    return runNavigateCatching(route) {
+        navigate(route) {
+            launchSingleTop = true
+        }
     }
-    return true
 }
 
 fun NavController.navigateSafely(
@@ -29,11 +45,12 @@ fun NavController.navigateSafely(
     builder: NavOptionsBuilder.() -> Unit
 ): Boolean {
     if (!isReadyForNavigation()) return false
-    navigate(route) {
-        launchSingleTop = true
-        builder()
+    return runNavigateCatching(route) {
+        navigate(route) {
+            launchSingleTop = true
+            builder()
+        }
     }
-    return true
 }
 
 fun NavController.navigateSafelyReplacing(
@@ -42,25 +59,27 @@ fun NavController.navigateSafelyReplacing(
     builder: NavOptionsBuilder.() -> Unit = {}
 ): Boolean {
     if (!isReadyForNavigation()) return false
-    navigate(route) {
-        launchSingleTop = false
-        popUpTo(patternToPop) {
-            inclusive = true
+    return runNavigateCatching(route) {
+        navigate(route) {
+            launchSingleTop = false
+            popUpTo(patternToPop) {
+                inclusive = true
+            }
+            builder()
         }
-        builder()
     }
-    return true
 }
 
 fun NavController.navigateToTopLevelSafely(route: String): Boolean {
     if (!isReadyForNavigation()) return false
     val startDestinationId = runCatching { graph.startDestinationId }.getOrNull() ?: return false
-    navigate(route) {
-        popUpTo(startDestinationId) {
-            saveState = true
+    return runNavigateCatching(route) {
+        navigate(route) {
+            popUpTo(startDestinationId) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
         }
-        launchSingleTop = true
-        restoreState = true
     }
-    return true
 }

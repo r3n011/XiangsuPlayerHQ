@@ -47,7 +47,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Design bilde, ikon, form og velg sanger selv.</string>
     <string name="presentation_batch_e_creation_mode_ai">Med AI</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Generer en kuratert spilleliste med avanserte kontroller.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Krever en Gemini API-nøkkel i innstillingene.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Krever en API-nøkkel i innstillingene.</string>
     <string name="presentation_batch_e_setup_api_key">Sett opp API-nøkkel</string>
 
     <!-- AI playlist lab -->

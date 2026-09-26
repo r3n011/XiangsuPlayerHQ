@@ -572,6 +572,7 @@ fun HomeScreen(
                                     showNeteaseLoginRequiredDialog = true
                                 }
                             },
+                            onRadioClick = { navController.navigateSafely(Screen.Radio.route) },
                             onLibraryClick = { navController.navigateSafely(Screen.Library.route) },
                             onSettingsClick = { navController.navigateSafely(Screen.Settings.route) }
                         )

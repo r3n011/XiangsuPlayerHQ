@@ -62,6 +62,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -565,6 +566,27 @@ class MusicService : MediaLibraryService() {
         serviceScope.launch {
             userPreferencesRepository.musicQualityValueFlow.collect { qualityValue ->
                 engine.setMusicQuality(qualityValue)
+            }
+        }
+
+        // 音频焦点行为：把 5 项偏好合并后推给播放引擎。
+        serviceScope.launch {
+            combine(
+                userPreferencesRepository.focusPauseOnTransientLossFlow,
+                userPreferencesRepository.focusPauseOnPermanentLossFlow,
+                userPreferencesRepository.focusResumeAfterGainFlow,
+                userPreferencesRepository.focusDuckOnTransientLossFlow,
+                userPreferencesRepository.focusResumeAfterCallFlow
+            ) { pauseTransient, pausePermanent, resumeGain, duckTransient, resumeCall ->
+                com.theveloper.pixelplay.data.service.player.DualPlayerEngine.AudioFocusConfig(
+                    pauseOnTransientLoss = pauseTransient,
+                    pauseOnPermanentLoss = pausePermanent,
+                    resumeAfterGain = resumeGain,
+                    duckOnTransientLoss = duckTransient,
+                    resumeAfterCall = resumeCall
+                )
+            }.collect { config ->
+                engine.setAudioFocusConfig(config)
             }
         }
 

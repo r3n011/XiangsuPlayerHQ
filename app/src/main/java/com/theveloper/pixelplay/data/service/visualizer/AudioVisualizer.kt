@@ -10,12 +10,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sqrt
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/**
+ * 一首歌的波形峰值快照。
+ *
+ * [peaks] 长度固定为 [AudioVisualizer.WAVE_BUCKETS]，把整首歌等分成若干个时间桶，
+ * 每个桶存放该时间段内的最大振幅（0f..1f）。值为负数表示该时间段尚未分析过，
+ * UI 遇到这种桶时回退到合成波形，从而实现在线播放「听过一段亮一段」的效果。
+ */
+class WaveformPeaks(
+    val songId: String,
+    val peaks: FloatArray
+)
 
 /**
  * 音频频谱采集器。
@@ -37,10 +50,38 @@ class AudioVisualizer @Inject constructor() {
         private const val SMOOTH = 0.45f // 平滑系数：新帧占比
         private const val minDb = -55f
         private const val maxDb = -10f
+
+        /** 波形进度条的时间桶数量（实时累积与本地整轨分析共用，保证两边的分辨率一致）。 */
+        const val WAVE_BUCKETS = 480
+
+        /** 波形快照的发布间隔：约 6Hz，足够跟上进度条长条，又不会频繁分配数组。 */
+        private const val WAVE_PUBLISH_INTERVAL_MS = 160L
+
+        /** 波形缓存上限：超过后淘汰最早写入的一首，避免长期播放吃掉内存。 */
+        private const val WAVE_CACHE_LIMIT = 8
+
+        /** 未分析桶的哨兵值，UI 见到它时回退合成波形。 */
+        const val WAVE_UNKNOWN = -1f
     }
 
     private val _levels = MutableStateFlow(FloatArray(BANDS))
     val levels: StateFlow<FloatArray> = _levels.asStateFlow()
+
+    // ── 波形峰值（真实来自 PCM）──
+    // 在线音源只能边播边分析：位置轮询会周期性调用 syncWaveform 校正帧游标，
+    // 于是「播放过的部分」被逐桶填成真实峰值，未播放的桶保持 WAVE_UNKNOWN。
+    private val _waveform = MutableStateFlow<WaveformPeaks?>(null)
+    val waveform: StateFlow<WaveformPeaks?> = _waveform.asStateFlow()
+
+    @Volatile private var waveSongId: String? = null
+    @Volatile private var waveDurationMs: Long = 0L
+    @Volatile private var waveTotalFrames: Long = 0L
+    @Volatile private var waveFrameCursor: Long = 0L
+    @Volatile private var wavePeaks: FloatArray? = null
+    @Volatile private var waveLastPublishMs: Long = 0L
+
+    /** 已完成分析的波形缓存（LRU，仅进程内）。本地整轨分析结果与在线已听片段都存这里。 */
+    private val waveCache = LinkedHashMap<String, FloatArray>()
 
     // ── 内部解析状态 ──
     private var sampleRate = 44100
@@ -71,6 +112,7 @@ class AudioVisualizer @Inject constructor() {
 
     // ── 频谱帧更新 ──
     private fun pushSample(v: Float) {
+        accumulateWaveform(v)
         window[windowPos] = v
         windowPos++
         if (windowPos >= FFT_SIZE) {
@@ -260,6 +302,115 @@ class AudioVisualizer @Inject constructor() {
             flush()
             configured = false
         }
+    }
+
+    // ── 波形：与播放位置对齐 ──
+
+    /**
+     * 由位置轮询周期性调用，把帧游标重新钉到当前播放位置。
+     *
+     * 每次同步都重置游标，于是 seek / 变速 / 解码时钟漂移都会被自然吸收；
+     * 换歌时把上一首的峰值存入缓存，并优先取用缓存（可能已被本地分析填满）。
+     */
+    fun syncWaveform(songId: String?, positionMs: Long, durationMs: Long) {
+        if (songId.isNullOrBlank()) {
+            clearWaveform()
+            return
+        }
+        val rate = if (sampleRate > 0) sampleRate else 44100
+        val duration = durationMs.coerceAtLeast(0L)
+        val positionFrames = positionMs.coerceAtLeast(0L) * rate / 1000L
+
+        if (songId != waveSongId) {
+            stashWaveform()
+            wavePeaks = cachedWaveform(songId) ?: FloatArray(WAVE_BUCKETS) { WAVE_UNKNOWN }
+            waveSongId = songId
+            waveDurationMs = duration
+            waveTotalFrames = if (duration > 0L) duration * rate / 1000L else 0L
+            waveFrameCursor = positionFrames
+            publishWaveform(force = true)
+            return
+        }
+
+        // 时长未知时（如 seek 后 controller.duration 暂为 TIME_UNSET）保留已有映射，
+        // 否则整首歌的桶索引会被瞬间打乱。
+        if (duration > 0L) {
+            waveDurationMs = duration
+            waveTotalFrames = duration * rate / 1000L
+        }
+        waveFrameCursor = positionFrames
+    }
+
+    /**
+     * 本地音源整轨分析完成后提交结果：整首波形一次性填满，
+     * 若正在播放同一首则立即推送到 UI。
+     */
+    fun submitLocalWaveform(songId: String, peaks: FloatArray) {
+        if (songId.isBlank() || peaks.size != WAVE_BUCKETS) return
+        cacheWaveform(songId, peaks)
+        if (songId == waveSongId) {
+            wavePeaks = peaks
+            publishWaveform(force = true)
+        }
+    }
+
+    /** 每帧调用一次，把当前采样并入所属时间桶的峰值。 */
+    private fun accumulateWaveform(sample: Float) {
+        val peaks = wavePeaks ?: return
+        val total = waveTotalFrames
+        if (total <= 0L) return
+        val frame = waveFrameCursor
+        waveFrameCursor = frame + 1
+        if (frame < 0L) return
+        val bucket = (frame * WAVE_BUCKETS / total).toInt()
+        if (bucket < 0 || bucket >= WAVE_BUCKETS) return
+        // 用平方根压一下动态范围：人耳对响度的感知更接近振幅的平方根
+        val amplitude = sqrt(abs(sample)).coerceIn(0f, 1f)
+        if (amplitude > peaks[bucket]) peaks[bucket] = amplitude
+        publishWaveform(force = false)
+    }
+
+    private fun publishWaveform(force: Boolean) {
+        val peaks = wavePeaks ?: return
+        val songId = waveSongId ?: return
+        val now = System.currentTimeMillis()
+        if (!force && now - waveLastPublishMs < WAVE_PUBLISH_INTERVAL_MS) return
+        waveLastPublishMs = now
+        _waveform.value = WaveformPeaks(songId, peaks.clone())
+    }
+
+    private fun clearWaveform() {
+        stashWaveform()
+        waveSongId = null
+        wavePeaks = null
+        waveDurationMs = 0L
+        waveTotalFrames = 0L
+        waveFrameCursor = 0L
+        if (_waveform.value != null) _waveform.value = null
+    }
+
+    private fun stashWaveform() {
+        val songId = waveSongId ?: return
+        val peaks = wavePeaks ?: return
+        cacheWaveform(songId, peaks)
+    }
+
+    private fun cacheWaveform(songId: String, peaks: FloatArray) {
+        synchronized(waveCache) {
+            waveCache.remove(songId)
+            waveCache[songId] = peaks
+            while (waveCache.size > WAVE_CACHE_LIMIT) {
+                val oldest = waveCache.keys.firstOrNull() ?: break
+                waveCache.remove(oldest)
+            }
+        }
+    }
+
+    /** 命中缓存时刷新 LRU 顺序后返回。 */
+    private fun cachedWaveform(songId: String): FloatArray? = synchronized(waveCache) {
+        val peaks = waveCache.remove(songId)
+        if (peaks != null) waveCache[songId] = peaks
+        peaks
     }
 
     @Suppress("MemberVisibilityCanBePrivate")

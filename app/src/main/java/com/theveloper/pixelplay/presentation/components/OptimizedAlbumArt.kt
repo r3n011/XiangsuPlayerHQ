@@ -114,18 +114,10 @@ fun OptimizedAlbumArt(
                 .build()
         }
     }
-    // Keep lastSuccessPainter across song changes to avoid flashing placeholder
-    // when switching tracks. Without a key, the MutableState survives recomposition
-    // and the previous album art continues to display until the new one is loaded.
-    var lastSuccessPainter by remember { mutableStateOf<Painter?>(null) }
+    var lastSuccessPainter by remember(requestModel.data) { mutableStateOf<Painter?>(null) }
 
     // Use SubcomposeAsyncImage with Coil's native crossfade instead of Crossfade wrapper
     // This avoids recompositions on painter.state changes during scroll.
-    // CRITICAL: During song switching, ALWAYS render lastSuccessPainter while the
-    // new image is loading. Never fall through to PlaceholderContent (the grey box)
-    // once at least one album art has been shown — that is what causes the visible
-    // flash between tracks. PlaceholderContent is only used for the *very first*
-    // song before any album art has resolved.
     SubcomposeAsyncImage(
         model = requestModel,
         contentDescription = "Album art of $title",
@@ -134,12 +126,10 @@ fun OptimizedAlbumArt(
         onSuccess = { state ->
             lastSuccessPainter = state.painter
         },
-        loading = {
-            // If we have a previously-loaded painter, keep showing it seamlessly
-            // instead of flashing the grey placeholder on every track change.
-            val cached = lastSuccessPainter
-            if (cached != null) {
-                SubcomposeAsyncImageContent(painter = cached)
+        loading = { state ->
+            val cachedPainter = state.painter ?: lastSuccessPainter
+            if (cachedPainter != null) {
+                SubcomposeAsyncImageContent(painter = cachedPainter)
             } else if (placeholderModel != null) {
                 SubcomposeAsyncImage(
                     model = placeholderModel,
@@ -154,9 +144,9 @@ fun OptimizedAlbumArt(
             }
         },
         error = {
-            val cached = lastSuccessPainter
-            if (cached != null) {
-                SubcomposeAsyncImageContent(painter = cached)
+            val cachedPainter = lastSuccessPainter
+            if (cachedPainter != null) {
+                SubcomposeAsyncImageContent(painter = cachedPainter)
             } else {
                 PlaceholderContent(title = title)
             }

@@ -28,8 +28,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -282,10 +284,25 @@ class LxMusicViewModel @Inject constructor(
     /** 最近一次搜索实际使用的音源（供分页加载更多时保持同一音源） */
     private var _lastSource: String = "wy"
 
+    /** ⚡ 点击搜索结果后的「后台自动补拉后续页入队」任务（新点击/新搜索时取消，避免任务叠加） */
+    private var _autoQueueJob: Job? = null
+
+    companion object {
+        /** 点击搜索结果后，后台最多自动补拉的页数（防止无限跑飞） */
+        private const val AUTO_QUEUE_MAX_PAGES = 10
+        /** 后台补拉相邻页之间的让步间隔，避免瞬时爆发网络请求 */
+        private const val AUTO_QUEUE_PAGE_DELAY_MS = 250L
+        /** 搜索页一次性排入播放队列的歌曲数上限（含点击歌曲自身），避免整页灌入造成卡顿 */
+        const val AUTO_QUEUE_MAX_SONGS = 100
+    }
+
     fun search(source: String? = null) {
         val kw = keyword.trim()
         if (kw.isBlank()) return
         val effectiveSource = source ?: selectedSource
+        // ⚡ 新搜索：取消上一次的后台自动补拉任务
+        _autoQueueJob?.cancel()
+        _autoQueueJob = null
         // ⚡ 新搜索重置分页状态
         _currentPage = 1
         _lastKeyword = kw
@@ -894,42 +911,26 @@ class LxMusicViewModel @Inject constructor(
         val title: String,
         val artist: String,
         val cover: String,
-        val songId: String
+        val songId: String,
+        val bilibiliBvid: String? = null
     )
 
     /**
-     * ⚡ 在线歌单 → 播放列表（模仿 lx-music 背后逻辑）：
-     * 拉取歌单全部歌曲，整单转为 cloud://lx 占位种子交给调用方入队播放——
-     * 点播时才由引擎/内置源解析真实直链。UI 直接复用软件已有的播放列表（队列）界面。
+     * ⚡ 供「在线歌单详情页」按需拉取歌曲：返回 cloud://lx 占位种子（不落库、不产生媒体库副作用）。
+     * 统一封装「选音源 + 占位 URI + 稳定 id」逻辑。
      */
-    fun loadPlaylistToQueue(
-        playlist: LxPlaylistInfo,
-        onQueueReady: (List<CloudQueueSeed>) -> Unit
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = _uiState.value.copy(progress = 0.2f, progressLabel = "加载歌单…")
-            val songs = runCatching { fetchPlaylistSongs(playlist) }.getOrNull()?.list.orEmpty()
-            if (songs.isEmpty()) {
-                withContext(Dispatchers.Main) {
-                    _uiState.value = _uiState.value.copy(progress = null, progressLabel = null)
-                }
-                onQueueReady(emptyList())
-                return@launch
-            }
-            val seeds = songs.map { song ->
-                val source = pickSourceForSong(song)
-                CloudQueueSeed(
-                    url = buildLxPlaceholderUri(song, source),
-                    title = song.name,
-                    artist = song.singer,
-                    cover = song.pic,
-                    songId = getStableSongId(song)
-                )
-            }
-            withContext(Dispatchers.Main) {
-                _uiState.value = _uiState.value.copy(progress = null, progressLabel = null)
-                onQueueReady(seeds)
-            }
+    suspend fun fetchPlaylistSeeds(playlist: LxPlaylistInfo): List<CloudQueueSeed> {
+        val songs = runCatching { fetchPlaylistSongs(playlist) }.getOrNull()?.list.orEmpty()
+        if (songs.isEmpty()) return emptyList()
+        return songs.map { song ->
+            val source = pickSourceForSong(song)
+            CloudQueueSeed(
+                url = buildLxPlaceholderUri(song, source),
+                title = song.name,
+                artist = song.singer,
+                cover = song.pic,
+                songId = getStableSongId(song)
+            )
         }
     }
 
@@ -938,20 +939,91 @@ class LxMusicViewModel @Inject constructor(
      * 解析 [song] 的真实直链后，把「点击歌曲 + 其余搜索结果占位」一次性交给 [onPlayQueue]
      * 构建完整队列。此前 playSong（playUrl 会重置队列）与 enqueueAllSearchResults（逐首
      * 追加）并发执行，先后顺序不定导致播放列表时而只剩单曲、时而丢失部分结果。
+     *
+     * ⚡ 传入 [onMoreSeeds] 时，还会在后台**按页续拉**尚未加载的搜索结果并增量追加到队列，
+     *    使用户点一首歌即可顺序播放"全部搜索结果"，而不止当前已加载的那一页。
      */
     fun playSearchResultWithQueue(
         song: LxSongInfo,
-        onPlayQueue: (List<CloudQueueSeed>, Int) -> Unit
+        onPlayQueue: (List<CloudQueueSeed>, Int) -> Unit,
+        onMoreSeeds: ((List<CloudQueueSeed>) -> Unit)? = null
     ) {
         val results = _uiState.value.results
         val index = results.indexOfFirst { getStableSongId(it) == getStableSongId(song) }.takeIf { it >= 0 } ?: 0
         playSongListWithQueue(results, index, onPlayQueue)
+        if (onMoreSeeds != null) {
+            // ⚡ 首次建队已排入的歌曲数（受上限约束），剩余配额再交给后台续拉补齐到上限为止
+            val queuedInFirstBatch = results.size.coerceAtMost(AUTO_QUEUE_MAX_SONGS)
+            scheduleAutoQueueFill(song, (AUTO_QUEUE_MAX_SONGS - queuedInFirstBatch).coerceAtLeast(0), onMoreSeeds)
+        }
     }
 
     /**
-     * 解析 [songs] 中 [startIndex] 这一首（persist=true 落库）后原子建队：
+     * ⚡ 后台「自动补拉后续分页并追加进队列」：
+     * 点击搜索结果后，从当前已加载的下一页开始，逐页拉取后续搜索结果并增量交给 [onMoreSeeds]，
+     * 直到补齐 [remainingSlots] 首或搜索结果耗尽为止。
+     *
+     * 性能优化：
+     * - 独立 [Job]，新点击/新搜索时取消旧任务，避免任务叠加
+     * - 逐页串行 + 页间让步延迟，避免瞬时爆发网络请求造成卡顿
+     * - 以 stable id 去重（含已加载结果 + 已追加结果），不产生重复歌曲
+     * - [remainingSlots] + [AUTO_QUEUE_MAX_PAGES] 双重限制，队列总数不超过 [AUTO_QUEUE_MAX_SONGS]
+     */
+    private fun scheduleAutoQueueFill(
+        clicked: LxSongInfo,
+        remainingSlots: Int,
+        onMoreSeeds: (List<CloudQueueSeed>) -> Unit
+    ) {
+        if (remainingSlots <= 0) return
+        val kw = _lastKeyword?.trim()?.takeIf { it.isNotBlank() }
+            ?: keyword.trim().takeIf { it.isNotBlank() }
+        if (kw.isNullOrBlank() || _uiState.value.isEnd) return
+        val source = _lastSource
+        val startPage = _currentPage + 1
+        _autoQueueJob?.cancel()
+        _autoQueueJob = viewModelScope.launch(Dispatchers.IO) {
+            // 去重集合：已加载结果 + 点击歌曲自身，避免把已入队的歌曲重复追加
+            val seen = _uiState.value.results.mapTo(LinkedHashSet()) { getStableSongId(it) }
+            seen.add(getStableSongId(clicked))
+            var page = startPage
+            var fetchedPages = 0
+            var appended = 0
+            while (fetchedPages < AUTO_QUEUE_MAX_PAGES && appended < remainingSlots) {
+                delay(AUTO_QUEUE_PAGE_DELAY_MS)
+                val result = runCatching {
+                    searchBySource(source, kw, page = page, pageSize = _pageSize)
+                }.getOrElse { return@launch }
+                val fresh = result.list
+                    .filter { seen.add(getStableSongId(it)) }
+                    .take(remainingSlots - appended)
+                if (fresh.isNotEmpty()) {
+                    val seeds = fresh.map { s ->
+                        CloudQueueSeed(
+                            url = buildLxPlaceholderUri(s, pickSourceForSong(s)),
+                            title = s.name,
+                            artist = s.singer,
+                            cover = s.pic,
+                            songId = getStableSongId(s)
+                        )
+                    }
+                    appended += seeds.size
+                    withContext(Dispatchers.Main) { onMoreSeeds(seeds) }
+                }
+                fetchedPages++
+                page++
+                if (result.isEnd) break
+            }
+        }
+    }
+
+    /**
+     * 解析 [songs] 中 [startIndex] 这一首后原子建队：
      * 点击歌曲用真实直链，其余歌曲用 cloud://lx 占位懒解析。
      * 由搜索结果、在线歌单详情页共用。
+     *
+     * ⚡ 不落库（persist=false）：搜索结果只进播放队列，不写入统一媒体库；
+     *    只有用户主动收藏的歌曲才会通过 [toggleFavoriteForSong] 落库。
+     * ⚡ 队列长度受 [AUTO_QUEUE_MAX_SONGS] 约束，避免一次性排入过多歌曲造成卡顿。
      */
     fun playSongListWithQueue(
         songs: List<LxSongInfo>,
@@ -965,7 +1037,7 @@ class LxMusicViewModel @Inject constructor(
                 progressLabel = "获取播放链接…",
                 loadingSongId = clicked.id
             )
-            val resolved = resolvePlayableSong(clicked, persist = true)
+            val resolved = resolvePlayableSong(clicked, persist = false)
             if (resolved == null) {
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(
@@ -976,11 +1048,12 @@ class LxMusicViewModel @Inject constructor(
                 return@launch
             }
             val clickedKey = getStableSongId(clicked)
-            val seeds = ArrayList<CloudQueueSeed>(songs.size)
-            // 点击的歌曲：真实直链（已落库，savedSongId 即数据库歌曲 id）
+            val seeds = ArrayList<CloudQueueSeed>(songs.size.coerceAtMost(AUTO_QUEUE_MAX_SONGS))
+            // 点击的歌曲：真实直链（不落库，savedSongId 即稳定 id）
             seeds.add(CloudQueueSeed(resolved.url, clicked.name, clicked.singer, resolved.cover, resolved.savedSongId))
-            songs.forEachIndexed { index, s ->
-                if (index == startIndex || getStableSongId(s) == clickedKey) return@forEachIndexed
+            for ((index, s) in songs.withIndex()) {
+                if (seeds.size >= AUTO_QUEUE_MAX_SONGS) break
+                if (index == startIndex || getStableSongId(s) == clickedKey) continue
                 val source = pickSourceForSong(s)
                 seeds.add(CloudQueueSeed(buildLxPlaceholderUri(s, source), s.name, s.singer, s.pic, getStableSongId(s)))
             }

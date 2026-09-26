@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi
 import com.theveloper.pixelplay.data.bilibili.BilibiliSongInfo
-import com.theveloper.pixelplay.data.repository.MusicRepository
 import timber.log.Timber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -33,8 +32,14 @@ data class BilibiliUiState(
 class BilibiliMusicViewModel @Inject constructor(
     app: Application,
     private val searchApi: BilibiliSearchApi,
-    private val musicRepository: MusicRepository,
 ) : AndroidViewModel(app) {
+
+    companion object {
+        /** 搜索页一次性排入播放队列的歌曲数上限（含点击歌曲自身） */
+        private const val MAX_ENQUEUE_SONGS = 100
+        /** 每解析这么多首打包回传一次，减少主线程刷新次数 */
+        private const val ENQUEUE_BATCH_SIZE = 10
+    }
 
     private val _uiState = MutableStateFlow(BilibiliUiState())
     val uiState: StateFlow<BilibiliUiState> = _uiState.asStateFlow()
@@ -152,14 +157,9 @@ class BilibiliMusicViewModel @Inject constructor(
                     Timber.d("Got play URL: ${resolved.url.take(50)}...")
 
                     val coverToUse = song.pic.ifBlank { "" }
-                    val savedSongId = try {
-                        musicRepository.saveCloudSong(song.toLxSongInfo(resolved.cid, resolved.aid)).toString()
-                    } catch (t: Throwable) {
-                        Timber.w("saveCloudSong failed: ${t.message}")
-                        "bilibili_${song.id}"
-                    }
-
-                    onOpenPlayer(resolved.url, song.name, song.singer, coverToUse, savedSongId, resolved.bvid)
+                    // 仅播放不落库：搜索页点击歌曲只进播放队列，不写入统一媒体库；
+                    // 只有用户主动收藏的歌曲才会入库。
+                    onOpenPlayer(resolved.url, song.name, song.singer, coverToUse, getStableSongId(song), resolved.bvid)
                 }
             } catch (t: Throwable) {
                 Timber.e(t, "Bilibili playSong exception")
@@ -217,40 +217,45 @@ class BilibiliMusicViewModel @Inject constructor(
     }
 
     /**
-     * 搜索整队播放：点击某首结果后，把当前搜索结果的其余视频逐首静默解析并追加到播放队列。
+     * 搜索整队播放：点击某首结果后，把当前搜索结果的其余视频**分批**静默解析并追加到播放队列。
      * 自动切下一曲时即可按搜索结果顺序依次播放。
+     *
+     * 性能优化：
+     * - 最多解析 [MAX_ENQUEUE_SONGS] 首（含点击歌曲），避免一次性排入整页结果造成卡顿
+     * - 每 [ENQUEUE_BATCH_SIZE] 首打包回传，减少主线程刷新次数
      */
     fun enqueueAllSearchResults(
         clickedSongId: String,
-        onEnqueue: (url: String, title: String, artist: String, cover: String, songId: String, bvid: String) -> Unit
+        onEnqueue: (List<LxMusicViewModel.CloudQueueSeed>) -> Unit
     ) {
         val results = _uiState.value.results
         if (results.size <= 1) return
+        val targets = results
+            .filter { getStableSongId(it) != clickedSongId }
+            .take((MAX_ENQUEUE_SONGS - 1).coerceAtLeast(0))
+        if (targets.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            results.filter { getStableSongId(it) != clickedSongId }.forEach { song ->
-                val resolved = runCatching { resolveBilibiliPlayable(song) }.getOrNull() ?: return@forEach
-                withContext(Dispatchers.Main) {
+            targets.chunked(ENQUEUE_BATCH_SIZE).forEach { batch ->
+                val seeds = ArrayList<LxMusicViewModel.CloudQueueSeed>(batch.size)
+                batch.forEach { song ->
+                    val resolved = runCatching { resolveBilibiliPlayable(song) }.getOrNull() ?: return@forEach
                     val coverToUse = song.pic.ifBlank { "" }
-                    // 仅排队不落库：返回稳定 id，避免把整页搜索结果灌进媒体库（真正点播的歌曲才入库）
-                    onEnqueue(resolved.url, song.name, song.singer, coverToUse, getStableSongId(song), resolved.bvid)
+                    // 仅排队不落库：返回稳定 id，避免把整页搜索结果灌进媒体库
+                    seeds.add(
+                        LxMusicViewModel.CloudQueueSeed(
+                            url = resolved.url,
+                            title = song.name,
+                            artist = song.singer,
+                            cover = coverToUse,
+                            songId = getStableSongId(song),
+                            bilibiliBvid = resolved.bvid
+                        )
+                    )
+                }
+                if (seeds.isNotEmpty()) {
+                    withContext(Dispatchers.Main) { onEnqueue(seeds) }
                 }
             }
         }
     }
-}
-
-private fun BilibiliSongInfo.toLxSongInfo(cid: Long, aid: Long): com.theveloper.pixelplay.data.lx.LxSongInfo {
-    val bvidToStore = bvid.ifBlank { aid.toString() }
-    return com.theveloper.pixelplay.data.lx.LxSongInfo(
-        id = id,
-        songmid = bvidToStore,
-        hash = id,
-        name = name,
-        singer = singer,
-        albumName = albumName,
-        duration = duration,
-        pic = pic,
-        source = "bilibili",
-        extra = "bilibili://$bvidToStore/$cid/$aid"
-    )
 }

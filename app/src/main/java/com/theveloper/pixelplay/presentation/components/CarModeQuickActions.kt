@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Search
@@ -32,14 +33,55 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 
+private data class QuickAction(
+    val icon: ImageVector,
+    val titleRes: Int,
+    val subtitleRes: Int,
+    val onClick: () -> Unit
+)
+
 @Composable
 fun CarModeQuickActionsCard(
     onSearchClick: () -> Unit,
     onRoamingClick: () -> Unit,
+    onRadioClick: () -> Unit,
     onLibraryClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val actions = listOf(
+        QuickAction(
+            Icons.Rounded.Search,
+            R.string.car_mode_action_search,
+            R.string.car_mode_action_search_desc,
+            onSearchClick
+        ),
+        QuickAction(
+            Icons.Rounded.Explore,
+            R.string.car_mode_action_roaming,
+            R.string.car_mode_action_roaming_desc,
+            onRoamingClick
+        ),
+        QuickAction(
+            Icons.Rounded.Radio,
+            R.string.car_mode_action_radio,
+            R.string.car_mode_action_radio_desc,
+            onRadioClick
+        ),
+        QuickAction(
+            Icons.Rounded.LibraryMusic,
+            R.string.car_mode_action_library,
+            R.string.car_mode_action_library_desc,
+            onLibraryClick
+        ),
+        QuickAction(
+            Icons.Rounded.Settings,
+            R.string.car_mode_action_settings,
+            R.string.car_mode_action_settings_desc,
+            onSettingsClick
+        )
+    )
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -60,37 +102,25 @@ fun CarModeQuickActionsCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                QuickActionButton(
-                    icon = Icons.Rounded.Search,
-                    title = stringResource(R.string.car_mode_action_search),
-                    subtitle = stringResource(R.string.car_mode_action_search_desc),
-                    onClick = onSearchClick
-                )
-                
-                QuickActionButton(
-                    icon = Icons.Rounded.Radio,
-                    title = stringResource(R.string.car_mode_action_roaming),
-                    subtitle = stringResource(R.string.car_mode_action_roaming_desc),
-                    onClick = onRoamingClick
-                )
-                
-                QuickActionButton(
-                    icon = Icons.Rounded.LibraryMusic,
-                    title = stringResource(R.string.car_mode_action_library),
-                    subtitle = stringResource(R.string.car_mode_action_library_desc),
-                    onClick = onLibraryClick
-                )
-                
-                QuickActionButton(
-                    icon = Icons.Rounded.Settings,
-                    title = stringResource(R.string.car_mode_action_settings),
-                    subtitle = stringResource(R.string.car_mode_action_settings_desc),
-                    onClick = onSettingsClick
-                )
+            actions.chunked(3).forEach { rowActions ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    rowActions.forEach { action ->
+                        QuickActionButton(
+                            icon = action.icon,
+                            title = stringResource(action.titleRes),
+                            subtitle = stringResource(action.subtitleRes),
+                            onClick = action.onClick
+                        )
+                    }
+                    // Keep the trailing buttons aligned with the first row when the
+                    // last row is not full (e.g. 5 actions -> 3 + 2).
+                    repeat(3 - rowActions.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
     }

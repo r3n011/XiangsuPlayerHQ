@@ -138,7 +138,7 @@ fun DailyMixScreen(
             onDismiss = { playerViewModel.dismissAiPlaylistSheet() },
             onGenerateClick = { prompt, minLength, maxLength ->
                 // Optimize: Trigger background AI generation and track real-time status
-                playerViewModel.generateAiPlaylist(prompt, minLength, maxLength, saveAsPlaylist = false)
+                playerViewModel.generateAiPlaylist(prompt, minLength, maxLength, saveAsPlaylist = false, force = true)
             },
             isGenerating = isGeneratingAiPlaylist,
             isSuccess = aiSuccess,

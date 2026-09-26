@@ -47,7 +47,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Diseña portada, icono, forma y elige canciones tú mismo.</string>
     <string name="presentation_batch_e_creation_mode_ai">Con IA</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Genera una lista seleccionada con controles avanzados.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Requiere una clave API de Gemini configurada en ajustes.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Requiere una clave API configurada en ajustes.</string>
     <string name="presentation_batch_e_setup_api_key">Configurar clave API</string>
 
     <string name="presentation_batch_e_ai_playlist_lab_title">Laboratorio de listas IA</string>

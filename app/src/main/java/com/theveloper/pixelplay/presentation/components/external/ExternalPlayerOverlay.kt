@@ -158,7 +158,13 @@ fun ExternalPlayerOverlay(
                         CircularProgressIndicator()
                     }
                 } else {
-                    val totalDuration = stablePlayerState.totalDuration.coerceAtLeast(0L)
+                    // 兜底：外部播放（文件管理器拉起）首帧 stablePlayerState.totalDuration
+                    // 可能仍为 0（进度采样尚未跑到），此时分母为 0 会让进度条恒显示
+                    // 00:00 且拖动 seekTo(0) 无效。改用歌曲元数据时长兜底，保证进度条
+                    // 有正确的分母，拖动也能落到正确位置。
+                    val totalDuration = stablePlayerState.totalDuration
+                        .takeIf { it > 0L }
+                        ?: currentSong.duration.coerceAtLeast(0L)
                     val rawPosition = if (isRemotePlaybackActive) remotePosition else playbackPosition
                     val position = rawPosition.coerceIn(0L, totalDuration)
                     val progressFraction = if (totalDuration > 0) position.toFloat() / totalDuration else 0f

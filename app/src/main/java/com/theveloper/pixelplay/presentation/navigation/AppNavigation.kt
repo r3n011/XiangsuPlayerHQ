@@ -60,6 +60,7 @@ import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.GenreDetailScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
+import com.theveloper.pixelplay.presentation.screens.PlayerProgressStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.PlaylistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.RecentlyPlayedScreen
 import com.theveloper.pixelplay.presentation.screens.RadioScreen
@@ -422,7 +423,7 @@ fun AppNavigation(
                     }
                 }
             }
-            // ⚡ 在线歌单不再进独立详情页：点击直接整单入队播放并打开播放列表（队列）界面
+            // ⚡ 在线歌单复用上面的 playlist_detail 路由：通过「online_playlist:」伪 id 进入只读详情页
             composable(
                 route = Screen.AlbumDetail.route,
                 arguments = listOf(navArgument("albumId") { type = NavType.StringType }),
@@ -506,6 +507,17 @@ fun AppNavigation(
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     PaletteStyleSettingsScreen(
+                        playerViewModel = playerViewModel,
+                        settingsViewModel = hiltViewModel(),
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.PlayerProgressStyle.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    PlayerProgressStyleSettingsScreen(
                         playerViewModel = playerViewModel,
                         settingsViewModel = hiltViewModel(),
                         onBackClick = { navController.popBackStack() }

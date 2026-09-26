@@ -260,6 +260,9 @@ class UserPreferencesRepository @Inject constructor(
         val NAV_BAR_STYLE = stringPreferencesKey("nav_bar_style")
         val NAV_BAR_COMPACT_MODE = booleanPreferencesKey("nav_bar_compact_mode")
         val CAROUSEL_STYLE = stringPreferencesKey("carousel_style")
+        val PLAYER_PROGRESS_STYLE = stringPreferencesKey("player_progress_style")
+        val PLAYER_PROGRESS_THUMB_STYLE = stringPreferencesKey("player_progress_thumb_style")
+        val PLAYER_PROGRESS_THUMB_ROTATE = booleanPreferencesKey("player_progress_thumb_rotate")
         val LIBRARY_NAVIGATION_MODE = stringPreferencesKey("library_navigation_mode")
         val LAUNCH_TAB = stringPreferencesKey("launch_tab")
 
@@ -288,6 +291,12 @@ class UserPreferencesRepository @Inject constructor(
         val PERSISTENT_SHUFFLE_ENABLED = booleanPreferencesKey("persistent_shuffle_enabled")
         val DISABLE_CAST_AUTOPLAY = booleanPreferencesKey("disable_cast_autoplay")
         val RESUME_ON_HEADSET_RECONNECT = booleanPreferencesKey("resume_on_headset_reconnect")
+        // Audio focus
+        val FOCUS_PAUSE_ON_TRANSIENT_LOSS = booleanPreferencesKey("focus_pause_on_transient_loss")
+        val FOCUS_PAUSE_ON_PERMANENT_LOSS = booleanPreferencesKey("focus_pause_on_permanent_loss")
+        val FOCUS_RESUME_AFTER_GAIN = booleanPreferencesKey("focus_resume_after_gain")
+        val FOCUS_DUCK_ON_TRANSIENT_LOSS = booleanPreferencesKey("focus_duck_on_transient_loss")
+        val FOCUS_RESUME_AFTER_CALL = booleanPreferencesKey("focus_resume_after_call")
         val SHOW_QUEUE_HISTORY = booleanPreferencesKey("show_queue_history")
         val PLAYBACK_QUEUE_SNAPSHOT = stringPreferencesKey("playback_queue_snapshot_v1")
         val FULL_PLAYER_SHOW_FILE_INFO = booleanPreferencesKey("full_player_show_file_info")
@@ -647,6 +656,56 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setResumeOnHeadsetReconnect(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.RESUME_ON_HEADSET_RECONNECT] = enabled }
+    }
+
+    /**
+     * 短暂音频焦点变化（通话/通知/导航等）时是否暂停播放。
+     */
+    val focusPauseOnTransientLossFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FOCUS_PAUSE_ON_TRANSIENT_LOSS] ?: true }
+
+    suspend fun setFocusPauseOnTransientLoss(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FOCUS_PAUSE_ON_TRANSIENT_LOSS] = enabled }
+    }
+
+    /**
+     * 永久音频焦点变化（其它播放器/游戏播放音乐）时是否暂停播放。
+     */
+    val focusPauseOnPermanentLossFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FOCUS_PAUSE_ON_PERMANENT_LOSS] ?: false }
+
+    suspend fun setFocusPauseOnPermanentLoss(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FOCUS_PAUSE_ON_PERMANENT_LOSS] = enabled }
+    }
+
+    /**
+     * 重新获得音频焦点后是否自动恢复播放。
+     */
+    val focusResumeAfterGainFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FOCUS_RESUME_AFTER_GAIN] ?: false }
+
+    suspend fun setFocusResumeAfterGain(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FOCUS_RESUME_AFTER_GAIN] = enabled }
+    }
+
+    /**
+     * 短暂音频焦点变化时是否降低音量（闪避）而非暂停。
+     */
+    val focusDuckOnTransientLossFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FOCUS_DUCK_ON_TRANSIENT_LOSS] ?: false }
+
+    suspend fun setFocusDuckOnTransientLoss(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FOCUS_DUCK_ON_TRANSIENT_LOSS] = enabled }
+    }
+
+    /**
+     * 通话结束后是否继续播放（若因来电而暂停）。
+     */
+    val focusResumeAfterCallFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FOCUS_RESUME_AFTER_CALL] ?: true }
+
+    suspend fun setFocusResumeAfterCall(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FOCUS_RESUME_AFTER_CALL] = enabled }
     }
 
     val showQueueHistoryFlow: Flow<Boolean> =
@@ -1384,6 +1443,28 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setCarouselStyle(style: String) {
         dataStore.edit { it[PreferencesKeys.CAROUSEL_STYLE] = style }
+    }
+
+    // 默认值与 PlayerProgressStyle/WAVY、PlayerThumbStyle/DEFAULT 保持一致
+    val playerProgressStyleFlow: Flow<String> =
+        pref { it[PreferencesKeys.PLAYER_PROGRESS_STYLE] ?: "WAVY" }
+
+    suspend fun setPlayerProgressStyle(style: String) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_PROGRESS_STYLE] = style }
+    }
+
+    val playerProgressThumbStyleFlow: Flow<String> =
+        pref { it[PreferencesKeys.PLAYER_PROGRESS_THUMB_STYLE] ?: "DEFAULT" }
+
+    suspend fun setPlayerProgressThumbStyle(style: String) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_PROGRESS_THUMB_STYLE] = style }
+    }
+
+    val playerProgressThumbRotateFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.PLAYER_PROGRESS_THUMB_ROTATE] ?: false }
+
+    suspend fun setPlayerProgressThumbRotate(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_PROGRESS_THUMB_ROTATE] = enabled }
     }
 
     val launchTabFlow: Flow<String> =

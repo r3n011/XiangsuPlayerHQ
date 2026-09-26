@@ -151,7 +151,7 @@ class AiStateHolder @Inject constructor(
     fun retryLastPlaylistGeneration() {
         // Safe retry using cached prompt and length constraints
         val prompt = _lastPlaylistPrompt ?: return
-        generateAiPlaylist(prompt, _lastMinLength, _lastMaxLength)
+        generateAiPlaylist(prompt, _lastMinLength, _lastMaxLength, force = true)
     }
 
     fun retryLastMetadataGeneration() {

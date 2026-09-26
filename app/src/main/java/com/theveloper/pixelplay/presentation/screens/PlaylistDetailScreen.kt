@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -119,6 +120,7 @@ import androidx.navigation.NavController
 import coil.size.Size
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.ai.PlaylistEvaluation
+import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
@@ -131,6 +133,7 @@ import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
 import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHeight
 import com.theveloper.pixelplay.presentation.components.subcomps.TightWrapText
 import com.theveloper.pixelplay.presentation.navigation.Screen
+import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel.Companion.FOLDER_PLAYLIST_PREFIX
@@ -190,13 +193,58 @@ fun PlaylistDetailScreen(
     val sortSheetTitle = stringResource(R.string.presentation_batch_b_sort_songs)
     val toastAddedToQueue = stringResource(R.string.toast_added_to_queue)
     val toastPlayingNext = stringResource(R.string.toast_playing_next)
-    val currentPlaylist = uiState.currentPlaylistDetails
+    // ⚡ 在线歌单：用「online_playlist:」伪 id 复用本页做只读展示（不落库，歌曲懒加载）
+    val onlinePlaylist = remember(playlistId) { PlaylistViewModel.parseOnlinePlaylistId(playlistId) }
+    val isOnlinePlaylist = onlinePlaylist != null
+    // 仅在线模式才实例化重量级 LxMusicViewModel（引擎本身是 @Singleton，成本可控）
+    val onlineLxViewModel: LxMusicViewModel? =
+        if (isOnlinePlaylist) hiltViewModel<LxMusicViewModel>() else null
+    val onlineLxUiState = if (onlineLxViewModel != null) {
+        onlineLxViewModel.uiState.collectAsStateWithLifecycle().value
+    } else {
+        null
+    }
+    var onlineSongs by remember(playlistId) { mutableStateOf<List<Song>>(emptyList()) }
+    var onlineSongsLoading by remember(playlistId) { mutableStateOf(isOnlinePlaylist) }
+    var onlineSongsError by remember(playlistId) { mutableStateOf<String?>(null) }
+
+    val currentPlaylist: Playlist? = if (onlinePlaylist != null) {
+        remember(onlinePlaylist) {
+            Playlist(
+                id = playlistId,
+                name = onlinePlaylist.name.ifBlank { "在线歌单" },
+                songIds = emptyList(),
+                coverImageUri = onlinePlaylist.cover.ifBlank { null },
+                source = "ONLINE"
+            )
+        }
+    } else {
+        uiState.currentPlaylistDetails
+    }
     val isFolderPlaylist = currentPlaylist?.id?.startsWith(FOLDER_PLAYLIST_PREFIX) == true
-    val songsInPlaylist = uiState.currentPlaylistSongs
+    // 只读歌单（文件夹伪歌单 / 在线歌单）：不可增删、排序、重命名、拖拽
+    val isReadOnlyPlaylist = isFolderPlaylist || isOnlinePlaylist
+    val songsInPlaylist = if (isOnlinePlaylist) onlineSongs else uiState.currentPlaylistSongs
 
     LaunchedEffect(playlistId) {
-        playlistViewModel.loadPlaylistDetails(playlistId)
-        playerViewModel.setCurrentPlaylistId(playlistId)
+        if (onlinePlaylist != null) {
+            // 在线歌单不写媒体库，也不把自己的伪 id 交给播放器做「当前歌单」标记
+            playerViewModel.setCurrentPlaylistId(null)
+            onlineSongsLoading = true
+            onlineSongsError = null
+            val seeds = onlineLxViewModel?.fetchPlaylistSeeds(onlinePlaylist).orEmpty()
+            val songs = seeds.mapNotNull { seed ->
+                playerViewModel.buildCloudSong(
+                    seed.url, seed.title, seed.artist, seed.cover, seed.songId
+                )
+            }
+            onlineSongs = songs
+            if (songs.isEmpty()) onlineSongsError = "获取歌单歌曲失败，请稍后重试"
+            onlineSongsLoading = false
+        } else {
+            playlistViewModel.loadPlaylistDetails(playlistId)
+            playerViewModel.setCurrentPlaylistId(playlistId)
+        }
     }
 
     var showAddSongsSheet by remember { mutableStateOf(false) }
@@ -263,14 +311,14 @@ fun PlaylistDetailScreen(
         }
     )
 
-    LaunchedEffect(reorderableState.isAnyItemDragging, isFolderPlaylist) {
-        if (!isFolderPlaylist && !reorderableState.isAnyItemDragging && lastMovedFrom != null && lastMovedTo != null) {
+    LaunchedEffect(reorderableState.isAnyItemDragging, isReadOnlyPlaylist) {
+        if (!isReadOnlyPlaylist && !reorderableState.isAnyItemDragging && lastMovedFrom != null && lastMovedTo != null) {
             currentPlaylist?.let {
                 playlistViewModel.reorderSongsInPlaylist(it.id, lastMovedFrom!!, lastMovedTo!!)
             }
             lastMovedFrom = null
             lastMovedTo = null
-        } else if (isFolderPlaylist && !reorderableState.isAnyItemDragging) {
+        } else if (isReadOnlyPlaylist && !reorderableState.isAnyItemDragging) {
             lastMovedFrom = null
             lastMovedTo = null
         }
@@ -321,17 +369,19 @@ fun PlaylistDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            playerViewModel.showSortingSheet() 
+                    if (!isOnlinePlaylist) {
+                        IconButton(
+                            onClick = {
+                                playerViewModel.showSortingSheet() 
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Sort,
+                                contentDescription = sortSongsLabel
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.Sort,
-                            contentDescription = sortSongsLabel
-                        )
                     }
-                    if (!isFolderPlaylist) {
+                    if (!isReadOnlyPlaylist) {
                         FilledTonalIconButton(
                             modifier = Modifier.padding(end = 10.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(
@@ -346,13 +396,20 @@ fun PlaylistDetailScreen(
             )
         }
     ) { innerPadding ->
-        if (uiState.isLoading && currentPlaylist == null) {
+        val onlineError = onlineSongsError
+        if ((uiState.isLoading && currentPlaylist == null) || (isOnlinePlaylist && onlineSongsLoading)) {
             Box(
                 Modifier
                     .fillMaxSize()
                     .padding(top = innerPadding.calculateTopPadding()), Alignment.Center
             ) { CircularProgressIndicator() }
-        } else if (uiState.playlistNotFound) {
+        } else if (isOnlinePlaylist && onlineError != null) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = innerPadding.calculateTopPadding()), Alignment.Center
+            ) { Text(onlineError) }
+        } else if (uiState.playlistNotFound && !isOnlinePlaylist) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -427,7 +484,7 @@ fun PlaylistDetailScreen(
                                 playerViewModel.playSongsShuffled(
                                     songsToPlay = localReorderableSongs,
                                     queueName = currentPlaylist.name,
-                                    playlistId = currentPlaylist.id,
+                                    playlistId = if (isOnlinePlaylist) null else currentPlaylist.id,
                                     startAtZero = true,
                                 )
                             }
@@ -462,9 +519,57 @@ fun PlaylistDetailScreen(
                                 lineHeight = 20.sp
                             )
                     }
+
+                    if (isOnlinePlaylist) {
+                        // ⚡ 在线歌单只读展示：仅提供「保存到本地」（手动落库，避免浏览即污染媒体库）
+                        val isSavingOnline = onlineLxUiState?.savingPlaylistId != null
+                        Button(
+                            onClick = {
+                                val vm = onlineLxViewModel
+                                val pl = onlinePlaylist
+                                if (vm != null && pl != null) {
+                                    vm.savePlaylistToLocal(pl) { _, msg ->
+                                        playerViewModel.sendToast(msg)
+                                    }
+                                }
+                            },
+                            enabled = !isSavingOnline,
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            ),
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .animateContentSize()
+                        ) {
+                            if (isSavingOnline) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Rounded.Add,
+                                    contentDescription = "保存到本地",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                modifier = Modifier.padding(end = 4.dp),
+                                text = "保存到本地",
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
                 }
 
-                if (!isFolderPlaylist) {
+                if (!isReadOnlyPlaylist) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -765,7 +870,7 @@ fun PlaylistDetailScreen(
                                                 localReorderableSongs,
                                                 song,
                                                 currentPlaylist.name,
-                                                currentPlaylist.id
+                                                if (isOnlinePlaylist) null else currentPlaylist.id
                                             )
                                         },
                                         song = song,
@@ -773,7 +878,7 @@ fun PlaylistDetailScreen(
                                         isPlaying = playerStableState.isPlaying,
                                         isDragging = isDragging,
                                         onRemoveClick = {
-                                            if (!isFolderPlaylist) {
+                                            if (!isReadOnlyPlaylist) {
                                                 currentPlaylist.let {
                                                     playlistViewModel.removeSongFromPlaylist(it.id, song.id)
                                                 }
@@ -834,7 +939,7 @@ fun PlaylistDetailScreen(
         }
     }
 
-    if (showAddSongsSheet && currentPlaylist != null && !isFolderPlaylist) {
+    if (showAddSongsSheet && currentPlaylist != null && !isReadOnlyPlaylist) {
         SongPickerBottomSheet(
             initiallySelectedSongIds = currentPlaylist.songIds.toSet(),
             onDismiss = { showAddSongsSheet = false },
@@ -844,7 +949,7 @@ fun PlaylistDetailScreen(
             }
         )
     }
-    if (showPlaylistOptionsSheet && !isFolderPlaylist) {
+    if (showPlaylistOptionsSheet && !isReadOnlyPlaylist) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
         ModalBottomSheet(
@@ -1078,7 +1183,9 @@ fun PlaylistDetailScreen(
                     playerViewModel.generateAiMetadata(currentSong, fields)
                 },
                 removeFromListTrigger = {
-                    playlistViewModel.removeSongFromPlaylist(playlistId, currentSong.id)
+                    if (!isOnlinePlaylist) {
+                        playlistViewModel.removeSongFromPlaylist(playlistId, currentSong.id)
+                    }
                 }
             )
             if (showPlaylistBottomSheet) {
@@ -1100,7 +1207,7 @@ fun PlaylistDetailScreen(
 
     val isSortSheetVisible by playerViewModel.isSortingSheetVisible.collectAsStateWithLifecycle()
 
-    if (isSortSheetVisible) {
+    if (isSortSheetVisible && !isOnlinePlaylist) {
         // Check if playlist is in Manual mode (which corresponds to Default Order)
         val isManualMode = uiState.playlistSongsOrderMode is PlaylistSongsOrderMode.Manual
         val rawOption = uiState.currentPlaylistSongsSortOption

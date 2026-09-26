@@ -195,7 +195,7 @@ object AudioMetadataReader {
                 }
 
                 AudioMetadata(
-                    title = title ?: fallback?.title ?: file.nameWithoutExtension,
+                    title = title ?: fallback?.title,
                     artist = artist ?: fallback?.artist,
                     albumArtist = albumArtist ?: fallback?.albumArtist,
                     album = album ?: fallback?.album,

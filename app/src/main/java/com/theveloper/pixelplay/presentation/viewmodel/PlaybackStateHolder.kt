@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -27,8 +28,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.service.cast.CastRemotePlaybackState
+import com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer
 import com.google.android.gms.cast.MediaStatus
 import timber.log.Timber
+import com.theveloper.pixelplay.utils.AudioDecoder
 import com.theveloper.pixelplay.utils.QueueUtils
 import com.theveloper.pixelplay.utils.MediaItemBuilder
 import com.theveloper.pixelplay.utils.TranscodeProgressManager
@@ -40,6 +43,7 @@ class PlaybackStateHolder @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val castStateHolder: CastStateHolder,
     private val queueStateHolder: QueueStateHolder,
+    private val audioVisualizer: AudioVisualizer,
     @param:ApplicationContext private val appContext: Context
 ) {
     companion object {
@@ -77,7 +81,15 @@ class PlaybackStateHolder @Inject constructor(
         private const val MEDIA_MISMATCH_OVERRIDE_MS = 2L * MEDIA_MISMATCH_RESYNC_MS
     }
 
-    private var scope: CoroutineScope? = null
+    /**
+     * 本类是 @Singleton，但 [PlayerViewModel] 是 @HiltViewModel：主界面与
+     * ExternalPlayerActivity 会各自创建一个实例，并分别调用 [initialize]。
+     * 若直接复用传入的 viewModelScope，任一 ViewModel 销毁时 [onCleared] 都会把
+     * scope 置空，之后 [startProgressUpdates] 的 `scope?.launch` 永远为 null，
+     * 导致全 App 进度更新永久失效 —— 这是「文件管理器拉起播放器后进度条不对 / 拖不动」
+     * 的根因。因此本类改为持有独立的长生命周期 scope，与 ViewModel 生命周期解耦。
+     */
+    private var scope: CoroutineScope? = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var onCastSeekBlocked: (() -> Unit)? = null
     
     // MediaController
@@ -119,6 +131,10 @@ class PlaybackStateHolder @Inject constructor(
     private var coldStartSnapshotMediaId: String? = null
     private var coldStartSnapshotToken: Long? = null
     private var coldStartSnapshotPositionMs: Long? = null
+
+    // 本地波形整轨分析：同一首歌只触发一次，避免重复解码整条音轨
+    private var waveformAnalysisJob: Job? = null
+    private var waveformAnalysisSongId: String? = null
     private var shuffleToggleJob: Job? = null
     private var lastShuffleToggleFinishedAtMs: Long = 0L
     private var lastCastSeekBlockedToastAtMs: Long = 0L
@@ -174,7 +190,7 @@ class PlaybackStateHolder @Inject constructor(
         coroutineScope: CoroutineScope,
         onCastSeekBlocked: (() -> Unit)? = null
     ) {
-        this.scope = coroutineScope
+        // 注意：不覆盖 scope（见 scope 字段注释），只记录回调。
         this.onCastSeekBlocked = onCastSeekBlocked
 
         // Observe transcoding progress and update player state
@@ -546,6 +562,8 @@ class PlaybackStateHolder @Inject constructor(
             // rebuild the players (which would race with the in-flight seek command).
             dualPlayerEngine.notifyExternalSeekInitiated()
             player.seekTo(targetPosition)
+            // 波形帧游标立即跟随，避免 seek 到下一次位置轮询之间峰值写进错误的桶
+            audioVisualizer.syncWaveform(currentMediaId, targetPosition, player.duration)
         }
     }
 
@@ -806,6 +824,14 @@ class PlaybackStateHolder @Inject constructor(
                             _currentPosition.value = resolvedPosition
                         }
 
+                        // ⚡ 波形进度条：周期性把帧游标钉回当前播放位置，seek / 变速 /
+                        //   解码时钟漂移都会被自然吸收；本地文件额外触发一次整轨提前分析。
+                        audioVisualizer.syncWaveform(currentMediaId, resolvedPosition, duration)
+                        val waveformSong = visibleSong?.takeIf { it.id == currentMediaId }
+                        if (waveformSong != null) {
+                            maybeStartLocalWaveformAnalysis(waveformSong, duration)
+                        }
+
                         _stablePlayerState.update { state ->
                             if (state.totalDuration == duration) {
                                 state
@@ -829,6 +855,37 @@ class PlaybackStateHolder @Inject constructor(
         // 状态也要持续推进位置（订阅恢复后进度条不会卡住）。
         return controller.playWhenReady &&
             controller.playbackState != Player.STATE_IDLE
+    }
+
+    /**
+     * 本地文件（content/file scheme）整轨解码一次，生成真实波形。
+     *
+     * 在线音源不做整轨分析（那等于把整首歌下载一遍），改由
+     * [AudioVisualizer] 边播边累积；本地文件则一次性算完整首并写入其进程内缓存。
+     * 同一首歌只分析一次；时长未知时等下一次轮询。
+     */
+    private fun maybeStartLocalWaveformAnalysis(song: Song, durationMs: Long) {
+        if (durationMs <= 0L) return
+        if (waveformAnalysisSongId == song.id) return
+
+        val uri = runCatching { MediaItemBuilder.playbackUri(song) }.getOrNull() ?: return
+        val scheme = uri.scheme
+        if (scheme != "content" && scheme != "file") return
+
+        waveformAnalysisSongId = song.id
+        waveformAnalysisJob?.cancel()
+        waveformAnalysisJob = scope?.launch {
+            AudioDecoder.decodeWaveformPeaks(
+                context = appContext,
+                uri = uri,
+                bucketCount = AudioVisualizer.WAVE_BUCKETS,
+                durationMs = durationMs
+            ).onSuccess { peaks ->
+                audioVisualizer.submitLocalWaveform(song.id, peaks)
+            }.onFailure { error ->
+                Timber.tag(TAG).w(error, "Local waveform analysis failed for %s", song.id)
+            }
+        }
     }
 
     private fun currentProgressTickMs(): Long {
@@ -1212,7 +1269,7 @@ class PlaybackStateHolder @Inject constructor(
         remoteSeekUnlockJob = null
         shuffleToggleJob?.cancel()
         shuffleToggleJob = null
-        scope = null
+        // scope 为长生命周期自持有，不随单个 ViewModel 销毁而置空（见 scope 字段注释）。
         onCastSeekBlocked = null
     }
 

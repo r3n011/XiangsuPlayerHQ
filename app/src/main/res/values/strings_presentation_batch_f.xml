@@ -236,4 +236,43 @@
         <item quantity="one">%d topic</item>
         <item quantity="other">%d topics</item>
     </plurals>
+
+    <!-- Progress bar customization -->
+    <string name="presentation_batch_f_progress_title">Progress bar</string>
+    <string name="presentation_batch_f_progress_track_heading">Track style</string>
+    <string name="presentation_batch_f_progress_track_subtitle">Choose how the playback progress bar is drawn.</string>
+    <string name="presentation_batch_f_progress_thumb_heading">Thumb style</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">Choose the handle used to scrub through the song.</string>
+    <string name="presentation_batch_f_progress_rotate_title">Rotate while playing</string>
+    <string name="presentation_batch_f_progress_rotate_subtitle">Continuously spin the thumb during playback.</string>
+
+    <string name="presentation_batch_f_progress_style_normal">Normal</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">Standard progress bar.</string>
+    <string name="presentation_batch_f_progress_style_wavy">Wavy</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">Animated wavy line.</string>
+    <string name="presentation_batch_f_progress_style_rounded">Rounded</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">Pill-shaped progress.</string>
+    <string name="presentation_batch_f_progress_style_thin">Thin</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">Thin and elegant line.</string>
+    <string name="presentation_batch_f_progress_style_thick">Thick</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">Bold, thick bar.</string>
+    <string name="presentation_batch_f_progress_style_gradient">Gradient</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">Multi-color gradient fill.</string>
+    <string name="presentation_batch_f_progress_style_segmented">Segmented</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">Segmented blocks.</string>
+    <string name="presentation_batch_f_progress_style_dots">Dots</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">Dot indicators.</string>
+    <string name="presentation_batch_f_progress_style_waveform">Waveform</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">Audio-style amplitude bars.</string>
+
+    <string name="presentation_batch_f_progress_thumb_none">None</string>
+    <string name="presentation_batch_f_progress_thumb_default">Default</string>
+    <string name="presentation_batch_f_progress_thumb_circle">Circle</string>
+    <string name="presentation_batch_f_progress_thumb_square">Square</string>
+    <string name="presentation_batch_f_progress_thumb_pill">Pill</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">Diamond</string>
+    <string name="presentation_batch_f_progress_thumb_flower">Flower</string>
+    <string name="presentation_batch_f_progress_thumb_heart">Heart</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">Cookie</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">Puffy</string>
 </resources>

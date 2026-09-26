@@ -45,7 +45,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">아트워크, 아이콘, 모양을 디자인하고 곡을 직접 선택합니다.</string>
     <string name="presentation_batch_e_creation_mode_ai">AI로 만들기</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">고급 컨트롤을 사용하여 큐레이팅된 플레이리스트를 생성합니다.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">설정에서 Gemini API 키를 구성해야 합니다.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">설정에서 API 키를 구성해야 합니다.</string>
     <string name="presentation_batch_e_setup_api_key">API 키 설정</string>
 
     <!-- AI playlist lab -->

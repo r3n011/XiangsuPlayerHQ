@@ -51,6 +51,13 @@ class QQMusicViewModel @Inject constructor(
     /** 当前结果来源（分页时保持一致） */
     private var _resultSource = ResultSource.OFFICIAL_TX
 
+    companion object {
+        /** 搜索页一次性排入播放队列的歌曲数上限（含点击歌曲自身） */
+        private const val MAX_ENQUEUE_SONGS = 100
+        /** 每解析这么多首打包回传一次，减少主线程刷新次数 */
+        private const val ENQUEUE_BATCH_SIZE = 10
+    }
+
     var keyword: String
         get() = _uiState.value.keyword
         set(v) { _uiState.value = _uiState.value.copy(keyword = v) }
@@ -244,21 +251,41 @@ class QQMusicViewModel @Inject constructor(
     }
 
     /**
-     * 搜索整队播放：点击某首结果后，把当前搜索结果的其余歌曲逐首静默解析并追加到播放队列。
+     * 搜索整队播放：点击某首结果后，把当前搜索结果的其余歌曲**分批**静默解析并追加到播放队列。
      * 自动切下一曲时即可按搜索结果顺序依次播放。
+     *
+     * 性能优化：
+     * - 最多解析 [MAX_ENQUEUE_SONGS] 首（含点击歌曲），避免一次性排入整页结果造成卡顿
+     * - 每 [ENQUEUE_BATCH_SIZE] 首打包回传，减少主线程刷新次数
      */
     fun enqueueAllSearchResults(
         clickedSongId: String,
-        onEnqueue: (String, String, String, String, String) -> Unit
+        onEnqueue: (List<LxMusicViewModel.CloudQueueSeed>) -> Unit
     ) {
         val results = _uiState.value.results
         if (results.size <= 1) return
+        val targets = results
+            .filter { getStableSongId(it) != clickedSongId }
+            .take((MAX_ENQUEUE_SONGS - 1).coerceAtLeast(0))
+        if (targets.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            results.filter { getStableSongId(it) != clickedSongId }.forEach { song ->
-                val url = runCatching { resolvePlayableUrl(song) }.getOrNull()
-                if (url.isNullOrEmpty()) return@forEach
-                withContext(Dispatchers.Main) {
-                    onEnqueue(url, song.title, song.singer, song.cover, getStableSongId(song))
+            targets.chunked(ENQUEUE_BATCH_SIZE).forEach { batch ->
+                val seeds = ArrayList<LxMusicViewModel.CloudQueueSeed>(batch.size)
+                batch.forEach { song ->
+                    val url = runCatching { resolvePlayableUrl(song) }.getOrNull()
+                    if (url.isNullOrEmpty()) return@forEach
+                    seeds.add(
+                        LxMusicViewModel.CloudQueueSeed(
+                            url = url,
+                            title = song.title,
+                            artist = song.singer,
+                            cover = song.cover,
+                            songId = getStableSongId(song)
+                        )
+                    )
+                }
+                if (seeds.isNotEmpty()) {
+                    withContext(Dispatchers.Main) { onEnqueue(seeds) }
                 }
             }
         }

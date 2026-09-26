@@ -250,6 +250,8 @@ class DualPlayerEngine @Inject constructor(
         // audible glitch right after the fade). This keeps offload enabled across crossfades.
         private const val POST_TRANSITION_OFFLOAD_GUARD_MS = 2_000L
         private const val MAX_AUXILIARY_TIMELINE_ITEMS = 200
+        // 短暂音频焦点变化时「降低音量」的目标系数（相对当前音量）。
+        private const val FOCUS_DUCK_LEVEL = 0.25f
         private val LOCAL_MEDIA_SCHEMES = setOf("content", "file", "android.resource")
         private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "bilibili")
         // Subset of REMOTE_MEDIA_SCHEMES: schemes that need proxy resolution.
@@ -316,6 +318,102 @@ class DualPlayerEngine @Inject constructor(
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var audioFocusRequest: Any? = null // AudioFocusRequest on API 26+, or null on API 24-25
     private var isFocusLossPause = false
+    // 「音频焦点」设置项（由 MusicService 从 DataStore 同步）。
+    @Volatile
+    private var audioFocusConfig = AudioFocusConfig()
+    // 由请求延迟获得焦点（AUDIOFOCUS_REQUEST_DELAYED）导致的中断：焦点回来时必须恢复，
+    // 不受「聚焦增益的恢复」开关影响，否则用户点播放后会一直静止。
+    private var focusLossForcedResume = false
+    // 最近一次短暂焦点丢失是否发生在通话中（启发式判断）。
+    private var lastFocusLossWasCall = false
+    // 短暂焦点丢失时是否正处于「降低音量」闪避状态。
+    private var focusDuckActive = false
+
+    /**
+     * 音频焦点行为配置。
+     *
+     * @param pauseOnTransientLoss 短暂音频焦点变化（通话/通知/导航等）时暂停播放。
+     * @param pauseOnPermanentLoss 永久音频焦点变化（其它播放器/游戏）时暂停播放。
+     * @param resumeAfterGain 重新获得焦点后继续播放（关闭则保持暂停）。
+     * @param duckOnTransientLoss 短暂音频焦点变化时降低音量而非暂停。
+     * @param resumeAfterCall 通话结束后继续播放（若因来电而暂停）。
+     */
+    data class AudioFocusConfig(
+        val pauseOnTransientLoss: Boolean = true,
+        val pauseOnPermanentLoss: Boolean = false,
+        val resumeAfterGain: Boolean = false,
+        val duckOnTransientLoss: Boolean = false,
+        val resumeAfterCall: Boolean = true
+    )
+
+    fun setAudioFocusConfig(config: AudioFocusConfig) {
+        audioFocusConfig = config
+    }
+
+    /**
+     * 通话状态启发式判断：不依赖 READ_PHONE_STATE 权限，仅看音频模式。
+     * 通话/响铃期间 AudioManager.mode 会切到 IN_CALL / IN_COMMUNICATION / RINGTONE。
+     */
+    private fun isPhoneCallActive(): Boolean {
+        return when (audioManager.mode) {
+            AudioManager.MODE_IN_CALL,
+            AudioManager.MODE_IN_COMMUNICATION,
+            AudioManager.MODE_RINGTONE -> true
+            else -> false
+        }
+    }
+
+    /** 当前应施加的焦点闪避系数（1.0 = 不闪避）。 */
+    private val focusDuckScale: Float
+        get() = if (focusDuckActive) FOCUS_DUCK_LEVEL else 1f
+
+    /** 按焦点闪避系数写入播放器音量。 */
+    private fun setPlayerVolume(player: Player, base: Float) {
+        player.volume = (base * focusDuckScale).coerceIn(0f, 1f)
+    }
+
+    private fun applyFocusDuck() {
+        if (focusDuckActive) return
+        focusDuckActive = true
+        if (::playerA.isInitialized) {
+            playerA.volume = (playerA.volume * FOCUS_DUCK_LEVEL).coerceIn(0f, 1f)
+        }
+        playerB?.let { it.volume = (it.volume * FOCUS_DUCK_LEVEL).coerceIn(0f, 1f) }
+    }
+
+    /** @return 是否原本处于闪避状态（调用方据此跳过暂停恢复逻辑）。 */
+    private fun releaseFocusDuck(): Boolean {
+        if (!focusDuckActive) return false
+        focusDuckActive = false
+        // AI 电台播报的闪避仍在进行时，交还给它控制音量。
+        if (companionDuckJob?.isActive == true) return true
+        if (::playerA.isInitialized) {
+            playerA.volume = companionBaseVolume.coerceIn(0f, 1f)
+        }
+        if (!transitionRunning) {
+            playerB?.volume = companionBaseVolume.coerceIn(0f, 1f)
+        }
+        return true
+    }
+
+    /**
+     * 短暂音频焦点丢失的统一处理：按偏好决定是否暂停，并记录是否因通话导致。
+     */
+    private fun handleTransientFocusLoss() {
+        if (!audioFocusConfig.pauseOnTransientLoss) return
+        Timber.tag("TransitionDebug").d("AudioFocus LOSS_TRANSIENT. Pausing.")
+        val auxiliaryPlayer = playerB
+        isFocusLossPause = shouldResumeAfterTransientAudioFocusLoss(
+            masterPlayWhenReady = playerA.playWhenReady,
+            masterIsPlaying = playerA.isPlaying,
+            transitionRunning = transitionRunning,
+            auxiliaryPlayWhenReady = auxiliaryPlayer?.playWhenReady == true,
+            auxiliaryIsPlaying = auxiliaryPlayer?.isPlaying == true
+        )
+        lastFocusLossWasCall = isPhoneCallActive()
+        playerA.playWhenReady = false
+        auxiliaryPlayer?.playWhenReady = false
+    }
     private var lastPlayWhenReadyAtMs: Long = 0L
     private var lastPlayingAtMs: Long = 0L
     // Used to distinguish a STATE_BUFFERING caused by a user seek from a real HAL offload
@@ -383,31 +481,48 @@ class DualPlayerEngine @Inject constructor(
     private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS -> {
+                // 永久焦点丢失：其它应用接管了音频。是否暂停由「永久音频焦点变化」开关决定，
+                // 但无论是否暂停都必须放弃本次焦点请求，否则后续点播放不会重新申请焦点。
                 Timber.tag("TransitionDebug").d("AudioFocus LOSS. Pausing.")
+                releaseFocusDuck()
                 isFocusLossPause = false
-                playerA.playWhenReady = false
-                playerB?.playWhenReady = false
+                lastFocusLossWasCall = false
+                focusLossForcedResume = false
+                if (audioFocusConfig.pauseOnPermanentLoss) {
+                    playerA.playWhenReady = false
+                    playerB?.playWhenReady = false
+                }
                 abandonAudioFocus()
             }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // 开启「降低音量」时优先闪避；否则退化为普通短暂焦点变化处理。
+                if (audioFocusConfig.duckOnTransientLoss) {
+                    Timber.tag("TransitionDebug").d("AudioFocus LOSS_TRANSIENT_CAN_DUCK. Ducking.")
+                    applyFocusDuck()
+                } else {
+                    handleTransientFocusLoss()
+                }
+            }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                Timber.tag("TransitionDebug").d("AudioFocus LOSS_TRANSIENT. Pausing.")
-                val auxiliaryPlayer = playerB
-                isFocusLossPause = shouldResumeAfterTransientAudioFocusLoss(
-                    masterPlayWhenReady = playerA.playWhenReady,
-                    masterIsPlaying = playerA.isPlaying,
-                    transitionRunning = transitionRunning,
-                    auxiliaryPlayWhenReady = auxiliaryPlayer?.playWhenReady == true,
-                    auxiliaryIsPlaying = auxiliaryPlayer?.isPlaying == true
-                )
-                playerA.playWhenReady = false
-                auxiliaryPlayer?.playWhenReady = false
+                handleTransientFocusLoss()
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
                 Timber.tag("TransitionDebug").d("AudioFocus GAIN. Resuming if paused by loss.")
-                if (isFocusLossPause) {
+                val wasCall = lastFocusLossWasCall
+                val forcedResume = focusLossForcedResume
+                lastFocusLossWasCall = false
+                focusLossForcedResume = false
+                val wasDucking = releaseFocusDuck()
+                if (!wasDucking && isFocusLossPause) {
                     isFocusLossPause = false
-                    playerA.playWhenReady = true
-                    if (transitionRunning) playerB?.playWhenReady = true
+                    // 因来电暂停 → 看「结束通话后继续播放」；其它短暂焦点 → 看「聚焦增益的恢复」；
+                    // 系统延迟授予焦点 → 强制恢复。
+                    val resumeAllowed = forcedResume ||
+                        if (wasCall) audioFocusConfig.resumeAfterCall else audioFocusConfig.resumeAfterGain
+                    if (resumeAllowed) {
+                        playerA.playWhenReady = true
+                        if (transitionRunning) playerB?.playWhenReady = true
+                    }
                 }
             }
         }
@@ -888,7 +1003,7 @@ class DualPlayerEngine @Inject constructor(
     fun setVolume(volume: Float) {
         companionBaseVolume = volume.coerceIn(0f, 1f)
         if (::playerA.isInitialized) {
-            playerA.volume = companionBaseVolume
+            setPlayerVolume(playerA, companionBaseVolume)
         }
     }
 
@@ -1078,6 +1193,7 @@ class DualPlayerEngine @Inject constructor(
                 AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
                     audioFocusRequest = request
                     isFocusLossPause = true
+                    focusLossForcedResume = true
                     playerA.playWhenReady = false
                     if (transitionRunning) playerB?.playWhenReady = false
                 }
@@ -1277,7 +1393,7 @@ class DualPlayerEngine @Inject constructor(
         playerA = buildPlayer()
 
         addMasterPlayerListeners(playerA)
-        playerA.volume = volume
+        setPlayerVolume(playerA, volume)
         playerA.pauseAtEndOfMediaItems = pauseAtEnd
         playerA.playbackParameters = playbackParameters
 
@@ -2757,7 +2873,7 @@ class DualPlayerEngine @Inject constructor(
             } catch (e: Exception) { /* Ignore */ }
         }
         if (::playerA.isInitialized) {
-            playerA.volume = 1f
+            setPlayerVolume(playerA, 1f)
             if (shouldPublishMasterPlayer) {
                 onPlayerSwappedListeners.forEach { it(playerA) }
             }
@@ -2777,7 +2893,7 @@ class DualPlayerEngine @Inject constructor(
                 if (e !is kotlinx.coroutines.CancellationException) {
                     Timber.tag("TransitionDebug").e(e, "Error performing transition")
                 }
-                playerA.volume = 1f
+                setPlayerVolume(playerA, 1f)
                 setPauseAtEndOfMediaItems(false)
                 playerB?.stop()
             } finally {
@@ -2798,7 +2914,7 @@ class DualPlayerEngine @Inject constructor(
     private suspend fun performOverlapTransition(settings: TransitionSettings) {
         val auxiliaryPlayer = playerB
         if (auxiliaryPlayer == null || auxiliaryPlayer.mediaItemCount == 0) {
-            playerA.volume = 1f
+            setPlayerVolume(playerA, 1f)
             setPauseAtEndOfMediaItems(false)
             return
         }
@@ -2811,7 +2927,7 @@ class DualPlayerEngine @Inject constructor(
         if (auxiliaryPlayer.playbackState == Player.STATE_IDLE) auxiliaryPlayer.prepare()
         if (auxiliaryPlayer.playbackState == Player.STATE_BUFFERING) {
             if (!awaitPlayerReady(auxiliaryPlayer, 3000L)) {
-                playerA.volume = 1f
+                setPlayerVolume(playerA, 1f)
                 setPauseAtEndOfMediaItems(false)
                 return
             }
@@ -2842,15 +2958,15 @@ class DualPlayerEngine @Inject constructor(
             val volIn = envelope(progress, settings.curveIn)
             val volOut = 1f - envelope(progress, settings.curveOut)
             val incomingTarget = incomingTrackReplayGainVolume ?: 1f
-            incomingPlayer.volume = (volIn * incomingTarget).coerceIn(0f, 1f)
-            outgoingPlayer.volume = (volOut * outgoingStartVolume).coerceIn(0f, 1f)
+            incomingPlayer.volume = (volIn * incomingTarget * focusDuckScale).coerceIn(0f, 1f)
+            outgoingPlayer.volume = (volOut * outgoingStartVolume * focusDuckScale).coerceIn(0f, 1f)
 
             if (elapsed >= duration) break
             delay(stepMs)
         }
 
         outgoingPlayer.volume = 0f
-        incomingPlayer.volume = incomingTrackReplayGainVolume ?: 1f
+        incomingPlayer.volume = ((incomingTrackReplayGainVolume ?: 1f) * focusDuckScale).coerceIn(0f, 1f)
         incomingTrackReplayGainVolume = null
 
         removeMasterPlayerListeners(outgoingPlayer)

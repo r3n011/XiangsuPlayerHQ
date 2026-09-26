@@ -48,7 +48,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Kapak görselini, simgeyi, şekli tasarlayın ve şarkıları kendiniz seçin.</string>
     <string name="presentation_batch_e_creation_mode_ai">Yapay Zeka ile</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Gelişmiş kontrollerle özel bir çalma listesi oluşturun.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Ayarlarda yapılandırılmış bir Gemini API anahtarı gerektirir.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Ayarlarda yapılandırılmış bir API anahtarı gerektirir.</string>
     <string name="presentation_batch_e_setup_api_key">API anahtarını ayarla</string>
 
     <!-- AI playlist lab -->

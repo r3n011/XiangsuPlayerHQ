@@ -820,17 +820,13 @@ fun SearchScreen(
                                                 }
                                             },
                                             onPlaylistClick = { pl ->
-                                                // ⚡ 点歌单 → 整单入队播放（模仿 lx-music：占位懒解析），
-                                                //    直接打开软件已有的播放列表（队列）界面，不再进独立详情页
-                                                lxViewModel.loadPlaylistToQueue(pl) { seeds ->
-                                                    val songs = seeds.mapNotNull {
-                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
-                                                    }
-                                                    if (songs.isNotEmpty()) {
-                                                        playerViewModel.playSongs(songs, songs.first(), pl.name.ifBlank { "在线歌单" })
-                                                        playerViewModel.requestOpenQueueSheet()
-                                                    }
-                                                }
+                                                // ⚡ 点歌单 → 复用「媒体库歌单详情」界面（只读、不落库），
+                                                //    页内提供「保存到本地」按钮
+                                                navController.navigateSafely(
+                                                    Screen.PlaylistDetail.createRoute(
+                                                        PlaylistViewModel.buildOnlinePlaylistId(pl)
+                                                    )
+                                                )
                                             }
                                         )
                                         // ⚡ 歌曲
@@ -842,15 +838,27 @@ fun SearchScreen(
                                                 // ⚡ 原子建队：点击歌曲 + 其余搜索结果一次性传入 playSongs。
                                                 //    此前 playUrl（重置队列）与逐首 enqueue 并发执行，先后
                                                 //    顺序不定导致播放列表时而只剩单曲、时而丢失部分结果。
-                                                lxViewModel.playSearchResultWithQueue(song) { seeds, startIndex ->
-                                                    val songs = seeds.mapNotNull {
-                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                lxViewModel.playSearchResultWithQueue(
+                                                    song = song,
+                                                    onPlayQueue = { seeds, startIndex ->
+                                                        val songs = seeds.mapNotNull {
+                                                            playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                        }
+                                                        val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
+                                                        if (start != null) {
+                                                            playerViewModel.playSongs(songs, start, "Cloud Play")
+                                                        }
+                                                    },
+                                                    // ⚡ 后台按页续拉尚未加载的搜索结果，整批追加到队列尾部
+                                                    onMoreSeeds = { moreSeeds ->
+                                                        val moreSongs = moreSeeds.mapNotNull { seed ->
+                                                            playerViewModel.buildCloudSong(
+                                                                seed.url, seed.title, seed.artist, seed.cover, seed.songId
+                                                            )
+                                                        }
+                                                        playerViewModel.appendCloudSongsToQueue(moreSongs)
                                                     }
-                                                    val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
-                                                    if (start != null) {
-                                                        playerViewModel.playSongs(songs, start, "Cloud Play")
-                                                    }
-                                                }
+                                                )
                                             },
                                             favoriteIds = favoriteSongIds,
                                             onToggleFavorite = { song ->
@@ -899,17 +907,13 @@ fun SearchScreen(
                                                 }
                                             },
                                             onPlaylistClick = { pl ->
-                                                // ⚡ 点歌单 → 整单入队播放（模仿 lx-music：占位懒解析），
-                                                //    直接打开软件已有的播放列表（队列）界面，不再进独立详情页
-                                                lxViewModel.loadPlaylistToQueue(pl) { seeds ->
-                                                    val songs = seeds.mapNotNull {
-                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
-                                                    }
-                                                    if (songs.isNotEmpty()) {
-                                                        playerViewModel.playSongs(songs, songs.first(), pl.name.ifBlank { "在线歌单" })
-                                                        playerViewModel.requestOpenQueueSheet()
-                                                    }
-                                                }
+                                                // ⚡ 点歌单 → 复用「媒体库歌单详情」界面（只读、不落库），
+                                                //    页内提供「保存到本地」按钮
+                                                navController.navigateSafely(
+                                                    Screen.PlaylistDetail.createRoute(
+                                                        PlaylistViewModel.buildOnlinePlaylistId(pl)
+                                                    )
+                                                )
                                             }
                                         )
                                     } else {
@@ -922,15 +926,27 @@ fun SearchScreen(
                                                 // ⚡ 原子建队：点击歌曲 + 其余搜索结果一次性传入 playSongs。
                                                 //    此前 playUrl（重置队列）与逐首 enqueue 并发执行，先后
                                                 //    顺序不定导致播放列表时而只剩单曲、时而丢失部分结果。
-                                                lxViewModel.playSearchResultWithQueue(song) { seeds, startIndex ->
-                                                    val songs = seeds.mapNotNull {
-                                                        playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                lxViewModel.playSearchResultWithQueue(
+                                                    song = song,
+                                                    onPlayQueue = { seeds, startIndex ->
+                                                        val songs = seeds.mapNotNull {
+                                                            playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                        }
+                                                        val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
+                                                        if (start != null) {
+                                                            playerViewModel.playSongs(songs, start, "Cloud Play")
+                                                        }
+                                                    },
+                                                    // ⚡ 后台按页续拉尚未加载的搜索结果，整批追加到队列尾部
+                                                    onMoreSeeds = { moreSeeds ->
+                                                        val moreSongs = moreSeeds.mapNotNull { seed ->
+                                                            playerViewModel.buildCloudSong(
+                                                                seed.url, seed.title, seed.artist, seed.cover, seed.songId
+                                                            )
+                                                        }
+                                                        playerViewModel.appendCloudSongsToQueue(moreSongs)
                                                     }
-                                                    val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
-                                                    if (start != null) {
-                                                        playerViewModel.playSongs(songs, start, "Cloud Play")
-                                                    }
-                                                }
+                                                )
                                             },
                                             favoriteIds = favoriteSongIds,
                                             onToggleFavorite = { song ->
@@ -955,10 +971,16 @@ fun SearchScreen(
                                         qqViewModel.playSong(song) { url, name, singer, cover, songId ->
                                             playerViewModel.playUrl(url, name, singer, cover, songId)
                                         }
+                                        // ⚡ 分批解析其余搜索结果并整批追加（上限 100 首，避免卡顿）
                                         qqViewModel.enqueueAllSearchResults(
                                             qqViewModel.getStableSongId(song)
-                                        ) { url, name, singer, cover, songId ->
-                                            playerViewModel.enqueueCloudSong(url, name, singer, cover, songId)
+                                        ) { seeds ->
+                                            val moreSongs = seeds.mapNotNull { seed ->
+                                                playerViewModel.buildCloudSong(
+                                                    seed.url, seed.title, seed.artist, seed.cover, seed.songId
+                                                )
+                                            }
+                                            playerViewModel.appendCloudSongsToQueue(moreSongs)
                                         }
                                     },
                                     colorScheme = colorScheme,
@@ -976,10 +998,17 @@ fun SearchScreen(
                                         bilibiliViewModel.playSong(song) { url, name, singer, cover, songId, bvid ->
                                             playerViewModel.playUrl(url, name, singer, cover, songId, bilibiliBvid = bvid)
                                         }
+                                        // ⚡ 分批解析其余搜索结果并整批追加（上限 100 首，避免卡顿）
                                         bilibiliViewModel.enqueueAllSearchResults(
                                             bilibiliViewModel.getStableSongId(song)
-                                        ) { url, name, singer, cover, songId, bvid ->
-                                            playerViewModel.enqueueCloudSong(url, name, singer, cover, songId, bilibiliBvid = bvid)
+                                        ) { seeds ->
+                                            val moreSongs = seeds.mapNotNull { seed ->
+                                                playerViewModel.buildCloudSong(
+                                                    seed.url, seed.title, seed.artist, seed.cover, seed.songId,
+                                                    seed.bilibiliBvid
+                                                )
+                                            }
+                                            playerViewModel.appendCloudSongsToQueue(moreSongs)
                                         }
                                     },
                                     colorScheme = colorScheme,

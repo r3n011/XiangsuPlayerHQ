@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.DailyMixManager
+import com.theveloper.pixelplay.data.lx.LxPlaylistInfo
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.SmartPlaylistRule
 import com.theveloper.pixelplay.data.model.Song
@@ -93,12 +94,49 @@ class PlaylistViewModel @Inject constructor(
 
     companion object {
         const val FOLDER_PLAYLIST_PREFIX = "folder_playlist:"
+        /** ⚡ 在线歌单伪 id 前缀：复用「歌单详情」路由打开在线歌单（只读展示，不落库） */
+        const val ONLINE_PLAYLIST_PREFIX = "online_playlist:"
         private const val MANUAL_ORDER_MODE = "manual"
         private const val SMART_PLAYLIST_MAX_ITEMS = 100
 
         fun sanitizeFileName(name: String): String {
             val sanitized = name.replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_").trim('_')
             return if (sanitized.isEmpty()) "Playlist" else sanitized
+        }
+
+        /** 把在线歌单信息编码为可放进导航路径的伪歌单 id（照抄 folder 伪歌单范式） */
+        fun buildOnlinePlaylistId(playlist: LxPlaylistInfo): String {
+            val json = org.json.JSONObject().apply {
+                put("id", playlist.id)
+                put("name", playlist.name)
+                put("cover", playlist.cover)
+                put("author", playlist.author)
+                put("source", playlist.source)
+                put("trackCount", playlist.trackCount)
+            }.toString()
+            return ONLINE_PLAYLIST_PREFIX + Uri.encode(json)
+        }
+
+        /**
+         * 解析伪歌单 id；非在线歌单或解析失败返回 null。
+         * Navigation 对路径参数是否自动解码在不同版本/写法下不一致，故此处双兜底。
+         */
+        fun parseOnlinePlaylistId(playlistId: String): LxPlaylistInfo? {
+            if (!playlistId.startsWith(ONLINE_PLAYLIST_PREFIX)) return null
+            val raw = playlistId.removePrefix(ONLINE_PLAYLIST_PREFIX)
+            val jsonText = if (raw.startsWith("{")) raw
+            else runCatching { Uri.decode(raw) }.getOrDefault(raw)
+            return runCatching {
+                val json = org.json.JSONObject(jsonText)
+                LxPlaylistInfo(
+                    id = json.optString("id"),
+                    name = json.optString("name"),
+                    cover = json.optString("cover"),
+                    author = json.optString("author"),
+                    source = json.optString("source"),
+                    trackCount = json.optInt("trackCount")
+                )
+            }.getOrNull()?.takeIf { it.id.isNotBlank() }
         }
     }
 

@@ -78,6 +78,8 @@ import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.preferences.PlayerStyle
+import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
+import com.theveloper.pixelplay.presentation.components.PlayerThumbStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
@@ -109,6 +111,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -306,6 +309,7 @@ class PlayerViewModel @Inject constructor(
     private val musicDownloadServiceProvider: Lazy<com.theveloper.pixelplay.data.service.http.MusicDownloadService>,
     private val aiCompanionManager: com.theveloper.pixelplay.data.ai.AiCompanionManager,
     private val glyphMatrixController: com.theveloper.pixelplay.data.service.glyph.GlyphMatrixController,
+    private val audioVisualizer: com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer,
 ) : ViewModel() {
 
     // ─── 网易云账户相关 ────────────────────────────────────────────────────
@@ -764,9 +768,75 @@ class PlayerViewModel @Inject constructor(
             initialValue = CarouselStyle.NO_PEEK
         )
 
-    val hasActiveAiProviderApiKey: StateFlow<Boolean> = aiPreferencesRepository.geminiApiKey
-        .map { it.isNotBlank() }
-        .distinctUntilChanged()
+    val playerProgressStyle: StateFlow<String> = userPreferencesRepository.playerProgressStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = PlayerProgressStyle.default.storageKey
+        )
+
+    /**
+     * WAVEFORM 进度条的真实波形（直接来自歌曲音频的桶峰值）。
+     * 在线音源边播边累积、本地文件整轨提前分析；未分析到的段落由 UI 回退到合成波形。
+     */
+    val waveformPeaks: StateFlow<com.theveloper.pixelplay.data.service.visualizer.WaveformPeaks?> =
+        audioVisualizer.waveform
+
+    val playerProgressThumbStyle: StateFlow<String> = userPreferencesRepository.playerProgressThumbStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = PlayerThumbStyle.default.storageKey
+        )
+
+    val playerProgressThumbRotate: StateFlow<Boolean> = userPreferencesRepository.playerProgressThumbRotateFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    val hasActiveAiProviderApiKey: StateFlow<Boolean> = combine(
+        aiPreferencesRepository.aiProvider,
+        aiPreferencesRepository.geminiApiKey,
+        aiPreferencesRepository.deepseekApiKey,
+        aiPreferencesRepository.groqApiKey,
+        aiPreferencesRepository.mistralApiKey,
+        aiPreferencesRepository.nvidiaApiKey,
+        aiPreferencesRepository.kimiApiKey,
+        aiPreferencesRepository.glmApiKey,
+        aiPreferencesRepository.openaiApiKey,
+        aiPreferencesRepository.ollamaApiKey,
+        aiPreferencesRepository.customApiKey,
+        aiPreferencesRepository.openrouterApiKey
+    ) { values ->
+        val provider = values[0]
+        val gemini = values[1]
+        val deepseek = values[2]
+        val groq = values[3]
+        val mistral = values[4]
+        val nvidia = values[5]
+        val kimi = values[6]
+        val glm = values[7]
+        val openai = values[8]
+        val ollama = values[9]
+        val custom = values[10]
+        val openrouter = values[11]
+        when (provider) {
+            "GEMINI" -> gemini.isNotBlank()
+            "DEEPSEEK" -> deepseek.isNotBlank()
+            "GROQ" -> groq.isNotBlank()
+            "MISTRAL" -> mistral.isNotBlank()
+            "NVIDIA" -> nvidia.isNotBlank()
+            "KIMI" -> kimi.isNotBlank()
+            "GLM" -> glm.isNotBlank()
+            "OPENAI" -> openai.isNotBlank()
+            "OPENROUTER" -> openrouter.isNotBlank()
+            "OLLAMA" -> ollama.isNotBlank()
+            "CUSTOM" -> custom.isNotBlank()
+            else -> false
+        }
+    }.distinctUntilChanged()
         .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -1091,9 +1161,17 @@ class PlayerViewModel @Inject constructor(
     private var artistNavigationJob: Job? = null
     private var fullQueuePlaybackJob: Job? = null
     private var fullQueuePlaybackToken: Long = 0L
+    private var fullQueueFillJob: Job? = null
     private var directPlaybackJob: Job? = null
     private var directPlaybackToken: Long = 0L
     private var pendingQueueSegmentsJob: Job? = null
+    /**
+     * ⚡ 首屏队列仍在后台回填（[pendingQueueSegmentsJob] 运行中）时，暂存"待追加"的媒体项。
+     * 回填采用「先只放起始曲 → 就绪后再批量 addMediaItems 补齐其余曲目」的两阶段写法，
+     * 若在其补齐前直接往播放器追加，会让 [attachPreparedQueueSegmentsIfCurrent] 的
+     * `mediaItemCount == 1` 前置校验失败，导致首屏曲目整批丢失。故此处先缓冲，回填完成后再统一追加。
+     */
+    private val pendingQueueAppendBuffer = mutableListOf<MediaItem>()
 
     fun requestLocateCurrentSong() {
         val currentSong = stablePlayerState.value.currentSong ?: return
@@ -1189,11 +1267,11 @@ class PlayerViewModel @Inject constructor(
     ) {
         cancelPendingFullQueuePlayback()
         cancelPendingDirectPlayback()
-        val requestToken = fullQueuePlaybackToken
 
-        fullQueuePlaybackJob = viewModelScope.launch {
-            // Cast 投屏场景需要一次性把完整队列传给远端，保留原逻辑（先建队列再播放）。
-            if (castStateHolder.castSession.value?.remoteMediaClient != null) {
+        // Cast 投屏需要一次性把完整队列交给远端，保留「先建队列再播放」的单阶段逻辑。
+        if (castStateHolder.castSession.value?.remoteMediaClient != null) {
+            val requestToken = fullQueuePlaybackToken
+            fullQueuePlaybackJob = viewModelScope.launch {
                 try {
                     val sortedIds = sortedIdsProvider()
                     throwIfFullQueuePlaybackRequestIsStale(requestToken)
@@ -1227,44 +1305,60 @@ class PlayerViewModel @Inject constructor(
                         cancelPendingQueueBuild = false
                     )
                 }
-                return@launch
             }
+            return
+        }
 
-            // 本地播放：先立即播放当前歌曲（秒响应，不再等全库队列解析），
-            // 再在后台解析全库队列并分段回填，避免大媒体库播放卡顿数秒。
+        // ⚡ 本地播放两阶段（大媒体库优化）：
+        //    阶段 1 —— 只带点击的那首歌立即起播，不做任何全库查询/解析，点击即出声；
+        //    阶段 2 —— 在独立协程里解析全库队列并分段回填播放器（见 fillPlaybackQueueInBackground）。
+        showAndPlaySong(
+            song = song,
+            contextSongs = listOf(song),
+            queueName = queueName,
+            isVoluntaryPlay = isVoluntaryPlay,
+            cancelPendingQueueBuild = false
+        )
+
+        // ⚡ token 必须在 showAndPlaySong 之后取：playSongs 内部会调用
+        //    cancelPendingFullQueuePlayback() 自增 token。回填也必须挂在独立协程
+        //    （fullQueueFillJob）上，否则会被该调用连带取消 —— 历史 bug：点击单曲后队列只剩一首。
+        val fillToken = fullQueuePlaybackToken
+        fullQueueFillJob?.cancel()
+        fullQueueFillJob = viewModelScope.launch {
             try {
-                showAndPlaySong(
-                    song = song,
-                    contextSongs = listOf(song),
-                    queueName = queueName,
-                    isVoluntaryPlay = isVoluntaryPlay,
-                    cancelPendingQueueBuild = false
-                )
-
                 val sortedIds = sortedIdsProvider()
-                throwIfFullQueuePlaybackRequestIsStale(requestToken)
+                if (fillToken != fullQueuePlaybackToken) return@launch
 
-                val fullQueue = resolvePlaybackQueueFromSortedIds(sortedIds)
-                throwIfFullQueuePlaybackRequestIsStale(requestToken)
+                val resolvedQueue = resolvePlaybackQueueFromSortedIds(sortedIds)
+                if (fillToken != fullQueuePlaybackToken) return@launch
+
+                val fullQueue = hydrateSongsIfNeeded(resolvedQueue)
+                if (fillToken != fullQueuePlaybackToken) return@launch
 
                 fillPlaybackQueueInBackground(
                     fullQueue = fullQueue,
-                    startSongId = song.id
+                    startSongId = song.id,
+                    queueName = queueName
                 )
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                if (requestToken != fullQueuePlaybackToken) {
-                    return@launch
-                }
+                if (fillToken != fullQueuePlaybackToken) return@launch
 
                 Timber.e(error, failureMessage, song.id)
                 val fallbackQueue = libraryStateHolder.allSongs.value.takeIf { songs ->
                     songs.isNotEmpty() && songs.any { it.id == song.id }
-                } ?: listOf(song)
-                // 若首曲尚未成功开始播放，则用 fallback 队列重试播放；否则仅后台回填队列
-                val playbackStarted = playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id
-                if (!playbackStarted) {
+                } ?: return@launch
+
+                // 首曲若尚未真正起播（阶段 1 失败），用兜底队列重试播放；已起播则只回填队列。
+                if (playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id) {
+                    fillPlaybackQueueInBackground(
+                        fullQueue = fallbackQueue,
+                        startSongId = song.id,
+                        queueName = queueName
+                    )
+                } else {
                     showAndPlaySong(
                         song = song,
                         contextSongs = fallbackQueue,
@@ -1272,54 +1366,6 @@ class PlayerViewModel @Inject constructor(
                         isVoluntaryPlay = isVoluntaryPlay,
                         cancelPendingQueueBuild = false
                     )
-                } else {
-                    fillPlaybackQueueInBackground(
-                        fullQueue = fallbackQueue,
-                        startSongId = song.id
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * 后台把全库队列分段回填到播放器：等首曲进入播放状态后再准备 MediaItem 并分批
-     * addMediaItems，避免队列构建与首曲初始化争抢 CPU/主线程导致卡顿。
-     * 仅在当前仍在播放 startSongId 时才生效（用户已切走则跳过）。
-     */
-    private fun fillPlaybackQueueInBackground(
-        fullQueue: List<Song>,
-        startSongId: String
-    ) {
-        if (fullQueue.size <= 1) return
-
-        pendingQueueSegmentsJob?.cancel()
-        pendingQueueSegmentsJob = viewModelScope.launch {
-            awaitPlaybackReady(dualPlayerEngine.masterPlayer, timeoutMs = 4_000L)
-            if (!isActive) return@launch
-
-            val segments = preparePlaybackQueueSegments(
-                songsToPlay = fullQueue,
-                startSongId = startSongId,
-                playlistId = null
-            )
-            withContext(Dispatchers.Main.immediate) {
-                // ⚡ 队列未实际写入播放器时（守卫条件不满足而静默跳过）不同步 UI 队列：
-                //    否则 UI 显示完整队列而播放器时间线只有 1 首，seekToNext/seekToPrevious
-                //    会因「无下一/上一窗口」被 Media3 静默忽略 → 上下曲按钮失灵（偶发）。
-                //    此时不更新 UI，交由 nextSong/previousSong 的失步自愈兜底。
-                val attached = attachPreparedQueueSegmentsIfCurrent(
-                    player = dualPlayerEngine.masterPlayer,
-                    startSongId = startSongId,
-                    preparedSegments = segments
-                )
-                // 仅当队列已写入且当前仍停留在 startSongId 时才更新 UI 队列，避免覆盖用户已切走的新队列
-                if (
-                    attached &&
-                    playbackStateHolder.stablePlayerState.value.currentSong?.id == startSongId &&
-                    fullQueue.any { it.id == startSongId }
-                ) {
-                    _playerUiState.update { it.copy(currentPlaybackQueue = fullQueue.toPlaybackQueue()) }
                 }
             }
         }
@@ -1329,6 +1375,74 @@ class PlayerViewModel @Inject constructor(
         fullQueuePlaybackToken += 1L
         fullQueuePlaybackJob?.cancel()
         fullQueuePlaybackJob = null
+        fullQueueFillJob?.cancel()
+        fullQueueFillJob = null
+    }
+
+    /**
+     * 阶段 2：后台把全库队列分段回填到播放器。
+     * 等首曲真正成为播放器当前媒体项（且时间线尚未回填）后再构建 MediaItem 并分批
+     * addMediaItems，把队列构建的重活挪出首曲初始化窗口，消除大媒体库放歌前的卡顿。
+     * 仅在播放器仍停留在 [startSongId] 时生效；用户已切走则静默放弃。
+     */
+    private fun fillPlaybackQueueInBackground(
+        fullQueue: List<Song>,
+        startSongId: String,
+        queueName: String
+    ) {
+        if (fullQueue.size <= 1) return
+
+        fullQueueFillJob?.cancel()
+        fullQueueFillJob = viewModelScope.launch {
+            val player = dualPlayerEngine.masterPlayer
+            if (!awaitStartSongBecameCurrent(player, startSongId, timeoutMs = 5_000L)) return@launch
+
+            // 与 playSongs 的持久化随机播放语义保持一致：开启时以点击歌曲为锚点打乱队列。
+            val queueToAttach = buildQueueToAttachForLargeLibrary(fullQueue, startSongId)
+
+            val (segments, persistentQueue) = withContext(Dispatchers.Default) {
+                preparePlaybackQueueSegments(
+                    songsToPlay = queueToAttach,
+                    startSongId = startSongId,
+                    playlistId = null
+                ) to queueToAttach.toPlaybackQueue()
+            }
+
+            withContext(Dispatchers.Main.immediate) {
+                val attached = attachPreparedQueueSegmentsIfCurrent(
+                    player = player,
+                    startSongId = startSongId,
+                    preparedSegments = segments
+                )
+                // ⚡ 队列未真正写入播放器时（守卫条件不满足而静默跳过）不同步 UI 队列：
+                //    否则 UI 显示完整队列而播放器时间线只有 1 首，seekToNext/seekToPrevious
+                //    会因「无下一/上一窗口」被 Media3 静默忽略 → 上下曲按钮失灵（偶发）。
+                if (attached && playbackStateHolder.stablePlayerState.value.currentSong?.id == startSongId) {
+                    queueStateHolder.saveOriginalQueueState(fullQueue, queueName)
+                    _playerUiState.update {
+                        it.copy(
+                            currentPlaybackQueue = persistentQueue,
+                            currentQueueSourceName = queueName
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** 与 playSongs 的持久化随机逻辑一致：开启时以 [startSongId] 为锚点打乱整库队列。 */
+    private suspend fun buildQueueToAttachForLargeLibrary(
+        fullQueue: List<Song>,
+        startSongId: String
+    ): List<Song> {
+        val isPersistent = userPreferencesRepository.persistentShuffleEnabledFlow.first()
+        if (!isPersistent) return fullQueue
+
+        val isShuffleOn = playbackStateHolder.stablePlayerState.value.isShuffleEnabled
+        if (!isShuffleOn) return fullQueue
+
+        val anchorIndex = fullQueue.indexOfFirst { it.id == startSongId }.coerceAtLeast(0)
+        return QueueUtils.buildAnchoredShuffleQueueSuspending(fullQueue, anchorIndex)
     }
 
     private fun throwIfFullQueuePlaybackRequestIsStale(requestToken: Long) {
@@ -5649,6 +5763,27 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * ⚡ 等待 [startSongId] 真正成为播放器当前媒体项、且时间线仍是「只有这一首」的状态。
+     * 比只等 STATE_READY 更严格：上一首仍在播放时 STATE_READY 已为 true，
+     * 只看状态会在 setMediaItem 之前提前返回 → 回填守卫不通过而静默失败（队列停在 1 首）。
+     */
+    private suspend fun awaitStartSongBecameCurrent(
+        player: Player,
+        startSongId: String,
+        timeoutMs: Long
+    ): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (player.currentMediaItem?.mediaId == startSongId && player.mediaItemCount == 1) {
+                return true
+            }
+            if (!currentCoroutineContext().isActive) return false
+            delay(50)
+        }
+        return false
+    }
+
     private suspend fun preparePlaybackQueueSegments(
         songsToPlay: List<Song>,
         startSongId: String,
@@ -5707,6 +5842,21 @@ class PlayerViewModel @Inject constructor(
             }
         }
 
+        // ⚡ 回填期间被缓冲的「待追加」媒体项（在线搜索后台补拉分页）在此统一补到队尾。
+        //    必须放在补齐首屏曲目**之后**，否则会被上面 `mediaItemCount == 1` 守卫挡下，
+        //    连带首屏曲目整批丢失。
+        if (pendingQueueAppendBuffer.isNotEmpty()) {
+            val pending = pendingQueueAppendBuffer.toList()
+            pendingQueueAppendBuffer.clear()
+            var appended = 0
+            while (appended < pending.size) {
+                val end = (appended + batchSize).coerceAtMost(pending.size)
+                player.addMediaItems(pending.subList(appended, end))
+                appended = end
+                yield()
+            }
+        }
+
         playbackStateHolder.updateStablePlayerState {
             it.copy(currentMediaItemIndex = preparedSegments.currentIndex)
         }
@@ -5720,6 +5870,8 @@ class PlayerViewModel @Inject constructor(
             clearPreparingSongIfMatching()
             return
         }
+        // ⚡ 新一轮播放：丢弃上一轮遗留的"待追加"缓冲（属于已过期的队列）
+        pendingQueueAppendBuffer.clear()
         val effectiveStartSong = songsToPlay.firstOrNull { it.id == startSong.id } ?: songsToPlay.first()
 
         // ⚡ 提前开启切歌锁定期：internalPlaySongs 会先更新 currentSong 再 setMediaItem，
@@ -6331,12 +6483,38 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun addSongToQueue(song: Song) {
+        val mediaItem = buildPlaybackMediaItem(song)
+        // ⚡ 首屏队列仍在后台回填时先缓冲，避免破坏 `mediaItemCount == 1` 守卫（详见 pendingQueueAppendBuffer）
+        if (isQueueStillBuilding()) {
+            pendingQueueAppendBuffer.add(mediaItem)
+            return
+        }
         mediaController?.let { controller ->
-            val mediaItem = buildPlaybackMediaItem(song)
             controller.addMediaItem(mediaItem)
             // Queue UI is synced via onTimelineChanged listener
         }
     }
+
+    /**
+     * ⚡ 批量追加在线歌曲到播放队列尾部（供「在线搜索 → 后台补拉后续分页」使用）。
+     * 一次提交整批，减少时间线变更次数；若首屏队列仍在后台回填，则先缓冲、
+     * 待回填完成后统一追加（详见 [pendingQueueAppendBuffer]）。
+     */
+    fun appendCloudSongsToQueue(songs: List<Song>) {
+        if (songs.isEmpty()) return
+        val items = songs.map { buildPlaybackMediaItem(it) }
+        val controller = mediaController
+        if (isQueueStillBuilding() || controller == null) {
+            pendingQueueAppendBuffer.addAll(items)
+            return
+        }
+        controller.addMediaItems(items)
+        // Queue UI is synced via onTimelineChanged listener
+    }
+
+    /** 两阶段队列构建（秒起播 + 后台回填）是否仍在进行中 */
+    private fun isQueueStillBuilding(): Boolean =
+        pendingQueueSegmentsJob?.isActive == true || fullQueueFillJob?.isActive == true
 
     /**
      * 把已解析出直链的在线歌曲追加到当前播放队列（不打断当前播放）。

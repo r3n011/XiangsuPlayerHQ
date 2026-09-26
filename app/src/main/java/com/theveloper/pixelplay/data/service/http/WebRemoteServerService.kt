@@ -8,8 +8,12 @@ import android.content.Context
 import android.media.AudioManager
 import android.content.Intent
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Binder
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
@@ -26,6 +30,7 @@ import androidx.media3.common.Player
 import dagger.hilt.android.AndroidEntryPoint
 import io.ktor.server.application.*
 import io.ktor.server.cio.CIO
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
@@ -38,12 +43,16 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.http.content.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
@@ -85,6 +94,33 @@ class WebRemoteServerService : LifecycleService() {
     private val activeConnections = java.util.concurrent.CopyOnWriteArrayList<WsClient>()
 
     /**
+     * /api/stream 复用的 OkHttpClient。此前每个请求都 new 一个，连接池与线程池永不回收，
+     * 长时间串流会不断累积线程/连接，最终拖垮 Ktor CIO 的 worker → WebSocket 被掐成 code=1006。
+     * readTimeout 必须为 0（不超时）：音频是"边下边播"，读间隔可能远超常规 30s。
+     */
+    private val streamHttpClient: okhttp3.OkHttpClient by lazy {
+        okhttp3.OkHttpClient.Builder()
+            .connectTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            // 在线音源 CDN 普遍校验 UA：默认的 "okhttp/x.y.z" 会被 403，
+            // 网页端 <audio> 收到错误响应直接 MediaError → 无声。
+            // 与 DualPlayerEngine 播放器使用的 UA 保持一致。
+            .addInterceptor { chain ->
+                val request = chain.request()
+                if (request.header("User-Agent") != null) {
+                    chain.proceed(request)
+                } else {
+                    chain.proceed(
+                        request.newBuilder().header("User-Agent", STREAM_USER_AGENT).build()
+                    )
+                }
+            }
+            .build()
+    }
+
+    /**
      * 单连接发送保护：Ktor 的 WebSocketSession 不允许并发 send（会抛
      * "Another send is already in progress"），且僵死连接的 send 会永久挂起、
      * 卡死整个广播循环。因此每个连接独享 Mutex 串行化 + withTimeout 兜底，
@@ -115,14 +151,97 @@ class WebRemoteServerService : LifecycleService() {
 
     private var previousVolume: Int = -1
 
-    private fun shouldPlayOnDevice(): Boolean {
-        if (activeConnections.isEmpty()) {
-            return true
+    /**
+     * 熄屏保活：Web 远控是"局域网长连接"场景，手机一旦熄屏进入 Wi-Fi 省电 /
+     * Doze，射频会被降频甚至挂起，浏览器侧看到的正是异常断开 code=1006。
+     * 服务运行期间持有 WifiLock(HIGH_PERF) + PARTIAL_WAKE_LOCK，保证熄屏后
+     * TCP 连接与心跳仍能正常收发。
+     */
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+
+    @Suppress("DEPRECATION")
+    private fun acquireKeepAliveLocks() {
+        try {
+            if (wifiLock == null) {
+                val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "pixelplay:webremote")
+            }
+            if (wifiLock?.isHeld != true) {
+                wifiLock?.setReferenceCounted(false)
+                wifiLock?.acquire()
+                Timber.i("WifiLock acquired (web remote keep-alive)")
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to acquire WifiLock")
         }
-        return isAudioOnDevice
+        try {
+            if (wakeLock == null) {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pixelplay:webremote")
+            }
+            if (wakeLock?.isHeld != true) {
+                wakeLock?.setReferenceCounted(false)
+                wakeLock?.acquire()
+                Timber.i("PARTIAL_WAKE_LOCK acquired (web remote keep-alive)")
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to acquire WakeLock")
+        }
     }
 
+    private fun releaseKeepAliveLocks() {
+        try {
+            if (wifiLock?.isHeld == true) wifiLock?.release()
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to release WifiLock")
+        }
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to release WakeLock")
+        }
+        wifiLock = null
+        wakeLock = null
+    }
+
+    /**
+     * 是否由手机本机出声。这里只认用户的显式选择，不再回头看 activeConnections：
+     * WS 偶发瞬断（code=1006）时 activeConnections 会瞬间为空，若此时据此恢复手机出声，
+     * 会出现"手机突然外放 1s → 重连后又静音"的来回横跳，听感就是声音时有时无。
+     * 全部客户端断开后的恢复改由 scheduleResumePhonePlaybackIfIdle() 延迟兜底。
+     */
+    private fun shouldPlayOnDevice(): Boolean = isAudioOnDevice
+
+    /**
+     * 用 DualPlayerEngine 的统一在线源解析器，把 Song.contentUriString 解析成
+     * 可直接播放的 http(s) 直链或本地文件路径。解析不出来返回 null（调用方回退原有逻辑）。
+     */
+    private suspend fun resolveCloudPlayablePath(contentUriString: String): String? {
+        if (contentUriString.isBlank()) return null
+        val contentUri = runCatching { Uri.parse(contentUriString) }.getOrNull() ?: return null
+        if (contentUri.scheme !in CLOUD_PLAYABLE_SCHEMES) return null
+        val resolved = withTimeoutOrNull(12_000L) {
+            runCatching { dualPlayerEngine.resolveCloudUri(contentUri) }.getOrNull()
+        } ?: return null
+        val resolvedString = resolved.toString()
+        if (resolvedString.isBlank() || resolvedString == contentUriString) return null
+        return if (resolved.scheme == "file") resolved.path else resolvedString
+    }
+
+    private val mainThreadHandler by lazy { Handler(Looper.getMainLooper()) }
+
     private fun syncPlayerVolume() {
+        // ⚡ Media3 的 Player 方法（含 setVolume）强制要求主线程调用，否则抛
+        //   IllegalStateException("Player is accessed on the wrong thread")。
+        //   HTTP 处理器与 WebSocket 回调都跑在 Ktor 的工作线程上，直接摸 masterPlayer 会让
+        //   /api/player/toggleAudioOnDevice 返回 500，body 还是裸文本 "Error: Player is ..."；
+        //   网页端再按 JSON 解析 → 抛 SyntaxError，表现就是"切手机播放失败"。
+        //   统一在这里兜底切主线程，避免每个调用点都要自己记得包一层 lifecycleScope.launch。
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainThreadHandler.post { syncPlayerVolume() }
+            return
+        }
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val shouldPlay = shouldPlayOnDevice()
         
@@ -146,6 +265,37 @@ class WebRemoteServerService : LifecycleService() {
         }
     }
 
+    /** 全部客户端离线后的延迟恢复任务，见 scheduleResumePhonePlaybackIfIdle() */
+    private var idleResumeJob: Job? = null
+
+    /**
+     * 所有 Web 客户端断开后，延迟 20s 再恢复手机出声。
+     * 以前是"一断就切回手机播放"，而 WebSocket 局域网上瞬断(code=1006)极常见，
+     * 客户端 1~2s 内就会自动重连 —— 结果每闪断一次就被踢回手机模式，
+     * 网页端 <audio> 也随之被 stopStreaming()，用户听到的就是"声音时有时无 + 远控不稳定"。
+     *
+     * 阈值从 8s 放宽到 20s：Web 客户端重连退避最长 5s，页面被切到后台时浏览器还会
+     * 进一步节流定时器（可达分钟级），8s 窗口内没重连上就会被误判为"已离线"，
+     * 于是把网页正在播放的模式静默翻回手机播放 → 网页无声。
+     */
+    private fun scheduleResumePhonePlaybackIfIdle() {
+        if (activeConnections.isNotEmpty()) {
+            idleResumeJob?.cancel()
+            idleResumeJob = null
+            return
+        }
+        idleResumeJob?.cancel()
+        idleResumeJob = lifecycleScope.launch {
+            delay(20_000)
+            if (activeConnections.isEmpty() && !isAudioOnDevice) {
+                isAudioOnDevice = true
+                Timber.i("No web remote clients for 20s, resuming phone playback")
+                syncPlayerVolume()
+                broadcastCurrentState()
+            }
+        }
+    }
+
     companion object {
         @Volatile
         var serverAddress: String? = null
@@ -162,6 +312,15 @@ class WebRemoteServerService : LifecycleService() {
         const val ACTION_START_SERVER = "com.theveloper.pixelplay.action.START_WEB_REMOTE"
         const val ACTION_STOP_SERVER = "com.theveloper.pixelplay.action.STOP_WEB_REMOTE"
         const val ACTION_UPDATE_THEME = "com.theveloper.pixelplay.action.UPDATE_WEB_REMOTE_THEME"
+
+        /** contentUriString 中可由 DualPlayerEngine 统一解析的在线音源 scheme。 */
+        val CLOUD_PLAYABLE_SCHEMES = setOf(
+            "cloud", "telegram", "gdrive", "navidrome", "jellyfin", "bilibili", "netease", "qqmusic"
+        )
+
+        /** 代理在线音频时的 UA，与 DualPlayerEngine 播放器保持一致（绕开 CDN 的 UA 校验）。 */
+        const val STREAM_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
     private val binder = LocalBinder()
@@ -207,7 +366,12 @@ class WebRemoteServerService : LifecycleService() {
 
         val preferredPort = intent?.getIntExtra("port", 8080) ?: 8080
         isSyncMode = intent?.getBooleanExtra("syncMode", false) ?: false
-        isAudioOnDevice = intent?.getBooleanExtra("audioOnDevice", true) ?: true
+        // ⚡ 只在 intent 显式携带该 extra 时才覆盖：START_STICKY 被系统以 null intent 重建时，
+        //   无脑回落 true 会把用户已选的"网页播放"静默翻成"手机播放"并广播出去，
+        //   网页收到 audioOnDevice=true 后会 stopStreaming() → 永久无声。
+        if (intent?.hasExtra("audioOnDevice") == true) {
+            isAudioOnDevice = intent.getBooleanExtra("audioOnDevice", isAudioOnDevice)
+        }
         themeColor = intent?.getStringExtra("themeColor") ?: "#6750A4"
 
         lifecycleScope.launch {
@@ -218,6 +382,9 @@ class WebRemoteServerService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        // 注意：lifecycleScope 在 onDestroy 后会被取消，协程里的 stopServer 可能来不及执行，
+        // 保活锁必须同步释放，否则会残留持有（耗电 / 影响系统 Wi-Fi 省电）。
+        releaseKeepAliveLocks()
         super.onDestroy()
         lifecycleScope.launch {
             stopServer()
@@ -274,7 +441,9 @@ class WebRemoteServerService : LifecycleService() {
             // ⚡ WS 稳定性：曾尝试 Netty 引擎但 netty 4.2.x 需要 minSdk 26+（D8 拒绝 MethodHandle 指令，
             //   项目 minSdk=23 无法编译）。回退 CIO 引擎，稳定性靠：pingPeriod 心跳 + WsClient 串行化
             //   发送 + 客户端 2s 应用层心跳。
-            server = embeddedServer(CIO, port = resolvedPort) {
+            // ⚡ Ktor 3.5 移除了 embeddedServer(factory, port, configure) 重载：端口必须通过
+            //   configure 里的 connector { } 指定，module 则通过 rootConfig = serverConfig { module { } } 注册。
+            val webRemoteModule: suspend Application.() -> Unit = {
                 install(DefaultHeaders)
                 install(ContentNegotiation) {
                     json()
@@ -649,19 +818,30 @@ class WebRemoteServerService : LifecycleService() {
                         if (song != null) {
                             Timber.i("  Found song: ${song!!.title}, path=${song!!.path}, neteaseId=${song!!.neteaseId}, qqMusicMid=${song!!.qqMusicMid}")
                             try {
-                                val songPath = song!!.path
+                                // ⚡ 云端/在线歌曲的 path 通常为空，真实来源在 contentUriString
+                                //    （cloud://lx/...、telegram://、gdrive://、navidrome://、jellyfin:// 等）。
+                                //    统一交给 DualPlayerEngine 的解析器换成可播放的 http(s) 直链或本地文件路径，
+                                //    否则会一路走到 "Stream not available" 404 → 浏览器 <audio> 报 MediaError → 无声。
+                                val rawPath = song!!.path
+                                val songPath = if (
+                                    rawPath.startsWith("http://") ||
+                                    rawPath.startsWith("https://") ||
+                                    java.io.File(rawPath).isFile
+                                ) {
+                                    rawPath
+                                } else {
+                                    resolveCloudPlayablePath(song!!.contentUriString) ?: rawPath
+                                }
+                                Timber.i("  Resolved songPath=$songPath")
                                 
                                 if (songPath.startsWith("http://") || songPath.startsWith("https://")) {
                                     Timber.i("  Proxying HTTP stream URL: $songPath")
-                                    val httpClient = okhttp3.OkHttpClient.Builder()
-                                        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                                        .build()
-
                                     val requestBuilder = okhttp3.Request.Builder().url(songPath)
                                     call.request.headers["Range"]?.let { requestBuilder.header("Range", it) }
 
-                                    val response = httpClient.newCall(requestBuilder.build()).execute()
+                                    val response = withContext(Dispatchers.IO) {
+                                        streamHttpClient.newCall(requestBuilder.build()).execute()
+                                    }
                                     response.use { upstream ->
                                         if (upstream.code != 200 && upstream.code != 206) {
                                             Timber.e("  Upstream error: ${upstream.code}")
@@ -686,7 +866,10 @@ class WebRemoteServerService : LifecycleService() {
                                         call.response.header("Access-Control-Allow-Origin", "*")
 
                                         call.respondOutputStream {
-                                            body.byteStream().use { it.copyTo(this) }
+                                            val out = this
+                                            withContext(Dispatchers.IO) {
+                                                body.byteStream().use { it.copyTo(out) }
+                                            }
                                         }
                                     }
                                     return@get
@@ -702,14 +885,18 @@ class WebRemoteServerService : LifecycleService() {
                                         val rangeMatch = Regex("bytes=(\\d+)-(\\d*)").find(rangeHeader)
                                         if (rangeMatch != null) {
                                             val start = rangeMatch.groupValues[1].toLong()
+                                                .coerceIn(0L, (fileSize - 1).coerceAtLeast(0L))
                                             val end = if (rangeMatch.groupValues[2].isNotEmpty()) {
                                                 rangeMatch.groupValues[2].toLong()
                                             } else {
                                                 fileSize - 1
                                             }.coerceAtMost(fileSize - 1)
 
-                                            file.inputStream().use { inputStream ->
-                                                inputStream.skip(start)
+                                            java.io.FileInputStream(file).use { inputStream ->
+                                                // FileInputStream.skip() 允许"部分跳过"，用它做 Range 定位
+                                                // 会导致起点偏移、音频数据错位（浏览器解码失败 → 串流卡死）。
+                                                // 改用 FileChannel.position 精确定位。
+                                                inputStream.channel.position(start)
                                                 val contentLength = end - start + 1
 
                                                 call.response.status(io.ktor.http.HttpStatusCode.PartialContent)
@@ -719,14 +906,17 @@ class WebRemoteServerService : LifecycleService() {
                                                 call.response.header("Content-Length", contentLength.toString())
                                                 call.response.header("Access-Control-Allow-Origin", "*")
                                                 call.respondOutputStream {
-                                                    var remaining = contentLength
-                                                    val buffer = ByteArray(8192)
-                                                    while (remaining > 0) {
-                                                        val toRead = remaining.coerceAtMost(buffer.size.toLong()).toInt()
-                                                        val read = inputStream.read(buffer, 0, toRead)
-                                                        if (read == -1) break
-                                                        write(buffer, 0, read)
-                                                        remaining -= read
+                                                    val out = this
+                                                    withContext(Dispatchers.IO) {
+                                                        var remaining = contentLength
+                                                        val buffer = ByteArray(8192)
+                                                        while (remaining > 0) {
+                                                            val toRead = remaining.coerceAtMost(buffer.size.toLong()).toInt()
+                                                            val read = inputStream.read(buffer, 0, toRead)
+                                                            if (read == -1) break
+                                                            out.write(buffer, 0, read)
+                                                            remaining -= read
+                                                        }
                                                     }
                                                 }
                                             }
@@ -739,7 +929,10 @@ class WebRemoteServerService : LifecycleService() {
                                     call.response.header("Accept-Ranges", "bytes")
                                     call.response.header("Access-Control-Allow-Origin", "*")
                                     call.respondOutputStream {
-                                        file.inputStream().use { it.copyTo(this) }
+                                        val out = this
+                                        withContext(Dispatchers.IO) {
+                                            file.inputStream().use { it.copyTo(out) }
+                                        }
                                     }
                                 } else {
                                     // ⚡ song 是 var 且被兜底 lambda 捕获修改过，无法对其属性 smart cast，
@@ -754,15 +947,12 @@ class WebRemoteServerService : LifecycleService() {
                                     }
 
                                     if (streamUrl != null) {
-                                        val httpClient = okhttp3.OkHttpClient.Builder()
-                                            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                                            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                                            .build()
-
                                         val requestBuilder = okhttp3.Request.Builder().url(streamUrl)
                                         call.request.headers["Range"]?.let { requestBuilder.header("Range", it) }
 
-                                        val response = httpClient.newCall(requestBuilder.build()).execute()
+                                        val response = withContext(Dispatchers.IO) {
+                                            streamHttpClient.newCall(requestBuilder.build()).execute()
+                                        }
                                         response.use { upstream ->
                                             if (upstream.code != 200 && upstream.code != 206) {
                                                 call.respondText("Upstream error", status = io.ktor.http.HttpStatusCode.BadGateway)
@@ -786,7 +976,10 @@ class WebRemoteServerService : LifecycleService() {
                                             call.response.header("Access-Control-Allow-Origin", "*")
 
                                             call.respondOutputStream {
-                                                body.byteStream().use { it.copyTo(this) }
+                                                val out = this
+                                                withContext(Dispatchers.IO) {
+                                                    body.byteStream().use { it.copyTo(out) }
+                                                }
                                             }
                                         }
                                     } else {
@@ -809,6 +1002,9 @@ class WebRemoteServerService : LifecycleService() {
                         Timber.i("WebSocket session opened from IP: $clientIp")
                         val client = WsClient(this)
                         activeConnections.add(client)
+                        // 有新客户端接入 → 取消"离线恢复手机播放"的延迟任务
+                        idleResumeJob?.cancel()
+                        idleResumeJob = null
                         Timber.i("WS active connections: ${activeConnections.size}")
                         syncPlayerVolume()
                         try {
@@ -837,20 +1033,37 @@ class WebRemoteServerService : LifecycleService() {
                                     "${if (closeReasonInfo == null) ", abnormal: no close frame" else ""})"
                             )
                             activeConnections.remove(client)
-                            if (activeConnections.isEmpty()) {
-                                isAudioOnDevice = true
-                                Timber.i("All web remote clients disconnected, switching back to phone playback")
-                            }
+                            scheduleResumePhonePlaybackIfIdle()
                             syncPlayerVolume()
                         }
                     }
                 }
-            }.start()
+            }
+
+            server = embeddedServer(
+                factory = CIO,
+                rootConfig = serverConfig { module(webRemoteModule) },
+                configure = {
+                    // ⚡ /api/stream 是"整首歌时长的长连接"，一旦占用 Ktor 的 worker 线程，
+                    //   /ws 心跳与 1s 轮询就排不上队 → 客户端表现为 WebSocket 反复 code=1006。
+                    //   这里放大各线程池，并配合下方 withContext(Dispatchers.IO) 让阻塞 IO 不占 worker。
+                    connector {
+                        port = resolvedPort
+                        host = "0.0.0.0"
+                    }
+                    connectionGroupSize = 8
+                    workerGroupSize = 24
+                    callGroupSize = 24
+                }
+            ).start()
 
             isServerRunning = true
             Timber.i("Web remote server started successfully at http://$serverAddress")
 
             startForeground(NOTIFICATION_ID, buildNotification())
+
+            // 熄屏保活：避免屏幕关闭后 Wi-Fi 省电/Doze 掐断长连接（code=1006）
+            acquireKeepAliveLocks()
 
             playbackStateHolder.setWebRemoteActive(true)
             playbackStateHolder.startProgressUpdates()
@@ -869,6 +1082,7 @@ class WebRemoteServerService : LifecycleService() {
 
     private suspend fun stopServer() {
         playbackStateHolder.setWebRemoteActive(false)
+        releaseKeepAliveLocks()
         server?.let { s ->
             try {
                 val stopMethod = s::class.java.getMethod("stop", Long::class.java, Long::class.java)
@@ -980,9 +1194,12 @@ class WebRemoteServerService : LifecycleService() {
             themeColor = themeColor
         )
         val json = Json.encodeToString(playerState)
-        // 逐连接串行发送（Mutex+超时在 WsClient 内），坏连接超时即被剔除，不阻塞其它客户端
-        activeConnections.forEach { client ->
-            client.sendText(json)
+        // 并发发送：每个 WsClient 内部有 Mutex+3s 超时，坏连接会被剔除。
+        // 若串行发送，一个僵死客户端最多拖慢 3s，会导致其它客户端收到过期位置（表现为"卡顿/跳变"）。
+        coroutineScope {
+            activeConnections.forEach { client ->
+                launch { client.sendText(json) }
+            }
         }
     }
 

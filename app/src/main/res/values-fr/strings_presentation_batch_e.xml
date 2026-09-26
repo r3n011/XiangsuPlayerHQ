@@ -43,7 +43,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Concevez l\'illustration, l\'icône, la forme et choisissez les chansons vous-même.</string>
     <string name="presentation_batch_e_creation_mode_ai">Avec l\'IA</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Générez une liste de lecture personnalisée avec des contrôles avancés.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Nécessite une clé API Gemini configurée dans les paramètres.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Nécessite une clé API configurée dans les paramètres.</string>
     <string name="presentation_batch_e_setup_api_key">Configurer la clé API</string>
 
     <!-- AI playlist lab -->

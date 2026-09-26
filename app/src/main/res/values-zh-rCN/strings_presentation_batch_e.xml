@@ -48,7 +48,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">自行设计封面、图标、形状，并挑选歌曲。</string>
     <string name="presentation_batch_e_creation_mode_ai">使用 AI</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">借助高级控制生成精心策划的播放列表。</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">需要先在设置中配置 Gemini API 密钥。</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">需要先设置 API 密钥。</string>
     <string name="presentation_batch_e_setup_api_key">设置 API 密钥</string>
 
     <!-- AI playlist lab -->

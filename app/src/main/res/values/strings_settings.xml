@@ -212,6 +212,12 @@
         name="setcat_album_art_palette_subtitle"
     >Current: %1$s. Open live preview and choose style.</string>
     <string
+        name="setcat_player_progress_bar_title"
+    >Playback Progress Bar</string>
+    <string
+        name="setcat_player_progress_bar_subtitle"
+    >Current: %1$s. Choose track style, thumb style, and rotation.</string>
+    <string
         name="setcat_custom_player_background_title"
     >Custom Player Background</string>
     <string
@@ -357,6 +363,44 @@
     <string
         name="setcat_headphones_resume_subtitle"
     >If playback paused because headphones were removed, resume automatically when they connect again.</string>
+    <string name="setcat_audio_focus">Audio Focus</string>
+    <string
+        name="setcat_audio_focus_resume_call_title"
+    >Resume playback after a call</string>
+    <string
+        name="setcat_audio_focus_resume_call_subtitle"
+    >Resume playback after the call ends (if it was paused by an incoming call).</string>
+    <string
+        name="setcat_audio_focus_transient_title"
+    >Short audio focus change / call</string>
+    <string
+        name="setcat_audio_focus_transient_subtitle"
+    >Pause playback when audio focus changes temporarily (e.g. call, notification, navigation).</string>
+    <string
+        name="setcat_audio_focus_gain_title"
+    >Resume on focus gain</string>
+    <string
+        name="setcat_audio_focus_gain_subtitle"
+    >Resume playback after focus is regained. When disabled, the player stays paused.</string>
+    <string
+        name="setcat_audio_focus_duck_title"
+    >Lower volume</string>
+    <string
+        name="setcat_audio_focus_duck_subtitle"
+    >Allow lowering the volume during a short audio focus change. This option is overridden by audio output settings.</string>
+    <string
+        name="setcat_audio_focus_permanent_title"
+    >Permanent audio focus change</string>
+    <string
+        name="setcat_audio_focus_permanent_subtitle"
+    >Pause on a long audio focus change (e.g. another player or game playing music).</string>
+    <string
+        name="setcat_audio_focus_hint_cast"
+    >Chromecast output may completely ignore call and short audio focus changes.</string>
+    <string
+        name="setcat_audio_focus_hint_bg"
+    >On Android 8 and above the player is killed by the system while paused. To avoid this, use the \"Always show notification\" option.</string>
+    <string name="setcat_audio_focus_reset">Restore defaults</string>
     <string name="setcat_bluetooth_lyrics">Bluetooth Lyrics</string>
     <string name="setcat_queue_transitions">Queue and Transitions</string>
     <string name="setcat_crossfade_label">Crossfade</string>
@@ -791,6 +835,8 @@
     <string name="car_mode_action_search_desc">Find songs</string>
     <string name="car_mode_action_roaming">Roaming</string>
     <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
+    <string name="car_mode_action_radio">Radio</string>
+    <string name="car_mode_action_radio_desc">Online radio</string>
     <string name="car_mode_action_library">Library</string>
     <string name="car_mode_action_library_desc">Your music</string>
     <string name="car_mode_action_settings">Settings</string>
@@ -862,6 +908,7 @@
     <string name="settings_search_keyword_aaudio">AAudio</string>
     <string name="settings_search_keyword_car_mode">Car mode</string>
     <string name="settings_search_keyword_transcode">Transcode</string>
+    <string name="settings_search_keyword_audio_focus">Audio focus</string>
     <string name="settings_search_keyword_download">Download</string>
     <string name="settings_search_keyword_daily_mix">Daily mix</string>
     <string name="settings_search_keyword_stats">Statistics</string>

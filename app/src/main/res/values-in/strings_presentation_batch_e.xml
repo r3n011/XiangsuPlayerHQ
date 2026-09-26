@@ -48,7 +48,7 @@
     <string name="presentation_batch_e_creation_mode_manual_subtitle">Desain sampul, ikon, bentuk, dan pilih lagu sendiri.</string>
     <string name="presentation_batch_e_creation_mode_ai">Dengan AI</string>
     <string name="presentation_batch_e_creation_mode_ai_subtitle_enabled">Hasilkan playlist yang dikurasi dengan kontrol lanjutan.</string>
-    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Memerlukan API key Gemini yang dikonfigurasi di pengaturan.</string>
+    <string name="presentation_batch_e_creation_mode_ai_subtitle_disabled">Memerlukan API key yang dikonfigurasi di pengaturan.</string>
     <string name="presentation_batch_e_setup_api_key">Siapkan API key</string>
 
     <!-- AI playlist lab -->

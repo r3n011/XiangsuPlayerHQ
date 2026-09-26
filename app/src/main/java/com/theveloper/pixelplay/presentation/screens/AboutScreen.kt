@@ -1402,6 +1402,7 @@ private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
     val blurProjectUrl = "https://github.com/shiqizhenyes/PixelPlayer/tree/feat/gaussian_blur_effect_playingEqIconV2"
     val miniaudioUrl = "https://github.com/mackron/miniaudio"
     val lanzouApiUrl = "https://github.com/124019/LanzouAPI"
+    val foliaUrl = "https://github.com/chthollyphile/folia-major"
     val mineradioUrl = "https://github.com/XxHuberrr/Mineradio"
     val reactorUrl = "https://github.com/wzk112/reactor-audio-visualizer"
     val rhythmUrl = "https://github.com/cromaguy/Rhythm"
@@ -1460,6 +1461,14 @@ private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
             AcknowledgementItem(
                 description = stringResource(R.string.about_acknowledgements_lanzou_desc),
                 url = lanzouApiUrl,
+                context = context
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AcknowledgementItem(
+                description = stringResource(R.string.about_acknowledgements_folia_desc),
+                url = foliaUrl,
                 context = context
             )
 

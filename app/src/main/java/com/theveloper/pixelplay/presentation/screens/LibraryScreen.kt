@@ -164,6 +164,7 @@ import com.theveloper.pixelplay.presentation.components.EditMultipleSongsSheet
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
 import com.theveloper.pixelplay.presentation.components.subcomps.LibraryActionRow
 import com.theveloper.pixelplay.presentation.navigation.Screen
+import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.components.MultiSelectionBottomSheet
 import com.theveloper.pixelplay.presentation.components.AlbumMultiSelectionOptionSheet
 import com.theveloper.pixelplay.presentation.components.PlaylistMultiSelectionBottomSheet
@@ -1955,7 +1956,9 @@ fun LibraryScreen(
         },
         isAiEnabled = hasActiveAiProviderApiKey,
         onSetupAiClick = {
-            navController.navigateSafely(Screen.SettingsCategory.createRoute("ai"))
+            // 必须用 SettingsCategory 的真实 id：之前硬编码 "ai" 会让 SettingsCategoryScreen
+            // 的 fromId() 返回 null 而直接 return，用户点到的是空白页
+            navController.navigateSafely(Screen.SettingsCategory.createRoute(SettingsCategory.AI_INTEGRATION.id))
         }
     )
 
@@ -1968,7 +1971,7 @@ fun LibraryScreen(
                 playerViewModel.clearAiPlaylistError()
                 showCreateAiPlaylistDialog = true
             } else {
-                Toast.makeText(context, context.getString(R.string.toast_set_gemini_api_key_first), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.toast_set_ai_provider_api_key_first), Toast.LENGTH_SHORT).show()
             }
         },
         onCreate = { name, imageUri, color, icon, songIds, cropScale, cropPanX, cropPanY, shapeType, d1, d2, d3, d4, smartRuleKey ->
@@ -2009,7 +2012,8 @@ fun LibraryScreen(
                 minLength = minLength,
                 maxLength = maxLength,
                 saveAsPlaylist = true,
-                playlistName = playlistName
+                playlistName = playlistName,
+                force = true
             )
         }
     )
