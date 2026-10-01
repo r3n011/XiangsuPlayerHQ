@@ -1,6 +1,5 @@
 package com.theveloper.pixelplay.utils
 
-import android.os.Build
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -38,7 +37,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.atilika.kuromoji.ipadic.Tokenizer
 import net.sourceforge.pinyin4j.PinyinHelper
 import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType
 import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat
@@ -56,15 +54,8 @@ import kotlin.math.sin
 
 // Roman Multilang
 object MultiLangRomanizer {
-    private val kuromojiTokenizer: Tokenizer? by lazy {
-        try {
-            Thread.currentThread().contextClassLoader = MultiLangRomanizer::class.java.classLoader
-            Tokenizer()
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            null
-        }
-    }
+    // kuromoji 引擎按需加载（见 KuromojiEngine）：未安装/加载失败时返回 null，
+    // 日语罗马音优雅降级为不显示，其它语言转写不受影响。
 
     private val HANGUL_ROMAJA_MAP = mapOf(
         "cho" to mapOf("ᄀ" to "g", "ᄁ" to "kk", "ᄂ" to "n", "ᄃ" to "d", "ᄄ" to "tt", "ᄅ" to "r", "ᄆ" to "m", "ᄇ" to "b", "ᄈ" to "pp", "ᄉ" to "s", "ᄊ" to "ss", "ᄋ" to "", "ᄌ" to "j", "ᄍ" to "jj", "ᄎ" to "ch", "ᄏ" to "k", "ᄐ" to "t", "ᄑ" to "p", "ᄒ" to "h"),
@@ -141,12 +132,130 @@ object MultiLangRomanizer {
     private fun isKyrgyz(text: String) = text.any { KYRGYZ_CYRILLIC_LETTERS.contains(it.toString()) || KYRGYZ_SPECIFIC_CYRILLIC_LETTERS.contains(it.toString()) } && text.all { KYRGYZ_CYRILLIC_LETTERS.contains(it.toString()) || KYRGYZ_SPECIFIC_CYRILLIC_LETTERS.contains(it.toString()) || !it.toString().matches("[\\u0400-\\u04FF]".toRegex()) }
     private fun isMacedonian(text: String) = text.any { MACEDONIAN_CYRILLIC_LETTERS.contains(it.toString()) || MACEDONIAN_SPECIFIC_CYRILLIC_LETTERS.contains(it.toString()) } && text.all { MACEDONIAN_CYRILLIC_LETTERS.contains(it.toString()) || MACEDONIAN_SPECIFIC_CYRILLIC_LETTERS.contains(it.toString()) || !it.toString().matches("[\\u0400-\\u04FF]".toRegex()) }
 
+    // ── 假名 → 罗马音（内置赫本式映射） ─────────────────────────────────────
+    // 原先依赖 android.icu.text.Transliterator("Katakana-Latin")，有两个致命问题：
+    //   1. 部分 ROM / 精简系统取不到该 Transliterator，抛异常被外层 try 吞掉 → 整行罗马音消失；
+    //   2. API < 29 没有 android.icu，原实现直接退回片假名原文（非拉丁），
+    //      歌词页判定"第二行不含拉丁字符"于是不显示 → 低版本永远看不到罗马音。
+    // 内置表保证任何系统版本、任何 ROM 上都能稳定输出小写拉丁罗马音。
+    private val KATAKANA_ROMAJI: Map<String, String> = mapOf(
+        // 五十音
+        "ア" to "a", "イ" to "i", "ウ" to "u", "エ" to "e", "オ" to "o",
+        "カ" to "ka", "キ" to "ki", "ク" to "ku", "ケ" to "ke", "コ" to "ko",
+        "サ" to "sa", "シ" to "shi", "ス" to "su", "セ" to "se", "ソ" to "so",
+        "タ" to "ta", "チ" to "chi", "ツ" to "tsu", "テ" to "te", "ト" to "to",
+        "ナ" to "na", "ニ" to "ni", "ヌ" to "nu", "ネ" to "ne", "ノ" to "no",
+        "ハ" to "ha", "ヒ" to "hi", "フ" to "fu", "ヘ" to "he", "ホ" to "ho",
+        "マ" to "ma", "ミ" to "mi", "ム" to "mu", "メ" to "me", "モ" to "mo",
+        "ヤ" to "ya", "ユ" to "yu", "ヨ" to "yo",
+        "ラ" to "ra", "リ" to "ri", "ル" to "ru", "レ" to "re", "ロ" to "ro",
+        "ワ" to "wa", "ヰ" to "wi", "ヱ" to "we", "ヲ" to "o",
+        "ン" to "n",
+        // 浊音 / 半浊音
+        "ガ" to "ga", "ギ" to "gi", "グ" to "gu", "ゲ" to "ge", "ゴ" to "go",
+        "ザ" to "za", "ジ" to "ji", "ズ" to "zu", "ゼ" to "ze", "ゾ" to "zo",
+        "ダ" to "da", "ヂ" to "ji", "ヅ" to "zu", "デ" to "de", "ド" to "do",
+        "バ" to "ba", "ビ" to "bi", "ブ" to "bu", "ベ" to "be", "ボ" to "bo",
+        "パ" to "pa", "ピ" to "pi", "プ" to "pu", "ペ" to "pe", "ポ" to "po",
+        "ヴ" to "vu", "ヷ" to "va", "ヸ" to "vi", "ヹ" to "ve", "ヺ" to "vo",
+        // 小写假名（单独出现时）
+        "ァ" to "a", "ィ" to "i", "ゥ" to "u", "ェ" to "e", "ォ" to "o",
+        "ャ" to "ya", "ュ" to "yu", "ョ" to "yo", "ヮ" to "wa", "ヵ" to "ka", "ヶ" to "ke",
+        // 拗音 / 外来语音节（两字组合，查表时优先匹配）
+        "キャ" to "kya", "キュ" to "kyu", "キョ" to "kyo",
+        "ギャ" to "gya", "ギュ" to "gyu", "ギョ" to "gyo",
+        "シャ" to "sha", "シュ" to "shu", "ショ" to "sho", "シェ" to "she",
+        "ジャ" to "ja", "ジュ" to "ju", "ジョ" to "jo", "ジェ" to "je",
+        "チャ" to "cha", "チュ" to "chu", "チョ" to "cho", "チェ" to "che",
+        "ニャ" to "nya", "ニュ" to "nyu", "ニョ" to "nyo",
+        "ヒャ" to "hya", "ヒュ" to "hyu", "ヒョ" to "hyo",
+        "ビャ" to "bya", "ビュ" to "byu", "ビョ" to "byo",
+        "ピャ" to "pya", "ピュ" to "pyu", "ピョ" to "pyo",
+        "ミャ" to "mya", "ミュ" to "myu", "ミョ" to "myo",
+        "リャ" to "rya", "リュ" to "ryu", "リョ" to "ryo",
+        "ファ" to "fa", "フィ" to "fi", "フェ" to "fe", "フォ" to "fo", "フュ" to "fyu",
+        "ヴァ" to "va", "ヴィ" to "vi", "ヴェ" to "ve", "ヴォ" to "vo", "ヴュ" to "vyu",
+        "ウィ" to "wi", "ウェ" to "we", "ウォ" to "wo",
+        "ティ" to "ti", "ディ" to "di", "デュ" to "dyu", "テュ" to "tyu",
+        "トゥ" to "tu", "ドゥ" to "du",
+        "ツァ" to "tsa", "ツィ" to "tsi", "ツェ" to "tse", "ツォ" to "tso",
+        "スィ" to "si", "ズィ" to "zi", "イェ" to "ye"
+    )
+
+    private fun hiraganaToKatakana(text: String): String = buildString(text.length) {
+        text.forEach { c ->
+            append(if (c in '\u3041'..'\u3096' || c == '\u309D' || c == '\u309E') (c.code + 0x60).toChar() else c)
+        }
+    }
+
+    /**
+     * 假名（平/片假名混排，含促音 ッ、长音 ー）转赫本式罗马音。
+     * 非假名字符（汉字、拉丁、标点、空格）原样保留，因此对"分词失败退回 surface"的场景也不会崩。
+     */
+    fun kanaToRomaji(raw: String): String {
+        val input = hiraganaToKatakana(raw)
+        val sb = StringBuilder(input.length * 2)
+        var i = 0
+        while (i < input.length) {
+            val c = input[i]
+            // 促音：双写后一个音的首辅音（如 キッテ → kitte）
+            if (c == 'ッ') {
+                val nextRoman = romajiAt(input, i + 1)
+                val head = nextRoman.firstOrNull()
+                if (head != null && head in "bcdfghjklmnpqrstvwxyz") sb.append(head)
+                i++
+                continue
+            }
+            // 长音符：延长前一个音节的元音（如 コーヒー → koohii）
+            if (c == 'ー') {
+                val lastVowelIndex = (sb.length - 1 downTo 0).firstOrNull { sb[it] in "aeiou" }
+                if (lastVowelIndex != null) sb.append(sb[lastVowelIndex])
+                i++
+                continue
+            }
+            val two = if (i + 1 < input.length) input.substring(i, i + 2) else null
+            val twoMapped = two?.let { KATAKANA_ROMAJI[it] }
+            if (twoMapped != null) {
+                sb.append(twoMapped)
+                i += 2
+                continue
+            }
+            val oneMapped = KATAKANA_ROMAJI[c.toString()]
+            if (oneMapped != null) {
+                sb.append(oneMapped)
+                i++
+                continue
+            }
+            sb.append(c)
+            i++
+        }
+        return sb.toString()
+    }
+
+    /** 取得 [index] 起始的一个假名音节对应的罗马音（用于促音双写），越界返回空串 */
+    private fun romajiAt(input: String, index: Int): String {
+        if (index >= input.length) return ""
+        val two = if (index + 1 < input.length) input.substring(index, index + 2) else null
+        two?.let { KATAKANA_ROMAJI[it] }?.let { return it }
+        return KATAKANA_ROMAJI[input[index].toString()] ?: ""
+    }
+
+    /**
+     * 引擎不可用时的兜底：整行**不含汉字**（纯假名/片假名外来语）时直接转罗马音，
+     * 含汉字则返回 null（不做半截结果，避免出现"汉字混罗马音"的怪异输出）。
+     * 这样即便引擎尚未下载完成、或系统/ROM 上无法加载动态库，日语歌词也不会完全空白。
+     */
+    private fun kanaOnlyFallback(text: String): String? {
+        if (text.any { it in '\u4E00'..'\u9FFF' }) return null
+        val converted = kanaToRomaji(text)
+        return converted.takeIf { it != text && it.any { c -> c in 'a'..'z' } }
+    }
+
     fun romanizeJapanese(japaneseText: String): String? {
-        val tokenizer = kuromojiTokenizer ?: return null
+        val tokenizer = KuromojiEngine.obtainTokenizer() ?: return kanaOnlyFallback(japaneseText)
+        val tokens = KuromojiEngine.tokenize(tokenizer, japaneseText) ?: return kanaOnlyFallback(japaneseText)
 
         return try {
-            val tokens = tokenizer.tokenize(japaneseText)
-
             // ── Pass 1: resolve readings ──────────────────────────────────────
             val readings = mutableListOf<Triple<String, String, String>>()
             var i = 0
@@ -173,8 +282,8 @@ object MultiLangRomanizer {
                     }
                 }
 
-                val pos1    = token.partOfSpeechLevel1 ?: ""
-                val pos2    = token.partOfSpeechLevel2 ?: ""
+                val pos1    = token.pos1 ?: ""
+                val pos2    = token.pos2 ?: ""
                 val surface = token.surface ?: ""
                 val reading = token.reading?.takeIf { it.isNotBlank() && it != "*" }
 
@@ -208,20 +317,13 @@ object MultiLangRomanizer {
 
             val katakanaText = kataBuf.toString().replace("\\s+".toRegex(), " ").trim()
 
-            // ── Pass 3: Katakana → Latin via ICU transliterator ───────────────
-            val latin = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                android.icu.text.Transliterator
-                    .getInstance("Katakana-Latin; Lower")
-                    .transliterate(katakanaText)
-            } else {
-                katakanaText
-            }
+            // ── Pass 3: Katakana → Latin（内置赫本式映射，全系统版本一致可用） ──
+            val latin = kanaToRomaji(katakanaText)
 
             // ── Pass 4: context-sensitive post-processing ─────────────────────
-            // Fix ん before b/p → "m" (standard Hepburn).
-            // Fix word-initial false "m" that is actually "n".
+            // 拨音 ン 在 b/m/p 前写作 "m"（赫本式）
             latin
-                .replace(Regex("n(?=[bp])"), "m")
+                .replace(Regex("n(?=[bmp])"), "m")
                 .replace(Regex("\\s+"), " ")
                 .trim()
 

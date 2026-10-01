@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import coil.size.Size
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 
 /**
@@ -37,16 +36,24 @@ fun CustomPlayerBackground(
     if (!enabled || uri.isNullOrBlank()) return
     val context = LocalContext.current
     Box(modifier = modifier) {
-        val imageRequest = remember(uri) {
+        // ⚡ Android 12（API 31）以下没有 RenderEffect，Modifier.blur 是空操作。
+        //    低版本交给 SoftBlur：「极小尺寸解码 + 双线性放大」实现软件模糊，全版本可用。
+        val needBlur = blurRadius > 0
+        val softwareBlur = SoftBlur.needsSoftwareBlur(needBlur)
+        val imageRequest = remember(uri, needBlur, softwareBlur) {
             ImageRequest.Builder(context)
                 .data(uri)
-                .size(Size(1024, 1024))
+                .size(SoftBlur.decodeSize(needBlur = needBlur, softBlurSize = SoftBlur.DECODE_SIZE_SOFT))
                 .crossfade(true)
                 .build()
         }
         val painter = rememberAsyncImagePainter(model = imageRequest)
         val imageModifier =
-            if (blurRadius > 0) Modifier.fillMaxSize().blur(blurRadius.dp) else Modifier.fillMaxSize()
+            if (needBlur && !softwareBlur) {
+                Modifier.fillMaxSize().blur(blurRadius.dp)
+            } else {
+                Modifier.fillMaxSize()
+            }
         when (mode) {
             PlayerBackgroundMode.Cover -> Image(
                 painter = painter,

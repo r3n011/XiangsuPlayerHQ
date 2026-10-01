@@ -54,6 +54,7 @@ object SourceType {
         Index(value = ["file_path"], unique = false),
         Index(value = ["content_uri_string"], unique = false),
         Index(value = ["date_added"], unique = false),
+        Index(value = ["date_modified"], unique = false),
         Index(value = ["duration"], unique = false),
         Index(value = ["source_type"], unique = false),
         Index(value = ["parent_directory_path", "source_type", "album_id"], unique = false),
@@ -96,6 +97,7 @@ data class SongEntity(
     @ColumnInfo(name = "disc_number", defaultValue = "null") val discNumber: Int? = null,
     @ColumnInfo(name = "year", defaultValue = "0") val year: Int = 0,
     @ColumnInfo(name = "date_added", defaultValue = "0") val dateAdded: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "date_modified", defaultValue = "0") val dateModified: Long = 0,
     @ColumnInfo(name = "mime_type") val mimeType: String? = null,
     @ColumnInfo(name = "bitrate") val bitrate: Int? = null, // bits per second
     @ColumnInfo(name = "sample_rate") val sampleRate: Int? = null, // Hz
@@ -129,6 +131,7 @@ private fun SongEntity.toSongInternal(artists: List<ArtistRef>): Song {
         trackNumber = this.trackNumber,
         discNumber = this.discNumber,
         dateAdded = this.dateAdded,
+        dateModified = this.dateModified,
         year = this.year,
         // Parse Telegram metadata from contentUriString
         telegramChatId = if (this.contentUriString.startsWith("telegram://")) {
@@ -251,6 +254,7 @@ fun Song.toEntity(filePathFromMediaStore: String, parentDirFromMediaStore: Strin
         filePath = filePathFromMediaStore,
         parentDirectoryPath = parentDirFromMediaStore,
         dateAdded = this.dateAdded,
+        dateModified = this.dateModified,
         year = this.year,
         mimeType = this.mimeType,
         bitrate = this.bitrate,
@@ -290,6 +294,7 @@ fun Song.toEntityWithoutPaths(): SongEntity {
         filePath = "",
         parentDirectoryPath = "",
         dateAdded = this.dateAdded,
+        dateModified = this.dateModified,
         year = this.year,
         mimeType = this.mimeType,
         bitrate = this.bitrate,

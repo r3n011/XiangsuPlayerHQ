@@ -1,6 +1,9 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -118,10 +121,30 @@ fun SettingsItem(
         subtitle: String,
         leadingIcon: @Composable () -> Unit,
         trailingIcon: @Composable () -> Unit = {},
-        onClick: () -> Unit
+        onClick: () -> Unit,
+        highlight: Boolean = false
 ) {
+    // 搜索定位高亮：闪烁两下（0→1→0→1→0），用于点击搜索结果后提示对应设置位置
+    val highlightPulse = remember { Animatable(0f) }
+    LaunchedEffect(highlight) {
+        if (highlight) {
+            repeat(2) {
+                highlightPulse.animateTo(1f, tween(220, easing = LinearOutSlowInEasing))
+                highlightPulse.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
+            }
+        } else {
+            highlightPulse.snapTo(0f)
+        }
+    }
+    val highlightColor = MaterialTheme.colorScheme.primaryContainer
+    val baseColor = MaterialTheme.colorScheme.surfaceContainer
+
     Surface(
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = if (highlightPulse.value > 0f) {
+                androidx.compose.ui.graphics.lerp(baseColor, highlightColor, highlightPulse.value)
+            } else {
+                baseColor
+            },
             modifier =
                     Modifier.fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
@@ -167,13 +190,33 @@ fun SwitchSettingItem(
         onCheckedChange: (Boolean) -> Unit,
         leadingIcon: @Composable (() -> Unit)? = null,
         enabled: Boolean = true,
-        onClick: (() -> Unit)? = null
+        onClick: (() -> Unit)? = null,
+        highlight: Boolean = false
 ) {
     val view = LocalView.current
     val appHapticsConfig = LocalAppHapticsConfig.current
 
+    // 搜索定位高亮：闪烁两下
+    val highlightPulse = remember { Animatable(0f) }
+    LaunchedEffect(highlight) {
+        if (highlight) {
+            repeat(2) {
+                highlightPulse.animateTo(1f, tween(220, easing = LinearOutSlowInEasing))
+                highlightPulse.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
+            }
+        } else {
+            highlightPulse.snapTo(0f)
+        }
+    }
+    val highlightColor = MaterialTheme.colorScheme.primaryContainer
+    val baseColor = MaterialTheme.colorScheme.surfaceContainer
+
     Surface(
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = if (highlightPulse.value > 0f) {
+                androidx.compose.ui.graphics.lerp(baseColor, highlightColor, highlightPulse.value)
+            } else {
+                baseColor
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))

@@ -64,8 +64,10 @@ class MainViewModel @Inject constructor(
      * Nos ayuda a saber si es la primera vez que se abre la app.
      */
     val isLibraryEmpty: StateFlow<Boolean> = musicRepository
-        .getAudioFiles()
-        .map { it.isEmpty() }
+        // ⚡ 只判空就不要把全部歌曲实体加载出来：用同过滤条件的 COUNT 查询代替全量列表，
+        //    大曲库下可省掉一次全表读取 + N 次 toSong() 映射。
+        .getSongCount()
+        .map { it == 0 }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

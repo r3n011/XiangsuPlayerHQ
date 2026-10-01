@@ -49,6 +49,10 @@ fun StreamingProviderSheet(
     onNavigateToNavidromeDashboard: () -> Unit = {},
     isJellyfinLoggedIn: Boolean = false,
     onNavigateToJellyfinDashboard: () -> Unit = {},
+    // ⚡ 一起听快速入口：显示房间状态，点击打开一起听面板
+    isListenTogetherActive: Boolean = false,
+    listenTogetherSubtitle: String? = null,
+    onOpenListenTogether: () -> Unit = {},
     sheetState: SheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
@@ -104,17 +108,34 @@ fun StreamingProviderSheet(
                         .clip(providerSegmentContainerShape),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // ⚡ 一起听（网易云）：置于列表首位，展示房间状态便于快速进入
                     ProviderRow(
-                        iconPainter = painterResource(R.drawable.telegram),
-                        iconTint = Color(0xFF2AABEE),
-                        title = "Telegram",
-                        subtitle = stringResource(R.string.streaming_provider_telegram_subtitle),
+                        iconPainter = painterResource(R.drawable.ic_navidrome_md3),
+                        iconTint = MaterialTheme.colorScheme.tertiary,
+                        title = stringResource(R.string.listen_together_title),
+                        subtitle = listenTogetherSubtitle
+                            ?: stringResource(R.string.listen_together_desc),
                         shape = providerSegmentItemShape,
+                        isConnected = isListenTogetherActive,
                         onClick = {
-                            context.startActivity(Intent(context, TelegramLoginActivity::class.java))
                             onDismissRequest()
+                            onOpenListenTogether()
                         }
                     )
+
+                    if (com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
+                        ProviderRow(
+                            iconPainter = painterResource(R.drawable.telegram),
+                            iconTint = Color(0xFF2AABEE),
+                            title = "Telegram",
+                            subtitle = stringResource(R.string.streaming_provider_telegram_subtitle),
+                            shape = providerSegmentItemShape,
+                            onClick = {
+                                context.startActivity(Intent(context, TelegramLoginActivity::class.java))
+                                onDismissRequest()
+                            }
+                        )
+                    }
 
                     ProviderRow(
                         iconPainter = painterResource(R.drawable.rounded_drive_export_24),

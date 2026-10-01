@@ -22,6 +22,12 @@ interface MusicRepository {
     fun getAudioFiles(): Flow<List<Song>> // Existing Flow for reactive updates
 
     /**
+     * 与 [getAudioFiles] 相同的过滤条件，但只返回歌曲数量（不加载实体）。
+     * 供「媒体库是否为空」这类只关心有无的场景使用，避免为了判空做一次全量加载 + 映射。
+     */
+    fun getSongCount(): Flow<Int>
+
+    /**
      * Returns paginated songs for efficient display of large libraries.
      * @return Flow of PagingData<Song> for use with LazyPagingItems.
      */

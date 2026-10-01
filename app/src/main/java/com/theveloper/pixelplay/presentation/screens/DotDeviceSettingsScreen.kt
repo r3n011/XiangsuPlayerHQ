@@ -210,9 +210,7 @@ fun DotDeviceSettingsScreen(
             title = "Dot 墨水屏",
             collapseFraction = collapseFraction,
             headerHeight = currentTopBarHeightDp,
-            onBackClick = onBackClick,
-            subtitle = "推送内容到墨水屏设备",
-            fadeSubtitleOnCollapse = false
+            onBackClick = onBackClick
         )
     }
 }

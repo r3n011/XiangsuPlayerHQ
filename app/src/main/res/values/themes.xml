@@ -5,8 +5,8 @@
     <style name="Theme.PixelPlay" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <!-- 使用主题背景色，避免预测返回/启动时看到黑白底色 -->
-        <item name="android:windowBackground">?android:attr/colorBackground</item>
+        <!-- 与 Compose 的背景色一致（见 @color/pixelplay_background），避免预测返回/启动时闪出另一种底色 -->
+        <item name="android:windowBackground">@color/pixelplay_background</item>
     </style>
 
     <style name="Theme.PixelPlay.ExternalPlayer" parent="Theme.Material3.DayNight.NoActionBar">
@@ -27,10 +27,15 @@
     </style>
 
     <!-- 启动闪屏主题：MainActivity 冷启动时使用，installSplashScreen() 结束后自动切回 postSplashScreenTheme。
-         Theme.SplashScreen 的基类是 DayNight，?android:attr/colorBackground 在明暗模式下分别解析。 -->
+         底色用 @color/pixelplay_background（values / values-night 各一份），深浅色自动解析。 -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">?android:attr/colorBackground</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <!-- 底色与 App 背景完全一致：启动画面 → Compose 首帧之间不会出现颜色跳变 -->
+        <item name="windowSplashScreenBackground">@color/pixelplay_background</item>
+        <!-- 直接不显示启动图标：系统启动画面只留纯色底，不再展示 App logo
+             （品牌名称文字改由 MainActivity 的「浮出」文字层呈现，对齐原版 XiangsuPlayer） -->
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <!-- 图标内部动画时长取极小值：启动图标静态显示，首帧即交棒，避免拉长启动观感 -->
+        <item name="windowSplashScreenAnimationDuration">10</item>
         <item name="postSplashScreenTheme">@style/Theme.PixelPlay</item>
     </style>
 

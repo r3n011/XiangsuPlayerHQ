@@ -25,18 +25,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,18 +55,22 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.MainActivity
+import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.GitHubRelease
+import com.theveloper.pixelplay.data.lx.LxSourceTester
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.viewmodel.MarketJsEntryUi
 import com.theveloper.pixelplay.presentation.viewmodel.ReleaseState
 import com.theveloper.pixelplay.presentation.viewmodel.SourceMarketViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.SourceRowUi
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
@@ -80,6 +89,16 @@ fun SourceMarketScreen(
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 安装结果提示（此前 installSuccess / installError 未被消费）
+    LaunchedEffect(state.installSuccess, state.installError) {
+        val message = state.installSuccess ?: state.installError
+        if (message != null) {
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearMessages()
+        }
+    }
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val minTopBarHeight = 64.dp + statusBarHeight
@@ -143,9 +162,15 @@ fun SourceMarketScreen(
                 MarketIntroCard(
                     loading = state.loadingReleases,
                     error = state.releasesError,
+                    installedCount = state.releases
+                        .flatMap { (state.releaseStates[it.tag_name] as? ReleaseState.Inspected)?.entries.orEmpty() }
+                        .count { it.installed },
                     onRefresh = { viewModel.loadReleases() }
                 )
             }
+
+            // ⚡ 连通性测试已移到「音源设置页」（设置 → 在线音源），
+            //   只测已安装的音源；市场页只负责安装/更新。
 
             if (state.loadingReleases && state.releases.isEmpty()) {
                 item {
@@ -186,12 +211,19 @@ fun SourceMarketScreen(
                 }
             }
         }
+
+        // 底部提示条（悬浮在列表上方；必须在 Box 作用域内才能对齐底部）
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+        )
     }
 
     // 顶栏（悬浮在 LazyColumn 上方）
     CollapsibleCommonTopBar(
-        title = "像素音源市场",
-        subtitle = "GitHub: guoyue2010/lxmusic-",
+        title = stringResource(R.string.market_title),
         collapseFraction = collapseFraction.value,
         headerHeight = currentTopBarHeightDp,
         onBackClick = onBackClick,
@@ -200,7 +232,7 @@ fun SourceMarketScreen(
         ),
         actions = {
             IconButton(onClick = { viewModel.loadReleases() }) {
-                Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
+                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.market_refresh))
             }
         }
     )
@@ -210,6 +242,7 @@ fun SourceMarketScreen(
 private fun MarketIntroCard(
     loading: Boolean,
     error: String?,
+    installedCount: Int,
     onRefresh: () -> Unit
 ) {
     Surface(
@@ -235,15 +268,21 @@ private fun MarketIntroCard(
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    "像素音源市场",
+                    stringResource(R.string.market_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    "从 GitHub 仓库下载并安装社区音源脚本",
+                    stringResource(R.string.market_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                Text(
+                    stringResource(R.string.market_installed_count, installedCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
             if (loading) {
@@ -251,6 +290,170 @@ private fun MarketIntroCard(
             }
         }
     }
+}
+
+/**
+ * 音源连通性测试区块：逐个音源发起真实搜索（JS 音源再取一次播放地址）。
+ */
+@Composable
+private fun SourceTestSection(
+    sources: List<SourceRowUi>,
+    testingSources: Set<String>,
+    onTest: (String) -> Unit,
+    onTestAll: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = AbsoluteSmoothCornerShape(24.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Rounded.CloudSync,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.market_source_test_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.market_source_test_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(
+                    onClick = onTestAll,
+                    enabled = sources.isNotEmpty() && testingSources.isEmpty()
+                ) {
+                    Text(stringResource(R.string.market_test_all))
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            if (sources.isEmpty()) {
+                Text(
+                    stringResource(R.string.market_no_sources),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                sources.forEach { row ->
+                    SourceTestRow(
+                        row = row,
+                        testing = row.key in testingSources,
+                        onTest = { onTest(row.key) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceTestRow(
+    row: SourceRowUi,
+    testing: Boolean,
+    onTest: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = row.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.width(6.dp))
+                Surface(
+                    shape = CircleShape,
+                    color = if (row.jsDriven) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHighest
+                    }
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (row.jsDriven) R.string.market_source_plugin else R.string.market_source_builtin
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (row.jsDriven) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                    )
+                }
+            }
+            val result = row.result
+            val statusText = result?.let { statusLabel(it.status) }
+            Text(
+                text = when {
+                    testing -> stringResource(R.string.market_testing)
+                    result == null -> row.key
+                    else -> "$statusText · ${result.latencyMs}ms · ${result.message}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = when {
+                    testing -> MaterialTheme.colorScheme.onSurfaceVariant
+                    result == null -> MaterialTheme.colorScheme.onSurfaceVariant
+                    result.status == LxSourceTester.Status.SUCCESS -> MaterialTheme.colorScheme.primary
+                    result.status == LxSourceTester.Status.SEARCH_ONLY -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.error
+                },
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (testing) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+        } else {
+            TextButton(onClick = onTest) {
+                Text(stringResource(R.string.market_test))
+            }
+        }
+        if (row.result != null && !testing) {
+            Icon(
+                imageVector = if (row.result.status == LxSourceTester.Status.FAILED) {
+                    Icons.Rounded.Warning
+                } else {
+                    Icons.Rounded.CheckCircle
+                },
+                contentDescription = null,
+                tint = if (row.result.status == LxSourceTester.Status.FAILED) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun statusLabel(status: LxSourceTester.Status): String = when (status) {
+    LxSourceTester.Status.SUCCESS -> stringResource(R.string.market_test_success)
+    LxSourceTester.Status.SEARCH_ONLY -> stringResource(R.string.market_test_search_only)
+    LxSourceTester.Status.FAILED -> stringResource(R.string.market_test_failed)
 }
 
 @Composable
@@ -277,8 +480,14 @@ private fun ReleaseCard(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
+                    val meta = buildList {
+                        add(formatDate(release.published_at))
+                        release.assets.firstOrNull { it.name.lowercase().endsWith(".zip") }?.let { zip ->
+                            add(formatSize(zip.size))
+                        }
+                    }.joinToString(" · ")
                     Text(
-                        text = formatDate(release.published_at),
+                        text = meta,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -314,7 +523,7 @@ private fun ReleaseCard(
                             trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         )
                         Text(
-                            "下载中… ${(progress * 100).toInt()}%",
+                            stringResource(R.string.market_downloading, (progress * 100).toInt()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp)
@@ -325,7 +534,7 @@ private fun ReleaseCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Text(
-                                "解析脚本…",
+                                stringResource(R.string.market_parsing),
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(start = 8.dp)
                             )
@@ -352,7 +561,7 @@ private fun ReleaseCard(
                     ReleaseState.Idle -> {
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "点击展开以下载并查看脚本",
+                            stringResource(R.string.market_tap_expand),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -418,7 +627,7 @@ private fun MarketJsEntryRow(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            "已安装",
+                            stringResource(R.string.market_installed),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -444,7 +653,7 @@ private fun MarketJsEntryRow(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            "安装",
+                            stringResource(R.string.market_install),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
@@ -461,5 +670,16 @@ private fun formatDate(publishedAt: String): String {
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date.from(parsed))
     } catch (e: Exception) {
         publishedAt
+    }
+}
+
+/** 附件体积：小于 1MB 显示 KB，否则显示 MB */
+private fun formatSize(bytes: Long): String {
+    if (bytes <= 0L) return ""
+    val kb = bytes / 1024.0
+    return if (kb < 1024.0) {
+        String.format(Locale.getDefault(), "%.0f KB", kb)
+    } else {
+        String.format(Locale.getDefault(), "%.1f MB", kb / 1024.0)
     }
 }

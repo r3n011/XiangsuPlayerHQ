@@ -329,6 +329,26 @@ constructor(
                     // with no new songs, so we don't re-sync on every launch.
                     userPreferencesRepository.setLastSyncTimestamp(startTime)
 
+                    // 保存当前 MediaStore 歌曲总数作为下次轻量 staleness 检查的基准
+                    // （SyncManager.isLibraryStale 只投影 _ID 对比 count，避免全量遍历）。
+                    runCatching {
+                        val (baseSelection, baseArgs) = buildLocalAudioSelection(minSongDurationMs)
+                        val count = contentResolver.query(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                            arrayOf(MediaStore.Audio.Media._ID),
+                            baseSelection,
+                            baseArgs,
+                            null
+                        )?.use { it.count } ?: 0
+                        applicationContext
+                            .getSharedPreferences(SyncManager.LIBRARY_SCAN_PREFS, Context.MODE_PRIVATE)
+                            .edit()
+                            .putInt(SyncManager.KEY_LAST_SCAN_MEDIASTORE_COUNT, count)
+                            .apply()
+                    }.onFailure { e ->
+                        Log.w(TAG, "Failed to persist MediaStore count baseline: ${e.message}")
+                    }
+
                     val endTime = System.currentTimeMillis()
                     Timber.tag(TAG)
                         .i("Synchronization finished successfully in ${endTime - startTime}ms.")
@@ -830,6 +850,7 @@ constructor(
         val lastSlash = raw.filePath.lastIndexOf('/')
         val parentDir = if (lastSlash > 0) raw.filePath.substring(0, lastSlash) else ""
         val existingDateAddedSeconds = TimeUnit.MILLISECONDS.toSeconds(existing.dateAdded)
+        val existingDateModifiedSeconds = TimeUnit.MILLISECONDS.toSeconds(existing.dateModified)
 
         return existing.filePath == raw.filePath &&
             existing.parentDirectoryPath == parentDir &&
@@ -842,7 +863,8 @@ constructor(
             existing.trackNumber == raw.trackNumber &&
             existing.discNumber == raw.discNumber &&
             existing.year == raw.year &&
-            existingDateAddedSeconds == raw.dateAdded
+            existingDateAddedSeconds == raw.dateAdded &&
+            existingDateModifiedSeconds == raw.dateModified
     }
 
     private suspend fun fetchMusicFromMediaStore(
@@ -1297,6 +1319,11 @@ constructor(
                             if (seconds > 0) TimeUnit.SECONDS.toMillis(seconds)
                             else System.currentTimeMillis()
                         },
+                dateModified =
+                        raw.dateModified.let { seconds ->
+                            if (seconds > 0) TimeUnit.SECONDS.toMillis(seconds)
+                            else 0L
+                        },
                 mimeType = audioMetadata?.mimeType ?: raw.mimeType,
                 sampleRate = audioMetadata?.sampleRate,
                 bitrate = audioMetadata?.bitrate,
@@ -1327,6 +1354,11 @@ constructor(
                 discNumber = raw.discNumber,
                 year = raw.year,
                 dateAdded = System.currentTimeMillis(),
+                dateModified =
+                        raw.dateModified.let { seconds ->
+                            if (seconds > 0) TimeUnit.SECONDS.toMillis(seconds)
+                            else 0L
+                        },
                 mimeType = raw.mimeType,
                 sampleRate = null,
                 bitrate = null,

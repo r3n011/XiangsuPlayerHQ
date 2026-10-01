@@ -64,6 +64,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.FilledIconButton
@@ -112,7 +115,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
@@ -183,16 +185,25 @@ import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.radio.RadioStation
+import com.theveloper.pixelplay.data.share.ShareLinkCodec
+import androidx.core.net.toUri
 import com.theveloper.pixelplay.presentation.components.AlbumCarouselSection
 import com.theveloper.pixelplay.presentation.components.AutoScrollingTextOnDemand
 import com.theveloper.pixelplay.presentation.components.AppleMusicRotatingBackground
 import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
 import com.theveloper.pixelplay.presentation.components.LocalMaterialTheme
+import com.theveloper.pixelplay.presentation.components.listentogether.ListenTogetherAvatarRow
+import com.theveloper.pixelplay.presentation.components.listentogether.ListenTogetherMembersDialog
+import android.content.Intent
+import com.theveloper.pixelplay.presentation.netease.dashboard.ListenTogetherSheet
+import com.theveloper.pixelplay.presentation.netease.dashboard.ListenTogetherViewModel
+import com.theveloper.pixelplay.presentation.netease.chat.FriendPickerSheet
 import com.theveloper.pixelplay.presentation.components.lyricsSheetColors
 import com.theveloper.pixelplay.presentation.components.LyricsSheet
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSmoothProgress
 import com.theveloper.pixelplay.presentation.components.subcomps.FetchLyricsDialog
+import com.theveloper.pixelplay.presentation.components.subcomps.LyricsMoreBottomSheet
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
@@ -341,6 +352,8 @@ fun FullPlayerContent(
     onDownloadClick: () -> Unit,
     onSpeedToggle: () -> Unit = {},
     onSpeedSet: (Float) -> Unit = {},
+    /** 右下角省略号：打开歌曲信息卡片 */
+    onShowSongInfo: () -> Unit = {},
 ) {
     val isExpanded by remember(expansionFractionProvider) {
         derivedStateOf { expansionFractionProvider() > 0.35f }
@@ -373,6 +386,8 @@ fun FullPlayerContent(
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showArtistPicker by rememberSaveable { mutableStateOf(false) }
     var showCommentSheet by remember { mutableStateOf(false) }
+    // ⚡ 省略号打开的歌曲操作菜单（歌曲信息 / 评论 / 下载）
+    var showPlayerMoreSheet by remember { mutableStateOf(false) }
     // ⚡ B 站源评论：入口与网易云一致（CD 页评论按钮），点击后全屏打开该视频的评论
     var showBilibiliCommentSheet by remember { mutableStateOf(false) }
     var bilibiliCommentBvid by remember { mutableStateOf("") }
@@ -926,6 +941,48 @@ fun FullPlayerContent(
         }
     }
 
+    // ⚡ 一起听：播放器内展示「我 + 一起听对象」的头像，点按查看完整成员列表
+    val listenTogetherState by playerViewModel.listenTogetherCoordinator.state
+        .collectAsStateWithLifecycle()
+    var showListenTogetherMembers by remember { mutableStateOf(false) }
+    var showListenTogetherFriendPicker by remember { mutableStateOf(false) }
+    val listenTogetherBadge: (@Composable () -> Unit)? = if (listenTogetherState.active) {
+        {
+            // ⚡ 取色：使用封面派生的配色方案（LocalMaterialTheme = 专辑取色），
+            //    与播放器其它元素同源；此前用 App 主题的灰色 surface，和播放器完全脱节
+            val albumScheme = LocalMaterialTheme.current
+            ListenTogetherAvatarRow(
+                state = listenTogetherState,
+                onClick = { showListenTogetherMembers = true },
+                containerColor = albumScheme.secondaryContainer.copy(alpha = 0.72f),
+                contentColor = albumScheme.onSecondaryContainer
+            )
+        }
+    } else {
+        null
+    }
+    if (showListenTogetherMembers && listenTogetherState.active) {
+        ListenTogetherMembersDialog(
+            state = listenTogetherState,
+            onDismiss = { showListenTogetherMembers = false },
+            onLeave = {
+                showListenTogetherMembers = false
+                playerViewModel.listenTogetherCoordinator.leaveRoom()
+            },
+            // ⚡ 快速邀请好友：关掉成员弹窗直接打开网易云好友选人面板（面板内含一键邀请全部好友）
+            onInviteFriends = {
+                showListenTogetherMembers = false
+                showListenTogetherFriendPicker = true
+            }
+        )
+    }
+    if (showListenTogetherFriendPicker) {
+        FriendPickerSheet(
+            inviteTextProvider = { playerViewModel.listenTogetherCoordinator.inviteText() },
+            onDismiss = { showListenTogetherFriendPicker = false }
+        )
+    }
+
     val controlsSection: @Composable () -> Unit = {
         val downloads by playerViewModel.downloads.collectAsStateWithLifecycle()
         val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
@@ -958,7 +1015,7 @@ fun FullPlayerContent(
             onFavoriteToggle = onFavoriteToggle,
             isOnlineSong = isOnlineSong,
             onDownloadClick = onDownloadClick,
-            downloadProgress = downloadInfo?.progress.takeIf { it != 0f || downloadInfo?.isComplete == false },
+            downloadProgress = downloadInfo?.progress,
             isDownloadComplete = downloadInfo?.isComplete == true,
             isDownloadFailed = downloadInfo?.isFailed == true,
             isRadioPlayback = isRadioPlayback,
@@ -994,6 +1051,9 @@ fun FullPlayerContent(
             isRadioPlayback = isRadioPlayback,
             onLyricsClick = onLyricsClick,
             onCommentClick = onCommentClick,
+            // ⚡ 与 Expressive 样式一致：省略号打开同一个歌曲操作菜单（PlayerMoreSheet），
+            //   不再直接弹出歌曲信息卡片（信息卡片现在是菜单里的其中一项）
+            onShowSongInfo = { showPlayerMoreSheet = true },
             playerOnBaseColor = playerOnBaseColor,
             playerViewModel = playerViewModel,
             gradientEdgeColor = gradientEdgeColor,
@@ -1001,7 +1061,9 @@ fun FullPlayerContent(
             chipContentColor = playerAccentColor,
             onQueueClick = onSongMetadataQueueClick,
             onArtistClick = onSongMetadataArtistClick,
-            isPlayingProvider = isPlayingProvider
+            isPlayingProvider = isPlayingProvider,
+            // 竖屏：一起听标签放在歌名上方
+            togetherBadgeAboveTitle = true
         )
     }
 
@@ -1020,6 +1082,9 @@ fun FullPlayerContent(
             isRadioPlayback = isRadioPlayback,
             onLyricsClick = onLyricsClick,
             onCommentClick = onCommentClick,
+            // ⚡ 与 Expressive 样式一致：省略号打开同一个歌曲操作菜单（PlayerMoreSheet），
+            //   不再直接弹出歌曲信息卡片（信息卡片现在是菜单里的其中一项）
+            onShowSongInfo = { showPlayerMoreSheet = true },
             playerOnBaseColor = playerOnBaseColor,
             playerViewModel = playerViewModel,
             gradientEdgeColor = gradientEdgeColor,
@@ -1120,9 +1185,16 @@ fun FullPlayerContent(
                         if (!isCastConnecting) {
                             AnimatedVisibility(visible = (!isRemotePlaybackActive)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // ⚡ 漫游模式下顶栏「播放中」改为「漫游模式」（原歌曲信息旁的漫游标签已移除）
+                                    val isRoamingMode by playerViewModel.isRoamingMode
+                                        .collectAsStateWithLifecycle(initialValue = false)
                                     Text(
                                         modifier = Modifier.padding(start = 18.dp),
-                                        text = stringResource(R.string.setcat_now_playing),
+                                        text = if (isRoamingMode) {
+                                            stringResource(R.string.player_roaming_mode_title)
+                                        } else {
+                                            stringResource(R.string.setcat_now_playing)
+                                        },
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.labelLargeEmphasized,
@@ -1349,24 +1421,11 @@ fun FullPlayerContent(
                     !(customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank())
                 ) {
                     song?.albumArtUriString?.let { albumArtUri ->
+                        // ⚡ 按 AMLL core 的做法：网格之上不再叠加任何可读性遮罩，
+                        //    背景完整可见（AMLL 的 background canvas 是纯效果层，不带 scrim）。
                         AppleMusicRotatingBackground(
                             albumArtUri = albumArtUri,
                             modifier = Modifier.fillMaxSize()
-                        )
-                        // ⚡ 绚丽背景可读性遮罩：1:1 复刻歌词界面的渐变遮罩
-                        //   （LyricsSheet 的「歌词渐变遮罩」：containerColor 上 0.4 → 下 0.95）
-                        //   顶部较通透保留氛围，底部接近实色保证标题/歌词/控件文字清晰
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            surfaceContainerLowest.copy(alpha = 0.4f),
-                                            surfaceContainerLowest.copy(alpha = 0.95f)
-                                        )
-                                    )
-                                )
                         )
                     }
                 }
@@ -1397,8 +1456,11 @@ fun FullPlayerContent(
                     val isOnlineSong = playerViewModel.isOnlineSong(song)
                     val canShowComment = resolveCommentSongId(song).isNotBlank() ||
                         !song.resolveBilibiliBvid().isNullOrBlank()
+                    // ⚡ 加载状态指示（缓冲/转码）：Expressive 布局与经典样式保持一致
+                    val bufferingState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
                     FullPlayerExpressiveContent(
                         paddingValues = innerPadding,
+                        listenTogetherBadge = listenTogetherBadge,
                         song = song,
                         songArtists = currentSongArtists,
                         currentQueueIndex = currentQueueIndex,
@@ -1432,11 +1494,16 @@ fun FullPlayerContent(
                         showLyricsButton = showLyricsButton,
                         isOnlineSong = isOnlineSong,
                         onDownloadClick = onDownloadClick,
-                        downloadProgress = downloadInfo?.progress.takeIf { it != 0f || downloadInfo?.isComplete == false },
+                        downloadProgress = downloadInfo?.progress,
                         isDownloadComplete = downloadInfo?.isComplete == true,
                         isDownloadFailed = downloadInfo?.isFailed == true,
-                        showCommentButton = canShowComment,
-                        onCommentClick = onCommentClick
+                        // ⚡ 评论入口已移到「省略号」菜单里，底部胶囊行不再显示评论按钮
+                        showCommentButton = false,
+                        onCommentClick = onCommentClick,
+                        onShowSongInfo = { showPlayerMoreSheet = true },
+                        isBuffering = bufferingState.isBuffering,
+                        isTranscoding = bufferingState.isTranscoding,
+                        transcodeProgressPercent = bufferingState.transcodeProgressPercent
                     )
                 }
 
@@ -1458,6 +1525,7 @@ fun FullPlayerContent(
                             showLyricsButton = false,
                             onLyricsClick = { },
                             onCommentClick = onCommentClick,
+                            onShowSongInfo = { showPlayerMoreSheet = true },
                             playerOnBaseColor = playerOnBaseColor,
                             playerViewModel = playerViewModel,
                             gradientEdgeColor = gradientEdgeColor,
@@ -1512,7 +1580,8 @@ fun FullPlayerContent(
                         isExplainingLyrics = isExplainingLyrics,
                         lyricsExplanation = lyricsExplanation,
                         lyricsExplanationEnabled = isLyricsExplanationGloballyEnabled || isLyricsExplanationSessionEnabled,
-                        onDismissExplanation = { playerViewModel.clearLyricsExplanation() }
+                        onDismissExplanation = { playerViewModel.clearLyricsExplanation() },
+                        onImportCustomFont = { fontFilePickerLauncher.launch(arrayOf("font/ttf", "font/otf", "application/x-font-ttf", "application/x-font-opentype", "application/font-sfnt")) }
                     )
                 } else if (playerStyle == PlayerStyle.EXPRESSIVE && (isTablet || !isLandscape)) {
                     // ⚡ Expressive 样式（移植自 Rhythm）：大封面 + 超大标题 + 控制卡片两行布局
@@ -1666,6 +1735,163 @@ fun FullPlayerContent(
             upName = song.displayArtist,
             colorScheme = LocalMaterialTheme.current,
             onBackClick = { showBilibiliCommentSheet = false }
+        )
+    }
+
+    // 一起听面板：与主页共用同一个（Activity 作用域）ViewModel 与进程级协调器
+    var showTogetherSheet by remember { mutableStateOf(false) }
+    val listenTogetherViewModel: ListenTogetherViewModel = hiltViewModel()
+    val togetherState by listenTogetherViewModel.state.collectAsStateWithLifecycle()
+
+    // 分享格式选择（像素播放器格式 / 网易云格式）
+    var showShareStyleSheet by remember { mutableStateOf(false) }
+    val pixelShareSuffix = stringResource(R.string.player_share_via_app)
+    fun shareSongText(text: String) {
+        runCatching {
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            context.startActivity(Intent.createChooser(sendIntent, null))
+        }
+    }
+
+    // ⚡ 省略号 → 歌曲操作菜单（歌曲信息 / 评论 / 下载 / 分享 / 一起听）
+    if (showPlayerMoreSheet) {
+        PlayerMoreSheet(
+            song = song,
+            canShowComments = resolveCommentSongId(song).isNotBlank() ||
+                !song.resolveBilibiliBvid().isNullOrBlank(),
+            canDownload = playerViewModel.isOnlineSong(song),
+            onDismiss = { showPlayerMoreSheet = false },
+            onShowSongInfo = {
+                showPlayerMoreSheet = false
+                onShowSongInfo()
+            },
+            onShowComments = {
+                showPlayerMoreSheet = false
+                onCommentClick()
+            },
+            onDownload = {
+                showPlayerMoreSheet = false
+                onDownloadClick()
+            },
+            onShare = {
+                showPlayerMoreSheet = false
+                showShareStyleSheet = true
+            },
+            onStartListenTogether = {
+                showPlayerMoreSheet = false
+                showTogetherSheet = true
+            },
+            onViewArtist = {
+                showPlayerMoreSheet = false
+                playerViewModel.triggerArtistNavigationFromPlayer(
+                    artistId = song.artistId,
+                    songNeteaseId = song.neteaseId
+                )
+            },
+            onViewAlbum = {
+                showPlayerMoreSheet = false
+                playerViewModel.triggerAlbumNavigationFromPlayer(song.albumId)
+            }
+        )
+    }
+
+    // ⚡ 分享格式：像素播放器格式（歌名/歌手 + xiangsuplayer:// 分享链接 + 署名）
+    //   / 网易云格式（《歌名》+ 单曲链接） / 直接分享本地音频文件
+    val shareFileUnavailableHint = stringResource(R.string.player_share_file_unavailable)
+    fun shareSongFile(song: Song) {
+        val uri: Uri? = when {
+            song.contentUriString.startsWith("content://", ignoreCase = true) ->
+                runCatching { song.contentUriString.toUri() }.getOrNull()
+            else -> runCatching {
+                androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    java.io.File(song.path)
+                )
+            }.getOrNull()
+        }
+        if (uri == null) {
+            Toast.makeText(context, shareFileUnavailableHint, Toast.LENGTH_SHORT).show()
+            return
+        }
+        runCatching {
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                type = song.mimeType?.takeIf { it.isNotBlank() } ?: "audio/*"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                // 让接收方临时获得该 content:// 的读取权限
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(sendIntent, null))
+        }.onFailure {
+            Toast.makeText(context, shareFileUnavailableHint, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    if (showShareStyleSheet) {
+        PlayerShareSheet(
+            neteaseAvailable = song.neteaseId != null,
+            // 本地歌曲才提供"直接分享文件"
+            localFileAvailable = !playerViewModel.isOnlineSong(song),
+            onDismiss = { showShareStyleSheet = false },
+            onSharePixelStyle = {
+                showShareStyleSheet = false
+                // ⚡ 分享链接（xiangsuplayer://share?d=...）：对方用像素播放器打开即可
+                //   定位本地同曲；在线歌曲则按协议里的音源 + 平台 ID 在线补全。
+                val shareLink = runCatching { ShareLinkCodec.encodeSong(song) }.getOrNull()
+                shareSongText(
+                    buildString {
+                        append(song.title)
+                        if (song.displayArtist.isNotBlank()) {
+                            append(" - ")
+                            append(song.displayArtist)
+                        }
+                        append("\n")
+                        append(pixelShareSuffix)
+                        if (!shareLink.isNullOrBlank()) {
+                            append("\n")
+                            append(shareLink)
+                        }
+                    }
+                )
+            },
+            onShareNeteaseStyle = {
+                showShareStyleSheet = false
+                song.neteaseId?.let { id ->
+                    shareSongText(
+                        "分享单曲《${song.title}》: https://music.163.com/song?id=$id (@网易云音乐)"
+                    )
+                }
+            },
+            onShareLocalFile = {
+                showShareStyleSheet = false
+                shareSongFile(song)
+            }
+        )
+    }
+
+    // ⚡ 一起听面板（与主页同一个 ViewModel / 协调器，进程级房间状态共享）
+    if (showTogetherSheet) {
+        ListenTogetherSheet(
+            state = togetherState,
+            playlists = listenTogetherViewModel.playlists.collectAsStateWithLifecycle().value,
+            inviteTextProvider = { listenTogetherViewModel.inviteText() },
+            onDismiss = { showTogetherSheet = false },
+            onCreateRoom = { listenTogetherViewModel.createRoom(it) },
+            onStartRoaming = { listenTogetherViewModel.startRoamingRoom() },
+            onJoin = { text -> listenTogetherViewModel.join(text) },
+            onLeave = {
+                listenTogetherViewModel.leave()
+                showTogetherSheet = false
+            },
+            // 分享邀请：先收起一起听面板，再打开好友选择面板（由用户挑要发给谁）
+            onInviteFriend = {
+                showTogetherSheet = false
+                showListenTogetherFriendPicker = true
+            },
+            resolving = listenTogetherViewModel.resolvingInvite.collectAsStateWithLifecycle().value
         )
     }
 
@@ -2188,6 +2414,8 @@ private fun FullPlayerSongMetadataSection(
     showLyricsButton: Boolean = true,
     onLyricsClick: () -> Unit,
     onCommentClick: () -> Unit,
+    /** 右下角省略号：打开歌曲信息 */
+    onShowSongInfo: () -> Unit = {},
     playerOnBaseColor: Color,
     playerViewModel: PlayerViewModel,
     gradientEdgeColor: Color,
@@ -2195,7 +2423,9 @@ private fun FullPlayerSongMetadataSection(
     chipContentColor: Color,
     onQueueClick: () -> Unit,
     onArtistClick: () -> Unit,
-    isPlayingProvider: () -> Boolean = { true }
+    isPlayingProvider: () -> Boolean = { true },
+    /** 一起听标签是否显示在歌名上方（竖屏经典样式）；false = 显示在元信息下方 */
+    togetherBadgeAboveTitle: Boolean = false
 ) {
     val shouldDelay = loadingTweaks.delayAll || loadingTweaks.delaySongMetadata
 
@@ -2224,12 +2454,42 @@ private fun FullPlayerSongMetadataSection(
             }
         }
     ) {
+        // ⚡ 一起听：展示「我 + 一起听对象」的头像，点按查看完整成员列表
+        val togetherState by playerViewModel.listenTogetherCoordinator.state
+            .collectAsStateWithLifecycle()
+        var showTogetherMembers by remember { mutableStateOf(false) }
+        // ⚡ 取色：用封面派生的配色方案（LocalMaterialTheme = 专辑取色），与播放器其它元素同源。
+        //   经典样式此前用的是 App 主题的灰色 surface，和播放器完全脱节。
+        val togetherBadge: @Composable () -> Unit = {
+            val albumScheme = LocalMaterialTheme.current
+            ListenTogetherAvatarRow(
+                state = togetherState,
+                onClick = { showTogetherMembers = true },
+                containerColor = albumScheme.secondaryContainer.copy(alpha = 0.72f),
+                contentColor = albumScheme.onSecondaryContainer
+            )
+        }
+        // ⚡ 竖屏经典样式：标签放在歌名上方；横屏 / 平板平行布局保持原位置（元信息下方）
+        if (togetherState.active && togetherBadgeAboveTitle) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                togetherBadge()
+            }
+        }
+
         SongMetadataDisplaySection(
             modifier = Modifier
                 .padding(start = 0.dp),
             onClickLyrics = onLyricsClick,
             showLyricsButton = showLyricsButton,
             onClickComment = onCommentClick,
+            // ⚡ 与 Expressive 样式一致：省略号打开同一个歌曲操作菜单（PlayerMoreSheet），
+            //   不再直接弹出歌曲信息卡片（信息卡片现在是菜单里的其中一项）
+            onShowSongInfo = onShowSongInfo,
             isRadioPlayback = isRadioPlayback,
             song = song,
             currentSongArtists = currentSongArtists,
@@ -2246,6 +2506,27 @@ private fun FullPlayerSongMetadataSection(
             onClickArtist = onArtistClick,
             isPlayingProvider = isPlayingProvider
         )
+
+        if (togetherState.active && !togetherBadgeAboveTitle) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                togetherBadge()
+            }
+        }
+        if (showTogetherMembers && togetherState.active) {
+            ListenTogetherMembersDialog(
+                state = togetherState,
+                onDismiss = { showTogetherMembers = false },
+                onLeave = {
+                    showTogetherMembers = false
+                    playerViewModel.listenTogetherCoordinator.leaveRoom()
+                }
+            )
+        }
     }
 }
 
@@ -2380,6 +2661,10 @@ private fun FullPlayerPortraitContent(
 @Composable
 private fun FullPlayerExpressiveContent(
     paddingValues: PaddingValues,
+    /** 一起听头像条（我 + 一起听对象）；未开启一起听时为 null */
+    listenTogetherBadge: (@Composable () -> Unit)? = null,
+    /** 右下角省略号：打开歌曲信息 */
+    onShowSongInfo: () -> Unit = {},
     song: Song,
     songArtists: List<Artist>,
     currentQueueIndex: Int?,
@@ -2421,7 +2706,12 @@ private fun FullPlayerExpressiveContent(
     isDownloadFailed: Boolean = false,
     // ⚡ 评论按钮：仅网易云 / B 站来源歌曲显示
     showCommentButton: Boolean = false,
-    onCommentClick: () -> Unit = {}
+    onCommentClick: () -> Unit = {},
+    // ⚡ 加载状态指示（与经典 metadata 区块一致）：缓冲中显示 LoadingIndicator，
+    //    DFF 等转码时显示进度胶囊
+    isBuffering: Boolean = false,
+    isTranscoding: Boolean = false,
+    transcodeProgressPercent: Int = 0
 ) {
     val isPlaying = isPlayingProvider()
     var showSpeedSheet by remember { mutableStateOf(false) }
@@ -2551,46 +2841,58 @@ private fun FullPlayerExpressiveContent(
                     )
                 }
             }
-            // ⚡ 下载按钮：与经典控制栏一致，仅在线歌曲显示；下载中显示环形进度，完成/失败切换图标
-            if (!isRadioPlayback && isOnlineSong) {
-                val isDownloading = downloadProgress != null && !isDownloadComplete && !isDownloadFailed
-                IconButton(onClick = onDownloadClick, modifier = Modifier.size(44.dp)) {
-                    if (isDownloading) {
-                        CircularProgressIndicator(
-                            progress = { downloadProgress / 100f },
-                            modifier = Modifier.size(22.dp),
-                            strokeWidth = 2.dp,
-                            color = playerAccentColor,
-                            trackColor = playerOnBaseColor.copy(alpha = 0.25f)
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(
-                                when {
-                                    isDownloadComplete -> R.drawable.rounded_check_circle_24
-                                    isDownloadFailed -> R.drawable.rounded_close_24
-                                    else -> R.drawable.rounded_download_24
-                                }
-                            ),
-                            contentDescription = "Download",
-                            tint = if (isDownloadComplete) playerAccentColor
-                            else playerOnBaseColor.copy(alpha = 0.75f),
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-            }
-            // ⚡ 评论按钮：仅网易云 / B 站来源歌曲显示（与经典 metadata 区块一致）
-            if (!isRadioPlayback && showCommentButton) {
-                IconButton(onClick = onCommentClick, modifier = Modifier.size(44.dp)) {
+            // ⚡ 下载入口已移到「省略号」菜单里（不再单独占位）
+            // ⚡ 评论入口已移到「省略号」菜单里（不再单独占位）
+            // ⚡ 右下角省略号：打开歌曲操作菜单
+            if (!isRadioPlayback) {
+                IconButton(onClick = onShowSongInfo, modifier = Modifier.size(44.dp)) {
                     Icon(
-                        painter = painterResource(R.drawable.rounded_mode_comment_24),
-                        contentDescription = "Comments",
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.player_cd_song_info),
                         tint = playerOnBaseColor.copy(alpha = 0.75f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
             }
+        }
+    }
+
+    // ⚡ 加载状态指示（缓冲/转码）：与经典样式同一 PlayerLoadingStateChip，
+    //   缓冲显示 LoadingIndicator、转码显示进度；放在控制卡行内，不引起纵向布局跳动
+    val loadingStateChip: @Composable () -> Unit = {
+        AnimatedVisibility(
+            visible = isBuffering || isTranscoding,
+            enter = scaleIn(
+                initialScale = 0.85f,
+                animationSpec = tween(
+                    durationMillis = 400,
+                    delayMillis = 80,
+                    easing = FastOutSlowInEasing
+                )
+            ) + fadeIn(
+                animationSpec = tween(
+                    durationMillis = 300,
+                    delayMillis = 80
+                )
+            ),
+            exit = scaleOut(
+                targetScale = 0.85f,
+                animationSpec = tween(
+                    durationMillis = 300,
+                    easing = FastOutSlowInEasing
+                )
+            ) + fadeOut(
+                animationSpec = tween(
+                    durationMillis = 200
+                )
+            )
+        ) {
+            PlayerLoadingStateChip(
+                isTranscoding = isTranscoding,
+                transcodeProgressPercent = transcodeProgressPercent,
+                chipColor = playerOnBaseColor.copy(alpha = 0.10f),
+                chipContentColor = playerAccentColor
+            )
         }
     }
 
@@ -2673,20 +2975,31 @@ private fun FullPlayerExpressiveContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Text(
-                            text = artistLabel,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Medium,
-                                color = playerOnBaseColor.copy(alpha = 0.72f)
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clipToBounds()
-                                .clickable(onClick = onArtistClick)
-                                .padding(top = 2.dp)
-                        )
+                        // ⚡ 一起听头像条与歌手同排：不再独占一行，既不增加纵向高度
+                        //   （高度紧张时会把底部控件挤出屏幕造成重叠），也不会与其它元素打架
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = artistLabel,
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    color = playerOnBaseColor.copy(alpha = 0.72f)
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .clipToBounds()
+                                    .clickable(onClick = onArtistClick)
+                                    .padding(top = 2.dp)
+                            )
+                            if (listenTogetherBadge != null) {
+                                Spacer(Modifier.width(10.dp))
+                                listenTogetherBadge()
+                            }
+                        }
                     }
                 }
 
@@ -2754,6 +3067,9 @@ private fun FullPlayerExpressiveContent(
                                         modifier = Modifier.size(controlButtonSize * 0.45f)
                                     )
                                 }
+                            } else {
+                                // ⚡ 电台模式没有进度行：加载指示放在播放行末尾
+                                loadingStateChip()
                             }
                         }
 
@@ -2783,6 +3099,8 @@ private fun FullPlayerExpressiveContent(
                                 Box(modifier = Modifier.weight(1f)) {
                                     playerProgressSection()
                                 }
+                                // ⚡ 加载状态指示（缓冲/转码）：与经典样式一致，紧跟进度条
+                                loadingStateChip()
                             }
                         }
                         if (playerMergeControls) {
@@ -2887,6 +3205,67 @@ private fun FullPlayerLandscapeContent(
     }
 }
 
+/**
+ * 播放加载状态胶囊：缓冲时显示 LoadingIndicator；DFF 等转码时显示进度条 + 百分比。
+ * 经典样式（歌曲信息旁）与 Expressive 样式（控制卡进度行）共用，保持两套布局行为一致。
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun PlayerLoadingStateChip(
+    isTranscoding: Boolean,
+    transcodeProgressPercent: Int,
+    chipColor: Color,
+    chipContentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    if (isTranscoding) {
+        Surface(
+            shape = CircleShape,
+            color = chipColor,
+            modifier = modifier.padding(end = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LoadingIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = chipContentColor
+                )
+                LinearProgressIndicator(
+                    progress = { transcodeProgressPercent / 100f },
+                    modifier = Modifier.width(60.dp).height(4.dp),
+                    color = chipContentColor,
+                    trackColor = chipContentColor.copy(alpha = 0.3f)
+                )
+                Text(
+                    text = "$transcodeProgressPercent%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = chipContentColor
+                )
+            }
+        }
+    } else {
+        Surface(
+            shape = CircleShape,
+            color = chipColor,
+            modifier = modifier.padding(end = 8.dp)
+        ) {
+            Box(
+                modifier = Modifier.padding(10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LoadingIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = chipContentColor
+                )
+            }
+        }
+    }
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -2906,6 +3285,8 @@ private fun SongMetadataDisplaySection(
     onClickQueue: () -> Unit,
     onClickArtist: () -> Unit,
     onClickComment: () -> Unit,
+    /** 右下角省略号：打开歌曲信息 */
+    onShowSongInfo: () -> Unit = {},
     currentQueueSourceName: String,
     modifier: Modifier = Modifier,
     isPlayingProvider: () -> Boolean = { true },
@@ -2976,51 +3357,12 @@ private fun SongMetadataDisplaySection(
                 )
             )
         ) {
-            if (isTranscoding) {
-                Surface(
-                    shape = CircleShape,
-                    color = chipColor,
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        LoadingIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = chipContentColor
-                        )
-                        LinearProgressIndicator(
-                            progress = { stablePlayerState.transcodeProgressPercent / 100f },
-                            modifier = Modifier.width(60.dp).height(4.dp),
-                            color = chipContentColor,
-                            trackColor = chipContentColor.copy(alpha = 0.3f)
-                        )
-                        Text(
-                            text = "${stablePlayerState.transcodeProgressPercent}%",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = chipContentColor
-                        )
-                    }
-                }
-            } else {
-                Surface(
-                    shape = CircleShape,
-                    color = chipColor,
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.padding(10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LoadingIndicator(
-                            modifier = Modifier.size(28.dp),
-                            color = chipContentColor
-                        )
-                    }
-                }
-            }
+            PlayerLoadingStateChip(
+                isTranscoding = isTranscoding,
+                transcodeProgressPercent = stablePlayerState.transcodeProgressPercent,
+                chipColor = chipColor,
+                chipContentColor = chipContentColor
+            )
         }
 
         if (showQueueButton) {
@@ -3051,28 +3393,22 @@ private fun SongMetadataDisplaySection(
                         )
                     }
                 }
-                if (!isRadioPlayback && canShowComment) {
-                    Box(
-                        modifier = Modifier
-                            .size(height = 42.dp, width = 50.dp)
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = 6.dp,
-                                    topEnd = 6.dp,
-                                    bottomStart = 6.dp,
-                                    bottomEnd = 6.dp
-                                )
-                            )
-                            .background(chipColor)
-                            .clickable { onClickComment() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.rounded_mode_comment_24),
-                            contentDescription = "Comments",
-                            tint = chipContentColor
-                        )
-                    }
+                // ⚡ 评论已移入「省略号」打开的歌曲操作菜单（见 FullPlayerContent 的 PlayerMoreSheet），
+                //    这里不再单独占一个胶囊位
+                // ⚡ 省略号：打开歌曲操作菜单（保持与相邻胶囊同高同宽）
+                Box(
+                    modifier = Modifier
+                        .size(height = 42.dp, width = 50.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(chipColor)
+                        .clickable { onShowSongInfo() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.player_cd_song_info),
+                        tint = chipContentColor
+                    )
                 }
                 // 播放列表按钮（广播电台播放时不显示：实时流没有播放列表）
                 if (!isRadioPlayback) {
@@ -3143,6 +3479,21 @@ private fun SongMetadataDisplaySection(
                                 contentDescription = "Comments"
                             )
                         }
+                    }
+                    // ⚡ 右下角省略号：查看歌曲信息
+                    FilledIconButton(
+                        modifier = Modifier
+                            .size(width = 48.dp, height = 48.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = chipColor,
+                            contentColor = chipContentColor
+                        ),
+                        onClick = onShowSongInfo,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = stringResource(R.string.player_cd_song_info)
+                        )
                     }
                 }
             }
@@ -3865,67 +4216,7 @@ private fun PlayerSongInfo(
                 translationY = (1f - fraction) * 24f
             }
     ) {
-        val isRoaming by playerViewModel.isRoamingMode.collectAsStateWithLifecycle(initialValue = false)
-        // contentUri 为 netease://{id}?url={encodedUrl} 格式，表示JS引擎漫游播放的收藏歌曲
-        val isNeteaseWithEmbeddedUrl = songContentUriString.startsWith("netease://") && songContentUriString.contains("?url=")
-        // isVipRoamingSong: 原始漫游歌曲（roaming_开头）或 收藏的漫游歌曲（netease://?url= 格式）
-        val isVipRoamingSong = (songId != null && songNeteaseId != null && songId.startsWith("roaming_")) ||
-            (songNeteaseId != null && isNeteaseWithEmbeddedUrl)
-        // isNeteaseSong: 纯网易云歌曲（有 neteaseId 但不是通过JS引擎播放的漫游歌曲）
-        val isNeteaseSong = songNeteaseId != null && !isVipRoamingSong && !isNeteaseWithEmbeddedUrl
-        val hasSourceLabel = currentQueueSourceName.isNotBlank() && currentQueueSourceName != "本地音乐"
-        val hasAnySourceLabel = isRoaming || isVipRoamingSong || isNeteaseSong || hasSourceLabel
-        if (hasAnySourceLabel) {
-            val scrollState = rememberScrollState()
-            Row(
-                modifier = Modifier
-                    .padding(bottom = 6.dp)
-                    .fillMaxWidth()
-                    .horizontalScroll(scrollState),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 单个来源标签的通用样式：限定最大宽度 + 单行省略，避免过长文本挤压其它内容
-                val labelTextModifier: Modifier = Modifier
-                    .padding(start = 4.dp)
-                    .widthIn(max = 120.dp)
-                val labelTextStyle = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = artistTextColor
-                )
-                val iconModifier = Modifier.size(14.dp)
-                val labelInnerPadding = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                val surfaceShape = RoundedCornerShape(12.dp)
-                val surfaceColor = textColor.copy(alpha = 0.1f)
-
-                if (isRoaming) {
-                    Surface(
-                        shape = surfaceShape,
-                        color = surfaceColor,
-                        tonalElevation = 0.dp
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = labelInnerPadding
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.rounded_wifi_24),
-                                contentDescription = null,
-                                tint = artistTextColor,
-                                modifier = iconModifier
-                            )
-                            Text(
-                                text = "漫游模式",
-                                style = labelTextStyle,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = labelTextModifier
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        // ⚡ 漫游模式标签已移除：漫游状态改为在播放器顶栏「播放中」位置显示「漫游模式」字样
         // We pass 1f to AutoScrollingTextOnDemand because the alpha/translation is now handled by the parent Column graphicsLayer
         // and we want it "fully rendered" but hidden/moved by the layer.
         // Actually, AutoScrollingTextOnDemand uses expansionFraction to start scrolling only when fully expanded?
@@ -4449,31 +4740,7 @@ private fun BottomToggleRow(
                     contentDesc = "Repetir"
                 )
             }
-            if (isOnlineSong) {
-                Box(modifier = commonModifier) {
-                    ToggleSegmentButton(
-                        modifier = Modifier.fillMaxSize(),
-                        active = downloadProgress != null || isDownloadComplete,
-                        activeColor = if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed) Color.Transparent else primaryFixed,
-                        activeCornerRadius = rowCorners,
-                        activeContentColor = onPrimaryFixed,
-                        inactiveColor = inactiveBg,
-                        inactiveContentColor = inactiveContentColor,
-                        onClick = onDownloadClick,
-                        iconId = when {
-                            isDownloadComplete -> R.drawable.rounded_check_circle_24
-                            isDownloadFailed -> R.drawable.rounded_close_24
-                            else -> R.drawable.rounded_download_24
-                        },
-                        contentDesc = "Download",
-                        // ⚡ 下载进度：在按钮背景上按比例从左到右填充（模仿 mini player 进度条），
-                        // 而不是把进度区域直接拉伸成定宽色块
-                        progressFill = if (downloadProgress != null && !isDownloadComplete && !isDownloadFailed)
-                            (downloadProgress / 100f).coerceIn(0f, 1f) else 0f,
-                        progressFillColor = onPrimaryFixed.copy(alpha = 0.30f)
-                    )
-                }
-            }
+            // ⚡ 下载入口已移到「省略号」菜单里（不再单独占位）
             ToggleSegmentButton(
                 modifier = commonModifier,
                 active = isFavorite,
@@ -4930,6 +5197,8 @@ private fun FullPlayerParallelLayout(
     lyricsExplanation: String?,
     lyricsExplanationEnabled: Boolean,
     onDismissExplanation: () -> Unit,
+    // ⚡ 供平行布局的歌词设置复用普通模式的字体导入
+    onImportCustomFont: () -> Unit = {},
     // ⚡ 平行布局 + Expressive：左侧直接渲染 Expressive 播放器（右侧仍为歌词）
     expressiveLeftContent: (@Composable () -> Unit)? = null
 ) {
@@ -4949,26 +5218,42 @@ private fun FullPlayerParallelLayout(
                 expressiveLeftContent()
             }
         } else {
-            // Left side: Player controls — scrollable to prevent overflow
-            androidx.compose.foundation.rememberScrollState().let { scrollState ->
+            // Left side: Player controls
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                // ⚡ 平行布局左栏宽度约为半屏，封面若只按宽度取 0.7，在「宽而矮」的平板横屏下
+                //   （大封面 + 歌曲信息 + 进度条 + 180dp 控制区）总高会超出可用高度，
+                //   底部那排按钮（收藏 / 下载 / 评论等）就被挤出屏幕。这里与竖屏布局同策略：
+                //   封面边长取「宽度 0.7」与「可用高度扣掉底部预留」的较小者。
+                val metadataProgressHeight = 100.dp
+                val controlsSectionMinHeight = 180.dp
+                val columnVerticalPadding = 16.dp
+                val coverBottomSpacing = 16.dp
+                val bottomReservedHeight =
+                    metadataProgressHeight + controlsSectionMinHeight + 20.dp +
+                        columnVerticalPadding * 2 + coverBottomSpacing
+                val coverSize = minOf(
+                    maxWidth * 0.7f,
+                    (maxHeight - bottomReservedHeight).coerceAtLeast(96.dp)
+                )
                 Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                        .fillMaxSize()
+                        // 兜底：极小高度下仍可滚动查看
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = columnVerticalPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Album cover — smaller to leave room for controls
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f)
-                            .aspectRatio(1f)
-                            .padding(bottom = 16.dp)
-                    ) {
+                    // Album cover — 尺寸随可用高度收敛，保证底部控制区不被挤出屏幕
+                    Box(modifier = Modifier.size(coverSize)) {
                         albumCoverSection(Modifier.fillMaxSize())
                     }
+
+                    Spacer(Modifier.height(coverBottomSpacing))
 
                     // Song metadata
                     songMetadataSection()
@@ -5012,45 +5297,66 @@ private fun FullPlayerParallelLayout(
                 lyricsFontSize = lyricsFontSize
             )
 
-            // 歌词设置卡片（从右侧底部弹出）
-            androidx.compose.animation.AnimatedVisibility(
-                visible = showLyricsSettings,
-                modifier = Modifier.align(Alignment.BottomCenter),
-                enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                ) {
-                    ParallelLyricsSettingsCard(
-                        playerViewModel = playerViewModel,
-                        modifier = Modifier.fillMaxWidth(),
-                        onDismiss = onToggleLyricsSettings
-                    )
-                }
+            // ⚡ 歌词设置：与普通模式完全一致，直接复用 LyricsMoreBottomSheet
+            if (showLyricsSettings) {
+                ParallelLyricsMoreSheet(
+                    playerViewModel = playerViewModel,
+                    onDismissRequest = onToggleLyricsSettings,
+                    lyricsFontSize = lyricsFontSize,
+                    lyricsFontFamily = lyricsFontFamily,
+                    immersiveLyricsEnabled = immersiveLyricsEnabled,
+                    isImmersiveTemporarilyDisabled = isImmersiveTemporarilyDisabled,
+                    isShuffleEnabled = isShuffleEnabled,
+                    repeatMode = repeatMode,
+                    isFavoriteProvider = isFavoriteProvider,
+                    onShuffleToggle = onShuffleToggle,
+                    onRepeatToggle = onRepeatToggle,
+                    onFavoriteToggle = onFavoriteToggle,
+                    onImportCustomFont = onImportCustomFont
+                )
             }
         }
     }
 }
 
 /**
- * 歌词设置卡片（平行布局），与普通模式 LyricsMoreBottomSheet 的外观设置一致。
+ * 平行布局歌词设置：直接复用普通模式的 [LyricsMoreBottomSheet]，
+ * 保证「歌词右下角省略号」在平板平行布局与普通模式下打开完全一致的设置界面。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ParallelLyricsSettingsCard(
+private fun ParallelLyricsMoreSheet(
     playerViewModel: PlayerViewModel,
-    modifier: Modifier = Modifier,
-    onDismiss: () -> Unit = {}
+    onDismissRequest: () -> Unit,
+    lyricsFontSize: String,
+    lyricsFontFamily: String,
+    immersiveLyricsEnabled: Boolean,
+    isImmersiveTemporarilyDisabled: Boolean,
+    isShuffleEnabled: Boolean,
+    repeatMode: Int,
+    isFavoriteProvider: () -> Boolean,
+    onShuffleToggle: () -> Unit,
+    onRepeatToggle: () -> Unit,
+    onFavoriteToggle: () -> Unit,
+    onImportCustomFont: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val fullPlayerSlice by playerViewModel.fullPlayerSlice.collectAsStateWithLifecycle()
-    val lyricsFontFamily by playerViewModel.lyricsFontFamily.collectAsStateWithLifecycle()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // 读取 DataStore 偏好
+    // 局部状态：保存歌词 / 同步控件
+    var showSaveLyricsDialog by remember { mutableStateOf(false) }
+    var showSyncControls by remember { mutableStateOf(false) }
+
+    // 当前歌曲与歌词
+    val stableState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+    val lyrics = stableState.lyrics
+    val currentSong = stableState.currentSong
+    val showSyncedLyrics = !lyrics?.synced.isNullOrEmpty()
+    val hasTranslatedLyrics = lyrics?.synced?.any { !it.translation.isNullOrBlank() } == true
+    val hasRomanizedLyrics = lyrics?.synced?.any { !it.romanization.isNullOrBlank() } == true
+
+    // 读取 DataStore 偏好（与普通模式完全一致）
     val lyricsAlignment by remember(context) {
         context.dataStore.data.map { it[stringPreferencesKey("lyrics_alignment")] ?: "left" }
     }.collectAsStateWithLifecycle(initialValue = "left")
@@ -5060,252 +5366,111 @@ private fun ParallelLyricsSettingsCard(
     }.collectAsStateWithLifecycle(initialValue = true)
 
     val showRomanization by remember(context) {
-        context.dataStore.data.map { it[booleanPreferencesKey("show_romanization")] ?: true }
+        context.dataStore.data.map { it[booleanPreferencesKey("show_lyrics_romanization")] ?: true }
     }.collectAsStateWithLifecycle(initialValue = true)
 
-    val useAnimatedLyrics by remember(context) {
-        context.dataStore.data.map { it[booleanPreferencesKey("use_animated_lyrics")] ?: true }
-    }.collectAsStateWithLifecycle(initialValue = true)
+    val keepScreenOn by remember(context) {
+        context.dataStore.data.map { it[booleanPreferencesKey("keep_screen_on_lyrics")] ?: false }
+    }.collectAsStateWithLifecycle(initialValue = false)
 
-    // 获取当前歌词是否有翻译/罗马音
-    val lyrics by playerViewModel.stablePlayerState
-        .map { it.lyrics }
-        .distinctUntilChanged()
-        .collectAsStateWithLifecycle(initialValue = null)
-    val hasTranslation = lyrics?.synced?.any { !it.translation.isNullOrBlank() } == true
-    val hasRomanization = lyrics?.synced?.any { !it.romanization.isNullOrBlank() } == true
-
-    // 构建字体选项列表：预定义 + 自定义字体
-    var customFontsRefreshTick by remember { mutableStateOf(0) }
-    val currentFontKey by context.dataStore.data
-        .map { it[stringPreferencesKey("lyrics_font_family")] ?: "DEFAULT" }
-        .distinctUntilChanged()
-        .collectAsState(initial = "DEFAULT")
-    val customFonts = remember(customFontsRefreshTick, currentFontKey) {
-        com.theveloper.pixelplay.ui.theme.listCustomFonts(context).map {
-            "${com.theveloper.pixelplay.ui.theme.CUSTOM_FONT_PREFIX}$it"
-        }
-    }
-    val predefinedFonts = com.theveloper.pixelplay.ui.theme.LyricsFontDisplayNames.keys.toList()
-    val allFontFamilies = predefinedFonts + customFonts
-
-    fun fontDisplayName(key: String): String =
-        if (com.theveloper.pixelplay.ui.theme.isCustomFontKey(key))
-            com.theveloper.pixelplay.ui.theme.customFontDisplayName(key)
-        else com.theveloper.pixelplay.ui.theme.LyricsFontDisplayNames[key] ?: key
-
-    val onFontLongClick: (String) -> Unit = { key ->
-        if (com.theveloper.pixelplay.ui.theme.isCustomFontKey(key)) {
-            com.theveloper.pixelplay.ui.theme.deleteCustomFont(context, key)
-            if (lyricsFontFamily == key) {
-                playerViewModel.setLyricsFontFamily("DEFAULT")
+    LyricsMoreBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        lyrics = lyrics,
+        showSyncedLyrics = showSyncedLyrics,
+        isSyncControlsVisible = showSyncControls,
+        onSaveLyricsAsLrc = { showSaveLyricsDialog = true },
+        onResetImportedLyrics = { playerViewModel.resetLyricsForCurrentSong() },
+        onSearchLyricsOnline = { playerViewModel.fetchLyricsForCurrentSong(true) },
+        onTranslateViaAi = { playerViewModel.translateLyricsViaAi() },
+        onExplainLyricsViaAi = { playerViewModel.explainCurrentLyrics() },
+        onToggleSyncControls = { showSyncControls = !showSyncControls },
+        isImmersiveTemporarilyDisabled = isImmersiveTemporarilyDisabled,
+        onSetImmersiveTemporarilyDisabled = { playerViewModel.setImmersiveTemporarilyDisabled(it) },
+        keepScreenOn = keepScreenOn,
+        onKeepScreenOnChange = { enabled ->
+            scope.launch {
+                context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("keep_screen_on_lyrics")] = enabled }
             }
-            customFontsRefreshTick++
-        }
-    }
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 标题栏 + 关闭按钮
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "歌词设置",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.ExpandLess,
-                        contentDescription = "收起",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+        },
+        lyricsAlignment = lyricsAlignment,
+        onLyricsAlignmentChange = { newAlignment ->
+            scope.launch {
+                context.dataStore.edit { prefs -> prefs[stringPreferencesKey("lyrics_alignment")] = newAlignment }
             }
-
-            // 对齐方式
-            Text(
-                text = "对齐方式",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            val alignmentOptions = listOf("left", "center", "right")
-            val alignmentLabels = listOf("左", "中", "右")
-            val alignmentIcons = listOf(Icons.Rounded.FormatAlignLeft, Icons.Rounded.FormatAlignCenter, Icons.Rounded.FormatAlignRight)
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                alignmentOptions.forEachIndexed { index, value ->
-                    SegmentedButton(
-                        selected = lyricsAlignment == value,
-                        onClick = {
-                            scope.launch {
-                                context.dataStore.edit { it[stringPreferencesKey("lyrics_alignment")] = value }
-                            }
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(index, alignmentOptions.size),
-                        icon = { Icon(alignmentIcons[index], contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        label = { Text(alignmentLabels[index], fontSize = 12.sp) },
-                        modifier = Modifier.height(36.dp)
-                    )
-                }
+        },
+        hasTranslatedLyrics = hasTranslatedLyrics,
+        hasRomanizedLyrics = hasRomanizedLyrics,
+        showTranslation = showTranslation,
+        showRomanization = showRomanization,
+        onShowTranslationChange = { enabled ->
+            scope.launch {
+                context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("show_lyrics_translation")] = enabled }
             }
-
-            // 字体大小
-            Text(
-                text = "字体大小",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            val sizeOptions = listOf("SMALL", "DEFAULT", "LARGE", "EXTRA_LARGE")
-            val sizeLabels = listOf("S", "M", "L", "XL")
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                sizeOptions.forEachIndexed { index, value ->
-                    SegmentedButton(
-                        selected = fullPlayerSlice.lyricsFontSize == value,
-                        onClick = { playerViewModel.setLyricsFontSize(value) },
-                        shape = SegmentedButtonDefaults.itemShape(index, sizeOptions.size),
-                        label = { Text(sizeLabels[index], fontSize = 12.sp) },
-                        modifier = Modifier.height(36.dp)
-                    )
-                }
+        },
+        onShowRomanizationChange = { enabled ->
+            scope.launch {
+                context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("show_lyrics_romanization")] = enabled }
             }
+        },
+        lyricsFontSize = lyricsFontSize,
+        onLyricsFontSizeChange = { playerViewModel.setLyricsFontSize(it) },
+        lyricsFontFamily = lyricsFontFamily,
+        onLyricsFontFamilyChange = { playerViewModel.setLyricsFontFamily(it) },
+        onImportCustomFont = onImportCustomFont,
+        immersiveLyricsEnabled = immersiveLyricsEnabled,
+        isShuffleEnabled = isShuffleEnabled,
+        repeatMode = repeatMode,
+        isFavoriteProvider = isFavoriteProvider,
+        onShuffleToggle = onShuffleToggle,
+        onRepeatToggle = onRepeatToggle,
+        onFavoriteToggle = onFavoriteToggle
+    )
 
-            // 字体选择
-            Text(
-                text = "字体",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                maxItemsInEachRow = 3,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                allFontFamilies.forEach { family ->
-                    val isActive = lyricsFontFamily == family
-                    val isDeletable = com.theveloper.pixelplay.ui.theme.isCustomFontKey(family)
-                    val pressProgress = remember { Animatable(0f) }
-                    val dangerColor = MaterialTheme.colorScheme.error
-                    val targetBg = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
-                    val bgColor = lerpColor(targetBg, dangerColor, pressProgress.value)
-                    val targetContent = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                    val txtColor = lerpColor(targetContent, Color.White, pressProgress.value)
-                    val corner by animateDpAsState(
-                        targetValue = if (isActive) 50.dp else 12.dp,
-                        animationSpec = spring(stiffness = Spring.StiffnessLow),
-                        label = "FontCorner"
-                    )
+    // Save Lyrics Dialog（与普通模式一致）
+    if (showSaveLyricsDialog && lyrics != null && currentSong != null) {
+        val hasSynced = !lyrics.synced.isNullOrEmpty()
+        val hasPlain = !lyrics.plain.isNullOrEmpty()
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 40.dp)
-                            .clip(RoundedCornerShape(corner))
-                            .background(bgColor)
-                            .pointerInput(isDeletable) {
-                                if (isDeletable) {
-                                    detectTapGestures(
-                                        onPress = {
-                                            pressProgress.animateTo(1f, tween(durationMillis = 600))
-                                            tryAwaitRelease()
-                                            pressProgress.animateTo(0f, tween(durationMillis = 200))
-                                        },
-                                        onTap = { playerViewModel.setLyricsFontFamily(family) },
-                                        onLongPress = { onFontLongClick(family) }
-                                    )
-                                } else {
-                                    detectTapGestures(onTap = { playerViewModel.setLyricsFontFamily(family) })
-                                }
+        AlertDialog(
+            onDismissRequest = { showSaveLyricsDialog = false },
+            title = { Text(stringResource(R.string.save_lyrics_dialog_title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.save_lyrics_dialog_message))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    if (hasSynced) {
+                        FilledTonalButton(
+                            onClick = {
+                                showSaveLyricsDialog = false
+                                playerViewModel.saveLyricsToFile(currentSong, lyrics, true)
                             },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = fontDisplayName(family),
-                            color = txtColor,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            softWrap = true,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-                        )
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.save_synced_lyrics))
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    if (hasPlain) {
+                        OutlinedButton(
+                            onClick = {
+                                showSaveLyricsDialog = false
+                                playerViewModel.saveLyricsToFile(currentSong, lyrics, false)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.save_plain_lyrics))
+                        }
                     }
                 }
-            }
-
-            HorizontalDivider()
-
-            // 动画歌词
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("动画歌词", style = MaterialTheme.typography.bodyMedium)
-                    Text("逐行高亮动画效果", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(
-                    checked = useAnimatedLyrics,
-                    onCheckedChange = {
-                        scope.launch {
-                            context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("use_animated_lyrics")] = it }
-                        }
-                    }
-                )
-            }
-
-            // 翻译
-            if (hasTranslation) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("显示翻译", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = showTranslation,
-                        onCheckedChange = {
-                            scope.launch {
-                                context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("show_lyrics_translation")] = it }
-                            }
-                        }
-                    )
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showSaveLyricsDialog = false }) {
+                    Text(stringResource(R.string.cancel), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-
-            // 罗马音
-            if (hasRomanization) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("显示罗马音", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = showRomanization,
-                        onCheckedChange = {
-                            scope.launch {
-                                context.dataStore.edit { prefs -> prefs[booleanPreferencesKey("show_romanization")] = it }
-                            }
-                        }
-                    )
-                }
-            }
-        }
+        )
     }
 }
 
@@ -5437,7 +5602,7 @@ private fun ParallelLyricsPanel(
                         autoscrollAnimationSpec = spring(stiffness = Spring.StiffnessLow),
                         useAnimatedLyrics = useAnimatedLyrics,
                         animatedLyricsBlurEnabled = animatedLyricsBlurEnabled,
-                        animatedLyricsBlurStrength = 2.5f,
+                        animatedLyricsBlurStrength = 1f,
                         lyricsAlignment = lyricsAlignment,
                         showTranslation = showTranslation,
                         showRomanization = showRomanization,

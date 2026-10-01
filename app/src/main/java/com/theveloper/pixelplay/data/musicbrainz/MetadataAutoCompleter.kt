@@ -22,6 +22,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 class MetadataAutoCompleter @Inject constructor(
     private val musicBrainzRepository: MusicBrainzRepository,
     private val musicDao: MusicDao,
+    private val apiProviderPreferences: com.theveloper.pixelplay.data.preferences.ApiProviderPreferences,
     @param:ApplicationContext private val context: Context
 ) {
     private val cacheDir = File(context.cacheDir, "musicbrainz_covers")
@@ -31,6 +32,11 @@ class MetadataAutoCompleter @Inject constructor(
     }
 
     suspend fun completeMetadataIfNeeded(song: Song) {
+        // ⚡ MusicBrainz / CoverArtArchive 为海外服务，用户可在「设置 → API 管理」中关闭
+        if (!apiProviderPreferences.current().musicBrainzEnabled) {
+            return
+        }
+
         if (!isLocalSong(song)) {
             return
         }

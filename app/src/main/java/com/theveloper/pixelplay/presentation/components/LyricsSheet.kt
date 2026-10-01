@@ -412,9 +412,9 @@ fun LyricsSheet(
     val disableBlurAllOver by disableBlurAllOverFlow.collectAsStateWithLifecycle(initialValue = false)
 
     val animatedLyricsBlurStrengthFlow = remember(context) {
-        context.dataStore.data.map { it[androidx.datastore.preferences.core.floatPreferencesKey("animated_lyrics_blur_strength")] ?: 2.5f }
+        context.dataStore.data.map { it[androidx.datastore.preferences.core.floatPreferencesKey("animated_lyrics_blur_strength")] ?: 1f }
     }
-    val animatedLyricsBlurStrength by animatedLyricsBlurStrengthFlow.collectAsStateWithLifecycle(initialValue = 2.5f)
+    val animatedLyricsBlurStrength by animatedLyricsBlurStrengthFlow.collectAsStateWithLifecycle(initialValue = 1f)
 
     // Read keep-screen-on preference from DataStore
     val keepScreenOnFlow = remember(context) {
@@ -503,7 +503,9 @@ fun LyricsSheet(
     // Save lyrics dialog state
     var showSaveLyricsDialog by remember { mutableStateOf(false) }
     var showSyncControls by remember { mutableStateOf(false) }
-    var previewSeekPositionMs by remember(currentSong?.id) { mutableStateOf<Long?>(null) }
+    // ⚡ 用 State 持有对象而非 by 委托：拖动进度条时每帧写入都不会让整个歌词页重组，
+    //   只有真正读取它的歌词列表局部作用域才重组（显著降低拖动卡顿）。
+    val previewSeekPositionState = remember(currentSong?.id) { mutableStateOf<Long?>(null) }
 
     // 关键修复：当 isLoadingLyrics 为 true 或搜索正在加载时，
     // 即使有旧歌词也显示加载中状态，避免切歌后短暂显示上一首歌的歌词
@@ -819,6 +821,15 @@ fun LyricsSheet(
             val hasCustomBackground =
                 customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank()
 
+            // ⚡ 绚丽背景是否真的在绘制（开关开着 + 有封面 + 没有自定义背景图）。
+            //   下面的「歌词渐变遮罩」在它生效时必须让位：那层 0.4 → 0.95 的渐变会把网格
+            //   盖成一块纯色 —— 表现就是「歌词绚丽背景打开了却只有纯色」。
+            //   这与播放器背景的处理保持一致，也对齐 AMLL（背景是纯效果层，不带 scrim）。
+            val vibrantBackgroundActive =
+                !hasCustomBackground &&
+                    lyricsVibrantBackgroundEnabled &&
+                    currentSong?.albumArtUriString != null
+
             if (!hasCustomBackground && lyricsVibrantBackgroundEnabled) {
                 if (Build.VERSION.SDK_INT >= 31 && currentSong?.albumArtUriString != null) {
                     // 高版本：Apple Music 风格 4 块封面旋转 + 重模糊（RenderEffect）
@@ -833,14 +844,20 @@ fun LyricsSheet(
                         exit = fadeOut(animationSpec = tween(300)),
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        // ⚡ Android 12（API 31）以下没有 RenderEffect，Modifier.blur 在低版本
+                        //    是「空操作」——之前这里写 .blur(40.dp) 实际什么都没做，所以低版本
+                        //    看到的是完全清晰的封面（观感上就是"模糊没了"）。
+                        //    这里改用「极小尺寸解码 + 双线性放大」做软件模糊：把封面解码成 24×24
+                        //    再铺满全屏，放大时的双线性插值天然就是柔和的模糊过渡 —— 全版本可用、
+                        //    零额外依赖，也不需要 RenderEffect。
                         SmartImage(
                             model = currentSong?.albumArtUriString,
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .blur(radiusX = 40.dp, radiusY = 40.dp)
                                 .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
+                            targetSize = SoftBlur.decodeSize(needBlur = true)
                         )
                     }
                 }
@@ -853,8 +870,10 @@ fun LyricsSheet(
                         .fillMaxSize()
                         .background(containerColor.copy(alpha = lyricsSolidOverlayAlpha))
                 )
-            } else if (lyricsGradientOverlayEnabled) {
-                // 渐变遮罩：上下柔和渐变，提升文字可读性（受「歌词渐变遮罩」开关控制）
+            } else if (lyricsGradientOverlayEnabled && !vibrantBackgroundActive) {
+                // 渐变遮罩：上下柔和渐变，提升文字可读性（受「歌词渐变遮罩」开关控制）。
+                // 绚丽背景正在绘制时跳过这层（见 vibrantBackgroundActive 的说明），
+                // 否则网格会被 0.4 → 0.95 的渐变盖成纯色。
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -969,7 +988,7 @@ fun LyricsSheet(
                                 listState = syncedListState,
                                 playbackPositionFlow = playbackPositionFlow,
                                 lyricsSyncOffset = lyricsSyncOffset,
-                                positionOverrideMs = previewSeekPositionMs,
+                                positionOverrideMs = previewSeekPositionState,
                                 accentColor = lyricHighlightColor,
                                 containerColor = containerColor,
                                 textStyle = scaledTextStyle,
@@ -1174,7 +1193,7 @@ fun LyricsSheet(
                         accentColor = accentColor,
                         totalDuration = totalDuration,
                         onSeekTo = onSeekTo,
-                        onSeekPreviewChange = { previewSeekPositionMs = it },
+                        onSeekPreviewChange = { previewSeekPositionState.value = it },
                         isPlaying = isPlaying
                     )
                 }
@@ -1555,7 +1574,7 @@ fun SyncedLyricsList(
     listState: LazyListState,
     playbackPositionFlow: StateFlow<Long>,
     lyricsSyncOffset: Int,
-    positionOverrideMs: Long? = null,
+    positionOverrideMs: State<Long?>? = null,
     accentColor: Color,
     containerColor: Color,
     textStyle: TextStyle,
@@ -1565,7 +1584,7 @@ fun SyncedLyricsList(
     autoscrollAnimationSpec: AnimationSpec<Float>,
     useAnimatedLyrics: Boolean = false,
     animatedLyricsBlurEnabled: Boolean = true,
-    animatedLyricsBlurStrength: Float = 2.5f,
+    animatedLyricsBlurStrength: Float = 1f,
     immersiveMode: Boolean = false,
     lyricsAlignment: String = "left",
     showTranslation: Boolean = true,
@@ -1578,14 +1597,22 @@ fun SyncedLyricsList(
     val density = LocalDensity.current
     // 共享一个 TextMeasurer 给所有歌词行，避免每行单独创建（流畅度优化）
     val sharedTextMeasurer = rememberTextMeasurer()
-    val playbackPosition by playbackPositionFlow.collectAsStateWithLifecycle()
-    val position = remember(playbackPosition, lyricsSyncOffset, positionOverrideMs) {
-        positionOverrideMs ?: (playbackPosition + lyricsSyncOffset).coerceAtLeast(0L)
-    }
-    val isPreviewSeeking = positionOverrideMs != null
-    val currentLineIndex by remember(position, lines) {
+    val playbackPositionState = playbackPositionFlow.collectAsStateWithLifecycle()
+    // ⚡ 位置全程以 State 传递、绝不在组合期读取其值：
+    //   拖动进度条时不再每帧重组整个歌词列表，只有真正依赖位置值的分支（当前行、逐字高亮）
+    //   才会在数值实际越界时重组，从而把拖动开销从"整列表 × 每帧"降到"变化行 × 变化时"。
+    val positionState: State<Long> = remember(playbackPositionState, lyricsSyncOffset, positionOverrideMs) {
         derivedStateOf {
-            resolveCurrentLineIndex(lines = lines, position = position)
+            positionOverrideMs?.value
+                ?: (playbackPositionState.value + lyricsSyncOffset).coerceAtLeast(0L)
+        }
+    }
+    val isPreviewSeeking by remember(positionOverrideMs) {
+        derivedStateOf { positionOverrideMs?.value != null }
+    }
+    val currentLineIndex by remember(lines, positionState) {
+        derivedStateOf {
+            resolveCurrentLineIndex(lines = lines, position = positionState.value)
         }
     }
     var hasAlignedInitialLine by remember(lines) { mutableStateOf(false) }
@@ -1782,7 +1809,7 @@ fun SyncedLyricsList(
                         LyricLineRow(
                             line = line,
                             nextTime = nextTime,
-                            position = position,
+                            positionState = positionState,
                             distanceFromCurrent = distanceFromCurrent,
                             useAnimatedLyrics = useAnimatedLyrics,
                             animatedLyricsBlurEnabled = effectiveBlurEnabled,
@@ -1840,11 +1867,11 @@ fun SyncedLyricsList(
 fun LyricLineRow(
     line: SyncedLine,
     nextTime: Int,
-    position: Long,
+    positionState: State<Long>,
     distanceFromCurrent: Int = 100,
     useAnimatedLyrics: Boolean = false,
     animatedLyricsBlurEnabled: Boolean = true,
-    animatedLyricsBlurStrength: Float = 2.5f,
+    animatedLyricsBlurStrength: Float = 1f,
     immersiveMode: Boolean = false,
     lyricsAlignment: String = "left",
     showTranslation: Boolean = true,
@@ -1881,8 +1908,8 @@ fun LyricLineRow(
     val lineEndTime = remember(line, nextTime) {
         resolveLineEndTimeMs(line, nextTime)
     }
-    val isCurrentLine by remember(position, line.time, lineEndTime) {
-        derivedStateOf { position in line.time.toLong()..<lineEndTime }
+    val isCurrentLine by remember(positionState, line.time, lineEndTime) {
+        derivedStateOf { positionState.value in line.time.toLong()..<lineEndTime }
     }
     val unhighlightedColor = LocalContentColor.current.copy(alpha = 0.45f)
     // Apple Music 式弹簧：高阻尼 + 较低 stiffness，仅产生极轻微过冲回弹，
@@ -1947,15 +1974,19 @@ fun LyricLineRow(
     val effectiveScale = scale
 
     // folia-style blur: gentle distance cue with non-linear falloff（增强模糊，让非当前行明显虚化）
-    // distance 1→2dp, distance 2→4dp, distance 3→6dp, distance 4+→8dp
+    // distance 1→2dp, distance 2→4dp, distance 3→6dp, distance 4+→8dp，
+    // 再乘以实验设置里的「歌词模糊强度」（1.0 为基准）。
     val targetBlur = if (useAnimatedLyrics && animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
-        (minOf(distanceFromCurrent, 4) * 2).dp
+        (minOf(distanceFromCurrent, 4) * 2).dp * animatedLyricsBlurStrength.coerceIn(0.1f, 3f)
     } else 0.dp
     val blurRadius by animateDpAsState(
         targetValue = targetBlur,
         animationSpec = dpAnimSpec,
         label = "lineBlur"
     )
+    // ⚡ API 31 以下没有 RenderEffect，Modifier.blur 对文字是空操作。
+    //    这些行改走 Modifier.softwareBlur：离屏降采样 + 双线性放大 = 真正的像素级模糊。
+    val softwareBlurActive = blurRadius > 0.dp && SoftBlur.needsSoftwareBlur(needBlur = true)
 
     // 行间距物理弹簧：不同距离的行 stiffness 递减（移动速度不同），
     // dampingRatio 0.38~0.42 产生明显过冲——切换时上方行被“挤压”（间距先明显变小），
@@ -1968,11 +1999,14 @@ fun LyricLineRow(
             else -> 7.dp
         }
     } else 12.dp
-    val animatedVerticalPadding by animateDpAsState(
+    val animatedVerticalPaddingState by animateDpAsState(
         targetValue = targetVerticalPadding,
         animationSpec = paddingAnimSpec,
         label = "linePadding"
     )
+    // ⚡ 弹簧（dampingRatio = 0.4）会过冲，从大值回到小值时可能过冲为负；
+    //   Compose 的 PaddingValues 要求非负，否则抛 IllegalArgumentException 直接崩溃。
+    val animatedVerticalPadding = animatedVerticalPaddingState.coerceAtLeast(0.dp)
 
     // Animated mode: apply graphicsLayer for scale/alpha transforms (pure draw-phase, no layout)
     // ⚡ 水平留白与容器 padding(12.dp) 合计约 36.dp/侧，保证歌词占满约 4/5 屏宽
@@ -1985,8 +2019,52 @@ fun LyricLineRow(
     } else {
         modifier
     }
+    // Roman or Translate Logic
+    val translationText = line.translation
+    val romanizationText = line.romanization
+
+    val secondaryStyle = remember(style) {
+        style.copy(
+            fontSize = (style.fontSize.value * 0.75f).sp,
+            fontWeight = FontWeight.Normal
+        )
+    }
+
+    val romanizationColor = lineColor.copy(alpha = lineColor.alpha * 0.85f)
+    val translationColor = lineColor.copy(alpha = lineColor.alpha * 0.55f)
+
+    // ⚡ 低版本的"远处歌词发虚"改由 Modifier.softwareBlur 承担（对整行内容做真正的像素级模糊），
+    //    不再需要「同色阴影」那种假虚化——它只是套在锐利字形外的一层雾，
+    //    API 28 以下甚至完全不渲染；API 31+ 仍走原生 Modifier.blur。
+    val lineTextStyle = style
+    val secondaryTextStyle = secondaryStyle
+
+    // 模糊放在 alpha/缩放【内层】：模糊结果是静态的，可按内容缓存；
+    // 逐帧变化的 alpha/缩放交给外层 graphicsLayer，低版本才不会每帧重新栅格化一行文字。
     val animatedModifier = if (useAnimatedLyrics) {
         baseModifier
+            .then(
+                when {
+                    // API 31 以下：离屏降采样 + 双线性放大 = 真正的像素级模糊
+                    softwareBlurActive -> Modifier.softwareBlur(
+                        // 模糊越强、降采样倍率越高（2~6 倍）
+                        downscale = (2f + blurRadius.value * 0.6f).roundToInt().coerceIn(2, 6),
+                        contentKey = listOf(
+                            wrappedLine,
+                            romanizationText,
+                            translationText,
+                            // ⚡ lineColor 是 animateColorAsState，逐帧变化；直接当 key 会让这一行
+                            //    **每帧**重新快照。量化成 4 档后，一次切行最多重建 3 次，
+                            //    而模糊行本身是柔和的，这点颜色滞后看不出来。
+                            lineColor.copy(alpha = (lineColor.alpha * 4f).roundToInt() / 4f),
+                            style
+                        )
+                    )
+                    // API 31+：原生 GPU 模糊
+                    blurRadius > 0.dp -> Modifier.blur(blurRadius)
+                    else -> Modifier
+                }
+            )
             .graphicsLayer {
                 scaleX = effectiveScale
                 scaleY = effectiveScale
@@ -2001,22 +2079,7 @@ fun LyricLineRow(
                     pivotFractionY = 0.5f
                 )
             }
-            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier)
     } else baseModifier
-
-    // Roman or Translate Logic
-    val translationText = line.translation
-    val romanizationText = line.romanization
-
-    val secondaryStyle = remember(style) {
-        style.copy(
-            fontSize = (style.fontSize.value * 0.75f).sp,
-            fontWeight = FontWeight.Normal
-        )
-    }
-
-    val romanizationColor = lineColor.copy(alpha = lineColor.alpha * 0.85f)
-    val translationColor = lineColor.copy(alpha = lineColor.alpha * 0.55f)
 
     val horizontalAlignment = when (lyricsAlignment) {
         "center" -> Alignment.CenterHorizontally
@@ -2066,7 +2129,7 @@ fun LyricLineRow(
                 )
                 Text(
                     text = wrappedLine,
-                    style = style,
+                    style = lineTextStyle,
                     color = lineColor,
                     fontWeight = if (isCurrentLine) FontWeight.Bold else FontWeight.Normal,
                     textAlign = textAlign,
@@ -2079,7 +2142,7 @@ fun LyricLineRow(
                 Text(
                     text = if (availableWidthPx == Int.MAX_VALUE) romanizationText
                     else wrapLyricLineToFit(romanizationText, secondaryStyle, measurer, availableWidthPx),
-                    style = secondaryStyle,
+                    style = secondaryTextStyle,
                     color = romanizationColor,
                     textAlign = textAlign,
                     softWrap = true,
@@ -2092,7 +2155,7 @@ fun LyricLineRow(
                 Text(
                     text = if (availableWidthPx == Int.MAX_VALUE) translationText
                     else wrapLyricLineToFit(translationText, secondaryStyle, measurer, availableWidthPx),
-                    style = secondaryStyle,
+                    style = secondaryTextStyle,
                     color = translationColor,
                     textAlign = textAlign,
                     softWrap = true,
@@ -2102,11 +2165,11 @@ fun LyricLineRow(
             }
         }
     } else {
-        val highlightedWordIndex by remember(position, sanitizedWords, line.time, lineEndTime) {
+        val highlightedWordIndex by remember(positionState, sanitizedWords, line.time, lineEndTime) {
             derivedStateOf {
                 resolveHighlightedWordIndex(
                     words = requireNotNull(sanitizedWords),
-                    positionMs = position,
+                    positionMs = positionState.value,
                     lineStartTimeMs = line.time.toLong(),
                     lineEndTimeMs = lineEndTime
                 )
@@ -2168,7 +2231,7 @@ fun LyricLineRow(
                 Text(
                     text = if (availableWidthPx == Int.MAX_VALUE) romanizationText
                     else wrapLyricLineToFit(romanizationText, secondaryStyle, measurer, availableWidthPx),
-                    style = secondaryStyle,
+                    style = secondaryTextStyle,
                     color = romanizationColor,
                     textAlign = textAlign,
                     softWrap = true,
@@ -2181,7 +2244,7 @@ fun LyricLineRow(
                 Text(
                     text = if (availableWidthPx == Int.MAX_VALUE) translationText
                     else wrapLyricLineToFit(translationText, secondaryStyle, measurer, availableWidthPx),
-                    style = secondaryStyle,
+                    style = secondaryTextStyle,
                     color = translationColor,
                     textAlign = textAlign,
                     softWrap = true,
@@ -2323,6 +2386,14 @@ fun LyricWordSpan(
         dampingRatio = 0.88f
     ) else tween(durationMillis = 180, easing = FastOutSlowInEasing)
 
+    // emphasize / float 动效：轻微过冲的弹簧，让激活词「弹起 + 上浮」后自然回落。
+    // 仅作用于正在播放的词、且只在绘制期（graphicsLayer）变换，静止/未激活时外观完全不变。
+    val popSpec: AnimationSpec<Float> = if (useAnimatedLyrics) {
+        spring(dampingRatio = 0.6f, stiffness = 260f)
+    } else {
+        tween(durationMillis = 180, easing = FastOutSlowInEasing)
+    }
+
     val color by animateColorAsState(
         targetValue = if (isHighlighted) highlightedColor else unhighlightedColor,
         animationSpec = if (useAnimatedLyrics) spring(
@@ -2332,12 +2403,20 @@ fun LyricWordSpan(
         label = "wordColor"
     )
 
-    // Scale: pop up to 1.10 on highlight, settle back to 1f. Only active when
-    // animated lyrics is on — layout is untouched because it's applied in graphicsLayer.
+    // Scale (emphasize): pop up to 1.12 on highlight with a spring overshoot, settle back to 1f.
+    // Only active when animated lyrics is on — layout is untouched (applied in graphicsLayer).
     val scale by animateFloatAsState(
-        targetValue = if (useAnimatedLyrics && isHighlighted) 1.10f else 1f,
-        animationSpec = wordAnimSpec,
+        targetValue = if (useAnimatedLyrics && isHighlighted) 1.12f else 1f,
+        animationSpec = popSpec,
         label = "wordScale"
+    )
+
+    // Float: 激活词轻微上浮，落定时回弹（纯位移，无外观改变）。
+    val liftPx = with(LocalDensity.current) { 3.dp.toPx() }
+    val floatY by animateFloatAsState(
+        targetValue = if (useAnimatedLyrics && isHighlighted) -liftPx else 0f,
+        animationSpec = popSpec,
+        label = "wordFloat"
     )
 
     // Alpha: unhighlighted words dim slightly so the active word pops without
@@ -2364,10 +2443,11 @@ fun LyricWordSpan(
             style = style,
             color = color,
             fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal,
-            // Scale and alpha applied at draw phase — zero layout impact per frame.
+            // Scale, float and alpha applied at draw phase — zero layout impact per frame.
             modifier = Modifier.graphicsLayer {
                 scaleX = scale
                 scaleY = scale
+                translationY = floatY
                 this.alpha = alpha
             }
         )

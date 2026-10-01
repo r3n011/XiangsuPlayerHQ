@@ -36,7 +36,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiCacheEntity::class,
         AiUsageEntity::class
     ],
-    version = 45,
+    version = 46,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -866,6 +866,16 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE IF EXISTS headphone_presets_temp")
                 db.execSQL("DROP TABLE IF EXISTS headphone_eq_bands_temp")
                 db.execSQL("DROP TABLE IF EXISTS bluetooth_preset_bindings_temp")
+            }
+        }
+
+        // 45→46: 媒体库支持按"修改时间"排序，songs 表新增 date_modified 列（毫秒时间戳）。
+        // 历史数据用 date_added 回填作为近似值，后续增量扫描会用 MediaStore 的真实 mtime 刷新。
+        val MIGRATION_45_46 = object : Migration(45, 46) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE songs ADD COLUMN date_modified INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE songs SET date_modified = date_added WHERE date_modified = 0")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_songs_date_modified ON songs(date_modified)")
             }
         }
 

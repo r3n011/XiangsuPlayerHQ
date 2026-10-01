@@ -77,6 +77,40 @@ data class LxSourceInfo(
 )
 
 /**
+ * [LxSongInfo] → JS 引擎 musicInfo。
+ *
+ * 各音源脚本读取的键名不一致（tx 用 songmid、kg/kw 用 hash/songmid、wy 用 id 等），
+ * 因此把所有可能用到的键都填上；`artists` 必须是 `[{id, name}]` 数组，
+ * 传字符串会让按协议读取 `musicInfo.artists` 的脚本取链失败。
+ *
+ * ⚡ 播放链路（LxMusicViewModel）与连通性测试（LxSourceTester）必须共用这一份映射，
+ *   否则会出现"能播放但测试报失败"的不一致。
+ */
+fun LxSongInfo.toLxMusicInfoMap(): Map<String, Any?> {
+    val idList = artistIds.split(",").map { it.trim() }.filter { it.isNotBlank() }
+    val nameList = com.theveloper.pixelplay.data.stream.CloudMusicUtils.parseArtistNames(singer)
+    val artistsArray = nameList.mapIndexed { index, artistName ->
+        mapOf("id" to idList.getOrNull(index).orEmpty(), "name" to artistName)
+    }
+    return mapOf(
+        "id" to id,
+        "vid" to id,
+        "songmid" to songmid.ifBlank { id },
+        "hash" to hash.ifBlank { id },
+        "name" to name,
+        "singer" to singer,
+        "artist" to singer,
+        "artists" to artistsArray,
+        "artistIds" to idList,
+        "album" to albumName,
+        "albumName" to albumName,
+        "duration" to duration,
+        "cover" to pic,
+        "pic" to pic
+    )
+}
+
+/**
  * 单个 JS 音源脚本的头部简介（从 /*! ... */ 注释块解析）。
  */
 data class LxScriptInfo(

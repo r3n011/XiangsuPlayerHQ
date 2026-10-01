@@ -24,4 +24,10 @@
 
     <color name="pixel_play_purple_dark">#19191B</color>
     <color name="light_background">#EDEDED</color>
+
+    <!-- 窗口 / 启动画面底色（仅 API < 31）：此时 PixelPlayTheme 用静态配色，
+         与 LightColorScheme.background（LightBackground #F2F7FD）保持一致。
+         API 31+ 界面改用系统动态取色，静态配色不再参与渲染，底色由
+         values-v31/colors.xml、values-night-v31/colors.xml 覆盖为中性色。 -->
+    <color name="pixelplay_background">#FFF2F7FD</color>
 </resources>

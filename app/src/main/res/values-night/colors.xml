@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式（仅 API < 31）：与 Compose 里 DarkColorScheme.background（PixelPlayPurpleDark #0F1827）一致。
+         API 31+ 由 values-night-v31/colors.xml 覆盖为中性色。 -->
+    <color name="pixelplay_background">#FF0F1827</color>
+</resources>

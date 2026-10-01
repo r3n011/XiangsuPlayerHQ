@@ -115,12 +115,17 @@ fun CollapsibleCommonTopBar(
             .height(headerHeight)
             .background(backgroundColor)
             .then(
-                // ⚡ 渐进模糊遮罩（与 HomeGradientTopBar 同款）：随收起进度淡入
-                if (blurStyleEnabled && solidAlpha > 0.02f) {
+                // ⚡ 渐进模糊遮罩（与 HomeGradientTopBar 同款）：始终挂载，用 alpha 随收起进度连续淡入，
+                //   避免「越过阈值才添加模糊」造成的生硬跳变。
+                if (blurStyleEnabled) {
                     Modifier.hazeEffect(
                         state = MainActivity.LocalHazeState.current,
                         style = HazeMaterials.regular()
                     ) {
+                        // 中强模糊：加强顶栏模糊半径
+                        blurRadius = 56.dp
+                        // 过渡平滑：模糊整体随收起进度淡入
+                        alpha = solidAlpha
                         progressive = HazeProgressive.verticalGradient(
                             startIntensity = 1f,
                             endIntensity = 0f

@@ -24,6 +24,8 @@ import com.theveloper.pixelplay.presentation.viewmodel.LibraryStateHolder
 import com.theveloper.pixelplay.presentation.viewmodel.ThemeStateHolder
 import com.theveloper.pixelplay.utils.AlbumArtCacheManager
 import com.theveloper.pixelplay.utils.AlbumArtUtils
+import com.theveloper.pixelplay.utils.AppStartup
+import com.theveloper.pixelplay.utils.StartupTiming
 import com.theveloper.pixelplay.utils.CrashHandler
 import com.theveloper.pixelplay.utils.AppLocaleManager
 import com.theveloper.pixelplay.utils.MediaMetadataRetrieverPool
@@ -83,6 +85,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "pixelplay_music_channel"
 
+        /** 落雪 JS 引擎预加载前的静置时间：避开首屏后的入场动画，避免抢 CPU/IO */
+        private const val LX_PRELOAD_DELAY_MS = 3_000L
+
         @Volatile
         private var instance: PixelPlayApplication? = null
 
@@ -107,6 +112,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     }
 
     override fun attachBaseContext(base: Context) {
+        // ⚡ 最早的应用代码点：记录进程启动时间，供启动动画按设备实际加载耗时自适应用
+        StartupTiming.markProcessStart()
+
         // EARLIEST POSSIBLE POINT to install crash handler
         // (before Hilt injects, before any native libs load, before anything else)
         try {
@@ -157,38 +165,24 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 android.util.Log.e("PixelPlay", "Failed to init Timber: ${t.message}")
             }
 
-            // 友盟移动统计 U-App：preInit 必须最早执行且在主线程，随后立即完成正式初始化与埋点上报。
-            // 注意：当前工程没有隐私政策同意流程，故紧随 preInit 调用 init；
-            // 若后续引入隐私门控，应把 init 挪到用户同意之后（preInit 可保留在此处）。
-            try {
-                UmengAnalytics.preInit(this)
-                UmengAnalytics.init(this)
-                UmengAnalytics.sendOnboardingTestEvent(this)
-            } catch (t: Throwable) {
-                android.util.Log.e("PixelPlay", "Failed to init Umeng analytics: ${t.message}")
-            }
-
             // 网易云本地 SDK 初始化（App 进程内直接调官方接口，无需外部代理服务器）
-            try {
-                net.moriafly.ncm.NcmApi.install(this)
-            } catch (t: Throwable) {
-                android.util.Log.e("PixelPlay", "Failed to init NcmApi: ${t.message}")
-            }
-
-            // ⚡ 落雪 JS 引擎预加载：应用启动即后台初始化音源脚本，
-            // 保证首次搜索/播放立即可用（无需等用户进入搜索页才开始加载）
+            // ⚡ 冷启动优化：install 内部会 getSharedPreferences 同步读一次磁盘（首启还要建文件），
+            //    与首屏完全无关，放到后台线程执行即可 —— 任何真正的接口调用都发生在用户交互之后，
+            //    远晚于这里完成；install 本身可重入，不会重复建立会话。
             try {
                 startupScope.launch {
-                    runCatching { lxJsEngine.get().awaitReady(25_000) }
+                    runCatching { net.moriafly.ncm.NcmApi.install(this@PixelPlayApplication) }
                         .onFailure { t ->
-                            android.util.Log.e("PixelPlay", "Failed to preload LxJsEngine: ${t.message}")
+                            android.util.Log.e("PixelPlay", "Failed to init NcmApi: ${t.message}")
                         }
                 }
             } catch (t: Throwable) {
-                android.util.Log.e("PixelPlay", "Failed to schedule LxJsEngine preload: ${t.message}")
+                android.util.Log.e("PixelPlay", "Failed to schedule NcmApi init: ${t.message}")
             }
 
             // Notification channel (for foreground music playback service)
+            // ⚠️ 必须留在启动路径上：Android 8+ 向不存在的渠道发通知会静默丢弃，
+            //    而前台播放服务可能在本进程无 UI（无首帧）时被系统拉起。
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val channel = NotificationChannel(
@@ -201,6 +195,36 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 }
             } catch (t: Throwable) {
                 android.util.Log.e("PixelPlay", "Failed to create notification channel: ${t.message}")
+            }
+
+            // ⚡ 冷启动优化：下面两项与首屏完全无关，统一延后到首帧绘制完成之后执行。
+            //    冷启动时主线程在首帧前的每一毫秒都直接等于用户可见的等待，
+            //    这里能省下统计 SDK 初始化与 JS 引擎预热的开销。
+            AppStartup.runAfterFirstFrame {
+                // 友盟移动统计 U-App：preInit 必须早于 init，且两者都必须在主线程。
+                // 延后到首帧后不影响统计准确性（用户此刻还没看到界面）。
+                try {
+                    UmengAnalytics.preInit(this)
+                    UmengAnalytics.init(this)
+                    UmengAnalytics.sendOnboardingTestEvent(this)
+                } catch (t: Throwable) {
+                    android.util.Log.e("PixelPlay", "Failed to init Umeng analytics: ${t.message}")
+                }
+
+                // ⚡ 落雪 JS 引擎预加载：首帧后继续静置一段时间再后台初始化音源脚本
+                //    （QuickJS 上下文创建 + 脚本解析会抢 CPU/IO，过早启动会拖慢首屏后的
+                //    几帧动画）。用户点到搜索页/首次播放远晚于此，按需调用仍会即时等待加载。
+                try {
+                    startupScope.launch {
+                        kotlinx.coroutines.delay(LX_PRELOAD_DELAY_MS)
+                        runCatching { lxJsEngine.get().awaitReady(25_000) }
+                            .onFailure { t ->
+                                android.util.Log.e("PixelPlay", "Failed to preload LxJsEngine: ${t.message}")
+                            }
+                    }
+                } catch (t: Throwable) {
+                    android.util.Log.e("PixelPlay", "Failed to schedule LxJsEngine preload: ${t.message}")
+                }
             }
 
             // Process lifecycle observer - for background/foreground state tracking
@@ -276,9 +300,10 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     override fun newImageLoader(): ImageLoader {
         return try {
             imageLoader.get().newBuilder()
-                // 在主 loader 基础上再次显式声明禁用硬件位图与堆容量 20% 的内存缓存，
-                // 确保 newBuilder() 即便复制过程也不会丢失关键保护。
-                .allowHardware(false)
+                // ⚡ 保留 20% 堆内存缓存；但不再禁用硬件位图：
+                //   allowHardware(false) 会让每张封面都走软件位图（Skia 每帧上传纹理），
+                //   列表快速上滑（媒体库网格/歌曲列表）时会明显掉帧 —— 这是原版没有的设置。
+                .allowHardware(true)
                 .memoryCache {
                     MemoryCache.Builder(this)
                         .maxSizePercent(0.20)
@@ -297,11 +322,10 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                 .build()
         } catch (t: Throwable) {
             android.util.Log.e("PixelPlay", "Failed to create ImageLoader: ${t.message}")
-            // Fallback ImageLoader: keep allowHardware(false) and 20%-of-heap memory cache so that
-            // even if the injected loader fails, we still avoid blank covers after a few minutes.
+            // Fallback ImageLoader: 与原版一致开启硬件位图（列表滚动性能），并保留 20% 堆内存缓存
             ImageLoader.Builder(this)
                 .crossfade(true)
-                .allowHardware(false)
+                .allowHardware(true)
                 .memoryCache {
                     MemoryCache.Builder(this)
                         .maxSizePercent(0.20)

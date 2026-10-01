@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      API 31+ 的窗口 / 启动画面底色。
+
+      API 31 起 PixelPlayTheme 优先使用系统动态取色（壁纸派生的中性色），
+      静态配色里的 LightBackground(#F2F7FD) 已经不再参与渲染；继续沿用它会
+      在冷启动时先铺一块偏蓝的固定底色，与真实背景明显不一致。
+
+      这里改用 Material 3 基线中性色，与动态取色的中性背景同档，深浅色各一份。
+    -->
+    <color name="pixelplay_background">#FFFFFBFE</color>
+</resources>

@@ -83,6 +83,7 @@ import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
 import com.theveloper.pixelplay.shared.WearIntents
 import com.theveloper.pixelplay.utils.ArtworkTransportSanitizer
 import com.theveloper.pixelplay.utils.MediaItemBuilder
+import com.theveloper.pixelplay.utils.NeteaseMediaIds
 import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
 import com.theveloper.pixelplay.di.AppScope
 import com.theveloper.pixelplay.presentation.viewmodel.ListeningStatsTracker
@@ -199,6 +200,12 @@ class MusicService : MediaLibraryService() {
     lateinit var navidromeRepository: NavidromeRepository
     @Inject
     lateinit var listeningStatsTracker: ListeningStatsTracker
+    // ⚡ 悬浮歌词（桌面歌词）：注入即让这个 @Singleton 单例被创建并开始跟随播放状态。
+    //    播放时本服务就是前台服务，进程活着悬浮窗就活着，因此不需要额外的前台服务。
+    @Inject
+    lateinit var floatingLyricsController: com.theveloper.pixelplay.presentation.floating.FloatingLyricsController
+    @Inject
+    lateinit var neteaseListenHistoryReporter: com.theveloper.pixelplay.data.netease.NeteaseListenHistoryReporter
     @Inject
     lateinit var bluetoothLyricsManager: com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager
     @Inject
@@ -238,6 +245,11 @@ class MusicService : MediaLibraryService() {
     private var countedPlayCount = 0
     private var countedOriginalId: String? = null
     private var countedPlayListener: Player.Listener? = null
+
+    // ─── 网易云听歌打卡（feedback/weblog）───────────────────────────────
+    // 仅网易云歌曲上报：切歌/播完/销毁时结算"实际收听时长"（暂停/seek 不计入）。
+    private val listenedTimeTracker = com.theveloper.pixelplay.data.netease.ListenedTimeTracker()
+    private var listenHistorySongId: Long? = null
     private val alarmManager by lazy {
         getSystemService(Context.ALARM_SERVICE) as AlarmManager
     }
@@ -1364,6 +1376,8 @@ class MusicService : MediaLibraryService() {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val player = mediaSession?.player ?: engine.masterPlayer
             Timber.tag(TAG).d("onIsPlayingChanged: $isPlaying. Duration: ${player.duration}, Seekable: ${player.isCurrentMediaItemSeekable}")
+            // 网易云听歌打卡：按真实播放状态累计有效收听时长（暂停/缓冲不计入）
+            listenedTimeTracker.onPlayingChanged(SystemClock.elapsedRealtime(), isPlaying)
             // Surface playback state to background workers so they can defer
             // non-urgent work (AI generation, incremental sync) while audio
             // is producing — keeps thermal headroom and battery for playback.
@@ -1427,6 +1441,17 @@ class MusicService : MediaLibraryService() {
                     }
                 }
 
+                // 网易云听歌打卡：自然播完结算当前歌曲（时长 clamp 到歌曲总时长）
+                val endedDurationMs = (mediaSession?.player ?: engine.masterPlayer).duration
+                    .takeIf { it != C.TIME_UNSET && it > 0L }
+                listenHistorySongId?.let { songId ->
+                    neteaseListenHistoryReporter.recordDuration(
+                        songId,
+                        elapsedMs = listenedTimeTracker.elapsedMs(SystemClock.elapsedRealtime(), endedDurationMs)
+                    )
+                }
+                listenHistorySongId = null
+                listenedTimeTracker.reset(SystemClock.elapsedRealtime(), false)
                 endOfTrackTimerSongId = null
                 reportNavidromePlayback("stopped")
                 stopNavidromePlaybackReporting()
@@ -1500,6 +1525,21 @@ class MusicService : MediaLibraryService() {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // ─── 网易云听歌打卡：结算上一首 + 对新歌发 startplay ───
+            val transitionedNeteaseId = NeteaseMediaIds.neteaseIdOf(mediaItem)
+            val previousListenHistoryId = listenHistorySongId
+            if (previousListenHistoryId != null && previousListenHistoryId != transitionedNeteaseId) {
+                neteaseListenHistoryReporter.recordDuration(
+                    previousListenHistoryId,
+                    elapsedMs = listenedTimeTracker.elapsedMs(SystemClock.elapsedRealtime())
+                )
+            }
+            if (transitionedNeteaseId != previousListenHistoryId) {
+                listenHistorySongId = transitionedNeteaseId
+                listenedTimeTracker.reset(SystemClock.elapsedRealtime(), engine.masterPlayer.isPlaying)
+                transitionedNeteaseId?.let(neteaseListenHistoryReporter::recordStart)
+            }
+
             syncLocalListeningStatsFromPlayer(mediaSession?.player ?: engine.masterPlayer, forceNewSession = true)
             if (isNavidromeMediaItem(mediaItem)) {
                 reportNavidromePlayback("starting")
@@ -1669,9 +1709,25 @@ class MusicService : MediaLibraryService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
+    /** 旋转/分屏导致屏幕尺寸变化后，把悬浮歌词夹回屏幕内。 */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        floatingLyricsController.onScreenSizeChanged()
+    }
+
     override fun onDestroy() {
+        floatingLyricsController.release()
         PlaybackActivityTracker.setPlaybackActive(false)
         listeningStatsTracker.finalizeCurrentSession(forceSynchronousPersistence = true)
+        // 网易云听歌打卡：销毁前把未结算的收听补报一次
+        listenHistorySongId?.let {
+            neteaseListenHistoryReporter.recordDuration(
+                it,
+                elapsedMs = listenedTimeTracker.elapsedMs(SystemClock.elapsedRealtime())
+            )
+        }
+        listenHistorySongId = null
+        neteaseListenHistoryReporter.close()
         reportNavidromePlayback("stopped")
         stopNavidromePlaybackReporting()
         // ⚡ 销毁前立即落盘一次播放快照：debounce（1.5s）窗口内服务被杀/退出时，

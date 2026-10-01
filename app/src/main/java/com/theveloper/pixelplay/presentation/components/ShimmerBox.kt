@@ -4,11 +4,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 
@@ -34,13 +34,17 @@ fun ShimmerBox(modifier: Modifier = Modifier) {
         label = "shimmerTranslate"
     )
 
-    val brush = Brush.linearGradient(
-        colors = shimmerColors,
-        start = Offset.Zero,
-        end = Offset(x = translateAnim.value, y = translateAnim.value)
-    )
-
+    // ⚡ 在绘制阶段读取动画值：避免每帧重组本组件，也避免每帧在组合期新建 Brush。
     Box(
-        modifier = modifier.background(brush = brush)
+        modifier = modifier.drawBehind {
+            val translate = translateAnim.value
+            drawRect(
+                brush = Brush.linearGradient(
+                    colors = shimmerColors,
+                    start = Offset.Zero,
+                    end = Offset(x = translate, y = translate)
+                )
+            )
+        }
     )
 }

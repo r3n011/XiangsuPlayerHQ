@@ -156,7 +156,10 @@ private fun PlayerInternalNavigationItemsRow(
     val innerRowPadding = (navBarInsetPadding - bottomBarPadding).coerceAtLeast(0.dp)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestOnSearchIconDoubleTap by rememberUpdatedState(onSearchIconDoubleTap)
-    val navigationDebounceEnabled = remember { mutableStateOf(true) }
+    // ⚡ 防抖用「时间戳」而不是「布尔开关 + 协程复位」：旧实现把开关置 false 后靠协程延迟复位，
+    //   一旦该协程被取消（重组/切页），开关会永久停在 false → 之后点导航栏完全没反应。
+    //   时间戳天然自愈，最坏只是 300ms 内的重复点击被忽略。
+    var lastNavTimestamp by remember { mutableStateOf(0L) }
     val debounceTimeout = 300L
 
     val rowModifier = if (navBarStyle == NavBarStyle.FULL_WIDTH) {
@@ -251,16 +254,12 @@ private fun PlayerInternalNavigationItemsRow(
                         lastSearchTapTimestamp = now
 
                         if (!isAlreadySelected) {
-                            if (!navigationDebounceEnabled.value) return@click
+                            if (now - lastNavTimestamp < debounceTimeout) return@click
                             if (!navController.navigateToTopLevelSafely(itemRoute)) {
                                 lastSearchTapTimestamp = 0L
                                 return@click
                             }
-                            navigationDebounceEnabled.value = false
-                            scope.launch {
-                                delay(debounceTimeout)
-                                navigationDebounceEnabled.value = true
-                            }
+                            lastNavTimestamp = now
                         }
 
                         if (isDoubleTap) {
@@ -275,14 +274,11 @@ private fun PlayerInternalNavigationItemsRow(
                             }
                         }
                     } else if (!isAlreadySelected) {
-                        if (!navigationDebounceEnabled.value) return@click
+                        val now = SystemClock.elapsedRealtime()
+                        if (now - lastNavTimestamp < debounceTimeout) return@click
                         lastSearchTapTimestamp = 0L
                         if (navController.navigateToTopLevelSafely(itemRoute)) {
-                            navigationDebounceEnabled.value = false
-                            scope.launch {
-                                delay(debounceTimeout)
-                                navigationDebounceEnabled.value = true
-                            }
+                            lastNavTimestamp = now
                         }
                     } else {
                         lastSearchTapTimestamp = 0L

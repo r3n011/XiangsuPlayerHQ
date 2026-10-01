@@ -61,6 +61,11 @@ class MusicDownloadService @Inject constructor(
     companion object {
         private const val DOWNLOAD_CHANNEL_ID = "pixelplay_download_channel"
         private const val DOWNLOAD_NOTIFICATION_ID_BASE = 3000
+
+        /** 在线歌曲的自定义播放 scheme（由播放引擎懒解析真实直链，非本地文件） */
+        private val ONLINE_CUSTOM_SCHEMES = listOf(
+            "cloud://", "netease://", "qq://", "kw://", "kg://", "mg://", "bilibili://"
+        )
     }
 
     data class DownloadInfo(
@@ -174,10 +179,18 @@ class MusicDownloadService @Inject constructor(
     fun isOnlineSong(song: Song): Boolean {
         // 只要是在线源（有网易云/QQ/自建库等 ID，或播放地址是 http(s) URL）都算在线，
         // 下载按钮对所有在线源歌曲显示
-        return song.neteaseId != null || song.qqMusicMid != null || song.navidromeId != null ||
+        if (song.neteaseId != null || song.qqMusicMid != null || song.navidromeId != null ||
             song.gdriveFileId != null || song.telegramFileId != null ||
             song.path?.startsWith("http", ignoreCase = true) == true ||
             song.contentUriString?.startsWith("http", ignoreCase = true) == true
+        ) {
+            return true
+        }
+        // ⚡ cloud://lx/{json} 占位（在线搜索/歌单入列）与 netease://、bilibili:// 等
+        //    自定义 scheme 同样是在线歌曲：由播放引擎在实际播放时懒解析真实直链。
+        //    此前不识别导致这类歌曲在播放器里不显示下载按钮。
+        val uri = song.contentUriString ?: return false
+        return ONLINE_CUSTOM_SCHEMES.any { uri.startsWith(it, ignoreCase = true) }
     }
 
     suspend fun downloadSong(song: Song, preferredUrl: String? = null): String? {
@@ -401,14 +414,24 @@ class MusicDownloadService @Inject constructor(
     }
 
     private fun updateDownloadStatus(songId: String, title: String, artist: String, progress: Float, isComplete: Boolean, isFailed: Boolean, filePath: String?) {
-        _downloads.value = _downloads.value.map {
-            if (it.songId == songId) {
-                it.copy(progress = progress, isComplete = isComplete, isFailed = isFailed, filePath = filePath)
-            } else {
-                it
+        // ⚡ 必须做 upsert：之前用 `.map{...}.ifEmpty{ 新增 }`，只有列表整体为空时才会插入新条目。
+        //    第一次下载把列表变成非空后，之后任何新歌曲的状态更新都会被静默丢弃，
+        //    导致 downloads.find { it.songId == 新歌 } 恒为 null —— 表现就是"只有第一次下载能显示进度"。
+        val current = _downloads.value
+        val index = current.indexOfFirst { it.songId == songId }
+        _downloads.value = if (index >= 0) {
+            current.toMutableList().apply {
+                this[index] = this[index].copy(
+                    title = title,
+                    artist = artist,
+                    progress = progress,
+                    isComplete = isComplete,
+                    isFailed = isFailed,
+                    filePath = filePath
+                )
             }
-        }.ifEmpty {
-            listOf(DownloadInfo(songId, title, artist, progress, isComplete, isFailed, filePath))
+        } else {
+            current + DownloadInfo(songId, title, artist, progress, isComplete, isFailed, filePath)
         }
         rebuildDownloadIndex()
     }

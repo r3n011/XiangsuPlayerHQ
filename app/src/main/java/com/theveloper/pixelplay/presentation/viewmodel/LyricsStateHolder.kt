@@ -134,10 +134,22 @@ class LyricsStateHolder @Inject constructor(
      * @param sourcePreference The preferred source for lyrics
      */
     fun loadLyricsForSong(song: Song, sourcePreference: LyricsSourcePreference) {
-        loadingJob?.cancel()
-        lyricsRetryJob?.cancel()
         val targetSongId = song.id
+        // ⚡ 同一首歌已有加载在跑时不重复启动：切歌同步 / repository hydration 会先后触发
+        //   多次加载，旧逻辑直接 cancel+restart，会把进行中的请求白白打断（网络抖动下
+        //   重启后的请求更容易失败，最终表现为"实际有歌词却显示暂无歌词"）。
+        if (currentTargetSongId == targetSongId && loadingJob?.isActive == true) {
+            return
+        }
+        // ⚡ 被顶替的旧目标要显式收口：cancel() 之后旧协程不会执行自身的收尾分支，
+        //   它的 isLoadingLyrics 会永停在 true —— 歌词页 / 播放器一直显示「加载中」。
+        val previousTargetSongId = currentTargetSongId
+        cancelLoadingJob()
+        lyricsRetryJob?.cancel()
         currentTargetSongId = targetSongId
+        if (previousTargetSongId != null && previousTargetSongId != targetSongId) {
+            loadCallback?.onLyricsLoadFinished(previousTargetSongId, null)
+        }
         // 切歌时重置重试计数
         if (lyricsRetrySongId != targetSongId) {
             lyricsRetrySongId = targetSongId
@@ -150,12 +162,17 @@ class LyricsStateHolder @Inject constructor(
         }
 
         loadingJob = scope?.launch {
-            var fetchedLyrics: Lyrics? = null
-            try {
-                loadCallback?.onLoadingStarted(targetSongId)
+            loadCallback?.onLoadingStarted(targetSongId)
 
-                kotlinx.coroutines.withTimeout(20000L) {
-                    fetchedLyrics = try {
+            val startedAtMs = android.os.SystemClock.elapsedRealtime()
+            var fetchedLyrics: Lyrics? = null
+            var attempt = 0
+            // ⚡ 首次加载 + 空结果自动重试放在同一个 Job 内完成。此前 retry 通过重新调用
+            //   loadLyricsForSong 实现，会把正在跑的 Job 取消再重启，重试期间任何新的
+            //   触发（hydration/sync）都可能打断整条重试链。
+            while (currentTargetSongId == targetSongId) {
+                try {
+                    fetchedLyrics = kotlinx.coroutines.withTimeout(LYRICS_LOAD_TIMEOUT_MS) {
                         withContext(Dispatchers.IO) {
                             musicRepository.getLyrics(
                                 song = song,
@@ -163,66 +180,69 @@ class LyricsStateHolder @Inject constructor(
                                 forceRefresh = false
                             )
                         }
-                    } catch (_: Exception) {
-                        null
                     }
+                } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                    android.util.Log.w("LyricsStateHolder", "歌词加载超时(${LYRICS_LOAD_TIMEOUT_MS}ms): ${song.title}")
+                    fetchedLyrics = null
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // Job 被取消（切歌/cancelLoading）：直接结束，不得吞掉取消信号
+                    throw e
+                } catch (_: Throwable) {
+                    fetchedLyrics = null
                 }
-            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                android.util.Log.w("LyricsStateHolder", "歌词加载超时: ${song.title}")
-                fetchedLyrics = null
-            } catch (_: Throwable) {
-                fetchedLyrics = null
-            } finally {
-                if (currentTargetSongId == targetSongId) {
-                    finishLyricsLoad(song, sourcePreference, targetSongId, fetchedLyrics)
+
+                if (fetchedLyrics != null) break
+                if (!isNeteaseSong(song) || attempt >= MAX_LYRICS_FETCH_RETRIES) break
+                // ⚡ 只有"快速返回空结果"才值得重试。若本次是超时/长时间等待（单次上限 30s，
+                //   3 次最坏 ≈ 90s），再重试只会让歌词页一直停在"正在加载歌词" ——
+                //   用户感知就是"歌词永远加载不出来"。超时后直接收口为"暂无歌词"。
+                if (android.os.SystemClock.elapsedRealtime() - startedAtMs >
+                    LYRICS_RETRY_ALLOWED_ELAPSED_MS
+                ) {
+                    break
                 }
+
+                attempt++
+                lyricsRetryCount = attempt
+                android.util.Log.d(
+                    "LyricsStateHolder",
+                    "歌词获取为空，第 $lyricsRetryCount 次自动重试: ${song.title}"
+                )
+                loadCallback?.onLoadingStarted(targetSongId)
+                try {
+                    kotlinx.coroutines.delay(LYRICS_RETRY_DELAY_MS)
+                } catch (_: kotlinx.coroutines.CancellationException) {
+                    // 歌曲已切换/取消加载：由新歌曲的加载流程接管
+                    loadCallback?.onLyricsLoadFinished(targetSongId, null)
+                    return@launch
+                }
+            }
+
+            if (currentTargetSongId != targetSongId) return@launch
+            loadCallback?.onLyricsLoadFinished(targetSongId, fetchedLyrics)
+
+            if (fetchedLyrics == null && !isNeteaseSong(song)) {
+                android.util.Log.d("LyricsStateHolder", "非网易云歌曲歌词加载失败，自动触发搜索: ${song.title}")
+                triggerAutoLyricsSearch(song, sourcePreference)
             }
         }
     }
 
+    /** 是否正在为指定歌曲加载歌词（用于调用方避免取消/重启进行中的加载） */
+    fun isLoadingFor(songId: String): Boolean =
+        currentTargetSongId == songId && loadingJob?.isActive == true
+
     /**
-     * 处理一次歌词加载的收尾：获取为空时自动重试（在线/网易云歌曲），
-     * 否则通知加载完成，并按需触发远程歌词搜索。
+     * 取消进行中的加载任务，并把可能被「取消」卡住的搜索态一并收口。
+     *
+     * 被 cancel 的协程不会执行自身的收尾分支，`_searchUiState` 会永久停在 [LyricsSearchUiState.Loading]；
+     * 而歌词页只要看到 Loading 就强制渲染「加载中」（即使歌词其实已经取到）。
+     * 所有取消入口都必须走这里，不能再直接调用 `loadingJob?.cancel()`。
      */
-    private suspend fun finishLyricsLoad(
-        song: Song,
-        sourcePreference: LyricsSourcePreference,
-        targetSongId: String,
-        fetchedLyrics: Lyrics?
-    ) {
-        // ⚡ 歌词获取为空时自动重试（仅在线/网易云歌曲）：
-        //   保持"正在获取歌词"的加载提示，等待后静默重新获取，
-        //   避免歌词界面一片空白且无任何提示、也不会自动恢复。
-        if (fetchedLyrics == null && isNeteaseSong(song) &&
-            lyricsRetryCount < MAX_LYRICS_FETCH_RETRIES
-        ) {
-            lyricsRetryCount++
-            android.util.Log.d("LyricsStateHolder", "歌词获取为空，第 $lyricsRetryCount 次自动重试: ${song.title}")
-            loadCallback?.onLoadingStarted(targetSongId)
-            try {
-                kotlinx.coroutines.delay(LYRICS_RETRY_DELAY_MS)
-            } catch (_: kotlinx.coroutines.CancellationException) {
-                // 歌曲已切换/取消加载：由新歌曲的加载流程接管
-                loadCallback?.onLyricsLoadFinished(targetSongId, null)
-                return
-            }
-            if (currentTargetSongId == targetSongId) {
-                loadLyricsForSong(song, sourcePreference)
-            } else {
-                loadCallback?.onLyricsLoadFinished(targetSongId, null)
-            }
-            return
-        }
-
-        loadCallback?.onLyricsLoadFinished(targetSongId, fetchedLyrics)
-
-        if (fetchedLyrics == null) {
-            if (isNeteaseSong(song)) {
-                android.util.Log.d("LyricsStateHolder", "网易云歌曲歌词加载失败，保留加载状态等待重试: ${song.title}")
-            } else {
-                android.util.Log.d("LyricsStateHolder", "非网易云歌曲歌词加载失败，自动触发搜索: ${song.title}")
-                triggerAutoLyricsSearch(song, sourcePreference)
-            }
+    private fun cancelLoadingJob() {
+        loadingJob?.cancel()
+        if (_searchUiState.value is LyricsSearchUiState.Loading) {
+            _searchUiState.value = LyricsSearchUiState.Idle
         }
     }
 
@@ -230,6 +250,14 @@ class LyricsStateHolder @Inject constructor(
         // 歌词获取为空的自动重试上限与间隔
         const val MAX_LYRICS_FETCH_RETRIES = 2
         const val LYRICS_RETRY_DELAY_MS = 3_000L
+
+        // ⚡ 单次加载总预算：repository 内部（fetchLyricsFromAPI）自带 20s 超时，
+        //   外层预算必须大于内层，否则内层请求永远跑不满就被整体取消
+        const val LYRICS_LOAD_TIMEOUT_MS = 30_000L
+
+        // ⚡ 允许继续重试的时间窗：超过它说明上一次是超时而非"快速空结果"，
+        //   再重试只会把"正在加载歌词"继续挂住（重试 2 次最坏 ≈ 90s）
+        const val LYRICS_RETRY_ALLOWED_ELAPSED_MS = 12_000L
     }
     
     /**
@@ -336,7 +364,7 @@ class LyricsStateHolder @Inject constructor(
      */
     fun cancelLoading() {
         val targetSongId = currentTargetSongId
-        loadingJob?.cancel()
+        cancelLoadingJob()
         targetSongId?.let { loadCallback?.onLyricsLoadFinished(it, null) }
     }
 
@@ -381,7 +409,11 @@ class LyricsStateHolder @Inject constructor(
         sourcePreference: LyricsSourcePreference,
         contextHelper: (Int) -> String
     ) {
-        loadingJob?.cancel()
+        // ⚡ 被取消的默认加载不会回调 onLyricsLoadFinished：这里主动收口一次，
+        //   否则 isLoadingLyrics 会永远停在 true，歌词页停在"加载中"看起来是全空
+        val inFlightSongId = currentTargetSongId
+        cancelLoadingJob()
+        inFlightSongId?.let { loadCallback?.onLyricsLoadFinished(it, null) }
         val targetSongId = song.id
         currentTargetSongId = targetSongId
         loadingJob = scope?.launch {
@@ -489,7 +521,10 @@ class LyricsStateHolder @Inject constructor(
      */
     fun searchLyricsManually(title: String, artist: String?) {
         if (title.isBlank()) return
-        loadingJob?.cancel()
+        // 同上：取消进行中的加载时主动收口，避免 isLoadingLyrics 卡在 true
+        val inFlightSongId = currentTargetSongId
+        cancelLoadingJob()
+        inFlightSongId?.let { loadCallback?.onLyricsLoadFinished(it, null) }
         loadingJob = scope?.launch {
             _searchUiState.value = LyricsSearchUiState.Loading
             musicRepository.searchRemoteLyricsByQuery(title, artist)

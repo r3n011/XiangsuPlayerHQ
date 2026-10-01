@@ -64,9 +64,8 @@ class MediaStoreObserver @Inject constructor(
 
     override fun onStart(owner: LifecycleOwner) {
         register()
-        // Android 10 Scoped Storage 可能导致系统 MediaStore 不及时索引新文件，
-        // 应用回到前台时主动触发媒体扫描
-        triggerMediaScan()
+        // 媒体变化检测统一交给 ContentObserver 与 SyncManager 的 staleness 门控，
+        // 不再在每次回前台时主动触发系统级媒体扫描（Android 10 下会造成额外功耗）。
     }
 
     override fun onStop(owner: LifecycleOwner) {
@@ -86,27 +85,5 @@ class MediaStoreObserver @Inject constructor(
 
     fun forceRescan() {
         _mediaStoreChanges.tryEmit(Unit)
-    }
-
-    /**
-     * Android 10 (API 29) Scoped Storage 下，系统 MediaStore 可能不会及时索引新文件。
-     * 主动对标准音乐目录触发媒体扫描，确保新歌曲被发现。
-     */
-    private fun triggerMediaScan() {
-        if (android.os.Build.VERSION.SDK_INT > android.os.Build.VERSION_CODES.Q) return // 仅 Android 10 需要
-        try {
-            val musicDir = android.os.Environment.getExternalStoragePublicDirectory(
-                android.os.Environment.DIRECTORY_MUSIC
-            )
-            if (musicDir != null && musicDir.isDirectory) {
-                android.media.MediaScannerConnection.scanFile(
-                    context,
-                    arrayOf(musicDir.absolutePath),
-                    null
-                ) { _, _ -> }
-            }
-        } catch (e: Exception) {
-            // 忽略扫描失败
-        }
     }
 }

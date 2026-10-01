@@ -36,7 +36,8 @@ import androidx.core.graphics.scale
 @Singleton
 class ArtistImageRepository @Inject constructor(
     private val deezerApiService: DeezerApiService,
-    private val musicDao: MusicDao
+    private val musicDao: MusicDao,
+    private val apiProviderPreferences: com.theveloper.pixelplay.data.preferences.ApiProviderPreferences
 ) {
     companion object {
         private const val TAG = "ArtistImageRepository"
@@ -176,6 +177,9 @@ class ArtistImageRepository @Inject constructor(
         artistId: Long,
         normalizedName: String
     ): String? {
+        // ⚡ Deezer 为海外服务，用户可在「设置 → API 管理」中关闭艺术家图片在线补全
+        if (!apiProviderPreferences.current().deezerArtistEnabled) return null
+
         // Prevent duplicate fetches for the same artist
         fetchMutex.withLock {
             if (pendingFetches.contains(normalizedName)) {

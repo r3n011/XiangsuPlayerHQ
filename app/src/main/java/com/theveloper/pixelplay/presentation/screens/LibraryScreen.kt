@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -106,10 +107,17 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -902,13 +910,98 @@ fun LibraryScreen(
 
     val headerContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
 
+    // ⚡ 滚动压缩顶栏：上滑时把大标题行压缩归零（保留页签行 = 压缩成一行），下滑恢复
+    val libraryDensity = LocalDensity.current
+    val headerCollapseThresholdPx = with(libraryDensity) { 12.dp.toPx() }
+    var libraryHeaderCollapsed by remember { mutableStateOf(false) }
+    var libraryHeaderAccum by remember { mutableStateOf(0f) }
+    val libraryChromeConnection = remember(headerCollapseThresholdPx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                val dy = available.y
+                if (dy == 0f) return Offset.Zero
+                if (libraryHeaderAccum != 0f && (dy > 0f) != (libraryHeaderAccum > 0f)) {
+                    libraryHeaderAccum = 0f
+                }
+                libraryHeaderAccum += dy
+                if (libraryHeaderAccum <= -headerCollapseThresholdPx) {
+                    libraryHeaderCollapsed = true
+                    libraryHeaderAccum = 0f
+                } else if (libraryHeaderAccum >= headerCollapseThresholdPx) {
+                    libraryHeaderCollapsed = false
+                    libraryHeaderAccum = 0f
+                }
+                // 只观察不消费，列表滚动不受影响
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // 下滑方向仍有未被消费的位移 => 列表已到顶（含惯性滑到顶），自动展开顶栏
+                if (available.y > 0f && consumed.y == 0f && libraryHeaderCollapsed) {
+                    libraryHeaderCollapsed = false
+                    libraryHeaderAccum = 0f
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    // 手表传输进行中 / 紧凑导航模式下不压缩：
+    // - 手表传输：避免把进度按钮藏掉
+    // - 紧凑导航：页签行本就不显示，压缩会连唯一的导航胶囊一起藏掉
+    // ⚡ 这里刻意**不用 by 委托**读取：逐帧以委托读取会让整页每帧重组
+    //   （表现就是「媒体库上滑、顶栏收起时卡顿」）。高度改到布局阶段按 State 解析，
+    //   标题位移动画在下面的 graphicsLayer 里（绘制阶段）读取，全程零重组。
+    val headerCollapseProgressState = animateFloatAsState(
+        targetValue = if (libraryHeaderCollapsed && !isSendingToWatch && !isCompactNavigation) 1f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "LibraryHeaderCollapse"
+    )
+
     Scaffold(
-        modifier = Modifier.background(brush = gradientBrush),
+        modifier = Modifier
+            .background(brush = gradientBrush)
+            .nestedScroll(libraryChromeConnection),
         topBar = {
             Column(
-                modifier = Modifier.background(headerContainerColor)
+                // ⚡ 状态栏内边距提到最外层：TopAppBar 自带的状态栏 inset 会把它自己的高度顶到
+                //    「状态栏 + 64dp」，而下面的压缩容器写死 64dp 会把它压扁 —— 标题因此被裁掉
+                //    上半截、页签行也被顶到状态栏底下。这里改由外层统一让出状态栏，
+                //    标题行才是干净的 64dp；收起后页签行正好上移到状态栏正下方。
+                modifier = Modifier
+                    .background(headerContainerColor)
+                    .statusBarsPadding()
             ) {
+                // 压缩容器：高度随滚动折叠为 0（裁剪住 TopAppBar），页签行不受影响
+                // ⚡ 折叠高度在「布局阶段」按动画 State 解析：读 State 只触发重布局，
+                //   不会像组合阶段读取那样每帧重组整页；标题的位移/淡出走下面的 graphicsLayer。
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .layout { measurable, constraints ->
+                            val progress = headerCollapseProgressState.value.coerceIn(0f, 1f)
+                            val targetHeightPx = with(libraryDensity) { (64.dp * (1f - progress)).roundToPx() }
+                                .coerceIn(0, constraints.maxHeight)
+                            val placeable = measurable.measure(
+                                constraints.copy(minHeight = targetHeightPx, maxHeight = targetHeightPx)
+                            )
+                            layout(constraints.maxWidth, targetHeightPx) {
+                                placeable.placeRelative(0, 0)
+                            }
+                        }
+                        .clipToBounds()
+                ) {
                 TopAppBar(
+                    modifier = Modifier.graphicsLayer {
+                        val progress = headerCollapseProgressState.value
+                        translationY = -24.dp.toPx() * progress
+                        alpha = (1f - progress * 3f).coerceIn(0f, 1f)
+                    },
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                     title = {
                         if (isCompactNavigation) {
                             LibraryNavigationPill(
@@ -978,6 +1071,7 @@ fun LibraryScreen(
                         scrolledContainerColor = Color.Transparent
                     )
                 )
+                }
                 if (!isCompactNavigation) {
                     val showTabIndicator = false
                     PrimaryScrollableTabRow(
@@ -1427,7 +1521,12 @@ fun LibraryScreen(
                                 onDirectionToggle = { option ->
                                     onSortOptionChanged(option)
                                 },
-                                showViewToggle = isFoldersTab || isPlaylistsTab,
+                                showViewToggle = if (isPlaylistsTab) {
+                                    // lite（no-telegram）构建：隐藏 Telegram 云歌单视图开关
+                                    com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED
+                                } else {
+                                    isFoldersTab
+                                },
                                 viewSectionTitle = if (isPlaylistsTab) {
                                     stringResource(R.string.presentation_batch_d_view_section_cloud)
                                 } else {

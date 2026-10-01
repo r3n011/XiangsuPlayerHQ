@@ -6,6 +6,7 @@ import com.theveloper.pixelplay.data.github.GitHubRelease
 import com.theveloper.pixelplay.data.lx.LxFileStore
 import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.lx.LxScriptInfo
+import com.theveloper.pixelplay.data.lx.LxSourceTester
 import com.theveloper.pixelplay.data.sourcemarket.MarketJsEntry
 import com.theveloper.pixelplay.data.sourcemarket.SourceMarketRepository
 import com.theveloper.pixelplay.data.sourcemarket.ZipDownloadState
@@ -36,6 +37,14 @@ sealed interface ReleaseState {
     data class Error(val message: String) : ReleaseState
 }
 
+/** 音源连通性测试列表中的一行 */
+data class SourceRowUi(
+    val key: String,
+    val displayName: String,
+    val jsDriven: Boolean,
+    val result: LxSourceTester.Result? = null
+)
+
 data class SourceMarketUiState(
     val releases: List<GitHubRelease> = emptyList(),
     val loadingReleases: Boolean = false,
@@ -44,21 +53,84 @@ data class SourceMarketUiState(
     val releaseStates: Map<String, ReleaseState> = emptyMap(),
     val installingEntry: String? = null,   // 正在安装的条目文件名
     val installError: String? = null,
-    val installSuccess: String? = null
+    val installSuccess: String? = null,
+    // ── 音源连通性测试 ──
+    val sources: List<SourceRowUi> = emptyList(),
+    val testingSources: Set<String> = emptySet()
 )
 
 @HiltViewModel
 class SourceMarketViewModel @Inject constructor(
     private val repo: SourceMarketRepository,
     private val fileStore: LxFileStore,
-    private val engine: LxJsEngine
+    private val engine: LxJsEngine,
+    private val sourceTester: LxSourceTester
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SourceMarketUiState())
     val uiState: StateFlow<SourceMarketUiState> = _uiState.asStateFlow()
 
     init {
+        refreshSources()
         loadReleases()
+    }
+
+    // ─── 音源连通性测试 ─────────────────────────────────────────────
+
+    /** 刷新可选音源列表（保留上一次的测试结果） */
+    fun refreshSources() {
+        viewModelScope.launch {
+            val options = runCatching { sourceTester.availableSources() }.getOrDefault(emptyList())
+            _uiState.update { current ->
+                val previous = current.sources.associateBy { it.key }
+                current.copy(
+                    sources = options.map { option ->
+                        SourceRowUi(
+                            key = option.key,
+                            displayName = option.displayName,
+                            jsDriven = option.jsDriven,
+                            result = previous[option.key]?.result
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    fun testSource(key: String) {
+        if (key in _uiState.value.testingSources) return
+        _uiState.update { it.copy(testingSources = it.testingSources + key) }
+        viewModelScope.launch {
+            val result = runCatching { sourceTester.test(key) }.getOrNull()
+            _uiState.update { current ->
+                current.copy(
+                    testingSources = current.testingSources - key,
+                    sources = current.sources.map { row ->
+                        if (row.key == key && result != null) row.copy(result = result) else row
+                    }
+                )
+            }
+        }
+    }
+
+    /** 依次测试全部音源（串行，避免同时打爆各平台接口） */
+    fun testAllSources() {
+        if (_uiState.value.testingSources.isNotEmpty()) return
+        viewModelScope.launch {
+            val keys = _uiState.value.sources.map { it.key }
+            keys.forEach { key ->
+                _uiState.update { it.copy(testingSources = it.testingSources + key) }
+                val result = runCatching { sourceTester.test(key) }.getOrNull()
+                _uiState.update { current ->
+                    current.copy(
+                        testingSources = current.testingSources - key,
+                        sources = current.sources.map { row ->
+                            if (row.key == key && result != null) row.copy(result = result) else row
+                        }
+                    )
+                }
+            }
+        }
     }
 
     fun loadReleases() {
@@ -164,6 +236,8 @@ class SourceMarketViewModel @Inject constructor(
             } catch (t: Throwable) {
                 Timber.w(t, "SourceMarket: reload engine failed")
             }
+            // 刷新音源列表（新安装的脚本可能引入新音源）
+            refreshSources()
             // 刷新已安装状态
             val currentState = _uiState.value
             val updatedEntries = (currentState.releaseStates[tag] as? ReleaseState.Inspected)

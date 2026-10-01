@@ -37,6 +37,8 @@ class BuiltInSourceSearchApi @Inject constructor(
 
         // ─── 酷我 ───
         private const val KW_SEARCH_URL = "http://search.kuwo.cn/r.s"
+        /** findKwRid 置信校验：候选与目标时长的最大偏差（秒） */
+        private const val KW_DURATION_TOLERANCE_SEC = 3L
 
         // ─── 酷狗 ───
         private const val KG_SEARCH_URL = "https://songsearch.kugou.com/song_search_v2"
@@ -348,9 +350,18 @@ class BuiltInSourceSearchApi @Inject constructor(
                     return@withContext official
                 }
             }
-            // 酷我官方直链兜底：kw 直接用 rid；tx/mg 先按 "歌名 歌手" 搜一首
-            val rid = song.id.takeIf { source == "kw" && it.matches(Regex("\\d+")) }
-                ?: findKwRid(song.name, song.singer)
+            // ⚡ 只有酷我自己的歌才走酷我直链。
+            //    此前 tx / mg（以及 kg 官方链失败时）会用「歌名 + 歌手」去酷我搜一首再取酷我直链兜底，
+            //    而非会员账号拿到的是**带「酷我音乐已为您开启免费听歌权限」语音的试听流**——
+            //    表现就是"QQ 音源放出来全是酷我免费试听"。跨平台替换本身还会播错歌（翻唱/Live）。
+            //    因此这里不再跨平台兜底：解析不出来就返回 null，由上层继续尝试其它音源或如实报失败。
+            if (source != "kw") {
+                Timber.d("$TAG: skip cross-platform kw fallback source=$source song='${song.name}'")
+                return@withContext null
+            }
+
+            val rid = song.id.takeIf { it.matches(Regex("\\d+")) }
+                ?: findKwRid(song.name, song.singer, song.duration)
             if (rid.isNullOrBlank()) {
                 Timber.d("$TAG: no kw rid for source=$source song='${song.name}'")
                 return@withContext null
@@ -392,17 +403,63 @@ class BuiltInSourceSearchApi @Inject constructor(
         return root.optJSONObject("data")?.optString("url", "")?.takeIf { it.startsWith("http") }
     }
 
-    /** 用 "歌名 歌手" 在酷我搜索，返回最匹配一首的 rid（tx/mg 等无匿名直链音源的兜底） */
-    private suspend fun findKwRid(name: String, singer: String): String? {
+    /**
+     * 用 "歌名 歌手" 在酷我搜索兜底（tx/mg 等无匿名官方直链音源）。
+     *
+     * ⚡ 此前直接取搜索第一条，翻唱/Live/同名歌会被误播（表现为"解析出不对的内容"，
+     *   搜索页保存的歌单播放时尤其明显）。现对候选结果做置信校验：
+     * - 目标时长已知：候选时长必须与目标接近（±3s），且歌手信息可用时必须有重叠；
+     * - 目标时长未知：必须歌手重叠；
+     * - 校验不过返回 null（上层跳过该兜底），宁可解析失败也不播错歌。
+     *
+     * @param targetDurationSec 目标时长（秒）。历史调用方单位不统一（部分传毫秒），
+     *   超过 10000 按毫秒处理。
+     */
+    private suspend fun findKwRid(name: String, singer: String, targetDurationSec: Long = 0L): String? {
         val primary = "$name $singer".trim()
-        val r = runCatching { searchKw(primary, 1, 5) }.getOrNull()
-        r?.list?.firstOrNull()?.id?.takeIf { it.isNotBlank() }?.let { return it }
-        if (primary != name.trim()) {
-            return runCatching { searchKw(name.trim(), 1, 5) }.getOrNull()
-                ?.list?.firstOrNull()?.id?.takeIf { it.isNotBlank() }
+        var candidates = runCatching { searchKw(primary, 1, 5).list }.getOrNull().orEmpty()
+        if (candidates.isEmpty() && primary != name.trim()) {
+            candidates = runCatching { searchKw(name.trim(), 1, 5).list }.getOrNull().orEmpty()
         }
-        return null
+        if (candidates.isEmpty()) return null
+
+        val normalizedTargetSec = if (targetDurationSec > 10_000L) targetDurationSec / 1000L else targetDurationSec
+
+        val trusted = candidates.firstOrNull { candidate ->
+            if (candidate.id.isBlank()) return@firstOrNull false
+            val durationOk = normalizedTargetSec > 0L && candidate.duration > 0L &&
+                kotlin.math.abs(candidate.duration - normalizedTargetSec) <= KW_DURATION_TOLERANCE_SEC
+            val artistOk = artistsOverlap(singer, candidate.singer)
+            when {
+                // 时长已知：时长接近，且双方歌手信息可用时必须重叠
+                normalizedTargetSec > 0L -> durationOk &&
+                    (artistOk || singer.isBlank() || candidate.singer.isBlank())
+                // 时长未知：只能依赖歌手重叠做校验，否则直接拒绝
+                else -> artistOk
+            }
+        }
+        if (trusted == null) {
+            Timber.d("$TAG: findKwRid no trusted match for '$name' (targetSec=$normalizedTargetSec)")
+            return null
+        }
+        return trusted.id
     }
+
+    /** 歌手串是否指向同一组人：按常见分隔符拆分后做去空格包含匹配 */
+    private fun artistsOverlap(a: String, b: String): Boolean {
+        val aTokens = splitArtistNames(a)
+        val bTokens = splitArtistNames(b)
+        if (aTokens.isEmpty() || bTokens.isEmpty()) return false
+        val compactB = b.replace(" ", "").lowercase()
+        val compactA = a.replace(" ", "").lowercase()
+        return aTokens.any { compactB.contains(it.lowercase()) } ||
+            bTokens.any { compactA.contains(it.lowercase()) }
+    }
+
+    private fun splitArtistNames(raw: String): List<String> =
+        raw.split("/", "、", ",", "，", ";", "；", "&", " feat.", " ft.")
+            .map { it.replace(" ", "").trim() }
+            .filter { it.length >= 2 }
 
     /** 校验直链真的可播（Range: bytes=0-1，接受 2xx/206），避免把 410 等失效链接交给 ExoPlayer */
     private suspend fun isPlayable(url: String): Boolean = withContext(Dispatchers.IO) {

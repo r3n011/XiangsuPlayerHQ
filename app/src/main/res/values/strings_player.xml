@@ -28,6 +28,7 @@
     <string name="cast_bluetooth_audio">Bluetooth audio</string>
     <string name="cast_local_playback">Local playback</string>
     <string name="cast_playing">Playing</string>
+    <string name="player_roaming_mode_title">Roaming Mode</string>
     <string name="cast_paused">Paused</string>
     <string name="cast_volume_device">Device volume</string>
     <string name="cast_volume_phone">Phone volume</string>
@@ -195,4 +196,15 @@
     <string name="lyrics_artist_album_line">%1$s • %2$s</string>
     <string name="lyrics_provided_by">Lyrics provided by</string>
     <string name="lyrics_lrclib_uri">https://lrclib.net/</string>
+    <string name="player_share_format_pixel">Pixel Player style</string>
+    <string name="player_share_format_pixel_desc">Title, artist, share link and app signature</string>
+    <string name="player_share_format_netease">NetEase style</string>
+    <string name="player_share_format_netease_desc">Song name with NetEase Cloud Music link</string>
+    <string name="player_share_format_file">Share audio file</string>
+    <string name="player_share_format_file_desc">Send the local audio file itself</string>
+    <string name="player_share_file_unavailable">Couldn\'t read this file, share failed</string>
+    <string name="player_share_via_app">— Shared from Pixel Player</string>
+    <string name="player_more_view_artist">View artist</string>
+    <string name="player_more_view_album">View album</string>
+    <string name="player_hifi_suspended_by_speed">Hi-Fi paused while playback speed is not 1.0x</string>
 </resources>

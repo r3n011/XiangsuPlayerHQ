@@ -83,6 +83,7 @@ import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetModa
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetOverlayState
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetThemeState
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetVisualState
+import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
@@ -119,7 +120,9 @@ fun UnifiedPlayerSheetV2(
     navRailPadding: Dp = 0.dp,
     isLandscape: Boolean = false,
     isFloatingBottomBar: Boolean = false,
-    onFloatingBottomBarCollapse: () -> Unit = {}
+    onFloatingBottomBarCollapse: () -> Unit = {},
+    /** 滚动隐藏时迷你条的下移量（px），仅折叠态生效 */
+    miniPlayerScrollShiftPxProvider: () -> Float = { 0f }
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -236,6 +239,9 @@ fun UnifiedPlayerSheetV2(
     val prewarmFullPlayer = rememberPrewarmFullPlayer(infrequentPlayerState.currentSong?.id)
 
     val playerConfig by playerViewModel.playerConfigSlice.collectAsStateWithLifecycle()
+    // ⚡ 迷你条圆角使用自有偏好，不再复用导航栏圆角（此前联动会导致调导航栏圆角时迷你条跟着变）
+    val miniPlayerCornerRadius by playerViewModel.miniPlayerCornerRadius.collectAsStateWithLifecycle()
+    val miniPlayerCornerRadiusDp = miniPlayerCornerRadius.coerceIn(0, 32).dp
     val navBarCornerRadius = sanitizeNavBarCornerRadius(playerConfig.navBarCornerRadius)
     val navBarStyle = playerConfig.navBarStyle
     val carouselStyle = playerConfig.carouselStyle
@@ -390,6 +396,21 @@ fun UnifiedPlayerSheetV2(
         animatePlayerSheet(targetExpanded = targetExpanded && showPlayerContentArea)
     }
 
+    // ⚡ 仅"宽屏 + 横屏"时限制折叠态迷你条的最大宽度（对齐 Rhythm），避免被拉成一条横跨全屏的长带；
+    //    多余空间留在左侧（即 NavigationRail 一侧），所以是右对齐。
+    //    ⚠️ 竖屏（含平板竖屏）不做限制：竖屏下迷你条本来就该铺满整条宽度。
+    val isTabletWidth = with(density) { screenWidthPx.toDp() } >= 600.dp
+    val limitCollapsedWidth = isTabletWidth && isLandscape
+    val collapsedMaxWidthPx = remember(limitCollapsedWidth, density) {
+        if (limitCollapsedWidth) with(density) { 520.dp.toPx() } else 0f
+    }
+    val collapsedAlignEnd = limitCollapsedWidth
+
+    // ⚡ 全胶囊样式：折叠态圆角取迷你条高度的一半（展开时插值回方角）
+    val miniPlayerStyleForShape by playerViewModel.miniPlayerStyle.collectAsStateWithLifecycle()
+    val collapsedCapsule = miniPlayerStyleForShape ==
+        com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.EXPRESSIVE.name
+
     val sheetVisualState = rememberSheetVisualState(
         showPlayerContentArea = showPlayerContentArea,
         collapsedStateHorizontalPadding = collapsedStateHorizontalPadding,
@@ -401,18 +422,24 @@ fun UnifiedPlayerSheetV2(
         currentSheetTranslationY = currentSheetTranslationY,
         sheetCollapsedTargetY = sheetCollapsedTargetY,
         navBarStyle = navBarStyle,
-        navBarCornerRadiusDp = navBarCornerRadius.dp,
+        navBarCornerRadiusDp = miniPlayerCornerRadiusDp,
         isNavBarHidden = isNavBarHidden,
         isPlaying = infrequentPlayerState.isPlaying,
         hasCurrentSong = infrequentPlayerState.currentSong != null,
         swipeDismissProgress = swipeDismissProgress,
         navRailPadding = navRailPadding,
-        isLandscape = isLandscape
+        isLandscape = isLandscape,
+        containerWidthPx = screenWidthPx,
+        collapsedMaxWidthPx = collapsedMaxWidthPx,
+        collapsedAlignEnd = collapsedAlignEnd,
+        collapsedCapsule = collapsedCapsule,
+        miniPlayerScrollShiftPxProvider = miniPlayerScrollShiftPxProvider
     )
     val currentBottomPadding = sheetVisualState.currentBottomPadding
     val baseBottomPadding = sheetVisualState.baseBottomPadding
     val playerContentAreaHeightPxProvider = sheetVisualState.playerContentAreaHeightPxProvider
     val visualSheetTranslationYProvider = sheetVisualState.visualSheetTranslationYProvider
+    val sheetExtraShiftPxProvider = sheetVisualState.sheetExtraShiftPxProvider
     val overallSheetTopCornerRadiusProvider = sheetVisualState.overallSheetTopCornerRadiusProvider
     val playerContentActualBottomRadiusProvider = sheetVisualState.playerContentActualBottomRadiusProvider
     val currentHorizontalPaddingStartPxProvider = sheetVisualState.currentHorizontalPaddingStartPxProvider
@@ -649,6 +676,11 @@ fun UnifiedPlayerSheetV2(
                 layout(constraints.maxWidth, constraints.maxHeight) {
                     placeable.placeRelative(0, translationY)
                 }
+            }
+            // ⚡ 滚动隐藏底栏时的额外下移只在绘制阶段叠加（不参与测量/布局），
+            //   否则底栏收起动画期间整个播放器面板会逐帧重新布局 → 媒体库上滑卡顿。
+            .graphicsLayer {
+                translationY = sheetExtraShiftPxProvider()
             },
         shadowElevation = 0.dp,
         color = Color.Transparent
@@ -798,7 +830,15 @@ fun UnifiedPlayerSheetV2(
                             onQueueDragStart = sheetActionHandlers.beginQueueDrag,
                             onQueueDrag = sheetActionHandlers.dragQueueBy,
                             onQueueRelease = sheetActionHandlers.endQueueDrag,
-                            onShowCastClicked = castSheetState.openCastSheet
+                            onShowCastClicked = castSheetState.openCastSheet,
+                            // ⚡ 右下角省略号：复用已有的「队列 + 歌曲信息」宿主
+                            //   （selectedSongForInfo 一旦非空，宿主就会渲染 SongInfoBottomSheet，
+                            //    其编辑/分享/收藏/加入歌单等回调早已接好，无需重复接线）
+                            onShowSongInfo = {
+                                infrequentPlayerState.currentSong?.let { song ->
+                                    sheetActionHandlers.onSelectedSongForInfoChange(song)
+                                }
+                            },
                         )
                     }
                 }

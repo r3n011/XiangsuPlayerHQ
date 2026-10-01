@@ -312,9 +312,33 @@ fun QueueBottomSheet(
         if (currentSongIndex < 0) -1 else currentSongIndex - queueIndexOffset
     }
 
+    // ⚡ 切歌时 currentSongDisplayIndex 会作为「新的捕获值」进入 items lambda，导致整列表可见项重组。
+    //   改用稳定身份的 State 持有该值，item 内以 derivedStateOf 惰性读取，只有状态真正翻转的行重组。
+    val currentSongDisplayIndexState = rememberUpdatedState(currentSongDisplayIndex)
+
     val listState = rememberLazyListState()
     val queueCoroutineScope = rememberCoroutineScope()
     val displaySongCount = displaySongs.size
+
+    // ⚡ 动画规格 remember 化：避免 items lambda 每次重组都新建 spring/tween 对象。
+    val queueDragPlacementSpec = remember {
+        spring<IntOffset>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    }
+    val queueItemFadeInSpec = remember { tween<Float>(durationMillis = 140) }
+    val queueItemFadeOutSpec = remember { tween<Float>(durationMillis = 120) }
+    val queueItemPlacementSpec = remember { tween<IntOffset>(durationMillis = 180) }
+    val queueItemScaleSpec = remember {
+        spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    }
+
+    // ⚡ 列表尾部 padding 依赖 canScrollForward/Backward：这两个属性由滚动位置状态派生，
+    //   在组合期直接读取会导致滚动过程中整表重组；用 derivedStateOf 收敛为「仅首尾翻转时」重组。
+    val showScrollbar = LocalShowScrollbar.current
+    val queueListEndPadding by remember(showScrollbar) {
+        derivedStateOf {
+            if (showScrollbar && (listState.canScrollForward || listState.canScrollBackward)) 26.dp else 0.dp
+        }
+    }
 
     // Local order used only while previewing a drag reorder.
     var reorderPreviewOrder by remember { mutableStateOf<List<Int>?>(null) }
@@ -834,7 +858,7 @@ fun QueueBottomSheet(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(
                                 start = 0.dp,
-                                end = if (LocalShowScrollbar.current && (listState.canScrollForward || listState.canScrollBackward)) 26.dp else 0.dp,
+                                end = queueListEndPadding,
                                 bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 32.dp
                             )
                         ) {
@@ -851,31 +875,31 @@ fun QueueBottomSheet(
                                 if (queueIndex !in activeSongSource.indices) return@items
                                 val itemStableKey = activeKeyAt(index)
                                 val song = activeSongSource[queueIndex]
-                                val canReorder = index > currentSongDisplayIndex
+                                // ⚡ 惰性派生：只有「本行是否当前曲 / 是否可拖拽」真正翻转时才重组本行，
+                                //   避免切歌时全部可见项一起重组。
+                                val isCurrentSong by remember(index) {
+                                    derivedStateOf { index == currentSongDisplayIndexState.value }
+                                }
+                                val canReorder by remember(index) {
+                                    derivedStateOf { index > currentSongDisplayIndexState.value }
+                                }
                                 ReorderableItem(
                                     state = reorderableState,
                                     key = itemStableKey,
                                     enabled = canReorder,
                                     animateItemModifier = when {
-                                        isReordering || reorderHandleInUse || reorderPreviewOrder != null -> Modifier.animateItem(
-                                            placementSpec = spring(
-                                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
-                                        )
+                                        isReordering || reorderHandleInUse || reorderPreviewOrder != null ->
+                                            Modifier.animateItem(placementSpec = queueDragPlacementSpec)
                                         else -> Modifier.animateItem(
-                                            fadeInSpec = tween(durationMillis = 140),
-                                            fadeOutSpec = tween(durationMillis = 120),
-                                            placementSpec = tween(durationMillis = 180)
+                                            fadeInSpec = queueItemFadeInSpec,
+                                            fadeOutSpec = queueItemFadeOutSpec,
+                                            placementSpec = queueItemPlacementSpec
                                         )
                                     }
                                 ) { isDragging ->
                                     val scale by animateFloatAsState(
                                         targetValue = if (isDragging) 1.015f else 1f,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        ),
+                                        animationSpec = queueItemScaleSpec,
                                         label = "scaleAnimation"
                                     )
 
@@ -889,7 +913,7 @@ fun QueueBottomSheet(
                                             },
                                         onClick = { onPlaySong(song, queueIndex) },
                                         song = song,
-                                        isCurrentSong = index == currentSongDisplayIndex,
+                                        isCurrentSong = isCurrentSong,
                                         isPlaying = isPlaying && isVisible,
                                         isDragging = isDragging,
                                         onRemoveClick = { onRemoveSong(song.id) },

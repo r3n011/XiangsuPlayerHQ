@@ -4,7 +4,16 @@ import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.components.BackupModuleSelectionDialog
 import com.theveloper.pixelplay.presentation.components.TranscodeCacheListDialog
 import com.theveloper.pixelplay.utils.TranscodeCacheManager
+import com.theveloper.pixelplay.utils.KuromojiEngine
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.preferences.dataStore
+import com.theveloper.pixelplay.data.preferences.STARTUP_ANIMATION_STYLE_PREF_KEY
+import com.theveloper.pixelplay.data.preferences.StartupAnimationStyle
+import com.theveloper.pixelplay.data.preferences.MiniPlayerStyle
+import com.theveloper.pixelplay.data.preferences.MINI_PLAYER_STYLE_PREF_KEY
+import com.theveloper.pixelplay.data.preferences.MINI_PLAYER_CORNER_RADIUS_PREF_KEY
+import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.flow.map
 import com.theveloper.pixelplay.data.ai.provider.AiProvider
 import java.util.Locale
 import java.util.Date
@@ -94,8 +103,12 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -105,6 +118,7 @@ import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.TabletAndroid
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Restore
@@ -113,6 +127,8 @@ import androidx.compose.material.icons.rounded.SpaceBar
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Animation
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.VolumeDown
@@ -160,6 +176,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -214,6 +231,7 @@ import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
+import com.theveloper.pixelplay.data.preferences.NavRailStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
@@ -221,13 +239,18 @@ import com.theveloper.pixelplay.data.preferences.PlayerStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import com.theveloper.pixelplay.presentation.viewmodel.ApiSettingsViewModel
 import com.theveloper.pixelplay.data.ai.GeminiModel
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.CustomPlayerBackground
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.FileExplorerDialog
 import com.theveloper.pixelplay.presentation.components.GlyphMatrixPreview
+import com.theveloper.pixelplay.presentation.components.LyricsSourceOrderSheet
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
@@ -248,6 +271,7 @@ fun SettingsCategoryScreen(
     playerViewModel: PlayerViewModel,
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     statsViewModel: com.theveloper.pixelplay.presentation.viewmodel.StatsViewModel = hiltViewModel(),
+    highlightSetting: String? = null,
     onBackClick: () -> Unit,
     showBackButton: Boolean = true
 ) {
@@ -284,6 +308,8 @@ fun SettingsCategoryScreen(
     val syncProgress by settingsViewModel.syncProgress.collectAsStateWithLifecycle()
     val dataTransferProgress by settingsViewModel.dataTransferProgress.collectAsStateWithLifecycle()
     val paletteRegenerateTargets by playerViewModel.paletteRegenerationTargets.collectAsStateWithLifecycle()
+    val scrollHideChrome by playerViewModel.scrollHideChrome.collectAsStateWithLifecycle()
+    val navRailStyle by playerViewModel.navRailStyle.collectAsStateWithLifecycle()
     val explorerRoot = settingsViewModel.explorerRoot()
 
     // Local State
@@ -1070,10 +1096,281 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Outlined.ClearAll, null, tint = MaterialTheme.colorScheme.secondary) },
                                     onClick = { showClearLyricsDialog = true }
                                 )
+                                // 日语注音引擎（kuromoji 按需下载）：实时显示安装/下载状态，点按立即下载或重试
+                                val kuromojiEngineState by KuromojiEngine.state.collectAsStateWithLifecycle()
+                                // 进页面时对已存在的 jar 做一次完整性自检（只查不下载）
+                                LaunchedEffect(Unit) { KuromojiEngine.verifyInstalledAsync() }
+                                SettingsItem(
+                                    title = stringResource(R.string.kuromoji_engine_title),
+                                    subtitle = when (val engineState = kuromojiEngineState) {
+                                        KuromojiEngine.EngineState.Ready ->
+                                            stringResource(R.string.kuromoji_engine_subtitle_installed)
+                                        is KuromojiEngine.EngineState.Downloading ->
+                                            if (engineState.progressPercent >= 0) {
+                                                stringResource(R.string.kuromoji_engine_subtitle_downloading, engineState.progressPercent)
+                                            } else {
+                                                stringResource(R.string.kuromoji_engine_subtitle_downloading_unknown)
+                                            }
+                                        is KuromojiEngine.EngineState.Failed ->
+                                            stringResource(R.string.kuromoji_engine_subtitle_failed)
+                                        KuromojiEngine.EngineState.NotInstalled ->
+                                            stringResource(R.string.kuromoji_engine_subtitle_missing)
+                                    },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_lyrics_24), null, tint = MaterialTheme.colorScheme.secondary) },
+                                    onClick = {
+                                        if (kuromojiEngineState == KuromojiEngine.EngineState.Ready) {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.kuromoji_engine_toast_already_installed),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        // 统一入口：内部优先复用已校验通过的 jar，损坏/加载失败才重新下载
+                                        KuromojiEngine.requestDownloadNow()
+                                    }
+                                )
+                            }
+                        }
+                        SettingsCategory.API_MANAGEMENT -> {
+                            val apiSettingsViewModel: ApiSettingsViewModel = hiltViewModel()
+                            val apiState by apiSettingsViewModel.uiState.collectAsStateWithLifecycle()
+                            var showLyricsOrderSheet by remember { mutableStateOf(false) }
+
+                            // ⚡ 歌词来源顺序：与「首页卡片顺序」同款的拖拽排序弹窗
+                            if (showLyricsOrderSheet) {
+                                LyricsSourceOrderSheet(
+                                    order = apiState.lyricsSourceOrder,
+                                    onSave = { apiSettingsViewModel.setLyricsSourceOrder(it) },
+                                    onReset = { apiSettingsViewModel.resetLyricsSourceOrder() },
+                                    onDismiss = { showLyricsOrderSheet = false }
+                                )
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_api_lyrics_online_title)) {
+                                // ⚡ 歌词来源优先级：点开与「首页卡片顺序」同款的拖拽排序弹窗
+                                val orderShape = AbsoluteSmoothCornerShape(20.dp, 60)
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(orderShape)
+                                        .clickable { showLyricsOrderSheet = true },
+                                    shape = orderShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painterResource(R.drawable.rounded_lyrics_24),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stringResource(R.string.setcat_api_lyrics_priority_label),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontFamily = GoogleSansRounded
+                                            )
+                                            Text(
+                                                text = apiState.lyricsSourceOrder.joinToString(" › ") { it.displayName },
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Spacer(Modifier.width(10.dp))
+                                        // ⚡ 视觉可点提示：整卡虽可点击，但没有任何 affordance，
+                                        //   用户会以为"这里不能点"。补一个胶囊按钮 + 箭头。
+                                        Surface(
+                                            shape = RoundedCornerShape(50),
+                                            color = MaterialTheme.colorScheme.secondaryContainer
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = stringResource(R.string.setcat_api_lyrics_priority_action),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontFamily = GoogleSansRounded,
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                )
+                                                Icon(
+                                                    Icons.Rounded.ChevronRight,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_api_lyrics_netease_title),
+                                    subtitle = stringResource(R.string.setcat_api_lyrics_netease_subtitle),
+                                    checked = apiState.neteaseLyricsEnabled,
+                                    onCheckedChange = { apiSettingsViewModel.setNeteaseLyricsEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_api_lyrics_amll_title),
+                                    subtitle = stringResource(R.string.setcat_api_lyrics_amll_subtitle),
+                                    checked = apiState.amllLyricsEnabled,
+                                    onCheckedChange = { apiSettingsViewModel.setAmllLyricsEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_api_lyrics_builtin_title),
+                                    subtitle = stringResource(R.string.setcat_api_lyrics_builtin_subtitle),
+                                    checked = apiState.builtInLyricsEnabled,
+                                    onCheckedChange = { apiSettingsViewModel.setBuiltInLyricsEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_api_lyrics_bilibili_title),
+                                    subtitle = stringResource(R.string.setcat_api_lyrics_bilibili_subtitle),
+                                    checked = apiState.bilibiliLyricsEnabled,
+                                    onCheckedChange = { apiSettingsViewModel.setBilibiliLyricsEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_api_lyrics_lrclib_title),
+                                    subtitle = stringResource(R.string.setcat_api_lyrics_lrclib_subtitle),
+                                    checked = apiState.lrclibLyricsEnabled,
+                                    onCheckedChange = { apiSettingsViewModel.setLrclibLyricsEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                            }
+
+                            SettingsSubsection(
+                                title = stringResource(R.string.setcat_api_metadata_title),
+                                addBottomSpace = false
+                            ) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_api_metadata_musicbrainz_title),
+                                    subtitle = stringResource(R.string.setcat_api_metadata_musicbrainz_subtitle),
+                                    checked = apiState.musicBrainzEnabled,
+                                    onCheckedChange = { apiSettingsViewModel.setMusicBrainzEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_api_metadata_deezer_title),
+                                    subtitle = stringResource(R.string.setcat_api_metadata_deezer_subtitle),
+                                    checked = apiState.deezerArtistEnabled,
+                                    onCheckedChange = { apiSettingsViewModel.setDeezerArtistEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                Text(
+                                    text = stringResource(R.string.setcat_api_note),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
+                                )
                             }
                         }
                         SettingsCategory.APPEARANCE -> {
                             val useSmoothCorners by settingsViewModel.useSmoothCorners.collectAsStateWithLifecycle()
+
+                            // ⚡ 启动动画样式：浮出（原版 XiangsuPlayer）/ 缩放（Rhythm）/ 关闭
+                            val startupScope = rememberCoroutineScope()
+                            val startupStyle by remember {
+                                context.dataStore.data.map { prefs ->
+                                    StartupAnimationStyle.fromName(prefs[STARTUP_ANIMATION_STYLE_PREF_KEY])
+                                }
+                            }.collectAsStateWithLifecycle(initialValue = StartupAnimationStyle.EMERGE)
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_appearance_startup_section)) {
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_startup_animation_label),
+                                    description = stringResource(R.string.setcat_startup_animation_desc),
+                                    options = mapOf(
+                                        StartupAnimationStyle.EMERGE.name to stringResource(R.string.setcat_startup_style_emerge),
+                                        StartupAnimationStyle.SCALE.name to stringResource(R.string.setcat_startup_style_scale),
+                                        StartupAnimationStyle.NONE.name to stringResource(R.string.setcat_startup_style_none)
+                                    ),
+                                    selectedKey = startupStyle.name,
+                                    onSelectionChanged = { key ->
+                                        val style = StartupAnimationStyle.fromName(key)
+                                        startupScope.launch {
+                                            context.dataStore.edit { prefs ->
+                                                prefs[STARTUP_ANIMATION_STYLE_PREF_KEY] = style.name
+                                            }
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.PlayArrow,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                )
+                            }
+
+                            // ⚡ 迷你播放条样式（经典 / Rhythm）
+                            val miniPlayerStyle by remember {
+                                context.dataStore.data.map { prefs ->
+                                    MiniPlayerStyle.fromName(prefs[MINI_PLAYER_STYLE_PREF_KEY])
+                                }
+                            }.collectAsStateWithLifecycle(initialValue = MiniPlayerStyle.CLASSIC)
+
+                            SettingsSubsection(title = stringResource(R.string.setcat_appearance_miniplayer_section)) {
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_miniplayer_style_label),
+                                    description = stringResource(R.string.setcat_miniplayer_style_desc),
+                                    options = mapOf(
+                                        MiniPlayerStyle.CLASSIC.name to stringResource(R.string.setcat_miniplayer_style_classic),
+                                        MiniPlayerStyle.MATERIAL.name to stringResource(R.string.setcat_miniplayer_style_material),
+                                        MiniPlayerStyle.EXPRESSIVE.name to stringResource(R.string.setcat_miniplayer_style_expressive)
+                                    ),
+                                    selectedKey = miniPlayerStyle.name,
+                                    onSelectionChanged = { key ->
+                                        val style = MiniPlayerStyle.fromName(key)
+                                        startupScope.launch {
+                                            context.dataStore.edit { prefs ->
+                                                prefs[MINI_PLAYER_STYLE_PREF_KEY] = style.name
+                                            }
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.MusicNote,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                )
+
+                                // ⚡ 迷你条圆角：独立设置，不再跟随导航栏圆角
+                                val miniRadius by remember {
+                                    context.dataStore.data.map { prefs ->
+                                        prefs[MINI_PLAYER_CORNER_RADIUS_PREF_KEY] ?: 28
+                                    }
+                                }.collectAsStateWithLifecycle(initialValue = 28)
+                                var miniRadiusDraft by remember(miniRadius) {
+                                    mutableStateOf(miniRadius.toFloat())
+                                }
+                                SliderSettingsItem(
+                                    label = stringResource(R.string.setcat_miniplayer_corner_radius),
+                                    value = miniRadiusDraft,
+                                    valueRange = 0f..32f,
+                                    steps = 30,
+                                    onValueChange = { miniRadiusDraft = it },
+                                    onValueChangeFinished = {
+                                        val radiusDp = miniRadiusDraft.roundToInt()
+                                        startupScope.launch {
+                                            context.dataStore.edit { prefs ->
+                                                prefs[MINI_PLAYER_CORNER_RADIUS_PREF_KEY] = radiusDp
+                                            }
+                                        }
+                                    },
+                                    valueText = { value -> "${value.roundToInt()} dp" }
+                                )
+                            }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_global_theme)) {
                                 ThemeSelectorItem(
@@ -1627,6 +1924,214 @@ fun SettingsCategoryScreen(
                                 }
                             }
 
+                            // ⚡ 软件缩放：始终显示，不跟车机模式绑定。
+                            //   缩放的是本 App 的排版尺寸（Compose Density），不写系统 DPI、不影响其它应用。
+                            SettingsSubsection(title = stringResource(R.string.setcat_ui_scale_section)) {
+                                var uiScaleDraft by remember {
+                                    mutableStateOf(uiState.uiScale.toFloat())
+                                }
+                                LaunchedEffect(uiState.uiScale) {
+                                    uiScaleDraft = uiState.uiScale.toFloat()
+                                }
+                                SliderSettingsItem(
+                                    label = stringResource(R.string.setcat_ui_scale_title),
+                                    value = uiScaleDraft,
+                                    valueRange = UserPreferencesRepository.UI_SCALE_MIN.toFloat()..
+                                        UserPreferencesRepository.UI_SCALE_MAX.toFloat(),
+                                    // 70~150、步长 10 → 端点之间还有 7 个离散值
+                                    steps = (UserPreferencesRepository.UI_SCALE_MAX -
+                                        UserPreferencesRepository.UI_SCALE_MIN) / 10 - 1,
+                                    onValueChange = { uiScaleDraft = it },
+                                    onValueChangeFinished = {
+                                        settingsViewModel.setUiScale(uiScaleDraft.roundToInt())
+                                    },
+                                    valueText = { "${it.roundToInt()}%" }
+                                )
+                            }
+
+                            // ⚡ 悬浮歌词（桌面歌词）：系统级悬浮窗，必须先拿到「显示在其他应用上层」权限。
+                            //   启动系统授权页后不依赖 ActivityResult（部分 ROM 不回传结果），
+                            //   改为在页面回到前台时复查权限，拿到才真正打开开关。
+                            val floatingLyricsContext = LocalContext.current
+                            var awaitingOverlayPermission by remember { mutableStateOf(false) }
+                            LifecycleResumeEffect(Unit) {
+                                if (awaitingOverlayPermission) {
+                                    awaitingOverlayPermission = false
+                                    if (Settings.canDrawOverlays(floatingLyricsContext)) {
+                                        settingsViewModel.setFloatingLyricsEnabled(true)
+                                    }
+                                }
+                                onPauseOrDispose { }
+                            }
+                            SettingsSubsection(title = stringResource(R.string.setcat_floating_lyrics_section)) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_floating_lyrics_title),
+                                    subtitle = stringResource(R.string.setcat_floating_lyrics_subtitle),
+                                    checked = uiState.floatingLyricsEnabled,
+                                    onCheckedChange = { checked ->
+                                        when {
+                                            !checked -> settingsViewModel.setFloatingLyricsEnabled(false)
+                                            Settings.canDrawOverlays(floatingLyricsContext) ->
+                                                settingsViewModel.setFloatingLyricsEnabled(true)
+                                            else -> {
+                                                awaitingOverlayPermission = true
+                                                runCatching {
+                                                    floatingLyricsContext.startActivity(
+                                                        Intent(
+                                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                            Uri.parse("package:${floatingLyricsContext.packageName}")
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.Subtitles,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                )
+
+                                if (uiState.floatingLyricsEnabled) {
+                                    // 使用说明：手势不看说明基本发现不了，直接在设置里写清楚
+                                    Text(
+                                        text = stringResource(R.string.setcat_floating_lyrics_usage),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            start = 16.dp,
+                                            end = 16.dp,
+                                            top = 4.dp,
+                                            bottom = 4.dp
+                                        )
+                                    )
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.setcat_floating_lyrics_lines_title),
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        ExpressiveButtonGroup(
+                                            items = listOf(
+                                                stringResource(R.string.setcat_floating_lyrics_lines_single),
+                                                stringResource(R.string.setcat_floating_lyrics_lines_double),
+                                                stringResource(R.string.setcat_floating_lyrics_lines_multi)
+                                            ),
+                                            selectedIndex = when (uiState.floatingLyricsLineMode) {
+                                                UserPreferencesRepository.FLOATING_LYRICS_LINE_MODE_SINGLE -> 0
+                                                UserPreferencesRepository.FLOATING_LYRICS_LINE_MODE_MULTI -> 2
+                                                else -> 1
+                                            },
+                                            onItemClick = { index ->
+                                                settingsViewModel.setFloatingLyricsLineMode(
+                                                    when (index) {
+                                                        0 -> UserPreferencesRepository.FLOATING_LYRICS_LINE_MODE_SINGLE
+                                                        2 -> UserPreferencesRepository.FLOATING_LYRICS_LINE_MODE_MULTI
+                                                        else -> UserPreferencesRepository.FLOATING_LYRICS_LINE_MODE_DOUBLE
+                                                    }
+                                                )
+                                            }
+                                        )
+                                    }
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_floating_lyrics_lock_title),
+                                        subtitle = stringResource(R.string.setcat_floating_lyrics_lock_subtitle),
+                                        checked = uiState.floatingLyricsLocked,
+                                        onCheckedChange = { settingsViewModel.setFloatingLyricsLocked(it) },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Rounded.Lock,
+                                                null,
+                                                tint = MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
+                                    )
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_floating_lyrics_edge_snap_title),
+                                        subtitle = stringResource(R.string.setcat_floating_lyrics_edge_snap_subtitle),
+                                        checked = uiState.floatingLyricsEdgeSnap,
+                                        onCheckedChange = { settingsViewModel.setFloatingLyricsEdgeSnap(it) },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Rounded.UnfoldMore,
+                                                null,
+                                                tint = MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
+                                    )
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_floating_lyrics_animation_title),
+                                        subtitle = stringResource(R.string.setcat_floating_lyrics_animation_subtitle),
+                                        checked = uiState.floatingLyricsAnimations,
+                                        onCheckedChange = { settingsViewModel.setFloatingLyricsAnimations(it) },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Rounded.Animation,
+                                                null,
+                                                tint = MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
+                                    )
+
+                                    // 整体大小：字号、间距、控制条按钮、贴边箭头一起缩放
+                                    var floatingScaleDraft by remember {
+                                        mutableStateOf(uiState.floatingLyricsScale.toFloat())
+                                    }
+                                    LaunchedEffect(uiState.floatingLyricsScale) {
+                                        floatingScaleDraft = uiState.floatingLyricsScale.toFloat()
+                                    }
+                                    SliderSettingsItem(
+                                        label = stringResource(R.string.setcat_floating_lyrics_scale_title),
+                                        value = floatingScaleDraft,
+                                        valueRange = UserPreferencesRepository.FLOATING_LYRICS_SCALE_MIN.toFloat()..
+                                            UserPreferencesRepository.FLOATING_LYRICS_SCALE_MAX.toFloat(),
+                                        // 80~140、步长 10 → 端点之间还有 5 个离散值
+                                        steps = (UserPreferencesRepository.FLOATING_LYRICS_SCALE_MAX -
+                                            UserPreferencesRepository.FLOATING_LYRICS_SCALE_MIN) / 10 - 1,
+                                        // 拖动过程中就生效：悬浮窗会实时跟着变大变小，
+                                        // 否则松手才看到效果，等于闭着眼调。滑块是离散档位，写入次数很有限。
+                                        onValueChange = {
+                                            floatingScaleDraft = it
+                                            settingsViewModel.setFloatingLyricsScale(it.roundToInt())
+                                        },
+                                        valueText = { "${it.roundToInt()}%" }
+                                    )
+
+                                    // 背景不透明度：0 = 完全透明，只留文字
+                                    var floatingAlphaDraft by remember {
+                                        mutableStateOf(
+                                            uiState.floatingLyricsBackgroundAlpha.toFloat()
+                                        )
+                                    }
+                                    LaunchedEffect(uiState.floatingLyricsBackgroundAlpha) {
+                                        floatingAlphaDraft =
+                                            uiState.floatingLyricsBackgroundAlpha.toFloat()
+                                    }
+                                    SliderSettingsItem(
+                                        label = stringResource(R.string.setcat_floating_lyrics_bg_alpha_title),
+                                        value = floatingAlphaDraft,
+                                        valueRange = 0f..100f,
+                                        // 0~100、步长 10 → 9 个中间点
+                                        steps = 9,
+                                        // 同样拖动中实时生效，方便边调边看
+                                        onValueChange = {
+                                            floatingAlphaDraft = it
+                                            settingsViewModel.setFloatingLyricsBackgroundAlpha(
+                                                it.roundToInt()
+                                            )
+                                        },
+                                        valueText = { "${it.roundToInt()}%" }
+                                    )
+                                }
+                            }
+
                             SettingsSubsection(title = stringResource(R.string.setcat_navigation_bar)) {
                                 ThemeSelectorItem(
                                     label = stringResource(R.string.setcat_navbar_style_label),
@@ -1639,6 +2144,17 @@ fun SettingsCategoryScreen(
                                     selectedKey = uiState.navBarStyle,
                                     onSelectionChanged = { settingsViewModel.setNavBarStyle(it) },
                                     leadingIcon = { Icon(Icons.Outlined.Style, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_navrail_style_label),
+                                    description = stringResource(R.string.setcat_navrail_style_desc),
+                                    options = mapOf(
+                                        NavRailStyle.FLOATING to stringResource(R.string.setcat_navrail_style_floating),
+                                        NavRailStyle.DOCKED to stringResource(R.string.setcat_navrail_style_docked)
+                                    ),
+                                    selectedKey = navRailStyle,
+                                    onSelectionChanged = { playerViewModel.setNavRailStyle(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_view_week_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_compact_mode_title),
@@ -1666,6 +2182,19 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_rounded_corner_24), null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely("nav_bar_corner_radius") }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_scroll_hide_chrome_title),
+                                    subtitle = stringResource(R.string.setcat_scroll_hide_chrome_subtitle),
+                                    checked = scrollHideChrome,
+                                    onCheckedChange = { playerViewModel.setScrollHideChrome(it) },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.VisibilityOff,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
                                 )
                             }
 
@@ -2314,6 +2843,77 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Outlined.Info, null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely("about") }
+                                )
+                            }
+                        }
+                        SettingsCategory.UPDATES -> {
+                            val autoCheckEnabled by settingsViewModel.autoUpdateCheckEnabledFlow
+                                .collectAsStateWithLifecycle(initialValue = true)
+                            val updateFrequency by settingsViewModel.updateCheckFrequencyFlow
+                                .collectAsStateWithLifecycle(initialValue = "daily")
+                            val backgroundDownload by settingsViewModel.backgroundUpdateDownloadFlow
+                                .collectAsStateWithLifecycle(initialValue = true)
+                            val wifiChargingOnly by settingsViewModel.updateWifiChargingOnlyFlow
+                                .collectAsStateWithLifecycle(initialValue = true)
+
+                            // 搜索定位高亮：标题完全匹配才闪烁
+                            val hlAutoCheck = highlightSetting == stringResource(R.string.setcat_updates_auto_check_title)
+                            val hlFrequency = highlightSetting == stringResource(R.string.setcat_updates_frequency_title)
+                            val hlBgDownload = highlightSetting == stringResource(R.string.setcat_updates_bg_download_title)
+                            val hlWifiCharging = highlightSetting == stringResource(R.string.setcat_updates_wifi_charging_title)
+
+                            SettingsSubsection(
+                                title = stringResource(R.string.setcat_updates_auto_title),
+                                addBottomSpace = false
+                            ) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_updates_auto_check_title),
+                                    subtitle = stringResource(R.string.setcat_updates_auto_check_subtitle),
+                                    checked = autoCheckEnabled,
+                                    onCheckedChange = { coroutineScope.launch { settingsViewModel.setAutoUpdateCheckEnabled(it) } },
+                                    leadingIcon = { Icon(Icons.Rounded.SystemUpdate, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    highlight = hlAutoCheck
+                                )
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_updates_frequency_title),
+                                    subtitle = stringResource(
+                                        if (updateFrequency == "weekly") {
+                                            R.string.setcat_updates_frequency_weekly
+                                        } else {
+                                            R.string.setcat_updates_frequency_daily
+                                        }
+                                    ),
+                                    leadingIcon = { Icon(Icons.Rounded.Timer, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            settingsViewModel.setUpdateCheckFrequency(
+                                                if (updateFrequency == "weekly") "daily" else "weekly"
+                                            )
+                                        }
+                                    },
+                                    highlight = hlFrequency
+                                )
+                            }
+                            SettingsSubsection(
+                                title = stringResource(R.string.setcat_updates_download_title),
+                                addBottomSpace = true
+                            ) {
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_updates_bg_download_title),
+                                    subtitle = stringResource(R.string.setcat_updates_bg_download_subtitle),
+                                    checked = backgroundDownload,
+                                    onCheckedChange = { coroutineScope.launch { settingsViewModel.setBackgroundUpdateDownload(it) } },
+                                    leadingIcon = { Icon(Icons.Rounded.Download, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    highlight = hlBgDownload
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_updates_wifi_charging_title),
+                                    subtitle = stringResource(R.string.setcat_updates_wifi_charging_subtitle),
+                                    checked = wifiChargingOnly,
+                                    onCheckedChange = { coroutineScope.launch { settingsViewModel.setUpdateWifiChargingOnly(it) } },
+                                    leadingIcon = { Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    highlight = hlWifiCharging
                                 )
                             }
                         }

@@ -14,13 +14,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,6 +61,8 @@ import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistContainer
 import com.theveloper.pixelplay.presentation.components.albumFastScrollLabel
 import com.theveloper.pixelplay.presentation.components.artistFastScrollLabel
+import com.theveloper.pixelplay.presentation.components.library.rememberLibraryCoverGridColumns
+import com.theveloper.pixelplay.presentation.components.library.rememberLibraryListGridCells
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistUiState
@@ -103,8 +101,8 @@ fun LibraryAlbumsTab(
     }.collectAsStateWithLifecycle(initialValue = false)
 
     val gridState = rememberLazyGridState()
-    val listState = rememberLazyListState()
-    val dummyListState = rememberLazyListState()
+    val listState = rememberLazyGridState()
+    val dummyListState = rememberLazyGridState()
     val dummyGridState = rememberLazyGridState()
     val context = LocalContext.current
     val imageLoader = context.imageLoader
@@ -265,7 +263,7 @@ fun LibraryAlbumsTab(
 
         shouldShowInitialLoading -> {
             if (isListView) {
-                LazyColumn(
+                LazyVerticalGrid(
                     modifier = Modifier
                         .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
                         .clip(
@@ -277,8 +275,10 @@ fun LibraryAlbumsTab(
                             )
                         )
                         .fillMaxSize(),
+                    columns = rememberLibraryListGridCells(),
                     contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(8, key = { "skeleton_album_list_$it" }) {
                         AlbumListItem(
@@ -302,7 +302,7 @@ fun LibraryAlbumsTab(
                             )
                         )
                         .fillMaxSize(),
-                    columns = GridCells.Fixed(2),
+                    columns = rememberLibraryCoverGridColumns(),
                     contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -346,7 +346,7 @@ fun LibraryAlbumsTab(
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (isListView) {
                             val activeListState = if (albums.itemCount > 0) listState else dummyListState
-                            LazyColumn(
+                            LazyVerticalGrid(
                                 modifier = Modifier
                                     .padding(start = 14.dp, end = if (LocalShowScrollbar.current && (activeListState.canScrollForward || activeListState.canScrollBackward)) 24.dp else 14.dp, bottom = 6.dp)
                                     .clip(
@@ -358,8 +358,10 @@ fun LibraryAlbumsTab(
                                         )
                                     ),
                                 state = activeListState,
+                                columns = rememberLibraryListGridCells(),
                                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(
                                     count = albums.itemCount,
@@ -409,7 +411,7 @@ fun LibraryAlbumsTab(
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
                                     .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                                listState = activeListState,
+                                gridState = activeListState,
                                 dragLabelProvider = albumFastScrollLabelProvider
                             )
                         } else {
@@ -426,7 +428,7 @@ fun LibraryAlbumsTab(
                                         )
                                     ),
                                 state = activeGridState,
-                                columns = GridCells.Fixed(2),
+                                columns = rememberLibraryCoverGridColumns(),
                                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -511,8 +513,8 @@ fun LibraryArtistsTab(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
 
-    val listState = rememberLazyListState()
-    val dummyListState = rememberLazyListState()
+    val listState = rememberLazyGridState()
+    val dummyListState = rememberLazyGridState()
     val artistFastScrollLabelProvider = remember(artists, currentArtistSortOption) {
         { index: Int ->
             artistFastScrollLabel(
@@ -590,7 +592,7 @@ fun LibraryArtistsTab(
         }
 
         shouldShowInitialLoading -> {
-            LazyColumn(
+            LazyVerticalGrid(
                 modifier = Modifier
                     .padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
                     .clip(
@@ -602,7 +604,9 @@ fun LibraryArtistsTab(
                         )
                     )
                     .fillMaxSize(),
+                columns = rememberLibraryListGridCells(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
             ) {
                 item(key = "skeleton_top_spacer") { Spacer(Modifier.height(4.dp)) }
@@ -644,7 +648,7 @@ fun LibraryArtistsTab(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         val activeListState = if (artists.itemCount > 0) listState else dummyListState
-                        LazyColumn(
+                        LazyVerticalGrid(
                             modifier = Modifier
                                 .padding(start = 12.dp, end = if (LocalShowScrollbar.current && (activeListState.canScrollForward || activeListState.canScrollBackward)) 22.dp else 12.dp, bottom = 6.dp)
                                 .clip(
@@ -656,7 +660,9 @@ fun LibraryArtistsTab(
                                     )
                                 ),
                             state = activeListState,
+                            columns = rememberLibraryListGridCells(),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
                         ) {
                             items(
@@ -689,7 +695,7 @@ fun LibraryArtistsTab(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                            listState = activeListState,
+                            gridState = activeListState,
                             dragLabelProvider = artistFastScrollLabelProvider
                         )
                     }
@@ -752,7 +758,7 @@ private fun LibraryAlbumsTabCustomOrderContent(
     storageFilter: StorageFilter
 ) {
     val gridState = rememberLazyGridState()
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
     val hasCurrentSong by remember(playerViewModel) {
         playerViewModel.stablePlayerState
             .map { it.currentSong != null && it.currentSong != Song.emptySong() }
@@ -785,7 +791,7 @@ private fun LibraryAlbumsTabCustomOrderContent(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (isListView) {
-                            LazyColumn(
+                            LazyVerticalGrid(
                                 modifier = Modifier
                                     .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
                                     .clip(
@@ -798,8 +804,10 @@ private fun LibraryAlbumsTabCustomOrderContent(
                                     )
                                     .fillMaxSize(),
                                 state = listState,
+                                columns = rememberLibraryListGridCells(),
                                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(albums, key = { it.id }, contentType = { "album_list_item" }) { album ->
                                     val albumSpecificColorSchemeFlow =
@@ -839,7 +847,7 @@ private fun LibraryAlbumsTabCustomOrderContent(
                                     )
                                     .fillMaxSize(),
                                 state = gridState,
-                                columns = GridCells.Fixed(2),
+                                columns = rememberLibraryCoverGridColumns(),
                                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -880,7 +888,7 @@ private fun LibraryAlbumsTabCustomOrderContent(
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
                                     .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                                listState = listState
+                                gridState = listState
                             )
                         } else {
                             ExpressiveScrollBar(
@@ -908,7 +916,7 @@ private fun LibraryArtistsTabCustomOrderContent(
     onRefresh: () -> Unit,
     storageFilter: StorageFilter
 ) {
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
     val hasCurrentSong by remember(playerViewModel) {
         playerViewModel.stablePlayerState
             .map { it.currentSong != null && it.currentSong != Song.emptySong() }
@@ -942,7 +950,7 @@ private fun LibraryArtistsTabCustomOrderContent(
                     }
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(
+                        LazyVerticalGrid(
                             modifier = Modifier
                                 .padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
                                 .clip(
@@ -955,7 +963,9 @@ private fun LibraryArtistsTabCustomOrderContent(
                                 )
                                 .fillMaxSize(),
                             state = listState,
+                            columns = rememberLibraryListGridCells(),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
                         ) {
                             items(artists, key = { it.id }, contentType = { "artist" }) { artist ->
@@ -975,7 +985,7 @@ private fun LibraryArtistsTabCustomOrderContent(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                            listState = listState
+                            gridState = listState
                         )
                     }
                 }

@@ -842,7 +842,11 @@ fun SearchScreen(
                                                     song = song,
                                                     onPlayQueue = { seeds, startIndex ->
                                                         val songs = seeds.mapNotNull {
-                                                            playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                            playerViewModel.buildCloudSong(
+                                                                it.url, it.title, it.artist, it.cover, it.songId,
+                                                                lxSource = it.source,
+                                                                platformSongId = it.platformSongId
+                                                            )
                                                         }
                                                         val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
                                                         if (start != null) {
@@ -853,7 +857,9 @@ fun SearchScreen(
                                                     onMoreSeeds = { moreSeeds ->
                                                         val moreSongs = moreSeeds.mapNotNull { seed ->
                                                             playerViewModel.buildCloudSong(
-                                                                seed.url, seed.title, seed.artist, seed.cover, seed.songId
+                                                                seed.url, seed.title, seed.artist, seed.cover, seed.songId,
+                                                                lxSource = seed.source,
+                                                                platformSongId = seed.platformSongId
                                                             )
                                                         }
                                                         playerViewModel.appendCloudSongsToQueue(moreSongs)
@@ -930,7 +936,11 @@ fun SearchScreen(
                                                     song = song,
                                                     onPlayQueue = { seeds, startIndex ->
                                                         val songs = seeds.mapNotNull {
-                                                            playerViewModel.buildCloudSong(it.url, it.title, it.artist, it.cover, it.songId)
+                                                            playerViewModel.buildCloudSong(
+                                                                it.url, it.title, it.artist, it.cover, it.songId,
+                                                                lxSource = it.source,
+                                                                platformSongId = it.platformSongId
+                                                            )
                                                         }
                                                         val start = songs.getOrNull(startIndex) ?: songs.firstOrNull()
                                                         if (start != null) {
@@ -941,7 +951,9 @@ fun SearchScreen(
                                                     onMoreSeeds = { moreSeeds ->
                                                         val moreSongs = moreSeeds.mapNotNull { seed ->
                                                             playerViewModel.buildCloudSong(
-                                                                seed.url, seed.title, seed.artist, seed.cover, seed.songId
+                                                                seed.url, seed.title, seed.artist, seed.cover, seed.songId,
+                                                                lxSource = seed.source,
+                                                                platformSongId = seed.platformSongId
                                                             )
                                                         }
                                                         playerViewModel.appendCloudSongsToQueue(moreSongs)

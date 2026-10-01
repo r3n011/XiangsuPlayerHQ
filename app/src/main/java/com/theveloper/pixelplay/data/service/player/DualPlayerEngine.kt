@@ -275,6 +275,18 @@ class DualPlayerEngine @Inject constructor(
     private var transitionJob: Job? = null
     private var bufferingFallbackJob: Job? = null
     private var transitionRunning = false
+    // ⚡ 过渡世代号：每次 performTransition 递增。被取消的旧过渡其 finally 会在取消
+    //    生效后（主线程下一轮调度）才执行，若不做世代校验会把新一轮过渡的
+    //    transitionRunning 错误清零、并误触发 onTransitionFinishedListeners，
+    //    导致后续 cancelNext 走"非过渡"分支打断新过渡 —— 表现成切歌来回跳。
+    private var transitionGeneration = 0
+    // ⚡ 过渡发起时主播放器正在播放的曲目 id：用于区分"队列记账类回调触发的
+    //    cancelNext"（不应打断交叉淡入）与"用户真的切歌"（应中断过渡）。
+    private var transitionSourceMediaId: String? = null
+    // ⚡ 过渡是否已完成主/备播放器对调（进入队列回填等收尾阶段）。此时过渡实际已结束，
+    //    cancelNext 必须放行，避免回填引发的 PLAYLIST_CHANGED 又把 master 音量强拉回 1f
+    //    造成音量尖峰。
+    private var transitionSwapped = false
     private var preResolutionJob: Job? = null
     private var queueSnapshot: List<MediaItem> = emptyList()
     private var activeWindowStartIndex = 0
@@ -1113,14 +1125,51 @@ class DualPlayerEngine @Inject constructor(
     var desiredPlaybackPitch: Float = 1f
         private set
 
+    /** 当前倍速是否为原速（≈1.0×）。 */
+    private val isPlaybackSpeedUnity: Boolean
+        get() = kotlin.math.abs(desiredPlaybackSpeed - 1f) < 0.01f
+
+    /**
+     * 实际是否启用 PCM_FLOAT 输出。
+     *
+     * ⚡ ExoPlayer 的浮点输出路径（DefaultAudioSink.setEnableFloatOutput(true)）不会应用
+     * PlaybackParameters（倍速 / 变调），因此开启 Hi-Fi 后倍速会完全失效。这里在倍速
+     * ≠ 1.0× 时自动临时关闭浮点输出（Hi-Fi 的其它处理链保留），回到原速时自动恢复。
+     */
+    private val effectiveFloatOutput: Boolean
+        get() = hiFiModeEnabled && isPlaybackSpeedUnity
+
+    /** Hi-Fi 是否因倍速被临时挂起（供 UI 给出"倍速下已暂停 Hi-Fi"的轻提示）。 */
+    @Volatile
+    var hiFiSuspendedBySpeed: Boolean = false
+        private set
+
+    /** 交叉淡入期间无法重建播放器（会拆掉过渡），把浮点输出切换推迟到过渡结束后。 */
+    private var pendingFloatOutputRebuild = false
+
     /** 设置倍速，立即应用到当前活跃播放器，并记住设置以便后续恢复 */
     fun setPlaybackSpeed(speed: Float, pitch: Float = 1f) {
         val clamped = speed.coerceIn(0.5f, 2f)
+        val floatOutputBefore = effectiveFloatOutput
         desiredPlaybackSpeed = clamped
         desiredPlaybackPitch = pitch.coerceIn(0.5f, 2f)
         val params = PlaybackParameters(clamped, desiredPlaybackPitch)
         if (::playerA.isInitialized) playerA.playbackParameters = params
         playerB?.playbackParameters = params
+
+        // ⚡ 浮点输出是建播放器时写死的开关，Hi-Fi 与变速互斥时只能重建播放器。
+        //    仅在"有效浮点输出"真正发生翻转时才重建（同区间内调倍速不重建）。
+        //    交叉淡入期间不能重建（会拆掉正在跑的过渡），推迟到过渡结束后补做。
+        if (hiFiModeEnabled && floatOutputBefore != effectiveFloatOutput) {
+            hiFiSuspendedBySpeed = !effectiveFloatOutput
+            if (transitionRunning) {
+                pendingFloatOutputRebuild = true
+            } else {
+                rebuildPlayersPreservingMasterState(
+                    "Hi-Fi float output ${if (effectiveFloatOutput) "resumed" else "suspended"} at speed $clamped"
+                )
+            }
+        }
     }
 
     // Whether the OS classifies this as a low-RAM device. Used to cap the player's max
@@ -1931,7 +1980,7 @@ class DualPlayerEngine @Inject constructor(
                 // EOS 永远不达，歌曲播完无法自动切歌（"回跳 3 秒反复 / 不自动下一首"）。
                 // USB 独占在 AudioProcessor 层镜像输出到 DAC，不受输出后端影响。
                 return DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(hiFiModeEnabled)
+                    .setEnableFloatOutput(effectiveFloatOutput)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
                     .setAudioProcessorChain(
                         DefaultAudioSink.DefaultAudioProcessorChain(
@@ -1980,7 +2029,7 @@ class DualPlayerEngine @Inject constructor(
             ) {
                 // Audio-only player: skip camera motion renderers.
             }
-        }.setEnableAudioFloatOutput(hiFiModeEnabled)
+        }.setEnableAudioFloatOutput(effectiveFloatOutput)
          .setMediaCodecSelector(mediaCodecSelector)
          .setEnableDecoderFallback(true)
          .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
@@ -2355,6 +2404,9 @@ class DualPlayerEngine @Inject constructor(
             return
         }
         hiFiModeEnabled = enabled
+        // ⚡ 开着倍速时打开 Hi-Fi：浮点输出会被临时挂起（见 effectiveFloatOutput），
+        //    这里同步标记，供 UI 提示"倍速下已暂停 Hi-Fi"。
+        hiFiSuspendedBySpeed = enabled && !isPlaybackSpeedUnity
         rebuildPlayersPreservingMasterState("Hi-Fi mode set to $enabled")
     }
 
@@ -2862,9 +2914,27 @@ class DualPlayerEngine @Inject constructor(
     }
 
     fun cancelNext() {
+        // ⚡ 交叉淡入进行中的打断规则：过渡一开始就已经把「对外发布的当前曲」切到将要进场的
+        //    playerB（见 performOverlapTransition 的 onTransitionDisplayPlayerListeners）。
+        //    过渡期间会有大量"队列记账类"回调（时间线变更 / 重复模式变更 / 调度重排）顺着
+        //    cancelNext 进来；此时 master 仍是出场曲，若直接取消过渡并把已发布的当前曲从
+        //    进场曲回退到出场曲，UI / 队列会先跳下一曲、再跳回上一曲，随后调度器看到
+        //    "接近曲尾"又重新触发一次 → 表现成"下一曲→上一曲→下一曲"来回跳。
+        //    因此只有"master 真的换歌了"（用户手动切歌 / 外部 seek / 播完兜底切歌）
+        //    才允许中断过渡，记账类回调一律放行，让交叉淡入自然走完。
+        if (transitionRunning) {
+            // 已进入 swap 收尾阶段：过渡实际已完成，收尾（备机清理 / 音量归一）由
+            // performOverlapTransition 自己完成。这里直接返回，避免把 master 音量强拉回 1f
+            // 造成音量尖峰，也避免重复向 MediaSession 发布同一个播放器实例。
+            if (transitionSwapped) return
+            val masterMediaId = if (::playerA.isInitialized) playerA.currentMediaItem?.mediaId else null
+            if (masterMediaId == null || masterMediaId == transitionSourceMediaId) return
+        }
         val shouldPublishMasterPlayer = transitionRunning
         transitionJob?.cancel()
         transitionRunning = false
+        transitionSourceMediaId = null
+        transitionSwapped = false
         resetPreparedWindowState()
         playerB?.takeIf { it.mediaItemCount > 0 }?.let { auxiliaryPlayer ->
             try {
@@ -2884,29 +2954,50 @@ class DualPlayerEngine @Inject constructor(
 
     fun performTransition(settings: TransitionSettings) {
         transitionJob?.cancel()
+        // ⚡ 世代校验：Job.cancel() 只是打标记，被取消的旧过渡要等主线程下一轮调度才执行
+        //    finally。若旧过渡的 finally 无条件把 transitionRunning 清零并触发
+        //    transitionFinished，就会污染刚开始的新过渡 —— 后续任何 cancelNext 都会误判
+        //    成"非过渡态"从而打断新过渡，表现成切歌时来回跳。用世代号让过期过渡的
+        //    catch / finally 整体失效。
+        val generation = ++transitionGeneration
         transitionRunning = true
+        transitionSwapped = false
+        transitionSourceMediaId =
+            if (::playerA.isInitialized) playerA.currentMediaItem?.mediaId else null
         transitionStartedAtMs = SystemClock.elapsedRealtime()
         transitionJob = scope.launch {
             try {
                 performOverlapTransition(settings)
             } catch (e: Exception) {
-                if (e !is kotlinx.coroutines.CancellationException) {
+                if (e !is kotlinx.coroutines.CancellationException && generation == transitionGeneration) {
                     Timber.tag("TransitionDebug").e(e, "Error performing transition")
+                    setPlayerVolume(playerA, 1f)
+                    setPauseAtEndOfMediaItems(false)
+                    playerB?.stop()
                 }
-                setPlayerVolume(playerA, 1f)
-                setPauseAtEndOfMediaItems(false)
-                playerB?.stop()
             } finally {
-                transitionRunning = false
-                lastTransitionFinishedAtMs = SystemClock.elapsedRealtime()
-                if (transitionStartedAtMs > 0L) {
-                    PerformanceMetrics.recordTiming(
-                        PerformanceMetrics.Timings.TRANSITION,
-                        SystemClock.elapsedRealtime() - transitionStartedAtMs
-                    )
-                    transitionStartedAtMs = 0L
+                if (generation == transitionGeneration) {
+                    transitionRunning = false
+                    transitionSourceMediaId = null
+                    transitionSwapped = false
+                    lastTransitionFinishedAtMs = SystemClock.elapsedRealtime()
+                    if (transitionStartedAtMs > 0L) {
+                        PerformanceMetrics.recordTiming(
+                            PerformanceMetrics.Timings.TRANSITION,
+                            SystemClock.elapsedRealtime() - transitionStartedAtMs
+                        )
+                        transitionStartedAtMs = 0L
+                    }
+                    // ⚡ 过渡期间被推迟的浮点输出切换（倍速与 Hi-Fi 互斥）在此补做，
+                    //    否则会永久停留在"浮点输出开着但倍速被忽略"的错误状态。
+                    if (pendingFloatOutputRebuild) {
+                        pendingFloatOutputRebuild = false
+                        rebuildPlayersPreservingMasterState(
+                            "Deferred Hi-Fi float output update (speed ${desiredPlaybackSpeed}x)"
+                        )
+                    }
+                    onTransitionFinishedListeners.forEach { it() }
                 }
-                onTransitionFinishedListeners.forEach { it() }
             }
         }
     }
@@ -2973,6 +3064,8 @@ class DualPlayerEngine @Inject constructor(
 
         playerA = incomingPlayer
         playerB = outgoingPlayer
+        // ⚡ 主/备已对调：过渡实质完成，标记进入收尾阶段，此后 cancelNext 不再打断/改音量。
+        transitionSwapped = true
         activeWindowStartIndex = preparedWindowStartIndex
         activePlayerUsesWindowedQueue = preparedPlayerUsesWindowedQueue
         resetPreparedWindowState()

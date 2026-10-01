@@ -50,6 +50,10 @@
     <string
         name="settings_category_glyph_matrix_subtitle"
     >Nothing 手机 LED 矩阵显示集成</string>
+    <string name="settings_category_updates_title">更新与下载</string>
+    <string
+        name="settings_category_updates_subtitle"
+    >自动检查频率、后台下载、WiFi+充电下载</string>
     <string name="settings_category_about_title">关于</string>
     <string
         name="settings_category_about_subtitle"
@@ -244,11 +248,17 @@
     <string name="setcat_navbar_style_default">默认</string>
     <string name="setcat_navbar_style_full_width">全宽</string>
     <string name="setcat_navbar_style_floating">悬浮底栏</string>
+    <string name="setcat_navrail_style_label">平板导航栏</string>
+    <string name="setcat_navrail_style_desc">选择横屏/平板左侧导航栏的外观。</string>
+    <string name="setcat_navrail_style_floating">悬浮</string>
+    <string name="setcat_navrail_style_docked">停靠</string>
     <string name="setcat_compact_mode_title">紧凑模式</string>
     <string
         name="setcat_compact_mode_subtitle"
     >仅显示图标并降低导航栏高度。</string>
     <string name="setcat_center_nav_title">中间按钮</string>
+    <string name="setcat_scroll_hide_chrome_title">滚动时隐藏</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">上滑时底部导航栏下移、迷你播放条跟随下移，下滑或回到顶部时恢复</string>
     <string name="setcat_center_nav_subtitle">选择底部导航栏中间按钮的功能。</string>
     <string name="setcat_center_nav_discover">发现</string>
     <string name="setcat_center_nav_roaming">漫游</string>
@@ -519,6 +529,17 @@
         name="setcat_trigger_crash_subtitle"
     >模拟一次崩溃，以测试崩溃报告系统。</string>
     <string name="setcat_application">应用</string>
+    <string name="setcat_updates_auto_title">自动更新</string>
+    <string name="setcat_updates_auto_check_title">自动检查更新</string>
+    <string name="setcat_updates_auto_check_subtitle">在后台检查是否有新版本</string>
+    <string name="setcat_updates_frequency_title">检查频率</string>
+    <string name="setcat_updates_frequency_daily">每天</string>
+    <string name="setcat_updates_frequency_weekly">每周</string>
+    <string name="setcat_updates_download_title">后台下载</string>
+    <string name="setcat_updates_bg_download_title">后台下载更新</string>
+    <string name="setcat_updates_bg_download_subtitle">自动下载新版本安装包</string>
+    <string name="setcat_updates_wifi_charging_title">仅 WiFi + 充电时</string>
+    <string name="setcat_updates_wifi_charging_subtitle">仅在 WiFi 且充电时下载</string>
     <string name="setcat_about_xiangsuplayer_title">关于 XiangsuPlayer</string>
     <string
         name="setcat_about_xiangsuplayer_subtitle"
@@ -721,6 +742,27 @@
     <!-- Car Mode -->
     <string name="setcat_car_mode_title">车机模式</string>
     <string name="setcat_car_mode_subtitle">为驾驶场景优化：更大的控件、减少动画、提升性能。</string>
+    <!-- 界面缩放（外观分类） -->
+    <string name="setcat_ui_scale_section">界面缩放</string>
+    <string name="setcat_ui_scale_title">软件缩放（仅本应用）</string>
+
+    <!-- 悬浮歌词（桌面歌词，外观分类） -->
+    <string name="setcat_floating_lyrics_section">悬浮歌词</string>
+    <string name="setcat_floating_lyrics_title">悬浮歌词（桌面歌词）</string>
+    <string name="setcat_floating_lyrics_subtitle">在其他应用上层显示歌词，需要「显示在其他应用上层」权限。</string>
+    <string name="setcat_floating_lyrics_usage">使用方法：拖动移动位置，点击展开上一句 / 播放暂停 / 下一句，长按锁定位置；把歌词推出屏幕左/右边缘松手，会收成一个小箭头，点箭头重新显示。悬浮窗只在有歌曲播放时出现。</string>
+    <string name="setcat_floating_lyrics_lines_title">显示行数</string>
+    <string name="setcat_floating_lyrics_lines_single">单行</string>
+    <string name="setcat_floating_lyrics_lines_double">当前 + 下一句</string>
+    <string name="setcat_floating_lyrics_lines_multi">三行</string>
+    <string name="setcat_floating_lyrics_lock_title">锁定位置</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">锁定后拖动不再移动悬浮窗（长按悬浮歌词可切换）。</string>
+    <string name="setcat_floating_lyrics_scale_title">整体大小</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">背景不透明度</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">拖到边缘自动收起</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">把歌词推出屏幕左侧或右侧边缘并松手，它会缩进屏幕外只留一个小箭头；点箭头即可重新显示。</string>
+    <string name="setcat_floating_lyrics_animation_title">过渡动画</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">展开控制条、调整大小时做平滑过渡；关闭则瞬间切换。</string>
     
     <!-- Download Settings -->
     <string name="setcat_download_settings">下载设置</string>
@@ -797,6 +839,7 @@
     <string name="settings_search_keyword_device">设备</string>
     <string name="settings_search_keyword_account">账号</string>
     <string name="settings_search_keyword_about">关于</string>
+    <string name="settings_search_keyword_update">更新</string>
     <string name="settings_search_keyword_online_source">在线音源</string>
     <string name="settings_search_keyword_color">色彩</string>
     <string name="settings_search_keyword_language">语言</string>
@@ -842,4 +885,54 @@
     <string name="settings_search_placeholder">搜索设置</string>
     <string name="settings_search_no_results">未找到相关设置</string>
     <string name="settings_search_results_count_format">%1$d 个结果</string>
+
+    <!-- API 管理 -->
+    <string name="settings_category_api_title">API 管理</string>
+    <string name="settings_category_api_subtitle">歌词与歌曲信息补全的网络接口开关</string>
+    <string name="setcat_api_lyrics_online_title">在线歌词来源</string>
+    <string name="setcat_api_lyrics_priority_label">在线歌词优先级</string>
+    <string name="setcat_api_lyrics_priority_action">调整</string>
+    <string name="setcat_api_lyrics_priority_desc">按从上到下的顺序依次尝试，可用箭头自由排序。</string>
+    <string name="setcat_api_priority_move_up">上移</string>
+    <string name="setcat_api_priority_move_down">下移</string>
+    <string name="setcat_api_priority_reset">恢复默认顺序</string>
+    <string name="setcat_api_priority_netease">网易云优先</string>
+    <string name="setcat_api_priority_builtin">内置源优先</string>
+    <string name="setcat_api_priority_lrclib">LRCLIB 优先</string>
+    <string name="setcat_api_lyrics_netease_title">网易云歌词</string>
+    <string name="setcat_api_lyrics_netease_subtitle">官方接口，国内可用；网易云与落雪歌曲的首选来源。</string>
+    <string name="setcat_api_lyrics_amll_title">AMLLDB 逐字歌词</string>
+    <string name="setcat_api_lyrics_amll_subtitle">仅网易云歌曲，可获取逐字（卡拉 OK）歌词。</string>
+    <string name="setcat_api_lyrics_builtin_title">内置源歌词</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ 音乐 / 酷狗 / 酷我 / 咪咕，用于内置音源歌曲。</string>
+    <string name="setcat_api_lyrics_bilibili_title">B 站字幕歌词</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">B 站视频歌曲使用视频字幕作为歌词。</string>
+    <string name="setcat_api_lyrics_lrclib_title">LRCLIB 歌词</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">海外服务，国内网络常常无法访问，可按需关闭。</string>
+    <string name="setcat_api_metadata_title">歌曲信息补全</string>
+    <string name="setcat_api_metadata_musicbrainz_title">MusicBrainz 元数据补全</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">补全标题 / 艺术家 / 专辑 / 流派与封面；海外服务，国内常不可用。</string>
+    <string name="setcat_api_metadata_deezer_title">Deezer 艺术家图片</string>
+    <string name="setcat_api_metadata_deezer_subtitle">在线搜索并缓存歌手头像；海外服务，国内常不可用。</string>
+    <string name="setcat_api_note">关闭不可用的接口可以加快歌词与封面加载，避免在超时上浪费时间；已有的本地缓存不受影响。</string>
+
+    <!-- 启动动画 -->
+    <string name="setcat_appearance_startup_section">启动动画</string>
+    <string name="setcat_startup_animation_label">进入动画样式</string>
+    <string name="setcat_startup_animation_desc">应用启动后进入主界面时的过渡效果。</string>
+    <string name="setcat_startup_style_emerge">浮出</string>
+    <string name="setcat_startup_style_scale">缩放</string>
+    <string name="setcat_startup_style_none">关闭</string>
+
+    <!-- 迷你播放条 -->
+    <string name="setcat_appearance_miniplayer_section">迷你播放条</string>
+    <string name="setcat_miniplayer_style_label">样式</string>
+    <string name="setcat_miniplayer_style_desc">底部迷你播放条的外观。Material = 圆角方形封面 + 上一曲/播放/下一曲的卡片样式；Expressive = 整条胶囊 + 不透明进度填充 + 方形封面 + 单个大播放键。</string>
+    <string name="setcat_miniplayer_style_classic">经典</string>
+    <string name="setcat_miniplayer_style_rhythm">Rhythm</string>
+    <string name="setcat_miniplayer_style_capsule">胶囊</string>
+    <!-- 迷你播放条样式（1:1 对齐 Rhythm 的两个样式） -->
+    <string name="setcat_miniplayer_style_material">Material</string>
+    <string name="setcat_miniplayer_style_expressive">Expressive</string>
+    <string name="setcat_miniplayer_corner_radius">迷你条圆角</string>
 </resources>

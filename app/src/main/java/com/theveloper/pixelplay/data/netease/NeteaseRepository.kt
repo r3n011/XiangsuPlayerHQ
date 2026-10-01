@@ -97,6 +97,10 @@ class NeteaseRepository @Inject constructor(
     // 媒体库自动同步互斥锁：防止快速进出媒体库时并发全量同步重复写库
     private val autoSyncMutex = Mutex()
 
+    /** 会话内缓存的网易云 userId（一起听同步用，见 getNeteaseUserId） */
+    @Volatile
+    private var cachedNeteaseUserId: Long? = null
+
     init {
         // Auto-load saved cookies on creation so API client is ready
         initFromSavedCookies()
@@ -547,6 +551,72 @@ class NeteaseRepository @Inject constructor(
     }
 
     fun getPlaylists(): Flow<List<NeteasePlaylistEntity>> = dao.getAllPlaylists()
+
+    // ─── Listen Together（一起听）辅助查询 ─────────────────────────────
+
+    /** 当前登录账号的网易云 userId（优先本地持久化值，缺失时在线获取并缓存） */
+    suspend fun getNeteaseUserId(): Long? {
+        prefs.getLong("netease_user_id", -1L).takeIf { it > 0L }?.let { return it }
+        cachedNeteaseUserId?.let { return it }
+        return withContext(Dispatchers.IO) {
+            runCatching { api.getCurrentUserId() }
+                .getOrNull()
+                ?.takeIf { it > 0L }
+                ?.also { cachedNeteaseUserId = it }
+        }
+    }
+
+    /** 取网易云歌单内已同步的歌曲（本地库优先，未同步时回退网络歌单详情） */
+    suspend fun getPlaylistSongsOnce(playlistId: Long): List<Song> {
+        val local = dao.getSongsByPlaylist(playlistId).first().map { it.toSong() }
+        if (local.isNotEmpty()) return local
+
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val map = net.moriafly.ncm.NcmApi.playlistDetail(playlistId.toString()).getOrThrow()
+                val root = JSONObject(map)
+                val playlist = root.optJSONObject("playlist")
+                var tracks = playlist?.optJSONArray("tracks")
+                if (tracks == null || tracks.length() == 0) {
+                    tracks = root.optJSONObject("_songs_detail")?.optJSONArray("songs")
+                }
+                if (tracks == null || tracks.length() == 0) {
+                    tracks = root.optJSONArray("songs")
+                }
+                buildList {
+                    for (i in 0 until (tracks?.length() ?: 0)) {
+                        val track = tracks?.optJSONObject(i) ?: continue
+                        if (track.optLong("id") > 0L) add(parseTrackToSong(track))
+                    }
+                }
+            }.getOrElse {
+                Timber.w(it, "getPlaylistSongsOnce failed for playlist $playlistId")
+                emptyList()
+            }
+        }
+    }
+
+    /** 按网易云歌曲 ID 批量取详情并映射为 Song（一起听远端队列回放用） */
+    suspend fun getNeteaseSongsByIds(ids: List<Long>): List<Song> {
+        if (ids.isEmpty()) return emptyList()
+        return withContext(Dispatchers.IO) {
+            val out = ArrayList<Song>(ids.size)
+            ids.distinct().chunked(100).forEach { batch ->
+                runCatching {
+                    val map = net.moriafly.ncm.NcmApi.songDetail(batch.map(Long::toString)).getOrThrow()
+                    val root = JSONObject(map)
+                    val songs = root.optJSONArray("songs") ?: return@runCatching
+                    for (i in 0 until songs.length()) {
+                        val track = songs.optJSONObject(i) ?: continue
+                        if (track.optLong("id") > 0L) out.add(parseTrackToSong(track))
+                    }
+                }.onFailure {
+                    Timber.w(it, "getNeteaseSongsByIds failed for ${batch.size} ids")
+                }
+            }
+            out
+        }
+    }
 
     fun getPlaylistSongs(playlistId: Long): Flow<List<Song>> {
         return dao.getSongsByPlaylist(playlistId).map { entities ->

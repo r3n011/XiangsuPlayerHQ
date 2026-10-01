@@ -21,6 +21,8 @@ fun SortOption.getDisplayNameResId(): Int {
         SortOption.SongAlbumDesc -> R.string.sort_option_album_desc
         SortOption.SongDateAdded -> R.string.sort_option_date_added
         SortOption.SongDateAddedAsc -> R.string.sort_option_date_added_oldest
+        SortOption.SongDateModified -> R.string.sort_option_date_modified
+        SortOption.SongDateModifiedAsc -> R.string.sort_option_date_modified_oldest
         SortOption.SongDuration -> R.string.sort_option_duration
         SortOption.SongDurationAsc -> R.string.sort_option_duration_shortest
         
@@ -85,6 +87,7 @@ fun SortOption.getMethodLabelResId(): Int {
         "song_artist", "album_artist", "liked_artist" -> R.string.sort_option_artist
         "song_album", "album_album", "liked_album" -> R.string.sort_option_album
         "song_date_added", "album_date_added" -> R.string.sort_option_date_added
+        "song_date_modified" -> R.string.sort_option_date_modified
         "song_duration" -> R.string.sort_option_duration
         "album_release_year" -> R.string.sort_option_release_year
         "album_size", "folder_song_count" -> R.string.sort_option_song_count

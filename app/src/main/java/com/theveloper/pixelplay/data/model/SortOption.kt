@@ -77,6 +77,20 @@ sealed class SortOption(
         methodKey = "song_date_added",
         direction = SortDirection.Ascending
     )
+    object SongDateModified : SortOption(
+        storageKey = "song_date_modified",
+        displayName = "Date Modified",
+        methodLabel = "Date Modified",
+        methodKey = "song_date_modified",
+        direction = SortDirection.Descending
+    )
+    object SongDateModifiedAsc : SortOption(
+        storageKey = "song_date_modified_asc",
+        displayName = "Date Modified (Oldest First)",
+        methodLabel = "Date Modified",
+        methodKey = "song_date_modified",
+        direction = SortDirection.Ascending
+    )
     object SongDuration : SortOption(
         storageKey = "song_duration",
         displayName = "Duration",
@@ -359,6 +373,8 @@ sealed class SortOption(
                 SongAlbumDesc,
                 SongDateAdded,
                 SongDateAddedAsc,
+                SongDateModified,
+                SongDateModifiedAsc,
                 SongDuration,
                 SongDurationAsc
             )

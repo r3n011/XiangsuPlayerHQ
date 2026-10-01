@@ -54,6 +54,10 @@
     <string
         name="settings_category_glyph_matrix_subtitle"
     >Nothing Phone LED matrix display integration</string>
+    <string name="settings_category_updates_title">Updates &amp; Downloads</string>
+    <string
+        name="settings_category_updates_subtitle"
+    >Auto-check frequency, background download, WiFi + charging</string>
     <string name="settings_category_about_title">About</string>
     <string
         name="settings_category_about_subtitle"
@@ -279,11 +283,19 @@
     <string name="setcat_navbar_style_default">Default</string>
     <string name="setcat_navbar_style_full_width">Full Width</string>
     <string name="setcat_navbar_style_floating">Floating</string>
+    <string name="setcat_navrail_style_label">Tablet navigation rail</string>
+    <string
+        name="setcat_navrail_style_desc"
+    >Choose the look of the left rail on tablets and in landscape.</string>
+    <string name="setcat_navrail_style_floating">Floating</string>
+    <string name="setcat_navrail_style_docked">Docked</string>
     <string name="setcat_compact_mode_title">Compact mode</string>
     <string
         name="setcat_compact_mode_subtitle"
     >Show only icons and reduce the navbar height.</string>
     <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_scroll_hide_chrome_title">Hide on scroll</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">Slide the navigation bar down and shift the mini player while scrolling up; they return when you scroll back</string>
     <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
     <string name="setcat_center_nav_discover">Discover</string>
     <string name="setcat_center_nav_roaming">Roaming</string>
@@ -619,6 +631,17 @@
         name="setcat_trigger_crash_subtitle"
     >Simulate a crash to test the crash reporting system.</string>
     <string name="setcat_application">Application</string>
+    <string name="setcat_updates_auto_title">Automatic Updates</string>
+    <string name="setcat_updates_auto_check_title">Auto-check for updates</string>
+    <string name="setcat_updates_auto_check_subtitle">Check for new versions in the background</string>
+    <string name="setcat_updates_frequency_title">Check frequency</string>
+    <string name="setcat_updates_frequency_daily">Daily</string>
+    <string name="setcat_updates_frequency_weekly">Weekly</string>
+    <string name="setcat_updates_download_title">Background Download</string>
+    <string name="setcat_updates_bg_download_title">Download updates in background</string>
+    <string name="setcat_updates_bg_download_subtitle">Automatically download new version APK</string>
+    <string name="setcat_updates_wifi_charging_title">WiFi + charging only</string>
+    <string name="setcat_updates_wifi_charging_subtitle">Only download while on WiFi and charging</string>
     <string name="setcat_about_xiangsuplayer_title">About XiangsuPlayer</string>
     <string
         name="setcat_about_xiangsuplayer_subtitle"
@@ -824,6 +847,27 @@
     <!-- Car Mode -->
     <string name="setcat_car_mode_title">Car Mode</string>
     <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <!-- Interface scale (Appearance category) -->
+    <string name="setcat_ui_scale_section">Interface Scale</string>
+    <string name="setcat_ui_scale_title">UI Scale (app only)</string>
+
+    <!-- Floating lyrics (desktop lyrics, Appearance category) -->
+    <string name="setcat_floating_lyrics_section">Floating Lyrics</string>
+    <string name="setcat_floating_lyrics_title">Floating Lyrics (desktop)</string>
+    <string name="setcat_floating_lyrics_subtitle">Show lyrics on top of other apps. Requires the "Display over other apps" permission.</string>
+    <string name="setcat_floating_lyrics_usage">How to use: drag to move, tap to show previous / play-pause / next, long-press to lock the position. Push the lyrics past the left or right edge to tuck them into a small arrow — tap the arrow to bring them back. The window only appears while a song is playing.</string>
+    <string name="setcat_floating_lyrics_lines_title">Lines shown</string>
+    <string name="setcat_floating_lyrics_lines_single">Single</string>
+    <string name="setcat_floating_lyrics_lines_double">Current + next</string>
+    <string name="setcat_floating_lyrics_lines_multi">Three lines</string>
+    <string name="setcat_floating_lyrics_lock_title">Lock position</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">When locked, dragging no longer moves the window (long-press the lyrics to toggle).</string>
+    <string name="setcat_floating_lyrics_scale_title">Overall size</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">Background opacity</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">Tuck away at screen edge</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">Push the lyrics past the left or right edge and let go — it tucks away leaving a small arrow. Tap the arrow to bring it back.</string>
+    <string name="setcat_floating_lyrics_animation_title">Transition animations</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">Animate expanding the controls and resizing; turn off to switch instantly.</string>
     
     <!-- Download Settings -->
     <string name="setcat_download_settings">Download Settings</string>
@@ -885,6 +929,7 @@
     <string name="settings_search_keyword_device">Device</string>
     <string name="settings_search_keyword_account">Account</string>
     <string name="settings_search_keyword_about">About</string>
+    <string name="settings_search_keyword_update">Update</string>
     <string name="settings_search_keyword_online_source">Online source</string>
     <string name="settings_search_keyword_color">Color</string>
     <string name="settings_search_keyword_language">Language</string>
@@ -938,4 +983,54 @@
     <string name="setcat_download_failed">Download failed</string>
     <string name="setcat_download_progress_format">%1$.0f%%</string>
     <string name="setcat_download_progress_title">Download progress</string>
+
+    <!-- API management -->
+    <string name="settings_category_api_title">API management</string>
+    <string name="settings_category_api_subtitle">Toggle the lyrics and metadata completion services</string>
+    <string name="setcat_api_lyrics_online_title">Online lyrics sources</string>
+    <string name="setcat_api_lyrics_priority_label">Online lyrics priority</string>
+    <string name="setcat_api_lyrics_priority_action">Adjust</string>
+    <string name="setcat_api_lyrics_priority_desc">Try sources from top to bottom; use the arrows to reorder.</string>
+    <string name="setcat_api_priority_move_up">Move up</string>
+    <string name="setcat_api_priority_move_down">Move down</string>
+    <string name="setcat_api_priority_reset">Reset order</string>
+    <string name="setcat_api_priority_netease">NetEase first</string>
+    <string name="setcat_api_priority_builtin">Built-in first</string>
+    <string name="setcat_api_priority_lrclib">LRCLIB first</string>
+    <string name="setcat_api_lyrics_netease_title">NetEase lyrics</string>
+    <string name="setcat_api_lyrics_netease_subtitle">Official API, preferred source for NetEase and cloud songs.</string>
+    <string name="setcat_api_lyrics_amll_title">AMLLDB word-by-word lyrics</string>
+    <string name="setcat_api_lyrics_amll_subtitle">NetEase songs only; provides karaoke-style timing.</string>
+    <string name="setcat_api_lyrics_builtin_title">Built-in source lyrics</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ Music / Kugou / Kuwo / Migu, used for built-in source songs.</string>
+    <string name="setcat_api_lyrics_bilibili_title">Bilibili subtitle lyrics</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">Use the video subtitles of Bilibili tracks as lyrics.</string>
+    <string name="setcat_api_lyrics_lrclib_title">LRCLIB lyrics</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">Overseas service, often unreachable on restricted networks.</string>
+    <string name="setcat_api_metadata_title">Song info completion</string>
+    <string name="setcat_api_metadata_musicbrainz_title">MusicBrainz metadata</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">Completes title / artist / album / genre and cover art; overseas service.</string>
+    <string name="setcat_api_metadata_deezer_title">Deezer artist images</string>
+    <string name="setcat_api_metadata_deezer_subtitle">Searches and caches artist pictures online; overseas service.</string>
+    <string name="setcat_api_note">Disabling unreachable services speeds up lyrics and cover loading by skipping their timeouts. Existing local caches are kept.</string>
+
+    <!-- Startup animation -->
+    <string name="setcat_appearance_startup_section">Startup animation</string>
+    <string name="setcat_startup_animation_label">Enter animation</string>
+    <string name="setcat_startup_animation_desc">Transition played when entering the main screen after launch.</string>
+    <string name="setcat_startup_style_emerge">Emerge</string>
+    <string name="setcat_startup_style_scale">Scale</string>
+    <string name="setcat_startup_style_none">Off</string>
+
+    <!-- Mini player -->
+    <string name="setcat_appearance_miniplayer_section">Mini player</string>
+    <string name="setcat_miniplayer_style_label">Style</string>
+    <string name="setcat_miniplayer_style_desc">Appearance of the bottom mini player. Material = rounded artwork with prev/play/next on a card; Expressive = full pill with a solid progress fill, square artwork and a single large play button.</string>
+    <string name="setcat_miniplayer_style_classic">Classic</string>
+    <string name="setcat_miniplayer_style_rhythm">Rhythm</string>
+    <string name="setcat_miniplayer_style_capsule">Capsule</string>
+    <!-- 迷你播放条样式（1:1 对齐 Rhythm 的两个样式） -->
+    <string name="setcat_miniplayer_style_material">Material</string>
+    <string name="setcat_miniplayer_style_expressive">Expressive</string>
+    <string name="setcat_miniplayer_corner_radius">Mini player corner radius</string>
 </resources>

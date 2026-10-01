@@ -15,6 +15,9 @@ import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -37,7 +40,13 @@ import androidx.annotation.CallSuper
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseInCubic
+import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import com.theveloper.pixelplay.data.preferences.StartupAnimationStyle
+import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.utils.StartupTiming
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
@@ -54,6 +63,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -84,6 +94,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
@@ -104,6 +118,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -111,8 +126,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBarDefaults
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -126,6 +139,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.CompositionLocalProvider
@@ -137,6 +151,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -158,6 +174,7 @@ import com.theveloper.pixelplay.presentation.components.StreamingProviderSheet
 import com.theveloper.pixelplay.presentation.components.ChangelogBottomSheet
 import com.theveloper.pixelplay.presentation.components.BetaInfoBottomSheet
 
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -177,6 +194,7 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.github.PlayStoreAnnouncementRemoteConfig
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
+import com.theveloper.pixelplay.data.preferences.NavRailStyle
 import com.theveloper.pixelplay.data.preferences.sanitizeNavBarCornerRadius
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
@@ -187,6 +205,8 @@ import com.theveloper.pixelplay.presentation.components.AllFilesAccessDialog
 import com.theveloper.pixelplay.presentation.components.AppSidebarDrawer
 import com.theveloper.pixelplay.presentation.components.CrashReportDialog
 import com.theveloper.pixelplay.presentation.components.DismissUndoBar
+import com.theveloper.pixelplay.presentation.components.DownloadStatusPhase
+import com.theveloper.pixelplay.presentation.components.DownloadStatusTopChip
 import com.theveloper.pixelplay.presentation.components.DrawerDestination
 import com.theveloper.pixelplay.presentation.components.MiniPlayerBottomSpacer
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
@@ -212,6 +232,7 @@ import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.utils.CrashHandler
 import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.utils.KuromojiEngine
 import com.theveloper.pixelplay.utils.LogUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.collections.immutable.persistentListOf
@@ -231,8 +252,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 
@@ -353,6 +372,11 @@ class MainActivity : ComponentActivity() {
             android.util.Log.e("PixelPlay", "enableEdgeToEdge failed: ${t.message}", t)
         }
 
+        // ⚡ 纯色启动底用"软件实际取色"：与 PixelPlayTheme 的解析顺序一致
+        //   （API 31+ 系统动态取色 > 项目静态配色），在 Compose 首帧之前就把窗口底色
+        //   刷成同一个颜色，避免"先闪一层别的纯色底再进应用"。
+        applyAppBackgroundToWindow()
+
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 window.isNavigationBarContrastEnforced = false
@@ -434,6 +458,8 @@ class MainActivity : ComponentActivity() {
             val appThemeMode by themePreferencesRepository.appThemeModeFlow.collectAsStateWithLifecycle(initialValue = AppThemeMode.FOLLOW_SYSTEM)
             val showScrollbar by userPreferencesRepository.showScrollbarFlow.collectAsStateWithLifecycle(initialValue = true)
             val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
+            val uiScale by userPreferencesRepository.uiScaleFlow
+                .collectAsStateWithLifecycle(initialValue = UserPreferencesRepository.UI_SCALE_DEFAULT)
             val globalColorSchemePair by themeStateHolder.activeGlobalColorSchemePair.collectAsStateWithLifecycle()
             val useDarkTheme = when (appThemeMode) {
                 AppThemeMode.DARK -> true
@@ -441,12 +467,10 @@ class MainActivity : ComponentActivity() {
                 else -> systemDarkTheme
             }
             
-            LaunchedEffect(isCarModeEnabled) {
-                requestedOrientation = if (isCarModeEnabled) {
-                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                } else {
-                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                }
+            // ⚡ 车机模式不再强制横屏：横竖屏完全交给用户 / 系统。
+            //   这里显式复位一次，保证此前被锁成横屏的设备升级后立即恢复「跟随系统」。
+            LaunchedEffect(Unit) {
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             }
             
             // Crash report dialog state
@@ -488,18 +512,41 @@ class MainActivity : ComponentActivity() {
             val initialSetupDone by userPreferencesRepository.initialSetupDoneFlow
                 .collectAsStateWithLifecycle(initialValue = null)
 
+            // ⚡ 启动动画样式（设置 → 外观 → 启动动画）
+            val startupAnimationStyleRaw by userPreferencesRepository.startupAnimationStyleFlow
+                .collectAsStateWithLifecycle(initialValue = StartupAnimationStyle.EMERGE.name)
+            val startupAnimationStyle = StartupAnimationStyle.fromName(startupAnimationStyleRaw)
+
+            // ⚡ 品牌启动页（中间浮出 XiangsuPlayer）：
+            //   ⚠️ 停留时间必须从「首帧真正绘制出来之后」开始计时，而不是从进程启动算。
+            //   从进程启动算的话，冷启动时这段时间基本被系统启动画面 + 首帧加载吃掉：
+            //   品牌页一闪而过、主界面浮出动画在用户看到界面前就已经播完 ——
+            //   表现就是「正常启动看不到进入动画」（只有新手引导完成那一刻，因为界面已经可见，
+            //   动画才恰好被看到）。
+            var brandSplashVisible by remember { mutableStateOf(true) }
+            // 首帧已绘制（系统启动画面即将放行）—— 由下面 PixelPlayTheme 内的
+            // LaunchedEffect 在 withFrameNanos 之后置为 true。
+            var firstFrameDrawn by remember { mutableStateOf(false) }
+            // 进入动画是否已开始。必须等品牌页淡出走完再置 true，否则动画会被淡出层吃掉。
+            var enterAnimationStarted by remember { mutableStateOf(false) }
+            LaunchedEffect(initialSetupDone, firstFrameDrawn) {
+                if (initialSetupDone == null || !firstFrameDrawn) return@LaunchedEffect
+                // 基准测试不额外等待，避免影响启动耗时测量
+                if (!isBenchmarkMode) kotlinx.coroutines.delay(BRAND_SPLASH_VISIBLE_MS)
+                brandSplashVisible = false
+                // ⚡ 必须等品牌页淡出（BRAND_SPLASH_EXIT_MS）结束后再启动进入动画：
+                //   两者同时启动时，淡出层仍不透明地盖在最上层，而进入动画的缓动
+                //   （EaseOutCubic / LinearOutSlowInEasing）把大部分位移集中在最前面的
+                //   约 1/3 时长里 —— 正好全部落在被遮住的这段时间，
+                //   用户感知就是「根本没有进入动画」。
+                kotlinx.coroutines.delay(BRAND_SPLASH_EXIT_MS)
+                enterAnimationStarted = true
+            }
+
             // Auto-request permissions when app starts and permissions are not granted
             LaunchedEffect(Unit) {
                 if (!permissionsValid && !isBenchmarkMode && initialSetupDone == true) {
                     permissionState.launchMultiplePermissionRequest()
-                }
-            }
-
-            // Sync Trigger: When permissions are valid
-            LaunchedEffect(permissionsValid) {
-                if (permissionsValid) {
-                     LogUtils.i(this, "Permissions granted. Starting sync.")
-                     mainViewModel.startSync()
                 }
             }
 
@@ -511,18 +558,43 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            CompositionLocalProvider(LocalShowScrollbar provides showScrollbar) {
+            // ⚡ 软件缩放（设置 → 外观）：只缩放 Compose 的 Density（本 App 的排版尺寸），
+            //   不写系统 DPI、不影响其它应用。100% 时直接复用原 Density 对象，布局一字不动。
+            val baseDensity = LocalDensity.current
+            val uiScaleFactor = uiScale / 100f
+            val scaledDensity = remember(baseDensity, uiScaleFactor) {
+                if (uiScaleFactor == 1f) {
+                    baseDensity
+                } else {
+                    Density(baseDensity.density * uiScaleFactor, baseDensity.fontScale)
+                }
+            }
+
+            CompositionLocalProvider(
+                LocalShowScrollbar provides showScrollbar,
+                LocalDensity provides scaledDensity
+            ) {
                 PixelPlayTheme(
                     darkTheme = useDarkTheme,
                     colorSchemePairOverride = globalColorSchemePair
                 ) {
-                    // 偏好就绪后放行系统启动画面：主内容的组合/布局/首帧绘制
-                    // 全部发生在启动画面遮盖之下，用户感知为「图标 splash → 主界面」。
+                    // ⚡ 冷启动：首帧绘制完成即放行系统启动画面，不再等待 DataStore 首次读盘
+                    //   （此前启动图标要一直停留到偏好读完，是冷启动可见耗时的主要来源）。
+                    //   偏好未就绪的这段时间由品牌初始化页承接，用户感知为
+                    //   「启动图标 → 初始化页 → 主界面浮出」。
+                    LaunchedEffect(Unit) {
+                        withFrameNanos { }
+                        isContentReady = true
+                        // 首帧已绘制 → 品牌页从此刻开始计算「可见停留」，保证进入动画能被看到
+                        firstFrameDrawn = true
+                    }
+
+                    // 启动完成后上报 fully-drawn，便于用 TTFD 指标量化冷启动
                     LaunchedEffect(initialSetupDone) {
-                        if (initialSetupDone != null) {
-                            // 再等一帧：让同一 DataStore 的主题/配色流尽量先落位，避免首帧配色闪变
+                        if (initialSetupDone == true) {
                             withFrameNanos { }
-                            isContentReady = true
+                            withFrameNanos { }
+                            runCatching { reportFullyDrawn() }
                         }
                     }
 
@@ -542,14 +614,12 @@ class MainActivity : ComponentActivity() {
                             tint = Color.Transparent
                         )
 
-                        // 首次启动：展示新手引导；完成后进入主界面。
-                        // null = 偏好未加载，内容暂不组合（由系统启动画面遮盖）。
-                        Crossfade(
-                            targetState = initialSetupDone,
-                            animationSpec = tween(250),
-                            label = "ContentGate"
-                        ) { setupDone ->
-                            when (setupDone) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // 首次启动：展示新手引导；完成后进入主界面。
+                            // null = 偏好尚未从 DataStore 读出，此时只有下面的品牌浮出层可见。
+                            when (initialSetupDone) {
+                                null -> Unit
+
                                 false -> {
                                     val onboardingScope = rememberCoroutineScope()
                                     OnboardingScreen(
@@ -562,8 +632,45 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                 }
-                                true -> MainAppContent(playerViewModel, mainViewModel)
-                                null -> {}
+
+                                true -> StartupEnterGate(
+                                    style = startupAnimationStyle,
+                                    // ⚡ 等品牌页「完全淡出」再启动主界面进入动画：
+                                    //   衔接但不被淡出层遮蔽（见上方 enterAnimationStarted 的说明）
+                                    start = enterAnimationStarted
+                                ) {
+                                    MainAppContent(playerViewModel, mainViewModel)
+                                }
+                            }
+
+                            // ⚡ 品牌浮出层：对齐原版 XiangsuPlayer 的启动样式 —— 纯色底上只有
+                            //    App 名称文字浮出（淡入 + 上浮 + 轻微放大，不再出现 logo / 转圈）。
+                            //    停留到 [BRAND_SPLASH_VISIBLE_MS] 后淡出，淡出走完
+                            //    （[BRAND_SPLASH_EXIT_MS]）才启动主界面的进入动画，
+                            //    保证这段动画完整可见。
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = brandSplashVisible,
+                                // ⚡ 放大离场：先「放大」、后「渐隐」，两段刻意错开。
+                                //   之前缩放与渐隐同长同缓动，透明度很快就降到看不见，
+                                //   观感是「文字直接消失」，放大根本来不及被看到。
+                                //   现在 0~FADE_DELAY 期间保持不透明只做放大，之后才开始渐隐，
+                                //   与主界面「从略小放大进入」形成推镜衔接。
+                                //   总时长取 max(缩放, 渐隐延迟+渐隐) = BRAND_SPLASH_EXIT_MS，
+                                //   进入动画等这段走完才启动。
+                                exit = scaleOut(
+                                    targetScale = BRAND_SPLASH_EXIT_SCALE,
+                                    animationSpec = tween(
+                                        durationMillis = BRAND_SPLASH_ZOOM_MS.toInt(),
+                                        easing = EaseInCubic
+                                    )
+                                ) + fadeOut(
+                                    animationSpec = tween(
+                                        durationMillis = BRAND_SPLASH_FADE_MS.toInt(),
+                                        delayMillis = BRAND_SPLASH_FADE_DELAY_MS.toInt()
+                                    )
+                                )
+                            ) {
+                                StartupBrandSplash()
                             }
                         }
 
@@ -598,6 +705,47 @@ class MainActivity : ComponentActivity() {
         }
 
         handleIntent(intent)
+    }
+
+    /**
+     * 把「软件实际使用的背景色」刷到窗口底色上（Compose 首帧绘制前生效）。
+     *
+     * 解析顺序与 [com.theveloper.pixelplay.ui.theme.PixelPlayTheme] 保持一致：
+     *  - API 31+：系统动态取色（动态壁纸配色），浅色/深色跟随系统 uiMode；
+     *  - 其它：项目内置的 Light/DarkColorScheme。
+     *
+     * 这样冷启动看到的纯色底就是软件自己的取色，而不是 XML 里写死的另一种颜色。
+     */
+    private fun applyAppBackgroundToWindow() {
+        runCatching {
+            val nightMask = resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK
+            val isNight = nightMask == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            // ⚡ 解析顺序必须与 PixelPlayTheme 完全一致：
+            //   自定义调色盘覆盖 > 系统动态取色 > 静态配色。
+            //   少任何一层都会让窗口底色与 App 实际背景不同色，
+            //   表现为冷启动先闪一块不明所以的纯色底。
+            val overridePair = themeStateHolder.activeGlobalColorSchemePair.value
+            val background = when {
+                overridePair != null ->
+                    if (isNight) overridePair.dark.background else overridePair.light.background
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                    val scheme = if (isNight) {
+                        androidx.compose.material3.dynamicDarkColorScheme(this)
+                    } else {
+                        androidx.compose.material3.dynamicLightColorScheme(this)
+                    }
+                    scheme.background
+                }
+                isNight -> com.theveloper.pixelplay.ui.theme.DarkColorScheme.background
+                else -> com.theveloper.pixelplay.ui.theme.LightColorScheme.background
+            }
+            window.setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(background.toArgb())
+            )
+        }.onFailure {
+            android.util.Log.w("PixelPlay", "applyAppBackgroundToWindow failed: ${it.message}")
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -900,6 +1048,26 @@ class MainActivity : ComponentActivity() {
         Box(modifier = Modifier.fillMaxSize()) {
             MainUI(playerViewModel, navController)
 
+            // ⚡ 顶部媒体库同步 chip（模仿 Rhythm MediaScanLoader）：同步进行/完成时
+            // 从顶部滑入浮动提示，完成态 2s 后自动消失，可上滑/左右滑关闭。
+            LibrarySyncTopChip(
+                isSyncing = isSyncing,
+                syncProgress = syncProgress,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+            )
+
+            // ⚡ 顶部日语注音引擎下载提示（同款 Rhythm 滑入样式）：首次触发日语罗马音
+            // 后台下载 kuromoji 引擎时滑入，完成驻留 2s / 失败驻留 3s，可上滑/左右滑关闭。
+            KuromojiEngineTopChip(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+            )
+
             // Muestra el LoadingOverlay solo si las condiciones se cumplen Y el delay ha pasado
             if (canShowLoadingIndicator) {
                 LoadingOverlay(syncProgress)
@@ -1050,6 +1218,8 @@ class MainActivity : ComponentActivity() {
                 Screen.ArtistHomepage.route,
                 Screen.DJSpace.route,
                 Screen.CloudMusicSettings.route,
+                // ⚡ 网易云服务页面：整屏面板页，进入后隐藏底部导航栏，避免遮挡最下方歌单
+                Screen.NeteaseDashboard.route,
                 Screen.NavBarCrRad.route,
                 Screen.Radio.route,
                 Screen.About.route,
@@ -1066,7 +1236,11 @@ class MainActivity : ComponentActivity() {
                 Screen.WordDelimiterConfig.route,
                 Screen.ArtistWhitelistConfig.route,
                 Screen.Equalizer.route,
-                Screen.AiAssistant.route
+                Screen.PlayerProgressStyle.route,
+                Screen.AiAssistant.route,
+                // ⚡ 消息中心 / 聊天页：整屏列表页，进入后隐藏底部导航栏，避免遮挡最后一条会话
+                Screen.Messages.route,
+                Screen.Chat.route
             )
         }
         val isPlayerExpanded by remember {
@@ -1105,6 +1279,7 @@ class MainActivity : ComponentActivity() {
         }
 
         val navBarStyle by playerViewModel.navBarStyle.collectAsStateWithLifecycle()
+        val navRailStyle by playerViewModel.navRailStyle.collectAsStateWithLifecycle()
         val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
         val navBarCornerRadiusRaw by playerViewModel.navBarCornerRadius.collectAsStateWithLifecycle()
         val navBarCornerRadius = sanitizeNavBarCornerRadius(navBarCornerRadiusRaw)
@@ -1160,10 +1335,60 @@ class MainActivity : ComponentActivity() {
         val navBarHeight = resolveNavBarSurfaceHeight(navBarStyle, systemNavBarInset, navBarCompactMode)
         val navBarOccupiedHeight = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
 
+        // ⚡ 滚动隐藏底部 chrome：上滑隐藏底部导航栏（mini player 跟随下移），下滑 / 回到顶部恢复
+        val scrollHideChromeEnabled by playerViewModel.scrollHideChrome.collectAsStateWithLifecycle()
+        var scrollChromeHidden by rememberSaveable { mutableStateOf(false) }
+        // 切换页面时复位，避免进入新页面仍是隐藏态（同时清掉上一页的"到顶"上报）
+        LaunchedEffect(currentRoute) {
+            scrollChromeHidden = false
+            playerViewModel.reportListAtTop(false)
+        }
+        // 滚回列表顶部时自动恢复底部 chrome（各页面上报）
+        val isListAtTop by playerViewModel.isListAtTop.collectAsStateWithLifecycle()
+        LaunchedEffect(isListAtTop) { if (isListAtTop) scrollChromeHidden = false }
+        // ⚡ 底栏 / 迷你条随滚动隐藏只在「媒体库」页面生效，其它页面保持常驻
+        val scrollChromeActive = scrollHideChromeEnabled && currentRoute == Screen.Library.route
+        val scrollChromeThresholdPx = with(densityValue) { 12.dp.toPx() }
+        val scrollChromeConnection = remember(scrollChromeActive, scrollChromeThresholdPx) {
+            // 累计位移：方向反转或触发后归零
+            var accumulated = 0f
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (!scrollChromeActive || source != NestedScrollSource.UserInput) return Offset.Zero
+                    val dy = available.y
+                    if (dy == 0f) return Offset.Zero
+                    if (accumulated != 0f && (dy > 0f) != (accumulated > 0f)) accumulated = 0f
+                    accumulated += dy
+                    if (accumulated <= -scrollChromeThresholdPx) {
+                        scrollChromeHidden = true
+                        accumulated = 0f
+                    } else if (accumulated >= scrollChromeThresholdPx) {
+                        scrollChromeHidden = false
+                        accumulated = 0f
+                    }
+                    // 只观察不消费，保证列表滚动本身不受影响
+                    return Offset.Zero
+                }
+
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource
+                ): Offset {
+                    // 下滑方向仍有未被消费的位移 => 列表已在顶部（含惯性滑到顶），自动恢复底部 chrome
+                    if (available.y > 0f && consumed.y == 0f && scrollChromeHidden) {
+                        scrollChromeHidden = false
+                        accumulated = 0f
+                    }
+                    return Offset.Zero
+                }
+            }
+        }
+
         // ⚡ 关键优化：分离底部导航栏和 NavigationRail 的动画,避免互相干扰
         // 底部导航栏动画 - 仅用于竖屏,考虑 player 展开状态
         val bottomNavBarProgressState: androidx.compose.runtime.State<Float> = animateFloatAsState(
-            targetValue = if (shouldHideBottomNavBar) 0f else 1f,
+            targetValue = if (shouldHideBottomNavBar || scrollChromeHidden) 0f else 1f,
             animationSpec = tween(
                 durationMillis = 220,
                 easing = LinearOutSlowInEasing
@@ -1194,11 +1419,21 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // ⚡ 迷你条「跟随底栏下移」的最大位移 = 底栏占位 − 系统底部安全区。
+        //    这样底栏完全隐藏时，迷你条刚好落到只留系统 inset 的位置：
+        //    - 修掉「下移 52dp 后离屏幕底部还有一截空隙」（位移小于底栏实际占位）；
+        //    - 修掉「导航栏本就隐藏的页面（消息/聊天）被多推 52dp 挤出屏幕」（此时占位=inset，位移为 0）。
+        val miniPlayerScrollShiftMaxDp = if (isLandscape) {
+            0.dp
+        } else {
+            (miniPlayerBottomMarginDp - systemNavBarInset).coerceAtLeast(0.dp)
+        }
+
         // NavigationRail 的水平 padding:使用稳定值,不依赖动画值,避免位置抖动
         val navRailPaddingDp = if (isLandscape && !isCarModeEnabled) {
-            // 横屏且非车机模式时,给内容留出 80dp 的 Rail 空间
+            // 横屏且非车机模式时,给内容留出 Rail 空间（悬浮 96dp / 停靠 84dp）
             // 不使用动画值,避免 sheetCollapsedTargetY 每帧变化
-            80.dp
+            if (navRailStyle == NavRailStyle.DOCKED) 84.dp else 96.dp
         } else {
             0.dp
         }
@@ -1280,7 +1515,11 @@ class MainActivity : ComponentActivity() {
                     // 返回/下滑收起后回到悬浮底栏（mini player 仍隐藏）。
                     // ⚠️ 仅在真正显示底部悬浮导航时隐藏 mini player；横屏/平板走 NavigationRail，
                     // 底部导航不悬浮，此时必须保留 mini player，否则平板会因设置了悬浮样式而 mini player 消失。
-                    val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route, Screen.AiAssistant.route) }
+                    // ⚡ 聊天详情页隐藏迷你播放条（消息列表页保持显示）；
+                    //    AiAssistant / NavBarCrRad 原本就隐藏
+                    val routesWithHiddenMiniPlayer = remember {
+                        setOf(Screen.NavBarCrRad.route, Screen.AiAssistant.route, Screen.Chat.route)
+                    }
                     val shouldHideFloatingMini by remember(currentRoute, navBarStyle, isLandscape) {
                         derivedStateOf {
                             currentRoute in routesWithHiddenMiniPlayer
@@ -1305,6 +1544,7 @@ class MainActivity : ComponentActivity() {
                             navItems = commonNavItems,
                             currentRoute = currentRoute,
                             navRailProgressState = navRailProgressState,
+                            navRailStyle = navRailStyle,
                             onCenterNavClick = onCenterNavClick
                         )
                     }
@@ -1317,30 +1557,20 @@ class MainActivity : ComponentActivity() {
                             .padding(start = navRailPaddingDp)
                     ) {
                         Scaffold(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScroll(scrollChromeConnection),
                             bottomBar = {
                                 if (!isLandscape) {
-                                    MainBottomNavigationBar(
-                                        playerViewModel = playerViewModel,
-                                        navController = navController,
-                                        navItems = commonNavItems,
-                                        currentRoute = currentRoute,
-                                        currentSongId = currentSongIdForUI,
-                                        navBarStyle = navBarStyle,
-                                        navBarCompactMode = navBarCompactMode,
-                                        navBarCornerRadius = navBarCornerRadius,
-                                        useSmoothCorners = useSmoothCorners,
-                                        isMiniPlayerDismissing = isMiniPlayerDismissing,
-                                        currentSong = currentSongForUI,
-                                        isPlaying = isPlayingForUI,
-                                        bottomBarPadding = bottomBarPadding,
-                                        navBarHeight = navBarHeight,
-                                        navBarOccupiedHeight = navBarOccupiedHeight,
-                                        horizontalPadding = horizontalPadding,
-                                        bottomNavBarProgressState = bottomNavBarProgressState,
-                                        onCenterNavClick = onCenterNavClick,
-                                        onNowPlayingClick = onNowPlayingClick,
-                                        miniPlayerVisible = !shouldHideFloatingMini
+                                    // ⚡ 这里只放一个「占位 spacer」，底栏本体挪到最外层 Box 的最后渲染
+                                    //   （见下方 MainBottomNavigationBar 浮层）——底栏作为浮层永远是最上层，
+                                    //   不会被播放器面板 / 展开遮罩压住导致点不动。
+                                    //   占位高度在「路由隐藏底栏」的整屏页收为 0，避免页面底部留白
+                                    //   （聊天页输入框下方那块空白）。
+                                    Spacer(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(if (routeHidden) 0.dp else navBarOccupiedHeight)
                                     )
                                 }
                             }
@@ -1456,11 +1686,14 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                // ⚡ mini-player 裁剪高度:根据播放器展开状态决定
-                // - 展开态(isExpandedOrExpanding=true):containerHeight(全屏高度)
-                // - 折叠态:sheetCollapsedTargetY + miniH(mini-player 底部位置)
-                // 这确保播放器展开时能覆盖整个屏幕,避免底部导航栏区域显示为黑色
-                val collapsedClipHeight = remember(
+                // ⚡ mini-player 裁剪盒：折叠态时从屏幕顶部一直延伸到「迷你条底边」。
+                // - 展开态(isExpandedOrExpanding=true)：用整屏高度，保证播放器铺满全屏；
+                // - 折叠态：底边 = 迷你条底边 + 底栏隐藏进度 × 下移量。
+                // ⚠️ 底栏可见时必须严格停在迷你条底边：这个裁剪容器是整屏透明的，而内部播放器
+                //   面板带一个覆盖整个裁剪区的 clickable（折叠态点击=展开播放器），一旦容器延伸
+                //   到底部导航栏上方，导航栏的点击会被整体吃掉（表现为「竖屏导航栏点不动」）。
+                //   只有底栏真正隐藏时才放行下移余量——此时底栏已移出屏幕，迷你条下移不会互相遮挡。
+                val collapsedBaseClipHeightPx = remember(
                     showPlayerContentInitially,
                     shouldHideMiniPlayer,
                     currentRoute,
@@ -1468,20 +1701,20 @@ class MainActivity : ComponentActivity() {
                     // miniPlayerBottomMarginDp 依赖 isLandscape，若用旧值，播放器 Surface
                     // 会覆盖到底部导航栏上方，拦截触摸导致导航栏无法点击
                     miniPlayerBottomMarginDp,
-                    containerHeight
+                    containerHeight,
+                    isLandscape,
+                    sheetCollapsedTargetY
                 ) {
                     val shouldShowMiniPlayer = showPlayerContentInitially && !shouldHideMiniPlayer &&
                             currentRoute !in setOf(Screen.NavBarCrRad.route)
                     if (shouldShowMiniPlayer) {
-                        with(density) {
-                            val miniH = MiniPlayerHeight.toPx()
-                            (sheetCollapsedTargetY + miniH).toDp().coerceAtLeast(0.dp)
-                        }
+                        (sheetCollapsedTargetY + with(density) { MiniPlayerHeight.toPx() })
+                            .coerceAtLeast(0f)
                     } else {
-                        containerHeight
+                        with(density) { containerHeight.toPx() }
                     }
                 }
-                val miniPlayerClipHeight = if (isExpandedOrExpanding) containerHeight else collapsedClipHeight
+                val miniPlayerShiftMaxPx = with(density) { miniPlayerScrollShiftMaxDp.toPx() }
                 // ⚠️ 当没有播放内容且非展开态时（如横滑移除 mini-player 后），
                 // 完全不渲染 UnifiedPlayerSheetV2，避免其全屏 Surface 覆盖在底部导航栏上方
                 // 拦截触摸事件导致无法切换页面。
@@ -1491,7 +1724,42 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(miniPlayerClipHeight)
+                        // ⚡ 一个盒子同时管「约束」与「裁剪」两件事，二者刻意分开：
+                        //
+                        //   ① 传给面板的高度约束恒为「迷你条底边 base」——
+                        //      面板内部有一个覆盖整个约束高度的 clickable（折叠态点击=展开播放器），
+                        //      而且面板常驻渲染一份全屏播放器内容用于展开动画，它们在屏幕下方的
+                        //      命中区正好落在底栏上方，会把底栏点击整体吃掉。约束钉在 base 后，
+                        //      面板自身布局不会再越过迷你条底边。
+                        //
+                        //   ② 对外报告的裁剪高度 = base + 底栏隐藏进度 × 最大下移量——
+                        //      底栏可见时裁剪区正好收在迷你条底边（底栏区域内的命中区被裁掉），
+                        //      只有底栏真正隐藏时才放行"跟随底栏下移"所需的余量。
+                        //
+                        //   由于面板的约束（①）不受裁剪高度（②）影响，裁剪高度逐帧变化
+                        //   不会重新测量面板子树（约束未变，Compose 复用测量结果），
+                        //   所以既不会遮挡底栏、也不会带来"上滑收起卡顿"的逐帧重测开销。
+                        .layout { measurable, constraints ->
+                            if (isExpandedOrExpanding) {
+                                val placeable = measurable.measure(constraints)
+                                layout(constraints.maxWidth, constraints.maxHeight) {
+                                    placeable.placeRelative(0, 0)
+                                }
+                            } else {
+                                val sheetHeightPx = collapsedBaseClipHeightPx.roundToInt()
+                                    .coerceIn(0, constraints.maxHeight)
+                                val hideProgress = (1f - bottomNavBarProgressState.value).coerceIn(0f, 1f)
+                                val clipHeightPx = (collapsedBaseClipHeightPx + miniPlayerShiftMaxPx * hideProgress)
+                                    .roundToInt()
+                                    .coerceIn(0, constraints.maxHeight)
+                                val placeable = measurable.measure(
+                                    constraints.copy(minHeight = sheetHeightPx, maxHeight = sheetHeightPx)
+                                )
+                                layout(constraints.maxWidth, clipHeightPx) {
+                                    placeable.placeRelative(0, 0)
+                                }
+                            }
+                        }
                         .clipToBounds()
                 ) {
                     // ⚡ isNavBarHidden 使用稳定的布尔值(不读动画 State),
@@ -1510,7 +1778,15 @@ class MainActivity : ComponentActivity() {
                             navRailPadding = navRailPaddingDp,
                             isLandscape = isLandscape,
                             isFloatingBottomBar = navBarStyle == NavBarStyle.FLOATING,
-                            onFloatingBottomBarCollapse = onNowPlayingSwipeDown
+                            onFloatingBottomBarCollapse = onNowPlayingSwipeDown,
+                            miniPlayerScrollShiftPxProvider = {
+                                // （底栏占位 − 系统安全区）× 滚动隐藏进度：迷你条跟随底栏下移但不移出屏幕，
+                                //  底栏完全隐藏时正好落到只留系统 inset 的位置
+                                // （展开成全屏播放器时由 sheet 内部的 expansionFraction 自动归零）
+                                // ⚡ 横屏 / 平板走 NavigationRail，没有需要隐藏的底部导航栏，不做下移
+                                with(densityValue) { miniPlayerScrollShiftMaxDp.toPx() } *
+                                    (1f - bottomNavBarProgressState.value)
+                            }
                         )
                     }
                 }
@@ -1619,6 +1895,40 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                    }
+                }
+                // ⚡ 底部导航栏作为「最外层浮层」最后渲染：任何播放器面板 / 展开遮罩都在它下面，
+                //   从结构上保证导航栏永远可点。此前它放在 Scaffold 的 bottomBar 槽里，
+                //   一旦上层节点覆盖该区域，点击就被整体吃掉（表现为「点导航栏完全没反应」）。
+                //   占位仍由 Scaffold 的 bottomBar spacer 负责，页面底部间距不受影响。
+                if (!isLandscape) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                    ) {
+                        MainBottomNavigationBar(
+                            playerViewModel = playerViewModel,
+                            navController = navController,
+                            navItems = commonNavItems,
+                            currentRoute = currentRoute,
+                            currentSongId = currentSongIdForUI,
+                            navBarStyle = navBarStyle,
+                            navBarCompactMode = navBarCompactMode,
+                            navBarCornerRadius = navBarCornerRadius,
+                            useSmoothCorners = useSmoothCorners,
+                            isMiniPlayerDismissing = isMiniPlayerDismissing,
+                            currentSong = currentSongForUI,
+                            isPlaying = isPlayingForUI,
+                            bottomBarPadding = bottomBarPadding,
+                            navBarHeight = navBarHeight,
+                            navBarOccupiedHeight = navBarOccupiedHeight,
+                            horizontalPadding = horizontalPadding,
+                            bottomNavBarProgressState = bottomNavBarProgressState,
+                            onCenterNavClick = onCenterNavClick,
+                            onNowPlayingClick = onNowPlayingClick,
+                            miniPlayerVisible = !shouldHideFloatingMini
+                        )
                     }
                 }
             }
@@ -1734,6 +2044,236 @@ Trace.endSection()
         }
     }
 
+    /**
+     * 顶部浮动媒体库同步 chip（模仿 Rhythm MediaScanLoader）。
+     *
+     * 同步进行中：从顶部滑入，显示 wavy loader + 阶段文案 + 进度；
+     * 同步完成：2s 后自动滑出；可上滑/左右滑手动关闭。
+     * 不在任何 tab 上常驻，仅在有同步工作时短暂出现。
+     */
+    @Composable
+    private fun LibrarySyncTopChip(
+        isSyncing: Boolean,
+        syncProgress: SyncProgress,
+        modifier: Modifier = Modifier
+    ) {
+        val coroutineScope = rememberCoroutineScope()
+        val swipeOffsetX = remember { Animatable(0f) }
+        val swipeOffsetY = remember { Animatable(0f) }
+        val density = LocalDensity.current
+        val swipeThresholdPx = with(density) { 80.dp.toPx() }
+
+        var exitTransition by remember {
+            mutableStateOf(fadeOut(animationSpec = tween(300)) + slideOutVertically(targetOffsetY = { -it }))
+        }
+        var manuallyDismissed by remember { mutableStateOf(false) }
+
+        // 完成态短暂驻留：同步结束后保持 chip 2s，显示 "媒体库已更新" 后滑出。
+        var showCompleted by remember { mutableStateOf(false) }
+        LaunchedEffect(syncProgress.isCompleted) {
+            if (syncProgress.isCompleted) {
+                showCompleted = true
+                delay(2000)
+                showCompleted = false
+            }
+        }
+
+        val visible = !manuallyDismissed && (isSyncing || showCompleted)
+
+        LaunchedEffect(visible) {
+            if (visible) {
+                swipeOffsetX.snapTo(0f)
+                swipeOffsetY.snapTo(0f)
+                exitTransition = fadeOut(animationSpec = tween(300)) + slideOutVertically(targetOffsetY = { -it })
+            }
+        }
+
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(500)) + slideInVertically(initialOffsetY = { -it }),
+            exit = exitTransition,
+            modifier = modifier
+        ) {
+            val scanProgressValue: Float? = if (isSyncing && syncProgress.hasProgress) {
+                syncProgress.progress.coerceIn(0f, 1f)
+            } else {
+                null
+            }
+
+            val scanLabelText = when {
+                !isSyncing && showCompleted -> stringResource(R.string.sync_library_updated)
+                else -> when (syncProgress.phase) {
+                    SyncProgress.SyncPhase.FETCHING_MEDIASTORE ->
+                        stringResource(R.string.sync_scanning)
+                    SyncProgress.SyncPhase.PROCESSING_FILES,
+                    SyncProgress.SyncPhase.SAVING_TO_DATABASE ->
+                        stringResource(R.string.sync_processing)
+                    SyncProgress.SyncPhase.SCANNING_LRC ->
+                        stringResource(R.string.library_background_sync_lyrics)
+                    SyncProgress.SyncPhase.CLEANING_CACHE ->
+                        stringResource(R.string.library_background_sync_cache)
+                    SyncProgress.SyncPhase.SYNCING_CLOUD ->
+                        stringResource(R.string.library_background_sync_cloud)
+                    else -> stringResource(R.string.sync_in_progress)
+                }
+            }
+
+            val scanStatusText = when {
+                !isSyncing && showCompleted -> stringResource(R.string.sync_up_to_date)
+                syncProgress.hasProgress -> stringResource(
+                    R.string.sync_files_progress,
+                    syncProgress.currentCount,
+                    syncProgress.totalCount
+                )
+                else -> stringResource(R.string.sync_in_progress)
+            }
+
+            val swipeFraction = remember(swipeOffsetX.value, swipeOffsetY.value) {
+                val maxDist = swipeThresholdPx * 1.5f
+                val dist = maxOf(kotlin.math.abs(swipeOffsetX.value), kotlin.math.abs(swipeOffsetY.value))
+                (dist / maxDist).coerceIn(0f, 1f)
+            }
+            val chipAlpha = (1f - swipeFraction).coerceIn(0f, 1f)
+            val chipScale = (1f - swipeFraction * 0.1f).coerceIn(0.9f, 1f)
+
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .graphicsLayer {
+                        translationX = swipeOffsetX.value
+                        translationY = swipeOffsetY.value
+                        alpha = chipAlpha
+                        scaleX = chipScale
+                        scaleY = chipScale
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragEnd = {
+                                val x = swipeOffsetX.value
+                                val y = swipeOffsetY.value
+                                if (y < -swipeThresholdPx) {
+                                    coroutineScope.launch {
+                                        exitTransition = fadeOut(animationSpec = tween(200)) +
+                                            slideOutVertically(targetOffsetY = { -it })
+                                        swipeOffsetY.animateTo(-500f, tween(200))
+                                        manuallyDismissed = true
+                                    }
+                                } else if (kotlin.math.abs(x) > swipeThresholdPx) {
+                                    coroutineScope.launch {
+                                        if (x > 0) {
+                                            exitTransition = fadeOut(animationSpec = tween(200)) +
+                                                slideOutHorizontally(targetOffsetX = { it })
+                                        } else {
+                                            exitTransition = fadeOut(animationSpec = tween(200)) +
+                                                slideOutHorizontally(targetOffsetX = { -it })
+                                        }
+                                        val targetX = if (x > 0) 1000f else -1000f
+                                        swipeOffsetX.animateTo(targetX, tween(200))
+                                        manuallyDismissed = true
+                                    }
+                                } else {
+                                    coroutineScope.launch {
+                                        launch { swipeOffsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) }
+                                        launch { swipeOffsetY.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) }
+                                    }
+                                }
+                            },
+                            onDragCancel = {
+                                coroutineScope.launch {
+                                    launch { swipeOffsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) }
+                                    launch { swipeOffsetY.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) }
+                                }
+                            }
+                        ) { change, dragAmount ->
+                            change.consume()
+                            coroutineScope.launch {
+                                swipeOffsetX.snapTo(swipeOffsetX.value + dragAmount.x)
+                                swipeOffsetY.snapTo((swipeOffsetY.value + dragAmount.y).coerceAtMost(50f))
+                            }
+                        }
+                    },
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                tonalElevation = 4.dp,
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.size(34.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSyncing) {
+                            val currentProgress = scanProgressValue
+                            if (currentProgress != null) {
+                                CircularWavyProgressIndicator(
+                                    progress = { currentProgress },
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                                )
+                            } else {
+                                CircularWavyProgressIndicator(
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                                )
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = scanLabelText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                        )
+                        Text(
+                            text = scanStatusText,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // ⚡ 顶部日语注音引擎下载 chip（与 LibrarySyncTopChip 同款 Rhythm 交互）：
+    // 首次触发日语罗马音时后台下载 kuromoji 引擎，此期间从顶部滑入提示；
+    // 完成态驻留 2s / 失败态驻留 3s 后自动滑出，可上滑/左右滑关闭。
+    @Composable
+    private fun KuromojiEngineTopChip(modifier: Modifier = Modifier) {
+        val engineState by KuromojiEngine.state.collectAsStateWithLifecycle()
+        val phase = when (val state = engineState) {
+            is KuromojiEngine.EngineState.Downloading -> DownloadStatusPhase.Downloading(state.progressPercent)
+            KuromojiEngine.EngineState.Ready -> DownloadStatusPhase.Success
+            is KuromojiEngine.EngineState.Failed -> DownloadStatusPhase.Failed(state.message)
+            KuromojiEngine.EngineState.NotInstalled -> null
+        }
+        // chip 的视觉与交互复用通用的 DownloadStatusTopChip（与歌词字体下载共用）
+        DownloadStatusTopChip(
+            phase = phase,
+            label = stringResource(R.string.kuromoji_chip_engine_label),
+            progressTextRes = R.string.kuromoji_engine_subtitle_downloading,
+            indeterminateTextRes = R.string.kuromoji_engine_subtitle_downloading_unknown,
+            successText = stringResource(R.string.kuromoji_chip_ready),
+            failedText = stringResource(R.string.kuromoji_chip_failed),
+            modifier = modifier
+        )
+    }
+
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class, androidx.compose.ui.graphics.ExperimentalGraphicsApi::class)
     @Composable
@@ -1762,6 +2302,8 @@ Trace.endSection()
         // 使用 Stable 参数,Compose 可以在参数不变时跳过重组
         val showPlayerContentArea = currentSongId != null
         val navBarElevation = 3.dp
+        // ⚡ 底栏只在播放器「真正展开」时才下移让位（见下方 graphicsLayer 的 expansionHide）
+        val sheetState by playerViewModel.sheetState.collectAsStateWithLifecycle()
         val navBarBlurEnabledState by playerViewModel.navBarBlurEnabled.collectAsStateWithLifecycle()
         val disableBlurAllOverState by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
 
@@ -1817,11 +2359,17 @@ Trace.endSection()
                     )
                     .onSizeChanged { componentHeightPx = it.height }
                     .graphicsLayer {
-                        val expansionHide = if (showPlayerContentArea) {
-                            playerViewModel.playerContentExpansionFraction.value.coerceIn(0f, 1f)
-                        } else {
-                            0f
-                        }
+                        // ⚡ 只有播放器真正展开时才让底栏下移让位。
+                        //   折叠态（包括显示 mini player 时）一律不移动底栏：
+                        //   否则一旦 expansionFraction 停在非 0 值，底栏会被这段位移推到
+                        //   clipToBounds 之外 —— 表现就是「导航栏看得见却怎么点都没反应」
+                        //  （关掉 mini player 后 showPlayerContentArea 变 false 就恢复正常）。
+                        val expansionHide =
+                            if (showPlayerContentArea && sheetState == PlayerSheetState.EXPANDED) {
+                                playerViewModel.playerContentExpansionFraction.value.coerceIn(0f, 1f)
+                            } else {
+                                0f
+                            }
                         val routeHide = (1f - bottomNavBarProgressState.value).coerceIn(0f, 1f)
                         val hideFraction = maxOf(expansionHide, routeHide)
                         translationY = (componentHeightPx + shadowOverflowPx + bottomBarPaddingPx) * hideFraction
@@ -1923,7 +2471,10 @@ Trace.endSection()
                                 Modifier.hazeEffect(
                                     state = LocalHazeState.current,
                                     style = dev.chrisbanes.haze.materials.HazeMaterials.ultraThin()
-                                )
+                                ) {
+                                    // 中强模糊：加强底栏模糊半径
+                                    blurRadius = 40.dp
+                                }
                             } else {
                                 Modifier
                             }
@@ -1940,103 +2491,233 @@ Trace.endSection()
         navItems: kotlinx.collections.immutable.ImmutableList<BottomNavItem>,
         currentRoute: String?,
         navRailProgressState: androidx.compose.runtime.State<Float>,
+        navRailStyle: String = NavRailStyle.FLOATING,
         onCenterNavClick: () -> Unit = {},
     ) {
-        NavigationRail(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
+        val isFloating = navRailStyle != NavRailStyle.DOCKED
+        // 悬浮：88dp 外框内嵌 80dp 胶囊；停靠：84dp 贴边直角
+        val outerWidth = if (isFloating) 88.dp else 84.dp
+        val innerWidth = if (isFloating) 80.dp else 84.dp
+
+        val containerColor = if (isFloating) {
+            MaterialTheme.colorScheme.surfaceContainer
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+        val railShape = if (isFloating) RoundedCornerShape(28.dp) else RectangleShape
+        val tonalElevation = if (isFloating) 3.dp else 1.dp
+        val shadowElevation = if (isFloating) 4.dp else 0.dp
+
+        // 参考 Rhythm：设置项固定在底部，其余导航项作为主分组
+        val settingsRoute = Screen.Settings.route
+        val topItems = remember(navItems, settingsRoute) {
+            navItems.filter { it.screen.route != settingsRoute }
+        }
+        val bottomItems = remember(navItems, settingsRoute) {
+            navItems.filter { it.screen.route == settingsRoute }
+        }
+
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
+                // ⚡ 停靠样式不给容器留系统栏内缩：面板底色必须一直延伸到状态栏与系统导航区域，
+                //   否则上下会露出页面背景、看起来"没贯通"。内容避让改由内部 Column 负责。
+                //   悬浮样式仍是内容高度的胶囊，整体内缩避开系统栏。
+                .then(
+                    if (isFloating) Modifier.windowInsetsPadding(WindowInsets.systemBars) else Modifier
+                )
+                .width(outerWidth)
                 .graphicsLayer {
                     val visibility = navRailProgressState.value
                     alpha = visibility
-                    translationX = (1f - visibility) * -80.dp.toPx()
-                }
+                    translationX = (1f - visibility) * -outerWidth.toPx()
+                },
+            // ⚡ 侧栏不再上下撑满：整体收缩为内容高度并垂直居中，避免上下拉得很长
+            contentAlignment = Alignment.Center
         ) {
-            navItems.forEach { item ->
-                val selected = currentRoute != null && currentRoute == item.screen.route
-                val isCenterAction = item.screen.route == Screen.Roaming.route
-                val onClickLambda: () -> Unit = remember(item.screen.route, navController) {
-                    {
-                        if (isCenterAction) {
-                            onCenterNavClick()
+            Surface(
+                modifier = Modifier
+                    .then(
+                        if (isFloating) {
+                            Modifier.padding(start = 8.dp)
                         } else {
-                            navController.navigateSafely(item.screen.route) {
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                            Modifier
+                        }
+                    )
+                    .width(innerWidth)
+                    // ⚡ 停靠样式：面板底色必须上下贯通（贴满可用高度），
+                    //   否则会变成一条居中的短条，"停靠"看起来非常奇怪。
+                    //   悬浮样式仍保持内容高度 + 垂直居中。
+                    .then(
+                        if (isFloating) Modifier.wrapContentHeight() else Modifier.fillMaxHeight()
+                    ),
+                shape = railShape,
+                color = containerColor,
+                tonalElevation = tonalElevation,
+                shadowElevation = shadowElevation
+            ) {
+                Column(
+                    modifier = Modifier
+                        .then(
+                            if (isFloating) Modifier.wrapContentHeight() else Modifier.fillMaxHeight()
+                        )
+                        // ⚡ 停靠样式：面板背景已铺满全屏高度，这里只让「内容」避开状态栏与
+                        //   系统导航区域，避免导航项被状态栏/手势条压住。
+                        .then(
+                            if (isFloating) Modifier else Modifier.windowInsetsPadding(WindowInsets.systemBars)
+                        )
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    topItems.forEach { item ->
+                        NavRailEntry(
+                            item = item,
+                            selected = currentRoute != null && currentRoute == item.screen.route,
+                            navController = navController,
+                            onCenterNavClick = onCenterNavClick
+                        )
+                    }
+                    // ⚡ 不再额外插 16dp：条目自身上下各有 16dp 留白，
+                    //   再加一层会让"设置"和它上方的按钮显得比其它条目间距更大。
+                    bottomItems.forEach { item ->
+                        NavRailEntry(
+                            item = item,
+                            selected = currentRoute != null && currentRoute == item.screen.route,
+                            navController = navController,
+                            onCenterNavClick = onCenterNavClick
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 单个导航栏条目：56×32dp 图标容器 + 选中药丸（宽度 0→56dp 弹簧展开）+ 下方文字。
+     * 条目整体 16dp 圆角，点击涟漪被裁剪在圆角内。
+     */
+    @Composable
+    private fun NavRailEntry(
+        item: BottomNavItem,
+        selected: Boolean,
+        navController: NavHostController,
+        onCenterNavClick: () -> Unit
+    ) {
+        val colors = MaterialTheme.colorScheme
+        val isCenterAction = item.screen.route == Screen.Roaming.route
+        val onClickLambda: () -> Unit = remember(item.screen.route, navController) {
+            {
+                if (isCenterAction) {
+                    onCenterNavClick()
+                } else {
+                    navController.navigateSafely(item.screen.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            }
+        }
+
+        val iconColor by animateColorAsState(
+            targetValue = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+            animationSpec = tween(150),
+            label = "NavRailIconColor"
+        )
+
+        val labelColor by animateColorAsState(
+            targetValue = if (selected) colors.onSurface else colors.onSurfaceVariant,
+            animationSpec = tween(150),
+            label = "NavRailLabelColor"
+        )
+
+        val pillWidth by animateDpAsState(
+            targetValue = if (selected) 56.dp else 0.dp,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "NavRailPillWidth"
+        )
+
+        val iconScale by animateFloatAsState(
+            targetValue = if (selected) 1.08f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "NavRailIconScale"
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClickLambda),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(56.dp)
+                    .height(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(pillWidth)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(colors.primaryContainer)
+                )
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+                ) {
+                    androidx.compose.animation.AnimatedContent(
+                        targetState = selected,
+                        transitionSpec = {
+                            fadeIn(tween(120)) togetherWith fadeOut(tween(80))
+                        },
+                        label = "NavRailIconTransition"
+                    ) { isSelected ->
+                        when {
+                            item.imageVectorIcon != null -> Icon(
+                                imageVector = item.imageVectorIcon,
+                                contentDescription = null,
+                                tint = iconColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            item.selectedIconResId != null && isSelected -> Icon(
+                                painter = painterResource(id = item.selectedIconResId),
+                                contentDescription = null,
+                                tint = iconColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            item.iconResId != null -> Icon(
+                                painter = painterResource(id = item.iconResId),
+                                contentDescription = null,
+                                tint = iconColor,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
-
-                val iconColor by animateColorAsState(
-                    targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = tween(150),
-                    label = "NavRailIconColor"
-                )
-
-                val iconScale by animateFloatAsState(
-                    targetValue = if (selected) 1.15f else 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "NavRailIconScale"
-                )
-
-                NavigationRailItem(
-                    selected = selected,
-                    onClick = onClickLambda,
-                    icon = {
-                        Box(
-                            modifier = Modifier.graphicsLayer {
-                                scaleX = iconScale
-                                scaleY = iconScale
-                            }
-                        ) {
-                            androidx.compose.animation.AnimatedContent(
-                                targetState = selected,
-                                transitionSpec = {
-                                    fadeIn(tween(120)) togetherWith fadeOut(tween(80))
-                                },
-                                label = "NavRailIconTransition"
-                            ) { isSelected ->
-                                when {
-                                    item.imageVectorIcon != null -> Icon(
-                                        imageVector = item.imageVectorIcon,
-                                        contentDescription = null,
-                                        tint = iconColor
-                                    )
-                                    item.selectedIconResId != null && isSelected -> Icon(
-                                        painter = painterResource(id = item.selectedIconResId),
-                                        contentDescription = null,
-                                        tint = iconColor
-                                    )
-                                    item.iconResId != null -> Icon(
-                                        painter = painterResource(id = item.iconResId),
-                                        contentDescription = null,
-                                        tint = iconColor
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    label = {
-                        val labelColor by animateColorAsState(
-                            targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            animationSpec = tween(150),
-                            label = "NavRailLabelColor"
-                        )
-                        androidx.compose.material3.Text(
-                            stringResource(item.labelResId),
-                            color = labelColor
-                        )
-                    }
-                )
             }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = stringResource(item.labelResId),
+                color = labelColor,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 
@@ -2375,6 +3056,163 @@ private class BlurEffectCache {
                 .asComposeRenderEffect()
         }
         return cached
+    }
+}
+
+/** 启动动画预算（ms）：实际时长 = 预算 − 设备已加载耗时，见 [StartupTiming] */
+private const val SPLASH_FADE_BUDGET_MS = 600L
+private const val EMERGE_FADE_BUDGET_MS = 600L
+/**
+ * 缩放进入（Rhythm 风格）的时长与缩放起点。
+ *
+ * Rhythm 原值是 `tween(1000, EaseOutCubic)` + `scaleIn(initialScale = 0.92f)`；
+ * 实机观感偏"一闪而过"（EaseOutCubic 把大部分位移压在前 1/3），因此这里保留它的曲线，
+ * 只把时长放慢到 1300ms、缩放起点放大到 0.85f，让放大过程真正看得见。
+ */
+private const val SCALE_FADE_BUDGET_MS = 1300L
+
+/** 缩放进入的起始缩放（0.85f → 1f） */
+private const val ENTER_SCALE_START = 0.85f
+
+/**
+ * 品牌启动页在「首帧真正绘制出来之后」的最短停留时间。
+ * 从首帧计时而非进程启动计时 —— 否则冷启动时这段时间会被系统启动画面吃掉，
+ * 用户看不到「XiangsuPlayer 浮出 → 主界面浮出」这两段进入动画。
+ */
+private const val BRAND_SPLASH_VISIBLE_MS = 500L
+
+/**
+ * 品牌页离场总时长：= max([BRAND_SPLASH_ZOOM_MS], [BRAND_SPLASH_FADE_DELAY_MS] + [BRAND_SPLASH_FADE_MS])。
+ * 进入动画必须等它走完再启动 —— 否则离场层仍不透明地盖在最上层，
+ * 而进入动画的缓动把大部分位移放在最前面，两段重叠时用户看不到进入动画。
+ */
+private const val BRAND_SPLASH_EXIT_MS = 540L
+
+/** 文字放大离场时长（这段保持不透明，让「放大」真的被看到）。 */
+private const val BRAND_SPLASH_ZOOM_MS = 460L
+
+/** 渐隐开始前的延迟：前段只放大、不渐隐，避免文字还没放大就看不见了。 */
+private const val BRAND_SPLASH_FADE_DELAY_MS = 240L
+
+/** 渐隐时长。 */
+private const val BRAND_SPLASH_FADE_MS = 300L
+
+/** 品牌页放大离场的结束缩放（1f → 该值），与进入动画的反向缩放形成「推镜」衔接 */
+private const val BRAND_SPLASH_EXIT_SCALE = 1.3f
+
+/**
+ * 品牌浮出页：承接「系统启动画面 → 主界面」之间的空档。
+ * 底色取主题解析后的背景色，与随后的主界面完全同色，只有 App 名称文字浮出，
+ * 对齐原版 XiangsuPlayer 的启动样式。
+ */
+@Composable
+private fun StartupBrandSplash() {
+    // 对齐原版 XiangsuPlayer 的启动样式：只有 App 名称文字浮出，无 logo、无转圈。
+    //
+    // ⚡ 底色必须跟随 MaterialTheme，而不是 XML 里写死的 @color/pixelplay_background：
+    //   界面在 API 31+ 走系统动态取色，开启自定义调色盘时又走用户配色，
+    //   静态色一旦与真实背景不一致，品牌页停留的这 500ms 就是一整块「奇怪的纯色色块」。
+    //   跟随主题后品牌页与主界面同色，视觉上这层底色等于不存在。
+    // 时长自适应：600ms 预算里扣掉设备已加载的耗时，加载慢的设备不会再多等一段固定动画。
+    val durationMs = remember { StartupTiming.adaptiveDurationMs(SPLASH_FADE_BUDGET_MS) }
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = durationMs, easing = LinearOutSlowInEasing)
+        )
+    }
+    // 浮出位移：从下方 18dp 处上浮到居中
+    val riseDistancePx = with(LocalDensity.current) { 18.dp.toPx() }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // ⚡ 必须用「主题解析后的背景色」，不能用 XML 里写死的 @color/pixelplay_background：
+            //   App 真实背景来自 PixelPlayTheme（系统动态取色 / 自定义调色盘 / 静态配色三种来源），
+            //   写死的那个色（#F2F7FD / #0F1827）两个都偏蓝，与真实背景不一致时，
+            //   品牌页就会先铺一整块「奇怪的蓝色色块」再淡入真实界面。
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            // 固定品牌名（不随语言变化），对齐原版 XiangsuPlayer 的启动文字
+            text = "XiangsuPlayer",
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 32.sp,
+            fontFamily = GoogleSansRounded,
+            fontWeight = FontWeight.Bold,
+            // 只在绘制阶段读动画值，避免逐帧重组
+            modifier = Modifier.graphicsLayer {
+                val t = progress.value.coerceIn(0f, 1f)
+                alpha = t
+                // 浮出：上浮 + 从 0.92 轻微放大到 1.0
+                translationY = (1f - t) * riseDistancePx
+                val scale = 0.92f + 0.08f * t
+                scaleX = scale
+                scaleY = scale
+            }
+        )
+    }
+}
+
+/**
+ * 进入主界面的一次性动画门。
+ *
+ * 内容在动画开始前就已经组合（只动 graphicsLayer 的 alpha/scale），
+ * 避免"先播动画再组合重内容"把首帧推迟。
+ *
+ * - [StartupAnimationStyle.EMERGE]：原版 XiangsuPlayer 的浮出效果，600ms 淡入
+ * - [StartupAnimationStyle.SCALE]：淡入 + 0.85→1.0 缩放（Rhythm 的 EaseOutCubic 曲线，
+ *   时长在 Rhythm 的 1000ms 基础上放慢到 1300ms、缩放幅度加到 15%，观感更明显）
+ * - [StartupAnimationStyle.NONE]：直接显示
+ *
+ * [start] 为 false 时保持完全透明（内容已组合好，只是不显示），等品牌页放大离场走完再启动动画。
+ */
+@Composable
+private fun StartupEnterGate(
+    style: StartupAnimationStyle,
+    start: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(style, start) {
+        if (!start) return@LaunchedEffect
+        if (style == StartupAnimationStyle.NONE) {
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+        // ⚡ 本动画在品牌页之后才开始，用完整预算即可（不必再扣进程已加载耗时，
+        //   否则会被压到下限，用户看不到"浮出"）。
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = if (style == StartupAnimationStyle.EMERGE) {
+                    EMERGE_FADE_BUDGET_MS.toInt()
+                } else {
+                    SCALE_FADE_BUDGET_MS.toInt()
+                },
+                easing = if (style == StartupAnimationStyle.EMERGE) LinearOutSlowInEasing else EaseOutCubic
+            )
+        )
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // progress.value 只在 graphicsLayer 的绘制阶段读取：逐帧只更新图层，
+            // 不会触发 content() 重组（避免动画期间把主界面整棵重组一遍）。
+            .graphicsLayer {
+                alpha = progress.value
+                // 缩放起点与品牌页离场终点反向：品牌页放大冲出、主界面从略小放大进入，形成推镜
+                val scale = if (style == StartupAnimationStyle.SCALE) {
+                    ENTER_SCALE_START + (1f - ENTER_SCALE_START) * progress.value
+                } else {
+                    1f
+                }
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        content()
     }
 }
 

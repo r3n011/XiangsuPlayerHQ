@@ -20,6 +20,7 @@ import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.network.lyrics.LrcLibApiService
 import com.theveloper.pixelplay.data.network.lyrics.LrcLibResponse
+import com.theveloper.pixelplay.data.preferences.LyricsSourceKey
 import com.theveloper.pixelplay.utils.LyricsImportSecurity
 import com.theveloper.pixelplay.utils.LyricsImportValidationResult
 import com.theveloper.pixelplay.utils.LogUtils
@@ -125,7 +126,8 @@ class LyricsRepositoryImpl @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi,
     private val builtInSourceSearchApi: BuiltInSourceSearchApi,
-    private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi
+    private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
+    private val apiProviderPreferences: com.theveloper.pixelplay.data.preferences.ApiProviderPreferences
 ) : LyricsRepository {
 
 
@@ -141,6 +143,12 @@ class LyricsRepositoryImpl @Inject constructor(
         private const val AMLLDB_NCM_LYRICS_BASE_URL = "https://amlldb.bikonoo.com/lyrics/ncm-lyrics/"
         private const val NETWORK_RETRY_ATTEMPTS = 3
         private const val NETWORK_RETRY_INITIAL_DELAY_MS = 500L
+
+        /**
+         * 在线歌词各来源的总时间预算（外层 repository 超时为 20s，必须留出余量）。
+         * 兜底收口比"一直转圈"更重要：预算用尽就返回无歌词，由 UI 提示暂无歌词。
+         */
+        private const val LYRICS_STEP_TOTAL_BUDGET_MS = 18_000L
 
         private val BRACKETED_QUALIFIER_REGEX = Regex("""[\(\[\{]([^)\]\}]*)[\)\]\}]""")
         private val FEATURE_QUALIFIER_REGEX = Regex("""\b(feat(?:uring)?|ft)\.?\b""", RegexOption.IGNORE_CASE)
@@ -373,6 +381,18 @@ class LyricsRepositoryImpl @Inject constructor(
             Log.d(TAG, "===== BYPASSING STORED LYRICS FOR NETEASE/BILIBILI TRACK — fetching from API =====")
         }
 
+        // ⚡ 网易云/落雪在线歌曲：优先读版本化 JSON 磁盘缓存（按 song.id 键控 + 版本校验，
+        //   resetLyrics 时会删除）。此前缓存读取位于 fetchLyricsFromAPI 内部、内置源网络
+        //   请求之后——每次播放都得先打一发内置源接口，接口慢/失败时耗尽超时预算，
+        //   明明磁盘里有歌词却最终显示"暂无歌词"。B 站歌曲保持实时拉字幕，不走此缓存。
+        if (!forceRefresh && isNeteaseTrack && !isBilibiliTrack) {
+            loadLocalLyricsJson(song)?.let { cachedJson ->
+                lyricsCache.put(cacheKey, cachedJson)
+                Log.d(TAG, "===== RETURNING VERSIONED JSON CACHE FOR NETEASE/CLOUD TRACK =====")
+                return@withContext cachedJson
+            }
+        }
+
         // Define source fetchers (matching Rhythm pattern)
         val fetchFromLocal: suspend () -> Lyrics? = {
             findLocalLyricsFile(song)
@@ -533,13 +553,15 @@ class LyricsRepositoryImpl @Inject constructor(
      * For local songs: try JSON cache → LRCLIB search strategies.
      */
     private suspend fun fetchLyricsFromAPI(song: Song): Lyrics? = withContext(Dispatchers.IO) {
+        // ⚡ 用户可配置的在线歌词来源开关与优先级（设置 → API 管理）
+        val api = apiProviderPreferences.current()
         val isNetease = isNeteaseSong(song)
         val isCloudLx = song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
         val usedNeteaseSpecific = isNetease || isCloudLx
 
         // B 站视频：优先使用视频字幕作为歌词（对齐 PiliPlus vttSubtitles 思路）
         val bilibiliBvid = resolveBilibiliBvid(song)
-        if (bilibiliBvid != null) {
+        if (bilibiliBvid != null && api.bilibiliLyricsEnabled) {
             val subtitleLrc = try {
                 kotlinx.coroutines.withTimeout(5000L) {
                     bilibiliSearchApi.getBilibiliSubtitleLrc(
@@ -563,49 +585,105 @@ class LyricsRepositoryImpl @Inject constructor(
             }
         }
 
-        // 内置源（酷我/QQ/酷狗/咪咕）歌词优先：对齐落雪 musicSdk 的 lyric 实现
-        if (isCloudLx) {
-            val builtInLyrics = fetchLyricsFromBuiltInSource(song)
-            if (builtInLyrics != null) {
-                Log.d(TAG, "===== LOADED LYRICS FROM BUILT-IN SOURCE (${builtInSourceTag(song)}) =====")
-                saveLocalLyricsJson(song, builtInLyrics)
-                return@withContext builtInLyrics
+        // 内置源（酷我/QQ/酷狗/咪咕）歌词：对齐落雪 musicSdk 的 lyric 实现
+        val builtInStep: Pair<String, suspend () -> Lyrics?>? = if (isCloudLx && api.builtInLyricsEnabled) {
+            val step: suspend () -> Lyrics? = {
+                fetchLyricsFromBuiltInSource(song)?.also {
+                    Log.d(TAG, "===== LOADED LYRICS FROM BUILT-IN SOURCE (${builtInSourceTag(song)}) =====")
+                    saveLocalLyricsJson(song, it)
+                }
             }
+            "builtin" to step
+        } else null
+
+        val neteaseStep: Pair<String, suspend () -> Lyrics?>? = if (usedNeteaseSpecific && api.neteaseLyricsEnabled) {
+            val step: suspend () -> Lyrics? = {
+                val cachedJson = loadLocalLyricsJson(song)
+                if (cachedJson != null) {
+                    Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE (Netease) =====")
+                    cachedJson
+                } else {
+                    fetchFromNeteaseApi(song)?.also {
+                        Log.d(TAG, "===== LOADED LYRICS FROM Netease API (btwoa) =====")
+                        saveLocalLyricsJson(song, it)
+                    }
+                }
+            }
+            "netease" to step
+        } else null
+
+        val amllStep: Pair<String, suspend () -> Lyrics?>? = if (isNetease && api.amllLyricsEnabled) {
+            val step: suspend () -> Lyrics? = {
+                fetchFromAmlldb(song)?.also {
+                    Log.d(TAG, "===== LOADED WORD-BY-WORD LYRICS FROM AMLLDB =====")
+                    saveLocalLyricsJson(song, it)
+                }
+            }
+            "amll" to step
+        } else null
+
+        val diskCacheStep: Pair<String, suspend () -> Lyrics?>? = if (!usedNeteaseSpecific) {
+            val step: suspend () -> Lyrics? = {
+                loadLocalLyricsJson(song)?.also {
+                    Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE =====")
+                }
+            }
+            "diskcache" to step
+        } else null
+
+        val lrclibStep: Pair<String, suspend () -> Lyrics?>? = if (api.lrclibLyricsEnabled) {
+            val step: suspend () -> Lyrics? = { fetchFromLrcLib(song) }
+            "lrclib" to step
+        } else null
+
+        // ⚡ 顺序完全由用户在「API 管理」里排的来源顺序决定（可逐个上移/下移）；
+        //   不再用三个预设档位。磁盘缓存是本地兜底，固定在最后。
+        val stepByKey: Map<String, Pair<String, suspend () -> Lyrics?>?> = mapOf(
+            LyricsSourceKey.NETEASE.stepKey to neteaseStep,
+            LyricsSourceKey.AMLL.stepKey to amllStep,
+            LyricsSourceKey.BUILT_IN.stepKey to builtInStep,
+            // B 站字幕由上方独立分支处理，这里占位保证顺序列表完整
+            LyricsSourceKey.BILIBILI.stepKey to null,
+            LyricsSourceKey.LRCLIB.stepKey to lrclibStep
+        )
+        val orderedSteps: List<Pair<String, suspend () -> Lyrics?>> =
+            api.lyricsSourceOrder.mapNotNull { stepByKey[it.stepKey] } + listOfNotNull(diskCacheStep)
+
+        // ⚡ 每个来源单独限时 + 总预算：某个来源（尤其海外 AMLL / LRCLIB）挂住时，
+        //   不能把预算一次吃光——否则排在它后面的来源（如国内网易云）永远没机会执行，
+        //   用户感知就是「歌词一直加载不出来」。预算耗尽即收口，不再逐个空等。
+        val stepDeadline = android.os.SystemClock.elapsedRealtime() + LYRICS_STEP_TOTAL_BUDGET_MS
+        for ((tag, step) in orderedSteps) {
+            val remaining = stepDeadline - android.os.SystemClock.elapsedRealtime()
+            if (remaining <= 0L) {
+                Log.w(TAG, "Lyrics source budget exhausted before '$tag'")
+                break
+            }
+            val result = try {
+                kotlinx.coroutines.withTimeoutOrNull(minOf(remaining, stepBudgetMs(tag))) { step() }
+            } catch (e: Exception) {
+                Log.w(TAG, "Lyrics source '$tag' failed: ${e.message}")
+                null
+            }
+            if (result != null && result.isValid()) return@withContext result
         }
 
-        if (usedNeteaseSpecific) {
-            val cachedJson = loadLocalLyricsJson(song)
-            if (cachedJson != null) {
-                Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE (Netease) =====")
-                return@withContext cachedJson
-            }
+        Log.d(TAG, "No lyrics found from online sources for: ${song.displayArtist} - ${song.title}")
+        return@withContext null
+    }
 
-            val ncmLyrics = fetchFromNeteaseApi(song)
-            if (ncmLyrics != null) {
-                Log.d(TAG, "===== LOADED LYRICS FROM Netease API (btwoa) =====")
-                saveLocalLyricsJson(song, ncmLyrics)
-                return@withContext ncmLyrics
-            }
-        }
+    /** 单个歌词来源的时间片：与 [LYRICS_STEP_TOTAL_BUDGET_MS] 配合，避免单源挂住拖垮整条链 */
+    private fun stepBudgetMs(tag: String): Long = when (tag) {
+        // 内部已是"官方 8s + 镜像 6s"，这里给足一点避免被外层提前掐断
+        "netease" -> 16_000L
+        "amll" -> 8_000L
+        "lrclib" -> 8_000L
+        "builtin" -> 6_000L
+        else -> 5_000L
+    }
 
-        if (isNetease) {
-            val amlLyrics = fetchFromAmlldb(song)
-            if (amlLyrics != null) {
-                Log.d(TAG, "===== LOADED WORD-BY-WORD LYRICS FROM AMLLDB =====")
-                saveLocalLyricsJson(song, amlLyrics)
-                return@withContext amlLyrics
-            }
-            Log.d(TAG, "AMLLDB + Netease API unavailable for Netease song ${song.id} - will try LRCLIB fallback")
-        }
-
-        if (!usedNeteaseSpecific) {
-            val cachedJson = loadLocalLyricsJson(song)
-            if (cachedJson != null) {
-                Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE =====")
-                return@withContext cachedJson
-            }
-        }
-
+    /** LRCLIB 在线歌词（海外服务，可在「API 管理」中关闭） */
+    private suspend fun fetchFromLrcLib(song: Song): Lyrics? {
         // Apply rate limiting
         val currentTime = System.currentTimeMillis()
         val delayNeeded = calculateApiDelay("lrclib", currentTime)
@@ -676,7 +754,7 @@ class LyricsRepositoryImpl @Inject constructor(
 
             if (results.isEmpty()) {
                 Log.d(TAG, "No results from LRCLIB API")
-                return@withContext null
+                return null
             }
 
             val bestMatch = rankRemoteLyricsMatches(
@@ -706,15 +784,15 @@ class LyricsRepositoryImpl @Inject constructor(
                             Log.w(TAG, "Skipping database save for non-numeric song ID: ${song.id} (likely Telegram song). Lyrics will be cached in JSON.")
                         }
                         
-                        return@withContext parsedLyrics
+                        return parsedLyrics
                     }
                 }
             }
 
-            return@withContext null
+            return null
         } catch (e: Exception) {
             Log.e(TAG, "LRCLIB lyrics fetch failed: ${e.message}", e)
-            return@withContext null
+            return null
         }
     }
 
@@ -1059,7 +1137,8 @@ class LyricsRepositoryImpl @Inject constructor(
         if (songId <= 0L) return@withContext null
 
         val rawLrc = try {
-            kotlinx.coroutines.withTimeout(12000L) {
+            // 15s = 官方接口 8s + 镜像兜底 6s 的合计上限（见 LxSearchApi.getLyric）
+            kotlinx.coroutines.withTimeout(15000L) {
                 lxSearchApi.getLyric(songId = songId.toString())
             }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {

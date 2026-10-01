@@ -172,7 +172,8 @@ object AppModule {
             PixelPlayDatabase.MIGRATION_41_42,
             PixelPlayDatabase.MIGRATION_42_43,
             PixelPlayDatabase.MIGRATION_43_44,
-            PixelPlayDatabase.MIGRATION_44_45
+            PixelPlayDatabase.MIGRATION_44_45,
+            PixelPlayDatabase.MIGRATION_45_46
         )
             .addCallback(PixelPlayDatabase.createRuntimeArtifactsCallback())
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -300,9 +301,9 @@ object AppModule {
         return ImageLoader.Builder(context)
             .okHttpClient(okHttpClient)
             .dispatcher(Dispatchers.Default) // Use CPU-bound dispatcher for decoding
-            // 关闭硬件位图：硬件位图的 GPU 缓冲在内存压力/裁剪后会失效，导致
-            // 长会话中封面渐进变成空白（重启恢复正常）。软件位图更稳，代价可忽略。
-            .allowHardware(false)
+            // ⚡ 与原版保持一致：开启硬件位图。硬件位图由 GPU 直接采样，
+            // 列表快速滚动时不需要每帧上传纹理；关闭后媒体库网格/歌曲列表上滑会明显掉帧。
+            .allowHardware(true) // Re-enable hardware bitmaps for better performance
             .memoryCache {
                 MemoryCache.Builder(context)
                     // 已从固定 40MB hard cap 恢复为可用堆容量的 20%：
@@ -332,7 +333,8 @@ object AppModule {
         okHttpClient: OkHttpClient,
         lxSearchApi: LxSearchApi,
         builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
-        bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi
+        bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
+        apiProviderPreferences: com.theveloper.pixelplay.data.preferences.ApiProviderPreferences
     ): LyricsRepository {
         return LyricsRepositoryImpl(
             context = context,
@@ -341,7 +343,8 @@ object AppModule {
             okHttpClient = okHttpClient,
             lxSearchApi = lxSearchApi,
             builtInSourceSearchApi = builtInSourceSearchApi,
-            bilibiliSearchApi = bilibiliSearchApi
+            bilibiliSearchApi = bilibiliSearchApi,
+            apiProviderPreferences = apiProviderPreferences
         )
     }
 
@@ -615,9 +618,10 @@ object AppModule {
     @Singleton
     fun provideArtistImageRepository(
         deezerApiService: DeezerApiService,
-        musicDao: MusicDao
+        musicDao: MusicDao,
+        apiProviderPreferences: com.theveloper.pixelplay.data.preferences.ApiProviderPreferences
     ): ArtistImageRepository {
-        return ArtistImageRepository(deezerApiService, musicDao)
+        return ArtistImageRepository(deezerApiService, musicDao, apiProviderPreferences)
     }
 
     @Provides

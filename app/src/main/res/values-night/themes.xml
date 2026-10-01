@@ -4,12 +4,17 @@
     <style name="Theme.PixelPlay" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <!-- 与 values/themes.xml 保持一致：避免深色模式冷启动/预测返回时闪黑白底色 -->
+        <item name="android:windowBackground">@color/pixelplay_background</item>
     </style>
 
     <!-- 与 values/themes.xml 的 Theme.App.Starting 保持一致（DayNight 基类自动解析暗色背景） -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">?android:attr/colorBackground</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenBackground">@color/pixelplay_background</item>
+        <!-- 与 values/themes.xml 保持一致：不显示启动图标，启动画面只留纯色底 -->
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <!-- 图标内部动画时长取极小值：启动图标静态显示，首帧即交棒，避免拉长启动观感 -->
+        <item name="windowSplashScreenAnimationDuration">10</item>
         <item name="postSplashScreenTheme">@style/Theme.PixelPlay</item>
     </style>
 </resources>

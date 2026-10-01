@@ -36,6 +36,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -88,8 +89,16 @@ internal fun MiniPlayerContentInternal(
     canScroll: Boolean = true,
     currentPositionProvider: () -> Long = { 0L },
     totalDurationProvider: () -> Long = { 0L },
-    expansionFractionProvider: () -> Float = { 0f }
+    expansionFractionProvider: () -> Float = { 0f },
+    /** 迷你条样式（CLASSIC / MATERIAL / EXPRESSIVE），见 MiniPlayerStyle */
+    miniPlayerStyle: String = com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.CLASSIC.name
 ) {
+    // MATERIAL = Rhythm 的 MaterialMiniPlayer（三键 + 卡片底）
+    val isMaterialStyle = miniPlayerStyle ==
+        com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.MATERIAL.name
+    // EXPRESSIVE = Rhythm 的 ExpressiveMiniPlayer（胶囊 + 不透明进度填充 + 单个大播放键）
+    val isExpressiveStyle = miniPlayerStyle ==
+        com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.EXPRESSIVE.name
     val hapticFeedback = LocalHapticFeedback.current
     val controlsEnabled = !isCastConnecting && !isPreparingPlayback
 
@@ -122,8 +131,14 @@ internal fun MiniPlayerContentInternal(
         label = "MiniOnPrimary"
     )
 
-    // 进度条颜色：使用 primaryContainer 中略深一点的变体，保证对比度
-    val progressColor = onPrimaryContainer.copy(alpha = 0.30f)
+    // 进度条颜色：
+    // - Expressive（Rhythm ExpressiveMiniPlayer）：不透明 primaryContainer，整条从左往右填充
+    // - 其余样式：primaryContainer 中略深一点的半透明变体，保证文字对比度
+    val progressColor = if (isExpressiveStyle) {
+        primaryContainer
+    } else {
+        onPrimaryContainer.copy(alpha = 0.30f)
+    }
 
     // 进度条右侧圆角（左侧为直角，右侧为小圆角，避免"半圆"感）
     val progressRightCornerRadiusPx = with(LocalDensity.current) { 10.dp.toPx() }
@@ -189,10 +204,15 @@ internal fun MiniPlayerContentInternal(
                     SmartImage(
                         model = albumArtModel,
                         contentDescription = "Carátula de ${song.title}",
-                        shape = CircleShape,
+                        // Material / Expressive（对齐 Rhythm）使用圆角方形封面，经典样式保持圆形
+                        shape = if (isMaterialStyle || isExpressiveStyle) {
+                            RoundedCornerShape(10.dp)
+                        } else {
+                            CircleShape
+                        },
                         targetSize = Size(150, 150),
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(if (isExpressiveStyle) 48.dp else 44.dp)
                             .graphicsLayer {
                                 val f = expansionFractionProvider().coerceIn(0f, 1f)
                                 // 封面移动动画已移除：展开时封面原地淡出，不再缩放/平移到全屏播放器位置
@@ -235,9 +255,10 @@ internal fun MiniPlayerContentInternal(
                         },
                     verticalArrangement = Arrangement.Center
                 ) {
+                    // Expressive 对齐 Rhythm：歌名 16sp Bold、歌手 13sp
                     val titleStyle = MaterialTheme.typography.titleSmall.copy(
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = if (isExpressiveStyle) 16.sp else 15.sp,
+                        fontWeight = if (isExpressiveStyle) FontWeight.Bold else FontWeight.SemiBold,
                         letterSpacing = (-0.2).sp,
                         fontFamily = GoogleSansRounded,
                         color = onPrimaryContainer
@@ -276,34 +297,37 @@ internal fun MiniPlayerContentInternal(
                     },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(onPrimary)
-                            .clickable(
-                                interactionSource = previousInteraction,
-                                indication = miniPlayerIndication,
-                                enabled = controlsEnabled
-                            ) {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onPrevious()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.SkipPrevious,
-                            contentDescription = "Anterior",
-                            tint = primary,
-                            modifier = Modifier.size(22.dp)
-                        )
+                    // ⚡ Expressive（Rhythm ExpressiveMiniPlayer 手机版）只有单个大播放键，无上下曲
+                    if (!isExpressiveStyle) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(onPrimary)
+                                .clickable(
+                                    interactionSource = previousInteraction,
+                                    indication = miniPlayerIndication,
+                                    enabled = controlsEnabled
+                                ) {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onPrevious()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.SkipPrevious,
+                                contentDescription = "Anterior",
+                                tint = primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(if (isExpressiveStyle) 44.dp else 36.dp)
                             .clip(CircleShape)
                             .background(primary)
                             .clickable(
@@ -320,30 +344,32 @@ internal fun MiniPlayerContentInternal(
                             imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             contentDescription = if (isPlaying) "Pausar" else "Reproducir",
                             tint = onPrimary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(if (isExpressiveStyle) 26.dp else 22.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    if (!isExpressiveStyle) {
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(onPrimary)
-                            .clickable(
-                                interactionSource = nextInteraction,
-                                indication = miniPlayerIndication,
-                                enabled = controlsEnabled
-                            ) { onNext() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.SkipNext,
-                            contentDescription = "Siguiente",
-                            tint = primary,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(onPrimary)
+                                .clickable(
+                                    interactionSource = nextInteraction,
+                                    indication = miniPlayerIndication,
+                                    enabled = controlsEnabled
+                                ) { onNext() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.SkipNext,
+                                contentDescription = "Siguiente",
+                                tint = primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -359,5 +385,19 @@ internal fun MiniPlayerContentInternal(
                 )
             }
         }
+    }
+}
+
+/** 迷你条时长胶囊文案：mm:ss（超过一小时显示 h:mm:ss） */
+private fun formatMiniPlayerTime(ms: Long): String {
+    if (ms <= 0L) return "0:00"
+    val totalSeconds = ms / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
     }
 }

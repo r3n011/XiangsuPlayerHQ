@@ -148,6 +148,10 @@ class MediaControllerSyncStateHolder @Inject constructor(
     }
 
     private fun updateCurrentPlaybackQueueFromPlayer(playerCtrl: MediaController?) {
+        // ⚡ 整库队列批量回填期间不做全量重建（见 PlaybackStateHolder.isQueueFillInProgress）：
+        //    否则 n 首 × 多次 O(n) 重建 ≈ O(n²)，大曲库点歌会明显卡顿。
+        //    回填结束时 PlayerViewModel 会把最终队列一次性写入 UI 状态，不会残留中间态。
+        if (playbackStateHolder.isQueueFillInProgress) return
         val currentMediaController = playerCtrl ?: cb.getController() ?: return
         val requestId = ++lastQueueUpdateRequestId
         lastQueueUpdateJob?.cancel()

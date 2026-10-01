@@ -741,8 +741,28 @@ class WebRemoteServerService : LifecycleService() {
                                     connection.connect()
                                     connection.inputStream.use { it.readBytes() }
                                 } else {
-                                    val uri = Uri.parse(artUri)
-                                    val inputStream = AlbumArtUtils.openArtworkInputStream(applicationContext, uri)
+                                    // ⚡ 本地歌曲封面兜底：
+                                    //   AlbumArtUtils.openArtworkInputStream 解析 pixelplay_local_art:// 时，
+                                    //   内部要靠 MediaStore 反查音频文件路径（DATA 列）才能提取内嵌封面；
+                                    //   而 Android 10+ 上该列可能查不到 → 本地封面一律 404。
+                                    //   App 内因 Coil 内存缓存命中往往看不出来，网页端是全新请求，就会"加载不出封面"。
+                                    //   这里直接用库里记录的音频文件路径去解内嵌封面，失败再走原有 URI 解析。
+                                    val localSongId = songId.toLongOrNull()
+                                    val audioPath = song?.path?.takeIf {
+                                        it.isNotBlank() && java.io.File(it).isFile
+                                    }
+                                    val localStream = if (
+                                        localSongId != null && audioPath != null &&
+                                        com.theveloper.pixelplay.utils.LocalArtworkUri.isLocalArtworkUri(artUri)
+                                    ) {
+                                        AlbumArtUtils.ensureAlbumArtCachedFile(
+                                            appContext = applicationContext,
+                                            songId = localSongId,
+                                            filePath = audioPath
+                                        )?.inputStream()
+                                    } else null
+                                    val inputStream = localStream
+                                        ?: AlbumArtUtils.openArtworkInputStream(applicationContext, Uri.parse(artUri))
                                     inputStream?.use { it.readBytes() }
                                 }
                                 if (bytes != null && bytes.isNotEmpty()) {

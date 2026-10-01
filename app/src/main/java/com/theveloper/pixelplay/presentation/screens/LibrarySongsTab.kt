@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,6 +56,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.presentation.components.songFastScrollLabel
+import com.theveloper.pixelplay.presentation.components.library.rememberLibraryListGridCells
 import androidx.compose.ui.text.style.TextOverflow
 
 
@@ -83,8 +84,8 @@ fun LibrarySongsTab(
     storageFilter: StorageFilter = StorageFilter.ALL,
     hasCurrentSong: Boolean = false
 ) {
-    val listState = rememberLazyListState()
-    val dummyListState = rememberLazyListState()
+    val listState = rememberLazyGridState()
+    val dummyListState = rememberLazyGridState()
     val pullToRefreshState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
     val visibilityCallback by rememberUpdatedState(onLocateCurrentSongVisibilityChanged)
@@ -266,7 +267,7 @@ fun LibrarySongsTab(
         }
         shouldShowInitialLoading -> {
             // Initial loading - show skeleton placeholders
-            LazyColumn(
+            LazyVerticalGrid(
                 modifier = Modifier
                     .padding(start = 12.dp, end = 24.dp, bottom = 6.dp)
                     .clip(
@@ -278,7 +279,9 @@ fun LibrarySongsTab(
                         )
                     )
                     .fillMaxSize(),
+                columns = rememberLibraryListGridCells(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
             ) {
                 items(12, key = { "skeleton_song_$it" }) { // Show 12 skeleton items
@@ -318,7 +321,7 @@ fun LibrarySongsTab(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         val activeListState = if (songs.itemCount > 0) listState else dummyListState
-                        LazyColumn(
+                        LazyVerticalGrid(
                             modifier = Modifier
                                 .padding(start = 12.dp, end = if (LocalShowScrollbar.current && (activeListState.canScrollForward || activeListState.canScrollBackward)) 22.dp else 12.dp, bottom = 6.dp)
                                 .clip(
@@ -330,7 +333,9 @@ fun LibrarySongsTab(
                                     )
                                 ),
                             state = activeListState,
+                            columns = rememberLibraryListGridCells(),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
                         ) {
                             //item(key = "songs_top_spacer") { Spacer(Modifier.height(0.dp)) }
@@ -397,7 +402,7 @@ fun LibrarySongsTab(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                            listState = activeListState,
+                            gridState = activeListState,
                             dragLabelProvider = songFastScrollLabelProvider
                         )
                     }
@@ -424,7 +429,7 @@ private fun LibrarySongsTabCustomOrderContent(
     getSelectionIndex: (String) -> Int?,
     storageFilter: StorageFilter
 ) {
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
     val pullToRefreshState = rememberPullToRefreshState()
     val currentSongId by remember(playerViewModel) {
         playerViewModel.stablePlayerState
@@ -455,7 +460,7 @@ private fun LibrarySongsTabCustomOrderContent(
                         )
                     }
                 ) {
-                    LazyColumn(
+                    LazyVerticalGrid(
                         modifier = Modifier
                             .padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
                             .clip(
@@ -468,7 +473,9 @@ private fun LibrarySongsTabCustomOrderContent(
                             )
                             .fillMaxSize(),
                         state = listState,
+                        columns = rememberLibraryListGridCells(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
                     ) {
                         items(songs, key = { it.id }) { song ->

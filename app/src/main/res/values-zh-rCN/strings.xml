@@ -48,6 +48,8 @@
     <string name="sync_files_progress">%1$d / %2$d 个文件</string>
     <string name="sync_in_progress">正在同步媒体库……</string>
     <string name="sync_complete">同步完成</string>
+    <string name="sync_up_to_date">已是最新</string>
+    <string name="sync_library_updated">媒体库已更新</string>
     <string name="sync_pending">等待中……</string>
     <string name="syncing_library">正在同步媒体库……</string>
     <string name="library_background_sync">正在后台完成……</string>
@@ -318,9 +320,15 @@
     <string name="update_no_download_source">暂无可用下载源</string>
     <string name="update_no_browser">未找到可用的浏览器</string>
     <string name="update_arch_arm64">64 位</string>
+    <string name="update_arch_x86_64">64 位 x86</string>
     <string name="update_arch_x86">32 位</string>
     <string name="update_arch_arm">32 位 ARM</string>
     <string name="update_arch_recommended">推荐</string>
+    <string name="update_version_full">完整版</string>
+    <string name="update_version_lite">无Telegram版</string>
+    <string name="update_pending_install_title">更新已准备好安装</string>
+    <string name="update_pending_install_body">新版本已在后台下载完成，是否立即安装？</string>
+    <string name="update_pending_install_later">稍后</string>
     <string name="update_check_title">检查更新</string>
     <string name="update_check_subtitle">检查是否有新版本可用</string>
     <string name="update_auto_check_title">自动检查更新</string>
@@ -459,4 +467,22 @@
     <string name="web_remote_server_channel_name">网页遥控</string>
     <string name="web_remote_server_notification_text">从局域网任意浏览器访问 PixelPlay</string>
     <string name="web_remote_server_notification_title">网页遥控已启用</string>
+    <!-- Kuromoji 日语注音引擎（按需下载） -->
+    <string name="kuromoji_engine_title">日语注音引擎</string>
+    <string name="kuromoji_engine_subtitle_installed">已安装，日语歌词可显示罗马音</string>
+    <string name="kuromoji_engine_subtitle_missing">未安装。显示日语罗马音时将自动下载（约 13MB），点按立即下载</string>
+    <string name="kuromoji_engine_subtitle_downloading">正在下载… %1$d%%</string>
+    <string name="kuromoji_engine_subtitle_downloading_unknown">正在下载…</string>
+    <string name="kuromoji_engine_subtitle_failed">引擎不可用，点按重试</string>
+    <string name="kuromoji_engine_toast_already_installed">已安装</string>
+    <string name="kuromoji_chip_engine_label">日语注音引擎</string>
+    <string name="kuromoji_chip_downloading">正在下载引擎…</string>
+    <string name="kuromoji_chip_ready">下载完成，罗马音已就绪</string>
+    <string name="kuromoji_chip_failed">引擎不可用，可在设置中重试</string>
+    <!-- 歌词字体下载提示（复用日语注音引擎同款顶部 chip） -->
+    <string name="lyrics_font_chip_label">歌词字体</string>
+    <string name="lyrics_font_chip_downloading">正在下载字体… %1$d%%</string>
+    <string name="lyrics_font_chip_downloading_unknown">正在下载字体…</string>
+    <string name="lyrics_font_chip_ready">字体已就绪</string>
+    <string name="lyrics_font_chip_failed">字体下载失败</string>
 </resources>

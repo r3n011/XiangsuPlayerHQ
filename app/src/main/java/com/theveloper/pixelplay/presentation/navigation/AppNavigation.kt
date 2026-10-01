@@ -76,6 +76,8 @@ import kotlinx.coroutines.flow.first
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.components.ScreenWrapper
 
+import com.theveloper.pixelplay.presentation.netease.chat.ChatScreen
+import com.theveloper.pixelplay.presentation.netease.chat.MessagesScreen
 import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardScreen
 import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardScreen
 import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashboardScreen
@@ -300,7 +302,14 @@ fun AppNavigation(
             }
             composable(
                 route = Screen.SettingsCategory.route,
-                arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
+                arguments = listOf(
+                    navArgument("categoryId") { type = NavType.StringType },
+                    navArgument("highlight") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                ),
             ) { backStackEntry ->
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     val categoryId = backStackEntry.arguments?.getString("categoryId")
@@ -311,6 +320,7 @@ fun AppNavigation(
                             playerViewModel = playerViewModel,
                             settingsViewModel = hiltViewModel(),
                             statsViewModel = hiltViewModel(),
+                            highlightSetting = backStackEntry.arguments?.getString("highlight"),
                             onBackClick = { navController.popBackStack() }
                         )
                     }
@@ -619,6 +629,31 @@ fun AppNavigation(
                     NeteaseDashboardScreen(
                         onBack = { navController.popBackStack() }
                     )
+                }
+            }
+            composable(
+                Screen.Messages.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    MessagesScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenChat = { userId, name, avatar ->
+                            navController.navigateSafely(Screen.Chat.createRoute(userId, name, avatar))
+                        },
+                        onGoLogin = { navController.navigateSafely(Screen.NeteaseDashboard.route) }
+                    )
+                }
+            }
+            composable(
+                route = Screen.Chat.route,
+                arguments = listOf(
+                    navArgument("userId") { type = NavType.StringType },
+                    navArgument("name") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("avatar") { type = NavType.StringType; defaultValue = "" }
+                ),
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    ChatScreen(onBack = { navController.popBackStack() })
                 }
             }
             composable(

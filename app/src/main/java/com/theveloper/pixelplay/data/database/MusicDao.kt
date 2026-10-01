@@ -61,6 +61,7 @@ private const val SONG_DETAIL_PROJECTION = """
     songs.disc_number AS disc_number,
     songs.year AS year,
     songs.date_added AS date_added,
+    songs.date_modified AS date_modified,
     songs.mime_type AS mime_type,
     songs.bitrate AS bitrate,
     songs.sample_rate AS sample_rate,
@@ -76,7 +77,7 @@ private const val SONG_LIST_PROJECTION = """
     id, title, artist_name, artist_id, album_artist, album_name, album_id,
     content_uri_string, album_art_uri_string, duration, genre, file_path,
     parent_directory_path, is_favorite, NULL AS lyrics, track_number, disc_number,
-    year, date_added, mime_type, bitrate, sample_rate, telegram_chat_id,
+    year, date_added, date_modified, mime_type, bitrate, sample_rate, telegram_chat_id,
     telegram_file_id, artists_json, source_type
 """
 
@@ -567,6 +568,20 @@ interface MusicDao {
     @Query("SELECT COUNT(*) FROM songs")
     fun getSongCount(): Flow<Int>
 
+    /**
+     * 与 [getAllSongs] 同一套目录过滤条件，但只返回数量。
+     * 用于「媒体库是否为空」这类只关心有无的场景：避免为了判空把全部歌曲实体加载并映射一遍
+     * （大曲库下会多出一次全表查询 + N 次 toSong() 映射）。
+     */
+    @Query("""
+        SELECT COUNT(*) FROM songs
+        WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
+    """)
+    fun getSongCountWithDirectoryFilter(
+        allowedParentDirs: List<String> = emptyList(),
+        applyDirectoryFilter: Boolean = false
+    ): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM songs WHERE source_type != 0")
     fun getCloudSongCount(): Flow<Int>
 
@@ -735,6 +750,8 @@ interface MusicDao {
             CASE WHEN :sortOrder = 'song_album_desc' THEN album_name END COLLATE NOCASE DESC,
             CASE WHEN :sortOrder = 'song_date_added' THEN date_added END DESC,
             CASE WHEN :sortOrder = 'song_date_added_asc' THEN date_added END ASC,
+            CASE WHEN :sortOrder = 'song_date_modified' THEN date_modified END DESC,
+            CASE WHEN :sortOrder = 'song_date_modified_asc' THEN date_modified END ASC,
             CASE WHEN :sortOrder = 'song_duration' THEN duration END DESC,
             CASE WHEN :sortOrder = 'song_duration_asc' THEN duration END ASC,
             title COLLATE NOCASE ASC,
@@ -810,6 +827,8 @@ interface MusicDao {
             CASE WHEN :sortOrder = 'song_album_desc' THEN album_name END COLLATE NOCASE DESC,
             CASE WHEN :sortOrder = 'song_date_added' THEN date_added END DESC,
             CASE WHEN :sortOrder = 'song_date_added_asc' THEN date_added END ASC,
+            CASE WHEN :sortOrder = 'song_date_modified' THEN date_modified END DESC,
+            CASE WHEN :sortOrder = 'song_date_modified_asc' THEN date_modified END ASC,
             CASE WHEN :sortOrder = 'song_duration' THEN duration END DESC,
             CASE WHEN :sortOrder = 'song_duration_asc' THEN duration END ASC,
 
@@ -849,6 +868,8 @@ interface MusicDao {
             CASE WHEN :sortOrder = 'song_album_desc' THEN album_name END COLLATE NOCASE DESC,
             CASE WHEN :sortOrder = 'song_date_added' THEN date_added END DESC,
             CASE WHEN :sortOrder = 'song_date_added_asc' THEN date_added END ASC,
+            CASE WHEN :sortOrder = 'song_date_modified' THEN date_modified END DESC,
+            CASE WHEN :sortOrder = 'song_date_modified_asc' THEN date_modified END ASC,
             CASE WHEN :sortOrder = 'song_duration' THEN duration END DESC,
             CASE WHEN :sortOrder = 'song_duration_asc' THEN duration END ASC,
             title COLLATE NOCASE ASC,

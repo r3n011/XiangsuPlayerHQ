@@ -1,4 +1,5 @@
 import com.android.build.api.variant.FilterConfiguration
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Base64
 import java.util.Date
@@ -70,12 +71,20 @@ android {
 
     androidResources {
         noCompress.add("tflite")
-        // autoeq_profiles.json 约 1.5MB > 1MB 阈值：不压缩直接存入 APK，
-        // 避免 release 构建下压缩 asset 读取失败导致 AutoEQ 数据库丢失
-        noCompress.add("json")
+        // 注意：不要再把 "json" 加入 noCompress。autoeq_profiles.json 等大 JSON
+        // 走 assets.open() 流式读取，deflate 压缩存储可省 ~1.2MB APK 体积；
+        // 历史上"release 压缩 asset 读取失败"实为同名 .db 死资产问题（已删除）。
     }
 
     packaging {
+        jniLibs {
+            // ⚡ Android 15+ 的 16KB 页设备要求：
+            //   1) APK 内的 .so 不被压缩存储（解压/对齐由系统 mmap 直接使用）；
+            //   2) zip 条目按 16KB 对齐（AGP 8.5.1+ 打包时自动用 zipalign -P 16）。
+            //      useLegacyPackaging = false 是「不压缩 + 16KB 对齐」的开关，
+            //      这里显式声明，避免 flavor/变体默认值变化后静默退回 4KB 对齐。
+            useLegacyPackaging = false
+        }
         resources {
             excludes += listOf(
                 "META-INF/INDEX.LIST",
@@ -112,8 +121,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 59
-        versionName = "1.6.2"
+        versionCode = 61
+        versionName = "1.6.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -143,6 +152,21 @@ android {
         // 运行时由 com.theveloper.pixelplay.data.github.GitHubToken 解码，
         // 避免通过 strings / DEX 字符串常量池直接提取到明文 token。
         buildConfigField("String", "GITHUB_TOKEN_OBF", "\"${obfuscateSecret(githubToken)}\"")
+    }
+
+    flavorDimensions += "build"
+    productFlavors {
+        create("full") {
+            dimension = "build"
+            // 完整版：包含 Telegram（TDLib 原生库 + 功能）
+            buildConfigField("Boolean", "TELEGRAM_ENABLED", "true")
+        }
+        create("lite") {
+            dimension = "build"
+            // 精简版（no-telegram）：不打包 libtdjni.so，Telegram 功能运行时禁用，
+            // UI 入口由 BuildConfig.TELEGRAM_ENABLED=false 门控隐藏。
+            buildConfigField("Boolean", "TELEGRAM_ENABLED", "false")
+        }
     }
 
     signingConfigs {
@@ -209,13 +233,13 @@ android {
         checkReleaseBuilds = false
     }
 
-    // ABI 分包：Release/Benchmark 产出 x86 与 arm64-v8a 两个 split APK；
-    // Debug（isEnable=false）产出通用 APK
+    // ABI 分包：Release/Benchmark 产出 arm64-v8a / armeabi-v7a / x86_64 三个 split APK
+    // （32 位 arm32 与 64 位 x86_64 均覆盖）；Debug（isEnable=false）产出通用 APK
     splits {
         abi {
             isEnable = isAbiSplitEnabled
             reset()
-            include("arm64-v8a", "x86")
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = false
         }
     }
@@ -234,6 +258,13 @@ androidComponents {
         val date = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
         val variantName = variant.name
 
+        // lite（no-telegram）风味：打包时排除 TDLib 原生库，显著缩小 APK。
+        // Java/Kotlin 层的 TDLib 类仍保留（TelegramClientManager 的 loadLibrary 会失败并
+        // 置 nativeLibraryLoaded=false，运行时安全降级），so 是体积大头，排除即可。
+        if (variant.flavorName == "lite") {
+            variant.packaging.jniLibs.excludes.add("**/libtdjni.so")
+        }
+
         variant.outputs.forEach { output ->
             // 从 output 的过滤器读取 ABI（AGP 9 分包时默认文件名不含 ABI，不能靠文件名猜测）。
             // AGP 9 已移除 OutputFilter，改用 FilterConfiguration（filterType + identifier）。
@@ -243,8 +274,9 @@ androidComponents {
             val abiSuffix = abi?.let {
                 "-" + it.replace("arm64-v8a", "arm64").replace("armeabi-v7a", "arm32")
             } ?: ""
+            val flavorSuffix = if (variant.flavorName == "lite") "-no-telegram" else ""
 
-            output.outputFileName = "PixelPlay-${vName}-${vCode}-${date}-${variantName}${abiSuffix}.apk"
+            output.outputFileName = "PixelPlay-${vName}-${vCode}-${date}-${variantName}${abiSuffix}${flavorSuffix}.apk"
         }
     }
 }
@@ -380,7 +412,8 @@ dependencies {
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
-    implementation(libs.kuromoji.ipadic)
+    // kuromoji-ipadic 已移出 APK（省 ~12.7MB）：日语罗马音引擎由 KuromojiEngine
+    // 在首次使用时按需下载并 DexClassLoader 动态加载，产物见 tools/kuromoji/README.md
     implementation(libs.pinyin4j.core)
     implementation(libs.accompanist.drawablepainter)
     implementation(libs.accompanist.permissions)
@@ -472,4 +505,42 @@ configurations.all {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// ── 一键发布打包 ─────────────────────────────────────────────────────────────
+// 用法：gradlew :app:assembleDistRelease
+// 等价于同时打包 fullRelease + liteRelease（各自含 arm64-v8a / x86 ABI 分包），
+// 并把全部 APK 汇总拷贝到项目根 dist/ 目录，同时生成同名 .sha256 校验文件。
+// 注意：任务名必须含 "Release" —— 上方 isAbiSplitEnabled 靠任务名开启 ABI 分包，
+// 改名时不要去掉这个后缀，否则会退化成通用 APK。
+tasks.register("assembleDistRelease") {
+    group = "build"
+    description = "Build full + lite release APKs (all ABI splits) and collect them into dist/"
+    dependsOn("assembleFullRelease", "assembleLiteRelease")
+    doLast {
+        val outputsRoot = layout.buildDirectory.dir("outputs/apk").get().asFile
+        val apks = fileTree(outputsRoot) { include("**/*Release*.apk") }
+            .files
+            .filter { it.extension == "apk" }
+            .sortedBy { it.name }
+        val target = rootProject.layout.projectDirectory.dir("dist").asFile.apply { mkdirs() }
+        apks.forEach { apk ->
+            val dest = File(target, apk.name)
+            apk.copyTo(dest, overwrite = true)
+            val sha = MessageDigest.getInstance("SHA-256").let { md ->
+                apk.inputStream().use { input ->
+                    val buf = ByteArray(1 shl 16)
+                    while (true) {
+                        val read = input.read(buf)
+                        if (read < 0) break
+                        md.update(buf, 0, read)
+                    }
+                }
+                md.digest().joinToString("") { "%02x".format(it) }
+            }
+            File(target, "${apk.name}.sha256").writeText("$sha  ${apk.name}\n")
+        }
+        println("assembleDistRelease: ${apks.size} APK(s) collected -> ${target.absolutePath}")
+        apks.forEach { println("  - ${it.name}") }
+    }
 }

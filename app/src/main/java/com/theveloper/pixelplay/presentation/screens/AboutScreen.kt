@@ -24,6 +24,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -88,6 +89,7 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -604,6 +606,16 @@ fun AboutScreen(
                 )
             }
 
+            // 赞助开发卡：放在 Hero 之后的显眼位置（二维码 + 一键捐赠 + 感谢名单）
+            item(key = "donation") {
+                DonationCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 12.dp),
+                )
+            }
+
             // 信息分组卡：关于本项目 + 维护者 + 使用声明（去重合并为一张卡片）
             item(key = "about_info_group") {
                 AboutInfoGroupCard(
@@ -768,7 +780,10 @@ private fun AboutHeroCard(
                             },
                     ) {
                         Text(
-                            text = stringResource(R.string.about_version_format, versionName),
+                            text = stringResource(
+                                R.string.about_version_format,
+                                buildDisplayVersion(versionName)
+                            ),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -1499,6 +1514,241 @@ private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
     }
 }
 
+/** 支付宝收款链接（用于「一键捐赠」跳转） */
+private const val ALIPAY_DONATION_URL = "https://qr.alipay.com/fkx16554zi5nuco07uevm00"
+
+/** 感谢名单：按捐赠时间倒序，展示与收款记录一致的脱敏昵称 */
+private val DonationSupporters = listOf("刘琦先生", "盘旋在古城上的白色乌鸦", "**涛", "**烽", "**棣")
+
+/**
+ * 一键打开支付宝捐赠：
+ * 1) 优先用支付宝「扫一扫」协议直接唤起收款码（已安装支付宝时最顺手）；
+ * 2) 没有支付宝 / 没有应用能处理该协议时，回退到浏览器打开收款链接。
+ */
+private fun openAlipayDonation(context: Context) {
+    val alipayScheme = "alipayqr://platformapi/startapp?saId=10000007&qrcode=" +
+        Uri.encode(ALIPAY_DONATION_URL)
+    for (url in listOf(alipayScheme, ALIPAY_DONATION_URL)) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: ActivityNotFoundException) {
+            // 无处理者，继续尝试下一个候选
+        } catch (_: Throwable) {
+            // 继续尝试下一个候选
+        }
+    }
+    android.widget.Toast
+        .makeText(context, R.string.about_donation_no_app, android.widget.Toast.LENGTH_SHORT)
+        .show()
+}
+
+/**
+ * 赞助开发卡：收款二维码 + 一键捐赠按钮 + 感谢名单。
+ * 二维码底板固定为白色 —— 深色主题下也必须保证可扫描。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DonationCard(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val qrPlateColor = Color.White
+    val qrPlateTextColor = Color(0xFF1A1A1A)
+
+    Surface(
+        modifier = modifier,
+        shape = AbsoluteSmoothCornerShape(22.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 2.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(10.dp).size(28.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.about_donation_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(R.string.about_donation_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = qrPlateColor,
+                shadowElevation = 3.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.donation_alipay_qr),
+                        contentDescription = stringResource(R.string.cd_donation_qr),
+                        modifier = Modifier
+                            .width(220.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.FillWidth,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = stringResource(R.string.about_donation_qr_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = qrPlateTextColor.copy(alpha = 0.75f),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = { openAlipayDonation(context) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Favorite,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.about_donation_button),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = stringResource(R.string.about_donation_thanks_title),
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.about_donation_thanks_subtitle),
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 只展示昵称，不放头像/截图等任何图片元素
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                DonationSupporters.forEach { supporter ->
+                    Text(
+                        text = supporter,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = stringResource(R.string.about_donation_thanks_note),
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 彩蛋：默认只露一句提示，点一下才展开写给用户的感谢语。
+            // 故意做成需要主动点击 —— 不然就只是又一行文案，不会有"发现"的感觉。
+            var surpriseRevealed by remember { mutableStateOf(false) }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { surpriseRevealed = !surpriseRevealed }
+                    .padding(vertical = 6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Favorite,
+                        contentDescription = null,
+                        tint = if (surpriseRevealed) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        },
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.about_supporters_surprise_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                AnimatedVisibility(visible = surpriseRevealed) {
+                    Text(
+                        text = stringResource(R.string.about_supporters_surprise_message),
+                        modifier = Modifier.padding(top = 6.dp, start = 22.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun AcknowledgementItem(
     description: String,
@@ -1674,4 +1924,17 @@ private fun openUrl(context: Context, url: String) {
     } catch (_: ActivityNotFoundException) {
         // Ignore if no handler is available.
     }
+}
+
+/**
+ * 版本号附加 flavor 后缀：lite（no-telegram）构建显示 "1.6.3 Lite"，
+ * 完整版显示 "1.6.3"。让用户在关于页一眼区分自己安装的是哪个版本。
+ */
+private fun buildDisplayVersion(versionName: String): String {
+    val suffix = if (com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
+        ""
+    } else {
+        " Lite"
+    }
+    return versionName + suffix
 }

@@ -144,4 +144,20 @@
     <string name="reorder_sheets_saving">正在保存排序……</string>
     <string name="reorder_songs_sheet_title">重新排列歌曲</string>
     <string name="sort_sheet_reorder_action">重新排列</string>
+
+    <!-- 歌曲信息：分组瓦片 -->
+    <string name="song_info_section_basic">歌曲信息</string>
+    <string name="song_info_section_file">文件信息</string>
+    <string name="song_info_label_track">音轨</string>
+    <string name="song_info_label_disc">碟号</string>
+    <string name="song_info_label_year">年份</string>
+    <string name="song_info_label_album_artist">专辑艺术家</string>
+    <string name="song_info_label_format">格式</string>
+    <string name="song_info_label_bit_depth">位深</string>
+    <string name="song_info_label_sample_rate">采样率</string>
+    <string name="song_info_label_bitrate">比特率</string>
+    <string name="song_info_label_channels">声道</string>
+    <string name="song_info_label_file_size">文件大小</string>
+    <string name="song_info_label_date_added">添加日期</string>
+    <string name="song_info_label_date_modified">修改日期</string>
 </resources>

@@ -71,6 +71,8 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import com.theveloper.pixelplay.data.preferences.dataStore
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -124,6 +126,7 @@ import android.text.format.DateFormat as AndroidDateFormat
 import kotlin.math.roundToInt
 import kotlin.math.PI
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.unit.sp
@@ -348,7 +351,23 @@ fun StatsScreen(
                     .zIndex(5f)
             ) {
                 val solidAlpha = (collapseFraction * 2f).coerceIn(0f, 1f)
-                val backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = solidAlpha)
+                // ⚡ 新版顶栏开启时：顶栏自带渐进模糊遮罩，时间筛选标签背后的不透明纯色遮罩移除；
+                //   关闭「新版顶栏」（或开启「禁用模糊」）时保持原有纯色遮罩行为。
+                //   偏好读取方式与 CollapsibleCommonTopBar 内部保持一致。
+                val topBarStyleContext = LocalContext.current
+                val newTopBarPrefs by remember(topBarStyleContext) {
+                    topBarStyleContext.dataStore.data
+                        .map { prefs ->
+                            (prefs[booleanPreferencesKey("disable_blur_all_over")] ?: false) to
+                                (prefs[booleanPreferencesKey("use_new_top_bar")] ?: true)
+                        }
+                }.collectAsStateWithLifecycle(initialValue = false to true)
+                val useNewTopBarStyle = newTopBarPrefs.second && !newTopBarPrefs.first
+                val backgroundColor = if (useNewTopBarStyle) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = solidAlpha)
+                }
 
                 Column(
                     modifier = Modifier

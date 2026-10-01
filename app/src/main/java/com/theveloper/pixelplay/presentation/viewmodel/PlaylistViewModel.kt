@@ -209,6 +209,11 @@ class PlaylistViewModel @Inject constructor(
     }
 
     private fun observeTelegramCloudPlaylistVisibility() {
+        // lite（no-telegram）构建：不收集 Telegram 云歌单显示偏好，强制隐藏
+        if (!com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
+            _uiState.update { it.copy(showTelegramCloudPlaylists = false) }
+            return
+        }
         viewModelScope.launch {
             playlistPreferencesRepository.showTelegramCloudPlaylistsFlow.collect { show ->
                 _uiState.update { it.copy(showTelegramCloudPlaylists = show) }

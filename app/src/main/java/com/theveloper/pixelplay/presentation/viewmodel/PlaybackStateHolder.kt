@@ -103,6 +103,19 @@ class PlaybackStateHolder @Inject constructor(
     private val _currentPosition = MutableStateFlow(0L)
     val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
 
+    /**
+     * 「整库队列批量回填」进行中。
+     *
+     * 回填时每批 `addMediaItems` 都会触发一次 PLAYLIST_CHANGED，而「按时间线重建队列」
+     * 是 O(n) 的（遍历算签名 + 逐项解析 + persistent list 转换）。n 首歌分多批写入时，
+     * 累计开销接近 O(n²) —— 这正是「入队太多就卡」的主因。
+     *
+     * 回填期间置 true 抑制重建；回填结束时 PlayerViewModel 会直接把最终队列一次性写入
+     * UI 状态，因此不会残留中间态。
+     */
+    @Volatile
+    var isQueueFillInProgress: Boolean = false
+
     private var _isWebRemoteActive = false
     fun setWebRemoteActive(active: Boolean) {
         _isWebRemoteActive = active

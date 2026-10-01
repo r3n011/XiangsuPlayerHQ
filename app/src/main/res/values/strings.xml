@@ -50,6 +50,8 @@
     <string name="sync_files_progress">%1$d of %2$d files</string>
     <string name="sync_in_progress">Syncing library…</string>
     <string name="sync_complete">Sync complete</string>
+    <string name="sync_up_to_date">Up to date</string>
+    <string name="sync_library_updated">Music Library Updated</string>
     <string name="sync_pending">Waiting…</string>
     <string name="syncing_library">Syncing library…</string>
     <string name="library_background_sync">Finishing in the background…</string>
@@ -327,9 +329,15 @@
     <string name="update_no_download_source">No download source available</string>
     <string name="update_no_browser">No browser found</string>
     <string name="update_arch_arm64">64-bit</string>
+    <string name="update_arch_x86_64">64-bit x86</string>
     <string name="update_arch_x86">32-bit</string>
     <string name="update_arch_arm">32-bit ARM</string>
     <string name="update_arch_recommended">Recommended</string>
+    <string name="update_version_full">Full Version</string>
+    <string name="update_version_lite">No-Telegram</string>
+    <string name="update_pending_install_title">Update ready to install</string>
+    <string name="update_pending_install_body">A new version has been downloaded in the background. Install it now?</string>
+    <string name="update_pending_install_later">Later</string>
     <string name="update_check_title">Check for Updates</string>
     <string name="update_check_subtitle">Check if a new version is available</string>
     <string name="update_auto_check_title">Auto Check Updates</string>
@@ -459,4 +467,22 @@
     <string name="onboarding_quick_gesture_tap">Tap the cover to open the album</string>
     <string name="onboarding_quick_finished_tap">Tap the avatar above to enter the app</string>
     <string name="onboarding_select_language">Select Language</string>
+    <!-- Kuromoji 日语注音引擎（按需下载） -->
+    <string name="kuromoji_engine_title">Japanese Romanization Engine</string>
+    <string name="kuromoji_engine_subtitle_installed">Installed. Japanese lyrics can show romaji</string>
+    <string name="kuromoji_engine_subtitle_missing">Not installed. Downloads automatically (~13 MB) when Japanese lyrics show romaji. Tap to download now</string>
+    <string name="kuromoji_engine_subtitle_downloading">Downloading… %1$d%%</string>
+    <string name="kuromoji_engine_subtitle_downloading_unknown">Downloading…</string>
+    <string name="kuromoji_engine_subtitle_failed">Engine unavailable. Tap to retry</string>
+    <string name="kuromoji_engine_toast_already_installed">Already installed</string>
+    <string name="kuromoji_chip_engine_label">Japanese Romanization</string>
+    <string name="kuromoji_chip_downloading">Downloading engine…</string>
+    <string name="kuromoji_chip_ready">Engine ready — romaji enabled</string>
+    <string name="kuromoji_chip_failed">Engine unavailable — retry in Settings</string>
+    <!-- 歌词字体下载提示（复用日语注音引擎同款顶部 chip） -->
+    <string name="lyrics_font_chip_label">Lyrics font</string>
+    <string name="lyrics_font_chip_downloading">Downloading font… %1$d%%</string>
+    <string name="lyrics_font_chip_downloading_unknown">Downloading font…</string>
+    <string name="lyrics_font_chip_ready">Font ready</string>
+    <string name="lyrics_font_chip_failed">Font download failed</string>
 </resources>

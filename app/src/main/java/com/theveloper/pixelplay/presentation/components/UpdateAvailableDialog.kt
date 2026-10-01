@@ -74,12 +74,17 @@ fun UpdateAvailableDialog(
     }
     // GitHub 下载：按设备 ABI 自动推荐架构，用户可手动切换 64/32 位
     val deviceAbis = remember { Build.SUPPORTED_ABIS.toList() }
-    val archKeys = remember(updateInfo) { updateInfo.availableArchKeys() }
-    val recommendedArchKey = remember(updateInfo) { updateInfo.preferredArchKey(deviceAbis) }
-    var selectedArchKey by remember(updateInfo) {
-        mutableStateOf(updateInfo.preferredArchKey(deviceAbis))
+    // 版本选择：完整版（含 Telegram）/ 精简版（no-telegram）。当前安装的精简版用户默认推荐精简版。
+    val hasLiteVariant = remember(updateInfo) { updateInfo.liteApkUrlsByAbi.isNotEmpty() }
+    var useLite by remember(updateInfo) {
+        mutableStateOf(hasLiteVariant && !com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED)
     }
-    val githubUrl = selectedArchKey?.let { updateInfo.apkUrlsByAbi[it] } ?: updateInfo.apkUrl
+    val archKeys = remember(updateInfo, useLite) { updateInfo.availableArchKeys(useLite) }
+    val recommendedArchKey = remember(updateInfo, useLite) { updateInfo.preferredArchKey(deviceAbis, useLite) }
+    var selectedArchKey by remember(updateInfo, useLite) {
+        mutableStateOf(updateInfo.preferredArchKey(deviceAbis, useLite))
+    }
+    val githubUrl = selectedArchKey?.let { updateInfo.abiMapFor(useLite)[it] } ?: updateInfo.apkUrl
     val hasAnySource = lanzouCandidates.isNotEmpty() || !githubUrl.isNullOrBlank()
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
@@ -319,6 +324,88 @@ fun UpdateAvailableDialog(
                                     )
                                 }
                             }
+                            // 版本选择（完整版 / 精简版 no-telegram）：仅在 GitHub 同时发布了
+                            // 精简版资产时显示；切换后架构选择与下载链接联动。
+                            if (hasLiteVariant && !isDownloading && !isInstalling) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    val liteSelected = useLite
+                                    val fullSelected = !useLite
+                                    Surface(
+                                        onClick = { useLite = false },
+                                        shape = MaterialTheme.shapes.small,
+                                        color = if (fullSelected) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        },
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.update_version_full),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (fullSelected) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                            )
+                                            if (fullSelected && com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
+                                                Text(
+                                                    text = stringResource(R.string.update_arch_recommended),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Surface(
+                                        onClick = { useLite = true },
+                                        shape = MaterialTheme.shapes.small,
+                                        color = if (liteSelected) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        },
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.update_version_lite),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (liteSelected) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                            )
+                                            if (liteSelected && !com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED) {
+                                                Text(
+                                                    text = stringResource(R.string.update_arch_recommended),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             // 架构选择（64/32 位）：仅当存在多个架构的 APK 且未下载中时显示
                             if (archKeys.size > 1 && !githubUrl.isNullOrBlank() && !isDownloading && !isInstalling) {
                                 Row(
@@ -443,6 +530,7 @@ fun UpdateAvailableDialog(
 
 /** 架构键 → 显示文案资源 */
 private fun archLabelRes(key: String): Int = when (key) {
+    "x86_64" -> R.string.update_arch_x86_64
     "x86" -> R.string.update_arch_x86
     "arm" -> R.string.update_arch_arm
     else -> R.string.update_arch_arm64

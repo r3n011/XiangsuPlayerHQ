@@ -66,30 +66,62 @@ class UpdateChecker @Inject constructor() {
 
                     val publishedAt = parseDateTime(release.published_at)
 
-                    // 解析 APK 下载链接：收集全部 APK 资产并按架构名归类（arm64 / x86 / arm32）
+                    // 解析 APK 下载链接：收集全部 APK 资产并按架构名归类（arm64 / x86 / arm32），
+                    // 同时区分完整版（full）与精简版（no-telegram，不含 TDLib 原生库）。
                     val apkAssets = release.assets.filter { it.name.lowercase().endsWith(".apk") }
                     val allApkUrls = apkAssets.map { it.browser_download_url }
-                    val apkUrlsByAbi = apkAssets.mapNotNull { asset ->
-                        val lower = asset.name.lowercase()
-                        val key = when {
+
+                    // ⚡ 发布版本号以「APK 文件名」为准（构建规则：PixelPlay-<版本号>-<构建号>-<日期>-<variant><abi>.apk）。
+                    //   release 的 tag 可能与实际打包的版本号不一致（tag 先写了新版本、资产还是旧包），
+                    //   只看 tag 会导致「已经是最新包却仍提示更新」。
+                    //   多个资产时取解析到的最小版本，最保守、最不容易误报。
+                    val assetVersion = apkAssets
+                        .mapNotNull { asset ->
+                            parseApkFileNameVersion(asset.name)?.let { raw ->
+                                parseVersionNumber(raw)?.let { parsed -> raw to parsed }
+                            }
+                        }
+                        .minWithOrNull { a, b -> compareVersions(a.second, b.second) }
+                        ?.first
+
+                    fun classifyAbi(name: String): String? {
+                        val lower = name.lowercase()
+                        return when {
                             lower.contains("arm64") -> "arm64"
-                            lower.contains("x86_64") || lower.contains("-x86") || lower.contains("x86.") -> "x86"
+                            // x86_64 必须优先于 x86 判断，否则会被误判为 32 位
+                            lower.contains("x86_64") || lower.contains("x86-64") -> "x86_64"
+                            lower.contains("x86") -> "x86"
                             lower.contains("armeabi") || lower.contains("arm32") || lower.contains("-arm.") -> "arm"
                             else -> null
                         }
-                        key?.let { it to asset.browser_download_url }
+                    }
+
+                    // 完整版：文件名不含 no-telegram
+                    val apkUrlsByAbi = apkAssets.mapNotNull { asset ->
+                        val lower = asset.name.lowercase()
+                        if (lower.contains("no-telegram")) return@mapNotNull null
+                        classifyAbi(lower)?.let { it to asset.browser_download_url }
+                    }.toMap()
+
+                    // 精简版（no-telegram）：文件名含 no-telegram 标识
+                    val liteApkUrlsByAbi = apkAssets.mapNotNull { asset ->
+                        val lower = asset.name.lowercase()
+                        if (!lower.contains("no-telegram")) return@mapNotNull null
+                        classifyAbi(lower)?.let { it to asset.browser_download_url }
                     }.toMap()
 
                     Result.success(
                         UpdateInfo(
                             version = release.tag_name,
+                            assetVersion = assetVersion,
                             publishedAt = publishedAt,
                             releaseUrl = release.html_url,
                             releaseName = release.name ?: release.tag_name,
                             releaseNotes = release.body ?: "",
                             apkUrl = apkAssets.firstOrNull()?.browser_download_url,
                             allApkUrls = allApkUrls,
-                            apkUrlsByAbi = apkUrlsByAbi
+                            apkUrlsByAbi = apkUrlsByAbi,
+                            liteApkUrlsByAbi = liteApkUrlsByAbi
                         )
                     )
                 } else {
@@ -156,56 +188,78 @@ class UpdateChecker @Inject constructor() {
 
     data class UpdateInfo(
         val version: String,
+        /** 从发布 APK 文件名解析出的版本号（如 "1.6.3"），解析不到为 null */
+        val assetVersion: String? = null,
         val publishedAt: Long,
         val releaseUrl: String,
         val releaseName: String,
         val releaseNotes: String,
         val apkUrl: String? = null,
         val allApkUrls: List<String> = emptyList(),
-        val apkUrlsByAbi: Map<String, String> = emptyMap(),  // "arm64" / "x86" / "arm" → 下载 URL
+        val apkUrlsByAbi: Map<String, String> = emptyMap(),  // "arm64" / "x86" / "arm" → 下载 URL（完整版）
+        val liteApkUrlsByAbi: Map<String, String> = emptyMap(), // 同上，精简版（no-telegram）
         val lanzouFiles: List<LanzouCloudApi.LanzouFileInfo> = emptyList(),
         val isLanzouSynced: Boolean = false  // 蓝奏云版本号是否与 GitHub 一致
     ) {
         /** 设备 ABI → 资产架构键 */
         private fun abiToKey(abi: String): String? = when {
             abi == "arm64-v8a" -> "arm64"
-            abi == "x86_64" || abi == "x86" -> "x86"
+            abi == "x86_64" -> "x86_64"
+            abi == "x86" -> "x86"
             abi.startsWith("armeabi") -> "arm"
             else -> null
         }
 
+        /** 当前 flavor 的 ABI 映射（lite 版无资产时自动回退完整版） */
+        fun abiMapFor(useLite: Boolean): Map<String, String> =
+            if (useLite && liteApkUrlsByAbi.isNotEmpty()) liteApkUrlsByAbi else apkUrlsByAbi
+
+        /** 当前 flavor 是否可用（精简版有资产，或精简版无资产时完整版兜底） */
+        fun isFlavorAvailable(useLite: Boolean): Boolean =
+            abiMapFor(useLite).isNotEmpty()
+
         /** 按设备 ABI 优先级返回推荐架构键；无匹配资产时返回第一个可用架构 */
-        fun preferredArchKey(deviceAbis: List<String>): String? {
+        fun preferredArchKey(deviceAbis: List<String>, useLite: Boolean = false): String? {
+            val map = abiMapFor(useLite)
             for (abi in deviceAbis) {
                 val key = abiToKey(abi) ?: continue
-                if (apkUrlsByAbi.containsKey(key)) return key
+                if (map.containsKey(key)) return key
             }
-            return availableArchKeys().firstOrNull()
+            return availableArchKeys(useLite).firstOrNull()
         }
 
         /** 可选的架构键列表（按优先级排序，供 UI 展示 64/32 位选择） */
-        fun availableArchKeys(): List<String> =
-            listOf("arm64", "x86", "arm").filter { apkUrlsByAbi.containsKey(it) }
+        fun availableArchKeys(useLite: Boolean = false): List<String> =
+            listOf("arm64", "x86_64", "x86", "arm").filter { abiMapFor(useLite).containsKey(it) }
 
         /**
-         * 判断是否有更新（主判断：版本号比较）。
+         * 判断是否有更新（主判断：版本号比较，**必须严格大于本地版本**才提示）。
          *
-         * 优先解析 tag_name 与本地 versionName 进行语义化版本比较；
-         * 若版本号无法解析，则回退到时间戳比较（publishedAt > lastUpdateTime）。
+         * 比较基准优先取「发布 APK 文件名里的版本号」[assetVersion]（tag 可能与实际打包版本
+         * 不一致，只看 tag 会出现"已装最新包却仍提示更新"），其次才是 tag_name；
+         * 两者都解析不出时才回退到时间戳比较。
          *
-         * @param currentVersionName 本地应用的 versionName（如 "1.1.0.4"）
+         * @param currentVersionName 本地已安装 APK 的 versionName（如 "1.6.3"）
          * @param lastUpdateTime 本地 APK 的最后更新时间戳（版本号解析失败时的兜底判断）
          */
         fun hasUpdate(currentVersionName: String, lastUpdateTime: Long = 0L): Boolean {
-            val remoteVersion = parseVersionNumber(version)
             val localVersion = parseVersionNumber(currentVersionName)
-
-            // 双方版本号都能解析 → 用版本号比较
-            if (remoteVersion != null && localVersion != null) {
-                return compareVersions(remoteVersion, localVersion) > 0
+            if (localVersion == null) {
+                // 本地版本号读不出来时不做版本号判断，退回时间戳
+                return publishedAt > 0L && publishedAt > lastUpdateTime
             }
 
-            // 版本号无法解析 → 回退到时间戳比较（publishedAt <= 0 时直接返回 false）
+            // ① 以发布 APK 文件名解析出的版本号为准
+            parseVersionNumber(assetVersion.orEmpty())?.let { remoteFromAsset ->
+                return compareVersions(remoteFromAsset, localVersion) > 0
+            }
+
+            // ② 文件名解析不出 → 用 tag_name
+            parseVersionNumber(version)?.let { remoteFromTag ->
+                return compareVersions(remoteFromTag, localVersion) > 0
+            }
+
+            // ③ 都解析不出 → 回退到时间戳比较（publishedAt <= 0 时直接返回 false）
             if (publishedAt <= 0L) return false
             return publishedAt > lastUpdateTime
         }
@@ -321,6 +375,22 @@ class UpdateChecker @Inject constructor() {
 }
 
 // ─── 版本号工具（文件级，UpdateChecker 与 UpdateInfo 共用） ───────────────────
+
+/**
+ * 从发布 APK 文件名解析版本号。
+ * 构建规则：`PixelPlay-<版本号>-<构建号>-<日期>-<variant><abi>.apk`，
+ * 例如 `PixelPlay-1.6.3-60-20261001-release-arm64.apk` → "1.6.3"。
+ *
+ * 先按前缀精确匹配（版本号紧跟在 PixelPlay- 之后），失败再退化为"文件名里第一个 x.y[.z]"
+ * （不会误取 8 位日期，因为日期不带点）。
+ */
+private val APK_NAME_VERSION_REGEX = Regex("""(?i)pixelplay[-_ ]?v?(\d+(?:\.\d+)+)""")
+private val ANY_VERSION_REGEX = Regex("""(?<!\d)(\d+\.\d+(?:\.\d+)*)(?!\d)""")
+
+private fun parseApkFileNameVersion(fileName: String): String? {
+    APK_NAME_VERSION_REGEX.find(fileName)?.let { return it.groupValues[1] }
+    return ANY_VERSION_REGEX.find(fileName)?.groupValues?.getOrNull(1)
+}
 
 /**
  * 从 tag_name 或 versionName 中提取纯数字版本号。

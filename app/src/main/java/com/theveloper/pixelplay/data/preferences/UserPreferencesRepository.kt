@@ -258,6 +258,7 @@ class UserPreferencesRepository @Inject constructor(
         val NAV_BAR_CORNER_RADIUS = intPreferencesKey("nav_bar_corner_radius")
         val HOME_TOP_WHITESPACE_DP = intPreferencesKey("home_top_whitespace_dp")
         val NAV_BAR_STYLE = stringPreferencesKey("nav_bar_style")
+        val NAV_RAIL_STYLE = stringPreferencesKey("nav_rail_style")
         val NAV_BAR_COMPACT_MODE = booleanPreferencesKey("nav_bar_compact_mode")
         val CAROUSEL_STYLE = stringPreferencesKey("carousel_style")
         val PLAYER_PROGRESS_STYLE = stringPreferencesKey("player_progress_style")
@@ -348,6 +349,9 @@ class UserPreferencesRepository @Inject constructor(
         val AUTO_UPDATE_CHECK_ENABLED = booleanPreferencesKey("auto_update_check_enabled")
         val UPDATE_DONT_SHOW_AGAIN_VERSION = stringPreferencesKey("update_dont_show_again_version")
         val LAST_UPDATE_CHECK_TIMESTAMP = longPreferencesKey("last_update_check_timestamp")
+        val UPDATE_CHECK_FREQUENCY = stringPreferencesKey("update_check_frequency") // "daily" / "weekly"
+        val BACKGROUND_UPDATE_DOWNLOAD = booleanPreferencesKey("background_update_download")
+        val UPDATE_WIFI_CHARGING_ONLY = booleanPreferencesKey("update_wifi_charging_only")
 
         // Equalizer view
         val VIEW_MODE = stringPreferencesKey("equalizer_view_mode")
@@ -366,6 +370,16 @@ class UserPreferencesRepository @Inject constructor(
         val AUTO_SCAN_LRC_FILES = booleanPreferencesKey("auto_scan_lrc_files")
         val LYRICS_FONT_SIZE = stringPreferencesKey("lyrics_font_size")
         val LYRICS_FONT_FAMILY = stringPreferencesKey("lyrics_font_family")
+
+        // 启动动画
+        val STARTUP_ANIMATION_STYLE = STARTUP_ANIMATION_STYLE_PREF_KEY
+
+        // 迷你播放条样式
+        val MINI_PLAYER_STYLE = MINI_PLAYER_STYLE_PREF_KEY
+        // 迷你播放条圆角（独立于导航栏圆角）
+        val MINI_PLAYER_CORNER_RADIUS = intPreferencesKey("mini_player_corner_radius")
+        // 滚动时隐藏底部 chrome（底部导航栏 + mini player 下移）
+        val SCROLL_HIDE_CHROME = booleanPreferencesKey("scroll_hide_chrome")
 
         // Developer options
         val ALBUM_ART_QUALITY = stringPreferencesKey("album_art_quality")
@@ -398,6 +412,17 @@ class UserPreferencesRepository @Inject constructor(
         // 新版顶栏样式：渐进模糊遮罩 + 收起标题胶囊（首页与各页面通用）
         val USE_NEW_TOP_BAR = booleanPreferencesKey("use_new_top_bar")
         val NAV_BAR_BLUR_ENABLED = booleanPreferencesKey("nav_bar_blur_enabled")
+        // 悬浮歌词（桌面歌词）
+        val FLOATING_LYRICS_ENABLED = booleanPreferencesKey("floating_lyrics_enabled")
+        val FLOATING_LYRICS_LINE_MODE = stringPreferencesKey("floating_lyrics_line_mode")
+        val FLOATING_LYRICS_LOCKED = booleanPreferencesKey("floating_lyrics_locked")
+        val FLOATING_LYRICS_EDGE_SNAP = booleanPreferencesKey("floating_lyrics_edge_snap")
+        val FLOATING_LYRICS_ANIMATIONS = booleanPreferencesKey("floating_lyrics_animations")
+        val FLOATING_LYRICS_POS_X = intPreferencesKey("floating_lyrics_pos_x")
+        val FLOATING_LYRICS_POS_Y = intPreferencesKey("floating_lyrics_pos_y")
+        val FLOATING_LYRICS_SCALE = intPreferencesKey("floating_lyrics_scale")
+        val FLOATING_LYRICS_BACKGROUND_ALPHA =
+            intPreferencesKey("floating_lyrics_background_alpha")
         // 播放器控制按钮无色块样式：上一曲/播放/下一曲显示为纯图标（无色块背景）
         val TRANSPORT_CONTROLS_FLAT_STYLE = booleanPreferencesKey("transport_controls_flat_style")
         // View preferences
@@ -434,6 +459,8 @@ class UserPreferencesRepository @Inject constructor(
 
         // Car mode
         val CAR_MODE_ENABLED = booleanPreferencesKey("car_mode_enabled")
+        /** 「软件缩放」百分比（只影响本 App 的排版尺寸，不动系统 DPI）。 */
+        val UI_SCALE = intPreferencesKey("ui_scale")
 
         // Navigation bar
         val CENTER_NAV_BUTTON_MODE = stringPreferencesKey("center_nav_button_mode")
@@ -543,6 +570,30 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setLastUpdateCheckTimestamp(timestamp: Long) {
         dataStore.edit { it[PreferencesKeys.LAST_UPDATE_CHECK_TIMESTAMP] = timestamp }
+    }
+
+    /** 更新检查频率："daily"（默认）或 "weekly" */
+    val updateCheckFrequencyFlow: Flow<String> =
+        pref { it[PreferencesKeys.UPDATE_CHECK_FREQUENCY] ?: "daily" }
+
+    suspend fun setUpdateCheckFrequency(frequency: String) {
+        dataStore.edit { it[PreferencesKeys.UPDATE_CHECK_FREQUENCY] = frequency }
+    }
+
+    /** 后台静默下载最新版 APK（默认开启） */
+    val backgroundUpdateDownloadFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.BACKGROUND_UPDATE_DOWNLOAD] ?: true }
+
+    suspend fun setBackgroundUpdateDownload(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.BACKGROUND_UPDATE_DOWNLOAD] = enabled }
+    }
+
+    /** 仅 WiFi + 充电时后台下载（默认开启） */
+    val updateWifiChargingOnlyFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.UPDATE_WIFI_CHARGING_ONLY] ?: true }
+
+    suspend fun setUpdateWifiChargingOnly(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.UPDATE_WIFI_CHARGING_ONLY] = enabled }
     }
 
     val initialSetupDoneFlow: Flow<Boolean> =
@@ -1424,6 +1475,13 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.NAV_BAR_STYLE] = style }
     }
 
+    val navRailStyleFlow: Flow<String> =
+        pref { it[PreferencesKeys.NAV_RAIL_STYLE] ?: NavRailStyle.FLOATING }
+
+    suspend fun setNavRailStyle(style: String) {
+        dataStore.edit { it[PreferencesKeys.NAV_RAIL_STYLE] = style }
+    }
+
     val navBarCompactModeFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.NAV_BAR_COMPACT_MODE] ?: false }
 
@@ -1609,6 +1667,45 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.AUTO_SCAN_LRC_FILES] = enabled }
     }
 
+    /** 启动动画样式（EMERGE / SCALE / NONE） */
+    val startupAnimationStyleFlow: Flow<String> =
+        pref { it[PreferencesKeys.STARTUP_ANIMATION_STYLE] ?: StartupAnimationStyle.EMERGE.name }
+
+    suspend fun setStartupAnimationStyle(style: String) {
+        dataStore.edit { it[PreferencesKeys.STARTUP_ANIMATION_STYLE] = style }
+    }
+
+    /** 迷你播放条样式（CLASSIC / RHYTHM） */
+    val miniPlayerStyleFlow: Flow<String> =
+        pref { it[PreferencesKeys.MINI_PLAYER_STYLE] ?: MiniPlayerStyle.CLASSIC.name }
+
+    suspend fun setMiniPlayerStyle(style: String) {
+        dataStore.edit { it[PreferencesKeys.MINI_PLAYER_STYLE] = style }
+    }
+
+    /** 滚动时隐藏底部 chrome（底栏移出屏幕 + mini player 下移），默认开启 */
+    val scrollHideChromeFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.SCROLL_HIDE_CHROME] ?: true }
+
+    suspend fun setScrollHideChrome(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.SCROLL_HIDE_CHROME] = enabled }
+    }
+
+    /**
+     * 迷你播放条圆角（dp）。
+     * ⚡ 独立于导航栏圆角：此前迷你条错误地复用了“导航栏圆角”设置，
+     *    调整导航栏圆角会连带改变迷你条形状。
+     */
+    val miniPlayerCornerRadiusFlow: Flow<Int> =
+        pref { it[PreferencesKeys.MINI_PLAYER_CORNER_RADIUS] ?: DEFAULT_MINI_PLAYER_CORNER_RADIUS }
+
+    suspend fun setMiniPlayerCornerRadius(radiusDp: Int) {
+        dataStore.edit {
+            it[PreferencesKeys.MINI_PLAYER_CORNER_RADIUS] =
+                radiusDp.coerceIn(MIN_MINI_PLAYER_CORNER_RADIUS, MAX_MINI_PLAYER_CORNER_RADIUS)
+        }
+    }
+
     val immersiveLyricsEnabledFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.IMMERSIVE_LYRICS_ENABLED] ?: false }
 
@@ -1637,8 +1734,89 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_ENABLED] = enabled }
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                                 悬浮歌词（桌面歌词）                          */
+    /* -------------------------------------------------------------------------- */
+
+    val floatingLyricsEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FLOATING_LYRICS_ENABLED] ?: false }
+
+    suspend fun setFloatingLyricsEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FLOATING_LYRICS_ENABLED] = enabled }
+    }
+
+    val floatingLyricsLineModeFlow: Flow<String> =
+        pref { it[PreferencesKeys.FLOATING_LYRICS_LINE_MODE] ?: FLOATING_LYRICS_LINE_MODE_DOUBLE }
+
+    suspend fun setFloatingLyricsLineMode(mode: String) {
+        val safe = mode.takeIf { it in FLOATING_LYRICS_LINE_MODES } ?: FLOATING_LYRICS_LINE_MODE_DOUBLE
+        dataStore.edit { it[PreferencesKeys.FLOATING_LYRICS_LINE_MODE] = safe }
+    }
+
+    val floatingLyricsLockedFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FLOATING_LYRICS_LOCKED] ?: false }
+
+    suspend fun setFloatingLyricsLocked(locked: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FLOATING_LYRICS_LOCKED] = locked }
+    }
+
+    val floatingLyricsEdgeSnapFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FLOATING_LYRICS_EDGE_SNAP] ?: true }
+
+    suspend fun setFloatingLyricsEdgeSnap(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FLOATING_LYRICS_EDGE_SNAP] = enabled }
+    }
+
+    /** 悬浮歌词「展开/收起」「整体大小变化」是否走过渡动画；关掉就是硬切。 */
+    val floatingLyricsAnimationsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FLOATING_LYRICS_ANIMATIONS] ?: true }
+
+    suspend fun setFloatingLyricsAnimations(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FLOATING_LYRICS_ANIMATIONS] = enabled }
+    }
+
+    /** 悬浮窗坐标：未设置过时返回 [FLOATING_LYRICS_POS_UNSET]，由显示侧给默认位置。 */
+    val floatingLyricsPositionFlow: Flow<Pair<Int, Int>> = pref {
+        val x = it[PreferencesKeys.FLOATING_LYRICS_POS_X] ?: FLOATING_LYRICS_POS_UNSET
+        val y = it[PreferencesKeys.FLOATING_LYRICS_POS_Y] ?: FLOATING_LYRICS_POS_UNSET
+        x to y
+    }
+
+    suspend fun setFloatingLyricsPosition(x: Int, y: Int) {
+        dataStore.edit {
+            it[PreferencesKeys.FLOATING_LYRICS_POS_X] = x
+            it[PreferencesKeys.FLOATING_LYRICS_POS_Y] = y
+        }
+    }
+
+    /** 悬浮歌词整体大小（百分比）：字号、间距、控制条按钮、贴边箭头一起缩放。 */
+    val floatingLyricsScaleFlow: Flow<Int> = pref {
+        (it[PreferencesKeys.FLOATING_LYRICS_SCALE] ?: FLOATING_LYRICS_SCALE_DEFAULT)
+            .coerceIn(FLOATING_LYRICS_SCALE_MIN, FLOATING_LYRICS_SCALE_MAX)
+    }
+
+    suspend fun setFloatingLyricsScale(percent: Int) {
+        dataStore.edit {
+            it[PreferencesKeys.FLOATING_LYRICS_SCALE] =
+                percent.coerceIn(FLOATING_LYRICS_SCALE_MIN, FLOATING_LYRICS_SCALE_MAX)
+        }
+    }
+
+    /** 悬浮歌词背景不透明度（百分比）：0 = 完全透明只留文字。 */
+    val floatingLyricsBackgroundAlphaFlow: Flow<Int> = pref {
+        (it[PreferencesKeys.FLOATING_LYRICS_BACKGROUND_ALPHA] ?: FLOATING_LYRICS_BG_ALPHA_DEFAULT)
+            .coerceIn(0, 100)
+    }
+
+    suspend fun setFloatingLyricsBackgroundAlpha(percent: Int) {
+        dataStore.edit {
+            it[PreferencesKeys.FLOATING_LYRICS_BACKGROUND_ALPHA] = percent.coerceIn(0, 100)
+        }
+    }
+
+    /** 歌词模糊强度：倍数，1.0 为基准（与设置页滑块 0.1~2.0 的中间值对齐）。 */
     val animatedLyricsBlurStrengthFlow: Flow<Float> =
-        pref { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] ?: 2.5f }
+        pref { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] ?: 1.0f }
 
     suspend fun setAnimatedLyricsBlurStrength(strength: Float) {
         dataStore.edit { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] = strength }
@@ -2126,6 +2304,26 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.CAR_MODE_ENABLED] = enabled }
     }
 
+    // ─── UI Scale ────────────────────────────────────────────────────────────
+
+    /**
+     * 「软件缩放」百分比（[UI_SCALE_MIN] ~ [UI_SCALE_MAX]，默认 100）。
+     *
+     * 只缩放 Compose 的 Density —— 即本 App 自己的排版尺寸，
+     * 不写系统 DPI、不影响其它应用。
+     */
+    val uiScaleFlow: Flow<Int> =
+        pref {
+            (it[PreferencesKeys.UI_SCALE] ?: UI_SCALE_DEFAULT)
+                .coerceIn(UI_SCALE_MIN, UI_SCALE_MAX)
+        }
+
+    suspend fun setUiScale(percent: Int) {
+        dataStore.edit {
+            it[PreferencesKeys.UI_SCALE] = percent.coerceIn(UI_SCALE_MIN, UI_SCALE_MAX)
+        }
+    }
+
     // ─── Navigation Bar ───────────────────────────────────────────────────────
 
     val centerNavButtonModeFlow: Flow<CenterNavButtonMode> =
@@ -2227,6 +2425,33 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
     // ─── Companion ────────────────────────────────────────────────────────────
 
     companion object {
+        /** 「软件缩放」的取值范围（百分比）与默认值。 */
+        const val UI_SCALE_MIN = 70
+        const val UI_SCALE_MAX = 150
+        const val UI_SCALE_DEFAULT = 100
+
+        /** 悬浮歌词的行数模式。 */
+        const val FLOATING_LYRICS_LINE_MODE_SINGLE = "single"
+        const val FLOATING_LYRICS_LINE_MODE_DOUBLE = "double"
+        const val FLOATING_LYRICS_LINE_MODE_MULTI = "multi"
+
+        val FLOATING_LYRICS_LINE_MODES = setOf(
+            FLOATING_LYRICS_LINE_MODE_SINGLE,
+            FLOATING_LYRICS_LINE_MODE_DOUBLE,
+            FLOATING_LYRICS_LINE_MODE_MULTI
+        )
+
+        /** 悬浮窗坐标未初始化时的哨兵值。 */
+        const val FLOATING_LYRICS_POS_UNSET = Int.MIN_VALUE
+
+        /** 悬浮歌词整体大小（百分比）。 */
+        const val FLOATING_LYRICS_SCALE_MIN = 80
+        const val FLOATING_LYRICS_SCALE_MAX = 140
+        const val FLOATING_LYRICS_SCALE_DEFAULT = 100
+
+        /** 悬浮歌词背景不透明度（百分比，0 = 全透明）。 */
+        const val FLOATING_LYRICS_BG_ALPHA_DEFAULT = 85
+
         /** Default character delimiters for splitting multi-artist tags. */
         val DEFAULT_ARTIST_DELIMITERS = listOf("/", ";", ",", "+", "&")
 
@@ -2241,6 +2466,11 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
         const val DEFAULT_ALBUM_ART_CACHE_LIMIT_MB = 200
         const val DEFAULT_TRANSCODE_CACHE_LIMIT_MB = 1024
+
+        /** 迷你播放条圆角取值范围：默认值与历史硬编码值一致，避免升级后观感突变 */
+        const val DEFAULT_MINI_PLAYER_CORNER_RADIUS = 28
+        const val MIN_MINI_PLAYER_CORNER_RADIUS = 0
+        const val MAX_MINI_PLAYER_CORNER_RADIUS = 32
     }
 
     // ─── Private utilities ────────────────────────────────────────────────────

@@ -144,4 +144,20 @@
     <string name="streaming_provider_connected">Connected</string>
     <string name="streaming_provider_jellyfin_connect">Connect your Jellyfin server</string>
     <string name="streaming_provider_sign_in_to_stream">Sign in to stream</string>
+
+    <!-- Song info: grouped tiles -->
+    <string name="song_info_section_basic">Song info</string>
+    <string name="song_info_section_file">File info</string>
+    <string name="song_info_label_track">Track</string>
+    <string name="song_info_label_disc">Disc</string>
+    <string name="song_info_label_year">Year</string>
+    <string name="song_info_label_album_artist">Album artist</string>
+    <string name="song_info_label_format">Format</string>
+    <string name="song_info_label_bit_depth">Bit depth</string>
+    <string name="song_info_label_sample_rate">Sample rate</string>
+    <string name="song_info_label_bitrate">Bitrate</string>
+    <string name="song_info_label_channels">Channels</string>
+    <string name="song_info_label_file_size">File size</string>
+    <string name="song_info_label_date_added">Date added</string>
+    <string name="song_info_label_date_modified">Date modified</string>
 </resources>

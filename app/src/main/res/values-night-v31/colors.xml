@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 31+ 深色：见 values-v31/colors.xml 的说明，改用 Material 3 基线中性色。 -->
+    <color name="pixelplay_background">#FF1C1B1F</color>
+</resources>

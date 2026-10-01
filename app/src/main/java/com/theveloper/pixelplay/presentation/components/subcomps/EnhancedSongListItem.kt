@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -171,6 +172,8 @@ fun EnhancedSongListItem(
     loadingLabel: String? = null,
     /** 搜索页在线歌曲封面不落盘，避免磁盘缓存暴涨 */
     useDiskCache: Boolean = true,
+    /** ⚡ 一起听期间非网易云歌曲整行置灰（仅视觉，点击拦截在调用方） */
+    dimmed: Boolean = false,
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
     onFavoriteClick: () -> Unit = {},
@@ -229,6 +232,13 @@ fun EnhancedSongListItem(
         RoundedCornerShape(animatedAlbumCornerRadius)
     }
 
+    // ⚡ 一起听期间非网易云歌曲整行压暗，视觉上标识为不可播
+    val effectiveModifier = if (dimmed) {
+        modifier.graphicsLayer { alpha = 0.3f }
+    } else {
+        modifier
+    }
+
     val colors = MaterialTheme.colorScheme
     val baseContainerColor = containerColorOverride ?: colors.surfaceContainerLow
     val playbackContainerColor = lerpColor(baseContainerColor, colors.primaryContainer, highlightProgress)
@@ -256,7 +266,7 @@ fun EnhancedSongListItem(
     if (isLoading) {
         // Shimmer Placeholder Layout
         Surface(
-            modifier = modifier
+            modifier = effectiveModifier
                 .fillMaxWidth()
                 .clip(surfaceShape),
             shape = surfaceShape,
@@ -314,7 +324,7 @@ fun EnhancedSongListItem(
     } else {
         // Actual Song Item Layout
         Surface(
-            modifier = modifier
+            modifier = effectiveModifier
                 .fillMaxWidth()
                 .scale(selectionScale)
                 .clip(surfaceShape)

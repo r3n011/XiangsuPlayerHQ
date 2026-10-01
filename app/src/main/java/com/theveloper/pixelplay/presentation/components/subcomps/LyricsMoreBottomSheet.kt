@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -62,11 +63,13 @@ import androidx.compose.runtime.collectAsState
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.presentation.components.ToggleSegmentButton
+import com.theveloper.pixelplay.presentation.components.DownloadStatusPhase
+import com.theveloper.pixelplay.presentation.components.DownloadStatusTopChip
 import com.theveloper.pixelplay.ui.theme.LyricsFontDisplayNames
+import com.theveloper.pixelplay.ui.theme.LyricsFontDownloader
 import com.theveloper.pixelplay.ui.theme.isCustomFontKey
 import com.theveloper.pixelplay.ui.theme.isDownloadableFontKey
 import com.theveloper.pixelplay.ui.theme.isDownloadableFontDownloaded
-import com.theveloper.pixelplay.ui.theme.downloadLyricsFont
 import com.theveloper.pixelplay.ui.theme.downloadableFontForKey
 import com.theveloper.pixelplay.ui.theme.resolveLyricsFontFamily
 import com.theveloper.pixelplay.ui.theme.customFontDisplayName
@@ -167,6 +170,12 @@ fun LyricsMoreBottomSheet(
         contentWindowInsets = { WindowInsets(top = 0, bottom = 0) }
     ) {
         val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+        // ⚡ 可下载字体的下载状态：统一走全局 LyricsFontDownloader，
+        //    使字体列表按钮与顶部下载提示 chip 共享同一份进度状态。
+        val fontDownloadState by LyricsFontDownloader.state.collectAsState()
+        // ⚡ 字体下载提示 chip 必须挂在这个 sheet 自己的窗口里：
+        //    挂在 Activity 根部会被 ModalBottomSheet 的遮罩盖住，用户看不到。
+        Box(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -464,8 +473,6 @@ fun LyricsMoreBottomSheet(
                     val predefinedFonts = LyricsFontDisplayNames.keys.toList()
                     val allFontFamilies = predefinedFonts + customFonts
 
-                    // ⚡ 可下载字体的下载状态追踪
-                    var downloadingFont by remember { mutableStateOf<String?>(null) }
                     val downloadScope = rememberCoroutineScope()
 
                     fun displayName(key: String): String =
@@ -494,9 +501,17 @@ fun LyricsMoreBottomSheet(
                             val isDl = isDownloadableFontKey(family)
                             // 可下载字体未下载到 filesDir 时显示下载标记
                             val needsDownload = isDl && !isDownloadableFontDownloaded(sheetContext, family)
-                            val isDownloading = downloadingFont == family
+                            val activeDownload = fontDownloadState as? LyricsFontDownloader.State.Downloading
+                            val isDownloading = activeDownload?.key == family
+                            val downloadSuffix = when {
+                                isDownloading && (activeDownload?.progressPercent ?: -1) >= 0 ->
+                                    " ${activeDownload?.progressPercent}%"
+                                isDownloading -> " …"
+                                needsDownload -> " ⬇"
+                                else -> ""
+                            }
                             FontOptionButton(
-                                text = displayName(family) + if (needsDownload && !isDownloading) " ⬇" else if (isDownloading) " …" else "",
+                                text = displayName(family) + downloadSuffix,
                                 active = lyricsFontFamily == family,
                                 deletable = isCustomFontKey(family),
                                 activeColor = accentColor,
@@ -504,20 +519,18 @@ fun LyricsMoreBottomSheet(
                                 activeContentColor = onAccentColor,
                                 inactiveContentColor = contentColor.copy(alpha = 0.78f),
                                 onClick = {
-                                    if (isDl && needsDownload && !isDownloading) {
-                                        // 需要下载：选中该字体 + 后台下载
+                                    if (isDl && needsDownload && !LyricsFontDownloader.isDownloading) {
+                                        // 需要下载：选中该字体 + 后台下载（进度由全局状态驱动顶部提示 chip）
                                         onLyricsFontFamilyChange(family)
-                                        downloadingFont = family
                                         downloadScope.launch {
-                                            val success = downloadLyricsFont(sheetContext, family)
-                                            downloadingFont = null
+                                            val success = LyricsFontDownloader.download(sheetContext, family)
                                             if (success) {
                                                 onLyricsFontFamilyChange(family)
                                             } else {
                                                 onLyricsFontFamilyChange("DEFAULT")
                                             }
                                         }
-                                    } else {
+                                    } else if (!isDownloading) {
                                         onLyricsFontFamilyChange(family)
                                     }
                                 },
@@ -815,6 +828,27 @@ fun LyricsMoreBottomSheet(
                     onFavoriteToggle = onFavoriteToggle
                 )
             }
+        }
+
+        // ⚡ 字体下载顶部提示：与日语注音引擎复用同一个 DownloadStatusTopChip
+        //    （滑入 → 进度环 + 百分比 → 完成对勾驻留 2s / 失败警告驻留 3s，可滑动关闭）
+        val fontChipPhase = when (val downloadState = fontDownloadState) {
+            is LyricsFontDownloader.State.Downloading -> DownloadStatusPhase.Downloading(downloadState.progressPercent)
+            is LyricsFontDownloader.State.Completed -> DownloadStatusPhase.Success
+            is LyricsFontDownloader.State.Failed -> DownloadStatusPhase.Failed(null)
+            LyricsFontDownloader.State.Idle -> null
+        }
+        DownloadStatusTopChip(
+            phase = fontChipPhase,
+            label = stringResource(R.string.lyrics_font_chip_label),
+            progressTextRes = R.string.lyrics_font_chip_downloading,
+            indeterminateTextRes = R.string.lyrics_font_chip_downloading_unknown,
+            successText = stringResource(R.string.lyrics_font_chip_ready),
+            failedText = stringResource(R.string.lyrics_font_chip_failed),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 8.dp)
+        )
         }
     }
 

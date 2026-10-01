@@ -28,13 +28,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -63,6 +67,8 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.times
 import androidx.graphics.shapes.toPath
 import com.theveloper.pixelplay.R
+import kotlinx.coroutines.isActive
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -259,6 +265,52 @@ fun StyledPlayerSeekBar(
     }
 
     var isDragging by remember { mutableStateOf(false) }
+
+    // ⚡ 进度补间：调用方（播放器进度区）传进来的是 180~500ms 的采样值，直接绘制会"一跳一跳"；
+    //    这里在帧时钟上向目标值补间（与歌词页 WavySliderExpressive 同一套做法）：
+    //    - 拖拽中 / 大幅跳变（切歌、seek 回弹）→ 直接吸附；
+    //    - 正常播放 → 按上一帧间隔的 0.9 倍做线性补间，视觉连续。
+    val renderedProgress = remember { mutableFloatStateOf(value().coerceIn(0f, 1f)) }
+    var lastProgressUpdateNanos by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(isDragging, enabled) {
+        snapshotFlow { value().coerceIn(0f, 1f) }.collect { target ->
+            if (!enabled || isDragging) {
+                renderedProgress.floatValue = target
+                lastProgressUpdateNanos = System.nanoTime()
+                return@collect
+            }
+            val start = renderedProgress.floatValue
+            if (abs(start - target) > 0.1f) {
+                renderedProgress.floatValue = target
+                lastProgressUpdateNanos = System.nanoTime()
+                return@collect
+            }
+            val nowNanos = System.nanoTime()
+            val intervalMs = if (lastProgressUpdateNanos == 0L) {
+                180L
+            } else {
+                ((nowNanos - lastProgressUpdateNanos) / 1_000_000L).coerceIn(1L, 250L)
+            }
+            lastProgressUpdateNanos = nowNanos
+            if (abs(start - target) <= 0.0001f) {
+                renderedProgress.floatValue = target
+                return@collect
+            }
+            val durationNanos = (intervalMs * 900_000L).coerceAtLeast(1_000_000L)
+            var startFrameNanos = 0L
+            while (isActive) {
+                val frameNanos = withFrameNanos { it }
+                if (startFrameNanos == 0L) startFrameNanos = frameNanos
+                val elapsedNanos = (frameNanos - startFrameNanos).coerceAtLeast(0L)
+                val fraction = (elapsedNanos.toDouble() / durationNanos.toDouble())
+                    .toFloat().coerceIn(0f, 1f)
+                renderedProgress.floatValue = start + (target - start) * fraction
+                if (fraction >= 1f) break
+            }
+            renderedProgress.floatValue = target
+        }
+    }
+
     val thumbInteractionFraction by animateFloatAsState(
         targetValue = if (isDragging) 1f else 0f,
         animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
@@ -334,7 +386,8 @@ fun StyledPlayerSeekBar(
         if (isVisible) {
             if (style == PlayerProgressStyle.WAVY) {
                 LinearWavyProgressIndicator(
-                    progress = { value().coerceIn(0f, 1f) },
+                    // 用补间后的进度绘制，避免 180ms 采样值造成的一跳一跳
+                    progress = { renderedProgress.floatValue.coerceIn(0f, 1f) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = trackEdgePadding.coerceAtLeast(0.dp))
@@ -358,7 +411,7 @@ fun StyledPlayerSeekBar(
                 val endX = size.width - edgePadding
                 val trackWidth = (endX - startX).coerceAtLeast(0f)
                 val centerY = size.height / 2f
-                val progress = value().coerceIn(0f, 1f)
+                val progress = renderedProgress.floatValue.coerceIn(0f, 1f)
 
                 if (style != PlayerProgressStyle.WAVY) {
                     drawTrack(

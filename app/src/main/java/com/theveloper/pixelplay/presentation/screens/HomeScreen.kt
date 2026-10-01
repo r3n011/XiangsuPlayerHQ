@@ -41,6 +41,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,6 +59,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,6 +71,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -212,9 +217,11 @@ fun HomeScreen(
     playerViewModel: PlayerViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     neteaseViewModel: NeteaseDashboardViewModel = hiltViewModel(),
+    listenTogetherViewModel: com.theveloper.pixelplay.presentation.netease.dashboard.ListenTogetherViewModel = hiltViewModel(),
     qqMusicViewModel: QqMusicDashboardViewModel = hiltViewModel(),
     navidromeViewModel: NavidromeDashboardViewModel = hiltViewModel(),
     jellyfinViewModel: JellyfinDashboardViewModel = hiltViewModel(),
+    messagesViewModel: com.theveloper.pixelplay.presentation.netease.chat.MessagesViewModel = hiltViewModel(),
     onOpenSidebar: () -> Unit,
     // 从非 Tab 页面返回主页时递增，用于通知主页回到顶部（由导航层维护）
     homeScrollToTopTrigger: Int = 0
@@ -385,6 +392,8 @@ fun HomeScreen(
     var showOptionsBottomSheet by remember { mutableStateOf(false) }
     var showBetaInfoBottomSheet by remember { mutableStateOf(false) }
     var showStreamingProviderSheet by remember { mutableStateOf(false) }
+    var showTogetherSheet by remember { mutableStateOf(false) }
+    val togetherState by listenTogetherViewModel.state.collectAsStateWithLifecycle()
     var showNeteaseLoginRequiredDialog by remember { mutableStateOf(false) }
     var cleanInstallDisclaimerDismissedThisSession by rememberSaveable { mutableStateOf(false) }
     var showHearingGuardSetup by remember { mutableStateOf(false) }
@@ -393,6 +402,16 @@ fun HomeScreen(
     var showHearingGuardRestReminder by remember { mutableStateOf(false) }
     var showAiMixSheet by remember { mutableStateOf(false) }
     var showHomeCardOrderSheet by remember { mutableStateOf(false) }
+    var showMessagesLoginDialog by remember { mutableStateOf(false) }
+    var showFriendPickerSheet by remember { mutableStateOf(false) }
+    val unreadMessages by messagesViewModel.unreadTotal.collectAsStateWithLifecycle()
+    // 进入主页 / 从聊天页返回主页时刷新未读数（不做后台轮询）
+    val currentNavRoute by navController.currentBackStackEntryAsState()
+    LaunchedEffect(currentNavRoute?.destination?.route, isNeteaseLoggedIn) {
+        if (isNeteaseLoggedIn && currentNavRoute?.destination?.route == Screen.Home.route) {
+            messagesViewModel.refreshConversations()
+        }
+    }
     val aiMixViewModel: AiMixViewModel = hiltViewModel()
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -977,6 +996,14 @@ fun HomeScreen(
                     showHearingGuardStatusSheet = true
                 },
                 onEditHomeOrder = { showHomeCardOrderSheet = true },
+                onMessagesClick = {
+                    if (isNeteaseLoggedIn) {
+                        navController.navigateSafely(Screen.Messages.route)
+                    } else {
+                        showMessagesLoginDialog = true
+                    }
+                },
+                unreadCount = unreadMessages,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         } else {
@@ -1014,6 +1041,60 @@ fun HomeScreen(
                         showHearingGuardStatusSheet = true
                     }
                 )
+                // ⚡ 云端串流入口：横屏/平板此前漏掉了这个按钮（只在竖屏顶栏里有）
+                FilledIconButton(
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    onClick = { showStreamingProviderSheet = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Cloud,
+                        contentDescription = stringResource(R.string.presentation_batch_g_topbar_cd_telegram)
+                    )
+                }
+            }
+            // 平板横向：消息入口浮动在左上角
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(
+                        top = androidx.compose.foundation.layout.WindowInsets.statusBars
+                            .asPaddingValues()
+                            .calculateTopPadding(),
+                        start = 16.dp
+                    )
+                    .zIndex(10f)
+            ) {
+                BadgedBox(
+                    badge = {
+                        if (unreadMessages > 0) {
+                            Badge {
+                                Text(if (unreadMessages > 99) "99+" else unreadMessages.toString())
+                            }
+                        }
+                    }
+                ) {
+                    FilledIconButton(
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        onClick = {
+                            if (isNeteaseLoggedIn) {
+                                navController.navigateSafely(Screen.Messages.route)
+                            } else {
+                                showMessagesLoginDialog = true
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ChatBubbleOutline,
+                            contentDescription = stringResource(R.string.chat_cd_messages)
+                        )
+                    }
+                }
             }
         }
     }
@@ -1079,6 +1160,56 @@ fun HomeScreen(
             isJellyfinLoggedIn = isJellyfinLoggedIn,
             onNavigateToJellyfinDashboard = {
                 navController.navigateSafely(Screen.JellyfinDashboard.route)
+            },
+            isListenTogetherActive = togetherState.active,
+            listenTogetherSubtitle = togetherState.room?.let { room ->
+                "Room #${room.id} · ${room.users.size}人"
+            },
+            onOpenListenTogether = { showTogetherSheet = true }
+        )
+    }
+    if (showTogetherSheet) {
+        com.theveloper.pixelplay.presentation.netease.dashboard.ListenTogetherSheet(
+            state = togetherState,
+            playlists = listenTogetherViewModel.playlists.collectAsStateWithLifecycle().value,
+            inviteTextProvider = { listenTogetherViewModel.inviteText() },
+            onDismiss = { showTogetherSheet = false },
+            onCreateRoom = { listenTogetherViewModel.createRoom(it) },
+            onStartRoaming = { listenTogetherViewModel.startRoamingRoom() },
+            onJoin = { text -> listenTogetherViewModel.join(text) },
+            onLeave = {
+                listenTogetherViewModel.leave()
+                showTogetherSheet = false
+            },
+            onInviteFriend = { showFriendPickerSheet = true },
+            resolving = listenTogetherViewModel.resolvingInvite.collectAsStateWithLifecycle().value
+        )
+    }
+    if (showFriendPickerSheet) {
+        com.theveloper.pixelplay.presentation.netease.chat.FriendPickerSheet(
+            inviteTextProvider = { listenTogetherViewModel.inviteText() },
+            onDismiss = { showFriendPickerSheet = false }
+        )
+    }
+    if (showMessagesLoginDialog) {
+        AlertDialog(
+            onDismissRequest = { showMessagesLoginDialog = false },
+            title = { Text("需要登录网易云") },
+            text = { Text("私信功能需要登录网易云账号后才能使用，是否前往登录？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showMessagesLoginDialog = false
+                        navController.navigateSafely(Screen.NeteaseDashboard.route)
+                    }
+                ) {
+                    Text("去登录")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMessagesLoginDialog = false }) {
+                    Text("取消")
+                }
             }
         )
     }

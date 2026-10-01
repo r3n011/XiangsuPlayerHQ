@@ -661,6 +661,8 @@ Backslash (\) can be used to escape character delimiters.</string>
     <string name="sort_option_album_desc">Album (Z-A)</string>
     <string name="sort_option_date_added">Date Added</string>
     <string name="sort_option_date_added_oldest">Date Added (Oldest First)</string>
+    <string name="sort_option_date_modified">Date Modified</string>
+    <string name="sort_option_date_modified_oldest">Date Modified (Oldest First)</string>
     <string name="sort_option_duration">Duration</string>
     <string name="sort_option_duration_shortest">Duration (Shortest First)</string>
     <string name="sort_option_release_year">Release Year</string>

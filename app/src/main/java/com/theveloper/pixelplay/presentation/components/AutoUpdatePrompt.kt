@@ -7,6 +7,8 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.ApkDownloadService
@@ -47,6 +50,8 @@ fun AutoUpdatePrompt(
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var downloadState by remember { mutableStateOf<ApkDownloadInstaller.DownloadState?>(null) }
     var pendingInstallFile by remember { mutableStateOf<File?>(null) }
+    // 后台已静默下载好的 APK → 打开应用时提示安装
+    var showPendingInstallDialog by remember { mutableStateOf(false) }
 
     // 本地版本信息：versionName 用于版本号比较（主判断），lastUpdateTime 用于时间戳兜底
     val (currentVersionName, lastUpdateTime) = remember {
@@ -114,6 +119,38 @@ fun AutoUpdatePrompt(
         } else {
             apkInstaller.installApk(context, file)
         }
+    }
+
+    // 打开应用时检测后台已静默下载好的 APK（UpdateCheckWorker 落盘的缓存文件），
+    // 存在则提示用户安装，避免后台下载后无人知晓。
+    val cachedUpdateApk = remember {
+        File(context.cacheDir, "pixelplay_update.apk").takeIf { it.exists() && it.length() > 1_000_000L }
+    }
+    LaunchedEffect(cachedUpdateApk) {
+        if (cachedUpdateApk != null) {
+            showPendingInstallDialog = true
+        }
+    }
+
+    if (showPendingInstallDialog && cachedUpdateApk != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showPendingInstallDialog = false },
+            title = { Text(stringResource(R.string.update_pending_install_title)) },
+            text = { Text(stringResource(R.string.update_pending_install_body)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    showPendingInstallDialog = false
+                    startInstall(cachedUpdateApk)
+                }) {
+                    Text(stringResource(R.string.update_go_download))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showPendingInstallDialog = false }) {
+                    Text(stringResource(R.string.update_pending_install_later))
+                }
+            }
+        )
     }
 
     if (showDialog && updateInfo != null) {

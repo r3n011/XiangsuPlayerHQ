@@ -38,6 +38,8 @@ import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -74,6 +76,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.data.lx.LxScriptInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
+import com.theveloper.pixelplay.data.lx.LxSourceTester
+import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
@@ -90,6 +94,14 @@ fun CloudMusicSettingsScreen(
     viewModel: LxMusicViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    // ⚡ 音源连通性测试已隐藏（仅隐藏入口，实现代码保留）：需要时取消注释下面三行即可恢复
+    // val sourceTests by viewModel.sourceTests.collectAsStateWithLifecycle()
+    // val testingAllSources by viewModel.testingAllSources.collectAsStateWithLifecycle()
+
+    // 已安装音源变化（导入/删除/重载）后刷新待测清单
+    // LaunchedEffect(state.scriptInfos) {
+    //     viewModel.refreshSourceTestList()
+    // }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -206,6 +218,17 @@ fun CloudMusicSettingsScreen(
                 MarketEntryCard(onOpenMarket = onOpenMarket)
             }
 
+            // ⚡ 音源连通性测试卡片已隐藏（仅隐藏入口，实现代码保留）：
+            //    需要时取消注释即可恢复。原先它只测**已安装**的音源脚本。
+            // item {
+            //     SourceConnectivityCard(
+            //         rows = sourceTests,
+            //         testingAll = testingAllSources,
+            //         onTest = { viewModel.testInstalledSource(it) },
+            //         onTestAll = { viewModel.testAllInstalledSources() }
+            //     )
+            // }
+
             item {
                 Text(
                     "已安装音源 (${state.scriptInfos.size})",
@@ -247,9 +270,7 @@ fun CloudMusicSettingsScreen(
             title = "自定义音源",
             collapseFraction = collapseFraction,
             headerHeight = currentTopBarHeightDp,
-            onBackClick = onBackClick,
-            subtitle = "LX user-api v2 播放解析脚本",
-            fadeSubtitleOnCollapse = false
+            onBackClick = onBackClick
         )
     }
 
@@ -298,6 +319,155 @@ fun CloudMusicSettingsScreen(
                 TextButton(onClick = { pendingDelete = null }) { Text("取消") }
             }
         )
+    }
+}
+
+/**
+ * 已安装音源连通性测试卡：对每个已安装脚本提供的音源做一次真实搜索（JS 音源再取一次播放地址）。
+ */
+@Composable
+private fun SourceConnectivityCard(
+    rows: List<LxMusicViewModel.SourceTestUi>,
+    testingAll: Boolean,
+    onTest: (String) -> Unit,
+    onTestAll: () -> Unit
+) {
+    val shape = AbsoluteSmoothCornerShape(22.dp, 60)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "音源连通性测试",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "对已安装的音源各做一次真实搜索，并尝试取一次播放地址",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = GoogleSansRounded,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                FilledTonalButton(
+                    onClick = onTestAll,
+                    enabled = !testingAll && rows.isNotEmpty()
+                ) {
+                    if (testingAll) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = if (testingAll) "测试中…" else "全部测试",
+                        fontFamily = GoogleSansRounded
+                    )
+                }
+            }
+
+            if (rows.isEmpty()) {
+                Text(
+                    text = "还没有安装音源脚本，先在音源市场安装或导入 .js 脚本",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = GoogleSansRounded,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                rows.forEach { row ->
+                    SourceTestRow(row = row, onTest = { onTest(row.key) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceTestRow(
+    row: LxMusicViewModel.SourceTestUi,
+    onTest: () -> Unit
+) {
+    val result = row.result
+    val statusColor = when {
+        row.testing -> MaterialTheme.colorScheme.onSurfaceVariant
+        result == null -> MaterialTheme.colorScheme.onSurfaceVariant
+        result.status == LxSourceTester.Status.SUCCESS -> MaterialTheme.colorScheme.primary
+        result.status == LxSourceTester.Status.SEARCH_ONLY -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.error
+    }
+    val statusText = when {
+        row.testing -> "测试中…"
+        result == null -> "未测试"
+        result.status == LxSourceTester.Status.SUCCESS -> "可用"
+        result.status == LxSourceTester.Status.SEARCH_ONLY -> "仅可搜索"
+        else -> "不可用"
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = row.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = GoogleSansRounded,
+                    color = statusColor,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (result != null && !row.testing) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "${result.latencyMs}ms",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = GoogleSansRounded,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (result != null && !row.testing) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = buildString {
+                        append(result.message)
+                        if (result.sample.isNotBlank()) append(" · 示例：${result.sample}")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = GoogleSansRounded,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        TextButton(onClick = onTest, enabled = !row.testing) {
+            Text(
+                text = "测试",
+                fontFamily = GoogleSansRounded
+            )
+        }
     }
 }
 

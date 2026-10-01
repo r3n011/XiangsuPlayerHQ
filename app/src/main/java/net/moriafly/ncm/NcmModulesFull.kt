@@ -760,10 +760,20 @@ object NcmModulesFull {
     )
     suspend fun nicknameCheck(nickname: String) = rawWeapi("/api/nickname/check", mapOf("nickname" to nickname))
 
-    suspend fun follow(uid: String, t: Int = 1) = rawWeapi(
-        "/api/follow/$uid",
-        mapOf("t" to t)
-    )
+    /**
+     * 关注 / 取关**用户**。
+     *
+     * ⚡ 端点以 NeteaseCloudMusicApi `module/follow.js` 为准 —— **ID 放在路径里，没有请求体参数**：
+     *   - 关注：`POST /weapi/user/follow/{id}`
+     *   - 取关：`POST /weapi/user/delfollow/{id}`
+     *
+     * 之前两次写法都是错的（`/api/follow/{uid}` + `t`、`/api/user/follow` + `{id,t}`），
+     * 服务端一律返回「接口未找到」，表现为消息页点关注必失败。
+     */
+    suspend fun follow(uid: String, t: Int = 1): Result<Map<String, Any?>> {
+        val action = if (t == 1) "follow" else "delfollow"
+        return rawWeapi("/api/user/$action/$uid", emptyMap())
+    }
 
     // ============================================================================================
     // §8 电台 DJ
@@ -1171,9 +1181,17 @@ object NcmModulesFull {
         "/api/msg/private/users",
         mapOf("limit" to limit, "total" to true, "offset" to offset)
     )
+    // ⚠️ 参数形状对齐社区 NeteaseCloudMusicApi(msg_private_history.js) 与 MeloX 生产实现：
+    //    {userId, limit, time, total}；time 传上一页最早一条消息的时间戳，起始传 -1。
+    //    此前的 {userIds:"[uid]", before:...} 是未经验证的猜测形状，服务端不识别。
     suspend fun msgPrivateHistory(uid: String, beforeTime: Long = 0, limit: Int = 30, total: Boolean = true) = rawWeapi(
         "/api/msg/private/history",
-        mapOf("userIds" to "[$uid]", "before" to beforeTime.toString(), "limit" to limit, "total" to total)
+        mapOf(
+            "userId" to uid,
+            "limit" to limit,
+            "time" to (if (beforeTime > 0) beforeTime.toString() else "-1"),
+            "total" to total.toString()
+        )
     )
     suspend fun msgComments(limit: Int = 30, beforeTime: Long = 0) = rawWeapi(
         "/api/v1/msg/comments",
@@ -1188,8 +1206,10 @@ object NcmModulesFull {
         mapOf("limit" to limit, "lastTime" to lastTime.toString(), "isPrev" to isPrev)
     )
 
+    // ⚠️ 文本私信与歌曲/歌单/专辑私信同端点 /api/msg/private/send（type=text），
+    //    对齐社区 send_text.js 与 MeloX 生产实现；此前误用 /api/msg/private/send/text。
     suspend fun sendText(userIds: String, msg: String, type: String = "text") = rawWeapi(
-        "/api/msg/private/send/text",
+        "/api/msg/private/send",
         mapOf("userIds" to userIds, "type" to type, "msg" to msg)
     )
     suspend fun sendSong(userId: String, songId: String, id: String, msg: String = "", csrf: String = "") = rawWeapi(

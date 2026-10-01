@@ -209,6 +209,27 @@ class MusicRepositoryImpl @Inject constructor(
         }.distinctUntilChanged().conflate().flowOn(Dispatchers.IO)
     }
 
+    /**
+     * 与 [getAudioFiles] 完全相同的目录过滤逻辑，但走 COUNT 查询：
+     * 只用于判空/计数，避免把全部歌曲实体加载出来再映射成 Song（大曲库下省一次全表读取与 N 次映射）。
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getSongCount(): Flow<Int> {
+        return combine(
+            userPreferencesRepository.allowedDirectoriesFlow,
+            userPreferencesRepository.blockedDirectoriesFlow
+        ) { allowedDirs, blockedDirs ->
+            allowedDirs to blockedDirs
+        }.flatMapLatest { (allowedDirs, blockedDirs) ->
+            val (allowedParentDirs, applyDirectoryFilter) =
+                computeAllowedDirs(allowedDirs, blockedDirs)
+            musicDao.getSongCountWithDirectoryFilter(
+                allowedParentDirs = allowedParentDirs,
+                applyDirectoryFilter = applyDirectoryFilter
+            )
+        }.distinctUntilChanged().flowOn(Dispatchers.IO)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun getPaginatedSongs(sortOption: SortOption, storageFilter: com.theveloper.pixelplay.data.model.StorageFilter): Flow<PagingData<Song>> {
         return songRepository.getPaginatedSongs(sortOption, storageFilter)

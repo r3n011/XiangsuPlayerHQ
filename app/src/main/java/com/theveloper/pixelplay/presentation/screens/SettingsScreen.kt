@@ -57,6 +57,7 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -198,6 +199,17 @@ private fun PhoneSettingsScreen(
 
     val topBarHeight = remember { Animatable(maxTopBarHeightPx) }
     var collapseFraction by remember { mutableStateOf(0f) }
+
+    // ⚡ 上报「是否停在列表顶部」：滚回顶部时自动恢复底部 chrome（底栏 + mini player）
+    val isListAtTopState by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex == 0 &&
+                    lazyListState.firstVisibleItemScrollOffset == 0
+        }
+    }
+    LaunchedEffect(isListAtTopState) {
+        playerViewModel.reportListAtTop(isListAtTopState)
+    }
 
     LaunchedEffect(topBarHeight.value) {
         collapseFraction =
@@ -431,6 +443,7 @@ private fun getSettingsCategoryTitles(): Map<String, String> {
         SettingsCategory.AI_INTEGRATION.id to stringResource(R.string.settings_search_category_ai_integration),
         SettingsCategory.WEB_REMOTE.id to stringResource(R.string.settings_category_web_remote_title),
         SettingsCategory.LIBRARY.id to stringResource(R.string.settings_search_category_library),
+        SettingsCategory.API_MANAGEMENT.id to stringResource(R.string.settings_category_api_title),
         SettingsCategory.APPEARANCE.id to stringResource(R.string.settings_search_category_appearance),
         SettingsCategory.PLAYBACK.id to stringResource(R.string.settings_search_category_playback),
         SettingsCategory.BEHAVIOR.id to stringResource(R.string.settings_search_category_behavior),
@@ -438,6 +451,8 @@ private fun getSettingsCategoryTitles(): Map<String, String> {
         SettingsCategory.DEVELOPER.id to stringResource(R.string.settings_search_category_developer),
         SettingsCategory.EQUALIZER.id to stringResource(R.string.settings_search_category_equalizer),
         SettingsCategory.DEVICE_CAPABILITIES.id to stringResource(R.string.settings_search_category_device_capabilities),
+        SettingsCategory.GLYPH_MATRIX.id to stringResource(R.string.settings_category_glyph_matrix_title),
+        SettingsCategory.UPDATES.id to stringResource(R.string.settings_category_updates_title),
         SettingsCategory.ABOUT.id to stringResource(R.string.settings_search_category_about)
     )
 }
@@ -453,6 +468,11 @@ private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
         stringResource(R.string.settings_search_keyword_corner_radius) to SettingsCategory.APPEARANCE,
         stringResource(R.string.settings_search_keyword_blur) to SettingsCategory.APPEARANCE,
         stringResource(R.string.settings_search_keyword_scroll) to SettingsCategory.APPEARANCE,
+        // ⚡ 新增设置项补全搜索索引（复用设置项自身的文案作为关键词，避免重复定义字符串）
+        stringResource(R.string.setcat_appearance_startup_section) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.setcat_appearance_miniplayer_section) to SettingsCategory.APPEARANCE,
+        stringResource(R.string.settings_category_api_title) to SettingsCategory.API_MANAGEMENT,
+        stringResource(R.string.settings_category_glyph_matrix_title) to SettingsCategory.GLYPH_MATRIX,
         stringResource(R.string.settings_search_keyword_lyrics) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_playback) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_bluetooth) to SettingsCategory.PLAYBACK,
@@ -476,6 +496,8 @@ private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
         stringResource(R.string.settings_search_keyword_device) to SettingsCategory.DEVICE_CAPABILITIES,
         stringResource(R.string.settings_search_keyword_account) to SettingsCategory.ABOUT,
         stringResource(R.string.settings_search_keyword_about) to SettingsCategory.ABOUT,
+        stringResource(R.string.settings_search_keyword_update) to SettingsCategory.UPDATES,
+        stringResource(R.string.settings_search_keyword_download) to SettingsCategory.UPDATES,
         stringResource(R.string.settings_search_keyword_online_source) to SettingsCategory.LIBRARY,
         stringResource(R.string.settings_search_keyword_color) to SettingsCategory.APPEARANCE,
         stringResource(R.string.settings_search_keyword_language) to SettingsCategory.APPEARANCE,
@@ -824,7 +846,7 @@ private fun SettingsSearchResults(
                         getAccountsColors(isDark)
                     }
 
-                    // 点击跳转到对应的分类详情页
+                    // 点击跳转到对应的分类详情页，并携带命中设置项标题用于定位闪烁
                     val onClickAction: () -> Unit = {
                         when {
                             item.categoryTitle == "均衡器" -> navController.navigateSafely(Screen.Equalizer.route)
@@ -835,7 +857,7 @@ private fun SettingsSearchResults(
                                     settingsCategoryTitles[it.id] == item.categoryTitle
                                 }
                                 if (cat != null) {
-                                    navController.navigateSafely(Screen.SettingsCategory.createRoute(cat.id))
+                                    navController.navigateSafely(Screen.SettingsCategory.createRoute(cat.id, highlight = item.title))
                                 }
                             }
                         }
@@ -1414,7 +1436,9 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.EQUALIZER -> Color(0xFF6E4E13) to Color(0xFFFFDEAC) 
             SettingsCategory.DEVICE_CAPABILITIES -> Color(0xFF004D61) to Color(0xFFACEFEE)
             SettingsCategory.GLYPH_MATRIX -> Color(0xFF2A2A2A) to Color(0xFFEEEEEE)
+            SettingsCategory.UPDATES -> Color(0xFF004D61) to Color(0xFFACEFEE)
             SettingsCategory.ABOUT -> Color(0xFF3F474D) to Color(0xFFDEE3EB) 
+            SettingsCategory.API_MANAGEMENT -> Color(0xFF4A4458) to Color(0xFFE8DEF8)
         }
     } else {
         when (category) {
@@ -1429,7 +1453,9 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.EQUALIZER -> Color(0xFFFFDEAC) to Color(0xFF281900)
             SettingsCategory.DEVICE_CAPABILITIES -> Color(0xFFACEFEE) to Color(0xFF002022)
             SettingsCategory.GLYPH_MATRIX -> Color(0xFFEEEEEE) to Color(0xFF222222)
+            SettingsCategory.UPDATES -> Color(0xFFACEFEE) to Color(0xFF002022)
             SettingsCategory.ABOUT -> Color(0xFFEFF1F7) to Color(0xFF44474F)
+            SettingsCategory.API_MANAGEMENT -> Color(0xFFE8DEF8) to Color(0xFF4A4458)
         }
     }
 }

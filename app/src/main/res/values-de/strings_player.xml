@@ -28,6 +28,7 @@
     <string name="cast_bluetooth_audio">Bluetooth audio</string>
     <string name="cast_local_playback">Local playback</string>
     <string name="cast_playing">Playing</string>
+    <string name="player_roaming_mode_title">Roaming-Modus</string>
     <string name="cast_paused">Paused</string>
     <string name="cast_volume_device">Device volume</string>
     <string name="cast_volume_phone">Phone volume</string>

@@ -24,6 +24,8 @@ internal data class SheetVisualState(
     val playerContentAreaHeightPxProvider: () -> Float,
     /** Layout-phase provider: read inside .offset { } to avoid recomposition per drag frame. */
     val visualSheetTranslationYProvider: () -> Float,
+    /** Draw-phase provider：滚动隐藏底栏时迷你条的额外下移量，必须只在 graphicsLayer 里读 */
+    val sheetExtraShiftPxProvider: () -> Float,
     val overallSheetTopCornerRadiusProvider: () -> Dp,
     val playerContentActualBottomRadiusProvider: () -> Dp,
     /** Draw-phase providers: read inside graphicsLayer to avoid layout relayout per frame. */
@@ -49,7 +51,17 @@ internal fun rememberSheetVisualState(
     hasCurrentSong: Boolean,
     swipeDismissProgress: Float,
     navRailPadding: Dp = 0.dp,
-    isLandscape: Boolean = false
+    isLandscape: Boolean = false,
+    /** 播放器容器的宽度（px），用于计算折叠态最大宽度 */
+    containerWidthPx: Float = 0f,
+    /** 折叠态迷你条最大宽度（px，<=0 表示不限制）。仅宽屏横屏时限制，避免被拉成一条长带 */
+    collapsedMaxWidthPx: Float = 0f,
+    /** 折叠态限制宽度后，多余空间放到左侧（右对齐）；否则左右均分（居中） */
+    collapsedAlignEnd: Boolean = false,
+    /** 折叠态使用完整胶囊形状（圆角 = 迷你条高度的一半），展开时插值回方角 */
+    collapsedCapsule: Boolean = false,
+    /** 滚动隐藏时迷你条的下移量（px），仅折叠态生效；展开播放器时自动归零 */
+    miniPlayerScrollShiftPxProvider: () -> Float = { 0f }
 ): SheetVisualState {
     // Compute in px to be read inside graphicsLayer (draw phase) — zero relayout per drag frame.
     val density = LocalDensity.current
@@ -75,6 +87,19 @@ internal fun rememberSheetVisualState(
             currentSheetTranslationY.value * (1f - progress) +
                 (sheetCollapsedTargetY * progress)
         }
+    }
+
+    /**
+     * 滚动隐藏底栏时迷你条的「额外下移量」（px）。
+     *
+     * ⚡ 必须放在**绘制阶段**消费（graphicsLayer.translationY），不能混进
+     *   [visualSheetTranslationYProvider]：后者在 `Modifier.layout` 里被读取，
+     *   而滚动隐藏进度是逐帧变化的 —— 混进去会导致整个播放器面板每帧重新测量/布局
+     *   （表现就是"媒体库上滑、底栏收起时卡顿"）。
+     *   展开成全屏播放器时 expansionFraction→1，位移自动归零。
+     */
+    val sheetExtraShiftPxProvider: () -> Float = remember(miniPlayerScrollShiftPxProvider) {
+        { miniPlayerScrollShiftPxProvider() * (1f - playerContentExpansionFraction.value) }
     }
 
     val playerContentAreaHeightPxProvider: () -> Float = remember(
@@ -116,10 +141,13 @@ internal fun rememberSheetVisualState(
         navBarCornerRadiusDp,
         isNavBarHidden,
         swipeDismissProgress,
-        currentSheetContentState
+        currentSheetContentState,
+        collapsedCapsule
     ) {
         {
-            val collapsedCornerTarget = if (isNavBarHidden) {
+            val collapsedCornerTarget = if (collapsedCapsule) {
+                com.theveloper.pixelplay.presentation.components.MiniPlayerHeight / 2
+            } else if (isNavBarHidden) {
                 32.dp
             } else if (navBarStyle == NavBarStyle.DEFAULT) {
                 navBarCornerRadiusDp
@@ -139,7 +167,9 @@ internal fun rememberSheetVisualState(
             val calculatedNormally = if (showPlayerContentArea) {
                 lerp(collapsedCornerTarget, expandedTarget, safeFraction)
             } else {
-                if (navBarStyle == NavBarStyle.DEFAULT) {
+                if (collapsedCapsule) {
+                    com.theveloper.pixelplay.presentation.components.MiniPlayerHeight / 2
+                } else if (navBarStyle == NavBarStyle.DEFAULT) {
                     navBarCornerRadiusDp
                 } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                     0.dp
@@ -183,13 +213,16 @@ internal fun rememberSheetVisualState(
         isNavBarHidden,
         navBarCornerRadiusDp,
         currentSheetContentState,
-        isLandscape
+        isLandscape,
+        collapsedCapsule
     ) {
         {
             // In landscape (tablet) mode: bottom radius matches top radius
             // (now playing bar is a floating card, not above a nav bar).
             // In portrait: bottom radius matches nav bar top (10.dp for DEFAULT).
-            val collapsedRadius = if (isNavBarHidden) {
+            val collapsedRadius = if (collapsedCapsule) {
+                com.theveloper.pixelplay.presentation.components.MiniPlayerHeight / 2
+            } else if (isNavBarHidden) {
                 32.dp
             } else if (isLandscape && navBarStyle == NavBarStyle.DEFAULT) {
                 navBarCornerRadiusDp
@@ -263,6 +296,27 @@ internal fun rememberSheetVisualState(
         with(density) { actualCollapsedStateHorizontalPadding.toPx() }
     }
 
+    // ⚡ 平板/横屏下限制迷你条最大宽度（对齐 Rhythm 的做法）：把多余的水平空间折算成折叠态内边距，
+    //    展开时随 safeFraction 插值归零，不影响全屏播放器。
+    val collapsedExtraPaddingPx = remember(
+        containerWidthPx,
+        collapsedMaxWidthPx,
+        navRailPaddingPx,
+        collapsedStateHorizontalPaddingPx,
+        collapsedAlignEnd
+    ) {
+        if (collapsedMaxWidthPx <= 0f || containerWidthPx <= 0f) {
+            0f
+        } else {
+            val available = containerWidthPx - navRailPaddingPx - collapsedStateHorizontalPaddingPx * 2f
+            (available - collapsedMaxWidthPx).coerceAtLeast(0f)
+        }
+    }
+    val collapsedExtraStartPaddingPx =
+        if (collapsedAlignEnd) collapsedExtraPaddingPx else collapsedExtraPaddingPx / 2f
+    val collapsedExtraEndPaddingPx =
+        if (collapsedAlignEnd) 0f else collapsedExtraPaddingPx / 2f
+
     // Draw-phase lambda providers for horizontal padding — read inside graphicsLayer to avoid
     // per-frame relayout. The lambda captures Animatable/Float refs and reads them at draw time.
     // ⚡ 播放器容器现在是全屏的（移到了最外层 Box 中），所以折叠态需要 navRailPadding 让 mini-player
@@ -271,6 +325,7 @@ internal fun rememberSheetVisualState(
         showPlayerContentArea,
         collapsedStateHorizontalPaddingPx,
         navRailPaddingPx,
+        collapsedExtraStartPaddingPx,
         playerContentExpansionFraction,
         predictiveBackCollapseProgress
     ) {
@@ -278,12 +333,13 @@ internal fun rememberSheetVisualState(
             if (showPlayerContentArea) {
                 val effectiveFraction = playerContentExpansionFraction.value * (1f - predictiveBackCollapseProgress)
                 val safeFraction = effectiveFraction.coerceIn(0f, 1f)
-                // 折叠态：navRailPadding + horizontalPadding；展开态：0
-                val collapsedStartPadding = navRailPaddingPx + collapsedStateHorizontalPaddingPx
+                // 折叠态：navRailPadding + horizontalPadding + 平板限宽补偿；展开态：0
+                val collapsedStartPadding =
+                    navRailPaddingPx + collapsedStateHorizontalPaddingPx + collapsedExtraStartPaddingPx
                 androidx.compose.ui.util.lerp(collapsedStartPadding, 0f, safeFraction)
             } else {
                 // 无内容区域时（无播放列表等），也要考虑 navRailPadding
-                navRailPaddingPx + collapsedStateHorizontalPaddingPx
+                navRailPaddingPx + collapsedStateHorizontalPaddingPx + collapsedExtraStartPaddingPx
             }
         }
     }
@@ -291,6 +347,7 @@ internal fun rememberSheetVisualState(
     val currentHorizontalPaddingEndPxProvider: () -> Float = remember(
         showPlayerContentArea,
         collapsedStateHorizontalPaddingPx,
+        collapsedExtraEndPaddingPx,
         playerContentExpansionFraction,
         predictiveBackCollapseProgress
     ) {
@@ -298,9 +355,13 @@ internal fun rememberSheetVisualState(
             if (showPlayerContentArea) {
                 val effectiveFraction = playerContentExpansionFraction.value * (1f - predictiveBackCollapseProgress)
                 val safeFraction = effectiveFraction.coerceIn(0f, 1f)
-                androidx.compose.ui.util.lerp(collapsedStateHorizontalPaddingPx, 0f, safeFraction)
+                androidx.compose.ui.util.lerp(
+                    collapsedStateHorizontalPaddingPx + collapsedExtraEndPaddingPx,
+                    0f,
+                    safeFraction
+                )
             } else {
-                collapsedStateHorizontalPaddingPx
+                collapsedStateHorizontalPaddingPx + collapsedExtraEndPaddingPx
             }
         }
     }
@@ -310,6 +371,7 @@ internal fun rememberSheetVisualState(
         baseBottomPadding = baseBottomPadding,
         playerContentAreaHeightPxProvider = playerContentAreaHeightPxProvider,
         visualSheetTranslationYProvider = visualSheetTranslationYProvider,
+        sheetExtraShiftPxProvider = sheetExtraShiftPxProvider,
         overallSheetTopCornerRadiusProvider = overallSheetTopCornerRadiusProvider,
         playerContentActualBottomRadiusProvider = playerContentActualBottomRadiusProvider,
         currentHorizontalPaddingStartPxProvider = currentHorizontalPaddingStartPxProvider,

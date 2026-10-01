@@ -13,9 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,7 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.songFastScrollLabel
+import com.theveloper.pixelplay.presentation.components.library.rememberLibraryListGridCells
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
@@ -91,7 +93,7 @@ fun LibraryFavoritesTab(
     storageFilter: StorageFilter = StorageFilter.ALL,
     hasCurrentSong: Boolean = false
 ) {
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
     val coroutineScope = rememberCoroutineScope()
     val visibilityCallback by rememberUpdatedState(onLocateCurrentSongVisibilityChanged)
     val registerActionCallback by rememberUpdatedState(onRegisterLocateCurrentSongAction)
@@ -245,7 +247,7 @@ fun LibraryFavoritesTab(
                 }
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    LazyColumn(
+                    LazyVerticalGrid(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .padding(start = 12.dp, end = if (LocalShowScrollbar.current && (listState.canScrollForward || listState.canScrollBackward)) 22.dp else 12.dp, bottom = 6.dp)
@@ -258,7 +260,9 @@ fun LibraryFavoritesTab(
                                 )
                             ),
                         state = listState,
+                        columns = rememberLibraryListGridCells(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
                     ) {
                         items(
@@ -307,7 +311,7 @@ fun LibraryFavoritesTab(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                        listState = listState,
+                        gridState = listState,
                         dragLabelProvider = favoriteFastScrollLabelProvider
                     )
                 }
@@ -334,7 +338,7 @@ private fun LibraryFavoritesTabCustomOrderContent(
     storageFilter: StorageFilter,
     hasCurrentSong: Boolean
 ) {
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
     val pullToRefreshState = rememberPullToRefreshState()
 
     when {
@@ -360,7 +364,7 @@ private fun LibraryFavoritesTabCustomOrderContent(
                         )
                     }
                 ) {
-                    LazyColumn(
+                    LazyVerticalGrid(
                         modifier = Modifier
                             .padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
                             .clip(
@@ -373,7 +377,9 @@ private fun LibraryFavoritesTabCustomOrderContent(
                             )
                             .fillMaxSize(),
                         state = listState,
+                        columns = rememberLibraryListGridCells(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
                     ) {
                         items(songs, key = { it.id }) { song ->
@@ -412,7 +418,7 @@ private fun LibraryFavoritesTabCustomOrderContent(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                    listState = listState
+                    gridState = listState
                 )
             }
         }
@@ -430,13 +436,13 @@ fun LibrarySongsTabPaginated(
     isRefreshing: Boolean,
     onRefresh: () -> Unit
 ) {
-    val listState = rememberLazyListState()
-    val dummyListState = rememberLazyListState()
+    val listState = rememberLazyGridState()
+    val dummyListState = rememberLazyGridState()
     val pullToRefreshState = rememberPullToRefreshState()
 
     when {
         paginatedSongs.loadState.refresh is LoadState.Loading && paginatedSongs.itemCount == 0 -> {
-            LazyColumn(
+            LazyVerticalGrid(
                 modifier = Modifier
                     .padding(start = 12.dp, end = if (LocalShowScrollbar.current && (listState.canScrollForward || listState.canScrollBackward)) 22.dp else 12.dp, bottom = 6.dp)
                     .clip(
@@ -448,7 +454,9 @@ fun LibrarySongsTabPaginated(
                         )
                     )
                     .fillMaxSize(),
+                columns = rememberLibraryListGridCells(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
             ) {
                 items(12, key = { "skeleton_song_$it" }) {
@@ -533,7 +541,7 @@ fun LibrarySongsTabPaginated(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         val activeListState = if (paginatedSongs.itemCount > 0) listState else dummyListState
-                        LazyColumn(
+                        LazyVerticalGrid(
                             modifier = Modifier
                                 .padding(start = 12.dp, end = if (LocalShowScrollbar.current && (activeListState.canScrollForward || activeListState.canScrollBackward)) 22.dp else 12.dp, bottom = 6.dp)
                                 .clip(
@@ -545,11 +553,14 @@ fun LibrarySongsTabPaginated(
                                     )
                                 ),
                             state = activeListState,
+                            columns = rememberLibraryListGridCells(),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
                         ) {
                             item(
                                 key = "songs_top_spacer",
+                                span = { GridItemSpan(maxLineSpan) },
                                 contentType = "songs_top_spacer"
                             ) { Spacer(Modifier.height(0.dp)) }
 
@@ -590,7 +601,10 @@ fun LibrarySongsTabPaginated(
                             }
 
                             if (paginatedSongs.loadState.append is LoadState.Loading) {
-                                item(contentType = "songs_append_loading") {
+                                item(
+                                    span = { GridItemSpan(maxLineSpan) },
+                                    contentType = "songs_append_loading"
+                                ) {
                                     Box(
                                         Modifier
                                             .fillMaxWidth()
@@ -612,7 +626,7 @@ fun LibrarySongsTabPaginated(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                            listState = activeListState
+                            gridState = activeListState
                         )
                     }
                 }

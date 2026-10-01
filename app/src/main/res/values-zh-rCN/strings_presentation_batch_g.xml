@@ -661,6 +661,8 @@
     <string name="sort_option_album_desc">专辑（Z-A）</string>
     <string name="sort_option_date_added">添加时间</string>
     <string name="sort_option_date_added_oldest">添加时间（最早优先）</string>
+    <string name="sort_option_date_modified">修改时间</string>
+    <string name="sort_option_date_modified_oldest">修改时间（最早优先）</string>
     <string name="sort_option_duration">时长</string>
     <string name="sort_option_duration_shortest">时长（最短优先）</string>
     <string name="sort_option_release_year">发行年份</string>

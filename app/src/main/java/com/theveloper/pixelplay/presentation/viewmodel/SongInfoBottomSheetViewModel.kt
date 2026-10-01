@@ -136,7 +136,10 @@ class SongInfoBottomSheetViewModel @Inject constructor(
                 musicDao = musicDao,
                 id = song.id.toLongOrNull() ?: -1L,
                 filePath = song.path,
-                deepScan = false
+                // ⚡ 必须深读：DB 里缓存的音频信息只有「格式 / 码率 / 采样率」三列，
+                //    直接命中缓存会丢掉位深、声道、文件大小 —— 表现为「文件信息显示不全」。
+                //    这里是用户主动打开的信息页，单文件读取（带 10s 超时、独立线程池）代价可接受。
+                deepScan = true
             )
             _audioMeta.value = meta
         }

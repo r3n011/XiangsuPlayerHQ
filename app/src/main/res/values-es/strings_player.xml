@@ -28,6 +28,7 @@
     <string name="cast_bluetooth_audio">Audio Bluetooth</string>
     <string name="cast_local_playback">Reproducción local</string>
     <string name="cast_playing">Reproduciendo</string>
+    <string name="player_roaming_mode_title">Modo roaming</string>
     <string name="cast_paused">Pausado</string>
     <string name="cast_volume_device">Volumen del dispositivo</string>
     <string name="cast_volume_phone">Volumen del teléfono</string>

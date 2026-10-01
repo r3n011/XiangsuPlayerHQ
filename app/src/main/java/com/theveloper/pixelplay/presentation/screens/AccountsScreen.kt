@@ -111,6 +111,19 @@ fun AccountsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val syncingServices by viewModel.syncingServicesFlow.collectAsStateWithLifecycle()
 
+    // lite（no-telegram）构建：隐藏 Telegram 账号入口（已连接 + 未连接均过滤）
+    val telegramEnabled = com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED
+    val connectedAccounts = if (telegramEnabled) {
+        uiState.connectedAccounts
+    } else {
+        uiState.connectedAccounts.filter { it.service != ExternalServiceAccount.TELEGRAM }
+    }
+    val disconnectedServices = if (telegramEnabled) {
+        uiState.disconnectedServices
+    } else {
+        uiState.disconnectedServices.filter { it != ExternalServiceAccount.TELEGRAM }
+    }
+
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
@@ -191,12 +204,12 @@ fun AccountsScreen(
         ) {
             item {
                 AccountsHeroSection(
-                    connectedCount = uiState.connectedAccounts.size,
-                    disconnectedCount = uiState.disconnectedServices.size
+                    connectedCount = connectedAccounts.size,
+                    disconnectedCount = disconnectedServices.size
                 )
             }
 
-            if (uiState.connectedAccounts.isNotEmpty()) {
+            if (connectedAccounts.isNotEmpty()) {
                 item {
                     Text(
                         text = stringResource(R.string.presentation_batch_b_accounts_linked_services),
@@ -208,7 +221,7 @@ fun AccountsScreen(
                 }
 
                 items(
-                    items = uiState.connectedAccounts,
+                    items = connectedAccounts,
                     key = { it.service.name }
                 ) { account ->
                     ConnectedAccountCard(
@@ -249,10 +262,10 @@ fun AccountsScreen(
                 }
             }
 
-            if (uiState.disconnectedServices.isNotEmpty()) {
+            if (disconnectedServices.isNotEmpty()) {
                 item {
                     EmptyAccountsCard(
-                        disconnectedServices = uiState.disconnectedServices,
+                        disconnectedServices = disconnectedServices,
                         onConnect = { service ->
                             if (service == ExternalServiceAccount.BILIBILI) {
                                 safeStartActivity(

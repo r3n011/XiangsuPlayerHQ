@@ -112,6 +112,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 
+/** 元数据缺失时的占位符：字段固定展示，缺值显示「—」，避免整项消失显得信息不全 */
+private const val EMPTY_VALUE = "—"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -641,81 +643,184 @@ fun SongInfoBottomSheet(
                                             .padding(horizontal = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(infoSegmentContainerShape),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            SongInfoSegmentedListItem(
-                                                headline = stringResource(R.string.song_info_label_duration),
-                                                supporting = formatDuration(song.duration),
-                                                icon = Icons.Rounded.Schedule,
-                                                iconDescription = stringResource(R.string.cd_duration_icon),
-                                                shape = infoSegmentItemShape,
-                                            )
-
-                                            if (!song.genre.isNullOrEmpty()) {
-                                                SongInfoSegmentedListItem(
-                                                    headline = stringResource(R.string.song_field_genre),
-                                                    supporting = song.genre,
-                                                    icon = Icons.Rounded.MusicNote,
-                                                    iconDescription = stringResource(R.string.cd_genre_icon),
-                                                    shape = infoSegmentItemShape,
-                                                    onClick = onNavigateToGenre,
+                                        // ── 歌曲信息（时长 / 年份 / 音轨 / 流派 / 专辑 / 专辑艺术家）──
+                                        val genreValue = song.genre
+                                        val albumArtistValue = song.albumArtist
+                                        // ⚡ 所有字段固定展示：缺值显示「—」，
+                                        //   避免因为元数据缺失就整项消失，看起来"信息不全"
+                                        val discNumber = song.discNumber
+                                        val basicTiles = buildList {
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_info_label_duration),
+                                                    value = formatDuration(song.duration),
+                                                    icon = Icons.Rounded.Schedule
                                                 )
-                                            }
-
-                                            SongInfoSegmentedListItem(
-                                                headline = stringResource(R.string.song_field_album),
-                                                supporting = song.album,
-                                                icon = Icons.Rounded.Album,
-                                                iconDescription = stringResource(R.string.cd_album_icon),
-                                                shape = infoSegmentItemShape,
-                                                onClick = onNavigateToAlbum,
                                             )
-
-                                            SongInfoSegmentedListItem(
-                                                headline = stringResource(R.string.song_field_artist),
-                                                supporting = song.displayArtist,
-                                                icon = Icons.Rounded.Person,
-                                                iconDescription = stringResource(R.string.cd_artist_icon),
-                                                shape = infoSegmentItemShape,
-                                                onClick = {
-                                                    if (song.neteaseId != null && onOpenNeteaseArtistHomepage != null) {
-                                                        onOpenNeteaseArtistHomepage()
-                                                    } else if (song.artists.size > 1) {
-                                                        showArtistPicker = true
-                                                    } else {
-                                                        onNavigateToArtist()
-                                                    }
-                                                },
-                                            )
-
-                                            if (!audioMetaLabel.isNullOrEmpty()) {
-                                                SongInfoSegmentedListItem(
-                                                    headline = stringResource(R.string.song_info_label_song_metadata),
-                                                    supporting = audioMetaLabel,
-                                                    icon = Icons.Rounded.Info,
-                                                    iconDescription = stringResource(R.string.cd_audio_format_icon),
-                                                    shape = infoSegmentItemShape,
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_info_label_track),
+                                                    value = song.trackNumber.takeIf { it > 0 }?.toString()
+                                                        ?: EMPTY_VALUE,
+                                                    icon = Icons.Rounded.MusicNote
                                                 )
-                                            }
-
-                                            SongInfoSegmentedListItem(
-                                                headline = songLocationInfo.label,
-                                                supporting = songLocationInfo.value,
-                                                icon = if (songLocationInfo.isCloud) Icons.Rounded.Cloud else Icons.Rounded.AudioFile,
-                                                iconDescription = stringResource(
-                                                    if (songLocationInfo.isCloud) {
-                                                        R.string.cd_provider_icon
-                                                    } else {
-                                                        R.string.cd_file_icon
-                                                    }
-                                                ),
-                                                shape = infoSegmentItemShape,
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_info_label_disc),
+                                                    value = discNumber?.takeIf { it > 0 }?.toString()
+                                                        ?: EMPTY_VALUE,
+                                                    icon = Icons.Rounded.Album
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_info_label_year),
+                                                    value = song.year.takeIf { it > 0 }?.toString()
+                                                        ?: EMPTY_VALUE,
+                                                    icon = Icons.Rounded.Schedule
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_field_genre),
+                                                    value = genreValue?.takeIf { it.isNotBlank() } ?: EMPTY_VALUE,
+                                                    icon = Icons.Rounded.MusicNote
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_field_album),
+                                                    value = song.album.ifBlank { EMPTY_VALUE },
+                                                    icon = Icons.Rounded.Album,
+                                                    wide = true
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_info_label_album_artist),
+                                                    value = albumArtistValue?.takeIf { it.isNotBlank() }
+                                                        ?: EMPTY_VALUE,
+                                                    icon = Icons.Rounded.Person,
+                                                    wide = true
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    label = stringResource(R.string.song_field_artist),
+                                                    value = song.displayArtist.ifBlank { EMPTY_VALUE },
+                                                    icon = Icons.Rounded.Person,
+                                                    wide = true
+                                                )
                                             )
                                         }
+                                        InfoTileSection(
+                                            title = stringResource(R.string.song_info_section_basic),
+                                            tiles = basicTiles
+                                        )
+
+                                        // ── 文件信息（格式 / 位深 / 采样率 / 码率 / 声道 / 大小 / 位置 / 日期）──
+                                        val meta = audioMeta
+                                        val fileTiles = buildList {
+                                            val formatLabel = meta
+                                                ?.let { AudioMetaUtils.mimeTypeToFormat(it.mimeType) }
+                                                ?.takeIf { it != "-" }
+                                                ?.uppercase(java.util.Locale.getDefault())
+                                            val sampleRate = meta?.sampleRate?.takeIf { it > 0 }
+                                            val bitrate = meta?.bitrate?.takeIf { it > 0 }
+                                            val bitDepth = meta?.bitDepth?.takeIf { it > 0 }
+                                            val channels = meta?.channels?.takeIf { it > 0 }
+                                            val fileSize = meta?.fileSize?.takeIf { it > 0L }
+
+                                            // 同上：文件信息全部固定展示，缺值显示「—」
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_format),
+                                                    formatLabel ?: EMPTY_VALUE,
+                                                    Icons.Rounded.Info
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_bit_depth),
+                                                    bitDepth?.let { "$it-bit" } ?: EMPTY_VALUE,
+                                                    Icons.Rounded.Info
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_sample_rate),
+                                                    sampleRate?.let {
+                                                        String.format(
+                                                            java.util.Locale.US,
+                                                            "%.1f kHz",
+                                                            it / 1000.0
+                                                        )
+                                                    } ?: EMPTY_VALUE,
+                                                    Icons.Rounded.Info
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_bitrate),
+                                                    bitrate?.let { "${it / 1000} kbps" } ?: EMPTY_VALUE,
+                                                    Icons.Rounded.Info
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_channels),
+                                                    channels?.let { channelCountLabel(it) } ?: EMPTY_VALUE,
+                                                    Icons.Rounded.Info
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_file_size),
+                                                    fileSize?.let { formatFileSize(it) } ?: EMPTY_VALUE,
+                                                    Icons.Rounded.AudioFile
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_date_added),
+                                                    if (song.dateAdded > 0L) {
+                                                        formatTimestamp(song.dateAdded)
+                                                    } else {
+                                                        EMPTY_VALUE
+                                                    },
+                                                    Icons.Rounded.Schedule
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    stringResource(R.string.song_info_label_date_modified),
+                                                    if (song.dateModified > 0L) {
+                                                        formatTimestamp(song.dateModified)
+                                                    } else {
+                                                        EMPTY_VALUE
+                                                    },
+                                                    Icons.Rounded.Schedule
+                                                )
+                                            )
+                                            add(
+                                                SongInfoTile(
+                                                    label = songLocationInfo.label,
+                                                    value = songLocationInfo.value,
+                                                    icon = if (songLocationInfo.isCloud) {
+                                                        Icons.Rounded.Cloud
+                                                    } else {
+                                                        Icons.Rounded.AudioFile
+                                                    },
+                                                    wide = true
+                                                )
+                                            )
+                                        }
+                                        InfoTileSection(
+                                            title = stringResource(R.string.song_info_section_file),
+                                            tiles = fileTiles
+                                        )
+
                                         Spacer(Modifier.height(80.dp))
                                     }
                                 }
@@ -1186,6 +1291,132 @@ private fun SongInfoSegmentedListItem(
             }
         )
     }
+}
+
+/**
+ * 歌曲信息瓦片（对齐 Rhythm 的 InfoGridItem：label + value + icon + isWide）。
+ */
+private data class SongInfoTile(
+    val label: String,
+    val value: String,
+    val icon: ImageVector,
+    /** 占满整行（专辑 / 艺术家 / 路径这类长文本） */
+    val wide: Boolean = false
+)
+
+/**
+ * 分组：标题 + 2 列瓦片。
+ * 父级是 verticalScroll，因此这里用普通布局而非 LazyVerticalGrid（避免嵌套滚动崩溃）。
+ */
+@Composable
+private fun InfoTileSection(
+    title: String,
+    tiles: List<SongInfoTile>
+) {
+    val visible = tiles.filter {
+        it.value.isNotBlank() && !it.value.equals("Unknown", ignoreCase = true)
+    }
+    if (visible.isEmpty()) return
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontFamily = GoogleSansRounded,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        var index = 0
+        while (index < visible.size) {
+            val first = visible[index]
+            if (first.wide || index == visible.lastIndex) {
+                SongInfoTileItem(tile = first, modifier = Modifier.fillMaxWidth())
+                index += 1
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SongInfoTileItem(tile = first, modifier = Modifier.weight(1f))
+                    SongInfoTileItem(tile = visible[index + 1], modifier = Modifier.weight(1f))
+                }
+                index += 2
+            }
+        }
+    }
+}
+
+@Composable
+private fun SongInfoTileItem(
+    tile: SongInfoTile,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = tile.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = tile.value,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(Modifier.size(6.dp))
+            Icon(
+                imageVector = tile.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+/** 声道数 → 可读文案 */
+private fun channelCountLabel(count: Int): String = when (count) {
+    1 -> "Mono"
+    2 -> "Stereo"
+    6 -> "5.1"
+    8 -> "7.1"
+    else -> "$count ch"
+}
+
+/** 文件大小格式化 */
+private fun formatFileSize(bytes: Long): String {
+    val kb = bytes / 1024.0
+    val mb = kb / 1024.0
+    val gb = mb / 1024.0
+    return when {
+        gb >= 1.0 -> String.format(java.util.Locale.US, "%.2f GB", gb)
+        mb >= 1.0 -> String.format(java.util.Locale.US, "%.1f MB", mb)
+        kb >= 1.0 -> String.format(java.util.Locale.US, "%.0f KB", kb)
+        else -> "$bytes B"
+    }
+}
+
+/** 时间戳（秒或毫秒）→ yyyy-MM-dd */
+private fun formatTimestamp(raw: Long): String {
+    if (raw <= 0L) return ""
+    val millis = if (raw < 100_000_000_000L) raw * 1000L else raw
+    return java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        .format(java.util.Date(millis))
 }
 
 @Composable

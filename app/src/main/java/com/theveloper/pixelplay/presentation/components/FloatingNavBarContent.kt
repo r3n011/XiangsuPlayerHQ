@@ -41,7 +41,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,8 +66,6 @@ import com.theveloper.pixelplay.presentation.navigation.navigateToTopLevelSafely
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -97,9 +94,8 @@ fun FloatingNavBarContent(
 ) {
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestOnSearchIconDoubleTap by rememberUpdatedState(onSearchIconDoubleTap)
-    val navigationDebounceEnabled = remember { mutableStateOf(true) }
+    var lastNavTimestamp by remember { mutableStateOf(0L) }
     val debounceTimeout = 300L
-    val scope = rememberCoroutineScope()
 
     // 悬浮底栏按屏幕密度自动缩放：以 xxhdpi(3.0) 为基准，过高/过低密度做轻微补偿，
     // 避免在平板或超高 DPI 设备上元件显得过小或过大。
@@ -135,7 +131,10 @@ fun FloatingNavBarContent(
                         Modifier.hazeEffect(
                             state = MainActivity.LocalHazeState.current,
                             style = HazeMaterials.ultraThin(containerColor = MaterialTheme.colorScheme.surface)
-                        )
+                        ) {
+                            // 中强模糊：加强底栏模糊半径
+                            blurRadius = 40.dp
+                        }
                     } else {
                         Modifier.background(
                             MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
@@ -165,14 +164,13 @@ fun FloatingNavBarContent(
                             return@FloatingNavItem
                         }
 
+                        // ⚡ 防抖用「时间戳」而不是「布尔开关 + 协程复位」：后者一旦协程被取消
+                        //   （重组/切换页面），开关会永久停在 false → 之后点导航栏完全没反应。
                         if (!isAlreadySelected) {
-                            if (!navigationDebounceEnabled.value) return@FloatingNavItem
+                            val now = android.os.SystemClock.elapsedRealtime()
+                            if (now - lastNavTimestamp < debounceTimeout) return@FloatingNavItem
                             if (navController.navigateToTopLevelSafely(itemRoute)) {
-                                navigationDebounceEnabled.value = false
-                                scope.launch {
-                                    delay(debounceTimeout)
-                                    navigationDebounceEnabled.value = true
-                                }
+                                lastNavTimestamp = now
                             }
                         }
                     }
@@ -197,18 +195,14 @@ fun FloatingNavBarContent(
                         val isAlreadySelected = latestCurrentRoute == itemRoute
 
                         if (!isAlreadySelected) {
-                            if (!navigationDebounceEnabled.value) return@FloatingSearchButton
+                            val now = SystemClock.elapsedRealtime()
+                            if (now - lastNavTimestamp < debounceTimeout) return@FloatingSearchButton
                             if (navController.navigateToTopLevelSafely(itemRoute)) {
-                                navigationDebounceEnabled.value = false
-                                scope.launch {
-                                    delay(debounceTimeout)
-                                    navigationDebounceEnabled.value = true
-                                }
+                                lastNavTimestamp = now
                             }
                         }
 
                         // 双击搜索
-                        val now = SystemClock.elapsedRealtime()
                         if (isAlreadySelected) {
                             latestOnSearchIconDoubleTap()
                         }
@@ -236,8 +230,10 @@ private fun NowPlayingBall(
     val ballSize = 50.dp * dpiScale
 
     // 封面旋转动画（播放时旋转）
+    // ⚡ 不在此处以 by 委托读取（否则每帧都会重组本组件）；改为把 State 传进 graphicsLayer，
+    //   让旋转只在绘制阶段生效，避免高频重组。
     val infiniteTransition = rememberInfiniteTransition(label = "nowPlayingSpin")
-    val rotation by infiniteTransition.animateFloat(
+    val rotationState = infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
@@ -246,8 +242,6 @@ private fun NowPlayingBall(
         ),
         label = "coverRotation"
     )
-
-    val animatedRotation = if (isPlaying) rotation else 0f
 
     // 点击缩放反馈
     val interactionSource = remember { MutableInteractionSource() }
@@ -289,7 +283,7 @@ private fun NowPlayingBall(
                         .size(ballSize)
                         .clip(CircleShape)
                         .graphicsLayer {
-                            rotationZ = animatedRotation
+                            rotationZ = if (isPlaying) rotationState.value else 0f
                         },
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
@@ -297,7 +291,7 @@ private fun NowPlayingBall(
                 Box(
                     modifier = Modifier
                         .size(ballSize)
-                        .graphicsLayer { rotationZ = animatedRotation },
+                        .graphicsLayer { rotationZ = if (isPlaying) rotationState.value else 0f },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -495,7 +489,10 @@ private fun FloatingSearchButton(
                     Modifier.hazeEffect(
                         state = MainActivity.LocalHazeState.current,
                         style = HazeMaterials.ultraThin(containerColor = backgroundColor)
-                    )
+                    ) {
+                        // 中强模糊：加强底栏模糊半径
+                        blurRadius = 40.dp
+                    }
                 } else {
                     Modifier.background(backgroundColor)
                 }

@@ -22,8 +22,11 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
@@ -115,6 +118,8 @@ fun HomeGradientTopBar(
     hearingGuardState: com.theveloper.pixelplay.data.hearingguard.HearingGuardState = com.theveloper.pixelplay.data.hearingguard.HearingGuardState(),
     onHearingGuardClick: () -> Unit = {},
     onEditHomeOrder: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
+    unreadCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -144,6 +149,10 @@ fun HomeGradientTopBar(
                         state = MainActivity.LocalHazeState.current,
                         style = HazeMaterials.regular()
                     ) {
+                        // 中强模糊：加强顶栏模糊半径
+                        blurRadius = 56.dp
+                        // 过渡平滑：模糊整体随滚动进度淡入，避免静止态残留磨砂条
+                        alpha = animatedAlpha
                         progressive = HazeProgressive.verticalGradient(
                             startIntensity = 1f,
                             endIntensity = 0f
@@ -155,7 +164,32 @@ fun HomeGradientTopBar(
             ),
         title = { /* nada, usamos solo acciones */ },
         navigationIcon = {
-            /* Deleted Beta Label as requested */
+            if (onMessagesClick != null) {
+                BadgedBox(
+                    modifier = Modifier.padding(start = 8.dp),
+                    badge = {
+                        if (unreadCount > 0) {
+                            Badge {
+                                Text(if (unreadCount > 99) "99+" else unreadCount.toString())
+                            }
+                        }
+                    }
+                ) {
+                    // ⚡ 与右侧按钮统一样式：同为 40dp 圆形 FilledIconButton + surfaceContainerHigh 底
+                    FilledIconButton(
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        onClick = onMessagesClick
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ChatBubbleOutline,
+                            contentDescription = stringResource(R.string.chat_cd_messages)
+                        )
+                    }
+                }
+            }
         },
         actions = {
             Row(

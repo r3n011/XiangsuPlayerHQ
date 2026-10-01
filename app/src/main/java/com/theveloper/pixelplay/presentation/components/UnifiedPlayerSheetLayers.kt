@@ -84,6 +84,8 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     onQueueDrag: (Float) -> Unit,
     onQueueRelease: (Float, Float) -> Unit,
     onShowCastClicked: () -> Unit,
+    /** 播放器右下角省略号：打开歌曲信息 */
+    onShowSongInfo: () -> Unit = {},
     navBarStyle: String = NavBarStyle.DEFAULT
 ) {
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
@@ -99,6 +101,9 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     // Instead of using currentSong?.let which unmounts everything when currentSong is null,
     // we use the passed retainedSong to bridge the gap between tracks.
     val activeSong = currentSong ?: retainedSong ?: return
+
+    // ⚡ 迷你播放条样式（设置 → 外观 → 迷你播放条）
+    val miniPlayerStyleName by playerViewModel.miniPlayerStyle.collectAsStateWithLifecycle()
 
     miniPlayerScheme?.let { readyScheme ->
         CompositionLocalProvider(
@@ -166,14 +171,18 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                             Modifier.hazeEffect(
                                 state = MainActivity.LocalHazeState.current,
                                 style = HazeMaterials.ultraThin(containerColor = MaterialTheme.colorScheme.surface)
-                            )
+                            ) {
+                                // 中强模糊：加强底栏模糊半径
+                                blurRadius = 40.dp
+                            }
                         } else {
                             Modifier
                         }
                     ),
                     currentPositionProvider = currentPositionProvider,
                     totalDurationProvider = { infrequentPlayerState.totalDuration },
-                    expansionFractionProvider = expansionFractionProvider
+                    expansionFractionProvider = expansionFractionProvider,
+                    miniPlayerStyle = miniPlayerStyleName
                 )
             }
         }
@@ -320,6 +329,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     onDownloadClick = onDownloadClick,
                     onSpeedToggle = onSpeedToggle,
                     onSpeedSet = onSpeedSet,
+                    onShowSongInfo = onShowSongInfo,
                 )
             }
         }
@@ -345,7 +355,9 @@ internal fun UnifiedPlayerPrewarmLayer(
     onShowQueueClicked: () -> Unit,
     onQueueDragStart: () -> Unit,
     onQueueDrag: (Float) -> Unit,
-    onQueueRelease: (Float, Float) -> Unit
+    onQueueRelease: (Float, Float) -> Unit,
+    /** 播放器右下角省略号：打开歌曲信息（预热实例不可交互，默认空实现） */
+    onShowSongInfo: () -> Unit = {}
 ) {
     if (prewarmFullPlayer && currentSong != null) {
         // Scoped queue collection: the prewarmed FullPlayer owns its own
@@ -426,6 +438,7 @@ internal fun UnifiedPlayerPrewarmLayer(
                     onRepeatToggle = onRepeatToggle,
                     onFavoriteToggle = onFavoriteToggle,
                     onDownloadClick = onDownloadClick,
+                    onShowSongInfo = onShowSongInfo,
                 )
             }
         }

@@ -28,6 +28,7 @@
     <string name="cast_bluetooth_audio">蓝牙音频</string>
     <string name="cast_local_playback">本地播放</string>
     <string name="cast_playing">播放中</string>
+    <string name="player_roaming_mode_title">漫游模式</string>
     <string name="cast_paused">已暂停</string>
     <string name="cast_volume_device">设备音量</string>
     <string name="cast_volume_phone">手机音量</string>
@@ -195,4 +196,15 @@
     <string name="lyrics_artist_album_line">%1$s • %2$s</string>
     <string name="lyrics_provided_by">歌词由</string>
     <string name="lyrics_lrclib_uri">https://lrclib.net/</string>
+    <string name="player_share_format_pixel">像素播放器格式</string>
+    <string name="player_share_format_pixel_desc">歌名、歌手，附分享链接与应用署名</string>
+    <string name="player_share_format_netease">网易云格式</string>
+    <string name="player_share_format_netease_desc">《歌名》+ 网易云音乐单曲链接</string>
+    <string name="player_share_format_file">直接分享文件</string>
+    <string name="player_share_format_file_desc">把本地音频文件本体发给对方</string>
+    <string name="player_share_file_unavailable">无法读取该文件，分享失败</string>
+    <string name="player_share_via_app">—— 来自像素播放器</string>
+    <string name="player_more_view_artist">查看歌手</string>
+    <string name="player_more_view_album">查看专辑</string>
+    <string name="player_hifi_suspended_by_speed">倍速下已暂停 Hi-Fi，恢复 1.0x 后自动开启</string>
 </resources>

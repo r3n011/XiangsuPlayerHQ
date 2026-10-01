@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.theveloper.pixelplay.R
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 
 const val CUSTOM_FONT_PREFIX = "CUSTOM:"
 private const val FONTS_DIR_NAME = "fonts"
@@ -60,9 +62,14 @@ fun isDownloadableFontDownloaded(context: Context, key: String): Boolean {
  * ⚡ suspend fun，内部切到 Dispatchers.IO，不会阻塞主线程。
  * - jsDelivr 直链（站酷系/马善政）国内可达，直接下载；
  * - GitHub release zip（得意黑）按镜像加速 + 官方原地址逐次尝试，下载后解压提取 ttf。
+ * @param onProgress 下载进度回调（0-100），总长度未知时不会回调
  * @return true=下载成功或已存在，false=下载失败
  */
-suspend fun downloadLyricsFont(context: Context, key: String): Boolean {
+suspend fun downloadLyricsFont(
+    context: Context,
+    key: String,
+    onProgress: ((Int) -> Unit)? = null
+): Boolean {
     val dl = downloadableFontForKey(key) ?: return false
     val targetFile = File(getCustomFontsDir(context), dl.fileName)
     if (targetFile.exists()) return true
@@ -103,14 +110,20 @@ suspend fun downloadLyricsFont(context: Context, key: String): Boolean {
                     // 下载 zip 到临时文件，再解压提取 ttf
                     val tmpZip = File(dir, "dl_${System.nanoTime()}.zip")
                     try {
-                        conn.inputStream.use { input -> tmpZip.outputStream().use { it.write(input.readBytes()) } }
+                        conn.inputStream.use { input ->
+                            tmpZip.outputStream().use { output ->
+                                copyWithProgress(input, output, conn.contentLengthLong, onProgress)
+                            }
+                        }
                         extractTtfFromZip(tmpZip, targetFile)
                     } finally {
                         tmpZip.delete()
                     }
                 } else {
                     conn.inputStream.use { input ->
-                        targetFile.outputStream().use { output -> input.copyTo(output) }
+                        targetFile.outputStream().use { output ->
+                            copyWithProgress(input, output, conn.contentLengthLong, onProgress)
+                        }
                     }
                     targetFile.exists() && targetFile.length() > 1024
                 }
@@ -124,6 +137,35 @@ suspend fun downloadLyricsFont(context: Context, key: String): Boolean {
         }
         false
     }
+}
+
+/**
+ * 带进度的流拷贝。总长度未知（<=0）时不回调进度，结束时补一次 100%。
+ * 每 150ms 最多回调一次，避免高频刷新导致 UI 抖动。
+ */
+private fun copyWithProgress(
+    input: InputStream,
+    output: OutputStream,
+    totalBytes: Long,
+    onProgress: ((Int) -> Unit)?
+) {
+    val buffer = ByteArray(64 * 1024)
+    var written = 0L
+    var lastTick = 0L
+    while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        output.write(buffer, 0, read)
+        written += read
+        if (onProgress != null && totalBytes > 0) {
+            val now = System.currentTimeMillis()
+            if (now - lastTick > 150) {
+                lastTick = now
+                onProgress(((written * 100) / totalBytes).toInt().coerceIn(0, 100))
+            }
+        }
+    }
+    if (onProgress != null && totalBytes > 0) onProgress(100)
 }
 
 /** 从 zip 中提取第一个 .ttf 到目标文件，成功且体积有效返回 true */
@@ -166,9 +208,14 @@ fun getCustomFontsDir(context: Context): File = File(context.filesDir, FONTS_DIR
 fun listCustomFonts(context: Context): List<String> {
     val dir = getCustomFontsDir(context)
     if (!dir.exists() || !dir.isDirectory) return emptyList()
+    // ⚡ 排除"内置可下载字体"的落盘文件：这些字体已经作为预定义条目出现在字体列表里，
+    //    如果在这里再被当成自定义字体返回，下载完成后列表里就会多出一条以文件原名
+    //    （如 zcool_kuaile）显示的重复杂目。
+    val builtInFileNames = DOWNLOADABLE_FONTS.map { it.fileName.lowercase() }.toSet()
     return dir.listFiles()
         ?.filter { it.isFile && (it.extension.equals("ttf", true) || it.extension.equals("otf", true)) }
         ?.map { it.name }
+        ?.filterNot { it.lowercase() in builtInFileNames }
         ?: emptyList()
 }
 

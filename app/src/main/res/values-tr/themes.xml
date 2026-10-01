@@ -5,6 +5,8 @@
     <style name="Theme.PixelPlay" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <!-- 与 values/themes.xml 保持一致：避免启动/预测返回时闪出另一种底色 -->
+        <item name="android:windowBackground">@color/pixelplay_background</item>
     </style>
 
     <style name="Theme.PixelPlay.ExternalPlayer" parent="Theme.Material3.DayNight.NoActionBar">
@@ -19,8 +21,10 @@
 
     <!-- Splash screen theme can still extend Theme.SplashScreen -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-<!--        <item name="windowSplashScreenBackground">@color/light_background</item>-->
-<!--        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>-->
+        <!-- 与 values/themes.xml 保持一致：底色与 App 背景完全相同 -->
+        <item name="windowSplashScreenBackground">@color/pixelplay_background</item>
+        <!-- 与 values/themes.xml 保持一致：不显示启动图标，启动画面只留纯色底 -->
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
 <!--        <item name="postSplashScreenTheme">@style/Theme.PixelPlay</item>-->
     </style>
 </resources>

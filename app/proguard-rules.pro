@@ -133,9 +133,8 @@
 -dontwarn com.jsyn.**
 -dontwarn com.softsynth.**
 
-# Kuromoji / Pinyin4J：日语歌词分词 / 拼音（词库数据文件不受 R8 裁剪）
--keep class com.atilika.kuromoji.** { *; }
--dontwarn com.atilika.kuromoji.**
+# Kuromoji：已移出 APK，改为运行时 DexClassLoader 动态加载（com.atilika.* 只存在于
+# 下载的引擎 jar 中，R8 不可见，无需 keep）；Pinyin4J 保留（词库数据文件不受 R8 裁剪）
 -keep class net.sourceforge.pinyin4j.** { *; }
 -dontwarn net.sourceforge.pinyin4j.**
 

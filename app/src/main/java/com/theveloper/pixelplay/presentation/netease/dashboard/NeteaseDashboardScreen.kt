@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
@@ -43,11 +44,14 @@ import com.theveloper.pixelplay.R
 @Composable
 fun NeteaseDashboardScreen(
     viewModel: NeteaseDashboardViewModel = hiltViewModel(),
+    listenTogetherViewModel: ListenTogetherViewModel = hiltViewModel(),
     onBack: () -> Unit
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val syncMessage by viewModel.syncMessage.collectAsStateWithLifecycle()
+    val togetherState by listenTogetherViewModel.state.collectAsStateWithLifecycle()
+    var showTogetherSheet by remember { mutableStateOf(false) }
 
     val cardShape = AbsoluteSmoothCornerShape(
         cornerRadiusTR = 20.dp, cornerRadiusTL = 20.dp,
@@ -205,6 +209,54 @@ fun NeteaseDashboardScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Listen Together（一起听）入口卡片
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clickable { showTogetherSheet = true },
+                shape = cardShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = if (togetherState.active)
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Rounded.Groups,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.listen_together_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (togetherState.active) {
+                                togetherState.room?.let { "Room #${it.id} · ${it.users.size}" }
+                                    ?: stringResource(R.string.listen_together_status_connected)
+                            } else {
+                                stringResource(R.string.listen_together_desc)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = GoogleSansRounded,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
             // Playlists header
             Row(
                 modifier = Modifier
@@ -285,6 +337,25 @@ fun NeteaseDashboardScreen(
                     }
                 }
             }
+        }
+
+        if (showTogetherSheet) {
+            ListenTogetherSheet(
+                state = togetherState,
+                playlists = playlists,
+                inviteTextProvider = { listenTogetherViewModel.inviteText() },
+                onDismiss = { showTogetherSheet = false },
+                onCreateRoom = { playlistId ->
+                    listenTogetherViewModel.createRoom(playlistId)
+                },
+                onStartRoaming = { listenTogetherViewModel.startRoamingRoom() },
+                onJoin = { text -> listenTogetherViewModel.join(text) },
+                onLeave = {
+                    listenTogetherViewModel.leave()
+                    showTogetherSheet = false
+                },
+                resolving = listenTogetherViewModel.resolvingInvite.collectAsStateWithLifecycle().value
+            )
         }
     }
 }

@@ -64,6 +64,7 @@ import com.theveloper.pixelplay.data.model.Genre
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.SearchFilterType
+import com.theveloper.pixelplay.data.listentogether.isNeteaseTogetherSong
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
@@ -72,6 +73,7 @@ import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.LibraryManualOrderType
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
+import com.theveloper.pixelplay.data.preferences.NavRailStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
@@ -99,6 +101,7 @@ import com.theveloper.pixelplay.utils.ValidatedLyricsImport
 import com.theveloper.pixelplay.utils.QueueUtils
 import com.theveloper.pixelplay.utils.MediaItemBuilder
 import com.theveloper.pixelplay.utils.LocalArtworkUri
+import com.theveloper.pixelplay.utils.KuromojiEngine
 import com.theveloper.pixelplay.utils.LyricsUtils
 import com.theveloper.pixelplay.utils.StorageType
 import com.theveloper.pixelplay.utils.StorageUtils
@@ -307,6 +310,7 @@ class PlayerViewModel @Inject constructor(
     private val dotImageRepositoryProvider: Lazy<com.theveloper.pixelplay.data.repository.DotImageRepository>,
     private val neteaseDownloadService: com.theveloper.pixelplay.data.service.http.NeteaseDownloadService,
     private val musicDownloadServiceProvider: Lazy<com.theveloper.pixelplay.data.service.http.MusicDownloadService>,
+    val listenTogetherCoordinator: com.theveloper.pixelplay.data.listentogether.ListenTogetherCoordinator,
     private val aiCompanionManager: com.theveloper.pixelplay.data.ai.AiCompanionManager,
     private val glyphMatrixController: com.theveloper.pixelplay.data.service.glyph.GlyphMatrixController,
     private val audioVisualizer: com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer,
@@ -466,6 +470,75 @@ class PlayerViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = 0f
         )
+    // ⚡ 迷你播放条样式（CLASSIC / RHYTHM）
+    val miniPlayerStyle: StateFlow<String> = userPreferencesRepository
+        .miniPlayerStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = com.theveloper.pixelplay.data.preferences.MiniPlayerStyle.CLASSIC.name
+        )
+
+    fun setMiniPlayerStyle(style: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setMiniPlayerStyle(style)
+        }
+    }
+
+    /** 滚动时隐藏底部 chrome（底栏移出屏幕 + mini player 下移），默认开启 */
+    val scrollHideChrome: StateFlow<Boolean> = userPreferencesRepository
+        .scrollHideChromeFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true
+        )
+
+    fun setScrollHideChrome(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setScrollHideChrome(enabled)
+        }
+    }
+
+    /** 平板/横屏左侧导航栏形态：悬浮（默认）或贴边停靠 */
+    val navRailStyle: StateFlow<String> = userPreferencesRepository
+        .navRailStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = NavRailStyle.FLOATING
+        )
+
+    fun setNavRailStyle(style: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setNavRailStyle(style)
+        }
+    }
+
+    // ⚡ 主页面列表是否停在顶部：各页面自行上报，用于「滚回顶部时自动恢复底部 chrome」
+    //   初值 false，未上报时不影响现有行为
+    private val _isListAtTop = MutableStateFlow(false)
+    val isListAtTop: StateFlow<Boolean> = _isListAtTop.asStateFlow()
+
+    fun reportListAtTop(atTop: Boolean) {
+        if (_isListAtTop.value != atTop) _isListAtTop.value = atTop
+    }
+
+    // ⚡ 迷你播放条圆角（独立于导航栏圆角，此前错误地绑到了导航栏圆角设置上）
+    val miniPlayerCornerRadius: StateFlow<Int> = userPreferencesRepository
+        .miniPlayerCornerRadiusFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = UserPreferencesRepository.DEFAULT_MINI_PLAYER_CORNER_RADIUS
+        )
+
+    fun setMiniPlayerCornerRadius(radiusDp: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setMiniPlayerCornerRadius(radiusDp)
+        }
+    }
+
     // ⚡ 歌词绚丽背景开关
     val lyricsVibrantBackgroundEnabled: StateFlow<Boolean> = userPreferencesRepository
         .lyricsVibrantBackgroundEnabledFlow
@@ -1265,6 +1338,8 @@ class PlayerViewModel @Inject constructor(
         failureMessage: String,
         sortedIdsProvider: suspend () -> List<Long>
     ) {
+        // ⚡ 一起听门禁：媒体库/收藏等"整库队列"播放入口同样只允许网易云歌曲
+        if (blockedByListenTogether(song)) return
         cancelPendingFullQueuePlayback()
         cancelPendingDirectPlayback()
 
@@ -1408,24 +1483,34 @@ class PlayerViewModel @Inject constructor(
                 ) to queueToAttach.toPlaybackQueue()
             }
 
-            withContext(Dispatchers.Main.immediate) {
-                val attached = attachPreparedQueueSegmentsIfCurrent(
-                    player = player,
-                    startSongId = startSongId,
-                    preparedSegments = segments
-                )
-                // ⚡ 队列未真正写入播放器时（守卫条件不满足而静默跳过）不同步 UI 队列：
-                //    否则 UI 显示完整队列而播放器时间线只有 1 首，seekToNext/seekToPrevious
-                //    会因「无下一/上一窗口」被 Media3 静默忽略 → 上下曲按钮失灵（偶发）。
-                if (attached && playbackStateHolder.stablePlayerState.value.currentSong?.id == startSongId) {
-                    queueStateHolder.saveOriginalQueueState(fullQueue, queueName)
-                    _playerUiState.update {
-                        it.copy(
-                            currentPlaybackQueue = persistentQueue,
-                            currentQueueSourceName = queueName
-                        )
+            // ⚡ 批量写入播放器期间抑制「按时间线全量重建队列」：
+            //    每批 addMediaItems 都会触发 PLAYLIST_CHANGED，而重建是 O(n) 的
+            //    （算签名 + 逐项解析 + persistent list 转换），n 首分多批累计接近 O(n²)。
+            //    下面的代码会把最终队列一次性写入 UI 状态，所以不会残留中间态。
+            playbackStateHolder.isQueueFillInProgress = true
+            try {
+                withContext(Dispatchers.Main.immediate) {
+                    val attached = attachPreparedQueueSegmentsIfCurrent(
+                        player = player,
+                        startSongId = startSongId,
+                        preparedSegments = segments
+                    )
+                    // ⚡ 队列未真正写入播放器时（守卫条件不满足而静默跳过）不同步 UI 队列：
+                    //    否则 UI 显示完整队列而播放器时间线只有 1 首，seekToNext/seekToPrevious
+                    //    会因「无下一/上一窗口」被 Media3 静默忽略 → 上下曲按钮失灵（偶发）。
+                    if (attached && playbackStateHolder.stablePlayerState.value.currentSong?.id == startSongId) {
+                        queueStateHolder.saveOriginalQueueState(fullQueue, queueName)
+                        _playerUiState.update {
+                            it.copy(
+                                currentPlaybackQueue = persistentQueue,
+                                currentQueueSourceName = queueName
+                            )
+                        }
                     }
                 }
+            } finally {
+                // 无论成功、失败还是被取消都要复位，避免永久抑制队列同步
+                playbackStateHolder.isQueueFillInProgress = false
             }
         }
     }
@@ -1579,6 +1664,10 @@ class PlayerViewModel @Inject constructor(
         )
         themeStateHolder.initialize(viewModelScope)
 
+        // 日语注音引擎：启动时只做一次完整性自检（不触发下载），并监听引擎就绪后补算罗马音
+        KuromojiEngine.verifyInstalledAsync()
+        observeKuromojiEngineForRomanization()
+
         // On cold start, the MediaController connects asynchronously, leaving stablePlayerState.currentSong
         // null until that happens. Pre-load the palette from the persisted snapshot so the mini player
         // has the correct colors immediately on first render, before the controller is ready.
@@ -1724,7 +1813,16 @@ class PlayerViewModel @Inject constructor(
                     } else {
                         song
                     }
-                    updateSongInStates(safeSong, lyrics)
+                    // ⚡ 歌词到手就顺手把「加载中」清掉：
+                    //    走 _songUpdates 的获取/搜索/导入链路不会调用 onLyricsLoaded，
+                    //    而它取消掉的后台加载又不会回调 onLyricsLoadFinished，
+                    //    于是 isLoadingLyrics 会一直停在 true —— 歌词页因此永远显示空白
+                    //    （表现为"歌词下载好了却没有自动重载"）。
+                    updateSongInStates(
+                        safeSong,
+                        lyrics,
+                        isLoadingLyrics = if (lyrics != null) false else null
+                    )
                     // ⚡ 对外广播歌词：应用内手动获取/搜索到歌词后同步给广播管理器，
                     //    使系统媒体标题歌词推送立即生效（无需等待切歌）。
                     if (lyrics != null) {
@@ -1783,7 +1881,11 @@ class PlayerViewModel @Inject constructor(
                         "shouldApplyPersistedLyrics=$shouldApplyPersistedLyrics, " +
                         "shouldReloadLyrics=$shouldReloadLyrics")
 
-                    if (shouldApplyPersistedLyrics || shouldReloadLyrics) {
+                    // ⚡ 同一首歌已有歌词加载在跑时不打断：cancelLoading 会把进行中的请求作废、
+                    //   把 UI 置为"无歌词"，随后 loadLyricsForSong 又从头拉取，网络差时更容易
+                    //   整体失败（表现为"实际有歌词却显示暂无歌词"）
+                    val sameLoadInFlight = lyricsStateHolder.isLoadingFor(hydratedSong.id)
+                    if (shouldApplyPersistedLyrics || (shouldReloadLyrics && !sameLoadInFlight)) {
                         lyricsStateHolder.cancelLoading()
                     }
 
@@ -1800,7 +1902,7 @@ class PlayerViewModel @Inject constructor(
                         }
                     }
 
-                    if (shouldReloadLyrics) {
+                    if (shouldReloadLyrics && !sameLoadInFlight) {
                         lyricsStateHolder.loadLyricsForSong(hydratedSong, lyricsSourcePreference.value)
                     }
                 }
@@ -2520,6 +2622,16 @@ class PlayerViewModel @Inject constructor(
     init {
         Log.i("PlayerViewModel", "init started.")
         Log.w("PixelPlay_Debug", "=== PlayerViewModel INIT STARTED ===")
+
+        // ⚡ 拉起一起听协调器：启动轮询循环（账号在其它设备被拉进房间时，
+        //   本端 60s 内自动恢复会话，播放门禁也随之生效）
+        listenTogetherCoordinator.ensureStarted()
+        // 一起听事件（激活提示等）转发为全局 Toast
+        viewModelScope.launch {
+            listenTogetherCoordinator.messageEvents.collect { message ->
+                _toastEvents.emit(message)
+            }
+        }
 
         // Cast initialization if already connected
         val currentSession = sessionManager?.currentCastSession
@@ -5528,6 +5640,7 @@ class PlayerViewModel @Inject constructor(
 
     // rebuildPlayerQueue functionality moved to PlaybackStateHolder (simplified)
     fun playSongs(songsToPlay: List<Song>, startSong: Song, queueName: String = "None", playlistId: String? = null) {
+        if (blockedByListenTogether(songsToPlay)) return
         _isRoamingMode.value = false
         cancelPendingFullQueuePlayback()
         // 广播电台：实时流不能进普通队列，直接走 playUrl（流式播放器）。
@@ -5625,6 +5738,7 @@ class PlayerViewModel @Inject constructor(
         playlistId: String? = null,
         startAtZero: Boolean = false
     ) {
+        if (blockedByListenTogether(songsToPlay)) return
         cancelPendingFullQueuePlayback()
         val requestToken = beginDirectPlaybackRequest()
         directPlaybackJob = viewModelScope.launch {
@@ -5695,17 +5809,42 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * 从 AI 助手等场景直接播放一组在线歌曲（[LxSongInfo]）。
-     * 逐个写入统一媒体库得到可播放的 Song（netease:// 或 cloud://lx/ 直链），再以点击的那首开头播放。
+     * 从 AI 助手 / 聊天卡片等场景直接播放一组在线歌曲（[LxSongInfo]）：
+     * 逐个写入统一媒体库得到可播放的 Song（netease:// 或 cloud://lx/ 直链），再以第一首开头播放。
+     *
+     * @param onFailure 落库或回查失败时的原因回调（此前整条链路静默 return，
+     *                  用户点了没有任何反应、也拿不到原因）。
      */
-    fun playCloudSongs(songs: List<LxSongInfo>, queueName: String = "AI 助手") {
-        if (songs.isEmpty()) return
+    fun playCloudSongs(
+        songs: List<LxSongInfo>,
+        queueName: String = "AI 助手",
+        onFailure: ((String) -> Unit)? = null
+    ) {
+        if (songs.isEmpty()) {
+            onFailure?.invoke("没有可播放的歌曲")
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
+            var lastError: String? = null
             val ids = songs.mapNotNull { info ->
-                runCatching { musicRepository.saveCloudSong(info) }.getOrNull()
+                runCatching { musicRepository.saveCloudSong(info) }
+                    .onFailure { lastError = it.message }
+                    .getOrNull()
             }.map(Long::toString).distinct()
-            if (ids.isEmpty()) return@launch
-            val playable = musicRepository.getSongsByIds(ids).first().ifEmpty { return@launch }
+            if (ids.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    onFailure?.invoke(lastError ?: "歌曲信息保存失败，无法播放")
+                }
+                return@launch
+            }
+            val playable = musicRepository.getSongsByIds(ids).first()
+            if (playable.isEmpty()) {
+                Timber.w("playCloudSongs: saved ids=%s but none found in library", ids)
+                withContext(Dispatchers.Main) {
+                    onFailure?.invoke("歌曲已保存但未能读取，无法播放")
+                }
+                return@launch
+            }
             withContext(Dispatchers.Main) {
                 showAndPlaySong(playable.first(), playable, queueName, isVoluntaryPlay = false)
             }
@@ -6216,6 +6355,7 @@ class PlayerViewModel @Inject constructor(
     /** 精确设置倍速（详细调节界面用） */
     fun setPlaybackSpeed(speed: Float) {
         val clamped = speed.coerceIn(0.5f, 2f)
+        val previousSpeed = _playbackSpeed.value
         _playbackSpeed.value = clamped
         // 变调开关开启时音高跟随倍速（pitch == speed），关闭时保持原调
         val pitch = if (pitchFollowSpeed.value) clamped else 1f
@@ -6223,6 +6363,14 @@ class PlayerViewModel @Inject constructor(
         try {
             dualPlayerEngine.setPlaybackSpeed(clamped, pitch)
         } catch (_: Exception) {}
+        // ⚡ Hi-Fi 的浮点输出路径不应用 PlaybackParameters：倍速 ≠ 1.0× 时引擎会自动
+        //    临时关闭浮点输出（Hi-Fi 其它处理链保留），回到原速自动恢复。这里给一次轻提示，
+        //    避免用户误以为 Hi-Fi 失效。
+        if (previousSpeed == 1f && clamped != 1f && dualPlayerEngine.hiFiSuspendedBySpeed) {
+            viewModelScope.launch {
+                _toastEvents.emit(context.getString(R.string.player_hifi_suspended_by_speed))
+            }
+        }
         // 同步到 MediaSession（通知/蓝牙倍速显示）
         mediaController?.let { controller ->
             val args = Bundle().apply {
@@ -6282,16 +6430,23 @@ class PlayerViewModel @Inject constructor(
         val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return
         viewModelScope.launch {
             var favoriteSongId = resolveFavoriteSongId(currentSong)
+            var cloudRecordJustCreated = false
 
             // ── Cloud / URL songs: persist first if needed ──────
             if (favoriteSongId == null && isCloudPlaybackSong(currentSong)) {
-                favoriteSongId = persistCloudSongIfNeeded(currentSong)
+                persistCloudSongIfNeeded(currentSong)?.let { (id, created) ->
+                    favoriteSongId = id
+                    cloudRecordJustCreated = created
+                }
             }
 
             if (favoriteSongId == null) return@launch
 
             val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
-            val targetFavoriteState = !currentlyFavorite
+            // ⚡ 刚落库且存在修复前误写的「幻影收藏行」（favorites 有 id 但歌曲不在库）：
+            //    视为用户当初已收藏，本次点击保持收藏态（红心此前显示为未收藏）
+            val targetFavoriteState =
+                if (cloudRecordJustCreated && currentlyFavorite) true else !currentlyFavorite
             setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
 
             // ── 同步网易云红心 ──────
@@ -6302,15 +6457,23 @@ class PlayerViewModel @Inject constructor(
     fun toggleFavoriteSpecificSong(song: Song, removing: Boolean = false) {
         viewModelScope.launch {
             var favoriteSongId = resolveFavoriteSongId(song)
+            var cloudRecordJustCreated = false
 
             if (favoriteSongId == null && isCloudPlaybackSong(song)) {
-                favoriteSongId = persistCloudSongIfNeeded(song)
+                persistCloudSongIfNeeded(song)?.let { (id, created) ->
+                    favoriteSongId = id
+                    cloudRecordJustCreated = created
+                }
             }
 
             if (favoriteSongId == null) return@launch
 
             val currentlyFavorite = favoriteSongIds.value.contains(favoriteSongId)
-            val targetFavoriteState = if (removing) false else !currentlyFavorite
+            val targetFavoriteState = when {
+                removing -> false
+                cloudRecordJustCreated && currentlyFavorite -> true
+                else -> !currentlyFavorite
+            }
             setFavoriteStatusEverywhere(favoriteSongId, targetFavoriteState)
 
             // ── 同步网易云红心 ──────
@@ -6346,7 +6509,15 @@ class PlayerViewModel @Inject constructor(
     private suspend fun resolveFavoriteSongId(song: Song?): String? {
         song ?: return null
         if (song.id.toLongOrNull() != null) {
-            return song.id
+            // ⚡ 数值 id 不能直接返回：在线搜索歌曲的 id 是 19 位稳定哈希（纯数字但不在
+            //    媒体库中），直接返回会导致收藏只写 favorites 表、歌曲永远不入库。
+            //    先确认库中真实存在；不存在则继续走下方云端歌曲判定链路。
+            val existsInLibrary = runCatching {
+                musicRepository.getSong(song.id).first() != null
+            }.getOrDefault(false)
+            if (existsInLibrary) {
+                return song.id
+            }
         }
 
         // ── Cloud / JS-engine songs ─────────────────────────────────────
@@ -6358,7 +6529,10 @@ class PlayerViewModel @Inject constructor(
             song.neteaseId != null ||
             song.contentUriString.startsWith("http://", ignoreCase = true) ||
             song.contentUriString.startsWith("https://", ignoreCase = true) ||
-            song.contentUriString.startsWith("netease://", ignoreCase = true)
+            song.contentUriString.startsWith("netease://", ignoreCase = true) ||
+            // ⚡ cloud://lx/{json} 占位（在线搜索/歌单整队入列的歌曲）：id 是纯数字哈希、
+            //    neteaseId 为空，必须靠 contentUri 的 cloud:// 前缀识别为云端歌曲
+            song.contentUriString.startsWith("cloud://", ignoreCase = true)
 
         if (isCloudSong) {
             // Try title+artist match against cloud song table (source_type = 7)
@@ -6423,21 +6597,31 @@ class PlayerViewModel @Inject constructor(
                 song.neteaseId != null ||
                 song.contentUriString.startsWith("http://", ignoreCase = true) ||
                 song.contentUriString.startsWith("https://", ignoreCase = true) ||
-                song.contentUriString.startsWith("netease://", ignoreCase = true)
+                song.contentUriString.startsWith("netease://", ignoreCase = true) ||
+                song.contentUriString.startsWith("cloud://", ignoreCase = true)
+            ) || (
+            // ⚡ 数值 id 但不在媒体库中的云端歌曲（在线搜索的 19 位稳定哈希 id）：
+            //    contentUri 是 http 直链或 cloud://lx 占位，而非本地 content://media/ 路径。
+            //    这类歌曲收藏前同样需要先落库。
+            song.id.toLongOrNull() != null && (
+                song.contentUriString.startsWith("http://", ignoreCase = true) ||
+                    song.contentUriString.startsWith("https://", ignoreCase = true) ||
+                    song.contentUriString.startsWith("cloud://", ignoreCase = true)
+                )
             )
     }
 
     /**
      * Persists basic metadata of a currently-playing cloud song so it can be favorited.
-     * Returns the newly-created song ID.
+     * 返回 (歌曲 id, 是否本次新建记录)；null 表示不适用/落库失败。
      */
-    private suspend fun persistCloudSongIfNeeded(song: Song): String? {
+    private suspend fun persistCloudSongIfNeeded(song: Song): Pair<String, Boolean>? {
         if (!isCloudPlaybackSong(song)) return null
         val title = song.title.ifBlank { return null }
         val artist = song.artist.ifBlank { "" }
 
         // Already persisted?
-        musicRepository.getCloudSongIdByTitleArtist(title, artist)?.let { return it }
+        musicRepository.getCloudSongIdByTitleArtist(title, artist)?.let { return Pair(it, false) }
 
         val isRadio = song.id.startsWith("radio://")
 
@@ -6451,6 +6635,39 @@ class PlayerViewModel @Inject constructor(
             null
         }
 
+        // ⚡ cloud://lx/{json} 占位歌曲（在线搜索/歌单入列）：解码出完整 LxSongInfo 走
+        //    saveCloudSong —— 落库 id 用与搜索队列一致的稳定哈希（"lx_song_"+平台id|歌名|歌手），
+        //    且保留真实音源 source，之后从媒体库播放能按原音源重新解析。
+        if (!isRadio && song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)) {
+            val lxInfo = runCatching { decodeLxSongInfoFromPlaceholderUri(song.contentUriString) }.getOrNull()
+            if (lxInfo != null && lxInfo.name.isNotBlank()) {
+                val savedId = runCatching { musicRepository.saveCloudSong(lxInfo) }.getOrNull()
+                if (savedId != null && savedId > 0L) {
+                    return Pair(savedId.toString(), true)
+                }
+            }
+        }
+
+        // ⚡ 网易云直链点播歌曲（wy 音源）：合成 LxSongInfo 走 saveCloudSong，
+        //    落库 id 同样与队列稳定哈希对齐（saveCloudSong 内部用相同哈希算法），
+        //    contentUri 落为 netease://{id} 官方可解析格式。
+        val neteaseId = song.neteaseId
+        if (!isRadio && neteaseId != null && neteaseId > 0L) {
+            val lxInfo = LxSongInfo(
+                id = neteaseId.toString(),
+                name = title,
+                singer = artist,
+                albumName = song.album,
+                duration = song.duration,
+                pic = song.albumArtUriString.orEmpty(),
+                source = "wy"
+            )
+            val savedId = runCatching { musicRepository.saveCloudSong(lxInfo) }.getOrNull()
+            if (savedId != null && savedId > 0L) {
+                return Pair(savedId.toString(), true)
+            }
+        }
+
         // Not yet saved — create the minimal record
         val songId = musicRepository.saveCloudSongBasic(
             title = title,
@@ -6459,10 +6676,35 @@ class PlayerViewModel @Inject constructor(
             albumArt = song.albumArtUriString,
             duration = song.duration,
             directPlayUrl = directPlayUrl,
-            neteaseIdRaw = song.neteaseId,
+            neteaseIdRaw = neteaseId,
             isRadio = isRadio
         )
-        return songId.toString()
+        return Pair(songId.toString(), true)
+    }
+
+    /**
+     * 解码 cloud://lx/{urlEncoded JSON} 占位 URI 为 [LxSongInfo]。
+     * JSON 键与 [LxMusicViewModel.buildLxPlaceholderUri] / saveCloudSong 的
+     * buildCloudContentUri 保持一致（id/songmid/hash/name/singer/artistIds/album/pic/duration/source）。
+     */
+    private fun decodeLxSongInfoFromPlaceholderUri(uri: String): LxSongInfo? {
+        if (!uri.startsWith("cloud://lx/", ignoreCase = true)) return null
+        val jsonText = runCatching {
+            java.net.URLDecoder.decode(uri.removePrefix("cloud://lx/"), "UTF-8")
+        }.getOrNull() ?: return null
+        val json = runCatching { org.json.JSONObject(jsonText) }.getOrNull() ?: return null
+        return LxSongInfo(
+            id = json.optString("id"),
+            songmid = json.optString("songmid"),
+            hash = json.optString("hash"),
+            name = json.optString("name"),
+            singer = json.optString("singer"),
+            artistIds = json.optString("artistIds"),
+            albumName = json.optString("album"),
+            duration = json.optLong("duration", 0L),
+            pic = json.optString("pic"),
+            source = json.optString("source")
+        )
     }
 
     private fun parseMediaStoreAudioId(uriString: String): Long? {
@@ -6483,6 +6725,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun addSongToQueue(song: Song) {
+        if (blockedByListenTogether(song)) return
         val mediaItem = buildPlaybackMediaItem(song)
         // ⚡ 首屏队列仍在后台回填时先缓冲，避免破坏 `mediaItemCount == 1` 守卫（详见 pendingQueueAppendBuffer）
         if (isQueueStillBuilding()) {
@@ -6501,7 +6744,7 @@ class PlayerViewModel @Inject constructor(
      * 待回填完成后统一追加（详见 [pendingQueueAppendBuffer]）。
      */
     fun appendCloudSongsToQueue(songs: List<Song>) {
-        if (songs.isEmpty()) return
+        if (songs.isEmpty() || blockedByListenTogether(songs)) return
         val items = songs.map { buildPlaybackMediaItem(it) }
         val controller = mediaController
         if (isQueueStillBuilding() || controller == null) {
@@ -6545,7 +6788,9 @@ class PlayerViewModel @Inject constructor(
         artist: String = "",
         cover: String = "",
         songId: String? = null,
-        bilibiliBvid: String? = null
+        bilibiliBvid: String? = null,
+        lxSource: String? = null,
+        platformSongId: String? = null
     ): Song? {
         val sanitizedUrl = url.trim()
             .replace("[\\x00-\\x1F\\x7F]".toRegex(), "")
@@ -6571,7 +6816,12 @@ class PlayerViewModel @Inject constructor(
             else -> sanitizedUrl
         }
         // neteaseId 只从最终 contentUri 提取（hash 不等于真实网易云 id）
-        val effectiveNeteaseId = contentUri.removePrefix("netease://").toLongOrNull()?.takeIf { it > 0 }
+        var effectiveNeteaseId = contentUri.removePrefix("netease://").toLongOrNull()?.takeIf { it > 0 }
+        // ⚡ 搜索点播保留真实直链时会丢失平台信息：wy 音源时把平台歌曲 id 透传为
+        //    neteaseId，播放器才能识别网易云平台（评论按钮 / 红心同步 / 下载链路）。
+        if (effectiveNeteaseId == null && lxSource == "wy") {
+            effectiveNeteaseId = platformSongId?.toLongOrNull()?.takeIf { it > 0 }
+        }
         return Song(
             id = id,
             title = title.ifBlank { "Cloud Track" },
@@ -8945,6 +9195,31 @@ class PlayerViewModel @Inject constructor(
         return aiStateHolder.generateAiMetadata(song, fields)
     }
 
+    /**
+     * 日语注音引擎是按需下载的：第一次遇到日语歌词时引擎还没装好，那一轮解析出来的
+     * `Lyrics` 里 romanization 全是 null，并会被一直持有（不会因为引擎装好而重算）。
+     * 这里在引擎变为就绪后补算一次当前歌词的罗马音并刷新界面，
+     * 避免"下载完了依然没有罗马音，非得切歌重进才行"。
+     */
+    private fun observeKuromojiEngineForRomanization() {
+        viewModelScope.launch {
+            // 监听"分词器真正加载成功"的信号，而不是 state == Ready：
+            // state 是 StateFlow，已就绪后再次加载成功不会产生新值，收不到通知。
+            KuromojiEngine.readyEvents.collect { refreshRomanizationForCurrentLyrics() }
+        }
+    }
+
+    private fun refreshRomanizationForCurrentLyrics() {
+        val current = playbackStateHolder.stablePlayerState.value
+        val song = current.currentSong ?: return
+        val rawLyrics = song.lyrics?.takeIf { it.isNotBlank() } ?: return
+        val currentLyrics = current.lyrics ?: return
+        val reparsed = parsePersistedLyrics(rawLyrics) ?: return
+        if (reparsed == currentLyrics) return
+        updateSongInStates(song, reparsed)
+        bluetoothLyricsManager.setLyrics(reparsed)
+    }
+
     private fun updateSongInStates(
         updatedSong: Song,
         newLyrics: Lyrics? = null,
@@ -9049,7 +9324,24 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * ⚡ 一起听门禁：一起听激活期间只允许播放网易云歌曲。
+     * 列表里混有非网易云歌曲时，整个播放/入队动作都会被拦截并提示。
+     */
+    private fun blockedByListenTogether(songs: List<Song>): Boolean {
+        if (!listenTogetherCoordinator.state.value.active) return false
+        if (songs.all { it.isNeteaseTogetherSong() }) return false
+        viewModelScope.launch {
+            _toastEvents.emit(context.getString(R.string.listen_together_netease_only))
+        }
+        return true
+    }
+
+    private fun blockedByListenTogether(song: Song): Boolean =
+        blockedByListenTogether(listOf(song))
+
     fun playSong(song: Song) {
+        if (blockedByListenTogether(song)) return
         _isRoamingMode.value = false
         viewModelScope.launch {
             val controller = mediaController ?: return@launch

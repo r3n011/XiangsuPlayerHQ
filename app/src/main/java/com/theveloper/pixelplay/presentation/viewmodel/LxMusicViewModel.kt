@@ -15,6 +15,8 @@ import com.theveloper.pixelplay.data.lx.LxPlaylistInfo
 import com.theveloper.pixelplay.data.lx.LxPlaylistSearchResult
 import com.theveloper.pixelplay.data.lx.LxScriptInfo
 import com.theveloper.pixelplay.data.lx.LxSourceInfo
+import com.theveloper.pixelplay.data.lx.LxSourceTester
+import com.theveloper.pixelplay.data.lx.toLxMusicInfoMap
 import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
 import com.theveloper.pixelplay.data.preferences.MusicQuality
 import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
@@ -25,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -82,10 +85,72 @@ class LxMusicViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val userPreferencesRepository: com.theveloper.pixelplay.data.preferences.UserPreferencesRepository,
     private val playlistPreferencesRepository: com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository,
+    private val sourceTester: LxSourceTester,
 ) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(LxUiState())
     val uiState: StateFlow<LxUiState> = _uiState.asStateFlow()
+
+    // ── 「已安装音源」连通性测试（音源设置页）──────────────────────────────
+    /** 单个已安装音源的测试状态 */
+    data class SourceTestUi(
+        val key: String,
+        val displayName: String,
+        val testing: Boolean = false,
+        val result: LxSourceTester.Result? = null
+    )
+
+    private val _sourceTests = MutableStateFlow<List<SourceTestUi>>(emptyList())
+    val sourceTests: StateFlow<List<SourceTestUi>> = _sourceTests.asStateFlow()
+
+    private val _testingAllSources = MutableStateFlow(false)
+    val testingAllSources: StateFlow<Boolean> = _testingAllSources.asStateFlow()
+
+    /** 刷新待测列表：只列**已安装** JS 脚本提供的音源（内置源不需要在这里测） */
+    fun refreshSourceTestList() {
+        viewModelScope.launch {
+            val options = runCatching { sourceTester.availableSources(installedOnly = true) }
+                .getOrDefault(emptyList())
+            val previous = _sourceTests.value.associateBy { it.key }
+            _sourceTests.value = options.map { option ->
+                previous[option.key]?.copy(displayName = option.displayName)
+                    ?: SourceTestUi(option.key, option.displayName)
+            }
+        }
+    }
+
+    fun testInstalledSource(key: String) {
+        viewModelScope.launch {
+            _sourceTests.update { rows ->
+                rows.map { if (it.key == key) it.copy(testing = true) else it }
+            }
+            val result = runCatching { sourceTester.test(key) }.getOrNull()
+            _sourceTests.update { rows ->
+                rows.map { if (it.key == key) it.copy(testing = false, result = result) else it }
+            }
+        }
+    }
+
+    /** 全部测试：串行执行，避免同时打多个第三方接口触发风控 */
+    fun testAllInstalledSources() {
+        if (_testingAllSources.value) return
+        viewModelScope.launch {
+            _testingAllSources.value = true
+            try {
+                _sourceTests.value.map { it.key }.forEach { key ->
+                    _sourceTests.update { rows ->
+                        rows.map { if (it.key == key) it.copy(testing = true) else it }
+                    }
+                    val result = runCatching { sourceTester.test(key) }.getOrNull()
+                    _sourceTests.update { rows ->
+                        rows.map { if (it.key == key) it.copy(testing = false, result = result) else it }
+                    }
+                }
+            } finally {
+                _testingAllSources.value = false
+            }
+        }
+    }
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -814,28 +879,137 @@ class LxMusicViewModel @Inject constructor(
         } else {
             resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality)
         }
-        if (url == null) return null
+
+        // ⚡ 换源（对齐 lx-music 的 getOtherSource）：当前音源解析不出来时，
+        //   用「歌名 + 歌手」去其它音源搜索**同一首歌**，用那个音源自己的解析能力重新取链。
+        //   既不会退化成"拿酷我试听流播 QQ 歌"，也不会让歌曲直接没声。
+        var effectiveSong = song.copy(source = targetSource)
+        var playUrl = url
+        if (playUrl == null) {
+            val switched = resolveViaOtherSource(
+                song = song,
+                quality = preferredQuality,
+                availableSources = availableSources,
+                excludeSource = targetSource
+            )
+            if (switched != null) {
+                effectiveSong = switched.song
+                playUrl = switched.url
+                android.util.Log.d(
+                    "LxPlaySong",
+                    "Switched source: $targetSource → ${switched.song.source} (${switched.song.name})"
+                )
+            }
+        }
+        if (playUrl == null) return null
 
         // ── 是否写入统一媒体库
         // 点播（persist=true）：保存歌曲到数据库，使用返回的真实 song id；
         // 排队预解析（persist=false）：只返回稳定 id，不落库，避免搜索结果整页灌入媒体库
+        // 换源命中时以**命中的那首歌**入库（id / source 都属于新音源），封面也优先用它的
+        val finalCover = coverToUse.ifBlank { effectiveSong.pic }
         val savedSongId = if (persist) {
-            val songWithCover = if (coverToUse.isNotBlank() && song.pic.isBlank()) {
-                song.copy(pic = coverToUse, source = targetSource)
+            val songWithCover = if (finalCover.isNotBlank() && effectiveSong.pic.isBlank()) {
+                effectiveSong.copy(pic = finalCover)
             } else {
-                song.copy(source = targetSource)
+                effectiveSong
             }
             try {
                 musicRepository.saveCloudSong(songWithCover).toString()
             } catch (t: Throwable) {
                 android.util.Log.w("LxPlaySong", "saveCloudSong 失败: ${t.message}")
-                getStableSongId(song)
+                getStableSongId(effectiveSong)
             }
         } else {
-            getStableSongId(song)
+            getStableSongId(effectiveSong)
         }
-        android.util.Log.d("LxPlaySong", "Saved song ID: $savedSongId, source: $targetSource")
-        return LxResolvedPlayable(url = url, cover = coverToUse, savedSongId = savedSongId, source = targetSource)
+        android.util.Log.d("LxPlaySong", "Saved song ID: $savedSongId, source: ${effectiveSong.source}")
+        return LxResolvedPlayable(
+            url = playUrl,
+            cover = finalCover,
+            savedSongId = savedSongId,
+            source = effectiveSong.source
+        )
+    }
+
+    /** 换源命中结果：命中的那首歌（带新 source / id）与解析出的直链 */
+    private data class SwitchedSource(val song: LxSongInfo, val url: String)
+
+    /** 换源时的候选内置源顺序（酷狗/酷我/咪咕/QQ） */
+    private val builtInSourceOrder = listOf("kg", "kw", "mg", "tx")
+
+    /**
+     * 换源解析（对齐 lx-music 的 `getOtherSource`）：
+     * 用「歌名 + 歌手」在其它音源搜索同一首歌，再用**那个音源自己的解析能力**取链。
+     *
+     * 命中必须通过同名校验（时长 ±3s + 歌手重叠），避免换源后播成翻唱/同名歌；
+     * 所有音源都失败时返回 null（调用方如实报解析失败）。
+     */
+    private suspend fun resolveViaOtherSource(
+        song: LxSongInfo,
+        quality: String,
+        availableSources: List<String>,
+        excludeSource: String
+    ): SwitchedSource? {
+        val keyword = "${song.name} ${song.singer}".trim()
+        if (keyword.isBlank()) return null
+
+        // 已装插件提供的音源优先（解析质量更好），其余内置源在后；排除当前源与网易云
+        val candidates = (availableSources + builtInSourceOrder)
+            .distinct()
+            .filter { it != excludeSource && it != "wy" }
+
+        for (source in candidates) {
+            val viaJs = availableSources.contains(source)
+            val hits = runCatching {
+                if (viaJs) {
+                    engine.search(keyword, source, page = 1, pagesize = 5).list
+                } else {
+                    builtInSourceSearchApi.search(source, keyword, 1, 5).list
+                }
+            }.getOrDefault(emptyList())
+
+            val matched = hits.firstOrNull { isSameSong(song, it) } ?: continue
+            val url = runCatching {
+                if (viaJs) {
+                    resolvePlayUrlWithQualityChain(source, matched.toInfoMap(), quality)
+                } else {
+                    builtInSourceSearchApi.resolvePlayUrl(source, matched, quality)
+                }
+            }.getOrNull()
+            if (!url.isNullOrBlank()) {
+                return SwitchedSource(song = matched.copy(source = source), url = url)
+            }
+        }
+        return null
+    }
+
+    /** 同名歌校验：时长接近（±3s）且歌手信息可对齐 */
+    private fun isSameSong(target: LxSongInfo, candidate: LxSongInfo): Boolean {
+        if (candidate.id.isBlank()) return false
+        val artistOk = artistTokensOverlap(target.singer, candidate.singer)
+        val durationOk = target.duration > 0L && candidate.duration > 0L &&
+            kotlin.math.abs(candidate.duration - target.duration) <= 3L
+        return when {
+            target.duration > 0L -> durationOk &&
+                (artistOk || target.singer.isBlank() || candidate.singer.isBlank())
+            else -> artistOk
+        }
+    }
+
+    /** 歌手串按常见分隔符拆分后做去空格包含匹配 */
+    private fun artistTokensOverlap(a: String, b: String): Boolean {
+        if (a.isBlank() || b.isBlank()) return false
+        fun tokens(s: String): List<String> = s
+            .split('/', '、', ',', '，', '&', ';', '；', '|')
+            .map { it.trim().replace(" ", "").lowercase() }
+            .filter { it.isNotBlank() }
+        val aTokens = tokens(a)
+        val bTokens = tokens(b)
+        if (aTokens.isEmpty() || bTokens.isEmpty()) return false
+        val ca = a.replace(" ", "").lowercase()
+        val cb = b.replace(" ", "").lowercase()
+        return aTokens.any { cb.contains(it) } || bTokens.any { ca.contains(it) }
     }
 
     /**
@@ -912,7 +1086,11 @@ class LxMusicViewModel @Inject constructor(
         val artist: String,
         val cover: String,
         val songId: String,
-        val bilibiliBvid: String? = null
+        val bilibiliBvid: String? = null,
+        // ⚡ 平台信息透传：真实直链种子会丢失音源/平台 id，播放器需要它们识别
+        //    在线平台（下载/评论按钮、网易云红心同步、收藏落库音源）
+        val source: String? = null,
+        val platformSongId: String? = null
     )
 
     /**
@@ -929,7 +1107,9 @@ class LxMusicViewModel @Inject constructor(
                 title = song.name,
                 artist = song.singer,
                 cover = song.pic,
-                songId = getStableSongId(song)
+                songId = getStableSongId(song),
+                source = source,
+                platformSongId = song.id
             )
         }
     }
@@ -998,12 +1178,15 @@ class LxMusicViewModel @Inject constructor(
                     .take(remainingSlots - appended)
                 if (fresh.isNotEmpty()) {
                     val seeds = fresh.map { s ->
+                        val seedSource = pickSourceForSong(s)
                         CloudQueueSeed(
-                            url = buildLxPlaceholderUri(s, pickSourceForSong(s)),
+                            url = buildLxPlaceholderUri(s, seedSource),
                             title = s.name,
                             artist = s.singer,
                             cover = s.pic,
-                            songId = getStableSongId(s)
+                            songId = getStableSongId(s),
+                            source = seedSource,
+                            platformSongId = s.id
                         )
                     }
                     appended += seeds.size
@@ -1049,13 +1232,25 @@ class LxMusicViewModel @Inject constructor(
             }
             val clickedKey = getStableSongId(clicked)
             val seeds = ArrayList<CloudQueueSeed>(songs.size.coerceAtMost(AUTO_QUEUE_MAX_SONGS))
-            // 点击的歌曲：真实直链（不落库，savedSongId 即稳定 id）
-            seeds.add(CloudQueueSeed(resolved.url, clicked.name, clicked.singer, resolved.cover, resolved.savedSongId))
+            // 点击的歌曲：真实直链（不落库，savedSongId 即稳定 id）；透传音源与平台歌曲 id
+            seeds.add(
+                CloudQueueSeed(
+                    resolved.url, clicked.name, clicked.singer, resolved.cover, resolved.savedSongId,
+                    source = resolved.source,
+                    platformSongId = clicked.id
+                )
+            )
             for ((index, s) in songs.withIndex()) {
                 if (seeds.size >= AUTO_QUEUE_MAX_SONGS) break
                 if (index == startIndex || getStableSongId(s) == clickedKey) continue
                 val source = pickSourceForSong(s)
-                seeds.add(CloudQueueSeed(buildLxPlaceholderUri(s, source), s.name, s.singer, s.pic, getStableSongId(s)))
+                seeds.add(
+                    CloudQueueSeed(
+                        buildLxPlaceholderUri(s, source), s.name, s.singer, s.pic, getStableSongId(s),
+                        source = source,
+                        platformSongId = s.id
+                    )
+                )
             }
             withContext(Dispatchers.Main) {
                 _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
@@ -1154,29 +1349,9 @@ class LxMusicViewModel @Inject constructor(
         return getStableSongId(song).toLong()
     }
 
-    private fun LxSongInfo.toInfoMap(): Map<String, Any?> {
-        // 多歌手支持：singer 是 "、" 连接的显示串；artists/artistIds 按 lx-music
-        // 协议传给 JS 引擎（数组），避免脚本读取 musicInfo.artists 时拿到字符串导致失败
-        val idList = artistIds.split(",").map { it.trim() }.filter { it.isNotBlank() }
-        val nameList = com.theveloper.pixelplay.data.stream.CloudMusicUtils.parseArtistNames(singer)
-        val artistsArray = nameList.mapIndexed { index, name ->
-            mapOf("id" to idList.getOrNull(index).orEmpty(), "name" to name)
-        }
-        return mapOf(
-            "id" to id,
-            "vid" to id,
-            "songmid" to (songmid.ifBlank { id }),
-            "hash" to (hash.ifBlank { id }),
-            "name" to name,
-            "singer" to singer,
-            "artist" to singer,
-            "artists" to artistsArray,
-            "artistIds" to idList,
-            "album" to albumName,
-            "albumName" to albumName,
-            "duration" to duration,
-            "cover" to pic,
-            "pic" to pic,
-        )
-    }
+    // 多歌手支持：artists/artistIds 按 lx-music 协议传给 JS 引擎（数组），
+    // 避免脚本读取 musicInfo.artists 时拿到字符串导致失败。
+    // ⚡ 统一走 data.lx 的共用映射：连通性测试（LxSourceTester）也用同一份，
+    //   否则会出现"能播放但测试报不可用"的不一致。
+    private fun LxSongInfo.toInfoMap(): Map<String, Any?> = toLxMusicInfoMap()
 }

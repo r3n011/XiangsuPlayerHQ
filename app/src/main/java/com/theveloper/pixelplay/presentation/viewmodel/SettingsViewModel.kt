@@ -142,7 +142,7 @@ data class SettingsUiState(
     val immersiveLyricsTimeout: Long = 4000L,
     val useAnimatedLyrics: Boolean = true,
     val animatedLyricsBlurEnabled: Boolean = true,
-    val animatedLyricsBlurStrength: Float = 2.5f,
+    val animatedLyricsBlurStrength: Float = 1f,
     val lyricsVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
     val playerVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
     val disableBlurAllOver: Boolean = false,
@@ -167,6 +167,16 @@ data class SettingsUiState(
     val showLyricsTrackInfo: Boolean = true,
     val transportControlsFlatStyle: Boolean = false,
     val carModeEnabled: Boolean = false,
+    /** 「软件缩放」百分比（只改变本 App 的排版尺寸，默认 100）。 */
+    val uiScale: Int = UserPreferencesRepository.UI_SCALE_DEFAULT,
+    // 悬浮歌词（桌面歌词）
+    val floatingLyricsEnabled: Boolean = false,
+    val floatingLyricsLineMode: String = UserPreferencesRepository.FLOATING_LYRICS_LINE_MODE_DOUBLE,
+    val floatingLyricsLocked: Boolean = false,
+    val floatingLyricsEdgeSnap: Boolean = true,
+    val floatingLyricsAnimations: Boolean = true,
+    val floatingLyricsScale: Int = UserPreferencesRepository.FLOATING_LYRICS_SCALE_DEFAULT,
+    val floatingLyricsBackgroundAlpha: Int = UserPreferencesRepository.FLOATING_LYRICS_BG_ALPHA_DEFAULT,
     val glyphMatrixEnabled: Boolean = false,
     val glyphMatrixDisplayMode: String = "NOW_PLAYING",
     val centerNavButtonMode: CenterNavButtonMode = CenterNavButtonMode.DISCOVER,
@@ -457,6 +467,27 @@ class SettingsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
+
+    // ─── 更新与下载设置（后台自动更新）─────────────────────────────────────
+    val autoUpdateCheckEnabledFlow: Flow<Boolean> = userPreferencesRepository.autoUpdateCheckEnabledFlow
+    fun setAutoUpdateCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setAutoUpdateCheckEnabled(enabled) }
+    }
+
+    val updateCheckFrequencyFlow: Flow<String> = userPreferencesRepository.updateCheckFrequencyFlow
+    fun setUpdateCheckFrequency(frequency: String) {
+        viewModelScope.launch { userPreferencesRepository.setUpdateCheckFrequency(frequency) }
+    }
+
+    val backgroundUpdateDownloadFlow: Flow<Boolean> = userPreferencesRepository.backgroundUpdateDownloadFlow
+    fun setBackgroundUpdateDownload(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setBackgroundUpdateDownload(enabled) }
+    }
+
+    val updateWifiChargingOnlyFlow: Flow<Boolean> = userPreferencesRepository.updateWifiChargingOnlyFlow
+    fun setUpdateWifiChargingOnly(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setUpdateWifiChargingOnly(enabled) }
+    }
 
     val syncProgress: StateFlow<SyncProgress> = syncManager.syncProgress
         .stateIn(
@@ -836,6 +867,55 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.carModeEnabledFlow.collect { enabled ->
                 _uiState.update { it.copy(carModeEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.uiScaleFlow.collect { scale ->
+                _uiState.update { it.copy(uiScale = scale) }
+            }
+        }
+
+        // 悬浮歌词（桌面歌词）：独立订阅，不并入上面的 Group2 下标数组，避免动到已有索引
+        viewModelScope.launch {
+            userPreferencesRepository.floatingLyricsEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(floatingLyricsEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.floatingLyricsLineModeFlow.collect { mode ->
+                _uiState.update { it.copy(floatingLyricsLineMode = mode) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.floatingLyricsLockedFlow.collect { locked ->
+                _uiState.update { it.copy(floatingLyricsLocked = locked) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.floatingLyricsEdgeSnapFlow.collect { snap ->
+                _uiState.update { it.copy(floatingLyricsEdgeSnap = snap) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.floatingLyricsAnimationsFlow.collect { enabled ->
+                _uiState.update { it.copy(floatingLyricsAnimations = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.floatingLyricsScaleFlow.collect { scale ->
+                _uiState.update { it.copy(floatingLyricsScale = scale) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.floatingLyricsBackgroundAlphaFlow.collect { alpha ->
+                _uiState.update { it.copy(floatingLyricsBackgroundAlpha = alpha) }
             }
         }
 
@@ -2150,6 +2230,55 @@ class SettingsViewModel @Inject constructor(
     fun setCarModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setCarModeEnabled(enabled)
+        }
+    }
+
+    /** 「软件缩放」：percent 会被仓库收敛到合法区间。 */
+    fun setUiScale(percent: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setUiScale(percent)
+        }
+    }
+
+    fun setFloatingLyricsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFloatingLyricsEnabled(enabled)
+        }
+    }
+
+    fun setFloatingLyricsLineMode(mode: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFloatingLyricsLineMode(mode)
+        }
+    }
+
+    fun setFloatingLyricsLocked(locked: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFloatingLyricsLocked(locked)
+        }
+    }
+
+    fun setFloatingLyricsEdgeSnap(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFloatingLyricsEdgeSnap(enabled)
+        }
+    }
+
+    fun setFloatingLyricsAnimations(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFloatingLyricsAnimations(enabled)
+        }
+    }
+
+    fun setFloatingLyricsScale(percent: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFloatingLyricsScale(percent)
+        }
+    }
+
+    fun setFloatingLyricsBackgroundAlpha(percent: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFloatingLyricsBackgroundAlpha(percent)
         }
     }
 

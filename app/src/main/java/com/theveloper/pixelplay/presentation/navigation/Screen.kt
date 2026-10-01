@@ -11,8 +11,9 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Accounts : Screen("settings_accounts")
     object SourceMarket : Screen("source_market")
-    object SettingsCategory : Screen("settings_category/{categoryId}") {
-        fun createRoute(categoryId: String) = "settings_category/$categoryId"
+    object SettingsCategory : Screen("settings_category/{categoryId}?highlight={highlight}") {
+        fun createRoute(categoryId: String, highlight: String? = null) =
+            "settings_category/$categoryId" + (highlight?.let { "?highlight=${android.net.Uri.encode(it)}" } ?: "")
     }
     object PaletteStyle : Screen("palette_style_settings")
     object PlayerProgressStyle : Screen("player_progress_style_settings")
@@ -65,6 +66,11 @@ sealed class Screen(val route: String) {
     object Equalizer : Screen("equalizer")
     object DeviceCapabilities : Screen("device_capabilities")
     object NeteaseDashboard : Screen("netease_dashboard")
+    object Messages : Screen("messages")
+    object Chat : Screen("chat/{userId}?name={name}&avatar={avatar}") {
+        fun createRoute(userId: Long, name: String, avatar: String?): String =
+            "chat/$userId?name=${android.net.Uri.encode(name)}&avatar=${android.net.Uri.encode(avatar.orEmpty())}"
+    }
     object QqMusicDashboard : Screen("qqmusic_dashboard")
     object NavidromeDashboard : Screen("navidrome_dashboard")
     object JellyfinDashboard : Screen("jellyfin_dashboard")

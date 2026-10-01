@@ -7742,5 +7742,167 @@ void main(){
     raf = requestAnimationFrame(loop);
   })();
   </script>
+
+  <script>
+  /* ── 交互增强（纯追加，不改动任何既有逻辑）────────────────────────────
+     1) 触控响应：消除双击缩放与 300ms 点击延迟（touch-action: manipulation）
+     2) 歌词行点击反馈：原生 bindSeek 点击后无任何视觉反馈，这里补一个
+        「按下缩放 + 命中高亮」的瞬时反馈
+     3) 长按歌词行复制该行文本（方便分享/记歌词）
+     4) 空格 / 左右方向键快捷控制（桌面浏览器远控时更顺手）
+     5) 页面切到后台时停止 CSS 动画，省电
+     ─────────────────────────────────────────────────────────────────── */
+  (function () {
+    var style = document.createElement('style');
+    style.textContent = [
+      'button, .theme-switch button, #lyricsSide .lyrics-line, #lyricsSheetContent .lyrics-line {',
+      '  touch-action: manipulation;',
+      '}',
+      '#lyricsSide .lyrics-line, #lyricsSheetContent .lyrics-line { cursor: pointer; }',
+      '.lyrics-line.pl-tap {',
+      '  transform: scale(0.985);',
+      '  filter: brightness(1.35);',
+      '  transition: transform 0.12s ease-out, filter 0.12s ease-out;',
+      '}',
+      '.lyrics-line.pl-copied::after {',
+      '  content: "已复制"; margin-left: 8px; font-size: 11px; opacity: 0.65;',
+      '}',
+      '@media (prefers-reduced-motion: reduce) {',
+      '  .lyrics-line.pl-tap { transform: none; filter: none; }',
+      '}'
+    ].join('\n');
+    document.head.appendChild(style);
+
+    /* 歌词行：按下反馈 + 长按复制 */
+    function bindLineEnhancements(root) {
+      if (!root || root.__plEnhanced) return;
+      root.__plEnhanced = true;
+      root.addEventListener('pointerdown', function (e) {
+        var el = e.target.closest && e.target.closest('.lyrics-line');
+        if (!el) return;
+        el.classList.add('pl-tap');
+        setTimeout(function () { el.classList.remove('pl-tap'); }, 140);
+      });
+      var pressTimer = null;
+      root.addEventListener('pointerdown', function (e) {
+        var el = e.target.closest && e.target.closest('.lyrics-line');
+        if (!el) return;
+        pressTimer = setTimeout(function () {
+          var text = (el.textContent || '').trim();
+          if (!text) return;
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text);
+            } else {
+              var ta = document.createElement('textarea');
+              ta.value = text; document.body.appendChild(ta);
+              ta.select(); document.execCommand('copy');
+              document.body.removeChild(ta);
+            }
+            el.classList.add('pl-copied');
+            setTimeout(function () { el.classList.remove('pl-copied'); }, 900);
+          } catch (err) { }
+        }, 520);
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (evt) {
+        root.addEventListener(evt, function () {
+          if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        });
+      });
+    }
+
+    /* renderLyrics 每次都会重建歌词 DOM，这里用 MutationObserver 自动重新挂载增强 */
+    var observer = new MutationObserver(function () {
+      var side = document.getElementById('lyricsSide');
+      var sheet = document.getElementById('lyricsSheetContent');
+      if (side) { side.__plEnhanced = false; bindLineEnhancements(side); }
+      if (sheet) { sheet.__plEnhanced = false; bindLineEnhancements(sheet); }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    /* 键盘快捷键（仅在桌面浏览器远控时生效） */
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        var play = document.getElementById('playPauseBtn') || document.getElementById('mvPlay') ||
+          document.getElementById('fvPlay') || document.getElementById('rvPlay');
+        if (play) play.click();
+      } else if (e.code === 'ArrowRight') {
+        var next = document.getElementById('nextBtn') || document.getElementById('mvNext') ||
+          document.getElementById('fvNext') || document.getElementById('rvNext');
+        if (next) next.click();
+      } else if (e.code === 'ArrowLeft') {
+        var prev = document.getElementById('prevBtn') || document.getElementById('mvPrev') ||
+          document.getElementById('fvPrev') || document.getElementById('rvPrev');
+        if (prev) prev.click();
+      }
+    });
+
+    /* 后台标签页暂停 CSS 动画（省电） */
+    document.addEventListener('visibilitychange', function () {
+      document.documentElement.style.animationPlayState = document.hidden ? 'paused' : '';
+    });
+  })();
+  </script>
+
+  <script>
+  /* ── 背景细节补齐（纯追加，不改动任何既有逻辑）─────────────────────────
+     对照 folia-major-main 的舞台背景组合，补上 web 端缺失的三层：
+       ① 可读性叠加渐变（linear-gradient to bottom right, primary→transparent→secondary）
+          folia: FluidBackground.tsx:380-387（opacity 0.4 + mix-blend-mode: overlay）
+       ② 三层径向光晕
+          folia: FluidBackground.tsx:362（20%20% / 80%28% / 50%78%，整层 opacity 0.52）
+       ③ 径向暗角
+          folia: GeometricBackground.tsx:96（transparent 40% → rgba(0,0,0,0.6)）
+     颜色取自页面既有的 MDUI 主题变量，取不到时用兜底色。
+     ─────────────────────────────────────────────────────────────────── */
+  (function () {
+    var style = document.createElement('style');
+    style.textContent = [
+      '.pl-bg-layer { position: absolute; inset: 0; pointer-events: none; }',
+      '.pl-bg-vig { z-index: 3; background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.6) 100%); }',
+      '.pl-bg-wash {',
+      '  z-index: 2; opacity: 0.4; mix-blend-mode: overlay;',
+      '  background: linear-gradient(to bottom right,',
+      '    var(--md-sys-color-primary, #a78bfa) 0%,',
+      '    transparent 52%,',
+      '    var(--md-sys-color-tertiary, #22d3ee) 100%);',
+      '}',
+      '.pl-bg-glow {',
+      '  z-index: 1; opacity: 0.17;',
+      '  background:',
+      '    radial-gradient(circle at 20% 20%, var(--md-sys-color-primary, #a78bfa) 0%, transparent 42%),',
+      '    radial-gradient(circle at 80% 28%, var(--md-sys-color-tertiary, #22d3ee) 0%, transparent 44%),',
+      '    radial-gradient(circle at 50% 78%, var(--md-sys-color-secondary, #818cf8) 0%, transparent 52%);',
+      '}',
+      '@media (prefers-reduced-motion: reduce) { .pl-bg-layer { transition: none !important; } }'
+    ].join('\n');
+    document.head.appendChild(style);
+
+    function injectBackgroundLayers(hostId) {
+      var host = document.getElementById(hostId);
+      if (!host || host.querySelector('.pl-bg-glow')) return;
+      var glow = document.createElement('div');
+      glow.className = 'pl-bg-layer pl-bg-glow';
+      var wash = document.createElement('div');
+      wash.className = 'pl-bg-layer pl-bg-wash';
+      var vig = document.createElement('div');
+      vig.className = 'pl-bg-layer pl-bg-vig';
+      // 光晕 → 叠色 → 暗角，依次插到最前面，保持「底 → 上」的顺序
+      host.insertBefore(vig, host.firstChild);
+      host.insertBefore(wash, host.firstChild);
+      host.insertBefore(glow, host.firstChild);
+    }
+
+    function applyAll() {
+      injectBackgroundLayers('foliaView');
+      injectBackgroundLayers('mineView');
+    }
+    applyAll();
+    new MutationObserver(applyAll).observe(document.body, { childList: true, subtree: true });
+  })();
+  </script>
 </body>
 </html>

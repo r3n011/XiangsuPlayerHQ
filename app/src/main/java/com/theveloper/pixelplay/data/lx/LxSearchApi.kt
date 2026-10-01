@@ -28,6 +28,10 @@ class LxSearchApi @Inject constructor(
     // 备用搜索 API：内置 NCM（官方加密 weapi）返回 405 操作频繁时使用
     private val BTWOA_API_BASE = "https://ncmapi.btwoa.com"
 
+    // 歌词双通路各自的限时：官方 + 镜像合起来约 14s，仍在外层 20s 预算内
+    private val lyricOfficialTimeoutMs = 8_000L
+    private val lyricMirrorTimeoutMs = 6_000L
+
     // young1024 兜底评论 API（官方接口失败时使用）
     private val YOUNG1024_API_BASE = "http://www.young1024.com:666/"
 
@@ -211,9 +215,12 @@ class LxSearchApi @Inject constructor(
             }
 
             val data = obj.optJSONObject("data") ?: return@withContext null
-            val cover = data.optString("cover", "").trim().ifBlank {
-                data.optString("pic", "")
-            }.trim()
+            // ⚠️ 必须和本文件其它封面取值一样去掉反引号：vkeys 返回的地址常常整体被反引号包着
+            //    （`https://…`），带反引号交给 Coil 会直接加载失败 —— 通知/小组件封面、
+            //    绚丽背景的网格纹理都会因此拿不到图。
+            val cover = data.optString("cover", "").trim().replace("`", "").ifBlank {
+                data.optString("pic", "").trim().replace("`", "")
+            }
 
             if (cover.isBlank()) null else cover.replace("http://", "https://")
         } catch (e: Exception) {
@@ -411,38 +418,76 @@ class LxSearchApi @Inject constructor(
     // ─── 歌词 ────────────────────────────────────────────────────────
 
     /**
-     * 通过网易云歌曲 id 获取 LRC 歌词（本地 SDK 直连官方加密接口）。
-     * 返回：LRC 原文（包含时间戳），如果没有则返回 null。
+     * 通过网易云歌曲 id 获取 LRC 歌词。返回：LRC 原文（包含时间戳），没有则返回 null。
+     *
+     * ⚡ 双通路（官方失败即镜像兜底）：
+     *   ① 本地 NcmApi 直连官方加密接口（/api/song/lyric）；
+     *   ② 官方被风控（405 操作频繁）/网络失败时，回退 btwoa 镜像的 /lyric。
+     *   此前只有 ①，一旦被风控就再无兜底 —— 表现为「网易云歌词经常加载不出来」。
      */
     suspend fun getLyric(songId: String): String? = withContext(Dispatchers.IO) {
         if (songId.isBlank()) return@withContext null
-        try {
-            val map = NcmApi.full.songLyric(songId).getOrNull() ?: return@withContext null
 
-            val lrcText = map.ncmObj("lrc").ncmString("lyric").takeIf { it.isNotBlank() }
-            val tlyricText = map.ncmObj("tlyric").ncmString("lyric").takeIf { it.isNotBlank() }
-
-            // 场景1：原文 + 翻译都有 -> 按时间戳合并返回
-            if (lrcText != null && tlyricText != null) {
-                Timber.d("getLyric: combining lrc + tlyric for songId=$songId")
-                return@withContext mergeLrcWithTranslation(lrcText, tlyricText)
+        // ① 本地 SDK 官方接口（限时：官方挂住时不能把镜像兜底的机会也吃掉）
+        runCatching {
+            kotlinx.coroutines.withTimeoutOrNull(lyricOfficialTimeoutMs) {
+                val map = NcmApi.full.songLyric(songId).getOrNull() ?: return@withTimeoutOrNull null
+                buildLyricFromParts(
+                    lrc = map.ncmObj("lrc").ncmString("lyric"),
+                    tlyric = map.ncmObj("tlyric").ncmString("lyric"),
+                    klyric = map.ncmObj("klyric").ncmString("lyric")
+                )
             }
-
-            // 场景2：只有原文 -> 返回原文
-            if (lrcText != null) return@withContext lrcText
-
-            // 场景3：只有翻译 -> 返回翻译（作为兜底）
-            if (tlyricText != null) return@withContext tlyricText
-
-            // 场景4：klyric 等其他字段作为终极兜底
-            val klyric = map.ncmObj("klyric").ncmString("lyric")
-            if (klyric.isNotBlank()) return@withContext klyric
-
-            return@withContext null
-        } catch (e: Exception) {
-            Timber.e(e, "获取歌词异常: $songId")
-            null
         }
+            .onFailure { Timber.w(it, "getLyric: NcmApi failed for songId=$songId") }
+            .getOrNull()
+            ?.let { return@withContext it }
+
+        // ② 镜像兜底：与搜索 / 封面同源的 btwoa（返回结构与官方 /lyric 一致）
+        runCatching {
+            kotlinx.coroutines.withTimeoutOrNull(lyricMirrorTimeoutMs) {
+                fetchLyricFromMirror(songId)
+            }
+        }
+            .onFailure { Timber.w(it, "getLyric: mirror failed for songId=$songId") }
+            .getOrNull()
+            ?.let { return@withContext it }
+
+        Timber.w("getLyric: no lyrics from any source for songId=$songId")
+        null
+    }
+
+    /** btwoa 镜像歌词：{ lrc:{lyric}, tlyric:{lyric}, klyric:{lyric} } */
+    private fun fetchLyricFromMirror(songId: String): String? {
+        val request = Request.Builder()
+            .url("$BTWOA_API_BASE/lyric?id=$songId")
+            .header("User-Agent", "Mozilla/5.0")
+            .get()
+            .build()
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val body = response.body?.string()?.takeIf { it.isNotBlank() } ?: return null
+            val obj = JSONObject(body)
+            return buildLyricFromParts(
+                lrc = obj.optJSONObject("lrc")?.optString("lyric"),
+                tlyric = obj.optJSONObject("tlyric")?.optString("lyric"),
+                klyric = obj.optJSONObject("klyric")?.optString("lyric")
+            )
+        }
+    }
+
+    /** 原文 / 翻译 / 逐字三通道合并（空串视为无） */
+    private fun buildLyricFromParts(lrc: String?, tlyric: String?, klyric: String?): String? {
+        val lrcText = lrc?.takeIf { it.isNotBlank() }
+        val tlyricText = tlyric?.takeIf { it.isNotBlank() }
+        // 场景1：原文 + 翻译都有 -> 按时间戳合并返回
+        if (lrcText != null && tlyricText != null) return mergeLrcWithTranslation(lrcText, tlyricText)
+        // 场景2：只有原文
+        if (lrcText != null) return lrcText
+        // 场景3：只有翻译（兜底）
+        if (tlyricText != null) return tlyricText
+        // 场景4：klyric 等其他字段作为终极兜底
+        return klyric?.takeIf { it.isNotBlank() }
     }
 
     /**

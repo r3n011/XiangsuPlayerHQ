@@ -17,7 +17,13 @@ import java.util.concurrent.atomic.AtomicInteger
 data class AudioMeta(
     val mimeType: String?,
     val bitrate: Int?,      // bits per second
-    val sampleRate: Int?   // Hz
+    val sampleRate: Int?,  // Hz
+    /** 声道数（MediaExtractor 提供） */
+    val channels: Int? = null,
+    /** 位深（无标签来源时按格式/码率推断，仅作展示） */
+    val bitDepth: Int? = null,
+    /** 文件字节数（本地文件才有） */
+    val fileSize: Long? = null
 )
 
 object AudioMetaUtils {
@@ -92,6 +98,7 @@ object AudioMetaUtils {
         var mimeType: String? = null
         var bitrate: Int? = null
         var sampleRate: Int? = null
+        var channels: Int? = null
 
         MediaMetadataRetrieverPool.withRetriever { retriever ->
             try {
@@ -104,33 +111,74 @@ object AudioMetaUtils {
             }
         }
 
-        if (mimeType == null) {
-            MediaExtractor().apply {
+        // ⚡ 无条件走一次 MediaExtractor：声道数只有它能给，采样率/码率/格式也能补上
+        //    MediaMetadataRetriever 拿不到的值。此前只在 retriever 拿不到 mimeType 时才执行，
+        //    导致「文件信息」里的声道、以及部分文件的采样率/码率长期为空（显示不全）。
+        MediaExtractor().apply {
+            try {
+                setDataSource(filePath)
+                for (i in 0 until trackCount) {
+                    val format: MediaFormat = getTrackFormat(i)
+                    val trackMime = format.getString(MediaFormat.KEY_MIME)
+                    if (trackMime?.startsWith("audio/") == true) {
+                        mimeType = mimeType ?: trackMime
+                        sampleRate = sampleRate ?: if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                            format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                        } else null
+                        bitrate = bitrate ?: if (format.containsKey(MediaFormat.KEY_BIT_RATE)) {
+                            format.getInteger(MediaFormat.KEY_BIT_RATE)
+                        } else null
+                        channels = channels ?: if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                            format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                        } else null
+                        break
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Extractor failed for $filePath: ${e.message}")
+            } finally {
                 try {
-                    setDataSource(filePath)
-                    for (i in 0 until trackCount) {
-                        val format: MediaFormat = getTrackFormat(i)
-                        val trackMime = format.getString(MediaFormat.KEY_MIME)
-                        if (trackMime?.startsWith("audio/") == true) {
-                            mimeType = mimeType ?: trackMime
-                            sampleRate =
-                                sampleRate ?: format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                            bitrate = bitrate ?: if (format.containsKey(MediaFormat.KEY_BIT_RATE)) {
-                                format.getInteger(MediaFormat.KEY_BIT_RATE)
-                            } else null
-                            break
-                        }
-                    }
-                } finally {
-                    try {
-                        release()
-                    } catch (_: Exception) {
-                    }
+                    release()
+                } catch (_: Exception) {
                 }
             }
         }
 
-        return AudioMeta(mimeType, bitrate, sampleRate)
+        val fileSize = runCatching { File(filePath).length().takeIf { it > 0L } }.getOrNull()
+        return AudioMeta(
+            mimeType = mimeType,
+            bitrate = bitrate,
+            sampleRate = sampleRate,
+            channels = channels,
+            bitDepth = inferBitDepth(mimeType, sampleRate, bitrate),
+            fileSize = fileSize
+        )
+    }
+
+    /**
+     * 位深推断：无损格式优先看码率密度（bitrate / (sampleRate × channels)），
+     * 无码率信息时按常见格式给出代表值。属于估算值，仅用于展示。
+     */
+    private fun inferBitDepth(mimeType: String?, sampleRate: Int?, bitrate: Int?): Int? {
+        val mime = mimeType?.lowercase(Locale.US) ?: return null
+        val isLossless = mime.contains("flac") || mime.contains("alac") ||
+            mime.contains("wav") || mime.contains("x-wav") || mime.contains("aiff") ||
+            mime.contains("dsd") || mime.contains("dsf") || mime.contains("ape")
+        if (!isLossless) return 16
+        if (mime.contains("dsd") || mime.contains("dsf")) return 1
+        if (sampleRate != null && sampleRate > 48_000) return 24
+        // 有码率时按密度推断（单声道视为 2 声道计算上限）
+        val br = bitrate
+        val sr = sampleRate
+        if (br != null && br > 0 && sr != null && sr > 0) {
+            val perSample = br / sr
+            return when {
+                perSample >= 24 -> 24
+                perSample >= 16 -> 16
+                else -> 16
+            }
+        }
+        return 16
     }
 
     fun mimeTypeToFormat(mimeType: String?): String {

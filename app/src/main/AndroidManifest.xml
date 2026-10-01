@@ -48,6 +48,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- 安装 APK 更新所需的「安装未知应用」权限 (Android 8.0+) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 悬浮歌词（桌面歌词）：需要「显示在其他应用上层」才能把歌词浮窗画到其它应用之上 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".PixelPlayApplication"
