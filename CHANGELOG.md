@@ -44,6 +44,8 @@
 
 ### 修复
 - **听书两个屏幕编译报错（material3 实验性 API 未 opt-in）**：`PullToRefreshDefaults.LoadingIndicator` 属于 `ExperimentalMaterial3ExpressiveApi`（与 `ExperimentalMaterial3Api` 是两个独立的标记），书架页 / 免费书库页的 `@OptIn` 补上该标记；同时把 Gradle heap 从 4G 提到 6G，缓解 `mergeResources` 渲染大尺寸矢量图时的 `Java heap space` OOM。
+- **听书点开专辑显示「没有可用章节」**：长音频章节接口（标准盐）会拒绝**未注册设备**的 dfid —— 本机生成的 dfid 没有在酷狗注册过，上游直接返回 `status=0 / error_code=20028`、章节列表为空（`/v5/url` 直链解析同样受影响）；现听书接口统一改用匿名占位设备标识 `-`（参照项目在设备未注册时的回落值），章节 / 直链 / 书架 / 免费书库全部恢复正常。
+- **发现卡片里的网易云图标是黑色**：logo 矢量图本身是纯黑，未加 tint 的位置（发现卡片右上角徽标、艺人页的来源标）就显示成黑色；改为网易云红 `#E85959`（与云端串流卡片网易云行同色），带 tint 的位置不受影响。
 - **酷狗歌单同步没有封面 / 歌名不对**：歌单与歌曲解析都对齐参照项目 `KugouSongDetail` / `KugouPlaylistBrief` —— 歌单封面补上 `sizable_cover` / `cover_url` / `trans_param.union_cover` 等候选；歌曲解析先把 `album_info / albuminfo / audio_info / song_info / base` 嵌套结构展开（歌名 / 封面 / 时长常常只存在嵌套里），歌名改为优先 `songname` 等干净字段（`filename` 只作兜底，且会拆掉「歌手 - 歌名」前缀与 `.mp3` 扩展名），封面取歌曲自己的（`sizable_cover` / `img` / `trans_param.union_cover`…，替换 `{size}` 并升 https），专辑名 / 数字 songid 一并落库；播放链路不变：`cloud://lx` 占位 → 落雪 JS 音源（kg）优先、内置官方接口兜底。
 - **酷狗歌单同步下来没有封面**：酷狗封面 URL 带 `{size}` 占位符（如 `stdmusic/{size}/xxx.jpg`），未替换会 404；同步时替换为 `480` 并升级 https。
 - **酷狗 / Bilibili 账号卡片图标与背景同色看不清**：卡片里的「同步」「Cookie」等通用图标用的 tint 在这两个服务上是 `Unspecified`（渲染成黑色，深色模式下与底色糊在一起）；现为每个服务补实色 `genericTint`（酷狗蓝 / 品牌粉），并进一步按主题表面明度取深 / 浅变体（深色 / 专辑取色主题下用浅蓝 / 浅粉），酷狗品牌 logo 改用固定白底（蓝底白 K 不再压在同色系浅蓝上）、未连接服务列表里的酷狗 logo 不再被统一 tint 染成单色（白 K 不会消失）、面板页头像加白底描边、顶栏同步图标不再用可能和底色接近的 `tertiary`。
