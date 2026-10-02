@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -120,7 +123,9 @@ fun KugouDashboardScreen(
                             Icon(
                                 Icons.Rounded.CloudSync,
                                 contentDescription = stringResource(R.string.cd_sync_all_playlists),
-                                tint = MaterialTheme.colorScheme.tertiary
+                                // ⚡ 不用主题 tertiary：专辑取色 / 动态取色主题下它会和顶栏底色
+                                //    接近，图标「和背景同色」看不清；按底色明度取品牌蓝深浅变体。
+                                tint = kugouBrandTint()
                             )
                         }
                         // 退出登录
@@ -217,7 +222,15 @@ fun KugouDashboardScreen(
                             modifier = Modifier
                                 .size(52.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                                // ⚡ 固定白底 + 描边：头像图未加载 / 透明时露出的品牌 logo
+                                //    （蓝底白 K）不会和卡片背景同色；有头像时描边也给
+                                //    深色头像一个轮廓，不会糊进背景。
+                                .background(Color.White)
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             val avatar = avatarUrl
@@ -376,6 +389,11 @@ fun KugouDashboardScreen(
         }
     }
 }
+
+/** 顶栏 / 卡片上酷狗品牌蓝的深浅变体：深底用浅蓝、浅底用深蓝，任何主题下都清晰。 */
+@Composable
+private fun kugouBrandTint(): Color =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFFA9C7FF) else Color(0xFF1B4FA8)
 
 @Composable
 private fun NotLoggedInCard(cardShape: AbsoluteSmoothCornerShape, onGoLogin: () -> Unit) {

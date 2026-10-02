@@ -2511,15 +2511,14 @@ private fun FullPlayerSongMetadataSection(
             ListenTogetherAvatarRow(
                 state = togetherState,
                 onClick = { showTogetherMembers = true },
-                // ⚡ 挂在歌手行右侧：限制最大宽度，避免把歌手名挤没
-                //   （歌手名在剩余宽度里自动跑马灯，超出部分滚动显示）
+                // ⚡ 限制最大宽度，避免挤掉左侧歌名（歌手名在剩余宽度里自动跑马灯滚动）
                 modifier = Modifier.widthIn(max = 132.dp),
                 containerColor = albumScheme.secondaryContainer.copy(alpha = 0.72f),
                 contentColor = albumScheme.onSecondaryContainer
             )
         }
-        // ⚡ 传统播放器（经典竖屏/横屏/平行布局）：一起听标签挂在**歌手行右侧**，
-        //    歌手名过长时会在本行内自动滚动，不再单独占一行（之前竖屏占歌名上方、横屏占元信息下方）。
+        // ⚡ 传统播放器（经典竖屏/横屏/平行布局）：一起听标签和歌词 / 省略号放在同一条
+        //    水平线上（中心与右侧省略号对齐），不再挂在歌手行右下角（会和按钮行错位）。
         SongMetadataDisplaySection(
             modifier = Modifier
                 .padding(start = 0.dp),
@@ -3350,8 +3349,7 @@ private fun SongMetadataDisplaySection(
                 isPlayingProvider = isPlayingProvider,
                 songId = currentSong.id,
                 songNeteaseId = currentSong.neteaseId,
-                songContentUriString = currentSong.contentUriString,
-                trailingArtistContent = trailingArtistContent
+                songContentUriString = currentSong.contentUriString
             )
         }
         
@@ -3393,6 +3391,10 @@ private fun SongMetadataDisplaySection(
                 chipContentColor = chipContentColor
             )
         }
+
+        // ⚡ 一起听标签：和歌词 / 省略号放在同一行（Row 垂直居中），中心与右侧省略号对齐；
+        //   不再挂在歌手行右下角（和按钮行错位、看起来像浮在文字行上）。
+        trailingArtistContent?.invoke()
 
         if (showQueueButton) {
             Row(
@@ -4204,9 +4206,7 @@ private fun PlayerSongInfo(
     isPlayingProvider: () -> Boolean = { true },
     songId: String? = null,
     songNeteaseId: Long? = null,
-    songContentUriString: String = "",
-    /** 歌手行右侧的附加内容（传统播放器下用来挂「一起听」标签） */
-    trailingArtistContent: (@Composable () -> Unit)? = null
+    songContentUriString: String = ""
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isNavigatingToArtist by remember { mutableStateOf(false) }
@@ -4252,8 +4252,8 @@ private fun PlayerSongInfo(
         )
         Spacer(modifier = Modifier.height(2.dp))
 
-        // ⚡ 歌手行：右侧可以挂「一起听」标签；歌手名过长时在本行宽度内自动滚动
-        //    （AutoScrollingTextOnDemand 检测到溢出会切成跑马灯）
+        // ⚡ 歌手行：歌手名过长时在本行宽度内自动滚动
+        //    （AutoScrollingTextOnDemand 检测到溢出会切成跑马灯；「一起听」标签已移到按钮行）
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -4295,10 +4295,6 @@ private fun PlayerSongInfo(
                 ),
                 canScroll = isPlayingProvider()
             )
-            if (trailingArtistContent != null) {
-                Spacer(modifier = Modifier.width(8.dp))
-                trailingArtistContent()
-            }
         }
     }
 }

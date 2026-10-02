@@ -46,6 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -62,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -729,6 +731,13 @@ private fun EmptyAccountsCard(
                     Icon(
                         painter = painter,
                         contentDescription = null,
+                        // ⚡ 酷狗标是「蓝底白 K」双色 logo：统一 tint 会把白 K 也染成底色，
+                        //    整个图标糊成一块；保留品牌原色，其它单色 logo 继续跟随按钮内容色。
+                        tint = if (service == ExternalServiceAccount.KUGOU) {
+                            Color.Unspecified
+                        } else {
+                            LocalContentColor.current
+                        },
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
@@ -829,14 +838,18 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
             primaryActionTint = Color(0xFF1565C0)
         )
         ExternalServiceAccount.KUGOU -> ServicePalette(
-            iconContainer = Color(0xFFE3EDFF),
+            // ⚡ 固定白底（不跟随主题）：酷狗标是「蓝底白 K」的双色 logo，
+            //    压在浅蓝 / 主题容器色上时蓝色方块会和底色糊在一起；
+            //    白底 + 原色 logo 在任何主题（含深色 / 专辑取色）下都清晰。
+            iconContainer = Color.White,
             iconTint = Color.Unspecified,
             statusContainer = Color(0xFFD6E4FF),
             statusTint = Color(0xFF1B4FA8),
             primaryActionContainer = Color(0xFFD6E4FF),
             primaryActionTint = Color(0xFF1B4FA8),
-            // 同步 / Cookie 等通用图标用实色（Unspecified 会渲染成黑色，深色模式下看不见）
-            genericTint = Color(0xFF1B4FA8)
+            // 同步 / Cookie 等通用图标：按当前主题表面明度取深浅变体，
+            // 避免深蓝压在深色底上「和背景同色」看不见。
+            genericTint = brandTint(light = Color(0xFF1B4FA8), dark = Color(0xFFA9C7FF))
         )
         ExternalServiceAccount.BILIBILI -> ServicePalette(
             iconContainer = Color(0xFFFFF0F4),
@@ -845,10 +858,19 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
             statusTint = Color(0xFFB0265A),
             primaryActionContainer = Color(0xFFFFE0E8),
             primaryActionTint = Color(0xFFB0265A),
-            genericTint = Color(0xFFB0265A)
+            genericTint = brandTint(light = Color(0xFFB0265A), dark = Color(0xFFFFB1C8))
         )
     }
 }
+
+/**
+ * 卡片里品牌色的「深 / 浅」变体：按当前主题表面的明度选择。
+ * 深色主题（含专辑取色主题）用浅色变体、浅色主题用深色变体，
+ * 保证同步等通用图标永远不会「和背景同色」。
+ */
+@Composable
+private fun brandTint(light: Color, dark: Color): Color =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) dark else light
 
 private fun accountIcon(service: ExternalServiceAccount): ImageVector {
     return when (service) {
