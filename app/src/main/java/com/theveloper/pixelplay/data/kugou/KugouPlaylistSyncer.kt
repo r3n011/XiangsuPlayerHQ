@@ -26,8 +26,8 @@ import timber.log.Timber
  * 每个酷狗歌单对应一个本地播放列表（`kugou_pl_{listId}`，source = "KUGOU"）。
  *
  * 歌曲走 [MusicRepository.saveCloudSong] 落库（source = "kg"，contentUri 为 `cloud://lx/...`），
- * 播放时由现成的内置酷狗音源解析直链（`BuiltInSourceSearchApi.resolvePlayUrl`），
- * 因此这里不预先取 URL（会过期，且会员/无损要靠登录态）。
+ * 播放时由 DualPlayerEngine 统一解析：**用户导入的落雪 JS 音源（kg）优先**，内置官方接口兜底；
+ * 因此这里不预先取 URL（会过期，且会员 / 无损要靠登录态与 JS 音源）。
  *
  * - [sync] 带 1 小时节流（进入媒体库自动同步用）
  * - [syncNow] 强制全量同步（账号页「立即同步」按钮用）
@@ -208,17 +208,24 @@ class KugouPlaylistSyncer @Inject constructor(
             .forEach { pl -> playlistPreferencesRepository.deletePlaylist(pl.id) }
     }
 
-    /** 酷狗歌单歌曲 → 落雪统一结构（播放时按 source="kg" + hash 解析直链）。 */
+    /**
+     * 酷狗歌单歌曲 → 落雪统一结构。
+     *
+     * 播放走 `cloud://lx/{json}`（[MusicRepository.saveCloudSong] 生成），DualPlayerEngine
+     * 解析时**用户导入的落雪 JS 音源（kg）优先**、内置官方接口兜底；`songmid` 用数字 songid
+     * （酷狗 songmid 本义，kg 音源读它），`hash` 供官方兜底与音源脚本使用。
+     */
     private fun KugouSongBrief.toLxSongInfo(fallbackPic: String?): LxSongInfo = LxSongInfo(
         id = hash,
-        songmid = hash,
+        songmid = songId?.takeIf { it.isNotBlank() } ?: hash,
         hash = hash,
         name = name.ifBlank { "未知歌曲" },
         singer = singer,
-        albumName = "",
+        albumName = albumName.orEmpty(),
         // LxSongInfo.duration 对内置源（tx/kg/mg/kw）统一是秒
         duration = durationMs / 1000L,
-        pic = fallbackPic.orEmpty(),
+        // 歌曲自己的封面优先，其次歌单封面（列表接口不一定带封面）
+        pic = coverUrl?.takeIf { it.isNotBlank() } ?: fallbackPic.orEmpty(),
         source = "kg",
     )
 }

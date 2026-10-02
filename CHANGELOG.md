@@ -43,8 +43,10 @@
 - **功耗优化**：本地歌曲的整轨波形分析改为**按需执行**（只有启用波形进度条或 Web 远控时才分析）；隔离背景在省电模式或长时间无音频时自动降帧（AGSL 60→30 / CPU 30→15）。
 
 ### 修复
+- **酷狗歌单同步没有封面 / 歌名不对**：歌单与歌曲解析都对齐参照项目 `KugouSongDetail` / `KugouPlaylistBrief` —— 歌单封面补上 `sizable_cover` / `cover_url` / `trans_param.union_cover` 等候选；歌曲解析先把 `album_info / albuminfo / audio_info / song_info / base` 嵌套结构展开（歌名 / 封面 / 时长常常只存在嵌套里），歌名改为优先 `songname` 等干净字段（`filename` 只作兜底，且会拆掉「歌手 - 歌名」前缀与 `.mp3` 扩展名），封面取歌曲自己的（`sizable_cover` / `img` / `trans_param.union_cover`…，替换 `{size}` 并升 https），专辑名 / 数字 songid 一并落库；播放链路不变：`cloud://lx` 占位 → 落雪 JS 音源（kg）优先、内置官方接口兜底。
 - **酷狗歌单同步下来没有封面**：酷狗封面 URL 带 `{size}` 占位符（如 `stdmusic/{size}/xxx.jpg`），未替换会 404；同步时替换为 `480` 并升级 https。
-- **酷狗 / Bilibili 账号卡片图标与背景同色看不清**：卡片里的「同步」「Cookie」等通用图标用的 tint 在这两个服务上是 `Unspecified`（渲染成黑色，深色模式下与底色糊在一起）；现为每个服务补实色 `genericTint`（酷狗蓝 / 品牌粉）。
+- **酷狗 / Bilibili 账号卡片图标与背景同色看不清**：卡片里的「同步」「Cookie」等通用图标用的 tint 在这两个服务上是 `Unspecified`（渲染成黑色，深色模式下与底色糊在一起）；现为每个服务补实色 `genericTint`（酷狗蓝 / 品牌粉），并进一步按主题表面明度取深 / 浅变体（深色 / 专辑取色主题下用浅蓝 / 浅粉），酷狗品牌 logo 改用固定白底（蓝底白 K 不再压在同色系浅蓝上）、未连接服务列表里的酷狗 logo 不再被统一 tint 染成单色（白 K 不会消失）、面板页头像加白底描边、顶栏同步图标不再用可能和底色接近的 `tertiary`。
+- **酷狗私人 FM 拉不到歌（SSL 主机名校验失败）**：请求直连了 `persnfm.service.kugou.com`，它是三级域名、证书 `*.kugou.com` 覆盖不到 → `SSLPeerUnverifiedException: Hostname not verified`；现改走 `gateway.kugou.com` + `x-router: persnfm.service.kugou.com` 转发（参照项目同款），并把请求体改成 JSON、`clienttime` 改成毫秒时间戳、补上 `signature` 签名（此前用 UTC 时间串 + 表单体，上游返回 `status=0/error_code=200304`）；顺带补上 FM 歌曲封面（`trans_param.union_cover`）解析。
 - **低版本（Android 12 以下）导航栏模糊不显示**：三个叠加问题——模糊图层画在不透明底栏底色**之下**被完全盖住（现移到内容层，与 haze 同 z 序）、开发者强制开关读写的是普通变量不触发重组（现改为快照状态，开关立即生效）、模糊半径按原图给定导致降采样后只剩 1~2px（现按抓帧尺寸 5% 计算）。同时把抓帧频率从 8fps 降到 4fps（每次都要回读整屏位图），并补充诊断日志（logcat 过滤 `LowVersionBlur`）。
 - **播放器「查看评论」按钮**：经典竖屏 / 横屏布局仍保留的评论按钮已移除，全播放器统一从「省略号 → 歌曲操作菜单」进入评论（Expressive 布局此前已是如此）；一起听等场景不会再冒出来。
 - **修复一批编译错误**：弹窗组件 `PixelAlertDialog` 的全限定包名写错（5 处）、低版本模糊 backdrop 使用不存在的 `drawImageRect` 与变量声明顺序、USB 独占分类缺 `when` 分支、缺失的字符串资源、`NcmApi.userAccount` / `KugouFmApi` 类型不匹配等。

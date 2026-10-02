@@ -54,6 +54,12 @@ data class KugouSongBrief(
     val albumAudioId: String,
     val fileId: String?,
     val durationMs: Long,
+    /** 歌曲封面（`sizable_cover` / `img` / `trans_param.union_cover` 等，已替换 {size} 并升级 https）。 */
+    val coverUrl: String? = null,
+    /** 专辑名（媒体库按专辑归类用）。 */
+    val albumName: String? = null,
+    /** 数字 songid（酷狗 songmid 本义；落雪 kg 音源解析播放链接用）。 */
+    val songId: String? = null,
 )
 
 /** 酷狗登录二维码：key 用于轮询，[contentUrl] 是二维码要编码的内容（本地渲染），[imageUrl] 是接口图（可选兜底）。 */
@@ -334,21 +340,28 @@ class KugouAccountApi @Inject constructor(
                         item.optString("global_collection_id"),
                         item.optString("gid"),
                     ) ?: continue
-                    val name = item.optString("name")
+                    val name = firstNonBlank(
+                        item.optString("specialname"),
+                        item.optString("name"),
+                    ).orEmpty()
                     add(
                         KugouPlaylistBrief(
                             listId = listId,
                             name = name.ifBlank { "未命名歌单" },
                             songCount = item.optInt("songcount", 0),
-                            coverUrl = firstNonBlank(
-                                item.optString("imgurl"),
-                                item.optString("img"),
-                                item.optString("pic"),
-                            )
-                                // ⚡ 酷狗封面 URL 带 {size} 占位符（如 stdmusic/{size}/xxx.jpg），
-                                //   不替换的话加载会 404 —— 同步下来的歌单就没封面
-                                ?.replace("{size}", "480")
-                                ?.replace("http://", "https://"),
+                            // 封面候选与参照项目 KugouPlaylistBrief 一致：sizable_cover 是部分接口
+                            // 实际返回的字段；带 {size} 占位要替换、http 升 https，否则媒体库没封面。
+                            coverUrl = normalizeCoverUrl(
+                                firstNonBlank(
+                                    item.optString("sizable_cover"),
+                                    item.optString("imgurl"),
+                                    item.optString("img"),
+                                    item.optString("pic"),
+                                    item.optString("cover_url"),
+                                    item.optString("cover"),
+                                    item.optJSONObject("trans_param")?.optString("union_cover"),
+                                )
+                            ),
                             // 「我喜欢」：名字或 is_def == 2
                             isDefaultLiked = name == LIKED_PLAYLIST_NAME || item.optInt("is_def", 0) == 2,
                         )
@@ -396,51 +409,152 @@ class KugouAccountApi @Inject constructor(
             buildList {
                 for (i in 0 until files.length()) {
                     val item = files.optJSONObject(i) ?: continue
-                    val audioInfo = item.optJSONObject("audio_info")
-                    val albumInfo = item.optJSONObject("album_info")
-                    val hash = firstNonBlank(
-                        item.optString("hash"),
-                        audioInfo?.optString("hash"),
-                        item.optString("file_hash"),
-                    ) ?: continue
-                    add(
-                        KugouSongBrief(
-                            hash = hash,
-                            name = firstNonBlank(
-                                item.optString("filename"),
-                                item.optString("songname"),
-                                item.optString("name"),
-                                item.optString("FileName"),
-                            ).orEmpty(),
-                            singer = firstNonBlank(
-                                item.optString("singername"),
-                                item.optString("singer_name"),
-                                item.optString("author_name"),
-                            ).orEmpty(),
-                            albumId = firstNonBlank(
-                                item.optString("album_id"),
-                                albumInfo?.optString("album_id"),
-                            ).orEmpty(),
-                            albumAudioId = firstNonBlank(
-                                item.optString("album_audio_id"),
-                                item.optString("mixsongid"),
-                                audioInfo?.optString("album_audio_id"),
-                            ).orEmpty(),
-                            fileId = firstNonBlank(
-                                item.optString("fileid"),
-                                item.optString("file_id"),
-                            ),
-                            durationMs = firstNonBlank(
-                                item.optString("timelen"),
-                                item.optString("duration"),
-                                audioInfo?.optString("duration"),
-                            )?.toLongOrNull() ?: 0L,
-                        )
-                    )
+                    parsePlaylistSong(item)?.let(::add)
                 }
             }
         }.onFailure { Timber.w(it, "KugouAccountApi: fetchPlaylistSongs failed") }
     }
+
+    /**
+     * 解析歌单里的一首歌。
+     *
+     * ⚡ 对齐参照项目 `KugouSongDetail.fromJson`（此前同步下来没封面 / 没歌名就是这里漏了）：
+     * - 先展开 `album_info / albuminfo / audio_info / song_info / base` 嵌套结构（顶层优先），
+     *   歌名 / 封面 / 时长 / hash 都可能只存在嵌套里；
+     * - 歌名优先 `songname` 这类干净字段；`filename` / `audio_name` 是「歌手 - 歌名.mp3」
+     *   的兜底形态，取到后要拆掉歌手前缀和扩展名；
+     * - 封面字段很多（`sizable_cover` / `img` / `trans_param.union_cover`…），
+     *   带 `{size}` 占位要替换、http 升 https。
+     */
+    private fun parsePlaylistSong(rawItem: JSONObject): KugouSongBrief? {
+        val item = mergeNestedSongFields(rawItem)
+        val hash = item.optFirstNonBlank(
+            "hash", "FileHash", "Hash128", "SQFileHash", "HQFileHash", "sd_hash", "file_hash",
+        ) ?: return null
+
+        // 歌名：干净字段优先；只有文件名类字段时按「歌手 - 歌名」拆分并去扩展名
+        val cleanName = item.optFirstNonBlank("songname", "SongName", "name", "ori_audio_name")
+        val fileishName = item.optFirstNonBlank("FileName", "filename", "audio_name")
+        var name = cleanName ?: fileishName.orEmpty()
+        var singer = item.optFirstNonBlank(
+            "singername", "SingerName", "artist_name", "author_name", "singer_name",
+        ).orEmpty().ifBlank { parseSingerNames(item) }
+        if (name.isNotBlank()) {
+            name = splitMergedName(name) { prefix -> if (singer.isBlank()) singer = prefix }
+            if (cleanName == null) name = name.stripAudioExtension()
+        }
+
+        return KugouSongBrief(
+            hash = hash,
+            name = name.ifBlank { "未知歌曲" },
+            singer = singer,
+            albumId = item.optFirstNonBlank("album_id", "AlbumID", "albumid")
+                ?: rawItem.optJSONObject("album_info")?.optString("id")?.takeIf { it.isNotBlank() }
+                ?: rawItem.optJSONObject("base")?.optString("album_id")?.takeIf { it.isNotBlank() }
+                ?: "",
+            albumAudioId = item.optFirstNonBlank(
+                "album_audio_id", "AlbumAudioID", "MixSongID", "mixsongid",
+                "add_mixsongid", "Audioid", "audio_id",
+            ).orEmpty(),
+            fileId = item.optFirstNonBlank("fileid", "file_id"),
+            durationMs = normalizeDurationToMs(item),
+            coverUrl = normalizeCoverUrl(
+                item.optFirstNonBlank(
+                    "sizable_cover", "album_sizable_cover", "Image", "ImgUrl", "img", "pic",
+                    "cover", "cover_pic", "union_cover", "imgurl",
+                )
+            ),
+            albumName = item.optFirstNonBlank("album_name", "AlbumName", "albumname")
+                ?.takeIf { it.isNotBlank() },
+            songId = item.optFirstNonBlank("songid", "song_id", "SongId", "SongID"),
+        )
+    }
+
+    /**
+     * 展开歌曲 JSON 的嵌套结构：`album_info / albuminfo / audio_info / song_info / base`
+     * 里的字段浅展开为顶层字段的**兜底**（顶层优先，避免 `album_info.name` 覆盖歌曲名）。
+     */
+    private fun mergeNestedSongFields(item: JSONObject): JSONObject {
+        val merged = JSONObject()
+        for (key in NESTED_SONG_KEYS) {
+            val nested = item.optJSONObject(key) ?: continue
+            val nestedKeys = nested.keys()
+            while (nestedKeys.hasNext()) {
+                val k = nestedKeys.next()
+                if (!merged.has(k)) merged.put(k, nested.opt(k))
+            }
+        }
+        val topKeys = item.keys()
+        while (topKeys.hasNext()) {
+            val k = topKeys.next()
+            merged.put(k, item.opt(k))
+        }
+        return merged
+    }
+
+    /** singerinfo / Singers / authors 数组 → 「、」连接的歌手名。 */
+    private fun parseSingerNames(item: JSONObject): String {
+        for (key in listOf("singerinfo", "Singers", "singers", "authors")) {
+            val array = item.optJSONArray(key) ?: continue
+            val names = buildList {
+                for (i in 0 until array.length()) {
+                    val obj = array.optJSONObject(i) ?: continue
+                    firstNonBlank(obj.optString("name"), obj.optString("author_name"))
+                        ?.let(::add)
+                }
+            }
+            if (names.isNotEmpty()) return names.joinToString("、")
+        }
+        return ""
+    }
+
+    /**
+     * 「歌手 - 歌名」合并格式（filename / audio_name）拆出歌名；
+     * 前缀歌手通过 [onArtist] 回填（歌手字段为空时用）。
+     * 只用 " - "（空格-破折号-空格）作分隔，避免误剥含连字符的歌名。
+     */
+    private fun splitMergedName(name: String, onArtist: (String) -> Unit): String {
+        if (!name.contains(" - ")) return name
+        val parts = name.split(" - ")
+        val rest = parts.drop(1).joinToString(" - ").trim()
+        if (rest.isEmpty()) return name
+        val prefix = parts.first().trim()
+        if (prefix.isNotEmpty()) onArtist(prefix)
+        return rest
+    }
+
+    private fun String.stripAudioExtension(): String =
+        replace(AUDIO_EXTENSION_REGEX, "").trim()
+
+    /**
+     * 时长归一化成**毫秒**（不同接口秒 / 毫秒混用）：
+     * `time_length` 等 > 10000 视为毫秒、否则视为秒；都没有再退 `timelen`（部分接口是毫秒）。
+     */
+    private fun normalizeDurationToMs(item: JSONObject): Long {
+        val raw = firstNonBlank(
+            item.optString("time_length"),
+            item.optString("HQDuration"),
+            item.optString("Duration"),
+            item.optString("duration"),
+            item.optString("SuperDuration"),
+            item.optString("timelength"),
+        )?.toLongOrNull()
+        if (raw != null && raw > 0L) return if (raw > 10_000L) raw else raw * 1000L
+        return item.optString("timelen").toLongOrNull()?.takeIf { it > 0L } ?: 0L
+    }
+
+    /** 酷狗封面 URL：替换 `{size}` 占位并升级 https（老链接是 http，不替换会 404）。 */
+    private fun normalizeCoverUrl(raw: String?): String? = raw
+        ?.takeIf { it.isNotBlank() && it != "null" }
+        ?.replace("`", "")
+        ?.replace("{size}", "480")
+        ?.replace("http://", "https://")
+
+    /** 依次取第一个非空字段值（配合嵌套展开后的顶层键使用）。 */
+    private fun JSONObject.optFirstNonBlank(vararg keys: String): String? =
+        keys.firstNotNullOfOrNull { key ->
+            optString(key).takeIf { it.isNotBlank() && it != "null" }
+        }
 
     /** `/playlist/tracks/add`：把歌曲加入「我喜欢」（data 格式 `名称|hash|album_id|mixsongid`）。 */
     suspend fun addSongsToPlaylist(
@@ -802,6 +916,13 @@ class KugouAccountApi @Inject constructor(
         private const val LITE_T2_IV = "17a20ae7adae7020"
         private const val LIKED_PLAYLIST_NAME = "我喜欢"
         private const val ALPHANUM = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+        /** 歌单歌曲 JSON 里可能藏着字段的嵌套对象（展开时作为顶层字段的兜底）。 */
+        private val NESTED_SONG_KEYS = listOf("album_info", "albuminfo", "audio_info", "song_info", "base")
+
+        /** 文件名类歌名要剥掉的音频扩展名。 */
+        private val AUDIO_EXTENSION_REGEX =
+            Regex("\\.(mp3|flac|m4a|aac|wav|ape|ogg|wma|mp4|opus)$", RegexOption.IGNORE_CASE)
         private const val QRCODE_TXT =
             "https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=3116&"
         /** 二维码内容 URL（酷狗 App 扫这个） */
