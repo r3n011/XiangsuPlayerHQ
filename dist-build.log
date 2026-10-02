@@ -1,0 +1,48 @@
+[=========                              ] 25%                                   > Task :app:preBuild UP-TO-DATE
+> Task :shared:preBuild UP-TO-DATE
+> Task :app:preLiteBenchmarkReleaseBuild UP-TO-DATE
+> Task :shared:preReleaseBuild UP-TO-DATE
+> Task :shared:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :shared:mergeReleaseNativeLibs NO-SOURCE
+> Task :shared:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :shared:prepareReleaseArtProfile UP-TO-DATE
+> Task :shared:generateReleaseResources UP-TO-DATE
+> Task :shared:packageReleaseResources UP-TO-DATE
+> Task :shared:processReleaseNavigationResources UP-TO-DATE
+> Task :shared:parseReleaseLocalResources UP-TO-DATE
+> Task :shared:generateReleaseRFile UP-TO-DATE
+> Task :shared:compileReleaseKotlin UP-TO-DATE
+> Task :shared:javaPreCompileRelease UP-TO-DATE
+> Task :shared:compileReleaseJavaWithJavac NO-SOURCE
+> Task :shared:mergeReleaseGeneratedProguardFiles
+> Task :app:configureCMakeRelWithDebInfo[arm64-v8a]
+> Task :shared:exportReleaseConsumerProguardFiles
+> Task :shared:writeReleaseAarMetadata UP-TO-DATE
+> Task :shared:extractDeepLinksRelease UP-TO-DATE
+> Task :shared:processReleaseManifest UP-TO-DATE
+> Task :shared:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :shared:compileReleaseLibraryResources UP-TO-DATE
+> Task :app:buildCMakeRelWithDebInfo[arm64-v8a]
+> Task :shared:processReleaseJavaRes
+> Task :shared:generateReleaseAssets UP-TO-DATE
+> Task :shared:mergeReleaseAssets UP-TO-DATE
+> Task :app:configureCMakeRelWithDebInfo[armeabi-v7a]
+> Task :app:buildCMakeRelWithDebInfo[armeabi-v7a]
+> Task :app:configureCMakeRelWithDebInfo[x86_64]
+> Task :app:buildCMakeRelWithDebInfo[x86_64]
+> Task :app:preFullReleaseBuild UP-TO-DATE
+> Task :app:mergeFullReleaseJniLibFolders UP-TO-DATE
+> Task :shared:bundleLibRuntimeToJarRelease
+> Task :shared:bundleLibCompileToJarRelease
+> Task :app:mergeFullReleaseNativeLibs UP-TO-DATE
+> Task :app:mergeFullReleaseArtProfile UP-TO-DATE
+> Task :app:expandFullReleaseL8ArtProfileWildcards
+> Task :app:checkFullReleaseDuplicateClasses
+> Task :app:generateFullReleaseBuildConfig
+> Task :app:stripFullReleaseDebugSymbols
+> Task :app:generateFullReleaseResources
+> Task :app:extractFullReleaseNativeSymbolTables
+> Task :app:packageFullReleaseResources
+> Task :app:mergeFullReleaseNativeDebugMetadata
+> Task :app:processFullReleaseNavigationResources
+> Task :app:parseFullReleaseLocalResources
