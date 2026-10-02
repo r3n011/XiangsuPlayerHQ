@@ -284,7 +284,7 @@ class KugouAudiobookApi @Inject constructor(
         quality: String = "320k",
     ): Result<String?> = io {
         if (hash.isBlank()) return@io null
-        val mid = kugouRepository.device.mid
+        val mid = ANONYMOUS_DEVICE
         val userId = kugouRepository.userId?.takeIf { it.isNotBlank() && it != "0" } ?: "0"
         val key = md5Hex("$hash$SIGN_KEY_STR$APP_ID$mid$userId")
         for (q in listOf(kgQualityValue(quality), "128").distinct()) {
@@ -426,7 +426,6 @@ class KugouAudiobookApi @Inject constructor(
         xRouter: String? = null,
         extraHeaders: Map<String, String> = emptyMap(),
     ): JSONObject {
-        val device = kugouRepository.device
         val token = kugouRepository.authToken
         val userId = kugouRepository.userId
         val clientTime = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()).toString()
@@ -435,8 +434,12 @@ class KugouAudiobookApi @Inject constructor(
         val salt = if (standard) STD_ROUTE else ROUTE
 
         val params = LinkedHashMap<String, String>()
-        params["dfid"] = device.dfid
-        params["mid"] = device.mid
+        // ⚡ 设备标识固定用占位值 "-"：本机 dfid/mid 没有在酷狗注册过，
+        //    长音频章节 / v5/url 会直接拒绝未注册设备 —— chapters 返回
+        //    `status=0 error_code=20028`、/v5/url 不给链接，表现就是
+        //    「点开专辑没有可用章节」。参照项目在设备未注册时同样回落 "-"。
+        params["dfid"] = ANONYMOUS_DEVICE
+        params["mid"] = ANONYMOUS_DEVICE
         params["uuid"] = "-"
         params["appid"] = appId
         params["clientver"] = clientVer
@@ -458,9 +461,9 @@ class KugouAudiobookApi @Inject constructor(
         val requestBuilder = Request.Builder()
             .url(urlBuilder.build().toString())
             .header("User-Agent", DEFAULT_UA)
-            .header("dfid", device.dfid)
+            .header("dfid", ANONYMOUS_DEVICE)
             .header("clienttime", clientTime)
-            .header("mid", device.mid)
+            .header("mid", ANONYMOUS_DEVICE)
             .header("kg-rc", "1")
             .header("kg-thash", "5d816a0")
             .header("kg-rec", "1")
@@ -468,7 +471,7 @@ class KugouAudiobookApi @Inject constructor(
             .header(
                 "Cookie",
                 buildString {
-                    append("mid=").append(device.mid)
+                    append("mid=").append(ANONYMOUS_DEVICE)
                     if (!token.isNullOrBlank()) append("; token=").append(token)
                     if (!userId.isNullOrBlank()) append("; userid=").append(userId)
                 },
@@ -641,6 +644,12 @@ class KugouAudiobookApi @Inject constructor(
 
         /** `/v5/url` 的 `key` 参数盐：md5(hash + 该值 + appid + mid + userid)。 */
         const val SIGN_KEY_STR = "185672dd44712f60bb1736df5a377e82"
+
+        /**
+         * 匿名设备标识：本机 dfid/mid 未在酷狗注册，长音频章节 / v5/url 会拒绝
+         * 未注册设备（error_code 20028）；参照项目在设备未注册时同样用 "-"。
+         */
+        const val ANONYMOUS_DEVICE = "-"
         const val DEFAULT_UA = "Android15-1070-11083-46-0-DiscoveryDRADProtocol-wifi"
         val JSON_MEDIA = "application/json;charset=utf-8".toMediaType()
     }

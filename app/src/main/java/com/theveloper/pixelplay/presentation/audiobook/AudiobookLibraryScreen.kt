@@ -21,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,7 +60,7 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
  * 列表行复用「歌单列表」的样式（圆角封面 + 书名 + 作者/集数 + 简介 + 右箭头）。
  * 筛选或下拉刷新回第一页，滚动到底自动加载下一页。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AudiobookLibraryScreen(
     onBack: () -> Unit,
