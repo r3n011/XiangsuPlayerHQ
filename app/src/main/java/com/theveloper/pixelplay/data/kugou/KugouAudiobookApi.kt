@@ -33,6 +33,8 @@ data class KugouAudiobookChapter(
     val durationMs: Long,
     val coverUrl: String?,
     val canPlay: Boolean,
+    /** 酷狗长音频的 album_audio_id：`/v5/url` 直链解析必传（直链路径里的 mx 参数）。 */
+    val albumAudioId: String? = null,
 )
 
 /** 免费书库一页。 */
@@ -45,26 +47,22 @@ data class KugouAudiobookPage(
 data class KugouAudiobookTag(val id: Int, val name: String)
 
 /**
- * 听书播放：章节 → 落雪统一歌曲结构（source = "kg"）。
- * 与私人 FM 一致，播放走 `cloud://lx` 占位懒解析：用户导入的 JS 音源优先，
- * 内置酷狗官方接口（hash → 直链）兜底。
+ * 听书播放：章节 → `kgaudio://{urlEncodedJson}` 占位 URI。
+ *
+ * 播放时由 DualPlayerEngine **直接**调酷狗官方 `/v5/url`（trackercdn）解析直链
+ * （与参照项目 md3Music 的 `song_url.js` 同一条链路），**不经过落雪 JS 音源链**：
+ * 长音频在 JS 音源里没有对应实现，走 `cloud://lx` 只会白等引擎就绪、再落到同一个官方接口。
  */
-fun KugouAudiobookChapter.toLxSongInfo(
-    albumName: String,
-    albumCoverUrl: String?,
-    albumAuthor: String?,
-): com.theveloper.pixelplay.data.lx.LxSongInfo = com.theveloper.pixelplay.data.lx.LxSongInfo(
-    id = hash,
-    songmid = hash,
-    hash = hash,
-    name = name,
-    singer = author?.takeIf { it.isNotBlank() } ?: albumAuthor.orEmpty(),
-    albumName = albumName,
-    // 酷狗系的 duration 统一是秒
-    duration = durationMs / 1000L,
-    pic = coverUrl?.takeIf { it.isNotBlank() } ?: albumCoverUrl.orEmpty(),
-    source = "kg",
-)
+fun KugouAudiobookChapter.toKugouAudioUri(albumId: String): String {
+    val json = JSONObject().apply {
+        put("hash", hash)
+        put("albumId", albumId)
+        if (!albumAudioId.isNullOrBlank()) put("albumAudioId", albumAudioId)
+        put("name", name)
+    }
+    val encoded = java.net.URLEncoder.encode(json.toString(), "UTF-8").replace("+", "%20")
+    return "kgaudio://$encoded"
+}
 
 /**
  * 酷狗听书（长音频）接口：书架推荐分区 / 免费书库 / 分类标签 / 专辑详情 / 章节列表 / 搜索。
@@ -267,6 +265,79 @@ class KugouAudiobookApi @Inject constructor(
                 parseChapter(item)?.let(::add)
             }
         }
+    }
+
+    // ─── 播放直链（/v5/url，trackercdn）──────────────────────────────────
+
+    /**
+     * 听书章节直链：酷狗官方 `GET /v5/url`（x-router: trackercdn.kugou.com，概念版签名 +
+     * `key = md5(hash + SIGN_KEY_STR + appid + mid + userid)`）。
+     *
+     * 移植自参照项目 `song_url.js`（`/song/url` 上游）：返回 `url` / `backupUrl` 数组里
+     * 第一条可播 http 直链。长音频基本只有 128k，上游对更高音质请求会静默给可用档位；
+     * 拿不到 URL 时再退回 128 重试一次。
+     */
+    suspend fun fetchChapterPlayUrl(
+        hash: String,
+        albumId: String?,
+        albumAudioId: String?,
+        quality: String = "320k",
+    ): Result<String?> = io {
+        if (hash.isBlank()) return@io null
+        val mid = kugouRepository.device.mid
+        val userId = kugouRepository.userId?.takeIf { it.isNotBlank() && it != "0" } ?: "0"
+        val key = md5Hex("$hash$SIGN_KEY_STR$APP_ID$mid$userId")
+        for (q in listOf(kgQualityValue(quality), "128").distinct()) {
+            val root = signedRequest(
+                method = "GET",
+                path = "/v5/url",
+                xRouter = "trackercdn.kugou.com",
+                query = mapOf(
+                    "album_id" to (albumId?.takeIf { it.isNotBlank() } ?: "0"),
+                    "area_code" to 1,
+                    "hash" to hash,
+                    "ssa_flag" to "is_fromtrack",
+                    "version" to 11430,
+                    "page_id" to 967177915,
+                    "quality" to q,
+                    "album_audio_id" to (albumAudioId?.takeIf { it.isNotBlank() } ?: "0"),
+                    "behavior" to "play",
+                    "pid" to 411,
+                    "cmd" to 26,
+                    "pidversion" to 3001,
+                    "IsFreePart" to 0,
+                    "ppage_id" to "356753938,823673182,967485191",
+                    "cdnBackup" to 1,
+                    "module" to "",
+                    // 覆盖默认的 11440：/v5/url 用 11430（参照项目同款）
+                    "clientver" to 11430,
+                    "key" to key,
+                ),
+            )
+            extractDirectUrl(root)?.let { return@io it }
+        }
+        null
+    }
+
+    /** 从 `/v5/url` 响应里取第一条可播直链（url 数组优先，其次 backupUrl）。 */
+    private fun extractDirectUrl(root: JSONObject): String? {
+        fun fromValue(value: Any?): String? = when (value) {
+            is String -> value.takeIf { it.startsWith("http") }
+            is JSONArray -> (0 until value.length())
+                .mapNotNull { i -> value.optString(i).takeIf { it.startsWith("http") } }
+                .firstOrNull()
+            else -> null
+        }
+        return fromValue(root.opt("url"))
+            ?: fromValue(root.opt("backupUrl"))
+            ?: fromValue(root.opt("backup_url"))
+    }
+
+    /** App 音质设置值 → `/v5/url` 的 quality 档位字符串。 */
+    private fun kgQualityValue(quality: String): String = when (quality.lowercase()) {
+        "flac", "24bit", "flac24bit", "lossless", "hires", "master", "atmos" -> "flac"
+        "320k", "320" -> "320"
+        else -> "128"
     }
 
     // ─── 搜索 ────────────────────────────────────────────────────────────
@@ -483,6 +554,11 @@ class KugouAudiobookApi @Inject constructor(
             item.optString("audio_id"),
             item.optString("mixsongid"),
         ) ?: return null
+        // 直链解析（/v5/url）要用的 album_audio_id，与 hash 分开存
+        val albumAudioId = firstNonBlank(
+            item.optString("album_audio_id"),
+            item.optString("mixsongid"),
+        )?.takeIf { it != "0" }
         val name = firstNonBlank(
             item.optString("audio_name"),
             item.optString("filename"),
@@ -514,6 +590,7 @@ class KugouAudiobookApi @Inject constructor(
                 )
             ),
             canPlay = canPlay,
+            albumAudioId = albumAudioId,
         )
     }
 
@@ -561,6 +638,9 @@ class KugouAudiobookApi @Inject constructor(
         const val STD_APP_ID = "1005"
         const val STD_CLIENT_VER = "20789"
         const val STD_ROUTE = "OIlwieks28dk2k092lksi2UIkp"
+
+        /** `/v5/url` 的 `key` 参数盐：md5(hash + 该值 + appid + mid + userid)。 */
+        const val SIGN_KEY_STR = "185672dd44712f60bb1736df5a377e82"
         const val DEFAULT_UA = "Android15-1070-11083-46-0-DiscoveryDRADProtocol-wifi"
         val JSON_MEDIA = "application/json;charset=utf-8".toMediaType()
     }

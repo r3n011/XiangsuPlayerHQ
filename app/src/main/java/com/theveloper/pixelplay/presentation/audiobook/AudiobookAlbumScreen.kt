@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.R
-import com.theveloper.pixelplay.data.kugou.toLxSongInfo
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
@@ -55,7 +54,8 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
  * 听书专辑详情：专辑信息 + 简介（可展开）+ 播放全部 / 随机播放 + 章节列表。
  *
  * 章节里只展示免费 / 限免（canPlay）章节，点击即在**整本可播章节**内按顺序播放；
- * 播放链接与私人 FM 一致走 `cloud://lx` 占位懒解析（JS 音源优先、内置官方源兜底）。
+ * 播放链接走 `kgaudio://` 占位、播放时由引擎**直接**调酷狗官方 `/v5/url` 取直链
+ * （不走落雪 JS 音源链），相邻章节自动预解析。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,17 +87,13 @@ fun AudiobookAlbumScreen(
 
     fun playFrom(startIndex: Int, shuffle: Boolean) {
         if (chapters.isEmpty()) return
-        val lxSongs = chapters.map {
-            it.toLxSongInfo(
-                albumName = displayTitle,
-                albumCoverUrl = coverUrl,
-                albumAuthor = displayAuthor,
-            )
-        }
-        val ordered = if (shuffle) lxSongs.shuffled() else lxSongs
-        playerViewModel.playLxSongs(
-            songs = ordered,
+        val ordered = if (shuffle) chapters.shuffled() else chapters
+        playerViewModel.playKugouAudiobookChapters(
+            chapters = ordered,
             startIndex = if (shuffle) 0 else startIndex.coerceIn(0, ordered.lastIndex),
+            albumId = albumId,
+            albumAuthor = displayAuthor,
+            albumCoverUrl = coverUrl,
             queueName = queueName,
         )
     }

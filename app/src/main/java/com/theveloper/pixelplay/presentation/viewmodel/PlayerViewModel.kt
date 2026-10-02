@@ -42,6 +42,8 @@ import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.netease.PersonalFmApi
 import com.theveloper.pixelplay.data.netease.PersonalFmSongDetail
 import com.theveloper.pixelplay.data.lx.LxSongInfo
+import com.theveloper.pixelplay.data.kugou.KugouAudiobookChapter
+import com.theveloper.pixelplay.data.kugou.toKugouAudioUri
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
@@ -6265,6 +6267,7 @@ class PlayerViewModel @Inject constructor(
             scheme != "jellyfin" &&
             scheme != "gdrive" &&
             scheme != "cloud" &&
+            scheme != "kgaudio" &&
             scheme != "bilibili"
         ) {
             return mediaItem
@@ -6878,7 +6881,8 @@ class PlayerViewModel @Inject constructor(
         songId: String? = null,
         bilibiliBvid: String? = null,
         lxSource: String? = null,
-        platformSongId: String? = null
+        platformSongId: String? = null,
+        durationMs: Long = 0L
     ): Song? {
         val sanitizedUrl = url.trim()
             .replace("[\\x00-\\x1F\\x7F]".toRegex(), "")
@@ -6897,6 +6901,7 @@ class PlayerViewModel @Inject constructor(
         val contentUri = when {
             sanitizedUrl.startsWith("netease://", ignoreCase = true) ||
                 sanitizedUrl.startsWith("cloud://", ignoreCase = true) ||
+                sanitizedUrl.startsWith("kgaudio://", ignoreCase = true) ||
                 sanitizedUrl.startsWith("qq://", ignoreCase = true) ||
                 sanitizedUrl.startsWith("kw://", ignoreCase = true) ||
                 sanitizedUrl.startsWith("bilibili://", ignoreCase = true) -> sanitizedUrl
@@ -6920,7 +6925,7 @@ class PlayerViewModel @Inject constructor(
             path = "",
             contentUriString = contentUri,
             albumArtUriString = cover.takeIf { it.isNotBlank() },
-            duration = 0L,
+            duration = durationMs,
             mimeType = null,
             bitrate = null,
             sampleRate = null,
@@ -8030,26 +8035,29 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * 播放一组落雪音源歌曲（不入库，cloud://lx 占位懒解析）：
-     * 听书章节等在线列表用，[startIndex] 指定从哪首开始。
-     * 解析链与私人 FM / 在线歌单一致：用户导入的 JS 音源优先，内置官方源兜底。
+     * 播放听书章节（酷狗长音频）：章节打成 `kgaudio://` 占位入队，播放时由 DualPlayerEngine
+     * **直接**调酷狗官方 `/v5/url`（trackercdn）解析直链 —— 不走落雪 JS 音源链
+     * （长音频在 JS 音源里没有对应实现）；相邻章节由引擎自动预解析，切章无感。
      */
-    fun playLxSongs(
-        songs: List<LxSongInfo>,
-        startIndex: Int = 0,
-        queueName: String = "在线播放",
+    fun playKugouAudiobookChapters(
+        chapters: List<KugouAudiobookChapter>,
+        startIndex: Int,
+        albumId: String,
+        albumAuthor: String?,
+        albumCoverUrl: String?,
+        queueName: String = "听书",
     ) {
-        if (songs.isEmpty()) return
-        val built = songs.mapNotNull { info ->
+        if (chapters.isEmpty() || albumId.isBlank()) return
+        val built = chapters.mapNotNull { chapter ->
             buildCloudSong(
-                url = info.toLxPlaceholderUri(info.source.ifBlank { "kg" }),
-                title = info.name,
-                artist = info.singer,
-                cover = info.pic,
-                songId = "lx_${info.source.ifBlank { "kg" }}_" +
-                    info.hash.ifBlank { info.songmid.ifBlank { info.id } },
-                lxSource = info.source.ifBlank { "kg" },
-                platformSongId = info.songmid.ifBlank { info.hash },
+                url = chapter.toKugouAudioUri(albumId),
+                title = chapter.name,
+                artist = chapter.author?.takeIf { it.isNotBlank() } ?: albumAuthor.orEmpty(),
+                cover = chapter.coverUrl?.takeIf { it.isNotBlank() } ?: albumCoverUrl.orEmpty(),
+                songId = "kgaudio_${chapter.hash}",
+                lxSource = "kg",
+                platformSongId = chapter.hash,
+                durationMs = chapter.durationMs,
             )
         }
         if (built.isEmpty()) return

@@ -235,6 +235,7 @@ class DualPlayerEngine @Inject constructor(
     private val musicRepository: MusicRepository,
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
     private val builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
+    private val kugouAudiobookApi: com.theveloper.pixelplay.data.kugou.KugouAudiobookApi,
     private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
     private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
     private val audioProcessorProvider: AudioProcessorProvider,
@@ -253,10 +254,10 @@ class DualPlayerEngine @Inject constructor(
         // 短暂音频焦点变化时「降低音量」的目标系数（相对当前音量）。
         private const val FOCUS_DUCK_LEVEL = 0.25f
         private val LOCAL_MEDIA_SCHEMES = setOf("content", "file", "android.resource")
-        private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "bilibili")
+        private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "kgaudio", "bilibili")
         // Subset of REMOTE_MEDIA_SCHEMES: schemes that need proxy resolution.
         // http/https resolve directly and must NOT enter the resolvedUriCache lookup path.
-        private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "bilibili")
+        private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "kgaudio", "bilibili")
     }
 
     data class TransitionTarget(
@@ -2110,6 +2111,10 @@ class DualPlayerEngine @Inject constructor(
                                     // 兜底：历史/通知等路径若未预解析，数据源层重新解析最新播放地址
                                     resolveBilibiliUri(Uri.parse(originalUri))
                                 }
+                                "kgaudio" -> {
+                                    // 兜底：听书章节若未预解析，数据源层直接调酷狗官方 /v5/url
+                                    resolveKugouAudioUriAsync(originalUri)
+                                }
                                 else -> null
                             }
                         } catch (e: Exception) {
@@ -2509,6 +2514,7 @@ class DualPlayerEngine @Inject constructor(
             "jellyfin" -> resolveJellyfinUriAsync(uriString)
             "gdrive" -> resolveGDriveUriAsync(uriString)
             "cloud" -> resolveCloudLxUriAsync(uriString)
+            "kgaudio" -> resolveKugouAudioUriAsync(uriString)
             "bilibili" -> resolveBilibiliUri(uri)
             else -> null
         }
@@ -2868,6 +2874,42 @@ class DualPlayerEngine @Inject constructor(
             if (url != null) Uri.parse(url) else null
         } catch (e: Exception) {
             android.util.Log.e("DualPlayerEngine", "Failed to resolve cloud URI: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * 听书章节（`kgaudio://{urlEncodedJson}`）：**直接**走酷狗官方 `/v5/url`（trackercdn）
+     * 解析直链，不经过落雪 JS 音源链 —— 长音频在 JS 音源里没有对应实现，
+     * 走 cloud://lx 只会白等引擎就绪（最多 15s）再落到同一个官方接口。
+     * 解析链与参照项目 md3Music 的 `song_url.js` 一致。
+     */
+    private suspend fun resolveKugouAudioUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
+        if (!connectivityStateHolder.isOnline.value) {
+            connectivityStateHolder.triggerOfflineBlockedEvent()
+            return@withContext null
+        }
+        val jsonPart = uriString.removePrefix("kgaudio://")
+        if (jsonPart.isEmpty()) return@withContext null
+        try {
+            val json = org.json.JSONObject(java.net.URLDecoder.decode(jsonPart, "UTF-8"))
+            val hash = json.optString("hash")
+            if (hash.isBlank()) return@withContext null
+            val url = kugouAudiobookApi.fetchChapterPlayUrl(
+                hash = hash,
+                albumId = json.optString("albumId").takeIf { it.isNotBlank() },
+                albumAudioId = json.optString("albumAudioId").takeIf { it.isNotBlank() },
+                quality = musicQualityLxValue,
+            ).getOrNull()
+            if (url.isNullOrBlank()) {
+                Timber.tag("DualPlayerEngine").w(
+                    "resolveKugouAudio: no direct url for hash=%s name=%s", hash, json.optString("name")
+                )
+                return@withContext null
+            }
+            Uri.parse(url)
+        } catch (e: Exception) {
+            Timber.tag("DualPlayerEngine").w(e, "resolveKugouAudio failed")
             null
         }
     }
