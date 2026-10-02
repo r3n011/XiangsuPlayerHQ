@@ -17,6 +17,9 @@ private fun NavController.isReadyForNavigation(): Boolean {
     }.getOrDefault(false)
 }
 
+private const val MAX_NAVIGATION_RETRIES = 2
+private const val NAVIGATION_RETRY_DELAY_MS = 48L
+
 /**
  * Runs [block]; if the destination is not registered in the current navigation graph,
  * returns false instead of crashing with IllegalArgumentException.
@@ -31,27 +34,39 @@ private inline fun NavController.runNavigateCatching(route: String, block: () ->
     }
 }
 
-fun NavController.navigateSafely(route: String): Boolean {
-    if (!isReadyForNavigation()) return false
+/**
+ * 用户点击触发的导航不能「点了没反应」：生命周期 / 回退栈正在切换时（刚 pop 完、
+ * 从登录 Activity 返回、转场动画中）NavController 会短暂不可用，此前直接丢弃，
+ * 表现就是「有时能打开有时打不开」。这里挂到下一帧重试（最多 [MAX_NAVIGATION_RETRIES] 次），
+ * 重试次数由本次调用统一计数，不会无限循环。
+ */
+private fun NavController.navigateWithRetry(
+    route: String,
+    builder: (NavOptionsBuilder.() -> Unit)? = null,
+    attempt: Int = 0,
+): Boolean {
+    if (!isReadyForNavigation()) {
+        if (attempt >= MAX_NAVIGATION_RETRIES) return false
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+            { navigateWithRetry(route, builder, attempt + 1) },
+            NAVIGATION_RETRY_DELAY_MS,
+        )
+        return true
+    }
     return runNavigateCatching(route) {
         navigate(route) {
             launchSingleTop = true
+            builder?.invoke(this)
         }
     }
 }
 
+fun NavController.navigateSafely(route: String): Boolean = navigateWithRetry(route)
+
 fun NavController.navigateSafely(
     route: String,
     builder: NavOptionsBuilder.() -> Unit
-): Boolean {
-    if (!isReadyForNavigation()) return false
-    return runNavigateCatching(route) {
-        navigate(route) {
-            launchSingleTop = true
-            builder()
-        }
-    }
-}
+): Boolean = navigateWithRetry(route, builder)
 
 fun NavController.navigateSafelyReplacing(
     route: String,

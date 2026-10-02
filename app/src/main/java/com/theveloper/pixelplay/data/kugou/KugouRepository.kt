@@ -32,7 +32,10 @@ class KugouRepository @Inject constructor(
     private val accountApi: KugouAccountApi,
 ) {
 
-    private val prefs: SharedPreferences = runCatching {
+    private val fallbackPrefs: SharedPreferences =
+        context.getSharedPreferences("kugou_prefs_fallback", Context.MODE_PRIVATE)
+
+    private val encryptedPrefs: SharedPreferences? = runCatching {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
@@ -45,7 +48,32 @@ class KugouRepository @Inject constructor(
         ) as SharedPreferences
     }.getOrElse { error ->
         Timber.w(error, "KugouRepository: EncryptedSharedPreferences 不可用，回退明文存储")
-        context.getSharedPreferences("kugou_prefs_fallback", Context.MODE_PRIVATE)
+        null
+    }
+
+    /**
+     * 生效的凭证存储：优先加密库，创建失败时回退明文库。
+     *
+     * ⚡ 两个库之间互相补齐凭证：加密库偶发创建失败（keystore 未就绪等）时写入会落到明文库，
+     *   等加密库恢复后又读不到 token —— 表现就是「明明登录过，有时却显示未登录、
+     *   点开账户变成登录页」。启动时把另一侧已有的凭证补过来，登录态不再来回跳。
+     */
+    private val prefs: SharedPreferences = (encryptedPrefs ?: fallbackPrefs).also { active ->
+        val other = if (active === fallbackPrefs) encryptedPrefs else fallbackPrefs
+        if (other != null) {
+            val editor = active.edit()
+            var changed = false
+            for (key in MIRRORED_CREDENTIAL_KEYS) {
+                if (active.getString(key, null).isNullOrBlank()) {
+                    val value = other.getString(key, null)
+                    if (!value.isNullOrBlank()) {
+                        editor.putString(key, value)
+                        changed = true
+                    }
+                }
+            }
+            if (changed) editor.apply()
+        }
     }
 
     private val _isLoggedInFlow = MutableStateFlow(false)
@@ -337,6 +365,11 @@ class KugouRepository @Inject constructor(
         const val KEY_DFID = "kugou_dfid"
         const val KEY_GUID = "kugou_guid"
         const val KEY_DEV = "kugou_dev"
+
+        /** 加密库 / 明文库之间需要互相补齐的凭证键（设备指纹类键不参与，避免覆盖）。 */
+        val MIRRORED_CREDENTIAL_KEYS = listOf(
+            KEY_TOKEN, KEY_USER_ID, KEY_VIP_TOKEN, KEY_NICKNAME, KEY_AVATAR, KEY_LIKED_LIST_ID,
+        )
 
         /** 翻页上限，防止接口异常时无限循环。 */
         const val MAX_PLAYLIST_PAGES = 10

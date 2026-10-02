@@ -627,7 +627,9 @@ fun HomeScreen(
                 onRecognitionClick = { showSongRecognitionSheet = true },
                 // ⚡ 私人FM 需要酷狗登录：未登录和网易云那几个入口一样，先提示再去账户设置登录
                 onKugouFmClick = {
-                    if (isKugouLoggedIn) {
+                    // ⚡ 先按本地凭证自愈一次：凭证还在就直接开 FM，不因为状态错位误提示登录
+                    kugouRepository.restoreSession()
+                    if (kugouRepository.isLoggedIn) {
                         playerViewModel.startKugouFm()
                     } else {
                         playerViewModel.sendToast(kugouLoginToast)
@@ -1470,12 +1472,19 @@ fun HomeScreen(
             },
             isKugouLoggedIn = isKugouLoggedIn,
             onOpenKugouLogin = {
-                context.startActivity(
-                    android.content.Intent(
-                        context,
-                        com.theveloper.pixelplay.presentation.kugou.KugouLoginActivity::class.java
+                // ⚡ 与账号页同款自愈：本地凭证还在就直接进酷狗账号面板，
+                //   避免凭证存储偶发不可用导致「内存状态与磁盘凭证错位」时误弹登录页。
+                kugouRepository.restoreSession()
+                if (kugouRepository.isLoggedIn) {
+                    navController.navigateSafely(Screen.KugouDashboard.route)
+                } else {
+                    context.startActivity(
+                        android.content.Intent(
+                            context,
+                            com.theveloper.pixelplay.presentation.kugou.KugouLoginActivity::class.java
+                        )
                     )
-                )
+                }
             },
             onOpenKugouDashboard = {
                 navController.navigateSafely(Screen.KugouDashboard.route)

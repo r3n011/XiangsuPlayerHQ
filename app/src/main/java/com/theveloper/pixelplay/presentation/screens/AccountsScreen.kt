@@ -114,14 +114,21 @@ fun AccountsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // ⚡ 酷狗登录与其它服务一致：打开独立的 KugouLoginActivity（不再用底部弹窗）。
+    //   先按本地凭证自愈一次登录态：凭证还在就直接进账号面板，避免「明明登录过却弹登录页」
+    //   （加密凭证库偶发不可用会让内存状态与磁盘凭证错位）。
     val openKugouLogin: () -> Unit = {
-        safeStartActivity(
-            context = context,
-            intent = Intent(
-                context,
-                com.theveloper.pixelplay.presentation.kugou.KugouLoginActivity::class.java
+        viewModel.restoreKugouSession()
+        if (viewModel.isKugouLoggedIn()) {
+            onOpenKugouDashboard()
+        } else {
+            safeStartActivity(
+                context = context,
+                intent = Intent(
+                    context,
+                    com.theveloper.pixelplay.presentation.kugou.KugouLoginActivity::class.java
+                )
             )
-        )
+        }
     }
     // 登录成功返回账号页后自动同步一次歌单（Syncer 内部 1 小时节流，重复进入不会刷请求）
     val kugouConnected = uiState.connectedAccounts.any { it.service == ExternalServiceAccount.KUGOU }

@@ -356,6 +356,17 @@ class AccountsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 酷狗凭证是否真的存在（直接读本地凭证，不依赖内存 Flow）。
+     *
+     * 内存 Flow 与磁盘凭证理论上一致，但凭证存储偶发不可用（加密库创建失败换用明文库）
+     * 时会出现「凭证在、Flow 还是 false」的错位，表现为卡片显示未连接、点开变登录页。
+     */
+    fun isKugouLoggedIn(): Boolean = kugouRepository.isLoggedIn
+
+    /** 按本地凭证重新恢复酷狗登录态（账号页点击前自愈一次，Flow 会随之纠正）。 */
+    fun restoreKugouSession() = kugouRepository.restoreSession()
+
     private fun formatCount(count: Int, singular: String, plural: String): String {
         return if (count == 1) {
             "1 $singular"

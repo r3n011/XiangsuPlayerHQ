@@ -4,6 +4,8 @@ import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,9 +74,13 @@ fun StreamingProviderSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
+        // ⚡ 入口已经有 8 个（一起听 / Telegram / Drive / Subsonic / Jellyfin / 网易云 /
+        //   QQ音乐 / 酷狗），小屏上内容会超出弹窗高度、最后几行被挤出屏幕点不到；
+        //   这里让整块内容可上下滑动（弹窗本身仍可下拉关闭）。
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
