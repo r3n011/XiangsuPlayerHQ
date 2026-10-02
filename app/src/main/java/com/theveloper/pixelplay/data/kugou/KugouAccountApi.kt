@@ -432,7 +432,9 @@ class KugouAccountApi @Inject constructor(
             "hash", "FileHash", "Hash128", "SQFileHash", "HQFileHash", "sd_hash", "file_hash",
         ) ?: return null
 
-        // 歌名：干净字段优先；只有文件名类字段时按「歌手 - 歌名」拆分并去扩展名
+        // 歌名：干净字段优先；只有文件名类字段时按「歌手 - 歌名」拆分。
+        // ⚡ 扩展名（.mp3 / .flac…）无条件剥掉：酷狗部分接口的 songname / name 字段
+        //   本身就带文件名后缀，同步到媒体库后会显示成「歌名.mp3」。
         val cleanName = item.optFirstNonBlank("songname", "SongName", "name", "ori_audio_name")
         val fileishName = item.optFirstNonBlank("FileName", "filename", "audio_name")
         var name = cleanName ?: fileishName.orEmpty()
@@ -441,7 +443,7 @@ class KugouAccountApi @Inject constructor(
         ).orEmpty().ifBlank { parseSingerNames(item) }
         if (name.isNotBlank()) {
             name = splitMergedName(name) { prefix -> if (singer.isBlank()) singer = prefix }
-            if (cleanName == null) name = name.stripAudioExtension()
+            name = name.stripAudioExtension()
         }
 
         return KugouSongBrief(
@@ -523,8 +525,18 @@ class KugouAccountApi @Inject constructor(
         return rest
     }
 
-    private fun String.stripAudioExtension(): String =
-        replace(AUDIO_EXTENSION_REGEX, "").trim()
+    /**
+     * 去掉歌名末尾的音频扩展名：容忍全角句点、扩展名里多出的点（`.mp.3`）与前后空格，
+     * 并循环剥离「xxx.mp3.mp3」这类重复后缀。
+     */
+    private fun String.stripAudioExtension(): String {
+        var result = trim()
+        while (true) {
+            val stripped = result.replace('．', '.').replace(AUDIO_EXTENSION_REGEX, "").trim()
+            if (stripped == result || stripped.isEmpty()) return result
+            result = stripped
+        }
+    }
 
     /**
      * 时长归一化成**毫秒**（不同接口秒 / 毫秒混用）：
@@ -920,9 +932,11 @@ class KugouAccountApi @Inject constructor(
         /** 歌单歌曲 JSON 里可能藏着字段的嵌套对象（展开时作为顶层字段的兜底）。 */
         private val NESTED_SONG_KEYS = listOf("album_info", "albuminfo", "audio_info", "song_info", "base")
 
-        /** 文件名类歌名要剥掉的音频扩展名。 */
-        private val AUDIO_EXTENSION_REGEX =
-            Regex("\\.(mp3|flac|m4a|aac|wav|ape|ogg|wma|mp4|opus)$", RegexOption.IGNORE_CASE)
+        /** 歌名末尾要剥掉的音频扩展名（容忍 `mp.3` 这类误写与多余空格）。 */
+        private val AUDIO_EXTENSION_REGEX = Regex(
+            "\\.\\s*(mp3|mp\\.?3|flac|m4a|aac|wav|ape|ogg|wma|mp4|opus)\\s*$",
+            RegexOption.IGNORE_CASE
+        )
         private const val QRCODE_TXT =
             "https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=3116&"
         /** 二维码内容 URL（酷狗 App 扫这个） */

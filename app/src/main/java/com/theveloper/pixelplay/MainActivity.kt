@@ -1189,7 +1189,14 @@ class MainActivity : ComponentActivity() {
                 Screen.AiAssistant.route,
                 // ⚡ 消息中心 / 聊天页：整屏列表页，进入后隐藏底部导航栏，避免遮挡最后一条会话
                 Screen.Messages.route,
-                Screen.Chat.route
+                Screen.Chat.route,
+                // ⚡ 听书（书架 / 免费书库 / 搜索 / 专辑详情）：整屏内容页，隐藏底部导航栏
+                Screen.Audiobook.route,
+                Screen.AudiobookLibrary.route,
+                Screen.AudiobookSearch.route,
+                Screen.AudiobookAlbum.route,
+                // ⚡ 酷狗账号面板：与网易云服务页一致，隐藏底部导航栏
+                Screen.KugouDashboard.route
             )
         }
         val isPlayerExpanded by remember {

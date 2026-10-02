@@ -636,8 +636,8 @@ class LyricsRepositoryImpl @Inject constructor(
             "lrclib" to step
         } else null
 
-        // ⚡ 顺序完全由用户在「API 管理」里排的来源顺序决定（可逐个上移/下移）；
-        //   不再用三个预设档位。磁盘缓存是本地兜底，固定在最后。
+        // ⚡ 顺序基本由用户在「API 管理」里排的来源顺序决定（可逐个上移/下移），
+        //   唯一例外：cloud://lx 歌曲的内置源固定排到最前（见下）。磁盘缓存是本地兜底，固定在最后。
         val stepByKey: Map<String, Pair<String, suspend () -> Lyrics?>?> = mapOf(
             LyricsSourceKey.NETEASE.stepKey to neteaseStep,
             LyricsSourceKey.AMLL.stepKey to amllStep,
@@ -646,8 +646,16 @@ class LyricsRepositoryImpl @Inject constructor(
             LyricsSourceKey.BILIBILI.stepKey to null,
             LyricsSourceKey.LRCLIB.stepKey to lrclibStep
         )
-        val orderedSteps: List<Pair<String, suspend () -> Lyrics?>> =
-            api.lyricsSourceOrder.mapNotNull { stepByKey[it.stepKey] } + listOfNotNull(diskCacheStep)
+        val orderedSteps: List<Pair<String, suspend () -> Lyrics?>> = buildList {
+            // ⚡ cloud://lx 歌曲（酷狗/QQ/酷我/咪咕）：内置源按 hash 精确匹配，最准也最快，
+            //   必须排在最前。否则默认顺序里网易云的 16s 时间片会把 18s 总预算吃光，
+            //   内置源永远轮不到 —— 用户感知就是「酷狗私人 FM / 在线歌曲几乎都没有歌词」。
+            builtInStep?.let(::add)
+            api.lyricsSourceOrder
+                .mapNotNull { stepByKey[it.stepKey] }
+                .filterNot { it.first == LyricsSourceKey.BUILT_IN.stepKey }
+                .forEach(::add)
+        } + listOfNotNull(diskCacheStep)
 
         // ⚡ 每个来源单独限时 + 总预算：某个来源（尤其海外 AMLL / LRCLIB）挂住时，
         //   不能把预算一次吃光——否则排在它后面的来源（如国内网易云）永远没机会执行，

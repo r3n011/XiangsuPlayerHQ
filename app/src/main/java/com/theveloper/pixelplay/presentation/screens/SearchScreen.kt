@@ -30,10 +30,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -55,7 +51,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.rounded.ContentPaste
@@ -68,7 +63,6 @@ import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import coil.compose.AsyncImage
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MusicNote
@@ -117,7 +111,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -135,6 +128,7 @@ import com.theveloper.pixelplay.data.model.SearchHistoryItem
 import com.theveloper.pixelplay.data.model.SearchResultItem
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.AutoScrollingText
+import com.theveloper.pixelplay.presentation.components.AppSearchField
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.SmartImageListTargetSize
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
@@ -523,7 +517,6 @@ fun SearchScreen(
         showSongInfoBottomSheet = true
     }
 
-    val searchbarCornerRadius = 28.dp
 
     val dm = LocalPixelPlayDarkTheme.current
 
@@ -572,106 +565,41 @@ fun SearchScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 24.dp, top = statusBarTopInset + 12.dp, end = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .background(color = Color.Transparent)
-                    ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .clip(RoundedCornerShape(searchbarCornerRadius))
-                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-                            .padding(start = 16.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // ⚡ 点击放大镜图标 = 提交搜索（在线源仅提交时请求）
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { submitOnlineSearch() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Search,
-                                contentDescription = stringResource(R.string.cd_search_icon),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        BasicTextField(
-                            value = searchQuery,
-                            onValueChange = {
-                                searchQuery = it
-                                playerViewModel.updateSearchQuery(it)
-                                // 检测粘贴的分享链接
-                                val detectedLink = com.theveloper.pixelplay.data.share.ShareLinkCodec.extractShareLink(it)
-                                if (detectedLink != null) {
-                                    coroutineScope.launch {
-                                        val result = playerViewModel.resolveShareLink(detectedLink)
-                                        when (result) {
-                                            is com.theveloper.pixelplay.data.share.ShareResult.Success -> {
-                                                if (result.matchedSongs.isNotEmpty() || result.totalCount > 0) {
-                                                    shareDialogResult = result
-                                                }
-                                            }
-                                            is com.theveloper.pixelplay.data.share.ShareResult.Error -> {
-                                                Toast.makeText(context, "分享链接无效", Toast.LENGTH_SHORT).show()
-                                            }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, top = statusBarTopInset + 12.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ⚡ 搜索框提取为全局组件（AppSearchField），听书搜索页复用同一视觉
+                AppSearchField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        playerViewModel.updateSearchQuery(it)
+                        // 检测粘贴的分享链接
+                        val detectedLink = com.theveloper.pixelplay.data.share.ShareLinkCodec.extractShareLink(it)
+                        if (detectedLink != null) {
+                            coroutineScope.launch {
+                                val result = playerViewModel.resolveShareLink(detectedLink)
+                                when (result) {
+                                    is com.theveloper.pixelplay.data.share.ShareResult.Success -> {
+                                        if (result.matchedSongs.isNotEmpty() || result.totalCount > 0) {
+                                            shareDialogResult = result
                                         }
                                     }
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .focusRequester(searchInputFocusRequester),
-                            textStyle = TextStyle(
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = MaterialTheme.typography.bodyLarge.fontSize
-                            ),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { submitOnlineSearch() }),
-                            decorationBox = { innerTextField ->
-                                Box {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            stringResource(R.string.search_placeholder),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
+                                    is com.theveloper.pixelplay.data.share.ShareResult.Error -> {
+                                        Toast.makeText(context, "分享链接无效", Toast.LENGTH_SHORT).show()
                                     }
-                                    innerTextField()
                                 }
-                            },
-                            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary)
-                        )
-                        if (searchQuery.isNotBlank()) {
-                            IconButton(onClick = {
-                                searchQuery = ""
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = stringResource(id = R.string.cd_clear_search_query),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
                             }
                         }
-                    }
-                }
+                    },
+                    onSearch = { submitOnlineSearch() },
+                    placeholder = stringResource(R.string.search_placeholder),
+                    modifier = Modifier.weight(1f),
+                    focusRequester = searchInputFocusRequester
+                )
             }
 
             val showGenreBrowse by remember(searchQuery) {

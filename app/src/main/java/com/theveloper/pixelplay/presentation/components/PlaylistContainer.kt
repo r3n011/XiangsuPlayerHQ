@@ -625,12 +625,20 @@ fun PlaylistItem(
                     }
                     if (playlist.source == "KUGOU") {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            painter = painterResource(R.drawable.ic_kugou),
-                            contentDescription = "Kugou Music",
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        // 酷狗 logo 原图是方形底 + 白色图案，裁成圆形与其它来源徽标视觉统一
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_kugou),
+                                contentDescription = "Kugou Music",
+                                tint = Color.Unspecified,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                 }
                 Text(
