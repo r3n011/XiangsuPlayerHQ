@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import android.os.Build
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.os.SystemClock
 import android.widget.Toast
 import com.theveloper.pixelplay.data.model.Song
@@ -665,7 +666,7 @@ fun LyricsSheet(
         val hasSynced = !lyrics?.synced.isNullOrEmpty()
         val hasPlain = !lyrics?.plain.isNullOrEmpty()
         
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showSaveLyricsDialog = false },
             title = { Text(stringResource(R.string.save_lyrics_dialog_title)) },
             text = {

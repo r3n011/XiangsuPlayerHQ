@@ -1,9 +1,9 @@
 package com.theveloper.pixelplay.presentation.components
 
 import androidx.compose.foundation.layout.Column
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -29,7 +29,7 @@ fun SavePresetDialog(
     var name by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(text = stringResource(R.string.equalizer_save_custom_preset_title), fontFamily = GoogleSansRounded)
@@ -93,7 +93,7 @@ fun RenamePresetDialog(
     var name by remember { mutableStateOf(currentName) }
     var isError by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(text = stringResource(R.string.equalizer_rename_preset_title), fontFamily = GoogleSansRounded)

@@ -381,7 +381,8 @@ fun ThemeSelectorItem(
                 LazyColumn(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
-                        .heightIn(max = 400.dp),
+                        // 6 个选项（72dp + 8dp 间距）约 472dp，给足高度避免最后一项被挤到可视区外
+                        .heightIn(max = 480.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(options.entries.toList()) { (key, optionLabel) ->

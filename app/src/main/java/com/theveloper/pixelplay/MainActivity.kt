@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 
 // import androidx.compose.ui.platform.LocalView // No longer needed for this
 // import androidx.core.view.WindowInsetsCompat // No longer needed for this
@@ -103,6 +104,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
@@ -116,7 +118,6 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DrawerValue
@@ -135,6 +136,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -317,6 +319,12 @@ class MainActivity : ComponentActivity() {
     lateinit var syncManager: SyncManager
     @Inject
     lateinit var shareLinkHandler: com.theveloper.pixelplay.data.share.ShareLinkHandler
+    // ⚡ 一起听邀请消息观察器：前台时轮询未读私信，收到一起听邀请自动弹窗询问
+    @Inject
+    lateinit var listenTogetherInviteWatcher: com.theveloper.pixelplay.data.listentogether.ListenTogetherInviteWatcher
+    // ⚡ 拼音排序键回填（46→47 迁移后一次性补齐历史歌曲的排序键）
+    @Inject
+    lateinit var songSortKeyBackfill: com.theveloper.pixelplay.data.database.SongSortKeyBackfill
     // For handling shortcut navigation - using StateFlow so composables can observe changes
     private val _pendingPlaylistNavigation = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private val _pendingShuffleAll = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -514,7 +522,7 @@ class MainActivity : ComponentActivity() {
 
             // ⚡ 启动动画样式（设置 → 外观 → 启动动画）
             val startupAnimationStyleRaw by userPreferencesRepository.startupAnimationStyleFlow
-                .collectAsStateWithLifecycle(initialValue = StartupAnimationStyle.EMERGE.name)
+                .collectAsStateWithLifecycle(initialValue = StartupAnimationStyle.DEFAULT.name)
             val startupAnimationStyle = StartupAnimationStyle.fromName(startupAnimationStyleRaw)
 
             // ⚡ 品牌启动页（中间浮出 XiangsuPlayer）：
@@ -1098,61 +1106,18 @@ class MainActivity : ComponentActivity() {
             }
         }
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
-        val discoverShowRoaming by userPreferencesRepository.discoverShowRoamingFlow.collectAsStateWithLifecycle(initialValue = true)
-        val discoverShowRadio by userPreferencesRepository.discoverShowRadioFlow.collectAsStateWithLifecycle(initialValue = true)
-        val discoverShowAi by userPreferencesRepository.discoverShowAiFlow.collectAsStateWithLifecycle(initialValue = true)
-        // 发现模式弹窗：让用户选择进入「漫游」或「电台」
-        var showDiscoverSheet by remember { mutableStateOf(false) }
+        // ⚡ 底部导航栏不再有「发现」按钮：漫游/电台/AI 入口统一移到主页顶部
+        //   的「发现」按钮（见 HomeScreen 的 HomeDiscoverButton / HomeDiscoverSheet）
 
-        // 底部导航栏中间按钮：由「漫游 / 电台 / AI」勾选情况决定。
-        //  - 一个都没勾选 → 不显示该按钮
-        //  - 恰好只勾选 1 个 → 直接显示那个功能的图标，点击直达
-        //  - 勾选多个 → 显示「发现」图标，点击弹出卡片供挑选
-        val discoverTargetsEnabled =
-            discoverShowRoaming || discoverShowRadio || discoverShowAi
-        val centerNavItem: BottomNavItem? = remember(
-            discoverTargetsEnabled, discoverShowRoaming, discoverShowRadio, discoverShowAi
-        ) {
-            if (!discoverTargetsEnabled) {
-                null
-            } else when {
-                discoverShowRoaming && !discoverShowRadio && !discoverShowAi -> BottomNavItem(
-                    "Roaming", R.string.nav_bar_roaming,
-                    R.drawable.rounded_play_arrow_24, R.drawable.rounded_play_arrow_filled_24,
-                    screen = Screen.Roaming
-                )
-                discoverShowRadio && !discoverShowRoaming && !discoverShowAi -> BottomNavItem(
-                    "Radio", R.string.nav_bar_radio,
-                    null, null,
-                    imageVectorIcon = Icons.Rounded.Radio,
-                    screen = Screen.Radio
-                )
-                discoverShowAi && !discoverShowRoaming && !discoverShowRadio -> BottomNavItem(
-                    "AI", R.string.discover_ai_title,
-                    null, null,
-                    imageVectorIcon = Icons.Rounded.AutoAwesome,
-                    screen = Screen.AiAssistant
-                )
-                else -> BottomNavItem(
-                    "Discover", R.string.nav_bar_discover,
-                    null, null,
-                    imageVectorIcon = Icons.Rounded.Explore,
-                    screen = Screen.Roaming
-                )
-            }
-        }
-
-        val commonNavItems = remember(centerNavItem) {
+        val commonNavItems = remember {
             persistentListOf(
                 BottomNavItem("Home", R.string.nav_bar_home, R.drawable.rounded_home_24, R.drawable.home_24_rounded_filled, screen = Screen.Home),
                 BottomNavItem("Search", R.string.nav_bar_search, R.drawable.rounded_search_24, R.drawable.rounded_search_24, screen = Screen.Search),
-                centerNavItem,
                 BottomNavItem("Library", R.string.nav_bar_library, R.drawable.rounded_library_music_24, R.drawable.round_library_music_24, screen = Screen.Library),
                 BottomNavItem("Settings", R.string.settings_top_bar_title, R.drawable.rounded_settings_24, R.drawable.rounded_settings_fill_24, screen = Screen.Settings)
-            ).filterNotNull().toImmutableList()
+            ).toImmutableList()
         }
 
-        // 中间按钮点击行为：发现模式弹出选择，漫游模式直接进入漫游（电台模式为普通导航，不显示模式无中间按钮）
         val hearingGuardViewModel: com.theveloper.pixelplay.presentation.components.hearingguard.HearingGuardViewModel = hiltViewModel()
         val hearingGuardState by hearingGuardViewModel.state.collectAsStateWithLifecycle()
         var showHearingGuardSetup by remember { mutableStateOf(false) }
@@ -1163,22 +1128,6 @@ class MainActivity : ComponentActivity() {
             showHearingGuardStatus = true
         }
 
-        val onCenterNavClick: () -> Unit = {
-            // 发现目标多选：恰好只选中 1 个时直接进入该目标；选中 ≥2 个时弹菜单挑选；
-            // 一个都没选中时按钮本身不显示（此处兜底不做事）
-            val enabledCount =
-                listOf(discoverShowRoaming, discoverShowRadio, discoverShowAi).count { it }
-            if (enabledCount <= 1) {
-                when {
-                    discoverShowRoaming -> playerViewModel.startRoamingMode()
-                    discoverShowRadio -> navController.navigateSafely(Screen.Radio.route)
-                    discoverShowAi -> navController.navigateSafely(Screen.AiAssistant.route)
-                    else -> Unit
-                }
-            } else {
-                showDiscoverSheet = true
-            }
-        }
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
         var isSearchBarActive by remember { mutableStateOf(false) }
@@ -1287,6 +1236,17 @@ class MainActivity : ComponentActivity() {
         val isMiniPlayerDismissing by playerViewModel.isMiniPlayerDismissing.collectAsStateWithLifecycle()
         val hapticsEnabled by playerViewModel.hapticsEnabled.collectAsStateWithLifecycle()
         val disableBlurAllOver by playerViewModel.disableBlurAllOver.collectAsStateWithLifecycle()
+
+        // ⚡ 低版本（API < 31）导航栏毛玻璃：haze / RenderEffect 都不可用，改用
+        //    「内容层离屏采集 → 降采样盒式模糊 → 按导航栏位置贴回」的位图兜底。
+        //    高版本 enabled=false，返回的 modifier 全是 no-op，原有 haze 路径完全不变。
+        val navBarBlurEnabledForBackdrop by playerViewModel.navBarBlurEnabled.collectAsStateWithLifecycle()
+        val navBarLowVersionBlur = com.theveloper.pixelplay.presentation.components.blur
+            .rememberLowVersionBlurBackdrop(
+                enabled = (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                    com.theveloper.pixelplay.presentation.components.SoftBlur.forceSoftwareBlur) &&
+                    navBarBlurEnabledForBackdrop && !disableBlurAllOver
+            )
         val navBarBlurEnabled by playerViewModel.navBarBlurEnabled.collectAsStateWithLifecycle()
         val predictiveBackCollapseFraction by playerViewModel.predictiveBackCollapseFraction.collectAsStateWithLifecycle()
         val rootView = LocalView.current
@@ -1544,8 +1504,7 @@ class MainActivity : ComponentActivity() {
                             navItems = commonNavItems,
                             currentRoute = currentRoute,
                             navRailProgressState = navRailProgressState,
-                            navRailStyle = navRailStyle,
-                            onCenterNavClick = onCenterNavClick
+                            navRailStyle = navRailStyle
                         )
                     }
 
@@ -1559,6 +1518,7 @@ class MainActivity : ComponentActivity() {
                         Scaffold(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .then(navBarLowVersionBlur.contentModifier)
                                 .nestedScroll(scrollChromeConnection),
                             bottomBar = {
                                 if (!isLandscape) {
@@ -1840,63 +1800,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                // 发现模式弹窗：选择进入「漫游」或「电台」
-                if (showDiscoverSheet) {
-                    ModalBottomSheet(
-                        onDismissRequest = { showDiscoverSheet = false },
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp)
-                                .padding(bottom = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.discover_sheet_title),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                            )
-                            if (discoverShowRoaming) {
-                                DiscoverOptionRow(
-                                    icon = { Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.primary) },
-                                    title = stringResource(R.string.setcat_center_nav_roaming),
-                                    subtitle = stringResource(R.string.discover_roaming_subtitle),
-                                    onClick = {
-                                        showDiscoverSheet = false
-                                        playerViewModel.startRoamingMode()
-                                    }
-                                )
-                            }
-                            if (discoverShowRadio) {
-                                DiscoverOptionRow(
-                                    icon = { Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.primary) },
-                                    title = stringResource(R.string.setcat_center_nav_radio),
-                                    subtitle = stringResource(R.string.discover_radio_subtitle),
-                                    onClick = {
-                                        showDiscoverSheet = false
-                                        navController.navigateSafely(Screen.Radio.route)
-                                    }
-                                )
-                            }
-                            if (discoverShowAi) {
-                                DiscoverOptionRow(
-                                    icon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary) },
-                                    title = stringResource(R.string.discover_ai_title),
-                                    subtitle = stringResource(R.string.discover_ai_subtitle),
-                                    onClick = {
-                                        showDiscoverSheet = false
-                                        navController.navigateSafely(Screen.AiAssistant.route)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
                 // ⚡ 底部导航栏作为「最外层浮层」最后渲染：任何播放器面板 / 展开遮罩都在它下面，
                 //   从结构上保证导航栏永远可点。此前它放在 Scaffold 的 bottomBar 槽里，
                 //   一旦上层节点覆盖该区域，点击就被整体吃掉（表现为「点导航栏完全没反应」）。
@@ -1925,9 +1828,12 @@ class MainActivity : ComponentActivity() {
                             navBarOccupiedHeight = navBarOccupiedHeight,
                             horizontalPadding = horizontalPadding,
                             bottomNavBarProgressState = bottomNavBarProgressState,
-                            onCenterNavClick = onCenterNavClick,
                             onNowPlayingClick = onNowPlayingClick,
-                            miniPlayerVisible = !shouldHideFloatingMini
+                            miniPlayerVisible = !shouldHideFloatingMini,
+                            // ⚡ 低版本（或强制）软件模糊：必须挂在**底栏内容**这一层，
+                            //   与 hazeEffect 同一个节点 —— 底栏 Surface 的底色是不透明的，
+                            //   画在它「下面」的模糊会被完全盖住（画在内容层才是覆盖它的底色）。
+                            lowVersionBlurModifier = navBarLowVersionBlur.blurModifier
                         )
                     }
                 }
@@ -1967,6 +1873,48 @@ class MainActivity : ComponentActivity() {
 
         // 启动自动检查更新（每天一次，发现新版本时弹窗）
         AutoUpdatePrompt(userPreferencesRepository = userPreferencesRepository)
+
+        // ⚡ 一起听邀请：前台时轮询未读私信，检测到好友的一起听邀请自动弹窗询问是否加入
+        LifecycleStartEffect(Unit) {
+            listenTogetherInviteWatcher.start()
+            onStopOrDispose { listenTogetherInviteWatcher.stop() }
+        }
+        // ⚡ 拼音排序键回填：46→47 迁移后一次性补齐历史歌曲的排序键（IO 线程，幂等）
+        LaunchedEffect(Unit) {
+            songSortKeyBackfill.ensureBackfilledAsync()
+        }
+        val pendingTogetherInvite by listenTogetherInviteWatcher.pendingInvite
+            .collectAsStateWithLifecycle()
+        pendingTogetherInvite?.let { invite ->
+            com.theveloper.pixelplay.presentation.components.PixelAlertDialog(
+                onDismissRequest = { listenTogetherInviteWatcher.dismissPendingInvite() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Headphones,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                title = { Text(stringResource(R.string.together_invite_dialog_title)) },
+                text = {
+                    Text(stringResource(R.string.together_invite_dialog_body, invite.inviterName))
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = { listenTogetherInviteWatcher.acceptPendingInvite() }
+                    ) {
+                        Text(stringResource(R.string.together_invite_dialog_join))
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = { listenTogetherInviteWatcher.dismissPendingInvite() }
+                    ) {
+                        Text(stringResource(R.string.together_invite_dialog_ignore))
+                    }
+                }
+            )
+        }
 
 Trace.endSection()
     }
@@ -2297,7 +2245,9 @@ Trace.endSection()
         bottomNavBarProgressState: androidx.compose.runtime.State<Float>,
         onCenterNavClick: () -> Unit = {},
         onNowPlayingClick: () -> Unit = {},
-        miniPlayerVisible: Boolean = false
+        miniPlayerVisible: Boolean = false,
+        /** 低版本 / 强制软件模糊的底栏模糊 modifier（画在内容层，覆盖 Surface 底色） */
+        lowVersionBlurModifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
     ) {
         // 使用 Stable 参数,Compose 可以在参数不变时跳过重组
         val showPlayerContentArea = currentSongId != null
@@ -2466,8 +2416,13 @@ Trace.endSection()
                     blurEnabled = navBarBlurEnabledState && !disableBlurAllOverState,
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(lowVersionBlurModifier)
                         .then(
-                            if (navBarBlurEnabledState && !disableBlurAllOverState && navBarStyle != NavBarStyle.FLOATING) {
+                            if (navBarBlurEnabledState && !disableBlurAllOverState &&
+                                navBarStyle != NavBarStyle.FLOATING &&
+                                // 强制软件模糊（开发者测试开关）时不要再叠 haze，避免两层模糊
+                                !com.theveloper.pixelplay.presentation.components.SoftBlur.forceSoftwareBlur
+                            ) {
                                 Modifier.hazeEffect(
                                     state = LocalHazeState.current,
                                     style = dev.chrisbanes.haze.materials.HazeMaterials.ultraThin()
@@ -2718,60 +2673,6 @@ Trace.endSection()
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-    }
-
-    /**
-     * 发现弹窗中的选项行（漫游 / 电台）。
-     */
-    @Composable
-    private fun DiscoverOptionRow(
-        icon: @Composable () -> Unit,
-        title: String,
-        subtitle: String,
-        onClick: () -> Unit
-    ) {
-        val colors = MaterialTheme.colorScheme
-        Surface(
-            onClick = onClick,
-            shape = RoundedCornerShape(20.dp),
-            color = colors.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(colors.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    icon()
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.onSurface
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
-                    contentDescription = null,
-                    tint = colors.onSurfaceVariant
-                )
-            }
         }
     }
 

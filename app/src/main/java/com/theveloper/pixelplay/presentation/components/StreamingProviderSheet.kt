@@ -49,6 +49,10 @@ fun StreamingProviderSheet(
     onNavigateToNavidromeDashboard: () -> Unit = {},
     isJellyfinLoggedIn: Boolean = false,
     onNavigateToJellyfinDashboard: () -> Unit = {},
+    // ⚡ 酷狗账号：登录状态 + 打开酷狗登录页 / 已登录时打开账号面板页
+    isKugouLoggedIn: Boolean = false,
+    onOpenKugouLogin: () -> Unit = {},
+    onOpenKugouDashboard: () -> Unit = {},
     // ⚡ 一起听快速入口：显示房间状态，点击打开一起听面板
     isListenTogetherActive: Boolean = false,
     listenTogetherSubtitle: String? = null,
@@ -230,6 +234,29 @@ fun StreamingProviderSheet(
                             onDismissRequest()
                         }
                     )
+
+                    // ⚡ 酷狗音乐：显示登录状态，未登录点进酷狗登录页（登录后可拿会员/无损音源 + 同步歌单）
+                    ProviderRow(
+                        iconPainter = painterResource(R.drawable.ic_kugou),
+                        iconTint = Color.Unspecified,
+                        iconTileColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        title = stringResource(R.string.kugou_service_name),
+                        subtitle = if (isKugouLoggedIn) {
+                            stringResource(R.string.streaming_provider_connected)
+                        } else {
+                            stringResource(R.string.streaming_provider_sign_in_to_stream)
+                        },
+                        shape = providerSegmentItemShape,
+                        isConnected = isKugouLoggedIn,
+                        onClick = {
+                            if (isKugouLoggedIn) {
+                                onOpenKugouDashboard()
+                            } else {
+                                onOpenKugouLogin()
+                            }
+                            onDismissRequest()
+                        }
+                    )
                 }
             }
         }
@@ -245,6 +272,8 @@ private fun ProviderRow(
     shape: RoundedCornerShape,
     isConnected: Boolean = false,
     enabled: Boolean = true,
+    /** 图标底色；默认由 iconTint 派生（带品牌色的图标用），传 null 时用 tint 派生色 */
+    iconTileColor: Color? = null,
     onClick: () -> Unit
 ) {
     val containerColor = when {
@@ -311,7 +340,10 @@ private fun ProviderRow(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(iconTileShape)
-                        .background(iconTint.copy(alpha = if (enabled) 0.14f else 0.1f)),
+                        .background(
+                            iconTileColor
+                                ?: iconTint.copy(alpha = if (enabled) 0.14f else 0.1f)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

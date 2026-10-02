@@ -22,6 +22,8 @@ internal data class SheetActionHandlers(
     val dragQueueBy: (Float) -> Unit,
     val endQueueDrag: (Float, Float) -> Unit,
     val onSelectedSongForInfoChange: (Song?) -> Unit,
+    /** 播放器「⋯」菜单点「歌曲信息」：直接落到歌曲信息详情卡片页 */
+    val onShowPlayerSongInfo: (Song) -> Unit,
     val onLaunchSaveQueueOverlay: (List<Song>, String, (String, Set<String>) -> Unit) -> Unit,
     val onNavigateToAlbum: (Song) -> Unit,
     val onNavigateToArtist: (Song) -> Unit,
@@ -65,6 +67,9 @@ internal fun rememberSheetActionHandlers(
     }
     val onSelectedSongForInfoChange = remember {
         { song: Song? -> sheetModalOverlayControllerState.value.updateSelectedSongForInfo(song) }
+    }
+    val onShowPlayerSongInfo = remember {
+        { song: Song -> sheetModalOverlayControllerState.value.updateSelectedSongForInfo(song, initialPage = 1) }
     }
     val onLaunchSaveQueueOverlay = remember {
         { songs: List<Song>, defaultName: String, onConfirm: (String, Set<String>) -> Unit ->
@@ -153,6 +158,7 @@ internal fun rememberSheetActionHandlers(
         dragQueueBy = dragQueueBy,
         endQueueDrag = endQueueDrag,
         onSelectedSongForInfoChange = onSelectedSongForInfoChange,
+        onShowPlayerSongInfo = onShowPlayerSongInfo,
         onLaunchSaveQueueOverlay = onLaunchSaveQueueOverlay,
         onNavigateToAlbum = onNavigateToAlbum,
         onNavigateToArtist = onNavigateToArtist,

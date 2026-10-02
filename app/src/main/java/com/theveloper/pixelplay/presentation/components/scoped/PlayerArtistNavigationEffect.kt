@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.components.scoped
 
+import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 
 import androidx.compose.runtime.Composable
@@ -28,6 +29,14 @@ internal fun PlayerArtistNavigationEffect(
                 route = Screen.ArtistDetail.createRoute(artistId),
                 patternToPop = Screen.ArtistDetail.route
             )
+        }
+    }
+    LaunchedEffect(navController) {
+        playerViewModel.accountSettingsRequests.collectLatest {
+            latestExpansionFraction.value.snapTo(0f)
+            playerViewModel.collapsePlayerSheet()
+
+            navController.navigateSafely(Screen.Accounts.route)
         }
     }
     LaunchedEffect(navController) {

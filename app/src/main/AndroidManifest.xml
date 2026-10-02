@@ -5,6 +5,8 @@
     <uses-sdk tools:overrideLibrary="com.nothing.thirdparty" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 听歌识曲：录制一段外放声音生成音频指纹 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- 友盟移动统计 U-App：用于采集设备标识与网络状态 -->
@@ -130,6 +132,13 @@
             android:name=".presentation.bilibili.auth.BilibiliLoginActivity"
             android:exported="false"
             android:label="Bilibili Login"
+            android:theme="@style/Theme.PixelPlay.Login"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".presentation.kugou.KugouLoginActivity"
+            android:exported="false"
+            android:label="Kugou Login"
             android:theme="@style/Theme.PixelPlay.Login"
             android:windowSoftInputMode="adjustResize" />
 

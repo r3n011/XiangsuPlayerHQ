@@ -19,7 +19,10 @@ enum class StartupAnimationStyle(val displayName: String) {
     NONE("关闭");
 
     companion object {
+        /** 默认样式：缩放（设置里未选过、或存到无效值时都走这个）。 */
+        val DEFAULT = SCALE
+
         fun fromName(name: String?): StartupAnimationStyle =
-            entries.firstOrNull { it.name == name } ?: EMERGE
+            entries.firstOrNull { it.name == name } ?: DEFAULT
     }
 }

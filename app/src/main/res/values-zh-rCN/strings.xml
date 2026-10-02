@@ -216,6 +216,7 @@
     <string name="lx_cancel">取消</string>
     <string name="lx_ok">好</string>
     <string name="lx_info_title">JS 引擎信息</string>
+    <string name="lx_export_js">导出 JS 音源</string>
     <string name="autoeq_manage">管理 AutoEQ</string>
     <string name="autoeq_configure_desc">使用优化的 AutoEQ 配置文件配置您的音频设备，以获得最佳聆听体验。</string>
     <string name="autoeq_no_devices">未配置设备</string>

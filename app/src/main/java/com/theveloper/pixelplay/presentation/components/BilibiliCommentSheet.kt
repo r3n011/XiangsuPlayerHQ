@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import android.widget.Toast
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,7 +42,6 @@ import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material.icons.rounded.ThumbDownOffAlt
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VerticalAlignTop
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -1000,7 +1000,7 @@ fun BilibiliCommentSheet(
 
     // —— 回复对话框 ——
     replyingTo.value?.let { target ->
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { replyingTo.value = null },
             title = { Text("回复 ${target.nickname.ifBlank { "用户" }}") },
             text = {
@@ -1040,7 +1040,7 @@ fun BilibiliCommentSheet(
             8 to "引战",
             0 to "其他"
         )
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { reportingTarget.value = null },
             title = { Text("举报评论") },
             text = {
@@ -1076,7 +1076,7 @@ fun BilibiliCommentSheet(
 
     // —— 单条评论「更多」菜单（踩/置顶/举报，对齐 PiliPlus 评论长按操作）——
     moreTarget.value?.let { target ->
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { moreTarget.value = null },
             title = { Text("${target.nickname.ifBlank { "用户" }} 的评论") },
             text = {
@@ -1650,7 +1650,7 @@ private fun BilibiliInteractionDialog(
         isLoading.value = false
     }
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("互动设置") },
         text = {
@@ -1732,7 +1732,7 @@ private fun BilibiliFilterDialog(
     val antiGoods = remember { mutableStateOf(initialAntiGoods) }
     val banWords = remember { mutableStateOf(initialBanWords) }
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("评论过滤") },
         text = {

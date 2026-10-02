@@ -103,12 +103,29 @@ fun AccountsScreen(
     onOpenNavidromeDashboard: () -> Unit = {},
     onOpenJellyfinDashboard: () -> Unit = {},
     onOpenBilibiliDashboard: () -> Unit = {},
+    onOpenKugouDashboard: () -> Unit = {},
     viewModel: AccountsViewModel = hiltViewModel(),
     showBackButton: Boolean = true,
     playerViewModel: PlayerViewModel? = null
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // ⚡ 酷狗登录与其它服务一致：打开独立的 KugouLoginActivity（不再用底部弹窗）。
+    val openKugouLogin: () -> Unit = {
+        safeStartActivity(
+            context = context,
+            intent = Intent(
+                context,
+                com.theveloper.pixelplay.presentation.kugou.KugouLoginActivity::class.java
+            )
+        )
+    }
+    // 登录成功返回账号页后自动同步一次歌单（Syncer 内部 1 小时节流，重复进入不会刷请求）
+    val kugouConnected = uiState.connectedAccounts.any { it.service == ExternalServiceAccount.KUGOU }
+    LaunchedEffect(kugouConnected) {
+        if (kugouConnected) viewModel.autoSyncKugou()
+    }
     val syncingServices by viewModel.syncingServicesFlow.collectAsStateWithLifecycle()
 
     // lite（no-telegram）构建：隐藏 Telegram 账号入口（已连接 + 未连接均过滤）
@@ -231,6 +248,9 @@ fun AccountsScreen(
                             if (account.service == ExternalServiceAccount.BILIBILI) {
                                 // 已登录：打开 B 站收藏服务页（对齐网易云打开服务页面的导航方式）
                                 onOpenBilibiliDashboard()
+                            } else if (account.service == ExternalServiceAccount.KUGOU) {
+                                // 已登录：打开独立的酷狗账号面板页（与网易云/QQ音乐一致）
+                                onOpenKugouDashboard()
                             } else {
                                 openService(
                                     context = context,
@@ -267,7 +287,9 @@ fun AccountsScreen(
                     EmptyAccountsCard(
                         disconnectedServices = disconnectedServices,
                         onConnect = { service ->
-                            if (service == ExternalServiceAccount.BILIBILI) {
+                            if (service == ExternalServiceAccount.KUGOU) {
+                                openKugouLogin()
+                            } else if (service == ExternalServiceAccount.BILIBILI) {
                                 safeStartActivity(
                                     context = context,
                                     intent = Intent(context, BilibiliLoginActivity::class.java)
@@ -414,6 +436,7 @@ private fun ConnectedAccountCard(
     modifier = Modifier.fillMaxWidth(),
     verticalAlignment = Alignment.CenterVertically
 ) {
+    // ⚡ 和其它平台一致：已连接也统一显示服务图标（酷狗用品牌 logo），不显示账号头像
     if (account.service == ExternalServiceAccount.NAVIDROME) {
         ServiceIcon(
             service = account.service,
@@ -691,6 +714,7 @@ private fun EmptyAccountsCard(
                     ExternalServiceAccount.JELLYFIN -> painterResource(R.drawable.ic_jellyfin)
                     ExternalServiceAccount.NAVIDROME -> painterResource(R.drawable.ic_navidrome_md3)
                     ExternalServiceAccount.BILIBILI -> painterResource(R.drawable.ic_bilibili)
+                    ExternalServiceAccount.KUGOU -> painterResource(R.drawable.ic_kugou)
                 }
                 FilledTonalButton(
                     onClick = { if (!isComingSoon) onConnect(service) },
@@ -730,7 +754,8 @@ private fun supportsManualSync(service: ExternalServiceAccount): Boolean {
         ExternalServiceAccount.QQ_MUSIC,
         ExternalServiceAccount.NAVIDROME,
         ExternalServiceAccount.JELLYFIN,
-        ExternalServiceAccount.BILIBILI -> true
+        ExternalServiceAccount.BILIBILI,
+        ExternalServiceAccount.KUGOU -> true
         ExternalServiceAccount.TELEGRAM,
         ExternalServiceAccount.GOOGLE_DRIVE -> false
     }
@@ -796,6 +821,14 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
             primaryActionContainer = Color(0xFFE3F2FD),
             primaryActionTint = Color(0xFF1565C0)
         )
+        ExternalServiceAccount.KUGOU -> ServicePalette(
+            iconContainer = Color(0xFFE3EDFF),
+            iconTint = Color.Unspecified,
+            statusContainer = Color(0xFFD6E4FF),
+            statusTint = Color(0xFF1B4FA8),
+            primaryActionContainer = Color(0xFFD6E4FF),
+            primaryActionTint = Color(0xFF1B4FA8)
+        )
         ExternalServiceAccount.BILIBILI -> ServicePalette(
             iconContainer = Color(0xFFFFF0F4),
             iconTint = Color.Unspecified,
@@ -816,6 +849,7 @@ private fun accountIcon(service: ExternalServiceAccount): ImageVector {
         ExternalServiceAccount.NAVIDROME -> Icons.Rounded.CloudQueue
         ExternalServiceAccount.JELLYFIN -> Icons.Rounded.CloudQueue
         ExternalServiceAccount.BILIBILI -> Icons.Rounded.CloudQueue
+        ExternalServiceAccount.KUGOU -> Icons.Rounded.MusicNote
     }
 }
 
@@ -859,6 +893,13 @@ private fun ServiceIcon(service: ExternalServiceAccount, tint: Color, modifier: 
             tint = Color.Unspecified,
             modifier = modifier
         )
+    } else if (service == ExternalServiceAccount.KUGOU) {
+        Icon(
+            painter = painterResource(R.drawable.ic_kugou),
+            contentDescription = null,
+            tint = Color.Unspecified,
+            modifier = modifier
+        )
     } else {
         Icon(
             imageVector = accountIcon(service),
@@ -879,6 +920,7 @@ private fun serviceDisplayName(service: ExternalServiceAccount): String {
         ExternalServiceAccount.NAVIDROME -> stringResource(R.string.cd_subsonic_logo)
         ExternalServiceAccount.JELLYFIN -> stringResource(R.string.auth_jellyfin_title)
         ExternalServiceAccount.BILIBILI -> "Bilibili"
+        ExternalServiceAccount.KUGOU -> "酷狗音乐"
     }
 }
 
@@ -942,7 +984,8 @@ private fun openService(
             }
         }
         // B 站登录打开独立界面（BilibiliLoginActivity，对齐 Telegram/Netease）
-        ExternalServiceAccount.BILIBILI -> {
+        ExternalServiceAccount.KUGOU -> Unit
+ExternalServiceAccount.BILIBILI -> {
             safeStartActivity(
                 context = context,
                 intent = Intent(context, BilibiliLoginActivity::class.java)

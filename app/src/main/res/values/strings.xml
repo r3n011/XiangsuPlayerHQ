@@ -225,6 +225,7 @@
     <string name="lx_cancel">Cancel</string>
     <string name="lx_ok">OK</string>
     <string name="lx_info_title">JS engine info</string>
+    <string name="lx_export_js">Export JS sources</string>
     <string name="autoeq_manage">Manage AutoEQ</string>
     <string name="autoeq_configure_desc">Configure your audio devices with optimized AutoEQ profiles for the best listening experience.</string>
     <string name="autoeq_no_devices">No devices configured</string>

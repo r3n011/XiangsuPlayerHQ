@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.screens
-
+import androidx.compose.foundation.layout.BoxWithConstraints
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
+import com.theveloper.pixelplay.presentation.components.FeaturedCarouselSection
+import com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_FEATURED
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 import com.theveloper.pixelplay.presentation.components.CarModeQuickActionsCard
@@ -39,6 +42,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
@@ -58,7 +69,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Surface
@@ -73,6 +83,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,11 +93,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalConfiguration
@@ -169,6 +182,9 @@ import androidx.compose.ui.res.stringResource
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
 
+/** 主页精选轮播最多展示的歌曲数 */
+private const val FEATURED_CAROUSEL_MAX = 12
+
 /**
  * 九边波浪（太阳 / Cookie）形状：绕中心画 9 个交替内外半径的顶点，
  * 形成带锯齿波浪外圈的多边形容器。
@@ -239,6 +255,14 @@ fun HomeScreen(
     // ⚡ 首页顶部留白高度（dp）：设置页「外观 → 主页拼贴」中可调，实时生效
     val homeTopWhitespaceDp by settingsViewModel.homeTopWhitespaceDp.collectAsStateWithLifecycle()
     val isNeteaseLoggedIn by neteaseViewModel.isLoggedIn.collectAsStateWithLifecycle()
+    // ⚡ 酷狗登录状态（Hilt 单例 StateFlow）：发现卡片的私人FM入口、云端串流卡片都要用
+    val kugouRepository = remember(context) {
+        dagger.hilt.android.EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KugouStatusEntryPoint::class.java
+        ).kugouRepository()
+    }
+    val isKugouLoggedIn by kugouRepository.isLoggedInFlow.collectAsStateWithLifecycle()
     val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
     val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
     val isCarModeEnabled by remember(settingsViewModel.uiState) {
@@ -422,7 +446,7 @@ fun HomeScreen(
     // 首页内容卡片顺序（默认顺序；用户自定义顺序里缺失的卡片按默认顺序追加尾部）
     val homeCardOrder by settingsViewModel.homeCardOrder.collectAsStateWithLifecycle()
     val defaultHomeCardOrder = listOf(
-        "ai_recommendation", "daily_mix", "favorite_artists", "recently_played", "stats"
+        "discover", "ai_recommendation", "daily_mix", "favorite_artists", "recently_played", "stats"
     )
     val homeCardsInOrder = remember(homeCardOrder) {
         if (homeCardOrder.isEmpty()) {
@@ -438,6 +462,7 @@ fun HomeScreen(
     val homeCardOrderEntries = remember(homeCardsInOrder) {
         homeCardsInOrder.mapNotNull { cardId ->
             val titleRes = when (cardId) {
+                "discover" -> R.string.nav_bar_discover
                 "ai_recommendation" -> R.string.home_card_ai_recommendation
                 "daily_mix" -> R.string.presentation_batch_g_daily_mix_heading
                 "favorite_artists" -> R.string.home_favorite_artists_title
@@ -447,6 +472,46 @@ fun HomeScreen(
             }
             titleRes?.let { HomeCardOrderEntry(cardId, context.getString(it)) }
         }
+    }
+
+    // ⚡ 卡片显隐：排序弹窗里可对每张卡片开关；隐藏集合里的卡片不渲染
+    val homeCardHiddenCards by settingsViewModel.homeCardHiddenCards.collectAsStateWithLifecycle()
+    val visibleHomeCardsInOrder = remember(homeCardsInOrder, homeCardHiddenCards) {
+        homeCardsInOrder.filter { it !in homeCardHiddenCards }
+    }
+
+    // ⚡ 发现入口（原底部导航栏中间按钮的功能整体移到主页）：
+    //   勾选 1 个目标 → 点击直达；勾选多个 → 弹出选择卡片；全不勾 → 不显示按钮
+    val discoverShowRoaming by settingsViewModel.uiState
+        .map { it.discoverShowRoaming }.distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = true)
+    val discoverShowRadio by settingsViewModel.uiState
+        .map { it.discoverShowRadio }.distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = true)
+    val discoverShowAi by settingsViewModel.uiState
+        .map { it.discoverShowAi }.distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = true)
+    // ⚡ 发现入口做成主页卡片（HomeDiscoverCard）：卡片内直接是漫游/电台/AI 三个入口，
+    //    不再需要"单目标直达/多目标弹选择"的转发逻辑与顶部按钮
+    // ⚡ 发现卡片里还有"心动模式/相似歌曲/听歌识曲"三个固定入口，
+    //    所以它不再由旧的三个开关决定显隐（要隐藏走「自定义首页」的卡片显隐）
+    val neteaseLoginToast = stringResource(R.string.netease_login_required_toast)
+    val kugouLoginToast = stringResource(R.string.kugou_login_required_toast)
+    var showSongRecognitionSheet by remember { mutableStateOf(false) }
+
+    // ⚡ 首次打开提示：还没导入 JS 音源 → 引导去「设置 → 在线音源」导入
+    //    （只提示一次；已经有音源或提示过就不再打扰）
+    var showLxSourcePrompt by remember { mutableStateOf(false) }
+    val lxSourcePromptDismissed = settingsUiState.lxSourcePromptDismissed
+    LaunchedEffect(lxSourcePromptDismissed) {
+        if (lxSourcePromptDismissed) return@LaunchedEffect
+        val hasJs = runCatching {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                LxFileStoreEntryPoint::class.java,
+            ).lxFileStore().hasAnyJs()
+        }.getOrDefault(true)
+        showLxSourcePrompt = !hasJs
     }
 
     // 听力保护
@@ -490,6 +555,239 @@ fun HomeScreen(
     // Drawer state for sidebar
     // 与全屏播放器一致的可靠横屏判断：监听 View 全局布局（旋转/分屏时 View 尺寸必然变化）
     val isLandscape = rememberWindowIsLandscape()
+    // ⚡ 平板横屏（≥600dp）：对齐 Rhythm 平板的「整宽精选 + 左右两列竖向卡片」布局，
+    //    替代横向滚动卡片行；手机横屏仍保留原有横向行。
+    val isWideTabletLayout = isLandscape && LocalConfiguration.current.screenWidthDp >= 600
+
+    /** 卡片当前是否具备渲染条件（数据/开关），双列分组与单列共用。 */
+    fun isHomeCardVisibleNow(cardId: String): Boolean = when (cardId) {
+        "discover" -> !isCarModeEnabled
+        "ai_recommendation" -> isAiRecommendationCardEnabled && !isCarModeEnabled
+        "daily_mix" -> dailyMixSongs.isNotEmpty()
+        "favorite_artists" -> favoriteArtists.isNotEmpty()
+        "recently_played" -> recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow
+        "stats" -> homeStatsOverview != null && !isCarModeEnabled
+        else -> false
+    }
+
+    // 主页顶部样式（拼贴墙 / 精选轮播）：设置 → 外观 → 主页拼贴 → 主页顶部样式
+    val homeTopStyle = settingsUiState.homeTopStyle
+
+    val renderableHomeCards = visibleHomeCardsInOrder.filter { isHomeCardVisibleNow(it) }
+
+    /**
+     * 单张卡片的渲染体（单列 / 平板双列共用；卡片自带左右 16dp 内边距）。
+     *
+     * [cardModifier]：平板双列传入等宽修饰符（`fillMaxWidth`，高度由各卡片内容决定，
+     *   对齐 Rhythm 的平板双列）；单列传默认空值，布局与原来完全相同。
+     * [useTabletCardLayout]：平板双列下按平板卡片布局（与手机横屏横向行一致）。
+     */
+    @Composable
+    fun HomeCardContent(
+        cardId: String,
+        cardModifier: Modifier = Modifier,
+        useTabletCardLayout: Boolean = false,
+    ) {
+        when (cardId) {
+            "discover" -> HomeDiscoverCard(
+                modifier = cardModifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                showRoaming = discoverShowRoaming,
+                showRadio = discoverShowRadio,
+                showAi = discoverShowAi,
+                onRoamingClick = {
+                    if (isNeteaseLoggedIn) {
+                        playerViewModel.startRoamingMode()
+                    } else {
+                        showNeteaseLoginRequiredDialog = true
+                    }
+                },
+                onRadioClick = { navController.navigateSafely(Screen.Radio.route) },
+                onAiClick = { navController.navigateSafely(Screen.AiAssistant.route) },
+                // ⚡ 心动模式 / 相似歌曲都要网易云登录：未登录直接去账户设置（与一起听一致）
+                onHeartModeClick = {
+                    if (isNeteaseLoggedIn) playerViewModel.startHeartMode()
+                    else {
+                        playerViewModel.sendToast(neteaseLoginToast)
+                        navController.navigateSafely(Screen.Accounts.route)
+                    }
+                },
+                onSimilarSongsClick = {
+                    if (isNeteaseLoggedIn) playerViewModel.startSimilarSongsMode()
+                    else {
+                        playerViewModel.sendToast(neteaseLoginToast)
+                        navController.navigateSafely(Screen.Accounts.route)
+                    }
+                },
+                onRecognitionClick = { showSongRecognitionSheet = true },
+                // ⚡ 私人FM 需要酷狗登录：未登录和网易云那几个入口一样，先提示再去账户设置登录
+                onKugouFmClick = {
+                    if (isKugouLoggedIn) {
+                        playerViewModel.startKugouFm()
+                    } else {
+                        playerViewModel.sendToast(kugouLoginToast)
+                        navController.navigateSafely(Screen.Accounts.route)
+                    }
+                }
+            )
+
+            "ai_recommendation" -> AiRecommendationCard(
+                modifier = cardModifier.padding(horizontal = 16.dp),
+                playerViewModel = playerViewModel,
+                recentlyPlayedSongs = recentlyPlayedQueue,
+                isManualOnly = isAiRecommendationManualOnly,
+                onClickOpen = {
+                    navController.navigateSafely(Screen.AiMixScreen.route)
+                }
+            )
+
+            "daily_mix" -> DailyMixSection(
+                modifier = cardModifier.padding(horizontal = 16.dp),
+                songs = dailyMixSongs,
+                onClickOpen = {
+                    navController.navigateSafely(Screen.DailyMixScreen.route)
+                },
+                onNavigateToAlbum = { song ->
+                    navController.navigateSafelyReplacing(
+                        route = Screen.AlbumDetail.createRoute(song.albumId),
+                        patternToPop = Screen.AlbumDetail.route
+                    )
+                },
+                onNavigateToArtist = { song ->
+                    navController.navigateSafelyReplacing(
+                        route = Screen.ArtistDetail.createRoute(song.artistId),
+                        patternToPop = Screen.ArtistDetail.route
+                    )
+                },
+                onNavigateToGenre = { song ->
+                    song.genre?.let {
+                        navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
+                    }
+                },
+                onNavigateToNeteaseArtistHomepage = { neteaseArtistId ->
+                    navController.navigateSafelyReplacing(
+                        route = Screen.ArtistHomepage.createRoute(neteaseArtistId),
+                        patternToPop = Screen.ArtistHomepage.route
+                    )
+                },
+                playerViewModel = playerViewModel
+            )
+
+            "favorite_artists" -> FavoriteArtistsSection(
+                artists = favoriteArtists,
+                onArtistClick = { artist ->
+                    navController.navigateSafely(
+                        Screen.ArtistHomepage.createRoute(artist.id)
+                    )
+                },
+                // 平板双列下补左右内边距，与其它卡片一致；单列保持原有整宽布局
+                modifier = if (useTabletCardLayout) cardModifier.padding(horizontal = 16.dp) else cardModifier,
+                isTabletMode = useTabletCardLayout || LocalConfiguration.current.screenWidthDp >= 600
+            )
+
+            "recently_played" -> RecentlyPlayedSection(
+                songs = recentlyPlayedSongs,
+                onSongClick = { song ->
+                    if (recentlyPlayedQueue.isNotEmpty()) {
+                        playerViewModel.playSongs(
+                            songsToPlay = recentlyPlayedQueue,
+                            startSong = song,
+                            queueName = "Recently Played"
+                        )
+                    }
+                },
+                onOpenAllClick = {
+                    navController.navigateSafely(Screen.RecentlyPlayed.route)
+                },
+                themeStateHolder = playerViewModel.themeStateHolder,
+                currentSongId = currentSong?.id,
+                contentPadding = PaddingValues(start = 8.dp, end = 24.dp),
+                isTabletMode = useTabletCardLayout,
+                modifier = if (useTabletCardLayout) cardModifier.padding(horizontal = 16.dp) else cardModifier
+            )
+
+            "stats" -> StatsOverviewCard(
+                modifier = cardModifier.padding(horizontal = 16.dp),
+                summary = homeStatsOverview ?: return,
+                onClick = { navController.navigateSafely(Screen.Stats.route) }
+            )
+        }
+    }
+
+    /**
+     * 唱片墙卡片（Card 包裹的拼贴墙）：手机横屏横向行与平板双列共用。
+     * 竖屏的整宽大图形态不走这里（保持原样）。
+     */
+    @Composable
+    fun HomeCollageCard(modifier: Modifier = Modifier) {
+        val basePattern = settingsUiState.collagePattern
+        val isAutoRotate = settingsUiState.collageAutoRotate
+        val patterns = remember { CollagePattern.entries }
+        val activePattern = if (isAutoRotate) {
+            var rotationIndex by rememberSaveable { mutableIntStateOf(-1) }
+            LaunchedEffect(Unit) { rotationIndex++ }
+            remember(rotationIndex) {
+                patterns[rotationIndex.coerceAtLeast(0) % patterns.size]
+            }
+        } else {
+            basePattern
+        }
+        Card(
+            modifier = modifier,
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            AlbumArtCollage(
+                modifier = Modifier.fillMaxSize(),
+                songs = yourMixSongs,
+                padding = 8.dp,
+                height = Dp.Unspecified,
+                pattern = activePattern,
+                onSongClick = { song ->
+                    if (usesFallbackHomeMix) {
+                        playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
+                    } else {
+                        playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * 主页顶部精选轮播（逐行移植 Rhythm 的 `ModernFeaturedSection`，见 [FeaturedCarouselSection]）：
+     * 手机是全宽整屏大图（一次翻一页），平板/横屏卡片槽是多浏览布局（两侧露出圆角缩略图），
+     * 两种形态各自 4.5s 自动轮播。
+     */
+    @Composable
+    fun HomeFeaturedCarousel(modifier: Modifier = Modifier, tabletStyle: Boolean = false) {
+        val featured = remember(yourMixSongs) { yourMixSongs.take(FEATURED_CAROUSEL_MAX) }
+        if (featured.isEmpty()) return
+
+        FeaturedCarouselSection(
+            songs = featured,
+            onSongClick = { song ->
+                if (usesFallbackHomeMix) {
+                    playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
+                } else {
+                    playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
+                }
+            },
+            onPlayClick = { song ->
+                if (usesFallbackHomeMix) {
+                    playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
+                } else {
+                    playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
+                }
+            },
+            modifier = modifier,
+            tabletStyle = tabletStyle,
+        )
+    }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val shouldShowCleanInstallDisclaimer =
@@ -598,44 +896,118 @@ fun HomeScreen(
                     }
                 }
 
-                // Collage — on tablet (landscape): shown inside horizontal row below
+                // 顶部区域：拼贴墙（默认）或精选轮播（设置可切换），竖屏整宽展示
                 if (!isLandscape && yourMixSongs.isNotEmpty()) {
                     item(
-                        key = "album_art_collage",
-                        contentType = "album_art_collage"
+                        key = "home_top_showcase",
+                        contentType = "home_top_showcase"
                     ) {
-                        val basePattern = settingsUiState.collagePattern
-                        val isAutoRotate = settingsUiState.collageAutoRotate
-                        val patterns = remember { CollagePattern.entries }
-
-                        val activePattern = if (isAutoRotate) {
-                            var rotationIndex by rememberSaveable { mutableIntStateOf(-1) }
-                            LaunchedEffect(Unit) { rotationIndex++ }
-                            remember(rotationIndex) {
-                                patterns[rotationIndex.coerceAtLeast(0) % patterns.size]
-                            }
+                        if (homeTopStyle == HOME_TOP_STYLE_FEATURED) {
+                            HomeFeaturedCarousel(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(if (isCarModeEnabled) 250.dp else 360.dp)
+                            )
                         } else {
-                            basePattern
-                        }
-
-                        AlbumArtCollage(
-                            modifier = Modifier.fillMaxWidth(),
-                            songs = yourMixSongs,
-                            padding = 16.dp,
-                            height = if (isCarModeEnabled) 250.dp else 400.dp,
-                            pattern = activePattern,
-                            onSongClick = { song ->
-                                if (usesFallbackHomeMix) {
-                                    playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
-                                } else {
-                                    playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
+                            // 原拼贴墙（保持原样）
+                            val basePattern = settingsUiState.collagePattern
+                            val isAutoRotate = settingsUiState.collageAutoRotate
+                            val patterns = remember { CollagePattern.entries }
+                            val activePattern = if (isAutoRotate) {
+                                var rotationIndex by rememberSaveable { mutableIntStateOf(-1) }
+                                LaunchedEffect(Unit) { rotationIndex++ }
+                                remember(rotationIndex) {
+                                    patterns[rotationIndex.coerceAtLeast(0) % patterns.size]
                                 }
+                            } else {
+                                basePattern
                             }
-                        )
+                            AlbumArtCollage(
+                                modifier = Modifier.fillMaxWidth(),
+                                songs = yourMixSongs,
+                                padding = 16.dp,
+                                height = if (isCarModeEnabled) 250.dp else 400.dp,
+                                pattern = activePattern,
+                                onSongClick = { song ->
+                                    if (usesFallbackHomeMix) {
+                                        playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
+                                    } else {
+                                        playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
 
-                if (isLandscape) {
+                if (isWideTabletLayout) {
+                    // ⚡ 平板横屏：对齐 Rhythm 的平板布局 —— 卡片不再横向滚动，
+                    //    而是按奇偶分到左右两列、每列内竖向堆叠；唱片墙作为第一张
+                    //    卡片参与双列排列（不是整宽置顶的大图）。
+                    item(
+                        key = "tablet_two_column_cards",
+                        contentType = "tablet_two_column_cards"
+                    ) {
+                        val tabletCards = buildList {
+                            if (yourMixSongs.isNotEmpty()) add("card_collage")
+                            addAll(renderableHomeCards)
+                        }
+                        val leftCards = tabletCards.filterIndexed { index, _ -> index % 2 == 0 }
+                        val rightCards = tabletCards.filterIndexed { index, _ -> index % 2 == 1 }
+
+                        // ⚡ 平板双列只统一**宽度**（两列等宽），高度各卡片按内容自适应
+                        //    （对齐 Rhythm 的平板双列：列内卡片高度不再强行拉齐成同一高度）
+                        val cardSizeModifier = Modifier.fillMaxWidth()
+                        // 唱片墙 / 精选轮播内部是 fillMaxSize，必须由外层给高度（与竖屏一致）；
+                        // 左右内边距与其它卡片保持一致（原来它是整列宽，比别的卡片宽出一截，
+                        // 视觉上就会显得其它卡片偏窄）
+                        val collageHeight = if (isCarModeEnabled) 250.dp else 360.dp
+
+                        @Composable
+                        fun TabletCard(cardId: String) {
+                            if (cardId == "card_collage") {
+                                val collageModifier = cardSizeModifier
+                                    .height(collageHeight)
+                                    .padding(horizontal = 16.dp)
+                                if (homeTopStyle == HOME_TOP_STYLE_FEATURED) {
+                                    HomeFeaturedCarousel(modifier = collageModifier, tabletStyle = true)
+                                } else {
+                                    HomeCollageCard(modifier = collageModifier)
+                                }
+                            } else {
+                                HomeCardContent(
+                                    cardId = cardId,
+                                    cardModifier = cardSizeModifier,
+                                    useTabletCardLayout = true
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(0.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(24.dp)
+                            ) {
+                                leftCards.forEach { cardId ->
+                                    key("tablet_card_$cardId") { TabletCard(cardId) }
+                                }
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(24.dp)
+                            ) {
+                                rightCards.forEach { cardId ->
+                                    key("tablet_card_$cardId") { TabletCard(cardId) }
+                                }
+                            }
+                        }
+                    }
+                } else if (isLandscape) {
                     item(
                         key = "horizontal_sections_row",
                         contentType = "horizontal_sections_row"
@@ -660,47 +1032,65 @@ fun HomeScreen(
                         ) {
                             if (yourMixSongs.isNotEmpty()) {
                                 item(key = "card_collage", contentType = "card") {
-                                    val basePattern = settingsUiState.collagePattern
-                                    val isAutoRotate = settingsUiState.collageAutoRotate
-                                    val patterns = remember { CollagePattern.entries }
-                                    val activePattern = if (isAutoRotate) {
-                                        var rotationIndex by rememberSaveable { mutableIntStateOf(-1) }
-                                        LaunchedEffect(Unit) { rotationIndex++ }
-                                        remember(rotationIndex) {
-                                            patterns[rotationIndex.coerceAtLeast(0) % patterns.size]
-                                        }
+                                    if (homeTopStyle == HOME_TOP_STYLE_FEATURED) {
+                                        HomeFeaturedCarousel(
+                                            modifier = Modifier
+                                                .width(cardWidth)
+                                                .fillMaxHeight(),
+                                            tabletStyle = true,
+                                        )
                                     } else {
-                                        basePattern
-                                    }
-                                    Card(
-                                        modifier = Modifier.width(cardWidth).fillMaxHeight(),
-                                        shape = RoundedCornerShape(24.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                    ) {
-                                        AlbumArtCollage(
-                                            modifier = Modifier.fillMaxSize(),
-                                            songs = yourMixSongs,
-                                            padding = 8.dp,
-                                            height = Dp.Unspecified,
-                                            pattern = activePattern,
-                                            onSongClick = { song ->
-                                                if (usesFallbackHomeMix) {
-                                                    playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
-                                                } else {
-                                                    playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
-                                                }
-                                            }
+                                        HomeCollageCard(
+                                            modifier = Modifier
+                                                .width(cardWidth)
+                                                .fillMaxHeight()
                                         )
                                     }
                                 }
                             }
 
-                            // 横向行内内容卡片按用户自定义顺序渲染（card_collage 固定首卡）
-                            homeCardsInOrder.forEach { cardId ->
+                            // 横向行内内容卡片按用户自定义顺序渲染（card_collage 固定首卡）；隐藏的卡片不渲染
+                            visibleHomeCardsInOrder.forEach { cardId ->
                                 when (cardId) {
+                                    // ⚡ 发现卡片（漫游/电台/AI 三入口）
+                                    "discover" -> if (!isCarModeEnabled) {
+                                        item(key = "card_discover", contentType = "card") {
+                                            HomeDiscoverCard(
+                                                modifier = Modifier
+                                                    .width(cardWidth)
+                                                    .fillMaxHeight(),
+                                                showRoaming = discoverShowRoaming,
+                                                showRadio = discoverShowRadio,
+                                                showAi = discoverShowAi,
+                                                onRoamingClick = {
+                                                    if (isNeteaseLoggedIn) {
+                                                        playerViewModel.startRoamingMode()
+                                                    } else {
+                                                        showNeteaseLoginRequiredDialog = true
+                                                    }
+                                                },
+                                                onRadioClick = { navController.navigateSafely(Screen.Radio.route) },
+                                                onAiClick = { navController.navigateSafely(Screen.AiAssistant.route) },
+                                                onHeartModeClick = {
+                                                    if (isNeteaseLoggedIn) playerViewModel.startHeartMode()
+                                                    else {
+                                                        playerViewModel.sendToast(neteaseLoginToast)
+                                                        navController.navigateSafely(Screen.Accounts.route)
+                                                    }
+                                                },
+                                                onSimilarSongsClick = {
+                                                    if (isNeteaseLoggedIn) playerViewModel.startSimilarSongsMode()
+                                                    else {
+                                                        playerViewModel.sendToast(neteaseLoginToast)
+                                                        navController.navigateSafely(Screen.Accounts.route)
+                                                    }
+                                                },
+                                                onRecognitionClick = { showSongRecognitionSheet = true },
+                onKugouFmClick = { playerViewModel.startKugouFm() }
+                                            )
+                                        }
+                                    }
+
                                     "ai_recommendation" -> if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
                                         item(key = "card_ai_recommendation", contentType = "card") {
                                             Card(
@@ -830,124 +1220,10 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    // 内容卡片按用户自定义顺序渲染（homeCardsInOrder）
-                    homeCardsInOrder.forEach { cardId ->
-                        when (cardId) {
-                            // AI Recommendation Card - disabled in car mode for performance
-                            "ai_recommendation" -> if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
-                                item(
-                                    key = "ai_recommendation_card",
-                                    contentType = "ai_recommendation_card"
-                                ) {
-                                    AiRecommendationCard(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        playerViewModel = playerViewModel,
-                                        recentlyPlayedSongs = recentlyPlayedQueue,
-                                        isManualOnly = isAiRecommendationManualOnly,
-                                        onClickOpen = {
-                                                navController.navigateSafely(Screen.AiMixScreen.route)
-                                            }
-                                        )
-                                }
-                            }
-
-                            // Daily Mix
-                            "daily_mix" -> if (dailyMixSongs.isNotEmpty()) {
-                                item(
-                                    key = "daily_mix_section",
-                                    contentType = "daily_mix_section"
-                                ) {
-                                    DailyMixSection(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        songs = dailyMixSongs,
-                                        onClickOpen = {
-                                            navController.navigateSafely(Screen.DailyMixScreen.route)
-                                        },
-                                        onNavigateToAlbum = { song ->
-                                            navController.navigateSafelyReplacing(
-                                                route = Screen.AlbumDetail.createRoute(song.albumId),
-                                                patternToPop = Screen.AlbumDetail.route
-                                            )
-                                        },
-                                        onNavigateToArtist = { song ->
-                                            navController.navigateSafelyReplacing(
-                                                route = Screen.ArtistDetail.createRoute(song.artistId),
-                                                patternToPop = Screen.ArtistDetail.route
-                                            )
-                                        },
-                                        onNavigateToGenre = { song ->
-                                            song.genre?.let {
-                                                navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
-                                            }
-                                        },
-                                        onNavigateToNeteaseArtistHomepage = { neteaseArtistId ->
-                                            navController.navigateSafelyReplacing(
-                                                route = Screen.ArtistHomepage.createRoute(neteaseArtistId),
-                                                patternToPop = Screen.ArtistHomepage.route
-                                            )
-                                        },
-                                        playerViewModel = playerViewModel
-                                    )
-                                }
-                            }
-
-                            // ⚡ 收藏的歌手卡片（平板：自动换行上下滑动；手机：横向滑动不变）
-                            "favorite_artists" -> if (favoriteArtists.isNotEmpty()) {
-                                item(
-                                    key = "favorite_artists_section",
-                                    contentType = "favorite_artists_section"
-                                ) {
-                                    FavoriteArtistsSection(
-                                        artists = favoriteArtists,
-                                        onArtistClick = { artist ->
-                                            navController.navigateSafely(
-                                                Screen.ArtistHomepage.createRoute(artist.id)
-                                            )
-                                        },
-                                        isTabletMode = LocalConfiguration.current.screenWidthDp >= 600
-                                    )
-                                }
-                            }
-
-                            "recently_played" -> if (recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
-                                item(
-                                    key = "recently_played_section",
-                                    contentType = "recently_played_section"
-                                ) {
-                                    RecentlyPlayedSection(
-                                        songs = recentlyPlayedSongs,
-                                        onSongClick = { song ->
-                                            if (recentlyPlayedQueue.isNotEmpty()) {
-                                                playerViewModel.playSongs(
-                                                    songsToPlay = recentlyPlayedQueue,
-                                                    startSong = song,
-                                                    queueName = "Recently Played"
-                                                )
-                                            }
-                                        },
-                                        onOpenAllClick = {
-                                            navController.navigateSafely(Screen.RecentlyPlayed.route)
-                                        },
-                                        themeStateHolder = playerViewModel.themeStateHolder,
-                                        currentSongId = currentSong?.id,
-                                        contentPadding = PaddingValues(start = 8.dp, end = 24.dp)
-                                    )
-                                }
-                            }
-
-                            // Stats card - disabled in car mode for performance
-                            "stats" -> if (homeStatsOverview != null && !isCarModeEnabled) {
-                                item(
-                                    key = "listening_stats_preview",
-                                    contentType = "listening_stats_preview"
-                                ) {
-                                    StatsOverviewCard(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        summary = homeStatsOverview,
-                                        onClick = { navController.navigateSafely(Screen.Stats.route) }
-                                    )
-                                }
-                            }
+                    // 内容卡片按用户自定义顺序渲染（隐藏/无数据的卡片不渲染）
+                    renderableHomeCards.forEach { cardId ->
+                        item(key = "home_card_$cardId", contentType = "home_card") {
+                            HomeCardContent(cardId)
                         }
                     }
                 }
@@ -1129,17 +1405,24 @@ fun HomeScreen(
     if (showHomeCardOrderSheet) {
         HomeCardOrderSheet(
             entries = homeCardOrderEntries,
+            hiddenCards = homeCardHiddenCards,
             onReorder = { newOrder ->
                 settingsViewModel.setHomeCardOrder(newOrder)
             },
+            onSaveHidden = { hidden ->
+                settingsViewModel.setHomeCardHiddenCards(hidden)
+            },
             onReset = {
                 settingsViewModel.setHomeCardOrder(emptyList())
+                settingsViewModel.setHomeCardHiddenCards(emptySet())
             },
             onDismiss = { showHomeCardOrderSheet = false }
         )
     }
+
     if (showStreamingProviderSheet) {
         val isNeteaseLoggedIn by neteaseViewModel.isLoggedIn.collectAsStateWithLifecycle()
+        val neteaseLoginRequiredToast = stringResource(R.string.netease_login_required_toast)
         val isQqMusicLoggedIn by qqMusicViewModel.isLoggedIn.collectAsStateWithLifecycle()
         val isNavidromeLoggedIn by navidromeViewModel.isLoggedIn.collectAsStateWithLifecycle()
         val isJellyfinLoggedIn by jellyfinViewModel.isLoggedIn.collectAsStateWithLifecycle()
@@ -1161,11 +1444,48 @@ fun HomeScreen(
             onNavigateToJellyfinDashboard = {
                 navController.navigateSafely(Screen.JellyfinDashboard.route)
             },
+            isKugouLoggedIn = isKugouLoggedIn,
+            onOpenKugouLogin = {
+                context.startActivity(
+                    android.content.Intent(
+                        context,
+                        com.theveloper.pixelplay.presentation.kugou.KugouLoginActivity::class.java
+                    )
+                )
+            },
+            onOpenKugouDashboard = {
+                navController.navigateSafely(Screen.KugouDashboard.route)
+            },
             isListenTogetherActive = togetherState.active,
             listenTogetherSubtitle = togetherState.room?.let { room ->
                 "Room #${room.id} · ${room.users.size}人"
             },
-            onOpenListenTogether = { showTogetherSheet = true }
+            onOpenListenTogether = {
+                // ⚡ 未登录网易云 → 直接去「设置 → 账户」登录（一起听必须登录才能用）
+                if (isNeteaseLoggedIn) {
+                    showTogetherSheet = true
+                } else {
+                    playerViewModel.sendToast(neteaseLoginRequiredToast)
+                    navController.navigateSafely(Screen.Accounts.route)
+                }
+            }
+        )
+    }
+    if (showSongRecognitionSheet) {
+        val recognitionState by playerViewModel.songRecognitionState.collectAsStateWithLifecycle()
+        com.theveloper.pixelplay.presentation.components.SongRecognitionSheet(
+            state = recognitionState,
+            onStartRecognition = { playerViewModel.startSongRecognition() },
+            onDismiss = {
+                showSongRecognitionSheet = false
+                playerViewModel.resetSongRecognition()
+            },
+            onPlaySong = { song ->
+                val songs = (recognitionState as? com.theveloper.pixelplay.presentation.viewmodel.SongRecognitionState.Success)
+                    ?.songs.orEmpty()
+                playerViewModel.playRecognizedSongs(songs, song)
+                showSongRecognitionSheet = false
+            }
         )
     }
     if (showTogetherSheet) {
@@ -1192,18 +1512,18 @@ fun HomeScreen(
         )
     }
     if (showMessagesLoginDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showMessagesLoginDialog = false },
             title = { Text("需要登录网易云") },
-            text = { Text("私信功能需要登录网易云账号后才能使用，是否前往登录？") },
+            text = { Text("私信功能需要登录网易云账号后才能使用，是否前往设置中的账户设置？") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showMessagesLoginDialog = false
-                        navController.navigateSafely(Screen.NeteaseDashboard.route)
+                        navController.navigateSafely(Screen.Accounts.route)
                     }
                 ) {
-                    Text("去登录")
+                    Text("前往账户设置")
                 }
             },
             dismissButton = {
@@ -1214,7 +1534,7 @@ fun HomeScreen(
         )
     }
     if (showNeteaseLoginRequiredDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showNeteaseLoginRequiredDialog = false },
             title = { Text("需要登录网易云") },
             text = { Text("漫游模式需要登录网易云账号后才能使用，是否前往登录？") },
@@ -1222,7 +1542,8 @@ fun HomeScreen(
                 TextButton(
                     onClick = {
                         showNeteaseLoginRequiredDialog = false
-                        navController.navigateSafely(Screen.NeteaseDashboard.route)
+                        // 去「设置 → 账户」登录（原来跳到网易云面板，位置不对）
+                        navController.navigateSafely(Screen.Accounts.route)
                     }
                 ) {
                     Text("去登录")
@@ -1235,6 +1556,38 @@ fun HomeScreen(
             }
         )
     }
+    if (showLxSourcePrompt) {
+        val dismissPrompt: () -> Unit = {
+            showLxSourcePrompt = false
+            settingsViewModel.setLxSourcePromptDismissed(true)
+        }
+        PixelAlertDialog(
+            onDismissRequest = dismissPrompt,
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.Cloud,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+            },
+            title = { Text("还没有导入 JS 音源") },
+            text = {
+                Text("在线搜索、在线播放和音源市场都需要一个 JS 音源脚本。要不要现在去「设置 → 在线音源」导入一个？")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        dismissPrompt()
+                        navController.navigateSafely(Screen.CloudMusicSettings.route)
+                    }
+                ) { Text("去设置") }
+            },
+            dismissButton = {
+                TextButton(onClick = dismissPrompt) { Text("以后再说") }
+            },
+        )
+    }
+
     if (shouldShowCleanInstallDisclaimer) {
         Beta05CleanInstallDisclaimerDialog(
             onDismiss = { dontShowAgain ->
@@ -1612,4 +1965,343 @@ private fun rememberYourMixTitleStyle(): TextStyle {
             lineHeight = 62.sp
         )
     }
+}
+
+
+/** 发现卡片内单个入口的展示数据。 */
+private data class DiscoverEntry(
+    val icon: ImageVector,
+    val labelRes: Int,
+    val containerColor: Color,
+    val contentColor: Color,
+    val onClick: () -> Unit,
+    /** 平台标记（如「网易云」「酷狗」），显示在标题下方 */
+    val badgeRes: Int? = null
+)
+
+/** 卡片高度达到该值时，三个入口改为纵向铺满（手机横屏横向行给的固定高度）。 */
+private val DiscoverFillHeightThreshold = 240.dp
+
+/**
+ * 主页「发现」卡片：漫游 / 电台 / AI 三个功能入口。
+ *
+ * 原底部导航栏中间「发现」按钮的功能整体搬到这里（对齐 Rhythm 把 Discover
+ * 作为主页卡片流一员的做法）：卡片可直接调用三个功能，不再需要顶部按钮。
+ * 卡片本身参与「自定义首页」的排序与显隐（cardId = "discover"）。
+ *
+ * ⚡ 自适应两种形态：
+ * - 手机竖屏（高度自适应）：标题 + 三个入口**横排**，卡片紧凑（与原来一致）；
+ * - 手机横屏横向行（外面给了固定高度）：三个入口**纵向铺满**，不再挤在底部空一大块。
+ *   平板双列改成高度自适应后走上面的紧凑形态。
+ */
+@Composable
+fun HomeDiscoverCard(
+    modifier: Modifier = Modifier,
+    showRoaming: Boolean,
+    showRadio: Boolean,
+    showAi: Boolean,
+    onRoamingClick: () -> Unit,
+    onRadioClick: () -> Unit,
+    onAiClick: () -> Unit,
+    // ⚡ 新增三个入口（心动模式 / 相似歌曲 / 听歌识曲），固定展示
+    onHeartModeClick: () -> Unit = {},
+    onSimilarSongsClick: () -> Unit = {},
+    onRecognitionClick: () -> Unit = {},
+    // ⚡ 酷狗私人FM（移植自 md3Music）
+    onKugouFmClick: () -> Unit = {}
+) {
+    val scheme = MaterialTheme.colorScheme
+    // 三个入口用 M3 的三套容器色：避免三个一模一样的色块挤在一起
+    val entries = buildList {
+        if (showRoaming) add(
+            DiscoverEntry(
+                icon = Icons.Rounded.PlayArrow,
+                labelRes = R.string.setcat_center_nav_roaming,
+                containerColor = scheme.primaryContainer,
+                contentColor = scheme.onPrimaryContainer,
+                onClick = onRoamingClick,
+                // ⚡ 漫游是网易云的功能，标一下平台
+                badgeRes = R.string.source_badge_netease
+            )
+        )
+        if (showRadio) add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Radio,
+                labelRes = R.string.setcat_center_nav_radio,
+                containerColor = scheme.secondaryContainer,
+                contentColor = scheme.onSecondaryContainer,
+                onClick = onRadioClick
+            )
+        )
+        if (showAi) add(
+            DiscoverEntry(
+                icon = Icons.Rounded.AutoAwesome,
+                labelRes = R.string.discover_ai_title,
+                containerColor = scheme.tertiaryContainer,
+                contentColor = scheme.onTertiaryContainer,
+                onClick = onAiClick
+            )
+        )
+        // ⚡ 网易云心动模式：以当前歌曲为种子，"永远接着听"
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Favorite,
+                labelRes = R.string.home_discover_heart_mode,
+                containerColor = scheme.primaryContainer,
+                contentColor = scheme.onPrimaryContainer,
+                onClick = onHeartModeClick
+            )
+        )
+        // ⚡ 相似歌曲：以当前歌曲为种子播一串相似歌
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.LibraryMusic,
+                labelRes = R.string.home_discover_similar_songs,
+                containerColor = scheme.secondaryContainer,
+                contentColor = scheme.onSecondaryContainer,
+                onClick = onSimilarSongsClick
+            )
+        )
+        // ⚡ 酷狗私人FM：匿名可用的「私人推荐」无限流（移植自 md3Music）
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Podcasts,
+                labelRes = R.string.home_discover_kugou_fm,
+                containerColor = scheme.secondaryContainer,
+                contentColor = scheme.onSecondaryContainer,
+                onClick = onKugouFmClick,
+                badgeRes = R.string.source_badge_kugou
+            )
+        )
+        // ⚡ 听歌识曲：录一段外放声音，匹配出歌曲
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Mic,
+                labelRes = R.string.home_discover_recognition,
+                containerColor = scheme.tertiaryContainer,
+                contentColor = scheme.onTertiaryContainer,
+                onClick = onRecognitionClick
+            )
+        )
+    }
+
+    Card(
+        modifier = modifier,
+        // 与其它首页卡片统一：平滑大圆角 + surfaceContainerHigh + 无阴影
+        shape = AbsoluteSmoothCornerShape(28.dp, 60),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp)
+        ) {
+            // 有界且够高 → 纵向铺满；手机竖屏是无限高约束（列表项），保持横排紧凑布局
+            val fillHeight =
+                constraints.hasBoundedHeight && maxHeight >= DiscoverFillHeightThreshold
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 卡片头部：与「统计概览」等卡片同款 —— 圆形主色图标胶囊 + 标题/副标题
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Explore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = stringResource(R.string.nav_bar_discover),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.home_discover_card_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (fillHeight) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        entries.forEach { entry ->
+                            DiscoverActionTile(
+                                entry = entry,
+                                // 整宽且较高 → 横向条目（图标胶囊 + 文字 + 徽标），和设置项/列表行一致
+                                horizontal = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                            )
+                        }
+                    }
+                } else {
+                    // 固定高度下把入口按钮推到卡片底部；高度自适应时该 Spacer 为 0，布局不变
+                    Spacer(Modifier.weight(1f))
+                    // ⚡ 每行 3 个等分：入口变多（6 个）时自动换行，不会挤成一排细条
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        entries.chunked(3).forEach { rowEntries ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                rowEntries.forEach { entry ->
+                                    DiscoverActionTile(
+                                        entry = entry,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                // 补齐空位，避免最后一行只有一个入口时被拉满整行
+                                repeat(3 - rowEntries.size) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 发现卡片内的功能入口：中性底 + 品牌色图标胶囊 + 文字（与全 app 的卡片风格一致）。 */
+@Composable
+private fun DiscoverActionTile(
+    entry: DiscoverEntry,
+    modifier: Modifier = Modifier,
+    /** true = 整宽横向条目（平板/横屏纵向铺满时）；false = 网格里的等分小方块 */
+    horizontal: Boolean = false,
+) {
+    val tileShape = AbsoluteSmoothCornerShape(20.dp, 60)
+    Surface(
+        modifier = modifier
+            .clip(tileShape)
+            .clickable(onClick = entry.onClick),
+        shape = tileShape,
+        // ⚡ 底色不再整块染成 primary/secondary/tertiary：只有图标胶囊保留品牌色，
+        //    卡片整体是中性 surface 色调 —— 之前六块彩色瓷砖和软件其它卡片完全不搭。
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface
+    ) {
+        if (horizontal) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DiscoverEntryIcon(entry)
+                Text(
+                    text = stringResource(entry.labelRes),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                entry.badgeRes?.let { badgeRes -> DiscoverEntryBadge(badgeRes) }
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    // 高度不受限（横排紧凑形态）时 fillMaxSize 对高度不生效 → 仍是内容高度
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    DiscoverEntryIcon(entry)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(entry.labelRes),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                // 平台标记浮在右上角（不占一行，保证所有入口等高等宽）
+                entry.badgeRes?.let { badgeRes ->
+                    Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                        DiscoverEntryBadge(badgeRes)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 入口图标：36dp 平滑圆角胶囊 + 品牌色（整块卡片不再染色）。 */
+@Composable
+private fun DiscoverEntryIcon(entry: DiscoverEntry) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(AbsoluteSmoothCornerShape(12.dp, 60))
+            .background(entry.containerColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = entry.icon,
+            contentDescription = null,
+            tint = entry.contentColor,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+/** 平台徽标（网易云 / 酷狗）：中性小胶囊。 */
+@Composable
+private fun DiscoverEntryBadge(badgeRes: Int) {
+    Surface(
+        shape = AbsoluteSmoothCornerShape(8.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Text(
+            text = stringResource(badgeRes),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            maxLines = 1,
+        )
+    }
+}
+
+
+/** 取 Hilt 单例 [com.theveloper.pixelplay.data.lx.LxFileStore]（首次打开检查有没有 JS 音源用）。 */
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface LxFileStoreEntryPoint {
+    fun lxFileStore(): com.theveloper.pixelplay.data.lx.LxFileStore
+}
+
+/** 取 Hilt 单例 [com.theveloper.pixelplay.data.kugou.KugouRepository]（云端串流卡片显示酷狗登录状态）。 */
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface KugouStatusEntryPoint {
+    fun kugouRepository(): com.theveloper.pixelplay.data.kugou.KugouRepository
 }

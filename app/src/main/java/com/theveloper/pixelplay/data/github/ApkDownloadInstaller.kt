@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,8 @@ import java.util.zip.GZIPInputStream
 class ApkDownloadInstaller {
 
     private companion object {
+        const val TAG = "ApkDownloadInstaller"
+
         const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0"
 
@@ -261,6 +264,66 @@ class ApkDownloadInstaller {
             Timber.e(e, "Failed to start APK install intent")
             false
         }
+    }
+
+    /**
+     * 校验缓存的待安装 APK 是否仍然值得提示安装。
+     *
+     * 逐项检查（任一不过都视为过期缓存，直接删除文件并返回 null）：
+     * 1. 必须能被 [PackageManager.getPackageArchiveInfo] 解析（损坏文件 / HTML 错误页）；
+     * 2. 包名必须与本应用一致（**检测下载下来的包名**，防止把别的包弹给用户）；
+     * 3. 版本必须严格新于当前已安装版本（versionCode 优先，versionName 兜底）——
+     *    用户已通过该包更新过、或缓存里是旧版时，删除缓存，避免「已是最新版
+     *    仍每次启动提示更新」。
+     *
+     * @return 有效时返回原文件；无效时删除缓存文件并返回 null。
+     */
+    fun validatePendingUpdateApk(context: Context, apkFile: File): File? {
+        val archiveInfo = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+        if (archiveInfo == null) {
+            Timber.tag(TAG).w("缓存 APK 无法解析（损坏或非 APK），删除: ${apkFile.name}")
+            apkFile.delete()
+            return null
+        }
+        if (archiveInfo.packageName != context.packageName) {
+            Timber.tag(TAG).w(
+                "缓存 APK 包名不匹配（archive=${archiveInfo.packageName}, current=${context.packageName}），删除"
+            )
+            apkFile.delete()
+            return null
+        }
+        val currentInfo = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }.getOrNull()
+        if (currentInfo == null) {
+            // 连自身包信息都读不到的异常环境，保守起见不弹更新
+            apkFile.delete()
+            return null
+        }
+        val isNewer = if (
+            PackageInfoCompat.getLongVersionCode(archiveInfo) > 0L &&
+            PackageInfoCompat.getLongVersionCode(currentInfo) > 0L
+        ) {
+            PackageInfoCompat.getLongVersionCode(archiveInfo) >
+                PackageInfoCompat.getLongVersionCode(currentInfo)
+        } else {
+            val archiveVersion = parseVersionNumber(archiveInfo.versionName.orEmpty())
+            val currentVersion = parseVersionNumber(currentInfo.versionName.orEmpty())
+            if (archiveVersion != null && currentVersion != null) {
+                compareVersions(archiveVersion, currentVersion) > 0
+            } else {
+                false
+            }
+        }
+        if (!isNewer) {
+            Timber.tag(TAG).i(
+                "缓存 APK 版本（${archiveInfo.versionName}, " +
+                    "code=${PackageInfoCompat.getLongVersionCode(archiveInfo)}）不新于当前已安装版本，删除缓存"
+            )
+            apkFile.delete()
+            return null
+        }
+        return apkFile
     }
 
     sealed class DownloadState {

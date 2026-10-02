@@ -79,7 +79,10 @@ fun ListenTogetherSheet(
     /** 「分享给好友消息」入口：打开好友选择面板，由用户自己挑要发给谁 */
     onInviteFriend: (() -> Unit)? = null,
     /** 网易云官方短链正在联网还原（显示"正在解析链接…"） */
-    resolving: Boolean = false
+    resolving: Boolean = false,
+    /** ⚡ 从播放器入口打开：直接用当前播放队列开房，不需要先选歌单 */
+    startFromCurrentQueue: Boolean = false,
+    onCreateRoomFromCurrentQueue: () -> Unit = {}
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -121,7 +124,9 @@ fun ListenTogetherSheet(
                     resolving = resolving,
                     onCreateRoom = onCreateRoom,
                     onStartRoaming = onStartRoaming,
-                    onJoin = onJoin
+                    onJoin = onJoin,
+                    startFromCurrentQueue = startFromCurrentQueue,
+                    onCreateRoomFromCurrentQueue = onCreateRoomFromCurrentQueue
                 )
             } else {
                 RoomContent(
@@ -165,7 +170,9 @@ private fun IdleContent(
     resolving: Boolean,
     onCreateRoom: (Long) -> Unit,
     onStartRoaming: () -> Unit,
-    onJoin: (String) -> Boolean
+    onJoin: (String) -> Boolean,
+    startFromCurrentQueue: Boolean = false,
+    onCreateRoomFromCurrentQueue: () -> Unit = {}
 ) {
     var selectedPlaylist by remember { mutableStateOf<NeteasePlaylistEntity?>(null) }
     var expanded by remember { mutableStateOf(false) }
@@ -199,7 +206,26 @@ private fun IdleContent(
         title = stringResource(R.string.listen_together_create),
         subtitle = stringResource(R.string.listen_together_create_hint)
     ) {
-        if (playlists.isEmpty()) {
+        if (startFromCurrentQueue) {
+            // ⚡ 播放器入口：不选歌，直接用当前播放队列（仅网易云歌曲）开房
+            Text(
+                text = stringResource(R.string.listen_together_create_from_current_hint),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = GoogleSansRounded,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            ListenTogetherPrimaryButton(
+                text = stringResource(R.string.listen_together_create_from_current),
+                enabled = true,
+                busy = busy,
+                onClick = onCreateRoomFromCurrentQueue
+            )
+
+            Spacer(Modifier.height(8.dp))
+        } else if (playlists.isEmpty()) {
             Text(
                 text = stringResource(R.string.listen_together_open_dashboard),
                 style = MaterialTheme.typography.bodySmall,

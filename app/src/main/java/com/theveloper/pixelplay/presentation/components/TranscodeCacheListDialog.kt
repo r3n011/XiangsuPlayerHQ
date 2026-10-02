@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import androidx.compose.foundation.layout.Arrangement
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,7 +32,7 @@ fun TranscodeCacheListDialog(
     onDelete: (TranscodeCacheManager.TranscodeCacheEntry) -> Unit,
     onClearAll: () -> Unit
 ) {
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(id = R.string.transcode_cache_list_title)) },
         text = {

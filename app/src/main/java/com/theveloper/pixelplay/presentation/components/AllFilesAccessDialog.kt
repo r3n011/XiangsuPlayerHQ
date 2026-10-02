@@ -1,7 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -13,7 +13,7 @@ fun AllFilesAccessDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(id = R.string.all_files_access_title)) },
         text = { Text(text = stringResource(id = R.string.all_files_access_description)) },

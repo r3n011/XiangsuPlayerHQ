@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components.player
 
 import android.annotation.SuppressLint
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
@@ -64,7 +65,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ColorScheme
@@ -115,6 +115,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
@@ -321,6 +322,7 @@ fun FullPlayerContent(
     expansionFractionProvider: () -> Float,
     currentSheetState: PlayerSheetState,
     carouselStyle: String,
+    /** 播放器封面样式：默认（多浏览封面轮播）/ 精选轮播卡片（设置可切换） */
     loadingTweaks: FullPlayerLoadingTweaks,
     isSheetDragGestureActive: Boolean = false,
     playerViewModel: PlayerViewModel, // For stable state like totalDuration and lyrics
@@ -871,6 +873,8 @@ fun FullPlayerContent(
     val onPreviousWithOptimisticCarousel = remember {{ requestSkip(SkipDirection.PREVIOUS); Unit }}
 
     val albumCoverSection: @Composable (Modifier) -> Unit = { modifier ->
+        // ⚡ 播放器封面只用默认轮播：精选轮播卡片样式只保留在主页顶部卡片
+        //    （外观设置里「封面样式」也不再提供精选轮播选项）。
         FullPlayerAlbumCoverSection(
             song = song,
             currentPlaybackQueue = currentPlaybackQueue,
@@ -1061,9 +1065,7 @@ fun FullPlayerContent(
             chipContentColor = playerAccentColor,
             onQueueClick = onSongMetadataQueueClick,
             onArtistClick = onSongMetadataArtistClick,
-            isPlayingProvider = isPlayingProvider,
-            // 竖屏：一起听标签放在歌名上方
-            togetherBadgeAboveTitle = true
+            isPlayingProvider = isPlayingProvider
         )
     }
 
@@ -1421,11 +1423,25 @@ fun FullPlayerContent(
                     !(customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank())
                 ) {
                     song?.albumArtUriString?.let { albumArtUri ->
-                        // ⚡ 按 AMLL core 的做法：网格之上不再叠加任何可读性遮罩，
-                        //    背景完整可见（AMLL 的 background canvas 是纯效果层，不带 scrim）。
                         AppleMusicRotatingBackground(
                             albumArtUri = albumArtUri,
                             modifier = Modifier.fillMaxSize()
+                        )
+                        // ⚡ 可读性遮罩：绚丽背景是高饱和彩色流体，亮部会压低歌名/歌词/控制
+                        //    文字的对比度。叠一层轻微的黑色的垂直渐变（上浅下深）——顶部尽量
+                        //    保留背景观感，歌词与底部控制区适度压暗保证文字可读。
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colorStops = arrayOf(
+                                            0.0f to Color.Black.copy(alpha = 0.08f),
+                                            0.45f to Color.Black.copy(alpha = 0.20f),
+                                            1.0f to Color.Black.copy(alpha = 0.40f)
+                                        )
+                                    )
+                                )
                         )
                     }
                 }
@@ -1454,8 +1470,6 @@ fun FullPlayerContent(
                         downloads.find { it.songId == song.id }
                     }
                     val isOnlineSong = playerViewModel.isOnlineSong(song)
-                    val canShowComment = resolveCommentSongId(song).isNotBlank() ||
-                        !song.resolveBilibiliBvid().isNullOrBlank()
                     // ⚡ 加载状态指示（缓冲/转码）：Expressive 布局与经典样式保持一致
                     val bufferingState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
                     FullPlayerExpressiveContent(
@@ -1740,11 +1754,16 @@ fun FullPlayerContent(
 
     // 一起听面板：与主页共用同一个（Activity 作用域）ViewModel 与进程级协调器
     var showTogetherSheet by remember { mutableStateOf(false) }
+    // ⚡ 一起听需要登录网易云：未登录时点入口直接去「设置 → 账户」登录，
+    //    不再打开一个什么都做不了的面板
+    val isNeteaseLoggedIn by playerViewModel.neteaseLoggedInFlow.collectAsStateWithLifecycle()
+    val neteaseLoginRequiredToast = stringResource(R.string.netease_login_required_toast)
     val listenTogetherViewModel: ListenTogetherViewModel = hiltViewModel()
     val togetherState by listenTogetherViewModel.state.collectAsStateWithLifecycle()
 
     // 分享格式选择（像素播放器格式 / 网易云格式）
     var showShareStyleSheet by remember { mutableStateOf(false) }
+    var showShareToFriendSheet by remember { mutableStateOf(false) }
     val pixelShareSuffix = stringResource(R.string.player_share_via_app)
     fun shareSongText(text: String) {
         runCatching {
@@ -1782,7 +1801,12 @@ fun FullPlayerContent(
             },
             onStartListenTogether = {
                 showPlayerMoreSheet = false
-                showTogetherSheet = true
+                if (isNeteaseLoggedIn) {
+                    showTogetherSheet = true
+                } else {
+                    playerViewModel.sendToast(neteaseLoginRequiredToast)
+                    playerViewModel.requestOpenAccountSettings()
+                }
             },
             onViewArtist = {
                 showPlayerMoreSheet = false
@@ -1865,11 +1889,27 @@ fun FullPlayerContent(
                     )
                 }
             },
+            // ⚡ 分享给网易云好友：把歌曲卡片私信发给好友（仅网易云来源歌曲）
+            onShareToFriend = {
+                showShareStyleSheet = false
+                showShareToFriendSheet = true
+            },
             onShareLocalFile = {
                 showShareStyleSheet = false
                 shareSongFile(song)
             }
         )
+    }
+
+    // ⚡ 分享歌曲给网易云好友：选人面板（复用好友候选 + 发送歌曲卡片私信）
+    if (showShareToFriendSheet) {
+        song.neteaseId?.let { neteaseId ->
+            com.theveloper.pixelplay.presentation.netease.chat.ShareSongToFriendSheet(
+                songId = neteaseId,
+                songTitle = song.title,
+                onDismiss = { showShareToFriendSheet = false }
+            )
+        }
     }
 
     // ⚡ 一起听面板（与主页同一个 ViewModel / 协调器，进程级房间状态共享）
@@ -1891,7 +1931,15 @@ fun FullPlayerContent(
                 showTogetherSheet = false
                 showListenTogetherFriendPicker = true
             },
-            resolving = listenTogetherViewModel.resolvingInvite.collectAsStateWithLifecycle().value
+            resolving = listenTogetherViewModel.resolvingInvite.collectAsStateWithLifecycle().value,
+            // ⚡ 从播放器进入：直接用当前播放队列开房（从正在播放的那首开始），不选歌单
+            startFromCurrentQueue = true,
+            onCreateRoomFromCurrentQueue = {
+                listenTogetherViewModel.createRoomFromCurrentQueue(
+                    songs = currentPlaybackQueue,
+                    startSongId = song.id
+                )
+            }
         )
     }
 
@@ -2423,9 +2471,7 @@ private fun FullPlayerSongMetadataSection(
     chipContentColor: Color,
     onQueueClick: () -> Unit,
     onArtistClick: () -> Unit,
-    isPlayingProvider: () -> Boolean = { true },
-    /** 一起听标签是否显示在歌名上方（竖屏经典样式）；false = 显示在元信息下方 */
-    togetherBadgeAboveTitle: Boolean = false
+    isPlayingProvider: () -> Boolean = { true }
 ) {
     val shouldDelay = loadingTweaks.delayAll || loadingTweaks.delaySongMetadata
 
@@ -2465,22 +2511,15 @@ private fun FullPlayerSongMetadataSection(
             ListenTogetherAvatarRow(
                 state = togetherState,
                 onClick = { showTogetherMembers = true },
+                // ⚡ 挂在歌手行右侧：限制最大宽度，避免把歌手名挤没
+                //   （歌手名在剩余宽度里自动跑马灯，超出部分滚动显示）
+                modifier = Modifier.widthIn(max = 132.dp),
                 containerColor = albumScheme.secondaryContainer.copy(alpha = 0.72f),
                 contentColor = albumScheme.onSecondaryContainer
             )
         }
-        // ⚡ 竖屏经典样式：标签放在歌名上方；横屏 / 平板平行布局保持原位置（元信息下方）
-        if (togetherState.active && togetherBadgeAboveTitle) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                togetherBadge()
-            }
-        }
-
+        // ⚡ 传统播放器（经典竖屏/横屏/平行布局）：一起听标签挂在**歌手行右侧**，
+        //    歌手名过长时会在本行内自动滚动，不再单独占一行（之前竖屏占歌名上方、横屏占元信息下方）。
         SongMetadataDisplaySection(
             modifier = Modifier
                 .padding(start = 0.dp),
@@ -2504,19 +2543,10 @@ private fun FullPlayerSongMetadataSection(
             showQueueButton = isLandscape,
             onClickQueue = onQueueClick,
             onClickArtist = onArtistClick,
-            isPlayingProvider = isPlayingProvider
+            isPlayingProvider = isPlayingProvider,
+            trailingArtistContent = if (togetherState.active) togetherBadge else null
         )
 
-        if (togetherState.active && !togetherBadgeAboveTitle) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                togetherBadge()
-            }
-        }
         if (showTogetherMembers && togetherState.active) {
             ListenTogetherMembersDialog(
                 state = togetherState,
@@ -3290,12 +3320,10 @@ private fun SongMetadataDisplaySection(
     currentQueueSourceName: String,
     modifier: Modifier = Modifier,
     isPlayingProvider: () -> Boolean = { true },
-    isRadioPlayback: Boolean = false
+    isRadioPlayback: Boolean = false,
+    /** 歌手行右侧的附加内容（传统播放器下挂「一起听」标签） */
+    trailingArtistContent: (@Composable () -> Unit)? = null
 ) {
-    // 评论依赖网易云接口（加载/发送）或 B 站接口（加载）：只有网易云/B 站歌曲显示评论按钮
-    val canShowComment = song?.let {
-        resolveCommentSongId(it).isNotBlank() || !it.resolveBilibiliBvid().isNullOrBlank()
-    } ?: false
     Row(
         modifier
             .fillMaxWidth()
@@ -3322,7 +3350,8 @@ private fun SongMetadataDisplaySection(
                 isPlayingProvider = isPlayingProvider,
                 songId = currentSong.id,
                 songNeteaseId = currentSong.neteaseId,
-                songContentUriString = currentSong.contentUriString
+                songContentUriString = currentSong.contentUriString,
+                trailingArtistContent = trailingArtistContent
             )
         }
         
@@ -3464,22 +3493,10 @@ private fun SongMetadataDisplaySection(
                             )
                         }
                     }
-                    if (canShowComment) {
-                        FilledIconButton(
-                            modifier = Modifier
-                                .size(width = 48.dp, height = 48.dp),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = chipColor,
-                                contentColor = chipContentColor
-                            ),
-                            onClick = onClickComment,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.rounded_mode_comment_24),
-                                contentDescription = "Comments"
-                            )
-                        }
-                    }
+                    // ⚡ 评论入口统一收进「省略号 → 歌曲操作菜单」（PlayerMoreSheet）：
+                    //    之前 Expressive 布局已经不再显示评论按钮，但经典竖屏/横屏布局还留着，
+                    //    一起听等场景下这个按钮又冒出来，和整体不一致。这里也不再渲染。
+                    //    需要看评论：点右下角省略号 → 评论。
                     // ⚡ 右下角省略号：查看歌曲信息
                     FilledIconButton(
                         modifier = Modifier
@@ -4187,7 +4204,9 @@ private fun PlayerSongInfo(
     isPlayingProvider: () -> Boolean = { true },
     songId: String? = null,
     songNeteaseId: Long? = null,
-    songContentUriString: String = ""
+    songContentUriString: String = "",
+    /** 歌手行右侧的附加内容（传统播放器下用来挂「一起听」标签） */
+    trailingArtistContent: (@Composable () -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isNavigatingToArtist by remember { mutableStateOf(false) }
@@ -4233,44 +4252,54 @@ private fun PlayerSongInfo(
         )
         Spacer(modifier = Modifier.height(2.dp))
 
+        // ⚡ 歌手行：右侧可以挂「一起听」标签；歌手名过长时在本行宽度内自动滚动
+        //    （AutoScrollingTextOnDemand 检测到溢出会切成跑马灯）
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AutoScrollingTextOnDemand(
+                text = artist,
+                style = artistStyle,
+                gradientEdgeColor = gradientEdgeColor,
+                expansionFractionProvider = expansionFractionProvider,
+                modifier = Modifier
+                    // 占满剩余宽度：点击区域和以前一样覆盖整行，超出部分跑马灯滚动
+                    .weight(1f)
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            if (isNavigatingToArtist) return@combinedClickable
+                            coroutineScope.launch {
+                                isNavigatingToArtist = true
+                                try {
+                                    onClickArtist()
+                                } finally {
+                                    isNavigatingToArtist = false
+                                }
+                            }
+                        },
 
-
-        AutoScrollingTextOnDemand(
-            text = artist,
-            style = artistStyle,
-            gradientEdgeColor = gradientEdgeColor,
-            expansionFractionProvider = expansionFractionProvider,
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
+                    onLongClick = {
                         if (isNavigatingToArtist) return@combinedClickable
                         coroutineScope.launch {
                             isNavigatingToArtist = true
                             try {
-                                onClickArtist()
+                                playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId, songNeteaseId)
                             } finally {
                                 isNavigatingToArtist = false
                             }
                         }
-                    },
-
-                onLongClick = {
-                    if (isNavigatingToArtist) return@combinedClickable
-                    coroutineScope.launch {
-                        isNavigatingToArtist = true
-                        try {
-                            playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId, songNeteaseId)
-                        } finally {
-                            isNavigatingToArtist = false
-                        }
                     }
-                }
-            ),
-            canScroll = isPlayingProvider()
-        )
+                ),
+                canScroll = isPlayingProvider()
+            )
+            if (trailingArtistContent != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                trailingArtistContent()
+            }
+        }
     }
 }
 
@@ -5432,7 +5461,7 @@ private fun ParallelLyricsMoreSheet(
         val hasSynced = !lyrics.synced.isNullOrEmpty()
         val hasPlain = !lyrics.plain.isNullOrEmpty()
 
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showSaveLyricsDialog = false },
             title = { Text(stringResource(R.string.save_lyrics_dialog_title)) },
             text = {

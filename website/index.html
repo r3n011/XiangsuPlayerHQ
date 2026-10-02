@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>像素播放器 · XiangsuPlayer</title>
+<meta name="description" content="一款美观且功能丰富的 Android 音乐播放器 —— Jetpack Compose + Material 3 构建。">
+<link rel="icon" href="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@300;400;600&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   配色取自应用自身的主题色（ui/theme/Color.kt），让网站和应用同源。
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:        #070B12;
+  --surface:   #101827;
+  --surface-2: #162236;
+  --line:      rgba(140,170,220,.14);
+  --line-hi:   rgba(92,156,255,.45);
+  --text:      #E8EEF9;
+  --muted:     #8CA0BF;
+  --faint:     #56688A;
+  --blue:      #5C9CFF;
+  --pink:      #F06292;
+  --orange:    #FF8A65;
+  --cyan:      #4DD0E1;
+
+  --font-cn:  'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono:'Azeret Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --pad: clamp(20px, 5vw, 72px);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html{ scroll-behavior:smooth; }
+
+body{
+  margin:0;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-cn);
+  font-weight:300;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* ── 背景：三团缓慢漂移的色斑，呼应应用里的「绚丽背景」网格渐变 ── */
+.mesh{
+  position:fixed; inset:-30%;
+  z-index:0; pointer-events:none;
+  filter:blur(90px) saturate(140%);
+  opacity:.55;
+}
+.mesh span{
+  position:absolute;
+  border-radius:50%;
+  mix-blend-mode:screen;
+}
+.mesh .b{ width:52vw; height:52vw; background:var(--blue);   top:4%;  left:6%;  animation:drift1 26s ease-in-out infinite; }
+.mesh .p{ width:44vw; height:44vw; background:var(--pink);   top:38%; left:44%; animation:drift2 34s ease-in-out infinite; }
+.mesh .o{ width:38vw; height:38vw; background:var(--orange); top:62%; left:10%; animation:drift3 30s ease-in-out infinite; }
+.mesh .c{ width:30vw; height:30vw; background:var(--cyan);   top:8%;  left:58%; animation:drift2 40s ease-in-out infinite reverse; }
+
+@keyframes drift1{ 0%,100%{transform:translate(0,0) scale(1)}   50%{transform:translate(9vw,7vw) scale(1.15)} }
+@keyframes drift2{ 0%,100%{transform:translate(0,0) scale(1.1)} 50%{transform:translate(-11vw,-6vw) scale(.9)} }
+@keyframes drift3{ 0%,100%{transform:translate(0,0) scale(.95)} 50%{transform:translate(7vw,-9vw) scale(1.2)} }
+
+/* ── 像素点阵：呼应「像素」二字 ── */
+.dots{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background-image:radial-gradient(rgba(255,255,255,.055) 1px, transparent 1px);
+  background-size:22px 22px;
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 0%, #000 20%, transparent 78%);
+}
+
+/* ── 噪点：去掉塑料感 ── */
+.grain{
+  position:fixed; inset:0; z-index:2; pointer-events:none;
+  opacity:.16; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── 页面容器：底部渐隐，让内容从背景里"浮"出来 ── */
+.shell{
+  position:relative; z-index:3;
+  max-width:1180px; margin:0 auto;
+  padding:0 var(--pad);
+}
+
+/* ─────────────────────────── HERO ─────────────────────────── */
+.hero{
+  min-height:100svh;
+  display:flex; flex-direction:column; justify-content:center;
+  padding:clamp(72px,12vh,140px) 0 clamp(48px,8vh,96px);
+}
+
+.eyebrow{
+  display:inline-flex; align-items:center; gap:10px;
+  font-family:var(--font-mono); font-size:11px; font-weight:400;
+  letter-spacing:.22em; text-transform:uppercase; color:var(--faint);
+  margin-bottom:clamp(20px,3vh,34px);
+}
+.eyebrow::before{
+  content:''; width:26px; height:1px; background:var(--line-hi);
+}
+
+h1{
+  margin:0;
+  font-size:clamp(3.1rem,11vw,7.4rem);
+  font-weight:900;
+  line-height:.98;
+  letter-spacing:-.03em;
+  background:linear-gradient(170deg,#FFFFFF 8%,#B8D4F5 48%,#5C9CFF 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+
+/* 标题下的像素方块装饰 */
+.pixels{ display:flex; gap:5px; margin:clamp(18px,3vh,28px) 0; }
+.pixels i{
+  width:9px; height:9px; background:var(--blue); opacity:.9;
+  animation:pixel 2.6s ease-in-out infinite;
+}
+.pixels i:nth-child(2){ background:var(--cyan);  animation-delay:.13s }
+.pixels i:nth-child(3){ background:var(--pink);  animation-delay:.26s }
+.pixels i:nth-child(4){ background:var(--orange);animation-delay:.39s }
+.pixels i:nth-child(5){ background:var(--blue);  animation-delay:.52s }
+@keyframes pixel{ 0%,100%{opacity:.22; transform:translateY(0)} 50%{opacity:1; transform:translateY(-4px)} }
+
+.lede{
+  max-width:46ch;
+  font-size:clamp(.98rem,2.1vw,1.16rem);
+  color:var(--muted); font-weight:300;
+  margin:0 0 clamp(30px,5vh,44px);
+}
+.lede b{ color:var(--text); font-weight:500; }
+
+.cta{ display:flex; flex-wrap:wrap; gap:12px; }
+.btn{
+  display:inline-flex; align-items:center; gap:9px;
+  padding:13px 24px; border-radius:999px;
+  font-family:var(--font-mono); font-size:12.5px; font-weight:600;
+  letter-spacing:.06em; text-decoration:none;
+  transition:transform .25s cubic-bezier(.2,.8,.3,1), box-shadow .25s, background .25s, border-color .25s;
+}
+.btn-main{
+  background:var(--blue); color:#04101F;
+  box-shadow:0 10px 34px -12px var(--blue);
+}
+.btn-main:hover{ transform:translateY(-2px); box-shadow:0 16px 40px -12px var(--blue); }
+.btn-ghost{
+  color:var(--text); border:1px solid var(--line);
+  background:rgba(255,255,255,.02);
+  backdrop-filter:blur(8px);
+}
+.btn-ghost:hover{ border-color:var(--line-hi); transform:translateY(-2px); }
+
+/* 底部的数字条 */
+.stats{
+  display:flex; flex-wrap:wrap; gap:clamp(24px,6vw,64px);
+  margin-top:clamp(40px,7vh,72px);
+  padding-top:clamp(24px,4vh,34px);
+  border-top:1px solid var(--line);
+}
+.stat dt{
+  font-family:var(--font-mono); font-size:clamp(1.5rem,4vw,2.1rem);
+  font-weight:600; color:var(--text); line-height:1;
+}
+.stat dd{
+  margin:7px 0 0; font-size:12px; color:var(--faint);
+  letter-spacing:.1em; font-family:var(--font-mono); text-transform:uppercase;
+}
+
+/* ─────────────────────────── 通用 section ─────────────────────────── */
+section{ padding:clamp(64px,11vh,120px) 0; }
+
+.head{ margin-bottom:clamp(34px,5vh,52px); }
+.head .idx{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.22em;
+  color:var(--blue); display:block; margin-bottom:14px;
+}
+.head h2{
+  margin:0 0 12px;
+  font-size:clamp(1.65rem,4.4vw,2.6rem);
+  font-weight:700; letter-spacing:-.02em; line-height:1.2;
+}
+.head p{ margin:0; color:var(--muted); max-width:52ch; font-size:.96rem; }
+
+/* ── 功能卡片：玻璃态 + 悬停描边亮起 ── */
+.grid{
+  display:grid; gap:1px;
+  grid-template-columns:repeat(auto-fit,minmax(268px,1fr));
+  background:var(--line);
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:hidden;
+}
+.card{
+  position:relative;
+  padding:clamp(24px,3.4vw,34px);
+  background:rgba(16,24,39,.66);
+  backdrop-filter:blur(14px);
+  transition:background .3s;
+}
+.card::after{
+  content:''; position:absolute; inset:0;
+  border:1px solid transparent; border-radius:2px;
+  transition:border-color .3s, box-shadow .3s;
+  pointer-events:none;
+}
+.card:hover{ background:rgba(22,34,54,.82); }
+.card:hover::after{
+  border-color:var(--line-hi);
+  box-shadow:inset 0 0 42px -12px var(--blue);
+}
+.card .n{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.18em;
+  color:var(--faint); display:block; margin-bottom:16px;
+}
+.card h3{
+  margin:0 0 9px; font-size:1.04rem; font-weight:500;
+  letter-spacing:-.01em; color:var(--text);
+}
+.card p{ margin:0; font-size:.875rem; color:var(--muted); line-height:1.7; }
+.card .dot{
+  position:absolute; top:clamp(24px,3.4vw,34px); right:clamp(24px,3.4vw,34px);
+  width:6px; height:6px; border-radius:50%; background:var(--c,var(--blue));
+  opacity:.5; transition:opacity .3s, box-shadow .3s;
+}
+.card:hover .dot{ opacity:1; box-shadow:0 0 12px var(--c,var(--blue)); }
+
+/* ── 音源：横向标签墙 ── */
+.sources{
+  display:flex; flex-wrap:wrap; gap:9px;
+}
+.src{
+  display:inline-flex; align-items:center; gap:9px;
+  padding:10px 17px; border-radius:999px;
+  border:1px solid var(--line);
+  background:rgba(16,24,39,.6);
+  backdrop-filter:blur(10px);
+  font-size:.83rem; color:var(--muted);
+  transition:color .25s, border-color .25s, transform .25s, background .25s;
+}
+.src:hover{ color:var(--text); border-color:var(--line-hi); transform:translateY(-2px); background:rgba(22,34,54,.85); }
+.src i{
+  width:5px; height:5px; border-radius:50%; background:var(--c,var(--blue));
+  box-shadow:0 0 8px var(--c,var(--blue));
+}
+
+/* ── 截图：错落双列 ── */
+.shots{
+  display:grid; gap:clamp(14px,2.6vw,26px);
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+}
+.shot{
+  position:relative; border-radius:16px; overflow:hidden;
+  border:1px solid var(--line);
+  background:var(--surface);
+  transition:transform .4s cubic-bezier(.2,.8,.3,1), border-color .3s;
+}
+.shot:nth-child(2){ margin-top:clamp(0px,4vw,42px); }
+.shot:nth-child(4){ margin-top:clamp(0px,4vw,42px); }
+.shot:hover{ transform:translateY(-6px); border-color:var(--line-hi); }
+.shot img{ display:block; width:100%; height:auto; opacity:.92; }
+.shot figcaption{
+  position:absolute; left:14px; bottom:12px;
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em;
+  color:#fff; text-shadow:0 1px 12px rgba(0,0,0,.9); text-transform:uppercase;
+}
+
+/* ── 页脚 ── */
+footer{
+  border-top:1px solid var(--line);
+  padding:clamp(36px,6vh,60px) 0 clamp(48px,8vh,76px);
+  margin-top:clamp(40px,7vh,80px);
+}
+.foot{
+  display:flex; flex-wrap:wrap; gap:18px;
+  align-items:baseline; justify-content:space-between;
+}
+.foot .brand{ display:flex; align-items:center; gap:12px; }
+.foot .brand img{ width:30px; height:30px; border-radius:8px; }
+.foot .brand span{ font-weight:500; letter-spacing:-.01em; }
+.foot .meta{
+  font-family:var(--font-mono); font-size:11px; color:var(--faint);
+  letter-spacing:.1em;
+}
+.foot .meta a{ color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line); }
+.foot .meta a:hover{ color:var(--blue); border-color:var(--blue); }
+
+/* ── 滚动显现 ── */
+.rise{ opacity:0; transform:translateY(22px); transition:opacity .8s cubic-bezier(.2,.8,.3,1), transform .8s cubic-bezier(.2,.8,.3,1); }
+.rise.in{ opacity:1; transform:none; }
+
+/* ── 首屏编排：逐行上浮 ── */
+.hero>*{ animation:enter .9s cubic-bezier(.2,.8,.3,1) backwards; }
+.hero>*:nth-child(1){ animation-delay:.05s }
+.hero>*:nth-child(2){ animation-delay:.13s }
+.hero>*:nth-child(3){ animation-delay:.21s }
+.hero>*:nth-child(4){ animation-delay:.29s }
+.hero>*:nth-child(5){ animation-delay:.37s }
+.hero>*:nth-child(6){ animation-delay:.45s }
+@keyframes enter{ from{ opacity:0; transform:translateY(26px) } to{ opacity:1; transform:none } }
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  .rise{ opacity:1; transform:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="mesh" aria-hidden="true">
+  <span class="b"></span><span class="p"></span><span class="o"></span><span class="c"></span>
+</div>
+<div class="dots" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="shell">
+
+  <!-- ─────────────── HERO ─────────────── -->
+  <header class="hero">
+    <p class="eyebrow">Android · Jetpack Compose · Material 3</p>
+
+    <h1>像素<br>播放器</h1>
+
+    <div class="pixels" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i>
+    </div>
+
+    <p class="lede">
+      一款<b>美观且功能丰富</b>的 Android 音乐播放器。
+      从 Hi-Res 本地解码到云端流媒体，从逐字歌词到 AI 歌单 ——
+      把专业的音乐体验，装进一个精心打磨的界面。
+    </p>
+
+    <div class="cta">
+      <a class="btn btn-main" href="#features">浏览特性 →</a>
+      <a class="btn btn-ghost" href="#sources">支持的音源</a>
+    </div>
+
+    <dl class="stats">
+      <div class="stat"><dt>8</dt><dd>在库音源</dd></div>
+      <div class="stat"><dt>11</dt><dd>界面语言</dd></div>
+      <div class="stat"><dt>DSD</dt><dd>原生解码</dd></div>
+      <div class="stat"><dt>6</dt><dd>发行构建</dd></div>
+    </dl>
+  </header>
+
+  <!-- ─────────────── 特性 ─────────────── -->
+  <section id="features">
+    <div class="head rise">
+      <span class="idx">01 / FEATURES</span>
+      <h2>不只是播放器</h2>
+      <p>播放、歌词、云端、AI —— 每一块都按能长期每天使用的标准来做。</p>
+    </div>
+
+    <div class="grid rise">
+      <article class="card" style="--c:var(--blue)">
+        <span class="dot"></span><span class="n">01</span>
+        <h3>绚丽背景</h3>
+        <p>对齐 applemusic-like-lyrics 的网格渐变渲染：32×32 封面纹理揉进双三次 Hermite 网格，随时间旋转、跟低频鼓点呼吸。</p>
+      </article>
+
+      <article class="card" style="--c:var(--cyan)">
+        <span class="dot"></span><span class="n">02</span>
+        <h3>高保真解码</h3>
+        <p>Media3 ExoPlayer + FFmpeg，加上经 JNI 接入的 miniaudio。原生播放 DSD64 / DFF，支持外置 USB DAC 与 ReplayGain 音量归一化。</p>
+      </article>
+
+      <article class="card" style="--c:var(--pink)">
+        <span class="dot"></span><span class="n">03</span>
+        <h3>逐字歌词</h3>
+        <p>网易云 / AMLL / LRCLIB 多源可配优先级，日语罗马音按需下载引擎，另有可拖拽、可贴边收起的悬浮歌词。</p>
+      </article>
+
+      <article class="card" style="--c:var(--orange)">
+        <span class="dot"></span><span class="n">04</span>
+        <h3>云端打通</h3>
+        <p>QQ 音乐、网易云、Bilibili、Jellyfin、Navidrome、Telegram、Google Drive —— 统一收敛成同一个媒体库和同一条播放队列。</p>
+      </article>
+
+      <article class="card" style="--c:var(--blue)">
+        <span class="dot"></span><span class="n">05</span>
+        <h3>AI 助手</h3>
+        <p>歌单生成、元数据补全、播放列表质量评分。Gemini、DeepSeek、OpenAI、Groq、OpenRouter 都能接。</p>
+      </article>
+
+      <article class="card" style="--c:var(--cyan)">
+        <span class="dot"></span><span class="n">06</span>
+        <h3>Web 远控</h3>
+        <p>用浏览器控制和查看播放状态、歌词与队列；手机就是音响，电脑就是遥控器。</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ─────────────── 音源 ─────────────── -->
+  <section id="sources">
+    <div class="head rise">
+      <span class="idx">02 / SOURCES</span>
+      <h2>一个界面，收拢所有音乐</h2>
+      <p>本地文件与在线服务并存，搜索、收藏、歌单与下载走同一套交互。</p>
+    </div>
+
+    <div class="sources rise">
+      <span class="src" style="--c:#5C9CFF"><i></i>网易云音乐</span>
+      <span class="src" style="--c:#4DD0E1"><i></i>QQ 音乐</span>
+      <span class="src" style="--c:#F06292"><i></i>Bilibili</span>
+      <span class="src" style="--c:#FF8A65"><i></i>Jellyfin</span>
+      <span class="src" style="--c:#5C9CFF"><i></i>Navidrome</span>
+      <span class="src" style="--c:#4DD0E1"><i></i>Subsonic</span>
+      <span class="src" style="--c:#F06292"><i></i>Telegram</span>
+      <span class="src" style="--c:#FF8A65"><i></i>Google Drive</span>
+      <span class="src" style="--c:#8CA0BF"><i></i>本地媒体库</span>
+      <span class="src" style="--c:#8CA0BF"><i></i>像素音源市场</span>
+    </div>
+  </section>
+
+  <!-- ─────────────── 截图 ─────────────── -->
+  <section id="shots">
+    <div class="head rise">
+      <span class="idx">03 / SCREENS</span>
+      <h2>看一眼</h2>
+    </div>
+
+    <div class="shots rise">
+      <figure class="shot"><img src="../assets/screenshot1.jpg" alt="播放界面" loading="lazy"><figcaption>Now Playing</figcaption></figure>
+      <figure class="shot"><img src="../assets/screenshot2.jpg" alt="歌词界面" loading="lazy"><figcaption>Lyrics</figcaption></figure>
+      <figure class="shot"><img src="../assets/screenshot3.jpg" alt="媒体库" loading="lazy"><figcaption>Library</figcaption></figure>
+      <figure class="shot"><img src="../assets/screenshot4.jpg" alt="设置" loading="lazy"><figcaption>Settings</figcaption></figure>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot">
+      <div class="brand">
+        <img src="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" alt="">
+        <span>像素播放器 · XiangsuPlayer</span>
+      </div>
+      <p class="meta">
+        v1.6.4 (61) · ARM64 / ARM32 / x86_64 · 开源
+      </p>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// 滚动显现：进入视口时错峰上浮
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (!e.isIntersecting) return;
+    e.target.style.transitionDelay = (i * 60) + 'ms';
+    e.target.classList.add('in');
+    io.unobserve(e.target);
+  });
+}, { rootMargin: '0px 0px -12% 0px', threshold: .08 });
+
+document.querySelectorAll('.rise').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>

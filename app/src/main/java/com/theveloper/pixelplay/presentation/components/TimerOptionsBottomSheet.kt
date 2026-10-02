@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import androidx.compose.animation.animateColorAsState
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -410,7 +410,7 @@ fun TimerOptionsBottomSheet(
             is24Hour = true // Consistent with your previous setting (24-hour format)
         )
 
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = {
                 showCustomTimePicker = false // Dismiss the M3 dialog
                 // No need to call onDismiss() for the bottom sheet here,

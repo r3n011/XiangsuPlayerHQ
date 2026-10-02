@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components.autoeq
 
 import android.content.ClipData
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -59,7 +60,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.SpeakerGroup
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -407,7 +407,7 @@ fun DeviceConfigurationBottomSheet(
 
     // Delete Confirmation Dialog
     showDeleteConfirmDialog?.let { device ->
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = null },
             icon = {
                 Icon(
@@ -475,7 +475,7 @@ fun DeviceConfigurationBottomSheet(
 
     // Import Dialog
     if (showImportDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = {
                 showImportDialog = false
                 importText = ""
@@ -649,7 +649,7 @@ fun DeviceConfigurationBottomSheet(
             } else null
         }
 
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showExportDialog = false },
             icon = {
                 Icon(
@@ -974,7 +974,7 @@ private fun AddEditDeviceDialog(
 
     val isEditing = existingDevice != null
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(
@@ -1177,7 +1177,7 @@ private fun DeviceAutoEQSelector(
         result
     }
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             Surface(

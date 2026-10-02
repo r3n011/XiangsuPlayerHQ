@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import android.widget.Toast
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,7 +28,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -272,7 +272,7 @@ fun ArtistWhitelistConfigScreen(
     }
 
     if (showResetDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showResetDialog = false },
             title = { Text(stringResource(R.string.artist_whitelist_reset_dialog_title)) },
             text = { Text(stringResource(R.string.artist_whitelist_reset_dialog_body)) },

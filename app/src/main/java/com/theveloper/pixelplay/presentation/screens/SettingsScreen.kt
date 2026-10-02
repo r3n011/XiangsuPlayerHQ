@@ -450,6 +450,7 @@ private fun getSettingsCategoryTitles(): Map<String, String> {
         SettingsCategory.BACKUP_RESTORE.id to stringResource(R.string.settings_search_category_backup_restore),
         SettingsCategory.DEVELOPER.id to stringResource(R.string.settings_search_category_developer),
         SettingsCategory.EQUALIZER.id to stringResource(R.string.settings_search_category_equalizer),
+        SettingsCategory.USB_EXCLUSIVE.id to stringResource(R.string.settings_category_usb_exclusive_title),
         SettingsCategory.DEVICE_CAPABILITIES.id to stringResource(R.string.settings_search_category_device_capabilities),
         SettingsCategory.GLYPH_MATRIX.id to stringResource(R.string.settings_category_glyph_matrix_title),
         SettingsCategory.UPDATES.id to stringResource(R.string.settings_category_updates_title),
@@ -1428,6 +1429,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.AI_INTEGRATION -> Color(0xFF5B3FA0) to Color(0xFFE8DFFF)
             SettingsCategory.WEB_REMOTE -> Color(0xFF2E7D32) to Color(0xFFC8E6C9)
             SettingsCategory.LIBRARY -> Color(0xFF004A77) to Color(0xFFC2E7FF) 
+            SettingsCategory.USB_EXCLUSIVE -> Color(0xFF4A3000) to Color(0xFFFFDF9E)
             SettingsCategory.APPEARANCE -> Color(0xFF7D5260) to Color(0xFFFFD8E4) 
             SettingsCategory.PLAYBACK -> Color(0xFF633B48) to Color(0xFFFFD8EC) 
             SettingsCategory.BEHAVIOR -> Color(0xFF3E4C63) to Color(0xFFD7E3FF)
@@ -1445,6 +1447,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.AI_INTEGRATION -> Color(0xFFE8DFFF) to Color(0xFF4A2E8A)
             SettingsCategory.WEB_REMOTE -> Color(0xFFC8E6C9) to Color(0xFF1B5E20)
             SettingsCategory.LIBRARY -> Color(0xFFD7E3FF) to Color(0xFF005AC1)
+            SettingsCategory.USB_EXCLUSIVE -> Color(0xFFFFDF9E) to Color(0xFF3D2A00)
             SettingsCategory.APPEARANCE -> Color(0xFFFFD8E4) to Color(0xFF631835)
             SettingsCategory.PLAYBACK -> Color(0xFFFFD8EC) to Color(0xFF631B4B)
             SettingsCategory.BEHAVIOR -> Color(0xFFD7E3FF) to Color(0xFF253347)

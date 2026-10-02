@@ -52,6 +52,12 @@ enum class SettingsCategory(
         subtitleRes = R.string.settings_category_library_subtitle,
         icon = Icons.Rounded.LibraryMusic
     ),
+    USB_EXCLUSIVE(
+        id = "usb_exclusive",
+        titleRes = R.string.settings_category_usb_exclusive_title,
+        subtitleRes = R.string.settings_category_usb_exclusive_subtitle,
+        iconRes = R.drawable.rounded_usb_24
+    ),
     EQUALIZER(
         id = "equalizer",
         titleRes = R.string.settings_category_equalizer_title,

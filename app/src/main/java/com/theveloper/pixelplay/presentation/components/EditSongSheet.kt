@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -278,7 +279,7 @@ private fun EditSongContent(
 
     // --- Diálogo de Información ---
     if (showInfoDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showInfoDialog = false },
             icon = { Icon(Icons.Rounded.Info, contentDescription = stringResource(R.string.cd_info_icon)) },
             title = { Text(stringResource(R.string.edit_song_info_dialog_title)) },

@@ -245,6 +245,7 @@ fun UnifiedPlayerSheetV2(
     val navBarCornerRadius = sanitizeNavBarCornerRadius(playerConfig.navBarCornerRadius)
     val navBarStyle = playerConfig.navBarStyle
     val carouselStyle = playerConfig.carouselStyle
+    // 播放器封面样式（默认轮播 / 精选轮播卡片），设置可切换
     val fullPlayerLoadingTweaks = playerConfig.fullPlayerLoadingTweaks
     val tapBackgroundClosesPlayer = playerConfig.tapBackgroundClosesPlayer
     val useSmoothCorners = playerConfig.useSmoothCorners
@@ -833,10 +834,11 @@ fun UnifiedPlayerSheetV2(
                             onShowCastClicked = castSheetState.openCastSheet,
                             // ⚡ 右下角省略号：复用已有的「队列 + 歌曲信息」宿主
                             //   （selectedSongForInfo 一旦非空，宿主就会渲染 SongInfoBottomSheet，
-                            //    其编辑/分享/收藏/加入歌单等回调早已接好，无需重复接线）
+                            //    其编辑/分享/收藏/加入歌单等回调早已接好，无需重复接线）。
+                            //   「歌曲信息」入口直接落到信息卡片页（initialPage = 1）
                             onShowSongInfo = {
                                 infrequentPlayerState.currentSong?.let { song ->
-                                    sheetActionHandlers.onSelectedSongForInfoChange(song)
+                                    sheetActionHandlers.onShowPlayerSongInfo(song)
                                 }
                             },
                         )
@@ -918,6 +920,7 @@ fun UnifiedPlayerSheetV2(
                 infrequentPlayerState = infrequentPlayerState,
                 playerViewModel = playerViewModel,
                 selectedSongForInfo = selectedSongForInfo,
+                songInfoInitialPage = sheetModalOverlayController.songInfoInitialPage,
                 onSelectedSongForInfoChange = sheetActionHandlers.onSelectedSongForInfoChange,
                 onAnimateQueueSheet = sheetActionHandlers.animateQueueSheet,
                 onBeginQueueDrag = sheetActionHandlers.beginQueueDrag,

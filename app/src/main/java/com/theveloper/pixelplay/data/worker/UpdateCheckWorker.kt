@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
  *
  * 按用户设置的频率（daily / weekly）周期调度，静默检查 GitHub Release；
  * 发现新版本且「后台下载」开启时，自动下载当前 flavor（full / lite）匹配的
- * APK 到缓存目录，由启动时的 [PendingUpdateInstaller] 弹窗提示用户安装。
+ * APK 到缓存目录，由启动时的 AutoUpdatePrompt 弹窗提示用户安装。
  * 「仅 WiFi + 充电」开启时通过 WorkManager 约束保证只在充电且非计费网络下运行。
  */
 class UpdateCheckWorker
@@ -47,6 +47,18 @@ constructor(
 
             val updateChecker = UpdateChecker()
             val apkDownloadInstaller = ApkDownloadInstaller()
+
+            // ⚡ 下载前先校验缓存里已下载的 APK（检测包名与版本）：
+            //   仍是有效的新版本（用户还没装）→ 跳过重复下载省流量；
+            //   已过期（用户已更新过 / 旧版 / 损坏 / 包名不匹配）→ 校验会顺手删除缓存。
+            val cachedApk = java.io.File(applicationContext.cacheDir, "pixelplay_update.apk")
+                .takeIf { it.exists() && it.length() > 1_000_000L }
+            if (cachedApk != null &&
+                apkDownloadInstaller.validatePendingUpdateApk(applicationContext, cachedApk) != null
+            ) {
+                Timber.tag(TAG).i("后台更新：缓存中已有有效的新版本 APK，跳过重复下载")
+                return Result.success()
+            }
 
             val info = updateChecker.checkForUpdates().getOrNull() ?: return Result.success()
             val currentVersionName = runCatching {

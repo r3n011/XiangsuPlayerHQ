@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components.listentogether
 
 import androidx.compose.foundation.background
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -169,7 +169,7 @@ fun ListenTogetherMembersDialog(
 ) {
     val room = state.room ?: return
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.listen_together_title)) },
         text = {

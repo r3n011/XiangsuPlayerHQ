@@ -11,6 +11,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 /**
  * 落雪 userApi JS 文件存储（支持多个 JS 同时保存）。
@@ -31,7 +32,7 @@ class LxFileStore @Inject constructor(
     /** 目录下所有 JS 文件（按文件名排序） */
     fun listFiles(): List<File> =
         dir.listFiles { f -> f.isFile && f.name.endsWith(".js", ignoreCase = true) }
-            ?.sortedBy { it.name.lowercase() }
+            ?.sortedWith(PinyinSortKey.ascending { it.name })
             ?: emptyList()
 
     /** 是否存在任何 JS 文件 */

@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.presentation.components.scoped
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -29,8 +30,17 @@ internal class SheetModalOverlayController(
     var selectedSongForInfo: Song? by mutableStateOf(null)
         private set
 
-    fun updateSelectedSongForInfo(song: Song?) {
+    /**
+     * 歌曲信息卡片打开时落在哪一页（0 = 操作页，1 = 歌曲信息详情页）。
+     * 播放器「⋯」菜单点「歌曲信息」时带 1，直接落到信息卡片；
+     * 队列内歌曲点击等其它入口默认 0（先给操作）。
+     */
+    var songInfoInitialPage: Int by mutableIntStateOf(0)
+        private set
+
+    fun updateSelectedSongForInfo(song: Song?, initialPage: Int = 0) {
         selectedSongForInfo = song
+        songInfoInitialPage = initialPage
     }
 
     fun dismissSaveQueueOverlay() {

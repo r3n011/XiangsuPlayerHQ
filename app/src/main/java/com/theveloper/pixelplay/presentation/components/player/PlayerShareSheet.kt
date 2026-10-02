@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,10 +33,11 @@ import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 /**
  * 分享格式选择（省略号 → 分享）。
  *
- * 提供三种方式：
+ * 提供四种方式：
  *  - 像素播放器格式：歌名 / 歌手 + 应用署名 + `xiangsuplayer://share?d=...` 分享链接
  *    （对方用像素播放器打开即可定位/在线补全这首歌），任何歌曲都能用；
  *  - 网易云格式：《歌名》+ 网易云单曲链接 + @网易云音乐，仅网易云来源歌曲可选；
+ *  - 分享给网易云好友：把歌曲以资源卡片私信发给好友，仅网易云来源歌曲可选；
  *  - 直接分享文件：把本地音频文件本体发给对方，仅本地歌曲可选。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,6 +48,7 @@ fun PlayerShareSheet(
     onDismiss: () -> Unit,
     onSharePixelStyle: () -> Unit,
     onShareNeteaseStyle: () -> Unit,
+    onShareToFriend: () -> Unit = {},
     onShareLocalFile: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -76,6 +79,14 @@ fun PlayerShareSheet(
                 desc = stringResource(R.string.player_share_format_netease_desc),
                 enabled = neteaseAvailable,
                 onClick = onShareNeteaseStyle
+            )
+            // ⚡ 分享给网易云好友：私信发送歌曲卡片（仅网易云来源歌曲）
+            ShareOptionRow(
+                icon = Icons.Rounded.Groups,
+                label = stringResource(R.string.player_share_format_friend),
+                desc = stringResource(R.string.player_share_format_friend_desc),
+                enabled = neteaseAvailable,
+                onClick = onShareToFriend
             )
             ShareOptionRow(
                 icon = Icons.Rounded.Folder,

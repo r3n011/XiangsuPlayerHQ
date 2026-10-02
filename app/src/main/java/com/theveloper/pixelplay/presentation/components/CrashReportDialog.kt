@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import android.content.ClipData
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -21,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +56,7 @@ fun CrashReportDialog(
     val shareSubject = stringResource(R.string.crash_report_share_subject)
     val shareChooserTitle = stringResource(R.string.crash_report_share_chooser)
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(

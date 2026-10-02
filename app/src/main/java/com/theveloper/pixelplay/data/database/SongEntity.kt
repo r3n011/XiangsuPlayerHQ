@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 import com.theveloper.pixelplay.data.model.ArtistRef
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.utils.LocalArtworkUri
+import com.theveloper.pixelplay.utils.PinyinSortKey
 import com.theveloper.pixelplay.utils.normalizeMetadataText
 import com.theveloper.pixelplay.utils.normalizeMetadataTextOrEmpty
 import org.json.JSONArray
@@ -105,7 +106,30 @@ data class SongEntity(
     @ColumnInfo(name = "telegram_file_id") val telegramFileId: Int? = null,
     @ColumnInfo(name = "artists_json") val artistsJson: String? = null,
     @ColumnInfo(name = "source_type", defaultValue = "0") val sourceType: Int = SourceType.LOCAL
-)
+) {
+    /**
+     * 名称的拼音排序键（ICU CollationKey 字节串）。
+     *
+     * 放在类体而不是主构造参数：**不参与 data class 的 equals/hashCode**，
+     * 零改动现有调用方；[init] 在构造时自动补键（几微秒），从数据库读出时
+     * Room 会覆盖为库中存储的值。SQL 侧 `ORDER BY title_sort_key`（BLOB 字节序）
+     * 即拼音顺序，见 PinyinSortKey。
+     */
+    @ColumnInfo(name = "title_sort_key")
+    var titleSortKey: ByteArray? = null
+
+    @ColumnInfo(name = "artist_sort_key")
+    var artistSortKey: ByteArray? = null
+
+    @ColumnInfo(name = "album_sort_key")
+    var albumSortKey: ByteArray? = null
+
+    init {
+        if (titleSortKey == null) titleSortKey = PinyinSortKey.of(title)
+        if (artistSortKey == null) artistSortKey = PinyinSortKey.of(artistName)
+        if (albumSortKey == null) albumSortKey = PinyinSortKey.of(albumName)
+    }
+}
 
 private fun SongEntity.toSongInternal(artists: List<ArtistRef>): Song {
     return Song(

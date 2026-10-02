@@ -8,13 +8,15 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -33,16 +35,19 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlin.math.roundToInt
 import com.theveloper.pixelplay.MainActivity
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
@@ -58,6 +63,7 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -90,13 +96,23 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -106,6 +122,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -122,6 +139,7 @@ import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.SmartImageListTargetSize
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
 import com.theveloper.pixelplay.presentation.components.ToplistHomeSection
+import com.theveloper.pixelplay.presentation.components.library.rememberLibraryListGridCells
 import com.theveloper.pixelplay.presentation.viewmodel.ToplistViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.LxMusicViewModel
@@ -151,8 +169,6 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
@@ -378,6 +394,60 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val searchInputFocusRequester = remember { FocusRequester() }
 
+    // ⚡ 滚动压缩顶部筛选栏：上滑收起「本地/在线 + 筛选标签」一行，下滑或回到顶部自动恢复（模仿媒体库）
+    val searchChromeDensity = LocalDensity.current
+    val searchChromeCollapseThresholdPx = with(searchChromeDensity) { 12.dp.toPx() }
+    var searchChromeCollapsed by remember { mutableStateOf(false) }
+    var searchChromeAccum by remember { mutableStateOf(0f) }
+    val searchChromeConnection = remember(searchChromeCollapseThresholdPx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                val dy = available.y
+                if (dy == 0f) return Offset.Zero
+                if (searchChromeAccum != 0f && (dy > 0f) != (searchChromeAccum > 0f)) {
+                    searchChromeAccum = 0f
+                }
+                searchChromeAccum += dy
+                if (searchChromeAccum <= -searchChromeCollapseThresholdPx) {
+                    searchChromeCollapsed = true
+                    searchChromeAccum = 0f
+                } else if (searchChromeAccum >= searchChromeCollapseThresholdPx) {
+                    searchChromeCollapsed = false
+                    searchChromeAccum = 0f
+                }
+                // 只观察不消费，列表滚动不受影响
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // 下滑方向仍有未被消费的位移 => 列表已到顶（含惯性滑到顶），自动展开
+                if (available.y > 0f && consumed.y == 0f && searchChromeCollapsed) {
+                    searchChromeCollapsed = false
+                    searchChromeAccum = 0f
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    // 高度 / 透明度都改到布局、绘制阶段按 State 解析，避免逐帧重组
+    val searchChromeCollapseProgressState = animateFloatAsState(
+        targetValue = if (searchChromeCollapsed) 1f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "SearchChromeCollapse"
+    )
+    // 清空关键词回到「分类浏览」时顶栏恢复展开
+    LaunchedEffect(searchQuery.isBlank()) {
+        if (searchQuery.isBlank()) {
+            searchChromeCollapsed = false
+            searchChromeAccum = 0f
+        }
+    }
+
     LaunchedEffect(Unit) {
         onSearchBarActiveChange(false)
     }
@@ -441,6 +511,9 @@ fun SearchScreen(
         if (q.isNotBlank()) playerViewModel.onSearchQuerySubmitted(q)
         submittedQuery = q
         submitTick++
+        // 新搜索：展开被滚动收起的筛选栏
+        searchChromeCollapsed = false
+        searchChromeAccum = 0f
         keyboardController?.hide()
     }
 
@@ -492,6 +565,7 @@ fun SearchScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .hazeSource(MainActivity.LocalHazeState.current)
+            .nestedScroll(searchChromeConnection)
     ) {
 
         Column(
@@ -661,10 +735,29 @@ fun SearchScreen(
                             .padding(horizontal = 16.dp)
                     ) {
                         // ⚡ 单排筛选栏：左侧固定「本地 / 在线」切换卡片，右侧为当前分组的可横向滚动筛选按钮
+                        //    上滑时整行压缩收起（模仿媒体库顶栏），下滑 / 回到顶部自动恢复
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                // 淡出在绘制阶段读取 State；高度在布局阶段读取（只触发重布局 / 重绘，不重组）
+                                .graphicsLayer {
+                                    alpha = 1f - searchChromeCollapseProgressState.value
+                                }
+                                .clipToBounds()
+                                .layout { measurable, constraints ->
+                                    val collapse =
+                                        searchChromeCollapseProgressState.value.coerceIn(0f, 1f)
+                                    val placeable = measurable.measure(constraints)
+                                    val collapsedHeight =
+                                        (placeable.height * (1f - collapse)).toInt().coerceAtLeast(0)
+                                    layout(placeable.width, collapsedHeight) {
+                                        // 内容居中裁切，收起过程上下对称
+                                        placeable.place(0, -((placeable.height - collapsedHeight) / 2))
+                                    }
+                                }
+                                // ⚡ 左侧与搜索框（24dp）对齐；顶部 12dp + 底部 6dp，
+                                //    与下方子分类栏的 6dp 相加 = 12dp，两处行距一致
+                                .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -1200,9 +1293,11 @@ fun SearchHistoryList(
                 }
             }
         }
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = rememberLibraryListGridCells(),
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(
                 top = 8.dp,
                 bottom = MiniPlayerHeight + systemBarPaddingBottom
@@ -1373,7 +1468,8 @@ fun SearchResultsList(
     val imePadding = WindowInsets.ime.getBottom(localDensity).dp
     val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = rememberLibraryListGridCells(),
         modifier = Modifier
             .fillMaxSize()
             .clip(
@@ -1382,6 +1478,8 @@ fun SearchResultsList(
                     topEnd = 28.dp
                 )
             ),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(
             top = 8.dp,
             bottom = if (imePadding <= 8.dp) (MiniPlayerHeight + systemBarPaddingBottom) else imePadding
@@ -1391,15 +1489,20 @@ fun SearchResultsList(
             val itemsForSection = groupedResults[filterType] ?: emptyList()
 
             if (itemsForSection.isNotEmpty()) {
-                item(key = "header_${filterType.name}") {
+                item(
+                    key = "header_${filterType.name}",
+                    span = { GridItemSpan(maxLineSpan) }
+                ) {
                     SearchResultSectionHeader(
-                        title = when (filterType) {
-                            SearchFilterType.SONGS -> "Songs"
-                            SearchFilterType.ALBUMS -> "Albums"
-                            SearchFilterType.ARTISTS -> "Artists"
-                            SearchFilterType.PLAYLISTS -> "Playlists"
-                            else -> "Results"
-                        }
+                        title = stringResource(
+                            when (filterType) {
+                                SearchFilterType.SONGS -> R.string.search_filter_songs
+                                SearchFilterType.ALBUMS -> R.string.search_filter_albums
+                                SearchFilterType.ARTISTS -> R.string.search_filter_artists
+                                SearchFilterType.PLAYLISTS -> R.string.search_filter_playlists
+                                else -> R.string.search_filter_all
+                            }
+                        )
                     )
                 }
 
@@ -1424,7 +1527,7 @@ fun SearchResultsList(
                     }
                 ) { index ->
                     val item = itemsForSection[index]
-                    Box(modifier = Modifier.padding(bottom = 12.dp)) {
+                    Box {
                         when (item) {
                             is SearchResultItem.SongItem -> {
                                 EnhancedSongListItem(
@@ -1778,19 +1881,78 @@ private fun SearchScopeToggle(
     isOnline: Boolean,
     onScopeChange: (Boolean) -> Unit
 ) {
+    val selectedIndex = if (isOnline) 1 else 0
+    val density = LocalDensity.current
+    // ⚡ 选中胶囊滑动动画：记录两个分段各自的 (left, width)，指示器按目标值平移 + 变宽，
+    //    不再是从一个分段"瞬移"到另一个分段。
+    val segmentBounds = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
+    val target = segmentBounds[selectedIndex]
+    val indicatorLeft by animateFloatAsState(
+        targetValue = target?.first ?: 0f,
+        animationSpec = tween(durationMillis = 240),
+        label = "scopeIndicatorLeft"
+    )
+    val indicatorWidth by animateFloatAsState(
+        targetValue = target?.second ?: 0f,
+        animationSpec = tween(durationMillis = 240),
+        label = "scopeIndicatorWidth"
+    )
+
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier.height(32.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .padding(2.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(2.dp)
         ) {
-            SearchScopeSegment(label = "本地", selected = !isOnline) { onScopeChange(false) }
-            SearchScopeSegment(label = "在线", selected = isOnline) { onScopeChange(true) }
+            if (indicatorWidth > 0f) {
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(indicatorLeft.roundToInt(), 0) }
+                        .width(with(density) { indicatorWidth.toDp() })
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxHeight(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SearchScopeSegment(
+                    label = "本地",
+                    selected = selectedIndex == 0,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .onGloballyPositioned { coordinates ->
+                            val left = coordinates.positionInParent().x
+                            val width = coordinates.size.width.toFloat()
+                            val current = segmentBounds[0]
+                            if (current == null || current.first != left || current.second != width) {
+                                segmentBounds[0] = left to width
+                            }
+                        },
+                    onClick = { onScopeChange(false) }
+                )
+                SearchScopeSegment(
+                    label = "在线",
+                    selected = selectedIndex == 1,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .onGloballyPositioned { coordinates ->
+                            val left = coordinates.positionInParent().x
+                            val width = coordinates.size.width.toFloat()
+                            val current = segmentBounds[1]
+                            if (current == null || current.first != left || current.second != width) {
+                                segmentBounds[1] = left to width
+                            }
+                        },
+                    onClick = { onScopeChange(true) }
+                )
+            }
         }
     }
 }
@@ -1799,27 +1961,35 @@ private fun SearchScopeToggle(
 private fun SearchScopeSegment(
     label: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    // 文字颜色跟着指示器一起过渡，避免"胶囊还在滑、字已经变色"
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 200),
+        label = "scopeSegmentContent"
+    )
     Box(
-        modifier = Modifier
-            .fillMaxHeight()
+        modifier = modifier
             .clip(CircleShape)
-            .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSurfaceVariant
+            color = contentColor
         )
     }
 }
 
-@androidx.annotation.OptIn(UnstableApi::class)
+private val SearchChipHeight = 32.dp
+private val SearchChipIconSize = 16.dp
+private val SearchChipIconSpacing = 6.dp
+
 @Composable
 fun SearchFilterChip(
     filterType: SearchFilterType,
@@ -1827,57 +1997,111 @@ fun SearchFilterChip(
     playerViewModel: PlayerViewModel,
     modifier: Modifier = Modifier
 ) {
-    val selected = filterType == currentFilter
-
-    FilterChip(
-        selected = selected,
-        onClick = { playerViewModel.updateSearchFilter(filterType) },
-        label = {
-            Text(
-                when (filterType) {
-                    SearchFilterType.ALL -> stringResource(R.string.search_filter_all)
-                    SearchFilterType.SONGS -> stringResource(R.string.search_filter_songs)
-                    SearchFilterType.ALBUMS -> stringResource(R.string.search_filter_albums)
-                    SearchFilterType.ARTISTS -> stringResource(R.string.search_filter_artists)
-                    SearchFilterType.PLAYLISTS -> stringResource(R.string.search_filter_playlists)
-                    SearchFilterType.ONLINE -> stringResource(R.string.search_filter_online)
-                    SearchFilterType.KUWO_MUSIC -> stringResource(R.string.search_filter_kuwo)
-                    SearchFilterType.BILIBILI_MUSIC -> stringResource(R.string.search_filter_bilibili)
-                    SearchFilterType.LX_MUSIC -> "落雪"
-                    SearchFilterType.AI_SEARCH -> "AI 搜索"
-                }
-            )
+    SearchChip(
+        label = when (filterType) {
+            SearchFilterType.ALL -> stringResource(R.string.search_filter_all)
+            SearchFilterType.SONGS -> stringResource(R.string.search_filter_songs)
+            SearchFilterType.ALBUMS -> stringResource(R.string.search_filter_albums)
+            SearchFilterType.ARTISTS -> stringResource(R.string.search_filter_artists)
+            SearchFilterType.PLAYLISTS -> stringResource(R.string.search_filter_playlists)
+            SearchFilterType.ONLINE -> stringResource(R.string.search_filter_online)
+            SearchFilterType.KUWO_MUSIC -> stringResource(R.string.search_filter_kuwo)
+            SearchFilterType.BILIBILI_MUSIC -> stringResource(R.string.search_filter_bilibili)
+            SearchFilterType.LX_MUSIC -> "落雪"
+            SearchFilterType.AI_SEARCH -> "AI 搜索"
         },
-        modifier = modifier,
-        shape = CircleShape,
-        border = BorderStroke(
-            width = 0.dp,
-            color = Color.Transparent
-        ),
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor =  MaterialTheme.colorScheme.secondaryContainer,
-            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
-         leadingIcon = if (selected) {
-             {
-                 Icon(
-                     painter = painterResource(R.drawable.rounded_check_circle_24),
-                     contentDescription = "Selected",
-                     tint = MaterialTheme.colorScheme.onPrimary,
-                     modifier = Modifier.size(FilterChipDefaults.IconSize)
-                 )
-             }
-         } else {
-             null
-         }
+        selected = filterType == currentFilter,
+        onClick = { playerViewModel.updateSearchFilter(filterType) },
+        modifier = modifier
     )
 }
 
+/**
+ * ⚡ 搜索页二级筛选标签：与左侧「本地 / 在线」切换卡片同一套视觉语言
+ * （未选中 = surfaceContainerHigh，选中 = primary），高度同为 32dp。
+ * 勾选图标用「宽度 + 透明度」动画展开，避免选中瞬间整排标签跳动。
+ */
+@Composable
+private fun SearchChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** 常显的前置图标（歌曲 / 歌手 / 歌单子分类）；为空时只在选中时显示勾选图标。 */
+    leadingIcon: ImageVector? = null,
+) {
+    val colors = MaterialTheme.colorScheme
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) colors.primary else colors.surfaceContainerHigh,
+        animationSpec = tween(durationMillis = 220),
+        label = "SearchChipContainer"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) colors.onPrimary else colors.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 220),
+        label = "SearchChipContent"
+    )
+    // 有固定图标时图标槽常开；否则只在选中时展开勾选图标
+    val showIcon = leadingIcon != null || selected
+    val iconSlotWidth by animateDpAsState(
+        targetValue = if (showIcon) SearchChipIconSize + SearchChipIconSpacing else 0.dp,
+        animationSpec = tween(durationMillis = 220),
+        label = "SearchChipIconSlot"
+    )
+    val iconAlpha by animateFloatAsState(
+        targetValue = if (showIcon) 1f else 0f,
+        animationSpec = tween(durationMillis = 160),
+        label = "SearchChipIconAlpha"
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (showIcon) 1f else 0.8f,
+        animationSpec = tween(durationMillis = 220),
+        label = "SearchChipIconScale"
+    )
+
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = modifier.height(SearchChipHeight)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(iconSlotWidth)
+                    .clipToBounds(),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Icon(
+                    imageVector = leadingIcon ?: Icons.Rounded.Check,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(SearchChipIconSize)
+                        .graphicsLayer {
+                            alpha = iconAlpha
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Clip
+            )
+        }
+    }
+}
+
 /** ⚡ 落雪音源过滤标签：与网易云/酷我/B站同一排，点击后切到落雪模式搜索该音源 */
-@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun LxSourceFilterChip(
     sourceKey: String,
@@ -1885,34 +2109,10 @@ private fun LxSourceFilterChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    FilterChip(
+    SearchChip(
+        label = sourceName,
         selected = selected,
-        onClick = onClick,
-        label = { Text(sourceName) },
-        shape = CircleShape,
-        border = BorderStroke(
-            width = 0.dp,
-            color = Color.Transparent
-        ),
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
-        leadingIcon = if (selected) {
-            {
-                Icon(
-                    painter = painterResource(R.drawable.rounded_check_circle_24),
-                    contentDescription = "Selected",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(FilterChipDefaults.IconSize)
-                )
-            }
-        } else {
-            null
-        }
+        onClick = onClick
     )
 }
 
@@ -2012,7 +2212,7 @@ private fun OnlineSearchResults(
             }
         }
         else -> {
-            val listState = rememberLazyListState()
+            val listState = rememberLazyGridState()
             // ⚡ 监听滚动：当滚动到接近列表底部时触发加载更多
             LaunchedEffect(listState, state.isEnd, state.isLoadingMore, state.results.size) {
                 snapshotFlow {
@@ -2029,10 +2229,12 @@ private fun OnlineSearchResults(
                     .collect { onLoadMore() }
             }
 
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = rememberLibraryListGridCells(),
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(
                     top = 4.dp,
                     bottom = MiniPlayerHeight + systemBarPaddingBottom
@@ -2056,7 +2258,7 @@ private fun OnlineSearchResults(
                     )
                 }
                 // ⚡ 底部状态行：加载中 / 没有更多 / 加载失败（在已有结果时显示）
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     val footerModifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)
@@ -2153,21 +2355,13 @@ private fun OnlineSubTabChip(
     icon: ImageVector,
     onClick: () -> Unit
 ) {
-    FilterChip(
+    // ⚡ 与「本地 / 在线」那一排筛选标签共用 SearchChip：形状、配色、高度、
+    //    图标尺寸完全一致，只有"图标常显（歌曲/歌手/歌单）"这一点不同。
+    SearchChip(
+        label = label,
         selected = selected,
         onClick = onClick,
-        label = { Text(label) },
-        leadingIcon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-        },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+        leadingIcon = icon
     )
 }
 
@@ -2245,7 +2439,7 @@ private fun OnlineArtistResults(
             }
         }
         else -> {
-            val listState = rememberLazyListState()
+            val listState = rememberLazyGridState()
             // ⚡ 监听滚动：当滚动到接近列表底部时触发加载更多
             LaunchedEffect(listState, state.artistIsEnd, state.isLoadingMore, state.artistResults.size) {
                 snapshotFlow {
@@ -2261,10 +2455,12 @@ private fun OnlineArtistResults(
                     .collect { onLoadMore() }
             }
 
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = rememberLibraryListGridCells(),
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(
                     top = 4.dp,
                     bottom = MiniPlayerHeight + systemBarPaddingBottom
@@ -2278,7 +2474,7 @@ private fun OnlineArtistResults(
                     )
                 }
                 // ⚡ 底部状态行
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     val footerModifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)
@@ -2339,12 +2535,25 @@ private fun UnifiedOnlineArtistItem(
     colorScheme: androidx.compose.material3.ColorScheme,
     onClick: () -> Unit
 ) {
+    val itemShape = remember {
+        AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 26.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusTR = 26.dp,
+            smoothnessAsPercentBR = 60,
+            cornerRadiusBR = 26.dp,
+            smoothnessAsPercentBL = 60,
+            cornerRadiusBL = 26.dp,
+            smoothnessAsPercentTL = 60
+        )
+    }
+
     androidx.compose.material3.Surface(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp)),
-        shape = RoundedCornerShape(22.dp),
+            .clip(itemShape),
+        shape = itemShape,
         color = colorScheme.surfaceContainerLow
     ) {
         Row(
@@ -2355,7 +2564,7 @@ private fun UnifiedOnlineArtistItem(
         ) {
             Box(
                 modifier = Modifier
-                    .size(50.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
@@ -2382,17 +2591,18 @@ private fun UnifiedOnlineArtistItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = artist.name,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (artist.alias.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = artist.alias,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -2402,7 +2612,7 @@ private fun UnifiedOnlineArtistItem(
                 imageVector = Icons.Rounded.PlayArrow,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -2471,7 +2681,7 @@ private fun OnlinePlaylistResults(
             }
         }
         else -> {
-            val listState = rememberLazyListState()
+            val listState = rememberLazyGridState()
             LaunchedEffect(listState, state.playlistIsEnd, state.isLoadingMore, state.playlistResults.size) {
                 snapshotFlow {
                     val visibleItemsInfo = listState.layoutInfo.visibleItemsInfo
@@ -2485,10 +2695,12 @@ private fun OnlinePlaylistResults(
                     .collect { onLoadMore() }
             }
 
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = rememberLibraryListGridCells(),
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(
                     top = 4.dp,
                     bottom = MiniPlayerHeight + systemBarPaddingBottom
@@ -2503,7 +2715,7 @@ private fun OnlinePlaylistResults(
                         onClick = { onPlaylistClick(playlist) }
                     )
                 }
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     val footerModifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)
@@ -2571,10 +2783,25 @@ private fun UnifiedOnlinePlaylistItem(
         )
     }
 
+    val itemShape = remember {
+        AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 26.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusTR = 26.dp,
+            smoothnessAsPercentBR = 60,
+            cornerRadiusBR = 26.dp,
+            smoothnessAsPercentBL = 60,
+            cornerRadiusBL = 26.dp,
+            smoothnessAsPercentTL = 60
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(itemShape)
             .clickable(onClick = onClick),
+        shape = itemShape,
         colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow)
     ) {
         Row(
@@ -2584,13 +2811,13 @@ private fun UnifiedOnlinePlaylistItem(
             PlaylistCover(
                 playlist = coverPreview,
                 playlistSongs = emptyList(),
-                size = 48.dp
+                size = 56.dp
             )
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = playlist.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = GoogleSansRounded),
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -2614,16 +2841,16 @@ private fun UnifiedOnlinePlaylistItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (playlist.description.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = playlist.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                // ⚡ 简介行**恒定占位**（没有简介时用一个空格撑起同样一行）：
+                //    之前只有有简介的歌单才多画两行，卡片高度参差不齐（网格里一排高矮不一）。
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = playlist.description.ifBlank { " " },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Spacer(Modifier.width(8.dp))
             // 「保存到本地」：把在线歌单歌曲写入媒体库并创建本地歌单
@@ -2789,7 +3016,7 @@ private fun QQSearchResults(
             }
         }
         else -> {
-            val listState = rememberLazyListState()
+            val listState = rememberLazyGridState()
             LaunchedEffect(listState, state.isEnd, state.isLoadingMore, state.results.size) {
                 snapshotFlow {
                     val layoutInfo = listState.layoutInfo
@@ -2804,10 +3031,12 @@ private fun QQSearchResults(
                     .collect { onLoadMore() }
             }
 
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = rememberLibraryListGridCells(),
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(
                     top = 4.dp,
                     bottom = MiniPlayerHeight + systemBarPaddingBottom
@@ -2831,7 +3060,7 @@ private fun QQSearchResults(
                         onClick = { onPlaySong(song) }
                     )
                 }
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     val footerModifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)
@@ -2965,7 +3194,7 @@ private fun BilibiliSearchResults(
             }
         }
         else -> {
-            val listState = rememberLazyListState()
+            val listState = rememberLazyGridState()
             LaunchedEffect(listState, state.isEnd, state.isLoadingMore, state.results.size) {
                 snapshotFlow {
                     val layoutInfo = listState.layoutInfo
@@ -2980,10 +3209,12 @@ private fun BilibiliSearchResults(
                     .collect { onLoadMore() }
             }
 
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = rememberLibraryListGridCells(),
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(
                     top = 4.dp,
                     bottom = MiniPlayerHeight + systemBarPaddingBottom
@@ -3009,7 +3240,7 @@ private fun BilibiliSearchResults(
                         onClick = { onPlaySong(song) }
                     )
                 }
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     val footerModifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)

@@ -2,6 +2,8 @@
 
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.presentation.stats.displayNameRes
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -62,7 +64,7 @@ fun RecentlyPlayedRangeSelector(
     ) {
         items(StatsTimeRange.entries, key = { it.name }) { range ->
             RecentlyPlayedRangeChip(
-                label = range.displayName,
+                label = stringResource(range.displayNameRes()),
                 selected = selected == range,
                 onClick = { onRangeSelected(range) },
                 modifier = Modifier.animateItem(

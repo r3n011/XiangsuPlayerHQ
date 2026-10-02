@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components.subcomps
 
 import androidx.compose.foundation.background
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -310,7 +311,7 @@ fun LyricsMoreBottomSheet(
             }
 
             if (showResetDialog) {
-                androidx.compose.material3.AlertDialog(
+                com.theveloper.pixelplay.presentation.components.PixelAlertDialog(
                     onDismissRequest = { showResetDialog = false },
                     title = { Text(stringResource(R.string.lyrics_more_dialog_reset_title)) },
                     text = { Text(stringResource(R.string.lyrics_more_dialog_reset_message)) },
@@ -853,7 +854,7 @@ fun LyricsMoreBottomSheet(
     }
 
     if (showFontDeleteHint) {
-        androidx.compose.material3.AlertDialog(
+        com.theveloper.pixelplay.presentation.components.PixelAlertDialog(
             onDismissRequest = {
                 showFontDeleteHint = false
                 scope.launch { hintContext.dataStore.edit { it[booleanPreferencesKey("font_delete_hint_shown")] = true } }

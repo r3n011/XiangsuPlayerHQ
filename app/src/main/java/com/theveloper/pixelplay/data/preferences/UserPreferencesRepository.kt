@@ -97,6 +97,14 @@ enum class TabletPlayerLayout(val storageKey: String) {
     }
 }
 
+/** 主页顶部样式（见 [UserPreferencesRepository.homeTopStyleFlow]） */
+const val HOME_TOP_STYLE_COLLAGE = "collage"
+const val HOME_TOP_STYLE_FEATURED = "featured"
+
+/** 播放器封面样式（见 [UserPreferencesRepository.playerCoverStyleFlow]） */
+const val PLAYER_COVER_STYLE_DEFAULT = "default"
+const val PLAYER_COVER_STYLE_FEATURED = "featured"
+
 /**
  * 全屏播放器样式。
  * - [CLASSIC]：软件现有经典样式（轮播封面 + 三键控制 + 底部功能行）
@@ -222,6 +230,9 @@ class UserPreferencesRepository @Inject constructor(
         val BLOCKED_DIRECTORIES = stringSetPreferencesKey("blocked_directories")
         val INITIAL_SETUP_DONE = booleanPreferencesKey("initial_setup_done")
         val HOME_CARD_ORDER = stringPreferencesKey("home_card_order")
+        val HOME_CARD_HIDDEN = stringSetPreferencesKey("home_card_hidden")
+        val HOME_TOP_STYLE = stringPreferencesKey("home_top_style")
+        val PLAYER_COVER_STYLE = stringPreferencesKey("player_cover_style")
         val PLAYER_THEME_PREFERENCE = stringPreferencesKey("player_theme_preference_v2")
         val ALBUM_ART_PALETTE_STYLE = stringPreferencesKey("album_art_palette_style_v1")
         val APP_THEME_MODE = stringPreferencesKey("app_theme_mode")
@@ -467,6 +478,10 @@ class UserPreferencesRepository @Inject constructor(
         val DISCOVER_SHOW_ROAMING = booleanPreferencesKey("discover_show_roaming")
         val DISCOVER_SHOW_RADIO = booleanPreferencesKey("discover_show_radio")
         val DISCOVER_SHOW_AI = booleanPreferencesKey("discover_show_ai")
+        /** 首次打开时「还没导入 JS 音源」的提示是否已经提示过 */
+        val LX_SOURCE_PROMPT_DISMISSED = booleanPreferencesKey("lx_source_prompt_dismissed")
+        /** 开发者选项：强制使用低版本（软件/位图）模糊，便于在高版本设备上验证 */
+        val FORCE_SOFTWARE_BLUR = booleanPreferencesKey("force_software_blur")
 
         // Glyph Matrix
         val GLYPH_MATRIX_ENABLED = booleanPreferencesKey("glyph_matrix_enabled")
@@ -614,6 +629,15 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setHomeCardOrder(order: List<String>) {
         dataStore.edit { it[PreferencesKeys.HOME_CARD_ORDER] = order.joinToString(",") }
+    }
+
+    // ─── 首页卡片显隐（隐藏卡片的 id 集合；不在集合内 = 显示，新卡片默认显示）───────
+
+    val homeCardHiddenCardsFlow: Flow<Set<String>> =
+        pref { it[PreferencesKeys.HOME_CARD_HIDDEN] ?: emptySet() }
+
+    suspend fun setHomeCardHiddenCards(hidden: Set<String>) {
+        dataStore.edit { it[PreferencesKeys.HOME_CARD_HIDDEN] = hidden }
     }
 
     // ─── Playback ─────────────────────────────────────────────────────────────
@@ -1503,6 +1527,24 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.CAROUSEL_STYLE] = style }
     }
 
+    // ─── 主页顶部样式：拼贴墙（默认）/ 精选轮播（参照 Rhythm Featured）──────────
+
+    val homeTopStyleFlow: Flow<String> =
+        pref { it[PreferencesKeys.HOME_TOP_STYLE] ?: HOME_TOP_STYLE_COLLAGE }
+
+    suspend fun setHomeTopStyle(style: String) {
+        dataStore.edit { it[PreferencesKeys.HOME_TOP_STYLE] = style }
+    }
+
+    // ─── 播放器封面样式：默认（多浏览封面轮播）/ 精选轮播卡片 ──────────────────
+
+    val playerCoverStyleFlow: Flow<String> =
+        pref { it[PreferencesKeys.PLAYER_COVER_STYLE] ?: PLAYER_COVER_STYLE_DEFAULT }
+
+    suspend fun setPlayerCoverStyle(style: String) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_COVER_STYLE] = style }
+    }
+
     // 默认值与 PlayerProgressStyle/WAVY、PlayerThumbStyle/DEFAULT 保持一致
     val playerProgressStyleFlow: Flow<String> =
         pref { it[PreferencesKeys.PLAYER_PROGRESS_STYLE] ?: "WAVY" }
@@ -1669,7 +1711,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     /** 启动动画样式（EMERGE / SCALE / NONE） */
     val startupAnimationStyleFlow: Flow<String> =
-        pref { it[PreferencesKeys.STARTUP_ANIMATION_STYLE] ?: StartupAnimationStyle.EMERGE.name }
+        pref { it[PreferencesKeys.STARTUP_ANIMATION_STYLE] ?: StartupAnimationStyle.DEFAULT.name }
 
     suspend fun setStartupAnimationStyle(style: String) {
         dataStore.edit { it[PreferencesKeys.STARTUP_ANIMATION_STYLE] = style }
@@ -2354,6 +2396,22 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setDiscoverShowAi(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.DISCOVER_SHOW_AI] = enabled }
+    }
+
+    /** 首次打开时「还没导入 JS 音源」的提示是否已经提示过（提示过就不再弹）。 */
+    val lxSourcePromptDismissedFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.LX_SOURCE_PROMPT_DISMISSED] ?: false }
+
+    suspend fun setLxSourcePromptDismissed(dismissed: Boolean) {
+        dataStore.edit { it[PreferencesKeys.LX_SOURCE_PROMPT_DISMISSED] = dismissed }
+    }
+
+    /** 开发者选项：强制低版本模糊（高版本设备上测试用）。 */
+    val forceSoftwareBlurFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FORCE_SOFTWARE_BLUR] ?: false }
+
+    suspend fun setForceSoftwareBlur(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FORCE_SOFTWARE_BLUR] = enabled }
     }
 
     // ─── Download Settings ────────────────────────────────────────────────────

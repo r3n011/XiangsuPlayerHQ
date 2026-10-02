@@ -39,7 +39,7 @@ internal const val FLOATING_LYRICS_EDGE_TAB_WIDTH_DP = 30f
  * 软件内的 Material 图标，跟随 App 的深浅色模式。
  *
  * 两种形态：
- * - 正常：胶囊里的 1~3 行歌词 + 可展开的控制条；
+ * - 正常：胶囊里的 1~3 行歌词 + 可展开的控制条（控制条在歌词**下方**，含关闭按钮）；
  * - 贴边收起：只剩一个贴着屏幕边缘的小箭头，点它恢复。
  */
 @SuppressLint("ViewConstructor")
@@ -52,6 +52,7 @@ internal class FloatingLyricsView(
     private val onPrevious: () -> Unit,
     private val onPlayPause: () -> Unit,
     private val onNext: () -> Unit,
+    private val onClose: () -> Unit,
     private val onRestoreFromEdge: () -> Unit,
 ) : FrameLayout(context) {
 
@@ -73,6 +74,8 @@ internal class FloatingLyricsView(
         createButton(R.drawable.rounded_play_arrow_24, "播放/暂停", onPlayPause)
     private val nextButton =
         createButton(R.drawable.rounded_skip_next_24, "下一首", onNext)
+    private val closeButton =
+        createButton(R.drawable.rounded_close_24, "关闭悬浮歌词", onClose)
 
     private val controlBar = StrictLinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -80,6 +83,7 @@ internal class FloatingLyricsView(
         addView(previousButton)
         addView(playPauseButton)
         addView(nextButton)
+        addView(closeButton)
     }
 
     /** 展开时在控制条上方显示「歌曲名 · 歌手」，让用户知道自己在控制哪首歌。 */
@@ -99,15 +103,15 @@ internal class FloatingLyricsView(
         addView(controlBar, linearWrapParams())
     }
 
-    /** 正常形态：一层半透明圆角胶囊包住控制区与歌词。 */
+    /** 正常形态：一层半透明圆角胶囊包住歌词与控制区（控制区在歌词**下方**）。 */
     private val lyricsPill = StrictLinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
-        addView(controlsGroup, linearWrapParams())
         addView(prevText, linearWrapParams())
         addView(currentText, linearWrapParams())
         addView(nextText, linearWrapParams())
         addView(emptyText, linearWrapParams())
+        addView(controlsGroup, linearWrapParams())
     }
 
     private val edgeTabIcon = ImageView(context).apply {
@@ -171,21 +175,42 @@ internal class FloatingLyricsView(
         // 背景不透明度可调（0 = 完全透明，只剩文字与描边）
         val pill = withAlpha(pillColor, backgroundAlpha)
         val stroke = withAlpha(strokeColor, alphaOf(strokeColor) * backgroundAlpha)
+        // ⚡ 控制条 / 按钮底衬不跟着「背景不透明度」一起透明到看不见：
+        //    设置里把不透明度调到很低时，按钮仍要能看清（用户反馈「看不到按钮」）。
+        val controlAlpha = backgroundAlpha.coerceAtLeast(MIN_CONTROL_ALPHA)
+        val controlBarColor = if (isDark) DARK_CONTROL_BAR else LIGHT_CONTROL_BAR
 
         lyricsPill.background = GradientDrawable().apply {
             cornerRadius = dp(PILL_CORNER_DP * scale).toFloat()
             setColor(pill)
             setStroke(dp(1f), stroke)
         }
+        // ⚠️ withAlpha 是「替换」透明度而不是叠加：这里必须自己乘上颜色原本的 alpha，
+        //    否则 0x26FFFFFF 会变成 85% 白（而不是 15% 白），控制条直接变成一整块
+        //    白色/黑色底衬，同色的图标（深色主题=浅色图标）就被"吃掉"看不见了。
         controlBar.background = GradientDrawable().apply {
             cornerRadius = dp(50f).toFloat()
-            setColor(withAlpha(if (isDark) DARK_CONTROL_BAR else LIGHT_CONTROL_BAR, backgroundAlpha))
+            setColor(withAlpha(controlBarColor, alphaOf(controlBarColor) * controlAlpha))
         }
 
         listOf(trackText, prevText, currentText, nextText, emptyText)
             .forEach { it.setTextColor(contentColor) }
-        listOf(previousButton, playPauseButton, nextButton).forEach {
-            it.setColorFilter(contentColor)
+        // ⚡ 每个按钮的圆形底衬要**朝图标颜色的反方向**做对比：
+        //    深色主题（浅色图标）把底衬压暗、浅色主题（深色图标）把底衬提亮。
+        //    之前底衬用的是图标色本身（浅色图标 + 浅色底衬），两者明度太接近，
+        //    按钮就和控制条容器糊成一片、图标也发灰看不清。
+        //    另外底衬不透明度有下限，设置里把背景调很透明时按钮依旧清晰。
+        val buttonCircleBase = if (isDark) BUTTON_CIRCLE_DARK else BUTTON_CIRCLE_LIGHT
+        val buttonCircleColor = withAlpha(
+            buttonCircleBase,
+            (BUTTON_CIRCLE_ALPHA * controlAlpha).coerceAtLeast(MIN_BUTTON_CIRCLE_ALPHA)
+        )
+        listOf(previousButton, playPauseButton, nextButton, closeButton).forEach { button ->
+            button.setColorFilter(contentColor)
+            button.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(buttonCircleColor)
+            }
         }
         edgeTab.background = GradientDrawable().apply {
             // 圆角取「胶囊圆角」与「箭头宽度的一半」的较小值：宽度只有 26dp，
@@ -246,14 +271,19 @@ internal class FloatingLyricsView(
 
         val buttonSize = dp(32f * scale)
         val buttonPad = dp(6f * scale)
-        listOf(previousButton, playPauseButton, nextButton).forEach {
+        val buttons = listOf(previousButton, playPauseButton, nextButton, closeButton)
+        buttons.forEachIndexed { index, button ->
             // ⚠️ 按钮的父容器是 LinearLayout(controlBar)，这里必须给 LinearLayout.LayoutParams：
             //    类内部不加前缀的 LayoutParams 解析为 FrameLayout.LayoutParams（本类继承 FrameLayout），
             //    直接 setLayoutParams 不会经过父容器转换，LinearLayout 测量时强转就会 ClassCastException。
-            it.layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
-            it.setPadding(buttonPad, buttonPad, buttonPad, buttonPad)
+            button.layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
+                // ⚡ 按钮之间留出间距：控制条背景和按钮不再挤成一团
+                if (index < buttons.size - 1) marginEnd = dp(8f * scale)
+            }
+            button.setPadding(buttonPad, buttonPad, buttonPad, buttonPad)
         }
-        controlBar.setPadding(dp(4f * scale), dp(2f * scale), dp(4f * scale), dp(2f * scale))
+        // ⚡ 控制条自身内边距放大：背景胶囊与图标之间有呼吸空间，不再「糊」在一起
+        controlBar.setPadding(dp(10f * scale), dp(4f * scale), dp(10f * scale), dp(4f * scale))
         lyricsPill.setPadding(
             dp(16f * scale),
             dp(10f * scale),
@@ -600,16 +630,29 @@ internal class FloatingLyricsView(
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_BACKGROUND_ALPHA = 0.85f
 
+        /** 控制条 / 按钮底衬的最低不透明度：背景再透明也要看得见按钮。 */
+        const val MIN_CONTROL_ALPHA = 0.6f
+
+        /** 按钮圆形底衬的不透明度（会随整体背景不透明度缩放，但不会低于下面的下限）。 */
+        const val BUTTON_CIRCLE_ALPHA = 0.42f
+
+        /** 按钮圆形底衬的不透明度下限：保证图标与底衬始终有足够对比。 */
+        const val MIN_BUTTON_CIRCLE_ALPHA = 0.34f
+
+        /** 按钮圆形底衬：深色主题压暗（配浅色图标），浅色主题提亮（配深色图标）。 */
+        val BUTTON_CIRCLE_DARK = 0xFF000000.toInt()
+        val BUTTON_CIRCLE_LIGHT = 0xFFFFFFFF.toInt()
+
         // 与 M3 surfaceContainerHigh / onSurface / outlineVariant 对齐的深浅两套配色。
         // 用 val 而非 const：0xD9… 这类字面量需要 .toInt()，不是编译期常量表达式。
         val DARK_PILL = 0xD92B2930.toInt()
         val DARK_STROKE = 0x26FFFFFF
         val DARK_CONTENT = 0xFFE6E1E5.toInt()
-        val DARK_CONTROL_BAR = 0x26FFFFFF
+        val DARK_CONTROL_BAR = 0x33FFFFFF
         val LIGHT_PILL = 0xE6ECE6F0.toInt()
         val LIGHT_STROKE = 0x1F000000
         val LIGHT_CONTENT = 0xFF1D1B20.toInt()
-        val LIGHT_CONTROL_BAR = 0x14000000
+        val LIGHT_CONTROL_BAR = 0x1A000000
     }
 }
 

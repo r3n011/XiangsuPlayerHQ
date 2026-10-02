@@ -28,6 +28,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 data class DirectoryEntry(
     val file: File,
@@ -66,7 +67,7 @@ internal fun mergeDirectoryEntryLists(
             }
     }
 
-    return merged.values.sortedWith(compareBy({ it.file.name.lowercase() }))
+    return merged.values.sortedWith(PinyinSortKey.ascending { it.file.name })
 }
 
 private data class MediaStoreDirectoryIndex(
@@ -408,7 +409,7 @@ class FileExplorerStateHolder(
                             canonicalPath = childKey
                         )
                     }
-                    ?.sortedBy { it.file.name.lowercase() }
+                    ?.sortedWith(PinyinSortKey.ascending { it.file.name })
                     ?.toList()
                     ?: emptyList()
             }.getOrElse { emptyList() }
@@ -430,7 +431,7 @@ class FileExplorerStateHolder(
                     canonicalPath = childPath
                 )
             }
-            .sortedWith(compareBy({ it.file.name.lowercase() }))
+            .sortedWith(PinyinSortKey.ascending { it.file.name })
     }
 
     private fun enrichDirectoryEntries(
@@ -455,7 +456,7 @@ class FileExplorerStateHolder(
                             canonicalPath = childPath
                         )
                     }
-                    .sortedWith(compareBy({ it.file.name.lowercase() }))
+                    .sortedWith(PinyinSortKey.ascending { it.file.name })
                 val enrichedEntries = mergeDirectoryEntryLists(
                     filesystemEntries = currentEntries,
                     mediaStoreEntries = mediaStoreEntries

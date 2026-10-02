@@ -75,6 +75,7 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.stats.StatsTimeRange
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
+import com.theveloper.pixelplay.presentation.stats.displayNameRes
 import com.theveloper.pixelplay.presentation.components.RecentlyPlayedRangeSelector
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
 import com.theveloper.pixelplay.presentation.components.SmartImage
@@ -667,7 +668,7 @@ private fun RecentlyPlayedEmptyState(
             Text(
                 text = stringResource(
                     R.string.presentation_batch_b_recent_empty_title,
-                    range.displayName.lowercase()
+                    stringResource(range.displayNameRes())
                 ),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold

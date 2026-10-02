@@ -39,6 +39,21 @@ class ListenTogetherViewModel @Inject constructor(
     fun createRoom(playlistId: Long) = coordinator.startHostRoom(playlistId)
 
     /**
+     * ⚡ 播放器入口开房：直接用当前播放队列（只保留网易云歌曲），并从正在播放的那首开始。
+     *    对齐 MeloX：创建房间不需要先选歌单，房间队列就是本地当前队列。
+     */
+    fun createRoomFromCurrentQueue(
+        songs: List<com.theveloper.pixelplay.data.model.Song>,
+        startSongId: String?,
+    ) {
+        coordinator.startHostRoomWithSongs(
+            songs = songs,
+            failureMessage = "当前播放队列没有可一起听的网易云歌曲",
+            startSongId = startSongId,
+        )
+    }
+
+    /**
      * ⚡ 一起听漫游：以私人 FM/漫游推荐歌曲开房（全网易云歌曲，天然满足门禁）。
      * 结果通过 [state] 的 phase/lastError 反映。
      */

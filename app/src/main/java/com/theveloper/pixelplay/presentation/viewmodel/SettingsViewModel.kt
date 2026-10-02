@@ -155,6 +155,7 @@ data class SettingsUiState(
     val backupValidationErrors: List<ValidationError> = emptyList(),
     val isInspectingBackup: Boolean = false,
     val collagePattern: CollagePattern = CollagePattern.default,
+    val homeTopStyle: String = com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_COLLAGE,
     val collageAutoRotate: Boolean = false,
     val minSongDuration: Int = 10000,
     val minTracksPerAlbum: Int = 1,
@@ -183,6 +184,10 @@ data class SettingsUiState(
     val discoverShowRoaming: Boolean = true,
     val discoverShowRadio: Boolean = true,
     val discoverShowAi: Boolean = true,
+    /** 首次打开时「还没导入 JS 音源」的提示是否已经提示过 */
+    val lxSourcePromptDismissed: Boolean = false,
+    /** 开发者选项：强制低版本（软件）模糊 */
+    val forceSoftwareBlur: Boolean = false,
     val downloadPath: String = Environment.DIRECTORY_MUSIC,
     val transcodeStrategy: UserPreferencesRepository.TranscodeStrategy = UserPreferencesRepository.TranscodeStrategy.STREAMING,
     val transcodeCacheSizeLimitMb: Int = UserPreferencesRepository.DEFAULT_TRANSCODE_CACHE_LIMIT_MB,
@@ -515,9 +520,17 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
+        // ⚠️ 每个偏好流必须各起一个协程：collect 会一直挂起，写在同一个 launch 里
+        //    后面的 collect 永远不会执行（此前 homeTopStyleFlow 就被挡在 collagePatternFlow
+        //    后面，导致「拼贴图案里的精选轮播」选了什么都不会生效）。
         viewModelScope.launch {
             userPreferencesRepository.collagePatternFlow.collect { pattern ->
                 _uiState.update { it.copy(collagePattern = pattern) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.homeTopStyleFlow.collect { style ->
+                _uiState.update { it.copy(homeTopStyle = style) }
             }
         }
 
@@ -961,6 +974,21 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
+        // ⚡ 每个偏好流单独一个协程（collect 会一直挂起，串在同一个 launch 里后面的不会执行）
+        viewModelScope.launch {
+            userPreferencesRepository.lxSourcePromptDismissedFlow.collect { dismissed ->
+                _uiState.update { it.copy(lxSourcePromptDismissed = dismissed) }
+            }
+        }
+
+        // ⚡ 强制低版本模糊：把开关同步到 SoftBlur 的静态标记（歌词/导航栏都读它）
+        viewModelScope.launch {
+            userPreferencesRepository.forceSoftwareBlurFlow.collect { forced ->
+                com.theveloper.pixelplay.presentation.components.SoftBlur.forceSoftwareBlur = forced
+                _uiState.update { it.copy(forceSoftwareBlur = forced) }
+            }
+        }
+
         viewModelScope.launch {
             userPreferencesRepository.transcodeStrategyFlow.collect { strategy ->
                 _uiState.update { it.copy(transcodeStrategy = strategy) }
@@ -1208,6 +1236,10 @@ class SettingsViewModel @Inject constructor(
             paletteStyle = style,
             colorAccuracyLevel = accuracyLevel
         )
+    }
+
+    fun setHomeTopStyle(style: String) {
+        viewModelScope.launch { userPreferencesRepository.setHomeTopStyle(style) }
     }
 
     fun setCollagePattern(pattern: CollagePattern) {
@@ -1645,6 +1677,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setHomeCardOrder(order: List<String>) {
         viewModelScope.launch { userPreferencesRepository.setHomeCardOrder(order) }
+    }
+
+    // 首页卡片显隐（隐藏卡片 id 集合；空 = 全部显示）
+    val homeCardHiddenCards: StateFlow<Set<String>> = userPreferencesRepository.homeCardHiddenCardsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    fun setHomeCardHiddenCards(hidden: Set<String>) {
+        viewModelScope.launch { userPreferencesRepository.setHomeCardHiddenCards(hidden) }
     }
 
     val isLyricsExplanationEnabled: StateFlow<Boolean> = aiPreferencesRepository.isLyricsExplanationEnabled
@@ -2310,6 +2350,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setDiscoverShowAi(enabled: Boolean) {
         viewModelScope.launch { userPreferencesRepository.setDiscoverShowAi(enabled) }
+    }
+
+    fun setLxSourcePromptDismissed(dismissed: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setLxSourcePromptDismissed(dismissed) }
+    }
+
+    fun setForceSoftwareBlur(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setForceSoftwareBlur(enabled) }
     }
 
 }

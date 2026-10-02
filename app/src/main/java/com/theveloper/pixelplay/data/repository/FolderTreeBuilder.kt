@@ -13,6 +13,7 @@ import com.theveloper.pixelplay.utils.StorageUtils
 import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 @Singleton
 class FolderTreeBuilder @Inject constructor() {
@@ -89,7 +90,7 @@ class FolderTreeBuilder @Inject constructor() {
                 )
             }
             .filter { it.totalSongCount > 0 }
-            .sortedBy { it.name.lowercase() }
+            .sortedWith(PinyinSortKey.ascending { it.name })
     }
 
     private fun buildFolderTreeForRoot(
@@ -138,7 +139,7 @@ class FolderTreeBuilder @Inject constructor() {
         return rootFolder.subFolderPaths
             .mapNotNull { path -> buildImmutableFolder(path, folderMap) }
             .filter { it.totalSongCount > 0 }
-            .sortedBy { it.name.lowercase() }
+            .sortedWith(PinyinSortKey.ascending { it.name })
     }
 
     internal fun inferRemovableStorageRoots(
@@ -210,7 +211,7 @@ class FolderTreeBuilder @Inject constructor() {
         // Recursively build subfolders
         val subFolders = temp.subFolderPaths
             .mapNotNull { subPath -> buildImmutableFolder(subPath, map) }
-            .sortedBy { it.name.lowercase() }
+            .sortedWith(PinyinSortKey.ascending { it.name })
             .toImmutableList()
             
         return MusicFolder(
@@ -219,7 +220,7 @@ class FolderTreeBuilder @Inject constructor() {
             songs = temp.songs
                 .sortedWith(
                     compareBy<Song> { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
-                        .thenBy { it.title.lowercase() }
+                        .then(PinyinSortKey.ascending<Song> { it.title })
                 )
                 .toImmutableList(),
             subFolders = subFolders

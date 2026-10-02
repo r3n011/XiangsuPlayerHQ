@@ -48,7 +48,12 @@ object DotScreenRenderer {
         if (albumArt != null) {
             val scaledAlbumArt = Bitmap.createScaledBitmap(albumArt, albumArtSize, albumArtSize, true)
             canvas.drawBitmap(scaledAlbumArt, padding.toFloat(), padding.toFloat(), null)
-            if (!scaledAlbumArt.isRecycled) scaledAlbumArt.recycle()
+            // ⚠️ createScaledBitmap 在目标尺寸与源一致时直接返回源位图本身，
+            //    此时绝不能回收——那是调用方（可能来自 Coil 缓存）的位图，
+            //    回收后其它 AsyncImagePainter 绘制会抛 "recycled bitmap"。
+            if (scaledAlbumArt !== albumArt && !scaledAlbumArt.isRecycled) {
+                scaledAlbumArt.recycle()
+            }
         } else {
             val placeholderPaint = Paint().apply {
                 color = LIGHT_GRAY

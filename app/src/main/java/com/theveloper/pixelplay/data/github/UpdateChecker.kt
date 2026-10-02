@@ -397,7 +397,7 @@ private fun parseApkFileNameVersion(fileName: String): String? {
  * 支持 "v1.2.3"、"1.2.3"、"v1.1.0.4" 等格式。
  * @return 版本号各段列表（如 [1, 2, 3]），无法解析时返回 null
  */
-private fun parseVersionNumber(raw: String): List<Int>? {
+internal fun parseVersionNumber(raw: String): List<Int>? {
     val cleaned = raw.trim().removePrefix("v").removePrefix("V")
     val parts = cleaned.split(".")
     if (parts.isEmpty()) return null
@@ -413,7 +413,7 @@ private fun parseVersionNumber(raw: String): List<Int>? {
  * 语义化版本比较。逐段比较数字，短数组用 0 补齐。
  * @return 正数表示 a 更新，负数表示 b 更新，0 表示相同
  */
-private fun compareVersions(a: List<Int>, b: List<Int>): Int {
+internal fun compareVersions(a: List<Int>, b: List<Int>): Int {
     val maxLen = maxOf(a.size, b.size)
     for (i in 0 until maxLen) {
         val va = a.getOrElse(i) { 0 }

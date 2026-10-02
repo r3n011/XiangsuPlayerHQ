@@ -39,6 +39,16 @@
     <string name="settings_category_developer_title">开发者选项</string>
     <string name="settings_category_developer_subtitle">实验功能与调试</string>
     <string name="settings_category_equalizer_title">均衡器</string>
+    <string name="settings_category_usb_exclusive_title">USB 独占</string>
+    <string name="usb_status_section">设备状态</string>
+    <string name="usb_status_active">独占已激活，音频直通 DAC</string>
+    <string name="usb_status_inactive">独占未激活（走系统混音输出）</string>
+    <string name="usb_status_no_device">未检测到 USB 音频设备，插上 DAC 后会自动发现</string>
+    <string name="usb_status_rescan">重新扫描</string>
+    <string name="usb_status_switch_device">更换设备</string>
+    <string name="usb_status_none_found">没有找到 USB 音频设备</string>
+    <string name="usb_status_found">找到 %1$d 个 USB 音频设备</string>
+    <string name="settings_category_usb_exclusive_subtitle">外接 DAC 直通输出：位深、设备与激活状态</string>
     <string
         name="settings_category_equalizer_subtitle"
     >调整音频频段和预设</string>
@@ -215,7 +225,7 @@
     <string name="setcat_collage_pattern_label">拼贴图案</string>
     <string
         name="setcat_collage_pattern_desc"
-    >为「你的精选辑」拼贴选择形状排列方式。</string>
+    >主页顶部卡片的样式：拼贴图案，或精选轮播（子选项）。</string>
     <string name="setcat_collage_pattern_cosmic_swirl">宇宙漩涡</string>
     <string name="setcat_collage_pattern_honeycomb_groove">蜂巢律动</string>
     <string name="setcat_collage_pattern_vinyl_stack">黑胶堆叠</string>
@@ -515,6 +525,8 @@
     >启动新手引导设置界面以供测试。</string>
     <string name="setcat_maintenance">维护</string>
     <string name="setcat_force_daily_mix_title">强制重新生成每日合辑</string>
+    <string name="setcat_force_software_blur_title">强制低版本模糊（测试）</string>
+    <string name="setcat_force_software_blur_subtitle">在高版本设备上强制使用低版本的软件/位图模糊，用于验证模糊效果是否正常</string>
     <string
         name="setcat_force_daily_mix_subtitle"
     >立即重新创建每日合辑播放列表。</string>
@@ -781,6 +793,14 @@
     <string name="setcat_carousel_no_peek">无预览</string>
     <string name="setcat_carousel_one_peek">单侧预览</string>
     <string name="setcat_carousel_style_desc">专辑轮播的显示方式。</string>
+    <string name="setcat_home_top_style_label">主页顶部样式</string>
+    <string name="setcat_home_top_style_desc">主页顶部展示拼贴墙或精选轮播卡片。</string>
+    <string name="setcat_home_top_style_collage">拼贴墙</string>
+    <string name="setcat_home_top_style_featured">精选轮播</string>
+    <string name="setcat_player_cover_style_label">封面样式</string>
+    <string name="setcat_player_cover_style_desc">播放器封面的展示样式（参照 Rhythm 精选卡片）。</string>
+    <string name="setcat_player_cover_style_default">默认轮播</string>
+    <string name="setcat_player_cover_style_featured">精选轮播卡片</string>
     <string name="setcat_carousel_style_label">轮播样式</string>
     
     <!-- Car Mode Quick Actions -->

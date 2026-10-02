@@ -33,6 +33,9 @@ class PersonalFmApi @Inject constructor(
     private companion object {
         private const val TAG = "PersonalFmApi"
 
+        /** 相似歌曲接口路径（weapi / eapi 共用；eapi 由 SDK 内部换成 /eapi/ 地址） */
+        private const val SIMI_SONG_PATH = "/api/discovery/simiSong"
+
         // young1024 兜底评论 API（官方接口失败时使用）
         private const val YOUNG1024_API_BASE = "http://www.young1024.com:666/"
     }
@@ -122,6 +125,144 @@ class PersonalFmApi @Inject constructor(
             }
         }
     }
+
+    /**
+     * ⚡ 心动模式（网易云「智能播放列表」）：以 [seedSongId] 为种子、[playlistId] 作为来源歌单，
+     * 拿到「接着该听什么」的一批推荐歌曲 id。
+     *
+     * 参数对齐 NeteaseCloudMusicApi 的 playmode_intelligence_list：
+     * `songId` / `type=fromPlayOne` / `playlistId` / `startMusicId` / `count`。
+     * 返回的是 id 列表，调用方再用 [fetchSongDetails] 补全元数据。
+     */
+    suspend fun fetchHeartModeRecommendations(
+        seedSongId: Long,
+        playlistId: Long,
+        cookie: String? = null,
+    ): Result<List<Long>> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            syncCookieToSession(cookie)
+            val map = NcmApi.FullAccess.rawWeapi(
+                path = "/api/playmode/intelligence/list",
+                params = mapOf(
+                    "songId" to seedSongId,
+                    "type" to "fromPlayOne",
+                    "playlistId" to playlistId,
+                    "startMusicId" to seedSongId,
+                    "count" to 1,
+                ),
+            ).getOrThrow()
+            val root = ncmMapToJson(map) ?: return@withContext Result.failure(Exception("心动模式响应解析失败"))
+            if (root.optInt("code", -1) != 200) {
+                return@withContext Result.failure(Exception("心动模式返回 code=${root.optInt("code")}"))
+            }
+            val data = root.optJSONArray("data")
+                ?: return@withContext Result.failure(Exception("心动模式没有返回歌曲"))
+            val songIds = buildList {
+                for (i in 0 until data.length()) {
+                    val id = data.optJSONObject(i)?.optLong("id", -1L) ?: -1L
+                    // 过滤种子歌本身，避免"下一首还是它"
+                    if (id > 0 && id != seedSongId) add(id)
+                }
+            }
+            if (songIds.isEmpty()) return@withContext Result.failure(Exception("心动模式暂无可播歌曲"))
+            Timber.d("$TAG: heart mode got ${songIds.size} songs")
+            Result.success(songIds)
+        } catch (t: Throwable) {
+            Timber.e(t, "$TAG: fetchHeartModeRecommendations failed")
+            Result.failure(t)
+        }
+    }
+
+    /**
+     * ⚡ 相似歌曲：/api/discovery/simiSong（参数 songid / limit / offset），返回相似歌曲 id 列表。
+     *
+     * ⚡ weapi 这条接口在部分网络/区域会返回**空响应**（MeloX 里也是同一个坑），
+     *    所以拿到空结果时自动退回 eapi（同路径，SDK 内部会换成 /eapi/ 地址并补 header）。
+     */
+    suspend fun fetchSimilarSongIds(
+        songId: Long,
+        limit: Int = 30,
+        cookie: String? = null,
+    ): Result<List<Long>> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            syncCookieToSession(cookie)
+            val safeLimit = limit.coerceIn(1, 50)
+            val params = mapOf(
+                "songid" to songId,
+                "limit" to safeLimit,
+                "offset" to 0,
+            )
+            val root = fetchSimiSongJson(params)
+                ?: return@withContext Result.failure(Exception("相似歌曲请求失败"))
+            val songs = root.optJSONArray("songs")
+            if (songs == null || songs.length() == 0) {
+                val code = root.optInt("code", -1)
+                val msg = root.optString("message").ifBlank { root.optString("msg") }
+                return@withContext Result.failure(
+                    Exception("相似歌曲没有返回数据（code=$code${if (msg.isBlank()) "" else " $msg"}）")
+                )
+            }
+            val songIds = buildList {
+                for (i in 0 until songs.length()) {
+                    val id = songs.optJSONObject(i)?.optLong("id", -1L) ?: -1L
+                    if (id > 0 && id != songId) add(id)
+                }
+            }
+            if (songIds.isEmpty()) return@withContext Result.failure(Exception("没有找到相似歌曲"))
+            Result.success(songIds)
+        } catch (t: Throwable) {
+            Timber.e(t, "$TAG: fetchSimilarSongIds failed")
+            Result.failure(t)
+        }
+    }
+
+    /**
+     * 相似歌曲原始响应：weapi 优先，空/失败退回 eapi；两边都空时返回信息量更大的那个。
+     */
+    private suspend fun fetchSimiSongJson(params: Map<String, Any?>): JSONObject? {
+        val weapi = runCatching {
+            ncmMapToJson(NcmApi.FullAccess.rawWeapi(SIMI_SONG_PATH, params).getOrThrow())
+        }.onFailure { Timber.w(it, "$TAG: simiSong weapi failed") }.getOrNull()
+        if ((weapi?.optJSONArray("songs")?.length() ?: 0) > 0) return weapi
+
+        val eapi = runCatching {
+            ncmMapToJson(NcmApi.FullAccess.rawEapi(SIMI_SONG_PATH, params).getOrThrow())
+        }.onFailure { Timber.w(it, "$TAG: simiSong eapi failed") }.getOrNull()
+        if ((eapi?.optJSONArray("songs")?.length() ?: 0) > 0) return eapi
+
+        return eapi ?: weapi
+    }
+
+    /**
+     * ⚡ 取当前登录账号「我喜欢的音乐」歌单 id（心动模式要用它作为推荐来源歌单）。
+     * 找不到时返回 null，调用方自行回退。
+     */
+    suspend fun fetchLikedPlaylistId(cookie: String? = null): Long? =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                syncCookieToSession(cookie)
+                val account = ncmMapToJson(NcmApi.userAccount().getOrThrow())
+                val uid = account?.optJSONObject("profile")?.optLong("userId", -1L) ?: -1L
+                if (uid <= 0L) return@runCatching null
+                val playlists = ncmMapToJson(
+                    NcmApi.full.userPlaylist(uid.toString(), limit = 100).getOrThrow()
+                )?.optJSONArray("playlist") ?: return@runCatching null
+                var likedId: Long? = null
+                var firstCreated: Long? = null
+                for (i in 0 until playlists.length()) {
+                    val item = playlists.optJSONObject(i) ?: continue
+                    val id = item.optLong("id", -1L)
+                    if (id <= 0L) continue
+                    // specialType == 5 就是「我喜欢的音乐」
+                    if (item.optInt("specialType", 0) == 5) {
+                        likedId = id
+                        break
+                    }
+                    if (firstCreated == null && item.optLong("userId", -1L) == uid) firstCreated = id
+                }
+                likedId ?: firstCreated
+            }.getOrNull()
+        }
 
     /**
      * 批量获取歌曲详情（本地 SDK 直连官方加密接口）

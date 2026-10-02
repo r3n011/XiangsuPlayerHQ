@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.screens
 import android.widget.Toast
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -390,7 +391,7 @@ fun DelimiterConfigScreen(
         )
 
         if (showResetDialog) {
-            androidx.compose.material3.AlertDialog(
+            com.theveloper.pixelplay.presentation.components.PixelAlertDialog(
                 onDismissRequest = { showResetDialog = false },
                 title = {
                     Text(

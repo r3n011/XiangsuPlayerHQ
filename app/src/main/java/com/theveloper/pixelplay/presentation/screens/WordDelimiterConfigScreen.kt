@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import android.widget.Toast
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
 import androidx.compose.animation.core.Animatable
@@ -34,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -384,7 +384,7 @@ fun WordDelimiterConfigScreen(
         )
 
         if (showResetDialog) {
-            AlertDialog(
+            PixelAlertDialog(
                 onDismissRequest = { showResetDialog = false },
                 title = {
                     Text(

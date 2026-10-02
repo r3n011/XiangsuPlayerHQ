@@ -143,7 +143,12 @@ class ListenTogetherCoordinator @Inject constructor(
      * 房主开房：直接以一组网易云歌曲作为队列（一起听漫游：私人 FM/漫游推荐）。
      * 列表中的非网易云歌曲会被过滤；过滤后为空则失败。
      */
-    fun startHostRoomWithSongs(songs: List<Song>, failureMessage: String = "开始一起听失败") {
+    fun startHostRoomWithSongs(
+        songs: List<Song>,
+        failureMessage: String = "开始一起听失败",
+        /** ⚡ 从这首歌开始播（当前播放队列开房时传入正在播放的那首，避免从头换歌） */
+        startSongId: String? = null
+    ) {
         ensureStarted()
         if (_state.value.active) {
             setError("已在一间一起听房间中")
@@ -156,7 +161,7 @@ class ListenTogetherCoordinator @Inject constructor(
             runCatching {
                 val neteaseSongs = songs.filter { it.isNeteaseTogetherSong() }
                 if (neteaseSongs.isEmpty()) throw IllegalStateException("没有可一起听的网易云歌曲")
-                startHostRoomInternal(neteaseSongs)
+                startHostRoomInternal(neteaseSongs, startSongId)
             }.onFailure { error ->
                 if (error is CancellationException) throw error
                 Timber.w(error, "ListenTogether: startHostRoomWithSongs failed")
@@ -166,18 +171,21 @@ class ListenTogetherCoordinator @Inject constructor(
         }
     }
 
-    private suspend fun startHostRoomInternal(songs: List<Song>) {
+    private suspend fun startHostRoomInternal(songs: List<Song>, startSongId: String? = null) {
         val created = api.createRoom()
         adoptRoom(created, isHost = true)
         connectControllerIfNeeded()
         val active = awaitController(timeoutMs = 10_000L)
             ?: throw IllegalStateException("播放器未就绪，无法开始一起听")
 
-        // 以歌单顺序作为初始队列（全网易云歌曲），从第一首开始播
+        // 以传入顺序作为初始队列（全网易云歌曲）；指定了 startSongId 时从那一首开始播
         val items = songs.map { MediaItemBuilder.build(it) }
+        val startIndex = startSongId
+            ?.let { id -> songs.indexOfFirst { it.id == id } }
+            ?.takeIf { it >= 0 } ?: 0
         suppressLocalEvents()
         active.shuffleModeEnabled = false
-        active.setMediaItems(items, 0, 0L)
+        active.setMediaItems(items, startIndex, 0L)
         active.prepare()
         active.play()
         lastKnownSongId = neteaseIdOf(active.currentMediaItem)

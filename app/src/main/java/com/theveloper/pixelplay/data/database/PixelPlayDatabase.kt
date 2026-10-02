@@ -36,7 +36,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiCacheEntity::class,
         AiUsageEntity::class
     ],
-    version = 46,
+    version = 47,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -876,6 +876,17 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE songs ADD COLUMN date_modified INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("UPDATE songs SET date_modified = date_added WHERE date_modified = 0")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_songs_date_modified ON songs(date_modified)")
+            }
+        }
+
+        // 46→47: 中文名称按拼音排序 —— songs 表新增三个排序键列（ICU CollationKey 字节串，
+        // 字节序即拼音序，见 PinyinSortKey）。迁移只加列（毫秒级）；历史数据由启动后的
+        // SongSortKeyBackfill 后台分批回填，新入库的歌在实体构造时自动带上键。
+        val MIGRATION_46_47 = object : Migration(46, 47) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE songs ADD COLUMN title_sort_key BLOB")
+                db.execSQL("ALTER TABLE songs ADD COLUMN artist_sort_key BLOB")
+                db.execSQL("ALTER TABLE songs ADD COLUMN album_sort_key BLOB")
             }
         }
 

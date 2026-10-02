@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 // --- Model Types for Sectioned Display ---
 
@@ -197,7 +198,7 @@ class GenreDetailViewModel @Inject constructor(
                 val sorted = when (newSort) {
                     SortOption.ARTIST -> currentState.songs.sortedBy { it.artist ?: "Unknown Artist" }
                     SortOption.ALBUM -> currentState.songs.sortedBy { it.album ?: "Unknown Album" }
-                    SortOption.TITLE -> currentState.songs.sortedBy { it.title }
+                    SortOption.TITLE -> currentState.songs.sortedWith(PinyinSortKey.ascending { it.title })
                 }
                 Triple(sections, flattened, sorted)
             }
@@ -285,7 +286,7 @@ class GenreDetailViewModel @Inject constructor(
                         val sortedAlbumSongs = albumSongs.sortedWith(
                             compareBy<Song> { it.discNumber ?: 1 }
                                 .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
-                                .thenBy { it.title.lowercase() }
+                                .then(PinyinSortKey.ascending<Song> { it.title })
                         )
                         AlbumData(albumName, sortedAlbumSongs.firstOrNull()?.albumArtUriString, sortedAlbumSongs)
                     }
@@ -299,7 +300,7 @@ class GenreDetailViewModel @Inject constructor(
                     val sortedAlbumSongs = albumSongs.sortedWith(
                         compareBy<Song> { it.discNumber ?: 1 }
                             .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
-                            .thenBy { it.title.lowercase() }
+                            .then(PinyinSortKey.ascending<Song> { it.title })
                     )
                     SectionData.AlbumSection(
                         "album_$album",
@@ -308,7 +309,7 @@ class GenreDetailViewModel @Inject constructor(
                 }
             }
             SortOption.TITLE -> {
-                listOf(SectionData.FlatList(songs.sortedBy { it.title }))
+                listOf(SectionData.FlatList(songs.sortedWith(PinyinSortKey.ascending { it.title })))
             }
         }
     }

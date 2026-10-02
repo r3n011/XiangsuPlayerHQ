@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -54,7 +55,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -1079,7 +1079,7 @@ fun PlaylistDetailScreen(
         )
     }
     if (showDeleteConfirmation && currentPlaylist != null) {
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
             title = { Text(deletePlaylistConfirmTitle) },
             text = {
@@ -1308,7 +1308,7 @@ fun RenamePlaylistDialog(currentName: String, onDismiss: () -> Unit, onRename: (
     val renameTitle = stringResource(R.string.presentation_batch_b_rename_playlist_dialog_title)
     val newNameLabel = stringResource(R.string.presentation_batch_b_new_name)
     val renameAction = stringResource(R.string.action_rename)
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(renameTitle) },
         text = {

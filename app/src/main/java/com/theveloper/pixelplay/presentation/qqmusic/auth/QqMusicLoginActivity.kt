@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.qqmusic.auth
 
 import android.annotation.SuppressLint
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.os.Build
 import android.os.Bundle
 import android.webkit.CookieManager
@@ -34,7 +35,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -199,7 +199,7 @@ private fun QqMusicLoginScreen(
     }
 
     if (showExitDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = {
                 Text(text = stringResource(R.string.auth_web_exit_confirm_title_qq), fontFamily = GoogleSansRounded)

@@ -327,6 +327,49 @@ class LxMusicViewModel @Inject constructor(
         }
     }
 
+    /**
+     * ⚡ 导出全部 JS 音源：把所有已导入的脚本打包成一个 zip 写到 [target]
+     * （位置由调用方通过 SAF 的文件选择器拿到）。
+     */
+    fun exportAllJs(target: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val files = store.listFiles()
+            if (files.isEmpty()) {
+                _uiState.value = _uiState.value.copy(importError = "还没有导入任何 JS 音源")
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(progress = 0f, progressLabel = "正在导出音源…")
+            runCatching {
+                val resolver = getApplication<Application>().contentResolver
+                resolver.openOutputStream(target)?.use { out ->
+                    java.util.zip.ZipOutputStream(out).use { zip ->
+                        files.forEachIndexed { index, file ->
+                            zip.putNextEntry(java.util.zip.ZipEntry(file.name))
+                            zip.write(file.readBytes())
+                            zip.closeEntry()
+                            _uiState.value = _uiState.value.copy(
+                                progress = (index + 1).toFloat() / files.size
+                            )
+                        }
+                    }
+                } ?: error("无法写入所选位置")
+            }.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    progress = null,
+                    progressLabel = null,
+                    importError = null,
+                )
+                Timber.tag("LxMusicViewModel").i("Exported %d JS sources", files.size)
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    progress = null,
+                    progressLabel = null,
+                    importError = "导出失败：${error.message}",
+                )
+            }
+        }
+    }
+
     fun reloadEngine() {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(initing = true)

@@ -205,6 +205,11 @@ class DotImageRepository @Inject constructor(
                 .data(uriString)
                 .size(DOT_SCREEN_WIDTH, DOT_SCREEN_HEIGHT)
                 .allowHardware(false)
+                // ⚡ 禁用内存缓存：调用方会 recycle 返回的位图，若与 Coil 缓存共享同一实例，
+                //    回收后其它显示同一封面的 AsyncImagePainter 绘制时会抛
+                //    "Canvas: trying to use a recycled bitmap"。禁用缓存让位图独占，
+                //    与 CoilBitmapLoader 的处理保持一致。
+                .memoryCachePolicy(coil.request.CachePolicy.DISABLED)
                 .build()
 
             val result = imageLoader.execute(request)

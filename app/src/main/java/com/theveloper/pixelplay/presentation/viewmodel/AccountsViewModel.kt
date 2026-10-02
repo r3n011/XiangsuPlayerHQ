@@ -32,7 +32,10 @@ enum class ExternalServiceAccount {
     QQ_MUSIC,
     NAVIDROME,
     JELLYFIN,
-    BILIBILI
+    BILIBILI,
+
+    /** 酷狗账号（扫码登录，用于内置酷狗音源的会员/无损） */
+    KUGOU
 }
 
 data class ExternalAccountUiModel(
@@ -41,7 +44,9 @@ data class ExternalAccountUiModel(
     val accountLabel: String,
     val syncedContentLabel: String,
     val isLoggingOut: Boolean,
-    val authCookie: String? = null
+    val authCookie: String? = null,
+    /** 头像 URL（目前只有酷狗用，账号页有头像时替代服务图标展示） */
+    val avatarUrl: String? = null
 )
 
 data class AccountsUiState(
@@ -59,6 +64,8 @@ class AccountsViewModel @Inject constructor(
     private val navidromeRepository: NavidromeRepository,
     private val jellyfinRepository: JellyfinRepository,
     private val bilibiliRepository: BilibiliRepository,
+    private val kugouRepository: com.theveloper.pixelplay.data.kugou.KugouRepository,
+    private val kugouPlaylistSyncer: com.theveloper.pixelplay.data.kugou.KugouPlaylistSyncer,
     private val bilibiliFavoritesSyncer: BilibiliFavoritesSyncer
 ) : ViewModel() {
 
@@ -112,6 +119,27 @@ class AccountsViewModel @Inject constructor(
         connected to playlistCount
     }
 
+    private val kugouStateFlow = combine(
+        kugouRepository.isLoggedInFlow,
+        kugouRepository.accountLabel,
+        kugouRepository.accountAvatarUrl,
+        kugouPlaylistSyncer.syncedPlaylistCount
+    ) { connected, label, avatar, playlistCount ->
+        KugouAccountState(
+            connected = connected,
+            label = label.orEmpty(),
+            avatarUrl = avatar,
+            playlistCount = playlistCount
+        )
+    }
+
+    private data class KugouAccountState(
+        val connected: Boolean,
+        val label: String,
+        val avatarUrl: String?,
+        val playlistCount: Int
+    )
+
     private val bilibiliStateFlow = bilibiliRepository.isLoggedInFlow
         .map { connected ->
             connected to (if (connected) bilibiliRepository.userNickname?.takeIf { it.isNotBlank() } ?: "" else "")
@@ -127,7 +155,8 @@ class AccountsViewModel @Inject constructor(
                 qqMusicStateFlow,
                 navidromeStateFlow,
                 jellyfinStateFlow,
-                bilibiliStateFlow
+                bilibiliStateFlow,
+                kugouStateFlow
             )
         ) { it.toList() },
         loggingOutServices
@@ -139,6 +168,11 @@ class AccountsViewModel @Inject constructor(
         val (navidromeConnected, navidromePlaylistCount) = states[4] as Pair<Boolean, Int>
         val (jellyfinConnected, jellyfinPlaylistCount) = states[5] as Pair<Boolean, Int>
         val (bilibiliConnected, bilibiliNickname) = states[6] as Pair<Boolean, String>
+        val kugouState = states[7] as KugouAccountState
+        val kugouConnected = kugouState.connected
+        val kugouLabel = kugouState.label
+        val kugouAvatar = kugouState.avatarUrl
+        val kugouPlaylistCount = kugouState.playlistCount
 
         val connectedAccounts = buildList {
             if (telegramConnected) {
@@ -255,6 +289,22 @@ class AccountsViewModel @Inject constructor(
                     )
                 )
             }
+            if (kugouConnected) {
+                add(
+                    ExternalAccountUiModel(
+                        service = ExternalServiceAccount.KUGOU,
+                        title = "酷狗音乐",
+                        accountLabel = kugouLabel.ifBlank { "酷狗账号已登录" },
+                        syncedContentLabel = if (kugouPlaylistCount > 0) {
+                            "已同步 $kugouPlaylistCount 个歌单"
+                        } else {
+                            "还没有同步歌单"
+                        },
+                        isLoggingOut = ExternalServiceAccount.KUGOU in activeLogouts,
+                        avatarUrl = kugouAvatar
+                    )
+                )
+            }
         }
 
         val disconnectedServices = buildList {
@@ -265,6 +315,7 @@ class AccountsViewModel @Inject constructor(
             if (!navidromeConnected) add(ExternalServiceAccount.NAVIDROME)
             if (!jellyfinConnected) add(ExternalServiceAccount.JELLYFIN)
             if (!bilibiliConnected) add(ExternalServiceAccount.BILIBILI)
+            if (!kugouConnected) add(ExternalServiceAccount.KUGOU)
         }
 
         AccountsUiState(
@@ -292,6 +343,11 @@ class AccountsViewModel @Inject constructor(
                         ExternalServiceAccount.NAVIDROME -> navidromeRepository.logout()
                         ExternalServiceAccount.JELLYFIN -> jellyfinRepository.logout()
                         ExternalServiceAccount.BILIBILI -> bilibiliRepository.logout()
+                        ExternalServiceAccount.KUGOU -> {
+                            kugouRepository.logout()
+                            // 退出后立即清掉本地同步出来的酷狗歌单（syncer 未登录分支会清理）
+                            kugouPlaylistSyncer.syncNow()
+                        }
                     }
                 }
             } finally {
@@ -320,6 +376,7 @@ class AccountsViewModel @Inject constructor(
                 runCatching {
                     when (service) {
                         ExternalServiceAccount.BILIBILI -> bilibiliFavoritesSyncer.syncNow()
+                        ExternalServiceAccount.KUGOU -> kugouPlaylistSyncer.syncNow()
                         ExternalServiceAccount.NETEASE -> neteaseRepository.autoSyncOnLibraryEntry()
                         ExternalServiceAccount.QQ_MUSIC -> qqMusicRepository.autoSyncOnLibraryEntry()
                         ExternalServiceAccount.NAVIDROME -> navidromeRepository.syncAllPlaylistsAndSongs()
@@ -339,6 +396,15 @@ class AccountsViewModel @Inject constructor(
     fun autoSyncBilibili() {
         viewModelScope.launch {
             runCatching { bilibiliFavoritesSyncer.sync() }
+        }
+    }
+
+    /**
+     * 进入媒体库时自动同步酷狗歌单（KugouPlaylistSyncer 内部 1 小时节流 + 登录检查）。
+     */
+    fun autoSyncKugou() {
+        viewModelScope.launch {
+            runCatching { kugouPlaylistSyncer.sync() }
         }
     }
 }

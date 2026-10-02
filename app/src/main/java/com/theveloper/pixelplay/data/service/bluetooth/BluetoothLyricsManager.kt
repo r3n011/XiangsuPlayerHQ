@@ -85,6 +85,11 @@ class BluetoothLyricsManager @Inject constructor(
 
     // "上一次推送到 player 的行内容" —— 用来判断是否需要真正调用 replaceMediaItem。
     @Volatile private var lastPushedKey: String? = null
+    // 上一次实际写入的标题：防回写守护用它区分"外部把标题改回去了"与"我们自己刚推的内容"。
+    @Volatile private var lastPushedTitle: String? = null
+    // 上一次推送的歌词行：前奏 / 间奏（当前行解析为空）时沿用它，
+    // 保证播放中途设备端标题不会回退成真实歌名（否则就是"歌词 ↔ 歌名"交替闪烁）。
+    @Volatile private var lastPushedLine: String? = null
     // 上一次推送时的播放位置 / 曲目索引：用于拦截"位置小幅回退（缓冲抖动）导致的歌词回弹"。
     @Volatile private var lastPushedPositionMs: Long = -1L
     @Volatile private var lastPushedIndex: Int = -1
@@ -200,7 +205,9 @@ class BluetoothLyricsManager @Inject constructor(
     fun setFeatureEnabled(enabled: Boolean) {
         _featureEnabled.value = enabled
         ensurePushJobState()
-        if (!enabled) {
+        // ⚡ 只有"确实不再需要显示歌词"时才恢复原始歌名：
+        //    对外广播还开着时强行恢复，会让通知栏闪一下歌名再被轮询推回歌词。
+        if (!enabled && !shouldShowLyricsNow()) {
             // 关闭时立即恢复一次原始元数据，避免蓝牙屏上留下最后一行歌词
             pushNow(forceRestoreOriginal = true)
             _currentLine.value = null
@@ -215,7 +222,8 @@ class BluetoothLyricsManager @Inject constructor(
     fun setExternalBroadcastEnabled(enabled: Boolean) {
         externalBroadcastEnabled = enabled
         ensurePushJobState()
-        if (!enabled) {
+        // 蓝牙歌词还开着且连着蓝牙时不必恢复歌名（同上，避免无谓的标题闪烁）
+        if (!enabled && !shouldShowLyricsNow()) {
             pushNow(forceRestoreOriginal = true)
             _currentLine.value = null
         }
@@ -260,6 +268,8 @@ class BluetoothLyricsManager @Inject constructor(
         currentMediaItem = item
         if (newId != oldId) {
             lastPushedKey = null
+            lastPushedTitle = null
+            lastPushedLine = null
             lastPushedPositionMs = -1L
             lastPushedIndex = -1
             // ⚡ 切歌时立即清空旧歌词：旧歌的歌词在 getLyrics 完成前仍挂在 lyrics 上，
@@ -300,6 +310,36 @@ class BluetoothLyricsManager @Inject constructor(
      * 真正碰 player 的地方只有下面的 `pushNowInternal`，而且它是在主线程执行的，
      * 并有 `isPushingNow` 防重入。
      */
+    /**
+     * 防回写守护：媒体元数据发生外部变化时由 [MusicService] 调用。
+     *
+     * 歌词正在广播（对外广播 / 蓝牙歌词）期间，如果标题被别的路径改回了
+     * 真实歌名（或任何非当前歌词的内容），立即排一次重推，把"歌名闪现"
+     * 压到最小；正常轮询最长要等 [POLL_INTERVAL_MS] 才会纠正，观感就是
+     * 通知栏在歌名与歌词之间来回切换。
+     *
+     * 自己推歌词触发的 onMediaMetadataChanged 不会误判：那时标题恰好等于
+     * [lastPushedTitle]，直接跳过。
+     */
+    fun onExternalMetadataChanged(currentTitle: String?) {
+        if (isPushingNow) return
+        if (!shouldShowLyricsNow()) return
+        val pushed = lastPushedTitle ?: return
+        if (currentTitle == pushed) return
+        mainHandler.post {
+            pushNowInternal(
+                checkPlayerRequired = true,
+                forceRestoreOriginal = false,
+                forceRepush = true
+            )
+        }
+    }
+
+    /** 当前是否处于"应显示歌词"状态（与 pushNowInternal 内判定保持一致）。 */
+    private fun shouldShowLyricsNow(): Boolean =
+        (featureEnabled.value && hasBluetoothOutput.value || externalBroadcastEnabled) &&
+            !lyrics?.synced.isNullOrEmpty()
+
     fun updatePlaybackState(positionMs: Long, playing: Boolean) {
         currentPositionMs = positionMs
         if (isPlaying != playing) {
@@ -335,16 +375,15 @@ class BluetoothLyricsManager @Inject constructor(
      * 天然就在主线程上，不需要再 post。
      */
     private fun ensurePushJobState() {
-        // 对外广播（externalBroadcastEnabled）开启时无需蓝牙连接也推送；
-        // 否则仅在蓝牙歌词开关开启且连接了蓝牙输出时推送。
-        val btActive = featureEnabled.value && hasBluetoothOutput.value
-        val shouldRun = (btActive || externalBroadcastEnabled) && isPlaying &&
-                !lyrics?.synced.isNullOrEmpty() && mediaSession != null
+        val shouldRun = shouldPollNow()
 
         if (shouldRun && (pushJob == null || pushJob?.isActive != true)) {
             pushJob?.cancel()
             pushJob = serviceScope.launch {
-                while ((btActive || externalBroadcastEnabled) && isPlaying) {
+                // ⚡ 暂停时也保持轮询：暂停期间标题同样可能被外部改回（队列编辑 /
+                //    换源替换会重建当前条目），而且通知栏此时也该显示歌词。
+                //    每轮没有变化时不写 player，开销只有一次二分 + 字符串比较。
+                while (shouldPollNow()) {
                     pushNowInternal(checkPlayerRequired = true, forceRestoreOriginal = false)
                     delay(POLL_INTERVAL_MS)
                 }
@@ -354,6 +393,9 @@ class BluetoothLyricsManager @Inject constructor(
             pushJob = null
         }
     }
+
+    /** 是否需要维持推送轮询：应显示歌词 + 已绑定 MediaSession。 */
+    private fun shouldPollNow(): Boolean = shouldShowLyricsNow() && mediaSession != null
 
     /**
      * 真正执行一次推送。
@@ -367,7 +409,11 @@ class BluetoothLyricsManager @Inject constructor(
      *   - 若确实有变化，则调用 `player.replaceMediaItem` 推送新 metadata；
      *     push 期间设 `isPushingNow = true`，防重入。
      */
-    private fun pushNowInternal(checkPlayerRequired: Boolean, forceRestoreOriginal: Boolean) {
+    private fun pushNowInternal(
+        checkPlayerRequired: Boolean,
+        forceRestoreOriginal: Boolean,
+        forceRepush: Boolean = false
+    ) {
         if (isPushingNow) return
         val session = mediaSession
         val player = session?.player
@@ -403,22 +449,25 @@ class BluetoothLyricsManager @Inject constructor(
 
         if (shouldShowLyrics) {
             val line = resolveLine(currentPositionMs)
-            lineNow = line
 
-            // ⚡ 空行（尚未到第一句歌词 / 两句歌词之间的空白段）时不 replace：
-            // 保持设备端当前显示内容不变，避免 title 在"真实歌名 ↔ 歌词"之间
-            // 来回 replace 造成闪烁。
-            if (line.isBlank()) {
+            // ⚡ 前奏 / 间奏（当前行解析为空）时沿用上一行歌词：
+            //    之前这里直接 return，设备端会保留上一次内容 —— 一旦期间标题被
+            //    其它路径（队列重建 / 换源替换 MediaItem）改回真实歌名，就要等到
+            //    下一句歌词才恢复，观感就是"歌词与歌名交替出现"。
+            val effectiveLine = if (line.isNotBlank()) line else lastPushedLine
+            if (effectiveLine.isNullOrBlank()) {
+                // 还没唱到第一句：设备端本就是真实歌名，无需改写
                 return
             }
+            lineNow = effectiveLine
 
             // ⚡ 歌词只刷新到"歌名"位置；艺术家保持原样（不显示"→ 下一句"）。
             // 专辑字段放真实歌名，方便设备端确认当前播放的歌曲。
-            newTitle = line
+            newTitle = effectiveLine
             newArtist = originalArtist
             newAlbum = if (realTitle.isNotBlank()) realTitle else originalAlbum
             // key = 歌曲 index + 真实歌名 + 当前行：只有行真正变化时才 replace
-            pushKey = "${player.currentMediaItemIndex}_${realTitle}_$line"
+            pushKey = "${player.currentMediaItemIndex}_${realTitle}_$effectiveLine"
         } else {
             lineNow = null
             newTitle = realTitle
@@ -427,15 +476,23 @@ class BluetoothLyricsManager @Inject constructor(
             pushKey = "${player.currentMediaItemIndex}_RESTORE_$realTitle"
         }
 
-        // --- 若与上次推送的内容相同，直接跳过，完全不改 player ---
-        if (pushKey == lastPushedKey) {
+        // ⚡ 防回写自愈：设备端标题被外部改掉时（队列重建 / 换源替换 MediaItem 都会
+        //    用真实歌名重建当前条目），pushKey 可能没变 —— 只比 key 就会一直跳过，
+        //    设备端停在歌名上，直到下一句歌词才恢复。这里直接核对设备端标题。
+        val deviceTitle = player.currentMediaItem?.mediaMetadata?.title?.toString()
+        val titleDrifted = shouldShowLyrics && deviceTitle != newTitle
+
+        // --- 若与上次推送的内容相同且设备端标题没被改，直接跳过，完全不改 player ---
+        //     （forceRepush 例外：标题被外部改回后需要按同内容重写一次）
+        if (!forceRepush && pushKey == lastPushedKey && !titleDrifted) {
             return
         }
 
         // ⚡ 防闪烁：同一首歌内位置"小幅回退"（缓冲/解码抖动，<3 秒）时忽略本次
         // 更新 —— 否则设备端歌词会"回弹"闪一下。超过阈值视为用户手动 seek，
-        // 正常更新歌词。
-        if (lastPushedPositionMs >= 0 &&
+        // 正常更新歌词。标题被外部改回的情况不适用（要立刻纠正）。
+        if (!titleDrifted &&
+            lastPushedPositionMs >= 0 &&
             player.currentMediaItemIndex == lastPushedIndex &&
             currentPositionMs < lastPushedPositionMs &&
             currentPositionMs >= lastPushedPositionMs - 3000L
@@ -448,7 +505,12 @@ class BluetoothLyricsManager @Inject constructor(
         // --- 行确实变化了：覆盖 MediaSession 会话元数据（通知栏/锁屏/蓝牙设备显示歌词） ---
         isPushingNow = true
         try {
+            if (titleDrifted) {
+                Timber.tag(TAG).d("Repairing drifted media title: '%s' -> '%s'", deviceTitle, newTitle)
+            }
             lastPushedKey = pushKey
+            lastPushedTitle = newTitle
+            lastPushedLine = if (shouldShowLyrics) newTitle else null
             _currentLine.value = lineNow
 
             val currentItem = player.currentMediaItem ?: return
@@ -486,7 +548,17 @@ class BluetoothLyricsManager @Inject constructor(
         // 或"刚关闭需要恢复"时才执行。
         if (changed) {
             mainHandler.post {
-                pushNowInternal(checkPlayerRequired = true, forceRestoreOriginal = !hasBt)
+                // ⚡ 只有"蓝牙断开且对外广播没开"时才强制恢复歌名。
+                //    对外广播（通知栏歌词）开启时，歌词本就不依赖蓝牙输出；
+                //    此前无条件按 !hasBt 强制恢复，任何一次蓝牙事件抖动
+                //    （部分设备 A2DP/设备回调会成风暴出现）都会把标题打回歌名，
+                //    下一轮 500ms 轮询又推回歌词——通知栏就在歌名/歌词之间反复横跳。
+                val keepLyrics = externalBroadcastEnabled ||
+                    (featureEnabled.value && hasBluetoothOutput.value)
+                pushNowInternal(
+                    checkPlayerRequired = true,
+                    forceRestoreOriginal = !hasBt && !keepLyrics
+                )
             }
         }
     }
@@ -553,6 +625,11 @@ class BluetoothLyricsManager @Inject constructor(
 
     companion object {
         private const val TAG = "BluetoothLyricsManager"
-        private const val POLL_INTERVAL_MS = 500L
+
+        /**
+         * 轮询间隔。每轮只做一次二分 + 字符串比较，只有"行变化 / 标题被外部改回"
+         * 才会真正写 player；调短是为了让被改回的标题更快自愈（500ms 时肉眼可见闪烁）。
+         */
+        private const val POLL_INTERVAL_MS = 300L
     }
 }

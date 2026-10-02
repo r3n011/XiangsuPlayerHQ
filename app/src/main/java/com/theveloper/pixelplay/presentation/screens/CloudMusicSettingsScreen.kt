@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import android.net.Uri
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
@@ -37,7 +38,6 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.WorkspacePremium
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -72,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material.icons.rounded.Share
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.MainActivity
 import com.theveloper.pixelplay.data.lx.LxScriptInfo
@@ -108,6 +109,14 @@ fun CloudMusicSettingsScreen(
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
         viewModel.importFromUri(uri)
+    }
+
+    // ⚡ 导出全部 JS 音源：选一个保存位置，把所有已导入脚本打包成 zip 写进去
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        viewModel.exportAllJs(uri)
     }
 
     LaunchedEffect(Unit) {
@@ -262,6 +271,13 @@ fun CloudMusicSettingsScreen(
             }
 
             item {
+                ExportSourcesCard(
+                    enabled = state.scriptInfos.isNotEmpty(),
+                    onExport = { exportLauncher.launch("pixelplay-js-sources.zip") }
+                )
+            }
+
+            item {
                 UsageInfoCard()
             }
         }
@@ -276,7 +292,7 @@ fun CloudMusicSettingsScreen(
 
     if (showImportUrl) {
         var urlInput by remember { mutableStateOf("https://") }
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showImportUrl = false },
             title = { Text("从 URL 下载 JS") },
             text = {
@@ -303,7 +319,7 @@ fun CloudMusicSettingsScreen(
     }
 
     pendingDelete?.let { fileName ->
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("删除脚本") },
             text = { Text("确定删除「$fileName」吗？删除后该脚本的音源将不可用。") },
@@ -466,6 +482,59 @@ private fun SourceTestRow(
             Text(
                 text = "测试",
                 fontFamily = GoogleSansRounded
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExportSourcesCard(
+    enabled: Boolean,
+    onExport: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onExport),
+        shape = AbsoluteSmoothCornerShape(20.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Share,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.padding(8.dp).size(22.dp)
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "导出全部音源",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    if (enabled) "把所有已导入的 JS 脚本打包成 zip 保存到本地"
+                    else "还没有导入任何 JS 音源",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -677,13 +746,35 @@ private fun ScriptSourceCard(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusIcon(
-                    icon = Icons.Rounded.WorkspacePremium,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    size = 42.dp,
-                    iconSize = 22.dp
+                // ⚡ 每个音源脚本一个**等大的字母头像**（首字母 + 按文件名稳定取色）：
+                //    以前所有脚本都用同一个图标、大小也各写各的，认不出来谁是谁。
+                //    字母色必须配容器的 on 色，否则深色模式下字和底几乎同色（看不清头像）。
+                val avatarLabel = info.name.ifBlank { info.fileName }.take(1).uppercase()
+                val avatarPalette = listOf(
+                    MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer,
+                    MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer,
+                    MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer,
                 )
+                val (avatarColor, avatarContentColor) = avatarPalette[
+                    info.fileName.hashCode().let { if (it < 0) -it else it } % avatarPalette.size
+                ]
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = CircleShape,
+                    color = avatarColor,
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = avatarLabel,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = avatarContentColor,
+                        )
+                    }
+                }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(

@@ -305,6 +305,9 @@ class PlayerViewModel @Inject constructor(
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
     private val neteaseRepository: com.theveloper.pixelplay.data.netease.NeteaseRepository,
     val personalFmApi: com.theveloper.pixelplay.data.netease.PersonalFmApi,
+    private val songRecognitionClient: com.theveloper.pixelplay.data.netease.SongRecognitionClient,
+    private val kugouFmApi: com.theveloper.pixelplay.data.kugou.KugouFmApi,
+    private val builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
     private val neteaseRecommendApi: com.theveloper.pixelplay.data.netease.NeteaseRecommendApi,
     private val bluetoothLyricsManager: com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager,
     private val dotImageRepositoryProvider: Lazy<com.theveloper.pixelplay.data.repository.DotImageRepository>,
@@ -405,6 +408,23 @@ class PlayerViewModel @Inject constructor(
     // ─── 漫游模式状态 ───────────────────────────────────────────────────
     private val _isRoamingMode = MutableStateFlow(false)
     val isRoamingMode: StateFlow<Boolean> = _isRoamingMode.asStateFlow()
+
+    // ─── 酷狗私人FM ────────────────────────────────────────────────────
+    // ⚡ 移植自 md3Music 的酷狗私人FM：档位（红心/探索/小众）+ 游标续拉 + 队列去重。
+    private val _isKugouFmMode = MutableStateFlow(false)
+    val isKugouFmMode: StateFlow<Boolean> = _isKugouFmMode.asStateFlow()
+    private var kugouFmStation: com.theveloper.pixelplay.data.kugou.KugouFmApi.Station =
+        com.theveloper.pixelplay.data.kugou.KugouFmApi.Station.FAMILIAR
+    @Volatile private var kugouFmCursorHash: String? = null
+    @Volatile private var kugouFmCursorSongId: String? = null
+
+    // ⚡ 心动模式（网易云「智能播放列表」）：与漫游类似但种子是"当前正在播放的那首歌"，
+    //    切歌后用新歌继续续拉，形成"永远接着听"的心动队列。
+    private val _isHeartMode = MutableStateFlow(false)
+    val isHeartMode: StateFlow<Boolean> = _isHeartMode.asStateFlow()
+    /** 心动模式的推荐来源歌单（「我喜欢的音乐」），首次使用时解析并缓存。 */
+    @Volatile
+    private var heartModePlaylistId: Long? = null
 
     private val _isRoamingLoading = MutableStateFlow(false)
     val isRoamingLoading: StateFlow<Boolean> = _isRoamingLoading.asStateFlow()
@@ -841,6 +861,12 @@ class PlayerViewModel @Inject constructor(
             initialValue = CarouselStyle.NO_PEEK
         )
 
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = com.theveloper.pixelplay.data.preferences.PLAYER_COVER_STYLE_DEFAULT
+        )
+
     val playerProgressStyle: StateFlow<String> = userPreferencesRepository.playerProgressStyleFlow
         .stateIn(
             scope = viewModelScope,
@@ -1223,6 +1249,11 @@ class PlayerViewModel @Inject constructor(
 
     private val _neteaseArtistNavigationRequests = MutableSharedFlow<Long>(extraBufferCapacity = 1)
     val neteaseArtistNavigationRequests = _neteaseArtistNavigationRequests.asSharedFlow()
+
+    // ⚡ 播放器内"去登录"：播放器自己拿不到 NavController，统一由
+    //    PlayerArtistNavigationEffect 收掉请求、收起面板并跳转账户设置。
+    private val _accountSettingsRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val accountSettingsRequests = _accountSettingsRequests.asSharedFlow()
     private val _searchNavDoubleTapEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val searchNavDoubleTapEvents = _searchNavDoubleTapEvents.asSharedFlow()
     
@@ -1795,6 +1826,33 @@ class PlayerViewModel @Inject constructor(
                 if (!_isRoamingMode.value) return@onEach
                 Timber.d("RoamingQueue: song changed to index=$index, appending 1 more song")
                 loadMoreRoamingSongs(1)
+            }
+            .launchIn(viewModelScope)
+
+        // ── 酷狗私人FM：切歌后按游标续拉，保持队列永远有下一首
+        stablePlayerState
+            .map { it.currentSong?.id }
+            .distinctUntilChanged()
+            .onEach { songId ->
+                if (songId == null) return@onEach
+                if (!_isKugouFmMode.value) return@onEach
+                kotlinx.coroutines.delay(500)
+                if (!_isKugouFmMode.value) return@onEach
+                loadMoreKugouFmSongs()
+            }
+            .launchIn(viewModelScope)
+
+        // ── 心动模式：切歌后以"刚刚开始播的这首歌"为种子继续续拉，
+        //    保证队列里永远有下一首（网易云心动模式就是这么滚动的）
+        stablePlayerState
+            .map { it.currentSong?.id }
+            .distinctUntilChanged()
+            .onEach { songId ->
+                if (songId == null) return@onEach
+                if (!_isHeartMode.value) return@onEach
+                kotlinx.coroutines.delay(500)
+                if (!_isHeartMode.value) return@onEach
+                loadMoreHeartModeSongs(songId)
             }
             .launchIn(viewModelScope)
 
@@ -3717,6 +3775,11 @@ class PlayerViewModel @Inject constructor(
      *                           ID 是名字 hash（负数），用它从歌曲详情真实 artistIds 里取对应 ID，
      *                           避免"第二歌手永远跳到第一歌手"。
      */
+    /** 请求打开「设置 → 账户」页（未登录时的一起听等入口用）。 */
+    fun requestOpenAccountSettings() {
+        _accountSettingsRequests.tryEmit(Unit)
+    }
+
     fun triggerArtistNavigationFromPlayer(
         artistId: Long,
         songNeteaseId: Long? = null,
@@ -5642,6 +5705,8 @@ class PlayerViewModel @Inject constructor(
     fun playSongs(songsToPlay: List<Song>, startSong: Song, queueName: String = "None", playlistId: String? = null) {
         if (blockedByListenTogether(songsToPlay)) return
         _isRoamingMode.value = false
+        _isHeartMode.value = false
+        _isKugouFmMode.value = false
         cancelPendingFullQueuePlayback()
         // 广播电台：实时流不能进普通队列，直接走 playUrl（流式播放器）。
         // 漫游歌曲（id 以 roaming_ 开头）是普通歌曲，不走此分支，避免误判为电台。
@@ -7354,6 +7419,8 @@ class PlayerViewModel @Inject constructor(
 
     fun playUrl(url: String, title: String, artist: String = "", cover: String = "", songId: String? = null, bilibiliBvid: String? = null) {
         _isRoamingMode.value = false
+        _isHeartMode.value = false
+        _isKugouFmMode.value = false
         android.util.Log.d("LxPlayUrl", "=== playUrl called ===")
         android.util.Log.d("LxPlayUrl", "URL: $url")
         android.util.Log.d("LxPlayUrl", "Title: $title, Artist: $artist, Cover: $cover")
@@ -7609,6 +7676,7 @@ class PlayerViewModel @Inject constructor(
 
         viewModelScope.launch {
             _isRoamingMode.value = false
+            _isHeartMode.value = false
             cancelPendingFullQueuePlayback()
             dualPlayerEngine.cancelNext()
 
@@ -7857,6 +7925,242 @@ class PlayerViewModel @Inject constructor(
                 controller.play()
             }
         }
+    }
+
+    // ─── 听歌识曲 ───────────────────────────────────────────────────────
+    private val _songRecognitionState = MutableStateFlow<SongRecognitionState>(SongRecognitionState.Idle)
+    val songRecognitionState: StateFlow<SongRecognitionState> = _songRecognitionState.asStateFlow()
+
+    /**
+     * 开始一次听歌识曲：录一段（默认 6 秒）→ 生成音频指纹 → 网易云匹配。
+     * ⚠️ 调用前需要已经拿到 RECORD_AUDIO 权限（由 UI 侧申请）。
+     */
+    fun startSongRecognition(
+        durationSeconds: Int = com.theveloper.pixelplay.data.netease.SongRecognitionClient.DEFAULT_SECONDS
+    ) {
+        if (_songRecognitionState.value is SongRecognitionState.Listening) return
+        viewModelScope.launch {
+            _songRecognitionState.value = SongRecognitionState.Listening
+            runCatching {
+                val matches = songRecognitionClient.recognize(durationSeconds)
+                val songs = neteaseRepository.getNeteaseSongsByIds(matches.map { it.neteaseId })
+                _songRecognitionState.value = if (songs.isEmpty()) {
+                    SongRecognitionState.Failed("没有识别出歌曲，换个安静点的环境再试试")
+                } else {
+                    SongRecognitionState.Success(songs)
+                }
+            }.onFailure { error ->
+                Timber.w(error, "SongRecognition failed")
+                _songRecognitionState.value =
+                    SongRecognitionState.Failed(error.message ?: "识曲失败，请稍后再试")
+            }
+        }
+    }
+
+    /** 点击识别结果：以识别到的整批歌曲作为队列播放。 */
+    fun playRecognizedSongs(songs: List<Song>, startSong: Song) {
+        if (songs.isEmpty()) return
+        _songRecognitionState.value = SongRecognitionState.Idle
+        playSongs(songs, startSong, "听歌识曲")
+    }
+
+    /** 收起识曲面板/重新开始前重置状态。 */
+    fun resetSongRecognition() {
+        _songRecognitionState.value = SongRecognitionState.Idle
+    }
+
+    /**
+     * ⚡ 酷狗私人FM：拉一批「私人推荐」直接开播（不需要登录，匿名可用），
+     * 播放途中按参考项目的方式**以队列最后一首为游标续拉**，保持永远有下一首。
+     */
+    fun startKugouFm(
+        station: com.theveloper.pixelplay.data.kugou.KugouFmApi.Station =
+            com.theveloper.pixelplay.data.kugou.KugouFmApi.Station.FAMILIAR
+    ) {
+        viewModelScope.launch {
+            if (_isKugouFmMode.value) {
+                sendToast("私人FM 已在播放中")
+                return@launch
+            }
+            sendToast("正在开启私人FM…")
+            val batch = kugouFmApi.fetchNextBatch(station).getOrElse { error ->
+                sendToast("私人FM 获取失败：${error.message}")
+                return@launch
+            }
+            val songs = buildKugouFmSongs(batch)
+            if (songs.isEmpty()) {
+                sendToast("私人FM 暂无可播歌曲，稍后再试")
+                return@launch
+            }
+            kugouFmStation = station
+            kugouFmCursorHash = batch.lastOrNull()?.hash
+            kugouFmCursorSongId = batch.lastOrNull()?.songmid ?: batch.lastOrNull()?.id
+            playSongs(songs, songs.first(), "私人FM · 酷狗")
+            // playSongs 会清掉模式标记，之后再置位
+            _isKugouFmMode.value = true
+        }
+    }
+
+    /** 退出私人FM（不打断当前播放，只是不再续拉）。 */
+    fun stopKugouFm() {
+        _isKugouFmMode.value = false
+    }
+
+    /** 把一批 FM 推荐解析成可播的 Song（直链走现成的内置酷狗源，失败的单曲跳过）。 */
+    private suspend fun buildKugouFmSongs(
+        batch: List<com.theveloper.pixelplay.data.lx.LxSongInfo>
+    ): List<Song> = batch.mapNotNull { info ->
+        val url = runCatching {
+            builtInSourceSearchApi.resolvePlayUrl("kg", info, "320k")
+        }.getOrNull()
+        if (url.isNullOrBlank()) return@mapNotNull null
+        buildCloudSong(
+            url = url,
+            title = info.name,
+            artist = info.singer,
+            cover = info.pic,
+            songId = "kugou_fm_${info.hash}",
+            lxSource = "kg",
+            platformSongId = info.songmid.takeIf { it.isNotBlank() },
+        )
+    }
+
+    /** FM 续拉：以队列最后一首为游标再拉一批，按 hash 去重后追加到队尾。 */
+    private suspend fun loadMoreKugouFmSongs() {
+        val batch = kugouFmApi
+            .fetchNextBatch(kugouFmStation, kugouFmCursorHash, kugouFmCursorSongId)
+            .getOrNull()
+            ?: return
+        val existingIds = _playerUiState.value.currentPlaybackQueue.mapTo(HashSet()) { it.id }
+        val fresh = batch.filterNot { "kugou_fm_${it.hash}" in existingIds }
+        if (fresh.isEmpty()) return
+        val songs = buildKugouFmSongs(fresh)
+        if (songs.isEmpty()) return
+        kugouFmCursorHash = batch.lastOrNull()?.hash
+        kugouFmCursorSongId = batch.lastOrNull()?.songmid ?: batch.lastOrNull()?.id
+        appendCloudSongsToQueue(songs)
+        Timber.d("KugouFm: appended ${songs.size} songs (cursor=%s)", kugouFmCursorHash)
+    }
+
+    /** 当前正在播放的网易云歌曲 id（心动模式 / 相似歌曲的种子）。 */
+    private fun currentNeteaseSeedSongId(): Long? {
+        val song = stablePlayerState.value.currentSong ?: return null
+        song.neteaseId?.takeIf { it > 0L }?.let { return it }
+        return song.id.removePrefix("netease_").toLongOrNull()?.takeIf { it > 0L }
+    }
+
+    /**
+     * ⚡ 心动模式：以当前播放的网易云歌曲为种子，用网易云「智能播放列表」续出一串歌，
+     * 并从第一首开始播；之后每次切歌都会以新的当前歌为种子继续续拉（见 init 里的 collector）。
+     */
+    fun startHeartMode() {
+        viewModelScope.launch {
+            if (!neteaseRepository.isLoggedIn) {
+                sendToast("请先在设置中登录网易云账户")
+                return@launch
+            }
+            val seed = currentNeteaseSeedSongId()
+            if (seed == null) {
+                sendToast("先播放一首网易云歌曲，再开启心动模式")
+                return@launch
+            }
+            sendToast("正在开启心动模式…")
+            val cookie = neteaseRepository.getCookieString()
+            val playlistId = heartModePlaylistId
+                ?: personalFmApi.fetchLikedPlaylistId(cookie)
+                ?: run {
+                    sendToast("找不到「我喜欢的音乐」歌单，请先在网易云面板同步账户")
+                    return@launch
+                }
+            heartModePlaylistId = playlistId
+
+            val ids = personalFmApi.fetchHeartModeRecommendations(seed, playlistId, cookie)
+                .getOrElse { error ->
+                    sendToast("心动模式获取失败：${error.message}")
+                    return@launch
+                }
+            val songs = neteaseRepository.getNeteaseSongsByIds(ids)
+            if (songs.isEmpty()) {
+                sendToast("心动模式暂无可播歌曲")
+                return@launch
+            }
+            playSongs(songs, songs.first(), "心动模式")
+            // playSongs 会清掉模式标记，所以在它之后再置位
+            _isHeartMode.value = true
+        }
+    }
+
+    /** 退出心动模式（不改变当前播放，只是不再继续续流）。 */
+    fun stopHeartMode() {
+        _isHeartMode.value = false
+    }
+
+    /**
+     * 心动模式续流：以 [currentSongId]（"netease_xxx"）为种子再拉一批，去重后追加到队尾。
+     */
+    private suspend fun loadMoreHeartModeSongs(currentSongId: String) {
+        val seed = currentSongId.removePrefix("netease_").toLongOrNull()?.takeIf { it > 0L } ?: return
+        val playlistId = heartModePlaylistId ?: return
+        val ids = personalFmApi
+            .fetchHeartModeRecommendations(seed, playlistId, neteaseRepository.getCookieString())
+            .getOrNull()
+            ?: return
+        val existingIds = _playerUiState.value.currentPlaybackQueue.mapTo(HashSet()) { it.id }
+        val newIds = ids.filterNot { "netease_$it" in existingIds }
+        if (newIds.isEmpty()) return
+        val songs = neteaseRepository.getNeteaseSongsByIds(newIds)
+        if (songs.isNotEmpty()) {
+            appendCloudSongsToQueue(songs)
+            Timber.d("HeartMode: appended ${songs.size} songs (seed=$seed)")
+        }
+    }
+
+    /**
+     * ⚡ 相似歌曲：以当前播放的网易云歌曲为种子，直接播一串相似歌曲（对齐 MeloX 的入口行为）。
+     */
+    fun startSimilarSongsMode() {
+        viewModelScope.launch {
+            if (!neteaseRepository.isLoggedIn) {
+                sendToast("请先在设置中登录网易云账户")
+                return@launch
+            }
+            val seed = resolveSimilarSongsSeed()
+            if (seed == null) {
+                sendToast("先播放一首网易云歌曲，再试相似歌曲")
+                return@launch
+            }
+            sendToast("正在获取相似歌曲…")
+            val ids = personalFmApi
+                .fetchSimilarSongIds(seed, limit = 30, cookie = neteaseRepository.getCookieString())
+                .getOrElse { error ->
+                    sendToast("获取相似歌曲失败：${error.message}")
+                    return@launch
+                }
+            val songs = neteaseRepository.getNeteaseSongsByIds(ids)
+            if (songs.isEmpty()) {
+                sendToast("没有找到相似歌曲")
+                return@launch
+            }
+            playSongs(songs, songs.first(), "相似歌曲")
+        }
+    }
+
+    /**
+     * 相似歌曲的种子：当前播放的网易云歌 → 播放队列里的网易云歌 → 媒体库里已同步的网易云歌。
+     * （当前歌不是网易云时不再直接失败，对齐 MeloX 用「喜欢的歌」当种子的兜底行为。）
+     */
+    private suspend fun resolveSimilarSongsSeed(): Long? {
+        currentNeteaseSeedSongId()?.let { return it }
+        _playerUiState.value.currentPlaybackQueue
+            .firstOrNull { (it.neteaseId ?: 0L) > 0L }
+            ?.neteaseId
+            ?.takeIf { it > 0L }
+            ?.let { return it }
+        return runCatching {
+            neteaseRepository.getAllSongs().first()
+                .firstOrNull { (it.neteaseId ?: 0L) > 0L }
+                ?.neteaseId
+        }.getOrNull()?.takeIf { it > 0L }
     }
 
     /**
@@ -9343,6 +9647,8 @@ class PlayerViewModel @Inject constructor(
     fun playSong(song: Song) {
         if (blockedByListenTogether(song)) return
         _isRoamingMode.value = false
+        _isHeartMode.value = false
+        _isKugouFmMode.value = false
         viewModelScope.launch {
             val controller = mediaController ?: return@launch
             val mediaItem = buildResolvedPlaybackMediaItem(song)
@@ -9507,4 +9813,19 @@ sealed interface DailyRecommendUiState {
 
     /** 拉取失败 */
     data class Error(val message: String) : DailyRecommendUiState
+}
+
+/** 「听歌识曲」面板的 UI 状态。 */
+sealed interface SongRecognitionState {
+    /** 空闲：等待用户点「开始识别」。 */
+    data object Idle : SongRecognitionState
+
+    /** 正在录音 + 生成指纹 + 匹配。 */
+    data object Listening : SongRecognitionState
+
+    /** 识别成功（可能不止一首，网易云会返回多个候选）。 */
+    data class Success(val songs: List<Song>) : SongRecognitionState
+
+    /** 识别失败（权限、环境太吵、服务异常等）。 */
+    data class Failed(val message: String) : SongRecognitionState
 }

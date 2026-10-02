@@ -1653,6 +1653,9 @@ class MusicService : MediaLibraryService() {
             // Force an immediate publish for real-time watch metadata.
             widgetUpdateManager.requestFullUpdate(true)
             mediaSession?.let { refreshMediaSessionUiWithFollowUp(it) }
+            // ⚡ 防回写守护：歌词广播期间若标题被其它路径改回歌名，立即重推歌词，
+            //    避免通知栏在歌名与歌词之间来回切换（最长要等 500ms 轮询才纠正）。
+            bluetoothLyricsManager.onExternalMetadataChanged(mediaMetadata.title?.toString())
             // Only recompute RG if the track actually changed — onMediaMetadataChanged
             // also fires on queue edits (add/remove) without a track change, which would
             // launch a redundant IO coroutine and cause a brief volume spike.

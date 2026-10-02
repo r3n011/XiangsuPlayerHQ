@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMLL 绚丽背景 · 效果预览（Isolation 流体渐变）</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0b0d12; color: #e8eaf0;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  header { padding: 18px 28px 6px; }
+  header h1 { font-size: 20px; font-weight: 650; }
+  header p { font-size: 13px; color: #9aa3b5; margin-top: 6px; line-height: 1.6; }
+  header code { background: #1a1e29; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  #app { flex: 1; display: flex; gap: 24px; padding: 18px 28px 28px; align-items: stretch; min-height: 0; }
+  #stageWrap { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; }
+  #stage {
+    position: relative; border-radius: 24px; overflow: hidden;
+    background: #000; box-shadow: 0 12px 60px rgba(0,0,0,.6), 0 0 0 1px #262b38;
+    transition: width .35s ease, height .35s ease;
+  }
+  #stage.portrait { width: min(46vh, 420px); height: min(92vh, 880px); }
+  #stage.landscape { width: min(78vw, 980px); height: min(78vh, 560px); }
+  #gl { width: 100%; height: 100%; display: block; }
+  #overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    justify-content: flex-end; padding: 8% 9% 7%; pointer-events: none;
+  }
+  #overlay.hidden { display: none; }
+  #overlay .title { font-size: clamp(20px, 4.6vmin, 34px); font-weight: 750; color: #fff;
+    text-shadow: 0 2px 18px rgba(0,0,0,.45); letter-spacing: .5px; }
+  #overlay .artist { font-size: clamp(12px, 2.2vmin, 15px); color: rgba(255,255,255,.82);
+    margin-top: 8px; text-shadow: 0 1px 10px rgba(0,0,0,.5); }
+  #overlay .bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.28);
+    margin-top: 6%; position: relative; }
+  #overlay .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 38%;
+    border-radius: 2px; background: rgba(255,255,255,.92); }
+  #overlay .controls { display: flex; gap: 26px; justify-content: center; margin-top: 5.5%;
+    color: rgba(255,255,255,.9); font-size: clamp(14px, 2.6vmin, 20px); }
+  #panel { width: 330px; flex-shrink: 0; overflow-y: auto; padding-right: 4px; }
+  .card { background: #141822; border: 1px solid #262b38; border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 13px; color: #aab3c7; font-weight: 600; margin-bottom: 10px;
+    letter-spacing: .4px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button {
+    background: #1d2331; color: #e8eaf0; border: 1px solid #2c3347; border-radius: 9px;
+    padding: 7px 13px; font-size: 13px; cursor: pointer; transition: background .15s;
+  }
+  button:hover { background: #273044; }
+  button.active { background: #2f5bd7; border-color: #3f6ae8; }
+  label.ctl { display: flex; flex-direction: column; gap: 5px; font-size: 12px;
+    color: #aab3c7; margin-top: 10px; }
+  label.ctl .val { color: #e8eaf0; float: right; }
+  input[type=range] { width: 100%; accent-color: #2f5bd7; }
+  .thumbs { display: flex; gap: 8px; }
+  .thumbs canvas {
+    width: 52px; height: 52px; border-radius: 9px; cursor: pointer;
+    border: 2px solid transparent; object-fit: cover;
+  }
+  .thumbs .sel { border-color: #2f5bd7; }
+  #fileBtn { font-size: 12px; padding: 5px 10px; }
+  select { background: #1d2331; color: #e8eaf0; border: 1px solid #2c3347;
+    border-radius: 8px; padding: 6px 9px; font-size: 13px; }
+  .hint { font-size: 11.5px; color: #6b7488; margin-top: 10px; line-height: 1.6; }
+  #fps { color: #7ee787; font-size: 12px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .checkline { display: flex; align-items: center; gap: 8px; font-size: 13px;
+    color: #c6cddd; margin-top: 9px; cursor: pointer; user-select: none; }
+  .checkline small { color: #6b7488; }
+  input[type=checkbox] { accent-color: #2f5bd7; width: 15px; height: 15px; }
+  #paletteRow { display: flex; gap: 6px; margin-top: 10px; }
+  #paletteRow .swatch { flex: 1; height: 26px; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); }
+  #paletteAlgo { font-size: 11px; color: #6b7488; margin-top: 6px; }
+  @media (max-width: 900px) { #app { flex-direction: column; } #panel { width: 100%; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>AMLL 绚丽背景 · 效果预览（Isolation 流体渐变）</h1>
+  <p>参照 <code>applemusic-like-lyrics/packages/core/src/bg-render/isolation</code> + <code>palette</code> 的 1:1 WebGL 移植。
+     Isolation 渲染器<strong>不采样封面纹理</strong>：封面缩到 64×64 建直方图 → K-Means / 八叉树自动择优提取 4 个主色 →
+     OkLab 空间流动渐变（梯度噪声摆角 + 双正弦域扭曲 + 光波明度调制 + 极弱噪声抖动去色带），
+     换封面时重掷随机布局并做 1 秒调色板过渡 —— 所以画面是纯流体，没有格子。
+     另保留 <b>Mesh 网格</b>渲染器作对比（AMLL 的另一套方案）。</p>
+</header>
+<div id="app">
+  <div id="stageWrap">
+    <div id="stage" class="portrait">
+      <canvas id="gl"></canvas>
+      <div id="overlay">
+        <div class="title">Midnight City Lights</div>
+        <div class="artist">Neon Dreams — Retro Waves</div>
+        <div class="bar"><i></i></div>
+        <div class="controls"><span>⏮</span><span style="font-size:1.5em">⏸</span><span>⏭</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="panel">
+    <div class="card">
+      <h2>封面</h2>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="fileBtn">导入本地图片…</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
+      <div class="hint">也可以直接把图片拖到左侧预览区</div>
+    </div>
+    <div class="card">
+      <h2>渲染器</h2>
+      <div class="row">
+        <select id="rendererSel">
+          <option value="isolation" selected>Isolation 流体渐变</option>
+          <option value="mesh">Mesh 网格渐变（对比）</option>
+        </select>
+      </div>
+      <div id="isolationOpts">
+        <label class="checkline"><input type="checkbox" id="lightWaveBtn" checked> 光波效果 <small>明度随时间波动</small></label>
+        <label class="checkline"><input type="checkbox" id="ditherBtn" checked> 抖动 <small>消除渐变色带</small></label>
+        <div class="row" style="margin-top:10px">
+          <span style="font-size:12px;color:#aab3c7">取色算法</span>
+          <select id="algoSel">
+            <option value="auto" selected>自动择优（K-Means / 八叉树）</option>
+            <option value="kmeans">K-Means</option>
+            <option value="octtree">八叉树</option>
+          </select>
+        </div>
+        <div id="paletteRow"></div>
+        <div id="paletteAlgo"></div>
+      </div>
+      <div id="meshOpts" style="display:none">
+        <label class="checkline"><input type="checkbox" id="wireBtn"> 线框（显示 Hermite 网格）</label>
+        <label class="checkline"><input type="checkbox" id="uvBtn"> UV 调试（Flow Map 烘焙产物示意）</label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>动态</h2>
+      <div class="row">
+        <button id="songBtn">模拟切歌（重掷布局）</button>
+      </div>
+      <label class="ctl">流动速度 <span class="val" id="speedVal">0.20</span>
+        <input type="range" id="speed" min="0" max="1.5" step="0.05" value="0.2">
+      </label>
+      <label class="ctl" id="pumpCtl">低音泵动强度（仅 Mesh） <span class="val" id="pumpVal">0.0</span>
+        <input type="range" id="pump" min="0" max="1" step="0.05" value="0">
+      </label>
+      <div class="row" style="margin-top:10px">
+        <span style="font-size:12px;color:#aab3c7">帧率上限</span>
+        <select id="fpsCap"><option value="60" selected>60</option><option value="30">30</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <h2>视图</h2>
+      <div class="row">
+        <button id="aspectBtn" class="active">竖屏</button>
+        <button id="overlayBtn" class="active">播放器 UI</button>
+      </div>
+      <div id="fps">FPS: --</div>
+    </div>
+    <div class="card">
+      <h2>Android 落地要点</h2>
+      <div class="hint" style="margin-top:0">
+        Isolation 是 <strong>纯程序化</strong>方案：AGSL <code>RuntimeShader</code> 单 pass 直译这份
+        fragment shader；封面在 CPU 一次性走 直方图(64×64) → K-Means/八叉树择优 → 4 主色 → OkLab，
+        以 uniform 上传。无纹理采样、无几何网格，每帧仅一次全屏三角函数，比 Mesh 方案更轻。
+        换歌 = 重掷随机参数 + 1s OkLab 调色板过渡。API 33+ 可用，旧系统回退静态渐变。
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+window.addEventListener("error", e => {
+  const el = document.getElementById("fps");
+  if (el) el.textContent = "ERROR: " + e.message + " @" + (e.lineno || "?");
+  console.error(e.error || e.message);
+});
+
+/* ================================================================
+ * 调色板：色彩工具（port: palette/color-utilities.ts）
+ * ================================================================ */
+function channelToLinear(v) {
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+function srgbToOkLab(rgb) {
+  const [r, g, b] = rgb;
+  const lr = channelToLinear(r), lg = channelToLinear(g), lb = channelToLinear(b);
+  const l = Math.cbrt(0.4122214708*lr + 0.5363325363*lg + 0.0514459929*lb);
+  const m = Math.cbrt(0.2119034982*lr + 0.6806995451*lg + 0.1073969566*lb);
+  const s = Math.cbrt(0.0883024619*lr + 0.2817188376*lg + 0.6299787005*lb);
+  return [
+    0.2104542553*l + 0.793617785*m - 0.0040720468*s,
+    1.9779984951*l - 2.428592205*m + 0.4505937099*s,
+    0.0259040371*l + 0.7827717662*m - 0.808675766*s,
+  ];
+}
+function rgbToXyz(rgb) {
+  const [r, g, b] = [rgb[0]/255, rgb[1]/255, rgb[2]/255];
+  return [
+    r*0.4124 + g*0.3576 + b*0.1805,
+    r*0.2126 + g*0.7152 + b*0.0722,
+    r*0.0193 + g*0.1192 + b*0.9505,
+  ];
+}
+const D65 = { x: 0.95047, y: 1.0, z: 1.0883 };
+function fxyz(t) { return t > 0.008856 ? Math.cbrt(t) : 7.787*t + 16/116; }
+function xyzToLab(xyz) {
+  const [x, y, z] = xyz;
+  return [
+    116*fxyz(y/D65.y) - 16,
+    500*(fxyz(x/D65.x) - fxyz(y/D65.y)),
+    200*(fxyz(y/D65.y) - fxyz(z/D65.z)),
+  ];
+}
+function rgbToLab(rgb) { return xyzToLab(rgbToXyz(rgb)); }
+function yToLStar(y) {
+  if (y <= 216/24389) return y * (24389/27);
+  return Math.cbrt(y) * 116 - 16;
+}
+function lStarOf(rgb) {
+  const y = 0.2126*channelToLinear(rgb[0]/255) + 0.7152*channelToLinear(rgb[1]/255) + 0.0722*channelToLinear(rgb[2]/255);
+  return yToLStar(y);
+}
+const paletteIsDark = c => lStarOf(c) <= 40;
+const paletteIsLight = c => lStarOf(c) >= 60;
+const themeIsDark = c => lStarOf(c) <= 50;
+function distanceSquared(a, b) {
+  const dx = a[0]-b[0], dy = a[1]-b[1], dz = a[2]-b[2];
+  return dx*dx + dy*dy + dz*dz;
+}
+
+/* ================================================================
+ * 调色板：直方图（port: palette/histogram.ts）
+ * ================================================================ */
+function buildColorHistogram(source, sampleSize = 64) {
+  const sw = source.naturalWidth || source.width;
+  const sh = source.naturalHeight || source.height;
+  if (!sw || !sh) return [];
+  const scale = Math.min(1, sampleSize / Math.max(sw, sh));
+  const w = Math.max(1, Math.round(sw*scale)), h = Math.max(1, Math.round(sh*scale));
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(source, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const counts = new Map();
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i+3] === 0) continue;
+    const key = (data[i] << 16) | (data[i+1] << 8) | data[i+2];
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return Array.from(counts, ([key, count]) => ({
+    color: [(key >> 16) & 0xff, (key >> 8) & 0xff, key & 0xff], count,
+  }));
+}
+
+/* ================================================================
+ * 调色板：K-Means（port: palette/kmeans.ts）
+ * ================================================================ */
+function createRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function seedFromHistogram(entries) {
+  let hash = 0x811c9dc5;
+  for (const { color, count } of entries) {
+    for (const value of [...color, count]) {
+      hash ^= Math.round(value) & 0xffff;
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+  }
+  return hash >>> 0;
+}
+const isNotNearWhite = c => c.some(ch => ch <= 250);
+function filterOrFallback(entries, pred) {
+  const f = entries.filter(pred);
+  return f.length > 0 ? f : [...entries];
+}
+function clampRgb(c) { return c.map(ch => Math.min(255, Math.max(0, ch))); }
+function groupColors(entries) {
+  const grouped = new Map();
+  for (const e of entries) {
+    const key = `${e.color[0]},${e.color[1]},${e.color[2]}`;
+    const ex = grouped.get(key);
+    if (ex) ex.count += e.count;
+    else grouped.set(key, { color: [...e.color], count: e.count });
+  }
+  return [...grouped.values()];
+}
+function colorsEqual(a, b) { return a.every((v, i) => v === b[i]); }
+function findNearestCenterIndex(color, centers) {
+  let nearest = 0, min = Infinity;
+  for (let i = 0; i < centers.length; i++) {
+    const d = distanceSquared(color, centers[i]);
+    if (d < min) { nearest = i; min = d; }
+  }
+  return nearest;
+}
+function findFarthestColor(entries, centers) {
+  let farthest = [0,0,0], maxD = -Infinity;
+  for (const { color } of entries) {
+    let nearestD = Infinity;
+    for (const c of centers) nearestD = Math.min(nearestD, distanceSquared(color, c));
+    if (nearestD > maxD) { maxD = nearestD; farthest = color; }
+  }
+  return farthest;
+}
+function kMeansCluster(entries, numClusters, useKMeansPP, random) {
+  const clusterCount = Math.min(numClusters, entries.length);
+  if (clusterCount <= 0) return [];
+  let centers;
+  if (useKMeansPP) {
+    const firstIndex = Math.floor(random() * entries.length);
+    const selected = new Set([firstIndex]);
+    centers = [entries[firstIndex].color];
+    for (let i = 1; i < clusterCount; i++) {
+      let accumulated = 0;
+      const acc = new Float64Array(entries.length);
+      for (let v = 0; v < entries.length; v++) {
+        const target = entries[v].color;
+        let minD = distanceSquared(centers[0], target);
+        for (let k = 1; k < i; k++) minD = Math.min(minD, distanceSquared(centers[k], target));
+        accumulated += minD * entries[v].count;
+        acc[v] = accumulated;
+      }
+      if (accumulated <= Number.EPSILON) {
+        const next = entries.findIndex((_, idx) => !selected.has(idx));
+        if (next < 0) break;
+        selected.add(next); centers.push(entries[next].color); continue;
+      }
+      const targetPoint = random() * accumulated;
+      for (let v = 0; v < entries.length; v++) {
+        if (!selected.has(v) && acc[v] >= targetPoint) { selected.add(v); centers.push(entries[v].color); break; }
+      }
+      if (centers.length === i) {
+        const next = entries.findIndex((_, idx) => !selected.has(idx));
+        if (next < 0) break;
+        selected.add(next); centers.push(entries[next].color);
+      }
+    }
+  } else {
+    const shuffled = entries.map(e => e.color);
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    centers = shuffled.slice(0, clusterCount);
+  }
+  const assignments = new Int32Array(entries.length);
+  let changed = true, iterations = 0;
+  while (changed && iterations < 250) {
+    changed = false; iterations++;
+    for (let i = 0; i < entries.length; i++) assignments[i] = findNearestCenterIndex(entries[i].color, centers);
+    for (let i = 0; i < clusterCount; i++) {
+      let sx = 0, sy = 0, sz = 0, weight = 0;
+      for (let e = 0; e < entries.length; e++) {
+        if (assignments[e] !== i) continue;
+        const { color, count } = entries[e];
+        sx += color[0]*count; sy += color[1]*count; sz += color[2]*count; weight += count;
+      }
+      if (weight === 0) { centers[i] = findFarthestColor(entries, centers); changed = true; continue; }
+      const nc = [sx/weight, sy/weight, sz/weight];
+      if (!colorsEqual(nc, centers[i])) { centers[i] = nc; changed = true; }
+    }
+  }
+  return centers;
+}
+function createThemeColor(sourceColors, ignoreWhite = false, toLab = false, random) {
+  random = random || createRandom(seedFromHistogram(sourceColors));
+  let entries = [...sourceColors];
+  if (ignoreWhite && entries.length > 1) entries = filterOrFallback(entries, e => isNotNearWhite(e.color));
+  if (toLab) entries = entries.map(e => ({ color: rgbToLab(e.color), count: e.count }));
+  entries = groupColors(entries);
+  const centers = kMeansCluster(entries, 1, false, random);
+  const first = centers[0] ?? [0,0,0];
+  const color = clampRgb(toLab ? labToRgb(first) : first);
+  return { color, colorIsDark: themeIsDark(color) };
+}
+function labToRgb(lab) {
+  const delta = 6/29;
+  const [l, a, b] = lab;
+  const fy = (l + 16)/116, fx = fy + a/500, fz = fy - b/200;
+  const xyz = [
+    fx > delta ? D65.x*fx*fx*fx : (fx - 16/116)*3*delta*delta*D65.x,
+    fy > delta ? D65.y*fy*fy*fy : (fy - 16/116)*3*delta*delta*D65.y,
+    fz > delta ? D65.z*fz*fz*fz : (fz - 16/116)*3*delta*delta*D65.z,
+  ];
+  const [x, y, z] = xyz;
+  return [
+    Math.max(0, Math.min(255, (x*3.2406 - y*1.5372 - z*0.4986)*255)),
+    Math.max(0, Math.min(255, (-x*0.9689 + y*1.8758 + z*0.0415)*255)),
+    Math.max(0, Math.min(255, (x*0.0557 - y*0.204 + z*1.057)*255)),
+  ];
+}
+function createKMeansPalette(sourceColors, clusterCount, themeColor, ignoreWhite = false, toLab = false, useKMeansPP = false, intent = "accent", random) {
+  random = random || createRandom(seedFromHistogram(sourceColors));
+  let effIgnoreWhite = ignoreWhite, effKmpp = useKMeansPP;
+  if (sourceColors.length === 1) { effIgnoreWhite = false; effKmpp = false; }
+  const colorIsDark = themeColor.colorIsDark;
+  let entries = filterOrFallback(sourceColors, entry => {
+    if (intent === "dominant") return !effIgnoreWhite || isNotNearWhite(entry.color);
+    if (colorIsDark) return paletteIsDark(entry.color);
+    if (!effIgnoreWhite) return paletteIsLight(entry.color);
+    return paletteIsLight(entry.color) && isNotNearWhite(entry.color);
+  });
+  if (toLab) entries = entries.map(e => ({ color: rgbToLab(e.color), count: e.count }));
+  entries = groupColors(entries);
+  const centers = kMeansCluster(entries, clusterCount, effKmpp, random);
+  const dominant = centers.map(c => clampRgb(toLab ? labToRgb(c) : c));
+  const palette = [];
+  for (let i = 0; i < clusterCount; i++)
+    palette.push(dominant.length > 0 ? [...dominant[i % dominant.length]] : [0,0,0]);
+  return { palette, paletteIsDark: colorIsDark, themeColor };
+}
+
+/* ================================================================
+ * 调色板：八叉树（port: palette/octtree.ts）
+ * ================================================================ */
+const MAX_COLOR_DEPTH = 8;
+class OctreeNode {
+  constructor(owner, parentNode, indexInParent) {
+    this.owner = owner; this.parentNode = parentNode; this.indexInParent = indexInParent;
+    this.children = [null,null,null,null,null,null,null,null];
+    this.childCount = 0; this.leafNodeCount = 0; this.sampleCount = 0;
+    this.redSum = 0; this.greenSum = 0; this.blueSum = 0;
+  }
+  get averageColor() {
+    if (this.sampleCount === 0) return [0,0,0];
+    return [this.redSum/this.sampleCount, this.greenSum/this.sampleCount, this.blueSum/this.sampleCount];
+  }
+  addColor(red, green, blue, depth, sampleCount) {
+    this.sampleCount += sampleCount;
+    this.redSum += red*sampleCount; this.greenSum += green*sampleCount; this.blueSum += blue*sampleCount;
+    if (depth === MAX_COLOR_DEPTH) {
+      if (this.leafNodeCount === 0) this.leafNodeCount = 1;
+      return;
+    }
+    const bitShift = 7 - depth;
+    const childIndex = (((red >> bitShift) & 1) << 2) | (((green >> bitShift) & 1) << 1) | ((blue >> bitShift) & 1);
+    let child = this.children[childIndex];
+    if (!child) {
+      child = new OctreeNode(this.owner, this, childIndex);
+      this.children[childIndex] = child;
+      this.childCount++;
+      this.owner.registerNodeAtDepth(child, depth);
+    }
+    const prevLeaf = child.leafNodeCount;
+    child.addColor(red, green, blue, depth + 1, sampleCount);
+    this.leafNodeCount += child.leafNodeCount - prevLeaf;
+  }
+  collectPaletteColors(result) {
+    if (this.leafNodeCount === 0) return;
+    if (this.childCount === 0) {
+      result.push({ color: this.averageColor, sampleCount: this.sampleCount });
+      return;
+    }
+    for (const child of this.children) child?.collectPaletteColors(result);
+  }
+  mergeChildrenIntoThisNode() {
+    if (this.childCount === 0 || this.leafNodeCount <= 1) return;
+    const prevLeaf = this.leafNodeCount;
+    this.children.fill(null);
+    this.childCount = 0;
+    this.leafNodeCount = this.sampleCount > 0 ? 1 : 0;
+    const reduction = prevLeaf - this.leafNodeCount;
+    let p = this.parentNode;
+    while (p) { p.leafNodeCount -= reduction; p = p.parentNode; }
+  }
+  isAttachedToRoot() {
+    let cur = this;
+    while (cur.parentNode) {
+      if (cur.parentNode.children[cur.indexInParent] !== cur) return false;
+      cur = cur.parentNode;
+    }
+    return true;
+  }
+}
+class OctreePaletteQuantizer {
+  constructor() {
+    this.rootNode = new OctreeNode(this, null, -1);
+    this.nodesByDepth = Array.from({ length: MAX_COLOR_DEPTH }, () => []);
+  }
+  registerNodeAtDepth(node, depth) { this.nodesByDepth[depth].push(node); }
+  addColor(color, sampleCount) {
+    if (sampleCount <= 0) return;
+    this.rootNode.addColor(color[0] & 0xff, color[1] & 0xff, color[2] & 0xff, 0, sampleCount);
+  }
+  getPalette(maxColorCount) {
+    if (maxColorCount <= 0 || this.rootNode.leafNodeCount === 0) return [];
+    const entries = [];
+    this.rootNode.collectPaletteColors(entries);
+    if (entries.length <= maxColorCount) return entries.map(e => e.color);
+    entries.sort((a, b) => {
+      const byCount = b.sampleCount - a.sampleCount;
+      if (byCount !== 0) return byCount;
+      if (a.color[0] !== b.color[0]) return a.color[0] - b.color[0];
+      if (a.color[1] !== b.color[1]) return a.color[1] - b.color[1];
+      return a.color[2] - b.color[2];
+    });
+    return entries.slice(0, Math.min(maxColorCount, entries.length)).map(e => e.color);
+  }
+  reduceToColorCount(target) {
+    if (target <= 0) return;
+    let remaining = this.rootNode.leafNodeCount - target;
+    if (remaining <= 0) return;
+    for (let depth = MAX_COLOR_DEPTH - 2; depth >= 0 && remaining > 0; depth--) {
+      const nodes = this.nodesByDepth[depth];
+      nodes.sort((a, b) => {
+        const byLeaf = a.leafNodeCount - b.leafNodeCount;
+        if (byLeaf !== 0) return byLeaf;
+        return a.sampleCount - b.sampleCount;
+      });
+      for (let i = 0; i < nodes.length && remaining > 0; i++) {
+        const cand = nodes[i];
+        if (cand.childCount === 0) continue;
+        const reduction = cand.leafNodeCount - 1;
+        if (reduction <= 0 || reduction > remaining) continue;
+        remaining -= reduction;
+        cand.mergeChildrenIntoThisNode();
+      }
+    }
+    while (this.rootNode.leafNodeCount > target) {
+      const cand = this.findBestMergeCandidate();
+      if (!cand) break;
+      cand.mergeChildrenIntoThisNode();
+    }
+  }
+  findBestMergeCandidate() {
+    let best = null, bestReduction = Infinity, bestSamples = Infinity;
+    for (let depth = MAX_COLOR_DEPTH - 2; depth >= 0; depth--) {
+      for (const cand of this.nodesByDepth[depth]) {
+        if (!cand.isAttachedToRoot() || cand.childCount === 0) continue;
+        const reduction = cand.leafNodeCount - 1;
+        if (reduction <= 0) continue;
+        if (reduction < bestReduction || (reduction === bestReduction && cand.sampleCount < bestSamples)) {
+          best = cand; bestReduction = reduction; bestSamples = cand.sampleCount;
+        }
+      }
+    }
+    return best;
+  }
+}
+function createOctTreePalette(sourceColors, clusterCount, themeColor, ignoreWhite = false, intent = "accent") {
+  themeColor = themeColor || createThemeColor(sourceColors, false, true);
+  const quantizer = new OctreePaletteQuantizer();
+  const effIgnoreWhite = sourceColors.length === 1 ? false : ignoreWhite;
+  const filtered = sourceColors.filter(entry => {
+    const [r, g, b] = entry.color;
+    if (effIgnoreWhite && r > 250 && g > 250 && b > 250) return false;
+    if (intent === "dominant") return true;
+    return themeColor.colorIsDark ? paletteIsDark(entry.color) : paletteIsLight(entry.color);
+  });
+  const entries = filtered.length > 0 ? filtered : sourceColors;
+  for (const e of entries) quantizer.addColor(e.color, e.count);
+  quantizer.reduceToColorCount(clusterCount);
+  const qr = quantizer.getPalette(clusterCount);
+  let palette;
+  if (qr.length < clusterCount) {
+    palette = [];
+    for (let i = 0; i < clusterCount; i++)
+      palette.push(qr.length > 0 ? [...qr[i % qr.length]] : [0,0,0]);
+  } else palette = qr;
+  return { palette, paletteIsDark: themeColor.colorIsDark, themeColor };
+}
+
+/* ================================================================
+ * 调色板：自动择优（port: palette/auto.ts）
+ * ================================================================ */
+function calculateSpatialDiversity(palette) {
+  if (palette.length === 0) return 0;
+  const labs = palette.map(rgbToLab);
+  let cl = 0, ca = 0, cb = 0;
+  for (const [l, a, b] of labs) { cl += l; ca += a; cb += b; }
+  cl /= labs.length; ca /= labs.length; cb /= labs.length;
+  let sum = 0;
+  for (const [l, a, b] of labs) {
+    const dl = l-cl, da = a-ca, db = b-cb;
+    sum += dl*dl + da*da + db*db;
+  }
+  return sum / labs.length;
+}
+function countDistinctColors(palette) {
+  return new Set(palette.map(c => c.join(","))).size;
+}
+function createAutoPalette(sourceColors, clusterCount, ignoreWhite = false, toLab = false, useKMeansPP = false, intent = "accent") {
+  const random = createRandom(seedFromHistogram(sourceColors));
+  const themeColor = createThemeColor(sourceColors, ignoreWhite, toLab, random);
+  const kmeans = createKMeansPalette(sourceColors, clusterCount, themeColor, ignoreWhite, toLab, useKMeansPP, intent, random);
+  const octtree = createOctTreePalette(sourceColors, clusterCount, themeColor, ignoreWhite, intent);
+  const kd = countDistinctColors(kmeans.palette), od = countDistinctColors(octtree.palette);
+  if (kd !== od) return kd > od ? { ...kmeans, algo: "K-Means" } : { ...octtree, algo: "八叉树" };
+  const kdiv = calculateSpatialDiversity(kmeans.palette), odiv = calculateSpatialDiversity(octtree.palette);
+  if (intent === "dominant" || kmeans.paletteIsDark)
+    return kdiv >= odiv ? { ...kmeans, algo: "K-Means" } : { ...octtree, algo: "八叉树" };
+  return (kdiv <= odiv || odiv === 0) ? { ...kmeans, algo: "K-Means" } : { ...octtree, algo: "八叉树" };
+}
+function createPaletteFromImage(source, clusterCount, options = {}) {
+  const { algorithm = "auto", ignoreWhite = false, toLab = false, useKMeansPP = false, intent = "accent" } = options;
+  const entries = buildColorHistogram(source);
+  if (entries.length === 0)
+    return { palette: Array.from({ length: clusterCount }, () => [0,0,0]), algo: "空" };
+  switch (algorithm) {
+    case "kmeans": {
+      const theme = createThemeColor(entries, ignoreWhite, toLab);
+      return { ...createKMeansPalette(entries, clusterCount, theme, ignoreWhite, toLab, useKMeansPP, intent), algo: "K-Means" };
+    }
+    case "octtree": {
+      const theme = createThemeColor(entries, ignoreWhite, true);
+      return { ...createOctTreePalette(entries, clusterCount, theme, ignoreWhite, intent), algo: "八叉树" };
+    }
+    default:
+      return createAutoPalette(entries, clusterCount, ignoreWhite, toLab, useKMeansPP, intent);
+  }
+}
+
+/* ================================================================
+ * WebGL 公共
+ * ================================================================ */
+const canvas = document.getElementById("gl");
+const gl = canvas.getContext("webgl", { antialias: true });
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const attrs = {}, unis = {};
+  const na = gl.getProgramParameter(p, gl.ACTIVE_ATTRIBUTES);
+  for (let i = 0; i < na; i++) { const a = gl.getActiveAttrib(p, i); attrs[a.name] = gl.getAttribLocation(p, a.name); }
+  const nu = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < nu; i++) { const u = gl.getActiveUniform(p, i); unis[u.name.replace("[0]", "")] = gl.getUniformLocation(p, u.name); }
+  return { p, attrs, unis };
+}
+
+/* ================================================================
+ * Isolation 渲染器（port: isolation/isolation.frag.glsl + index.ts）
+ * ================================================================ */
+const ISO_VERT = `
+attribute vec2 a_position;
+void main() { gl_Position = vec4(a_position, 0.0, 1.0); }`;
+
+const ISO_FRAG = `
+precision highp float;
+
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec3 u_colors[4];
+uniform vec3 u_random;
+uniform vec4 u_flowParams;
+uniform float u_angleJitter;
+uniform bool u_enableLightWave;
+uniform bool u_enableDithering;
+
+const float PI = 3.141592653589793;
+
+vec2 rotatePoint(vec2 point, float angle) {
+  float sine = sin(angle);
+  float cosine = cos(angle);
+  return vec2(
+    point.x * cosine - point.y * sine,
+    point.x * sine + point.y * cosine
+  );
+}
+
+vec2 gradientHash(vec2 point) {
+  return fract(
+    sin(
+      vec2(
+        dot(point, vec2(127.1, 311.7)),
+        dot(point, vec2(269.5, 183.3))
+      )
+    ) * 43758.5453
+  );
+}
+
+float gradientNoise(vec2 point) {
+  vec2 cell = floor(point);
+  vec2 offset = fract(point);
+  vec2 eased = offset * offset * (3.0 - 2.0 * offset);
+  float lower = mix(
+    dot(-1.0 + 2.0 * gradientHash(cell), offset),
+    dot(-1.0 + 2.0 * gradientHash(cell + vec2(1.0, 0.0)), offset - vec2(1.0, 0.0)),
+    eased.x
+  );
+  float upper = mix(
+    dot(-1.0 + 2.0 * gradientHash(cell + vec2(0.0, 1.0)), offset - vec2(0.0, 1.0)),
+    dot(-1.0 + 2.0 * gradientHash(cell + vec2(1.0, 1.0)), offset - vec2(1.0, 1.0)),
+    eased.x
+  );
+  return 0.5 + 0.5 * mix(lower, upper, eased.y);
+}
+
+float encodeSrgb(float channel) {
+  return channel <= 0.0031308
+    ? 12.92 * channel
+    : 1.055 * pow(max(channel, 0.0), 1.0 / 2.4) - 0.055;
+}
+
+vec3 okLabToSrgb(vec3 color) {
+  float lRoot = color.x + 0.3963377774 * color.y + 0.2158037573 * color.z;
+  float mRoot = color.x - 0.1055613458 * color.y - 0.0638541728 * color.z;
+  float sRoot = color.x - 0.0894841775 * color.y - 1.2914855480 * color.z;
+  float l = lRoot * lRoot * lRoot;
+  float m = mRoot * mRoot * mRoot;
+  float s = sRoot * sRoot * sRoot;
+  vec3 linearColor = vec3(
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+  );
+  return vec3(
+    encodeSrgb(linearColor.r),
+    encodeSrgb(linearColor.g),
+    encodeSrgb(linearColor.b)
+  );
+}
+
+vec3 applyLightWave(vec3 okLabColor, vec2 uv) {
+  vec2 point = -1.0 + 1.5 * uv;
+  float x = point.x;
+  float y = point.y;
+  float time = u_time * 0.2;
+  float yPhase = y / 0.3;
+  float xPhase = x / 0.2;
+  float timeWarp = cos(sin(time) * 2.0) * 0.1;
+  float movement = (x + y) * 0.001 + timeWarp + sin(x * 0.01);
+  float wave1 =
+    sin(yPhase + 2.0 * time + u_random.x) * 0.5 -
+    yPhase -
+    xPhase * 0.5;
+  float wave2 = cos(
+    wave1 +
+      sin(movement + time) +
+      sin(y * 0.025 + time) +
+      sin((x + y) * 0.01) * 3.0 +
+      u_random.y
+  );
+  float wave3 = abs(
+    sin(
+      wave2 +
+        cos(yPhase + time + xPhase + wave2) +
+        cos(xPhase) +
+        sin(x * 0.001) +
+        u_random.z
+    )
+  );
+  okLabColor.x = clamp(okLabColor.x * (1.1 - 0.1 * wave3), 0.0, 1.0);
+  return okLabToSrgb(okLabColor);
+}
+
+float interleavedGradientNoise(vec2 position) {
+  return fract(
+    52.9829189 * fract(dot(position, vec2(0.06711056, 0.00583715)))
+  );
+}
+
+vec3 screenSpaceDither(vec2 screenPosition) {
+  vec2 position = screenPosition + u_random.xy * 97.0;
+  vec3 noise = vec3(
+    interleavedGradientNoise(position),
+    interleavedGradientNoise(position + vec2(17.0, 59.0)),
+    interleavedGradientNoise(position + vec2(71.0, 23.0))
+  );
+  return (noise - 0.5) / 255.0;
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / u_resolution;
+  vec2 gradientPoint = uv - 0.5;
+  float degree = gradientNoise(
+    vec2(
+      u_time * 0.1 + u_random.x * 0.07,
+      gradientPoint.x * gradientPoint.y + u_random.y * 0.07
+    )
+  );
+  float noiseAngle = ((degree - 0.5) * 720.0 + 180.0) * PI / 180.0;
+  gradientPoint = rotatePoint(gradientPoint, noiseAngle + u_angleJitter);
+
+  float frequency = u_flowParams.x;
+  float amplitude = u_flowParams.y;
+  float speed = u_time * u_flowParams.z;
+  gradientPoint.x += sin(gradientPoint.y * frequency + speed) / amplitude;
+  gradientPoint.y +=
+    sin(gradientPoint.x * frequency * 1.5 + speed) / (amplitude * 0.5);
+
+  float rotatedX = rotatePoint(gradientPoint, u_flowParams.w).x;
+  float horizontal = smoothstep(-0.3, 0.2, rotatedX);
+  vec3 okLabColor = mix(
+    mix(u_colors[0], u_colors[1], horizontal),
+    mix(u_colors[2], u_colors[3], horizontal),
+    1.0 - smoothstep(-0.3, 0.5, gradientPoint.y)
+  );
+  vec3 color = u_enableLightWave
+    ? applyLightWave(okLabColor, uv)
+    : okLabToSrgb(okLabColor);
+
+  if (u_enableDithering) {
+    color += screenSpaceDither(gl_FragCoord.xy);
+  }
+
+  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+}`;
+
+const progIso = program(ISO_VERT, ISO_FRAG);
+const isoQuadBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, isoQuadBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+
+const PALETTE_TRANSITION_MS = 1000;
+const TAU = Math.PI * 2;
+const DEG_TO_RAD = Math.PI / 180;
+const DEFAULT_COLORS = [[0.09,0.09,0.11],[0.13,0.13,0.16],[0.07,0.07,0.09],[0.11,0.11,0.13]];
+const DEFAULT_OKLAB = new Float32Array(DEFAULT_COLORS.flatMap(srgbToOkLab));
+
+const iso = {
+  fromColors: new Float32Array(DEFAULT_OKLAB),
+  toColors: new Float32Array(DEFAULT_OKLAB),
+  colorBuffer: new Float32Array(DEFAULT_OKLAB),
+  transitionElapsed: PALETTE_TRANSITION_MS,
+  randomValues: new Float32Array(3),
+  flowParams: new Float32Array([5.0, 25, 0.75, 0]),
+  angleJitter: 0,
+  paletteOrder: [0, 1, 2, 3],
+  options: { lightWave: true, dithering: true, algorithm: "auto" },
+};
+function lerpNum(a, b, t) { return a + (b - a) * t; }
+function rollRandomParameters() {
+  for (let i = 0; i < 3; i++) iso.randomValues[i] = Math.random() * TAU;
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  iso.flowParams[0] = lerpNum(4.5, 5.5, Math.random());
+  iso.flowParams[1] = lerpNum(22, 29, Math.random());
+  iso.flowParams[2] = lerpNum(0.65, 0.85, Math.random()) * direction;
+  iso.flowParams[3] = (-5 + (Math.random() - 0.5) * 12) * DEG_TO_RAD;
+  iso.angleJitter = (Math.random() - 0.5) * 0.3;
+  iso.paletteOrder = [0, 1, 2, 3];
+  for (let i = 3; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [iso.paletteOrder[i], iso.paletteOrder[j]] = [iso.paletteOrder[j], iso.paletteOrder[i]];
+  }
+}
+function updateColorBuffer() {
+  if (iso.transitionElapsed >= PALETTE_TRANSITION_MS) {
+    iso.colorBuffer.set(iso.toColors);
+    return;
+  }
+  const p = iso.transitionElapsed / PALETTE_TRANSITION_MS;
+  const eased = p * p * (3 - 2 * p);
+  for (let i = 0; i < iso.colorBuffer.length; i++)
+    iso.colorBuffer[i] = lerpNum(iso.fromColors[i], iso.toColors[i], eased);
+}
+function transitionToColors(next, immediate) {
+  if (immediate) {
+    iso.fromColors.set(next);
+  } else {
+    updateColorBuffer();
+    iso.fromColors.set(iso.colorBuffer);
+  }
+  iso.toColors.set(next);
+  iso.transitionElapsed = immediate ? PALETTE_TRANSITION_MS : 0;
+}
+function updatePaletteFromSource(source, immediate = false) {
+  const result = createPaletteFromImage(source, 4, {
+    algorithm: iso.options.algorithm,
+    intent: "dominant",
+  });
+  const next = new Float32Array(12);
+  for (let i = 0; i < 4; i++) {
+    const [r, g, b] = result.palette[iso.paletteOrder[i]];
+    next.set(srgbToOkLab([r/255, g/255, b/255]), i*3);
+  }
+  transitionToColors(next, immediate);
+  showPalette(result);
+}
+function showPalette(result) {
+  const row = document.getElementById("paletteRow");
+  row.innerHTML = "";
+  for (const c of result.palette) {
+    const d = document.createElement("div");
+    d.className = "swatch";
+    d.style.background = `rgb(${c.map(v => Math.round(v)).join(",")})`;
+    row.appendChild(d);
+  }
+  document.getElementById("paletteAlgo").textContent =
+    `取色：${result.algo || iso.options.algorithm} · 4 主色（调色板顺序已随机洗牌）`;
+}
+
+/* ================================================================
+ * Mesh 渲染器（保留作对比，port: mesh-renderer）
+ * ================================================================ */
+function mat4Mul(out, a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++)
+    o[c*4+r] = a[r]*b[c*4] + a[4+r]*b[c*4+1] + a[8+r]*b[c*4+2] + a[12+r]*b[c*4+3];
+  out.set(o); return out;
+}
+function mat4Transpose(out, a) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) o[r*4+c] = a[c*4+r];
+  out.set(o); return out;
+}
+const H = new Float32Array([2,-2,1,1, -3,3,-2,-1, 0,0,1,0, 1,0,0,0]);
+const H_T = new Float32Array(16); mat4Transpose(H_T, H);
+
+class ControlPoint {
+  constructor() { this.x = 0; this.y = 0; this._ur = 0; this._vr = 0; this._us = 1; this._vs = 1;
+    this.ut = [0, 0]; this.vt = [0, 0]; }
+  get uRot() { return this._ur; } set uRot(v) { this._ur = v; this.upd(); }
+  get vRot() { return this._vr; } set vRot(v) { this._vr = v; this.upd(); }
+  get uScale() { return this._us; } set uScale(v) { this._us = v; this.upd(); }
+  get vScale() { return this._vs; } set vScale(v) { this._vs = v; this.upd(); }
+  upd() {
+    this.ut[0] = Math.cos(this._ur) * this._us; this.ut[1] = Math.sin(this._ur) * this._us;
+    this.vt[0] = -Math.sin(this._vr) * this._vs; this.vt[1] = Math.cos(this._vr) * this._vs;
+  }
+}
+const randomRange = (a, b) => Math.random() * (b - a) + a;
+const clamp01 = v => Math.min(1, Math.max(0, v));
+function smoothstep(a, b, x) { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); }
+function fract(x) { return x - Math.floor(x); }
+function hashNoise(x, y) { return fract(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453); }
+function smoothNoise(x, y) {
+  const x0 = Math.floor(x), y0 = Math.floor(y), x1 = x0 + 1, y1 = y0 + 1;
+  const xf = x - x0, yf = y - y0;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const n00 = hashNoise(x0, y0), n10 = hashNoise(x1, y0), n01 = hashNoise(x0, y1), n11 = hashNoise(x1, y1);
+  const nx0 = n00 * (1 - u) + n10 * u, nx1 = n01 * (1 - u) + n11 * u;
+  return nx0 * (1 - v) + nx1 * v;
+}
+function noiseGradient(x, y, eps = 0.001) {
+  const dx = (smoothNoise(x + eps, y) - smoothNoise(x - eps, y)) / (2 * eps);
+  const dy = (smoothNoise(x, y + eps) - smoothNoise(x, y - eps)) / (2 * eps);
+  const len = Math.hypot(dx, dy) || 1;
+  return [dx / len, dy / len];
+}
+function generateControlPoints(width, height) {
+  const w = width, h = height;
+  const variationFraction = randomRange(0.4, 0.6), normalOffset = randomRange(0.3, 0.6);
+  const blendFactor = 0.8;
+  const smoothIters = Math.floor(randomRange(3, 5)), smoothFactor = randomRange(0.2, 0.3);
+  const smoothModifier = randomRange(-0.1, -0.05);
+  const dx = 2 / (w - 1), dy = 2 / (h - 1);
+  const conf = [];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const baseX = (i / (w - 1)) * 2 - 1, baseY = (j / (h - 1)) * 2 - 1;
+    const isBorder = i === 0 || i === w - 1 || j === 0 || j === h - 1;
+    const pertX = isBorder ? 0 : randomRange(-variationFraction * dx, variationFraction * dx);
+    const pertY = isBorder ? 0 : randomRange(-variationFraction * dy, variationFraction * dy);
+    let x = baseX + pertX, y = baseY + pertY;
+    const ur = isBorder ? 0 : randomRange(-60, 60), vr = isBorder ? 0 : randomRange(-60, 60);
+    const up = isBorder ? 1 : randomRange(0.8, 1.2), vp = isBorder ? 1 : randomRange(0.8, 1.2);
+    if (!isBorder) {
+      const uNorm = (baseX + 1) / 2, vNorm = (baseY + 1) / 2;
+      const [nx, ny] = noiseGradient(uNorm, vNorm);
+      const distToBorder = Math.min(uNorm, 1 - uNorm, vNorm, 1 - vNorm);
+      const weight = smoothstep(0, 1.0, distToBorder);
+      const offX = nx * normalOffset * weight, offY = ny * normalOffset * weight;
+      x = x * (1 - blendFactor) + (x + offX) * blendFactor;
+      y = y * (1 - blendFactor) + (y + offY) * blendFactor;
+    }
+    conf.push({ cx: i, cy: j, x, y, ur, vr, up, vp });
+  }
+  let grid = [];
+  for (let j = 0; j < h; j++) { grid[j] = []; for (let i = 0; i < w; i++) grid[j][i] = conf[j * w + i]; }
+  const K = [[1,2,1],[2,4,2],[1,2,1]], KS = 16;
+  let f = smoothFactor;
+  for (let iter = 0; iter < smoothIters; iter++) {
+    const ng = [];
+    for (let j = 0; j < h; j++) { ng[j] = []; for (let i = 0; i < w; i++) {
+      if (i === 0 || i === w - 1 || j === 0 || j === h - 1) { ng[j][i] = grid[j][i]; continue; }
+      let sx=0, sy=0, sur=0, svr=0, sup=0, svp=0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const wt = K[dj+1][di+1], nb = grid[j+dj][i+di];
+        sx += nb.x*wt; sy += nb.y*wt; sur += nb.ur*wt; svr += nb.vr*wt; sup += nb.up*wt; svp += nb.vp*wt;
+      }
+      const cur = grid[j][i];
+      ng[j][i] = { cx:i, cy:j,
+        x: cur.x*(1-f)+(sx/KS)*f, y: cur.y*(1-f)+(sy/KS)*f,
+        ur: cur.ur*(1-f)+(sur/KS)*f, vr: cur.vr*(1-f)+(svr/KS)*f,
+        up: cur.up*(1-f)+(sup/KS)*f, vp: cur.vp*(1-f)+(svp/KS)*f };
+    } }
+    grid = ng; f = clamp01(f + 0.1);
+  }
+  return { width: w, height: h, conf: grid.flat() };
+}
+
+function meshCoefficients(p00, p01, p10, p11, axis, out) {
+  const ai = axis === "x" ? 0 : 1;
+  const l = p => (axis === "x" ? p.x : p.y), u = p => p.ut[ai], v = p => p.vt[ai];
+  out[0]=l(p00); out[1]=l(p01); out[2]=v(p00); out[3]=v(p01);
+  out[4]=l(p10); out[5]=l(p11); out[6]=v(p10); out[7]=v(p11);
+  out[8]=u(p00); out[9]=u(p01); out[10]=0; out[11]=0;
+  out[12]=u(p10); out[13]=u(p11); out[14]=0; out[15]=0;
+  return out;
+}
+function precompute(M, out) { mat4Transpose(out, M); mat4Mul(out, out, H); mat4Mul(out, H_T, out); }
+function buildMesh(preset, subDiv) {
+  const cpW = preset.width, cpH = preset.height;
+  const cps = [];
+  const uPower = 2 / (cpW - 1), vPower = 2 / (cpH - 1);
+  for (const cp of preset.conf) {
+    const pt = new ControlPoint();
+    pt.x = cp.x; pt.y = cp.y;
+    pt.uRot = cp.ur * Math.PI / 180; pt.vRot = cp.vr * Math.PI / 180;
+    pt.uScale = uPower * cp.up; pt.vScale = vPower * cp.vp;
+    cps.push(pt);
+  }
+  const get = (x, y) => cps[y * cpW + x];
+  const vW = (cpW - 1) * subDiv, vH = (cpH - 1) * subDiv;
+  const positions = new Float32Array(vW * vH * 2);
+  const uvs = new Float32Array(vW * vH * 2);
+  const tW = (subDiv - 1) * (cpH - 1), tH = (subDiv - 1) * (cpW - 1);
+  const invSub = 1 / (subDiv - 1), invTH = 1 / tH, invTW = 1 / tW;
+  const powers = new Float32Array(subDiv * 4);
+  for (let i = 0; i < subDiv; i++) {
+    const n = i * invSub, k = i * 4;
+    powers[k] = n ** 3; powers[k+1] = n * n; powers[k+2] = n; powers[k+3] = 1;
+  }
+  const tX = new Float32Array(16), tY = new Float32Array(16);
+  const aX = new Float32Array(16), aY = new Float32Array(16);
+  const Ux = new Float32Array(4), Uy = new Float32Array(4);
+  for (let x = 0; x < cpW - 1; x++) for (let y = 0; y < cpH - 1; y++) {
+    const p00 = get(x, y), p01 = get(x, y + 1), p10 = get(x + 1, y), p11 = get(x + 1, y + 1);
+    precompute(meshCoefficients(p00, p01, p10, p11, "x", tX), aX);
+    precompute(meshCoefficients(p00, p01, p10, p11, "y", tY), aY);
+    const sX = x / (cpW - 1), sY = y / (cpH - 1);
+    const baseVx = y * subDiv, baseVy = x * subDiv;
+    for (let u = 0; u < subDiv; u++) {
+      const k = u * 4;
+      for (let c = 0; c < 4; c++) {
+        Ux[c] = powers[k] * aX[c*4] + powers[k+1] * aX[c*4+1] + powers[k+2] * aX[c*4+2] + powers[k+3] * aX[c*4+3];
+        Uy[c] = powers[k] * aY[c*4] + powers[k+1] * aY[c*4+1] + powers[k+2] * aY[c*4+2] + powers[k+3] * aY[c*4+3];
+      }
+      for (let v = 0; v < subDiv; v++) {
+        const vk = v * 4, v0 = powers[vk], v1 = powers[vk+1], v2 = powers[vk+2], v3 = powers[vk+3];
+        const px = v0*Ux[0] + v1*Ux[1] + v2*Ux[2] + v3*Ux[3];
+        const py = v0*Uy[0] + v1*Uy[1] + v2*Uy[2] + v3*Uy[3];
+        const uvX = sX + v * invTH, uvY = 1 - sY - u * invTW;
+        const vx = baseVx + u, vy = baseVy + v, idx = vy * vW + vx;
+        positions[idx*2] = px; positions[idx*2+1] = py;
+        uvs[idx*2] = uvX; uvs[idx*2+1] = uvY;
+      }
+    }
+  }
+  const tri = new Uint16Array((vW-1)*(vH-1)*6), lines = new Uint16Array((vW-1)*(vH-1)*10);
+  for (let y = 0; y < vH - 1; y++) for (let x = 0; x < vW - 1; x++) {
+    const n = y * vW + x, ti = (y*(vW-1)+x)*6, li = ti/6*10;
+    tri[ti]=n; tri[ti+1]=n+1; tri[ti+2]=n+vW;
+    tri[ti+3]=n+1; tri[ti+4]=n+vW+1; tri[ti+5]=n+vW;
+    lines[li]=n; lines[li+1]=n+1; lines[li+2]=n+1; lines[li+3]=n+vW;
+    lines[li+4]=n+vW; lines[li+5]=n+vW+1; lines[li+6]=n+vW+1; lines[li+7]=n+1;
+    lines[li+8]=n; lines[li+9]=n+vW;
+  }
+  return { positions, uvs, tri, lines, count: vW * vH };
+}
+
+const MESH_VERT = `
+precision mediump float;
+attribute vec2 a_pos;
+attribute vec3 a_color;
+attribute vec2 a_uv;
+varying vec3 v_color;
+varying vec2 v_uv;
+uniform float u_aspect;
+void main() {
+  v_color = a_color;
+  v_uv = a_uv;
+  vec2 pos = a_pos;
+  if (u_aspect > 1.0) { pos.y *= u_aspect; } else { pos.x /= u_aspect; }
+  gl_Position = vec4(pos, 0.0, 1.0);
+}`;
+const MESH_FRAG = `
+precision mediump float;
+varying vec3 v_color;
+varying vec2 v_uv;
+uniform sampler2D u_texture;
+uniform float u_volume;
+uniform float u_alpha;
+uniform float u_sinAngle;
+uniform float u_cosAngle;
+const float INV_255 = 1.0 / 255.0;
+const float HALF_INV_255 = 0.5 / 255.0;
+const float GRADIENT_NOISE_A = 52.9829189;
+const vec2 GRADIENT_NOISE_B = vec2(0.06711056, 0.00583715);
+float gradientNoise(in vec2 uv) {
+  return fract(GRADIENT_NOISE_A * fract(dot(uv, GRADIENT_NOISE_B)));
+}
+void main() {
+  float volumeEffect = u_volume * 2.0;
+  float dither = INV_255 * gradientNoise(gl_FragCoord.xy) - HALF_INV_255;
+  vec2 centeredUV = v_uv - vec2(0.2);
+  vec2 rotatedUV = vec2(
+    u_cosAngle * centeredUV.x - u_sinAngle * centeredUV.y,
+    u_sinAngle * centeredUV.x + u_cosAngle * centeredUV.y
+  );
+  vec2 finalUV = rotatedUV * max(0.001, 1.0 - volumeEffect) + vec2(0.5);
+  vec4 result = texture2D(u_texture, finalUV);
+  float alphaVolumeFactor = u_alpha * max(0.5, 1.0 - u_volume * 0.5);
+  result.rgb *= v_color * alphaVolumeFactor;
+  result.a *= alphaVolumeFactor;
+  result.rgb += vec3(dither);
+  float dist = distance(v_uv, vec2(0.5));
+  float vignette = smoothstep(0.8, 0.3, dist);
+  float mask = 0.6 + vignette * 0.4;
+  result.rgb *= mask;
+  gl_FragColor = result;
+}`;
+const UV_FRAG = `
+precision mediump float;
+varying vec3 v_color; varying vec2 v_uv;
+void main() { gl_FragColor = vec4(v_uv, 0.35, 1.0); }`;
+const WIREFRAME_FRAG = `
+precision mediump float;
+varying vec3 v_color; varying vec2 v_uv;
+void main() { gl_FragColor = vec4(0.35, 0.75, 1.0, 0.9); }`;
+const QUAD_VERT = `
+attribute vec2 a_pos; varying vec2 v_uv;
+void main() { v_uv = a_pos * 0.5 + 0.5; gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+const QUAD_FRAG = `
+precision mediump float;
+varying vec2 v_uv;
+uniform sampler2D u_texture;
+uniform float u_alpha;
+void main() {
+  vec4 color = texture2D(u_texture, v_uv);
+  gl_FragColor = vec4(color.rgb, color.a * u_alpha);
+}`;
+
+const progMesh = program(MESH_VERT, MESH_FRAG);
+const progUV = program(MESH_VERT, UV_FRAG);
+const progWire = program(MESH_VERT, WIREFRAME_FRAG);
+const progQuad = program(QUAD_VERT, QUAD_FRAG);
+
+const quadBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+
+let fbo = null, fboTex = null, fboW = 0, fboH = 0;
+function updateFBO(w, h) {
+  if (fbo) { gl.deleteFramebuffer(fbo); gl.deleteTexture(fboTex); }
+  fboTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, fboTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  fboW = w; fboH = h;
+}
+
+function interleaved(mesh) {
+  const n = mesh.count, data = new Float32Array(n * 7);
+  for (let i = 0; i < n; i++) {
+    data[i*7] = mesh.positions[i*2]; data[i*7+1] = mesh.positions[i*2+1];
+    data[i*7+2] = 1; data[i*7+3] = 1; data[i*7+4] = 1;
+    data[i*7+5] = mesh.uvs[i*2]; data[i*7+6] = mesh.uvs[i*2+1];
+  }
+  return data;
+}
+function bindMesh(prog, state) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, state.posBuf);
+  gl.vertexAttribPointer(prog.attrs.a_pos, 2, gl.FLOAT, false, 28, 0);
+  gl.enableVertexAttribArray(prog.attrs.a_pos);
+  gl.vertexAttribPointer(prog.attrs.a_color, 3, gl.FLOAT, false, 28, 8);
+  gl.enableVertexAttribArray(prog.attrs.a_color);
+  gl.vertexAttribPointer(prog.attrs.a_uv, 2, gl.FLOAT, false, 28, 20);
+  gl.enableVertexAttribArray(prog.attrs.a_uv);
+}
+class MeshState {
+  constructor(preset) {
+    this.mesh = buildMesh(preset, 50);
+    this.posBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, interleaved(this.mesh), gl.STATIC_DRAW);
+    this.triBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triBuf);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.mesh.tri, gl.STATIC_DRAW);
+    this.lineBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineBuf);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.mesh.lines, gl.STATIC_DRAW);
+    this.texture = null;
+    this.alpha = 0;
+  }
+  setCover(imgData) {
+    if (this.texture) gl.deleteTexture(this.texture);
+    this.texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+  }
+  dispose() {
+    gl.deleteBuffer(this.posBuf); gl.deleteBuffer(this.triBuf);
+    gl.deleteBuffer(this.lineBuf);
+    if (this.texture) gl.deleteTexture(this.texture);
+  }
+}
+function boxBlur(pixels, w, h, radius) {
+  const src = new Uint8ClampedArray(pixels);
+  const win = radius * 2 + 1;
+  const tmp = new Uint8ClampedArray(src.length);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let r = 0, g = 0, b = 0, a = 0;
+    for (let dx = -radius; dx <= radius; dx++) {
+      const xx = Math.min(w - 1, Math.max(0, x + dx)), i = (y * w + xx) * 4;
+      r += src[i]; g += src[i+1]; b += src[i+2]; a += src[i+3];
+    }
+    const o = (y * w + x) * 4;
+    tmp[o] = r / win; tmp[o+1] = g / win; tmp[o+2] = b / win; tmp[o+3] = a / win;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let r = 0, g = 0, b = 0, a = 0;
+    for (let dy = -radius; dy <= radius; dy++) {
+      const yy = Math.min(h - 1, Math.max(0, y + dy)), i = (yy * w + x) * 4;
+      r += tmp[i]; g += tmp[i+1]; b += tmp[i+2]; a += tmp[i+3];
+    }
+    const o = (y * w + x) * 4;
+    pixels[o] = r / win; pixels[o+1] = g / win; pixels[o+2] = b / win; pixels[o+3] = a / win;
+  }
+}
+function processCover(img) {
+  const c = document.createElement("canvas"); c.width = 32; c.height = 32;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, 32, 32);
+  const imageData = ctx.getImageData(0, 0, 32, 32);
+  const px = imageData.data;
+  for (let i = 0; i < px.length; i += 4) {
+    let r = px[i], g = px[i+1], b = px[i+2];
+    r = (r - 128) * 0.4 + 128; g = (g - 128) * 0.4 + 128; b = (b - 128) * 0.4 + 128;
+    const gray = r * 0.3 + g * 0.59 + b * 0.11;
+    r = gray * -2.0 + r * 3.0; g = gray * -2.0 + g * 3.0; b = gray * -2.0 + b * 3.0;
+    r = (r - 128) * 1.7 + 128; g = (g - 128) * 1.7 + 128; b = (b - 128) * 1.7 + 128;
+    px[i] = r * 0.75; px[i+1] = g * 0.75; px[i+2] = b * 0.75;
+  }
+  for (let q = 0; q < 4; q++) boxBlur(px, 32, 32, 2);
+  return imageData;
+}
+
+/* ================================================================
+ * 渲染循环
+ * ================================================================ */
+let rendererKind = "isolation";
+let meshStates = [];
+let flowSpeed = 0.2, fpsCap = 60, volume = 0, pumpIntensity = 0;
+let frameTime = 0, lastTick = 0, lastFrame = 0;
+let wireframe = false, uvDebug = false;
+const easeInOutSine = x => -(Math.cos(Math.PI * x) - 1) / 2;
+
+function pushMeshState(preset, imgData) {
+  const st = new MeshState(preset);
+  st.setCover(imgData);
+  meshStates.push(st);
+}
+function applyCoverToRenderers(cover) {
+  if (rendererKind === "isolation") {
+    rollRandomParameters();
+    updatePaletteFromSource(cover, false);
+  } else {
+    pushMeshState(generateControlPoints(5, 5), processCover(cover));
+  }
+}
+
+function resize() {
+  const stage = document.getElementById("stage");
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.round(stage.clientWidth * dpr), h = Math.round(stage.clientHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+    updateFBO(w, h);
+  }
+}
+
+function renderIsolation() {
+  gl.disable(gl.BLEND);
+  gl.useProgram(progIso.p);
+  updateColorBuffer();
+  gl.uniform2f(progIso.unis.u_resolution, canvas.width, canvas.height);
+  gl.uniform1f(progIso.unis.u_time, frameTime / 1000);
+  gl.uniform3fv(progIso.unis.u_colors, iso.colorBuffer);
+  gl.uniform3fv(progIso.unis.u_random, iso.randomValues);
+  gl.uniform4f(progIso.unis.u_flowParams, iso.flowParams[0], iso.flowParams[1], iso.flowParams[2], iso.flowParams[3]);
+  gl.uniform1f(progIso.unis.u_angleJitter, iso.angleJitter);
+  gl.uniform1i(progIso.unis.u_enableLightWave, iso.options.lightWave ? 1 : 0);
+  gl.uniform1i(progIso.unis.u_enableDithering, iso.options.dithering ? 1 : 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, isoQuadBuf);
+  gl.vertexAttribPointer(progIso.attrs.a_position, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(progIso.attrs.a_position);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+function renderMesh(delta) {
+  const latest = meshStates[meshStates.length - 1];
+  const deltaFactor = delta / 500;
+  if (latest) {
+    if (latest.alpha >= 1.1) {
+      const removed = meshStates.splice(0, meshStates.length - 1);
+      for (const s of removed) s.dispose();
+    } else {
+      latest.alpha = Math.min(1.1, latest.alpha + deltaFactor);
+    }
+  }
+
+  const aspect = canvas.width / canvas.height;
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);
+
+  for (const st of meshStates) {
+    if (!st.texture) continue;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.disable(gl.BLEND);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const prog = uvDebug ? progUV : (wireframe ? progWire : progMesh);
+    gl.useProgram(prog.p);
+    gl.uniform1f(prog.unis.u_aspect, aspect);
+    if (prog === progMesh) {
+      const uTime = frameTime / 10000;
+      const angle = (uTime + volume) * 2.0;
+      gl.uniform1i(prog.unis.u_texture, 0);
+      gl.uniform1f(prog.unis.u_volume, volume);
+      gl.uniform1f(prog.unis.u_alpha, 1.0);
+      gl.uniform1f(prog.unis.u_sinAngle, Math.sin(angle));
+      gl.uniform1f(prog.unis.u_cosAngle, Math.cos(angle));
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, st.texture);
+    }
+    bindMesh(prog, st);
+    if (wireframe && !uvDebug) {
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, st.lineBuf);
+      gl.drawElements(gl.LINES, st.mesh.lines.length, gl.UNSIGNED_SHORT, 0);
+    } else {
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, st.triBuf);
+      gl.drawElements(gl.TRIANGLES, st.mesh.tri.length, gl.UNSIGNED_SHORT, 0);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.useProgram(progQuad.p);
+    gl.uniform1i(progQuad.unis.u_texture, 0);
+    gl.uniform1f(progQuad.unis.u_alpha, easeInOutSine(clamp01(st.alpha)));
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fboTex);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    gl.vertexAttribPointer(progQuad.attrs.a_pos, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(progQuad.attrs.a_pos);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.disableVertexAttribArray(progQuad.attrs.a_pos);
+  }
+}
+
+function frame(t) {
+  requestAnimationFrame(frame);
+  resize();
+  const interval = 1000 / fpsCap;
+  const delta = t - lastTick;
+  if (delta < interval) return;
+  lastTick = t - (delta % interval);
+  const frameDelta = Math.min(t - (lastFrame === 0 ? t - 16 : lastFrame), 250);
+  lastFrame = t;
+  frameTime += frameDelta * flowSpeed;
+
+  volume = 0;
+  if (pumpIntensity > 0) {
+    const beat = (t / 500) % 1;
+    volume = pumpIntensity * 0.32 * Math.pow(Math.max(0, 1 - beat), 1.6);
+  }
+
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  if (rendererKind === "isolation") {
+    if (iso.transitionElapsed < PALETTE_TRANSITION_MS) {
+      iso.transitionElapsed = Math.min(PALETTE_TRANSITION_MS, iso.transitionElapsed + frameDelta);
+    }
+    renderIsolation();
+  } else {
+    renderMesh(frameDelta);
+  }
+}
+requestAnimationFrame(frame);
+
+let fpsCount = 0, fpsLast = performance.now();
+(function loop(t) {
+  requestAnimationFrame(loop);
+  fpsCount++;
+  const now = performance.now();
+  if (now - fpsLast > 1000) {
+    document.getElementById("fps").textContent = "FPS: " + fpsCount;
+    fpsCount = 0; fpsLast = now;
+  }
+})(0);
+
+/* ================================================================
+ * 程序化封面
+ * ================================================================ */
+function makeCover(draw) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 512;
+  const ctx = c.getContext("2d");
+  draw(ctx, 512);
+  return c;
+}
+const covers = [
+  makeCover((ctx, s) => {
+    const g = ctx.createLinearGradient(0, 0, 0, s);
+    g.addColorStop(0, "#2b1055"); g.addColorStop(0.5, "#7597de");
+    g.addColorStop(0.75, "#ff8c42"); g.addColorStop(1, "#ffd166");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = "rgba(255,240,200,.9)";
+    ctx.beginPath(); ctx.arc(s*0.5, s*0.62, s*0.16, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(60,30,90,.85)";
+    ctx.beginPath(); ctx.moveTo(0, s*0.78);
+    ctx.lineTo(s*0.3, s*0.62); ctx.lineTo(s*0.55, s*0.8); ctx.lineTo(s*0.8, s*0.66); ctx.lineTo(s, s*0.78);
+    ctx.lineTo(s, s); ctx.lineTo(0, s); ctx.fill();
+  }),
+  makeCover((ctx, s) => {
+    ctx.fillStyle = "#0b0b16"; ctx.fillRect(0, 0, s, s);
+    const blob = (x, y, r, c1) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, c1); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+    };
+    blob(s*0.28, s*0.3, s*0.42, "rgba(255,45,150,.95)");
+    blob(s*0.72, s*0.38, s*0.38, "rgba(0,210,255,.9)");
+    blob(s*0.5, s*0.8, s*0.45, "rgba(140,80,255,.9)");
+  }),
+  makeCover((ctx, s) => {
+    const g = ctx.createLinearGradient(0, 0, s, s);
+    g.addColorStop(0, "#0f3d2e"); g.addColorStop(0.55, "#1f7a5c"); g.addColorStop(1, "#a3e635");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = "rgba(10,40,30,.55)";
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      ctx.moveTo(s*(0.05+i*0.17), s*0.95);
+      ctx.lineTo(s*(0.15+i*0.17), s*(0.2+0.08*Math.sin(i*2.1)));
+      ctx.lineTo(s*(0.25+i*0.17), s*0.95);
+      ctx.fill();
+    }
+  }),
+  makeCover((ctx, s) => {
+    const g = ctx.createLinearGradient(0, 0, 0, s);
+    g.addColorStop(0, "#062a5e"); g.addColorStop(0.6, "#0e6ba8"); g.addColorStop(1, "#7cd5f5");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = s*0.02;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      for (let x = 0; x <= s; x += 8)
+        ctx.lineTo(x, s*(0.35+i*0.13) + Math.sin(x/60 + i*1.7)*s*0.035);
+      ctx.stroke();
+    }
+  }),
+];
+
+const thumbs = document.getElementById("thumbs");
+let selectedThumb = -1;
+covers.forEach((cv, i) => {
+  const t = document.createElement("canvas");
+  t.width = 104; t.height = 104;
+  t.getContext("2d").drawImage(cv, 0, 0, 104, 104);
+  t.className = "thumb";
+  t.onclick = () => selectCover(i, t);
+  thumbs.appendChild(t);
+});
+function selectCover(i, el) {
+  document.querySelectorAll(".thumb").forEach(e => e.classList.remove("sel"));
+  if (el) el.classList.add("sel");
+  selectedThumb = i;
+  applyCoverToRenderers(covers[i]);
+}
+function loadUserImage(img) {
+  document.querySelectorAll(".thumb").forEach(e => e.classList.remove("sel"));
+  applyCoverToRenderers(img);
+}
+document.getElementById("fileBtn").onclick = () => document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => loadUserImage(img);
+  img.src = URL.createObjectURL(f);
+};
+const stage = document.getElementById("stage");
+stage.addEventListener("dragover", e => e.preventDefault());
+stage.addEventListener("drop", e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith("image/")) {
+    const img = new Image();
+    img.onload = () => loadUserImage(img);
+    img.src = URL.createObjectURL(f);
+  }
+});
+
+/* ================================================================
+ * 控件
+ * ================================================================ */
+document.getElementById("songBtn").onclick = () =>
+  applyCoverToRenderers(selectedThumb >= 0 ? covers[selectedThumb] : covers[Math.floor(Math.random()*covers.length)]);
+
+const speedEl = document.getElementById("speed");
+speedEl.oninput = () => {
+  flowSpeed = +speedEl.value;
+  document.getElementById("speedVal").textContent = flowSpeed.toFixed(2);
+};
+const pumpEl = document.getElementById("pump");
+pumpEl.oninput = () => { pumpIntensity = +pumpEl.value; document.getElementById("pumpVal").textContent = pumpIntensity.toFixed(2); };
+document.getElementById("fpsCap").onchange = e => fpsCap = +e.target.value;
+
+document.getElementById("wireBtn").onchange = e => wireframe = e.target.checked;
+document.getElementById("uvBtn").onchange = e => uvDebug = e.target.checked;
+document.getElementById("lightWaveBtn").onchange = e => iso.options.lightWave = e.target.checked;
+document.getElementById("ditherBtn").onchange = e => iso.options.dithering = e.target.checked;
+document.getElementById("algoSel").onchange = e => {
+  iso.options.algorithm = e.target.value;
+  if (selectedThumb >= 0) updatePaletteFromSource(covers[selectedThumb], false);
+};
+document.getElementById("rendererSel").onchange = e => {
+  rendererKind = e.target.value;
+  document.getElementById("isolationOpts").style.display = rendererKind === "isolation" ? "" : "none";
+  document.getElementById("meshOpts").style.display = rendererKind === "mesh" ? "" : "none";
+  document.getElementById("pumpCtl").style.display = rendererKind === "mesh" ? "" : "none";
+  if (rendererKind === "mesh" && meshStates.length === 0 && selectedThumb >= 0) {
+    pushMeshState(generateControlPoints(5, 5), processCover(covers[selectedThumb]));
+    meshStates[meshStates.length - 1].alpha = 1.1;
+  }
+};
+
+const aspectBtn = document.getElementById("aspectBtn");
+aspectBtn.onclick = () => {
+  const p = stage.classList.toggle("portrait");
+  stage.classList.toggle("landscape", !p);
+  aspectBtn.textContent = p ? "竖屏" : "横屏";
+  aspectBtn.classList.toggle("active", p);
+};
+const overlayBtn = document.getElementById("overlayBtn");
+overlayBtn.onclick = () => {
+  const h = document.getElementById("overlay").classList.toggle("hidden");
+  overlayBtn.classList.toggle("active", !h);
+};
+
+// 初始：Isolation + 霓虹封面（先以默认深色起手，1s 过渡到封面调色板）
+rollRandomParameters();
+updatePaletteFromSource(covers[1], false);
+document.querySelectorAll(".thumb")[1]?.classList.add("sel");
+selectedThumb = 1;
+</script>
+</body>
+</html>

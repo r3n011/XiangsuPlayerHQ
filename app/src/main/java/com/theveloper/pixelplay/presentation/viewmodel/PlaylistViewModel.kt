@@ -45,6 +45,7 @@ import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 data class PlaylistUiState(
     val playlists: List<Playlist> = emptyList(),
@@ -454,7 +455,7 @@ class PlaylistViewModel @Inject constructor(
                     .filter { favoriteIds.contains(it.id) }
                     .sortedWith(
                         compareBy<Song> { engagements[it.id]?.lastPlayedTimestamp ?: 0L }
-                            .thenBy { it.title.lowercase() }
+                            .then(PinyinSortKey.ascending<Song> { it.title })
                     )
                     .filter { song ->
                         (engagements[song.id]?.lastPlayedTimestamp ?: 0L) < staleThreshold
@@ -907,27 +908,27 @@ class PlaylistViewModel @Inject constructor(
         return when (sortOption) {
             SortOption.PlaylistCustomOrder -> applyManualOrder(playlists, manualOrder) { it.id }
             SortOption.PlaylistNameAZ -> playlists.sortedWith(
-                compareBy<com.theveloper.pixelplay.data.model.Playlist> { it.name.lowercase() }
+                PinyinSortKey.ascending<com.theveloper.pixelplay.data.model.Playlist> { it.name }
                     .thenByDescending { it.lastModified }
                     .thenBy { it.id }
             )
             SortOption.PlaylistNameZA -> playlists.sortedWith(
-                compareByDescending<com.theveloper.pixelplay.data.model.Playlist> { it.name.lowercase() }
+                PinyinSortKey.ascending<com.theveloper.pixelplay.data.model.Playlist> { it.name }.reversed()
                     .thenByDescending { it.lastModified }
                     .thenBy { it.id }
             )
             SortOption.PlaylistDateCreated -> playlists.sortedWith(
                 compareByDescending<com.theveloper.pixelplay.data.model.Playlist> { it.lastModified }
-                    .thenBy { it.name.lowercase() }
+                    .then(PinyinSortKey.ascending<com.theveloper.pixelplay.data.model.Playlist> { it.name })
                     .thenBy { it.id }
             )
             SortOption.PlaylistDateCreatedAsc -> playlists.sortedWith(
                 compareBy<com.theveloper.pixelplay.data.model.Playlist> { it.lastModified }
-                    .thenBy { it.name.lowercase() }
+                    .then(PinyinSortKey.ascending<com.theveloper.pixelplay.data.model.Playlist> { it.name })
                     .thenBy { it.id }
             )
             else -> playlists.sortedWith(
-                compareBy<com.theveloper.pixelplay.data.model.Playlist> { it.name.lowercase() }
+                PinyinSortKey.ascending<com.theveloper.pixelplay.data.model.Playlist> { it.name }
                     .thenByDescending { it.lastModified }
                     .thenBy { it.id }
             )
@@ -961,22 +962,22 @@ class PlaylistViewModel @Inject constructor(
     ): List<Song> {
         return when (sortOption) {
             SortOption.SongTitleAZ -> songs.sortedWith(
-                compareBy<Song> { it.title.lowercase() }
-                    .thenBy { it.artist.lowercase() }
+                PinyinSortKey.ascending<Song> { it.title }
+                    .then(PinyinSortKey.ascending<Song> { it.artist })
                     .thenBy { it.id }
             )
             SortOption.SongTitleZA -> songs.sortedWith(
-                compareByDescending<Song> { it.title.lowercase() }
-                    .thenBy { it.artist.lowercase() }
+                PinyinSortKey.ascending<Song> { it.title }.reversed()
+                    .then(PinyinSortKey.ascending<Song> { it.artist })
                     .thenBy { it.id }
             )
             SortOption.SongArtist -> songs.sortedWith(
-                compareBy<Song> { it.artist.lowercase() }
+                PinyinSortKey.ascending<Song> { it.artist }
                     .thenBy { it.title.lowercase() }
                     .thenBy { it.id }
             )
             SortOption.SongArtistDesc -> songs.sortedWith(
-                compareByDescending<Song> { it.artist.lowercase() }
+                PinyinSortKey.ascending<Song> { it.artist }.reversed()
                     .thenBy { it.title.lowercase() }
                     .thenBy { it.id }
             )

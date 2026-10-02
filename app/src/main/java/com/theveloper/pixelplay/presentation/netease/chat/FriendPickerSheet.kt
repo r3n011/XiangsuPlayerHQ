@@ -116,6 +116,14 @@ fun FriendPickerSheet(
     val sending by viewModel.sending.collectAsStateWithLifecycle()
     val sent by viewModel.sent.collectAsStateWithLifecycle()
 
+    // ⚡ 加载/发送失败不再静默：以 Toast 提示，避免"点了没反应"的不稳定观感
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.errorEvents.collect { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     LaunchedEffect(Unit) { viewModel.load() }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {

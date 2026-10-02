@@ -30,8 +30,21 @@ import javax.inject.Singleton
  */
 @Singleton
 class BuiltInSourceSearchApi @Inject constructor(
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val kugouRepository: com.theveloper.pixelplay.data.kugou.KugouRepository,
 ) {
+    /**
+     * ⚡ 已登录酷狗账号时给**酷狗域名**带上 Cookie（token/userid/vip_token）：
+     * 内置源以前只有匿名参数，登录后才能拿到会员/无损音源。
+     * 只对 kugou.com 注入，避免把凭证发给其它平台。
+     */
+    private fun kugouCookieFor(url: String): String? =
+        if (url.contains("kugou.com")) {
+            kugouRepository.getCookieString().takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
+
     private companion object {
         private const val TAG = "BuiltInSearch"
 
@@ -1518,6 +1531,8 @@ class BuiltInSourceSearchApi @Inject constructor(
             runCatching {
                 val builder = Request.Builder().url(url)
                 headers.forEach { (k, v) -> builder.addHeader(k, v) }
+                // ⚡ 酷狗域名补登录 Cookie
+                kugouCookieFor(url)?.let { builder.header("Cookie", it) }
                 okHttpClient.newCall(builder.build()).execute().use { resp ->
                     if (resp.isSuccessful) resp.body?.string() else null
                 }
@@ -1527,6 +1542,7 @@ class BuiltInSourceSearchApi @Inject constructor(
     private suspend fun httpGet(url: String): String? = withContext(Dispatchers.IO) {
         runCatching {
             val request = Request.Builder()
+                .apply { kugouCookieFor(url)?.let { header("Cookie", it) } }
                 .url(url)
                 .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36")
                 .build()

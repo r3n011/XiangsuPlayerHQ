@@ -37,6 +37,8 @@ import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
 
@@ -45,9 +47,13 @@ import com.theveloper.pixelplay.R
 fun NeteaseDashboardScreen(
     viewModel: NeteaseDashboardViewModel = hiltViewModel(),
     listenTogetherViewModel: ListenTogetherViewModel = hiltViewModel(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToAccounts: () -> Unit = {}
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val isNeteaseLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val neteaseLoginRequiredToast = stringResource(R.string.netease_login_required_toast)
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val syncMessage by viewModel.syncMessage.collectAsStateWithLifecycle()
     val togetherState by listenTogetherViewModel.state.collectAsStateWithLifecycle()
@@ -214,7 +220,15 @@ fun NeteaseDashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clickable { showTogetherSheet = true },
+                    .clickable {
+                        // ⚡ 未登录网易云：直接去「设置 → 账户」登录
+                        if (isNeteaseLoggedIn) {
+                            showTogetherSheet = true
+                        } else {
+                            Toast.makeText(context, neteaseLoginRequiredToast, Toast.LENGTH_SHORT).show()
+                            onNavigateToAccounts()
+                        }
+                    },
                 shape = cardShape,
                 colors = CardDefaults.cardColors(
                     containerColor = if (togetherState.active)

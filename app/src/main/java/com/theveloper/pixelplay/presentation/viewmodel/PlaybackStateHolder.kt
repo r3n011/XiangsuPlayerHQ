@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
+import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -16,6 +17,8 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +34,7 @@ import com.theveloper.pixelplay.data.service.cast.CastRemotePlaybackState
 import com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer
 import com.google.android.gms.cast.MediaStatus
 import timber.log.Timber
+import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
 import com.theveloper.pixelplay.utils.AudioDecoder
 import com.theveloper.pixelplay.utils.QueueUtils
 import com.theveloper.pixelplay.utils.MediaItemBuilder
@@ -41,11 +45,22 @@ import kotlin.math.abs
 class PlaybackStateHolder @Inject constructor(
     private val dualPlayerEngine: DualPlayerEngine,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val aiPreferencesRepository: AiPreferencesRepository,
     private val castStateHolder: CastStateHolder,
     private val queueStateHolder: QueueStateHolder,
     private val audioVisualizer: AudioVisualizer,
     @param:ApplicationContext private val appContext: Context
 ) {
+    /**
+     * 是否需要本地歌曲的整轨波形分析。
+     *
+     * ⚡ 整轨分析会把整首歌用 MediaCodec 完整解码一遍（一首 4 分钟的歌就是几秒钟的
+     * 满负载解码），而波形只有两个消费者：播放器的「波形」进度条样式、Web 远控页面。
+     * 两者都没开时完全不做分析 —— 那纯属白烧 CPU / 电量。
+     */
+    @Volatile
+    private var waveformAnalysisNeeded: Boolean = false
+
     companion object {
         private const val TAG = "PlaybackStateHolder"
         private const val DURATION_MISMATCH_TOLERANCE_MS = 1500L
@@ -90,6 +105,27 @@ class PlaybackStateHolder @Inject constructor(
      * 的根因。因此本类改为持有独立的长生命周期 scope，与 ViewModel 生命周期解耦。
      */
     private var scope: CoroutineScope? = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    init {
+        scope?.launch {
+            combine(
+                userPreferencesRepository.playerProgressStyleFlow,
+                aiPreferencesRepository.isWebRemoteEnabled
+            ) { style, webRemoteEnabled ->
+                webRemoteEnabled ||
+                    PlayerProgressStyle.fromStorage(style) == PlayerProgressStyle.WAVEFORM
+            }
+                .distinctUntilChanged()
+                .collect { needed ->
+                    waveformAnalysisNeeded = needed
+                    // 开关变化时清掉"已分析过的歌"，让当前这首歌按新状态重新判断
+                    waveformAnalysisJob?.cancel()
+                    waveformAnalysisJob = null
+                    waveformAnalysisSongId = null
+                }
+        }
+    }
+
     private var onCastSeekBlocked: (() -> Unit)? = null
     
     // MediaController
@@ -878,6 +914,8 @@ class PlaybackStateHolder @Inject constructor(
      * 同一首歌只分析一次；时长未知时等下一次轮询。
      */
     private fun maybeStartLocalWaveformAnalysis(song: Song, durationMs: Long) {
+        // ⚡ 没有消费者（「波形」进度条样式 / Web 远控都没开）就不做整轨解码
+        if (!waveformAnalysisNeeded) return
         if (durationMs <= 0L) return
         if (waveformAnalysisSongId == song.id) return
 

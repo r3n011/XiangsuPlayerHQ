@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import android.content.Context
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -23,8 +24,10 @@ import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.ApkDownloadService
 import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 
@@ -121,26 +124,32 @@ fun AutoUpdatePrompt(
         }
     }
 
-    // 打开应用时检测后台已静默下载好的 APK（UpdateCheckWorker 落盘的缓存文件），
-    // 存在则提示用户安装，避免后台下载后无人知晓。
-    val cachedUpdateApk = remember {
-        File(context.cacheDir, "pixelplay_update.apk").takeIf { it.exists() && it.length() > 1_000_000L }
-    }
-    LaunchedEffect(cachedUpdateApk) {
-        if (cachedUpdateApk != null) {
+    // 打开应用时检测后台已静默下载好的 APK（UpdateCheckWorker 落盘的缓存文件）。
+    // ⚡ 必须先校验包名与版本：用户已通过该包完成更新、或缓存里是旧版/损坏文件时
+    //   直接删除缓存，绝不能凭「文件存在」就弹「待安装更新」，否则已是最新版
+    //   仍每次启动都提示更新。
+    var cachedUpdateApk by remember { mutableStateOf<File?>(null) }
+    LaunchedEffect(Unit) {
+        val candidate = File(context.cacheDir, "pixelplay_update.apk")
+            .takeIf { it.exists() && it.length() > 1_000_000L } ?: return@LaunchedEffect
+        val validated = withContext(Dispatchers.IO) {
+            apkInstaller.validatePendingUpdateApk(context, candidate)
+        }
+        cachedUpdateApk = validated
+        if (validated != null) {
             showPendingInstallDialog = true
         }
     }
 
     if (showPendingInstallDialog && cachedUpdateApk != null) {
-        androidx.compose.material3.AlertDialog(
+        com.theveloper.pixelplay.presentation.components.PixelAlertDialog(
             onDismissRequest = { showPendingInstallDialog = false },
             title = { Text(stringResource(R.string.update_pending_install_title)) },
             text = { Text(stringResource(R.string.update_pending_install_body)) },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = {
                     showPendingInstallDialog = false
-                    startInstall(cachedUpdateApk)
+                    startInstall(cachedUpdateApk!!)
                 }) {
                     Text(stringResource(R.string.update_go_download))
                 }

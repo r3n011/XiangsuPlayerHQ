@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import kotlin.math.pow
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
@@ -147,12 +148,12 @@ fun generateColorSchemeFromSeed(
             sourceHct = sourceHct,
             paletteStyle = paletteStyle,
             isDark = false
-        ).toComposeColorScheme()
+        ).toComposeColorScheme().enforceReadableContrast()
         val darkScheme = createDynamicScheme(
             sourceHct = sourceHct,
             paletteStyle = paletteStyle,
             isDark = true
-        ).toComposeColorScheme()
+        ).toComposeColorScheme().enforceReadableContrast()
         if (shouldForceNeutral) {
             ColorSchemePair(
                 light = lightScheme.toGrayscaleColorScheme(),
@@ -170,8 +171,8 @@ fun generateMonochromeColorSchemeFromSeed(seedColor: Color): ColorSchemePair {
     return runCatching {
         val sourceHct = Hct.fromInt(seedColor.toArgb())
         ColorSchemePair(
-            light = SchemeMonochrome(sourceHct, false, 0.0).toComposeColorScheme(),
-            dark = SchemeMonochrome(sourceHct, true, 0.0).toComposeColorScheme()
+            light = SchemeMonochrome(sourceHct, false, 0.0).toComposeColorScheme().enforceReadableContrast(),
+            dark = SchemeMonochrome(sourceHct, true, 0.0).toComposeColorScheme().enforceReadableContrast()
         )
     }.getOrElse {
         ColorSchemePair(LightColorScheme, DarkColorScheme)
@@ -728,3 +729,84 @@ private fun DynamicScheme.toComposeColorScheme(): ColorScheme {
         onTertiaryFixedVariant = Color(getOnTertiaryFixedVariant())
     )
 }
+
+/* ------------------------------------------------------------------------- */
+/*                        取色可读性：强制色差（对比度）                        */
+/* ------------------------------------------------------------------------- */
+
+/** 正文/图标要保证的最低对比度（WCAG AA 正文标准）。 */
+private const val MIN_READABLE_CONTRAST = 4.5f
+
+/** sRGB 相对亮度（WCAG 定义）。 */
+private fun relativeLuminance(color: Color): Float {
+    fun linear(channel: Float): Float =
+        if (channel <= 0.03928f) channel / 12.92f
+        else ((channel + 0.055f) / 1.055f).pow(2.4f)
+    return 0.2126f * linear(color.red) +
+        0.7152f * linear(color.green) +
+        0.0722f * linear(color.blue)
+}
+
+/** 两色对比度（1~21）。 */
+internal fun contrastRatio(a: Color, b: Color): Float {
+    val la = relativeLuminance(a)
+    val lb = relativeLuminance(b)
+    val lighter = if (la > lb) la else lb
+    val darker = if (la > lb) lb else la
+    return (lighter + 0.05f) / (darker + 0.05f)
+}
+
+/** 按比例把 [color] 混向 [target]。 */
+private fun Color.blendWith(target: Color, fraction: Float): Color {
+    val f = fraction.coerceIn(0f, 1f)
+    return Color(
+        red = red + (target.red - red) * f,
+        green = green + (target.green - green) * f,
+        blue = blue + (target.blue - blue) * f,
+        alpha = alpha,
+    )
+}
+
+/**
+ * ⚡ 保证 [foreground] 与 [background] 之间有足够色差：不够就沿「远离背景亮度」的
+ * 方向逐步压暗/提亮前景，直到达到 [MIN_READABLE_CONTRAST]（最多 20 步）。
+ *
+ * 取色来自专辑封面，遇到大面积中间调/同色系封面时（比如灰白封面），
+ * 生成的 onXxx 与 Xxx 会非常接近 —— 之前的表现就是字看不清。
+ */
+internal fun ensureContrast(
+    foreground: Color,
+    background: Color,
+    minRatio: Float = MIN_READABLE_CONTRAST,
+): Color {
+    if (contrastRatio(foreground, background) >= minRatio) return foreground
+    // 背景偏亮 → 前景压暗；背景偏暗 → 前景提亮
+    val darken = relativeLuminance(background) > 0.5f
+    val target = if (darken) Color.Black else Color.White
+    var result = foreground
+    repeat(20) {
+        if (contrastRatio(result, background) >= minRatio) return result
+        result = result.blendWith(target, 0.12f)
+    }
+    return result
+}
+
+/**
+ * ⚡ 把整套配色的「前景 / 背景」配对全部过一遍对比度检查，保证任何封面取色下
+ * 文字与图标都能看清（背景色本身不动，只微调对应的 on 色）。
+ */
+internal fun ColorScheme.enforceReadableContrast(): ColorScheme = copy(
+    onPrimary = ensureContrast(onPrimary, primary),
+    onPrimaryContainer = ensureContrast(onPrimaryContainer, primaryContainer),
+    onSecondary = ensureContrast(onSecondary, secondary),
+    onSecondaryContainer = ensureContrast(onSecondaryContainer, secondaryContainer),
+    onTertiary = ensureContrast(onTertiary, tertiary),
+    onTertiaryContainer = ensureContrast(onTertiaryContainer, tertiaryContainer),
+    onError = ensureContrast(onError, error),
+    onErrorContainer = ensureContrast(onErrorContainer, errorContainer),
+    // 页面/卡片正文：surface 家族在播放器与首页都当底色用，逐个配对
+    onSurface = ensureContrast(onSurface, surface),
+    onSurfaceVariant = ensureContrast(onSurfaceVariant, surfaceVariant),
+    onBackground = ensureContrast(onBackground, background),
+    inverseOnSurface = ensureContrast(inverseOnSurface, inverseSurface),
+)

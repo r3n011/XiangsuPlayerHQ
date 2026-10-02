@@ -54,6 +54,7 @@
     <string name="auth_stay">Stay</string>
     <string name="auth_login_netease_title">Login to NetEase Music</string>
     <string name="auth_login_qq_title">Login to QQ Music</string>
+    <string name="netease_login_required_toast">Please sign in to NetEase Cloud Music first</string>
     <string name="auth_web_cd_web_back">Web back</string>
     <string name="auth_web_cd_web_forward">Web forward</string>
     <string name="auth_web_cd_refresh">Refresh</string>

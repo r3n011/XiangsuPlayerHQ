@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 sealed class AlbumSongsOrderMode {
     object Manual : AlbumSongsOrderMode()
@@ -122,7 +123,7 @@ class AlbumDetailViewModel @Inject constructor(
                     val raw = songsFromDb.sortedWith(
                         compareBy<Song> { it.discNumber ?: 1 }
                             .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
-                            .thenBy { it.title.lowercase() }
+                            .then(PinyinSortKey.ascending<Song> { it.title })
                     )
                     _uiState.update { currentState ->
                         currentState.copy(
@@ -167,7 +168,7 @@ class AlbumDetailViewModel @Inject constructor(
                         val raw = songsFromDb.sortedWith(
                             compareBy<Song> { it.discNumber ?: 1 }
                                 .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
-                                .thenBy { it.title.lowercase() }
+                                .then(PinyinSortKey.ascending<Song> { it.title })
                         )
                         _uiState.update { currentState ->
                             currentState.copy(
@@ -334,7 +335,7 @@ class AlbumDetailViewModel @Inject constructor(
         return songs.sortedWith(
             compareBy<Song> { it.discNumber ?: 1 }
                 .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
-                .thenBy { it.title.lowercase() }
+                .then(PinyinSortKey.ascending<Song> { it.title })
         )
     }
 
@@ -361,53 +362,53 @@ class AlbumDetailViewModel @Inject constructor(
     ): List<Song> {
         return when (sortOption) {
             SortOption.SongTitleAZ -> songs.sortedWith(
-                compareBy<Song> { it.title.lowercase() }
-                    .thenBy { it.artist.lowercase() }
+                PinyinSortKey.ascending<Song> { it.title }
+                    .then(PinyinSortKey.ascending<Song> { it.artist })
                     .thenBy { it.id }
             )
             SortOption.SongTitleZA -> songs.sortedWith(
-                compareByDescending<Song> { it.title.lowercase() }
-                    .thenBy { it.artist.lowercase() }
+                PinyinSortKey.ascending<Song> { it.title }.reversed()
+                    .then(PinyinSortKey.ascending<Song> { it.artist })
                     .thenBy { it.id }
             )
             SortOption.SongArtist -> songs.sortedWith(
-                compareBy<Song> { it.artist.lowercase() }
-                    .thenBy { it.title.lowercase() }
+                PinyinSortKey.ascending<Song> { it.artist }
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             SortOption.SongArtistDesc -> songs.sortedWith(
-                compareByDescending<Song> { it.artist.lowercase() }
-                    .thenBy { it.title.lowercase() }
+                PinyinSortKey.ascending<Song> { it.artist }.reversed()
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             SortOption.SongAlbum -> songs.sortedWith(
-                compareBy<Song> { it.album.lowercase() }
-                    .thenBy { it.title.lowercase() }
+                PinyinSortKey.ascending<Song> { it.album }
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             SortOption.SongAlbumDesc -> songs.sortedWith(
-                compareByDescending<Song> { it.album.lowercase() }
-                    .thenBy { it.title.lowercase() }
+                PinyinSortKey.ascending<Song> { it.album }.reversed()
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             SortOption.SongDuration -> songs.sortedWith(
                 compareByDescending<Song> { it.duration }
-                    .thenBy { it.title.lowercase() }
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             SortOption.SongDurationAsc -> songs.sortedWith(
                 compareBy<Song> { it.duration }
-                    .thenBy { it.title.lowercase() }
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             SortOption.SongDateAdded -> songs.sortedWith(
                 compareByDescending<Song> { it.dateAdded }
-                    .thenBy { it.title.lowercase() }
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             SortOption.SongDateAddedAsc -> songs.sortedWith(
                 compareBy<Song> { it.dateAdded }
-                    .thenBy { it.title.lowercase() }
+                    .then(PinyinSortKey.ascending<Song> { it.title })
                     .thenBy { it.id }
             )
             else -> defaultAlbumSort(songs)

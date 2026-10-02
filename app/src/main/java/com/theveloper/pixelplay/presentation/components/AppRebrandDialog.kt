@@ -1,13 +1,13 @@
 package com.theveloper.pixelplay.presentation.components
 
 import androidx.compose.foundation.layout.Column
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +33,7 @@ fun AppRebrandDialog(
 ) {
     var doNotShowAgain by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(id = R.string.app_name_change_title)) },
         text = {

@@ -269,6 +269,11 @@ class FloatingLyricsController @Inject constructor(
             onPrevious = { playbackStateHolder.previousSong() },
             onPlayPause = { playbackStateHolder.playPause() },
             onNext = { playbackStateHolder.nextSong() },
+            // 控制条上的关闭按钮：关掉「悬浮歌词」开关（偏好驱动 updateVisibility，
+            // 窗口随即隐藏，设置页的开关状态也保持一致）
+            onClose = {
+                scope.launch { userPreferencesRepository.setFloatingLyricsEnabled(false) }
+            },
             onRestoreFromEdge = { window?.exitEdgeHidden() }
         )
 

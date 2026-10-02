@@ -6,6 +6,7 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import net.moriafly.ncm.NcmApi
 import net.moriafly.ncm.ncmBool
@@ -31,6 +32,10 @@ class NeteaseChatRepository @Inject constructor(
 ) {
     private companion object {
         private const val USER_SEARCH_TYPE = 1002
+        /** 关注列表分页大小（与服务端推荐值一致） */
+        private const val FOLLOWS_PAGE_SIZE = 100
+        /** 关注列表拉取上限：防御性上限，避免异常 more 导致死循环 */
+        private const val MAX_FOLLOWS = 1_000
     }
 
     /** 会话列表（对方 / 最后一条预览 / 未读数），按下发顺序即最新在前 */
@@ -38,8 +43,11 @@ class NeteaseChatRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val selfId = neteaseRepository.getNeteaseUserId()
-                val map = NcmApi.FullAccess.msgPrivate(limit = limit, offset = 0).getOrThrow()
-                map.requireSuccess()
+                // ⚡ weapi 偶发空响应/被风控时回退 eapi，避免会话列表随机为空
+                val map = fetchWithEapiFallback(
+                    "/api/msg/private/users",
+                    mapOf("limit" to limit, "total" to true, "offset" to 0)
+                )
 
                 val contacts = map.ncmList("msgs").mapNotNull { item ->
                     val row = item as? Map<String, Any?> ?: return@mapNotNull null
@@ -173,52 +181,113 @@ class NeteaseChatRepository @Inject constructor(
         }.onFailure { Timber.w(it, "getUserDetail failed for uid=$userId") }
     }
 
-    /** 关注 / 取关 */
+    /**
+     * 关注 / 取关。网络抖动/风控导致的偶发失败重试一次，减少"点了没反应"的不稳定感。
+     */
     suspend fun setFollowed(userId: Long, followed: Boolean): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val map = NcmApi.FullAccess.follow(userId.toString(), if (followed) 1 else 0)
-                    .getOrThrow()
-                map.requireSuccess()
+                var lastError: Throwable? = null
+                for (attempt in 0 until 2) {
+                    val result = runCatching {
+                        NcmApi.FullAccess.follow(userId.toString(), if (followed) 1 else 0)
+                            .getOrThrow()
+                            .requireSuccess()
+                    }
+                    if (result.isSuccess) return@withContext Result.success(Unit)
+                    lastError = result.exceptionOrNull()
+                    if (attempt == 0) delay(350)
+                }
+                throw lastError ?: IOException("关注操作失败")
             }.onFailure { Timber.w(it, "setFollowed failed for uid=$userId") }
         }
 
-    /** 一起听邀请候选：关注列表优先，合并最近会话去重 */
+    /**
+     * 一起听邀请候选：关注列表（**全量分页**）优先，合并最近会话去重。
+     *
+     * 不稳定修复（对照 MeloX 的 NeteaseSocialAPI.messageContacts）：
+     *  - 关注列表分页拉取（每页 100，直到 more=false / 空页 / 上限 1000）；
+     *    此前只取第一页，关注数超过一页时好友列表时有时无；
+     *  - 单页失败（含 weapi 空响应/被风控）回退 eapi 同路径同参数重试一次，
+     *    此前 weapi 偶发失败直接吞掉返回空，表现为"好友列表时不时是空的"；
+     *  - 一页都拉不到才抛错（UI 显示失败），不伪装成"没有好友"。
+     */
     suspend fun getInviteCandidates(): Result<List<ChatContact>> = withContext(Dispatchers.IO) {
         runCatching {
             val selfId = neteaseRepository.getNeteaseUserId()
                 ?: throw IOException("请先登录网易云账号")
 
-            val follows = runCatching {
-                val map = NcmApi.FullAccess
-                    .userFollows(selfId.toString(), limit = 100, offset = 0, order = true)
-                    .getOrThrow()
-                map.requireSuccess()
-                map.ncmList("follow").mapNotNull { item ->
-                    val row = item as? Map<String, Any?> ?: return@mapNotNull null
-                    val uid = row.ncmLong("userId")
-                    if (uid <= 0L) return@mapNotNull null
-                    ChatContact(
-                        userId = uid,
-                        nickname = row.ncmString("nickname").ifBlank { uid.toString() },
-                        avatarUrl = row.ncmString("avatarUrl").ifBlank { null },
-                        lastMessagePreview = "",
-                        lastMessageTimeMs = 0L,
-                        unreadCount = 0
-                    )
-                }
-            }.getOrElse {
-                Timber.w(it, "getInviteCandidates: userFollows failed")
-                emptyList()
+            val follows = LinkedHashMap<Long, ChatContact>()
+            var offset = 0
+            var loadedAnyPage = false
+            while (follows.size < MAX_FOLLOWS) {
+                val page = fetchFollowsPage(selfId, offset = offset, limit = FOLLOWS_PAGE_SIZE)
+                loadedAnyPage = true
+                if (page.contacts.isEmpty()) break
+                page.contacts.forEach { follows.putIfAbsent(it.userId, it) }
+                offset += page.contacts.size
+                if (!page.hasMore) break
+            }
+            if (!loadedAnyPage) {
+                throw IOException("获取好友列表失败，请稍后重试")
             }
 
             val merged = LinkedHashMap<Long, ChatContact>()
-            follows.forEach { merged[it.userId] = it }
+            follows.forEach { (id, contact) -> merged[id] = contact }
             getConversations(limit = 50).getOrNull().orEmpty().forEach { contact ->
                 merged.putIfAbsent(contact.userId, contact)
             }
             merged.values.toList()
         }.onFailure { Timber.w(it, "getInviteCandidates failed") }
+    }
+
+    private data class FollowsPage(val contacts: List<ChatContact>, val hasMore: Boolean)
+
+    /**
+     * weapi 单通道调用 + 失败回退 eapi（同路径同参数）。
+     *
+     * 网易云 weapi 偶发返回空响应或被风控拦截，单通道直连表现为"列表时不时是空的"。
+     * MeloX 对同类接口（getfollows / 私信）都做了这种双通道容错。
+     */
+    private suspend fun fetchWithEapiFallback(
+        path: String,
+        params: Map<String, Any?>
+    ): Map<String, Any?> {
+        return runCatching {
+            NcmApi.FullAccess.rawWeapi(path, params).getOrThrow().also { it.requireSuccess() }
+        }.recoverCatching { weapiError ->
+            Timber.w(weapiError, "weapi failed, falling back to eapi: %s", path)
+            NcmApi.FullAccess.rawEapi(path, params).getOrThrow().also { it.requireSuccess() }
+        }.getOrThrow()
+    }
+
+    /**
+     * 拉取一页关注列表。weapi 失败或响应不合法时回退 eapi（同路径同参数），
+     * 对齐 MeloX 对 getfollows 的双通道容错。
+     */
+    private suspend fun fetchFollowsPage(
+        selfId: Long,
+        offset: Int,
+        limit: Int
+    ): FollowsPage {
+        val path = "/api/user/getfollows/$selfId"
+        val params = mapOf("offset" to offset, "limit" to limit, "order" to true)
+        val map = fetchWithEapiFallback(path, params)
+
+        val contacts = map.ncmList("follow").mapNotNull { item ->
+            val row = item as? Map<String, Any?> ?: return@mapNotNull null
+            val uid = row.ncmLong("userId")
+            if (uid <= 0L) return@mapNotNull null
+            ChatContact(
+                userId = uid,
+                nickname = row.ncmString("nickname").ifBlank { uid.toString() },
+                avatarUrl = row.ncmString("avatarUrl").ifBlank { null },
+                lastMessagePreview = "",
+                lastMessageTimeMs = 0L,
+                unreadCount = 0
+            )
+        }
+        return FollowsPage(contacts, hasMore = map.ncmBool("more"))
     }
 
     // ─── 解析辅助 ─────────────────────────────────────────────────────

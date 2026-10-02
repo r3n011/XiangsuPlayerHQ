@@ -3,6 +3,7 @@
 package com.theveloper.pixelplay.presentation.telegram.dashboard
 
 import android.content.Context
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -45,7 +46,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Topic
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -328,7 +328,7 @@ fun TelegramDashboardScreen(
             val channelLabel = channel.title.ifBlank {
                 channel.username?.let { "@$it" } ?: channel.chatId.toString()
             }
-            AlertDialog(
+            PixelAlertDialog(
                 onDismissRequest = { channelPendingRemoval = null },
                 icon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 title = {

@@ -446,6 +446,14 @@ class DualPlayerEngine @Inject constructor(
     // can never spuriously disable audio offload (battery) or trigger a player rebuild.
     private var lastTransitionFinishedAtMs: Long = 0L
 
+    // ⚡ 冷启动首播淡入标记：服务每次创建（应用重启）后置 true，首次出声时做一次
+    //   短音量淡入，掩盖 AudioTrack/HAL 首次打开（尤其 offload 路径）的咔哒爆音。
+    //   正常的暂停/恢复不淡入；stop() 回到 IDLE 时重新置位。
+    private var pendingColdStartFadeIn = true
+
+    /** 冷启动淡入的目标音量：READY 压 0 前记录的实际音量（含 RG / 用户音量）。 */
+    private var coldStartFadeTargetVolume = 0f
+
     /**
      * Whether ExoPlayer audio offload is currently enabled for this session. Exposed
      * read-only for the diagnostic performance report. Offload is disabled at runtime
@@ -589,6 +597,16 @@ class DualPlayerEngine @Inject constructor(
             if (isPlaying) {
                 lastPlayingAtMs = SystemClock.elapsedRealtime()
                 cancelAudioOffloadFallback()
+                // ⚡ 冷启动首播淡入：掩盖 AudioTrack/HAL 首次打开的咔哒爆音。
+                //    电台直播流有自己的 fadeInVolume，这里让位避免两路同时拉音量。
+                if (pendingColdStartFadeIn && !transitionRunning) {
+                    val mediaId = playerA.currentMediaItem?.mediaId.orEmpty()
+                    if (mediaId.startsWith("radio://")) {
+                        pendingColdStartFadeIn = false
+                    } else {
+                        startColdStartFadeIn()
+                    }
+                }
             }
         }
 
@@ -838,10 +856,21 @@ class DualPlayerEngine @Inject constructor(
                         playerA.playbackParameters = PlaybackParameters(desiredPlaybackSpeed, desiredPlaybackPitch)
                     }
                     scheduleAudioOffloadFallbackIfNeeded(playerA)
+                    // ⚡ 冷启动首播：在首个音频样本写出到 HAL 之前把音量压到 0，
+                    //    短淡入由 onIsPlayingChanged(true) 起步（见 startColdStartFadeIn）。
+                    //    淡入目标用**压 0 前的实际音量快照**（可能已含 ReplayGain / 用户
+                    //    音量），而不是 companionBaseVolume（默认 1.0）——否则首播瞬间会被
+                    //    拉到满音量，等到 RG/音量设置再次应用才回落，表现为"突然一下非常大声"。
+                    if (pendingColdStartFadeIn && !transitionRunning) {
+                        coldStartFadeTargetVolume = playerA.volume.takeIf { it > 0f }
+                            ?: companionBaseVolume
+                        playerA.volume = 0f
+                    }
                 }
                 Player.STATE_IDLE -> {
                     bufferingStartedAtMs = 0L
                     cancelAudioOffloadFallback()
+                    pendingColdStartFadeIn = true
                 }
                 Player.STATE_ENDED -> {
                     bufferingStartedAtMs = 0L
@@ -2294,6 +2323,50 @@ class DualPlayerEngine @Inject constructor(
                 delay(16)
             }
             player.volume = 1f
+        }
+    }
+
+    /**
+     * ⚡ 冷启动首播音量淡入：应用重启后第一次出声时，AudioTrack/HAL 首次打开
+     *   （尤其 offload 路径）常伴随一声咔哒爆音。音量已在 STATE_READY 时压到 0，
+     *   这里用 ~160ms 线性拉回用户音量把瞬态盖住；参数与电台 fadeInVolume 一致。
+     *   仅触发一次，之后的暂停/恢复不淡入。
+     */
+    private fun startColdStartFadeIn() {
+        pendingColdStartFadeIn = false
+        val player = playerA
+        // 目标音量 = READY 压 0 前记录的实际音量（含 ReplayGain / 用户音量），
+        // 绝不用 companionBaseVolume（默认 1.0）兜底成满音量
+        val target = if (coldStartFadeTargetVolume > 0f) {
+            coldStartFadeTargetVolume
+        } else {
+            companionBaseVolume
+        }
+        var lastWritten = -1f
+        scope.launch(Dispatchers.Main) {
+            val startMs = SystemClock.uptimeMillis()
+            while (true) {
+                // 播放器重建 / 切歌过渡 / 焦点闪避 / AI 淡入淡出接管音量时立即让位，避免互相拉扯
+                if (!::playerA.isInitialized || playerA !== player) return@launch
+                if (transitionRunning || focusDuckActive || companionDuckJob?.isActive == true) return@launch
+                // 音量被外部改写（ReplayGain 应用 / 引擎音量更新）：立即让位并保留外部值，
+                // 否则淡入会把 RG/用户音量覆盖成满音量 —— "突然一下非常大声"的来源
+                if (lastWritten >= 0f && kotlin.math.abs(player.volume - lastWritten) > 0.01f) {
+                    return@launch
+                }
+                if (!player.isPlaying) {
+                    // 淡入途中被暂停：直接恢复目标音量，避免音量停在半路
+                    player.volume = target
+                    return@launch
+                }
+                val progress = ((SystemClock.uptimeMillis() - startMs) / 160f).coerceIn(0f, 1f)
+                val value = target * progress
+                player.volume = value
+                lastWritten = value
+                if (progress >= 1f) break
+                delay(16)
+            }
+            player.volume = target
         }
     }
 

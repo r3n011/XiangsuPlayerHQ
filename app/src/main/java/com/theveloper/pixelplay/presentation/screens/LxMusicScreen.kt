@@ -1,6 +1,16 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import android.net.Uri
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -28,7 +38,6 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -85,6 +94,14 @@ fun LxMusicScreen(
         }
     }
 
+    // ⚡ 导出 JS 音源：选一个保存位置，把所有已导入脚本打包成 zip 写进去
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        viewModel.exportAllJs(uri)
+    }
+
     LaunchedEffect(Unit) {
         runCatching {
             viewModel.refreshDisplayOnly()
@@ -107,6 +124,13 @@ fun LxMusicScreen(
                     }
                     IconButton(onClick = { viewModel.showInfo = true }) {
                         Icon(Icons.Filled.Info, null)
+                    }
+                    // ⚡ 导出全部 JS 音源（打包 zip，自选保存位置）
+                    IconButton(
+                        onClick = { exportLauncher.launch("pixelplay-js-sources.zip") },
+                        enabled = state.scriptInfos.isNotEmpty(),
+                    ) {
+                        Icon(Icons.Filled.Share, stringResourceSafe(R.string.lx_export_js, "导出 JS 音源"))
                     }
                     IconButton(onClick = { viewModel.removeAllJs() }) {
                         Icon(Icons.Filled.DeleteOutline, null)
@@ -231,25 +255,37 @@ private fun EngineNotReadyBanner(state: LxUiState, viewModel: LxMusicViewModel, 
 
 @Composable
 private fun EngineReadyBanner(state: LxUiState) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = Modifier.fillMaxWidth()
+    val blockShape = remember { AbsoluteSmoothCornerShape(22.dp, 60) }
+    Surface(
+        shape = blockShape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // 状态胶囊
+            Surface(
+                shape = AbsoluteSmoothCornerShape(12.dp, 60),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = stringResourceSafe(R.string.lx_js_ready, "已就绪") + " · v" + state.version,
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
             Text(
-                stringResourceSafe(R.string.lx_js_ready, "已就绪") + "  v" + state.version,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                stringResourceSafe(R.string.lx_sources_label, "音源") + ": " + state.sources.keys.joinToString("·"),
+                text = state.sources.keys.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -282,27 +318,103 @@ private fun SearchBar(state: LxUiState, viewModel: LxMusicViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SourceChipsRow(state: LxUiState, viewModel: LxMusicViewModel) {
+    // ⚡ 横向滚动的音源标签：每个音源一个**等大的字母头像**（首字母 + 稳定取色），
+    //    选中态与搜索页筛选标签一致（primary 底 + onPrimary 文字）。
+    val scrollState = rememberScrollState()
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable { }
+            .horizontalScroll(scrollState)
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            FilterChip(
-                selected = state.selectedSource == "wy",
-                onClick = { viewModel.selectedSource = "wy"; expanded = false },
-                label = { Text(stringResourceSafe(R.string.lx_source_all, "网易云")) }
-            )
-        }
-        state.sources.entries.take(8).forEach { (key, info) ->
-            val label = info.name.ifBlank { key }
-            FilterChip(
+        SourceChip(
+            label = stringResourceSafe(R.string.lx_source_all, "网易云"),
+            selected = state.selectedSource == "wy",
+            onClick = { viewModel.selectedSource = "wy" },
+        )
+        state.sources.entries.take(12).forEach { (key, info) ->
+            SourceChip(
+                label = info.name.ifBlank { key },
                 selected = state.selectedSource == key,
                 onClick = { viewModel.selectedSource = key },
-                label = { Text(label) }
+            )
+        }
+    }
+}
+
+/** 单个音源标签：22dp 圆形字母头像 + 名称；头像大小在所有音源间保持一致。 */
+@Composable
+private fun SourceChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val containerColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+        label = "sourceChipContainer",
+    )
+    val contentColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+        label = "sourceChipContent",
+    )
+    // 头像底色：按名称做稳定取色。
+    // ⚡ 字母色必须用容器的 on 色（onXContainer）—— 之前固定用 onSurface，
+    //    在深色/专辑取色方案下和容器几乎同色，头像上的字看不清；
+    //    选中态整颗胶囊是 primary，头像改成半透明 onPrimary，避免和主色糊在一起。
+    val avatarColor: androidx.compose.ui.graphics.Color
+    val avatarContentColor: androidx.compose.ui.graphics.Color
+    if (selected) {
+        avatarColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.24f)
+        avatarContentColor = MaterialTheme.colorScheme.onPrimary
+    } else {
+        val avatarPalette = listOf(
+            MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer,
+            MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer,
+            MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+        val picked = avatarPalette[(label.hashCode().let { if (it < 0) -it else it }) % avatarPalette.size]
+        avatarColor = picked.first
+        avatarContentColor = picked.second
+    }
+
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.height(32.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(start = 4.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(avatarColor),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label.take(1).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = avatarContentColor,
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
             )
         }
     }
@@ -322,22 +434,24 @@ private fun SongList(
 
 @Composable
 private fun SongRow(song: LxSongInfo, onPlay: (LxSongInfo) -> Unit) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = Modifier.fillMaxWidth()
+    val rowShape = remember { AbsoluteSmoothCornerShape(20.dp, 60) }
+    Surface(
+        onClick = { onPlay(song) },
+        shape = rowShape,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 搜索列表不预加载封面，降低网络请求；播放时再获取封面。
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .padding(end = 12.dp)
+                    .clip(AbsoluteSmoothCornerShape(14.dp, 60))
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
@@ -376,7 +490,7 @@ private fun ImportUrlDialog(
     onSubmit: (String) -> Unit
 ) {
     var url by remember { mutableStateOf("https://") }
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResourceSafe(R.string.lx_import_url_title, "从 URL 下载 JS")) },
         text = {
@@ -403,7 +517,7 @@ private fun ImportUrlDialog(
 
 @Composable
 private fun InfoDialog(state: LxUiState, onDismiss: () -> Unit) {
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResourceSafe(R.string.lx_info_title, "JS 引擎信息")) },
         text = {
@@ -431,7 +545,7 @@ private fun InfoRow(label: String, value: String) {
 
 @Composable
 private fun ProgressDialog(progress: Float, label: String) {
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = {},
         confirmButton = {},
         title = { Text(label) },

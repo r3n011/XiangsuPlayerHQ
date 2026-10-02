@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.text.method.LinkMovementMethod
 import android.widget.TextView
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
@@ -19,6 +20,7 @@ import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
@@ -39,6 +41,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -182,6 +185,10 @@ private val AppMaintainers = listOf(
     "yzrbz",
     "想玩小恐龙",
     "HZX0831",
+    "硫化锌",
+    "Calypso·Tysn",
+    "南宫寂风",
+    "奕奕",
 )
 
 private val PinnedCommunityMembers = listOf(
@@ -1517,8 +1524,13 @@ private fun AcknowledgementsCard(modifier: Modifier = Modifier) {
 /** 支付宝收款链接（用于「一键捐赠」跳转） */
 private const val ALIPAY_DONATION_URL = "https://qr.alipay.com/fkx16554zi5nuco07uevm00"
 
+/** 微信收款码链接：wxp:// 是微信支付注册的协议，交给微信打开即为收款页 */
+private const val WECHAT_DONATION_URL = "wxp://f2f06CRtHwY4kHMWOVdYXKe4tKimtoMWPmtTHj9CxkGHiMY"
+
+private const val WECHAT_PACKAGE = "com.tencent.mm"
+
 /** 感谢名单：按捐赠时间倒序，展示与收款记录一致的脱敏昵称 */
-private val DonationSupporters = listOf("刘琦先生", "盘旋在古城上的白色乌鸦", "**涛", "**烽", "**棣")
+private val DonationSupporters = listOf("Emerson", "刘琦先生", "盘旋在古城上的白色乌鸦", "**涛", "**烽", "**棣")
 
 /**
  * 一键打开支付宝捐赠：
@@ -1547,7 +1559,110 @@ private fun openAlipayDonation(context: Context) {
 }
 
 /**
- * 赞助开发卡：收款二维码 + 一键捐赠按钮 + 感谢名单。
+ * 一键打开微信捐赠：
+ * 1) 先用通用 VIEW 打开 `wxp://`（由微信注册的协议处理器接管）；
+ * 2) 个别机型 / 微信版本不注册通用 VIEW，再用显式包名兜底；
+ * 3) 都打不开（多为未安装微信）→ 提示直接扫上方二维码。
+ *
+ * ⚠️ 这里刻意不做「是否安装微信」的预检查：Android 11+ 的软件包可见性限制会让
+ * `getPackageInfo("com.tencent.mm")` 在未声明 `<queries>` 时直接抛异常 —— 装了微信
+ * 也会被误判成没装。交给 ActivityNotFoundException 判断最稳。
+ */
+private fun openWeChatDonation(context: Context) {
+    val uri = Uri.parse(WECHAT_DONATION_URL)
+    val candidates = listOf(
+        Intent(Intent.ACTION_VIEW, uri),
+        Intent(Intent.ACTION_VIEW, uri).setPackage(WECHAT_PACKAGE),
+    )
+    for (intent in candidates) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: ActivityNotFoundException) {
+            // 无处理者，继续尝试下一个候选
+        } catch (_: Throwable) {
+            // 继续尝试下一个候选
+        }
+    }
+    android.widget.Toast
+        .makeText(context, R.string.about_donation_no_wechat, android.widget.Toast.LENGTH_SHORT)
+        .show()
+}
+
+/** 单个收款码板：白底 + 二维码 + 渠道名（两张图版式已统一，渲染大小一致）。 */
+@Composable
+private fun DonationQrPlate(
+    @DrawableRes painterRes: Int,
+    @StringRes contentDescriptionRes: Int,
+    @StringRes channelLabelRes: Int,
+    plateColor: Color,
+    labelColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = plateColor,
+        shadowElevation = 3.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Image(
+                painter = painterResource(painterRes),
+                contentDescription = stringResource(contentDescriptionRes),
+                // 两张图都是正方形白底、二维码占同样比例 → 并排时大小完全一致
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.FillWidth,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(channelLabelRes),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = labelColor,
+            )
+        }
+    }
+}
+
+/** 捐赠按钮：两个渠道并排，等分宽度。 */
+@Composable
+private fun DonationActionButton(
+    @StringRes labelRes: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(50.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Favorite,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * 赞助开发卡：收款二维码（支付宝 / 微信可切换）+ 一键捐赠按钮 + 感谢名单。
  * 二维码底板固定为白色 —— 深色主题下也必须保证可扫描。
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -1602,54 +1717,53 @@ private fun DonationCard(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = qrPlateColor,
-                shadowElevation = 3.dp,
+            // ⚡ 支付宝 / 微信两个收款码**同时展示**（不再切换）：两张图的版式已统一，
+            //    二维码大小完全一致，并排放在同一行里。
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.donation_alipay_qr),
-                        contentDescription = stringResource(R.string.cd_donation_qr),
-                        modifier = Modifier
-                            .width(220.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.FillWidth,
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = stringResource(R.string.about_donation_qr_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = qrPlateTextColor.copy(alpha = 0.75f),
-                    )
-                }
+                DonationQrPlate(
+                    painterRes = R.drawable.donation_alipay_qr,
+                    contentDescriptionRes = R.string.cd_donation_qr,
+                    channelLabelRes = R.string.about_donation_channel_alipay,
+                    plateColor = qrPlateColor,
+                    labelColor = qrPlateTextColor,
+                    modifier = Modifier.weight(1f),
+                )
+                DonationQrPlate(
+                    painterRes = R.drawable.donation_wechat_qr,
+                    contentDescriptionRes = R.string.cd_donation_qr_wechat,
+                    channelLabelRes = R.string.about_donation_channel_wechat,
+                    plateColor = qrPlateColor,
+                    labelColor = qrPlateTextColor,
+                    modifier = Modifier.weight(1f),
+                )
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = stringResource(R.string.about_donation_qr_hint_both),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Button(
-                onClick = { openAlipayDonation(context) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Favorite,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                DonationActionButton(
+                    labelRes = R.string.about_donation_button_alipay,
+                    onClick = { openAlipayDonation(context) },
+                    modifier = Modifier.weight(1f),
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.about_donation_button),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                DonationActionButton(
+                    labelRes = R.string.about_donation_button_wechat,
+                    onClick = { openWeChatDonation(context) },
+                    modifier = Modifier.weight(1f),
                 )
             }
 

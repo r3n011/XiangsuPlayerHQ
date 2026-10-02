@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 /**
  * Holds the full UI state for ArtistDetailScreen.
@@ -286,7 +287,7 @@ class ArtistDetailViewModel @Inject constructor(
 
 private val songDisplayComparator = compareBy<Song> { it.discNumber ?: 1 }
     .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
-    .thenBy { it.title.lowercase() }
+    .then(PinyinSortKey.ascending<Song> { it.title })
 
 private fun buildAlbumSections(songs: List<Song>): List<ArtistAlbumSection> {
     if (songs.isEmpty()) return emptyList()
@@ -309,9 +310,9 @@ private fun buildAlbumSections(songs: List<Song>): List<ArtistAlbumSection> {
     val (withYear, withoutYear) = sections.partition { it.year != null }
     val withYearSorted = withYear.sortedWith(
         compareByDescending<ArtistAlbumSection> { it.year ?: Int.MIN_VALUE }
-            .thenBy { it.title.lowercase() }
+            .then(PinyinSortKey.ascending<ArtistAlbumSection> { it.title })
     )
-    val withoutYearSorted = withoutYear.sortedBy { it.title.lowercase() }
+    val withoutYearSorted = withoutYear.sortedWith(PinyinSortKey.ascending { it.title })
 
     return withYearSorted + withoutYearSorted
 }

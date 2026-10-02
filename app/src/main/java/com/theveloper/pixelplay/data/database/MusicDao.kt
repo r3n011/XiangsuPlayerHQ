@@ -447,7 +447,7 @@ interface MusicDao {
     @Query("SELECT " + SONG_LIST_PROJECTION + """
         FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
     """)
     fun getSongs(
         allowedParentDirs: List<String>,
@@ -514,7 +514,7 @@ interface MusicDao {
     @Query("SELECT * FROM songs WHERE album_id = :albumId ORDER BY disc_number ASC, track_number ASC")
     fun getSongsByAlbumId(albumId: Long): Flow<List<SongEntity>>
 
-    @Query("SELECT * FROM songs WHERE artist_id = :artistId ORDER BY title ASC")
+    @Query("SELECT * FROM songs WHERE artist_id = :artistId ORDER BY IFNULL(title_sort_key, X'') ASC")
     fun getSongsByArtistId(artistId: Long): Flow<List<SongEntity>>
 
     @Query("""
@@ -522,7 +522,7 @@ interface MusicDao {
         INNER JOIN songs_fts ON songs_fts.rowid = songs.id
         WHERE (:applyDirectoryFilter = 0 OR songs.id < 0 OR songs.parent_directory_path IN (:allowedParentDirs))
         AND songs_fts MATCH :matchQuery
-        ORDER BY songs.title ASC
+        ORDER BY IFNULL(songs.title_sort_key, X'') ASC
     """)
     fun searchSongsMatch(
         matchQuery: String,
@@ -534,7 +534,7 @@ interface MusicDao {
         SELECT * FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
         AND (title LIKE '%' || :query || '%' OR artist_name LIKE '%' || :query || '%')
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
     """)
     fun searchSongsLike(
         query: String,
@@ -655,7 +655,7 @@ interface MusicDao {
         SELECT """ + SONG_LIST_PROJECTION + """
         FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
-        ORDER BY title COLLATE NOCASE ASC, artist_name COLLATE NOCASE ASC, id ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC, IFNULL(artist_sort_key, X'') ASC, id ASC
         LIMIT 1
     """)
     suspend fun getFirstPlayableSong(
@@ -684,7 +684,7 @@ interface MusicDao {
             AND (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
             GROUP BY album_art_uri_string
         )
-        ORDER BY title COLLATE NOCASE ASC, artist_name COLLATE NOCASE ASC, id ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC, IFNULL(artist_sort_key, X'') ASC, id ASC
     """)
     fun getDistinctAlbumArtSongs(
         allowedParentDirs: List<String>,
@@ -718,7 +718,7 @@ interface MusicDao {
                 AND source_type != 0
             )
         )
-        ORDER BY parent_directory_path ASC, title ASC
+        ORDER BY parent_directory_path ASC, IFNULL(title_sort_key, X'') ASC
     """)
     fun getFolderSongs(
         allowedParentDirs: List<String> = emptyList(),
@@ -742,19 +742,19 @@ interface MusicDao {
         )
         ORDER BY
             CASE WHEN :sortOrder = 'song_default_order' THEN track_number END ASC,
-            CASE WHEN :sortOrder = 'song_title_az' THEN title END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_title_za' THEN title END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'song_artist' THEN artist_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_artist_desc' THEN artist_name END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'song_album' THEN album_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_album_desc' THEN album_name END COLLATE NOCASE DESC,
+            CASE WHEN :sortOrder = 'song_title_az' THEN IFNULL(title_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_title_za' THEN IFNULL(title_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'song_artist' THEN IFNULL(artist_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_artist_desc' THEN IFNULL(artist_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'song_album' THEN IFNULL(album_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_album_desc' THEN IFNULL(album_sort_key, X'') END DESC,
             CASE WHEN :sortOrder = 'song_date_added' THEN date_added END DESC,
             CASE WHEN :sortOrder = 'song_date_added_asc' THEN date_added END ASC,
             CASE WHEN :sortOrder = 'song_date_modified' THEN date_modified END DESC,
             CASE WHEN :sortOrder = 'song_date_modified_asc' THEN date_modified END ASC,
             CASE WHEN :sortOrder = 'song_duration' THEN duration END DESC,
             CASE WHEN :sortOrder = 'song_duration_asc' THEN duration END ASC,
-            title COLLATE NOCASE ASC,
+            IFNULL(title_sort_key, X'') ASC,
             id ASC
     """)
     suspend fun getSongIdsSorted(
@@ -780,15 +780,15 @@ interface MusicDao {
             )
         )
         ORDER BY
-            CASE WHEN :sortOrder = 'liked_title_az' THEN songs.title END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_title_za' THEN songs.title END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'liked_artist' THEN songs.artist_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_artist_desc' THEN songs.artist_name END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'liked_album' THEN songs.album_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_album_desc' THEN songs.album_name END COLLATE NOCASE DESC,
+            CASE WHEN :sortOrder = 'liked_title_az' THEN IFNULL(songs.title_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_title_za' THEN IFNULL(songs.title_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'liked_artist' THEN IFNULL(songs.artist_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_artist_desc' THEN IFNULL(songs.artist_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'liked_album' THEN IFNULL(songs.album_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_album_desc' THEN IFNULL(songs.album_sort_key, X'') END DESC,
             CASE WHEN :sortOrder = 'liked_date_liked' THEN favorites.timestamp END DESC,
             CASE WHEN :sortOrder = 'liked_date_liked_asc' THEN favorites.timestamp END ASC,
-            songs.title COLLATE NOCASE ASC,
+            IFNULL(songs.title_sort_key, X'') ASC,
             songs.id ASC
     """)
     suspend fun getFavoriteSongIdsSorted(
@@ -819,12 +819,12 @@ interface MusicDao {
         )
         ORDER BY
             CASE WHEN :sortOrder = 'song_default_order' THEN track_number END ASC,
-            CASE WHEN :sortOrder = 'song_title_az' THEN title END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_title_za' THEN title END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'song_artist' THEN artist_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_artist_desc' THEN artist_name END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'song_album' THEN album_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_album_desc' THEN album_name END COLLATE NOCASE DESC,
+            CASE WHEN :sortOrder = 'song_title_az' THEN IFNULL(title_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_title_za' THEN IFNULL(title_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'song_artist' THEN IFNULL(artist_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_artist_desc' THEN IFNULL(artist_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'song_album' THEN IFNULL(album_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_album_desc' THEN IFNULL(album_sort_key, X'') END DESC,
             CASE WHEN :sortOrder = 'song_date_added' THEN date_added END DESC,
             CASE WHEN :sortOrder = 'song_date_added_asc' THEN date_added END ASC,
             CASE WHEN :sortOrder = 'song_date_modified' THEN date_modified END DESC,
@@ -833,7 +833,7 @@ interface MusicDao {
             CASE WHEN :sortOrder = 'song_duration_asc' THEN duration END ASC,
 
             -- Secondary sort falls back to title for consistency (case-insensitive)
-            title COLLATE NOCASE ASC,
+            IFNULL(title_sort_key, X'') ASC,
             id ASC
     """)
     fun getSongsPaginated(
@@ -860,19 +860,19 @@ interface MusicDao {
         )
         ORDER BY
             CASE WHEN :sortOrder = 'song_default_order' THEN track_number END ASC,
-            CASE WHEN :sortOrder = 'song_title_az' THEN title END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_title_za' THEN title END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'song_artist' THEN artist_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_artist_desc' THEN artist_name END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'song_album' THEN album_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'song_album_desc' THEN album_name END COLLATE NOCASE DESC,
+            CASE WHEN :sortOrder = 'song_title_az' THEN IFNULL(title_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_title_za' THEN IFNULL(title_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'song_artist' THEN IFNULL(artist_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_artist_desc' THEN IFNULL(artist_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'song_album' THEN IFNULL(album_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'song_album_desc' THEN IFNULL(album_sort_key, X'') END DESC,
             CASE WHEN :sortOrder = 'song_date_added' THEN date_added END DESC,
             CASE WHEN :sortOrder = 'song_date_added_asc' THEN date_added END ASC,
             CASE WHEN :sortOrder = 'song_date_modified' THEN date_modified END DESC,
             CASE WHEN :sortOrder = 'song_date_modified_asc' THEN date_modified END ASC,
             CASE WHEN :sortOrder = 'song_duration' THEN duration END DESC,
             CASE WHEN :sortOrder = 'song_duration_asc' THEN duration END ASC,
-            title COLLATE NOCASE ASC,
+            IFNULL(title_sort_key, X'') ASC,
             id ASC
         LIMIT :limit OFFSET :offset
     """)
@@ -906,15 +906,15 @@ interface MusicDao {
             )
         )
         ORDER BY
-            CASE WHEN :sortOrder = 'liked_title_az' THEN songs.title END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_title_za' THEN songs.title END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'liked_artist' THEN songs.artist_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_artist_desc' THEN songs.artist_name END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'liked_album' THEN songs.album_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_album_desc' THEN songs.album_name END COLLATE NOCASE DESC,
+            CASE WHEN :sortOrder = 'liked_title_az' THEN IFNULL(songs.title_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_title_za' THEN IFNULL(songs.title_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'liked_artist' THEN IFNULL(songs.artist_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_artist_desc' THEN IFNULL(songs.artist_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'liked_album' THEN IFNULL(songs.album_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_album_desc' THEN IFNULL(songs.album_sort_key, X'') END DESC,
             CASE WHEN :sortOrder = 'liked_date_liked' THEN favorites.timestamp END DESC,
             CASE WHEN :sortOrder = 'liked_date_liked_asc' THEN favorites.timestamp END ASC,
-            songs.title COLLATE NOCASE ASC,
+            IFNULL(songs.title_sort_key, X'') ASC,
             songs.id ASC
     """)
     fun getFavoriteSongsPaginated(
@@ -942,7 +942,7 @@ interface MusicDao {
                 AND songs.source_type != 0
             )
         )
-        ORDER BY songs.title COLLATE NOCASE ASC
+        ORDER BY IFNULL(songs.title_sort_key, X'') ASC
     """)
     suspend fun getFavoriteSongsList(
         allowedParentDirs: List<String>,
@@ -967,15 +967,15 @@ interface MusicDao {
             )
         )
         ORDER BY
-            CASE WHEN :sortOrder = 'liked_title_az' THEN songs.title END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_title_za' THEN songs.title END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'liked_artist' THEN songs.artist_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_artist_desc' THEN songs.artist_name END COLLATE NOCASE DESC,
-            CASE WHEN :sortOrder = 'liked_album' THEN songs.album_name END COLLATE NOCASE ASC,
-            CASE WHEN :sortOrder = 'liked_album_desc' THEN songs.album_name END COLLATE NOCASE DESC,
+            CASE WHEN :sortOrder = 'liked_title_az' THEN IFNULL(songs.title_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_title_za' THEN IFNULL(songs.title_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'liked_artist' THEN IFNULL(songs.artist_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_artist_desc' THEN IFNULL(songs.artist_sort_key, X'') END DESC,
+            CASE WHEN :sortOrder = 'liked_album' THEN IFNULL(songs.album_sort_key, X'') END ASC,
+            CASE WHEN :sortOrder = 'liked_album_desc' THEN IFNULL(songs.album_sort_key, X'') END DESC,
             CASE WHEN :sortOrder = 'liked_date_liked' THEN favorites.timestamp END DESC,
             CASE WHEN :sortOrder = 'liked_date_liked_asc' THEN favorites.timestamp END ASC,
-            songs.title COLLATE NOCASE ASC,
+            IFNULL(songs.title_sort_key, X'') ASC,
             songs.id ASC
         LIMIT :limit OFFSET :offset
     """)
@@ -1022,7 +1022,7 @@ interface MusicDao {
         INNER JOIN songs_fts ON songs_fts.rowid = songs.id
         WHERE (:applyDirectoryFilter = 0 OR songs.parent_directory_path IN (:allowedParentDirs))
         AND songs_fts MATCH :matchQuery
-        ORDER BY songs.title ASC
+        ORDER BY IFNULL(songs.title_sort_key, X'') ASC
     """)
     fun searchSongsPaginatedMatch(
         matchQuery: String,
@@ -1048,7 +1048,7 @@ interface MusicDao {
         INNER JOIN songs_fts ON songs_fts.rowid = songs.id
         WHERE (:applyDirectoryFilter = 0 OR songs.id < 0 OR songs.parent_directory_path IN (:allowedParentDirs))
         AND songs_fts MATCH :matchQuery
-        ORDER BY songs.title ASC
+        ORDER BY IFNULL(songs.title_sort_key, X'') ASC
         LIMIT :limit
     """)
     fun searchSongsLimitedMatch(
@@ -1065,7 +1065,7 @@ interface MusicDao {
         SELECT * FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
         AND title LIKE '%' || :query || '%'
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
         LIMIT :limit
     """)
     fun searchSongsLimitedByTitleLike(
@@ -1082,7 +1082,7 @@ interface MusicDao {
         SELECT * FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
         AND (title LIKE '%' || :query || '%' OR artist_name LIKE '%' || :query || '%')
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
         LIMIT :limit
     """)
     fun searchSongsLimitedLike(
@@ -1136,7 +1136,7 @@ interface MusicDao {
         SELECT * FROM songs
         WHERE (:applyDirectoryFilter = 0 OR parent_directory_path IN (:allowedParentDirs))
         AND genre LIKE :genreName
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
     """)
     fun getSongsByGenrePaginated(
         genreName: String,
@@ -1611,7 +1611,7 @@ interface MusicDao {
         SELECT * FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
         AND genre LIKE :genreName
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
     """)
     fun getSongsByGenre(
         genreName: String,
@@ -1635,7 +1635,7 @@ interface MusicDao {
             OR genre LIKE :genreMiddleWithSpace
             OR genre LIKE :genreMiddle
         )
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
     """)
     fun getSongsByGenreContaining(
         genreName: String,
@@ -1652,7 +1652,7 @@ interface MusicDao {
         SELECT * FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
         AND (genre IS NULL OR genre = '')
-        ORDER BY title ASC
+        ORDER BY IFNULL(title_sort_key, X'') ASC
     """)
     fun getSongsWithNullGenre(
         allowedParentDirs: List<String>,
@@ -1893,7 +1893,7 @@ interface MusicDao {
         SELECT DISTINCT songs.* FROM songs
         LEFT JOIN song_artist_cross_ref ON songs.id = song_artist_cross_ref.song_id
         WHERE songs.artist_id = :artistId OR song_artist_cross_ref.artist_id = :artistId
-        ORDER BY songs.title ASC
+        ORDER BY IFNULL(songs.title_sort_key, X'') ASC
     """)
     fun getSongsForArtist(artistId: Long): Flow<List<SongEntity>>
 
@@ -1904,7 +1904,7 @@ interface MusicDao {
         SELECT DISTINCT songs.* FROM songs
         LEFT JOIN song_artist_cross_ref ON songs.id = song_artist_cross_ref.song_id
         WHERE songs.artist_id = :artistId OR song_artist_cross_ref.artist_id = :artistId
-        ORDER BY songs.title ASC
+        ORDER BY IFNULL(songs.title_sort_key, X'') ASC
     """)
     suspend fun getSongsForArtistList(artistId: Long): List<SongEntity>
 
@@ -2053,6 +2053,36 @@ interface MusicDao {
         }
     }
 
+    // ─── 拼音排序键回填（46→47 迁移新增列的历史数据补齐）─────────────────────
+
+    /** 缺拼音排序键的行（迁移后由后台任务分批补齐，见 SongSortKeyBackfill） */
+    @Query(
+        """
+        SELECT id, title, artist_name AS artistName, album_name AS albumName FROM songs
+        WHERE title_sort_key IS NULL OR artist_sort_key IS NULL OR album_sort_key IS NULL
+        LIMIT :limit
+        """
+    )
+    suspend fun getSongsMissingSortKeys(limit: Int): List<SongSortKeySeed>
+
+    @Query(
+        """
+        UPDATE songs SET title_sort_key = :titleKey, artist_sort_key = :artistKey, album_sort_key = :albumKey
+        WHERE id = :id
+        """
+    )
+    suspend fun updateSongSortKeys(
+        id: Long,
+        titleKey: ByteArray,
+        artistKey: ByteArray,
+        albumKey: ByteArray
+    )
+
+    @Query(
+        "SELECT COUNT(*) FROM songs WHERE title_sort_key IS NULL OR artist_sort_key IS NULL OR album_sort_key IS NULL"
+    )
+    suspend fun countSongsMissingSortKeys(): Int
+
     companion object {
         /**
          * SQLite has a limit on the number of variables per statement (default 999, higher in newer versions).
@@ -2070,3 +2100,11 @@ interface MusicDao {
         const val SONG_BATCH_SIZE = 500
     }
 }
+
+/** 拼音排序键回填的种子行（列名经 SQL 别名映射为属性名） */
+data class SongSortKeySeed(
+    val id: Long,
+    val title: String,
+    val artistName: String,
+    val albumName: String
+)

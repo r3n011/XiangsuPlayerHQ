@@ -83,6 +83,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CoroutineScope
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
@@ -1230,7 +1231,7 @@ class MusicRepositoryImpl @Inject constructor(
                             .filter { it.isNotBlank() }
                             .map { buildGenre(it) }
                             .distinctBy { it.id }
-                            .sortedBy { it.name.lowercase() }
+                            .sortedWith(PinyinSortKey.ascending { it.name })
                             .toList()
                         val unknownAlreadyPresent = knownGenres.any { it.id == UNKNOWN_GENRE_ID }
                         if (hasUnknown && !unknownAlreadyPresent) {

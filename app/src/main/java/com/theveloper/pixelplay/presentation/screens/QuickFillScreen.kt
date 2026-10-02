@@ -3,6 +3,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.activity.compose.BackHandler
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -402,7 +403,7 @@ fun GenreValidatorContent(
         var newGenreName by remember { mutableStateOf("") }
         var selectedIcon by remember { mutableIntStateOf(GenreIconProvider.SELECTABLE_ICONS.first()) }
         
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { showCustomDialog = false },
             title = { Text(addCustomGenreTitle) },
             text = {

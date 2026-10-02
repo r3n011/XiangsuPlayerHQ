@@ -3,6 +3,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 
 import android.os.Trace
@@ -227,7 +228,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -282,6 +282,7 @@ import com.theveloper.pixelplay.data.service.wear.PhoneWatchTransferState
 import com.theveloper.pixelplay.shared.WearTransferProgress
 import java.io.File
 import kotlin.math.abs
+import com.theveloper.pixelplay.utils.PinyinSortKey
 
 val ListExtraBottomGap = 30.dp
 val PlayerSheetCollapsedCornerRadius = 32.dp
@@ -495,6 +496,8 @@ fun LibraryScreen(
         qqMusicDashboardViewModel.autoSyncOnLibraryEntry()
         // B 站收藏同步（模仿网易云：进入媒体库自动同步，Syncer 内部 1 小时节流）
         accountsViewModel.autoSyncBilibili()
+        // 酷狗歌单同步（同上，KugouPlaylistSyncer 内部 1 小时节流）
+        accountsViewModel.autoSyncKugou()
     }
     // The pull-to-refresh spinner is reserved for user gestures. Automatic sync
     // and long-running refresh work move through the slim linear indicator under
@@ -2376,7 +2379,7 @@ fun LibraryScreen(
     if (showMergePlaylistDialog && pendingMergePlaylistIds.isNotEmpty()) {
         var mergePlaylistName by remember { mutableStateOf("") }
 
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = {
                 showMergePlaylistDialog = false
                 pendingMergePlaylistIds = emptyList()
@@ -3607,35 +3610,35 @@ private fun flattenFolders(folders: List<MusicFolder>): List<MusicFolder> {
 private fun sortMusicFoldersByOption(folders: List<MusicFolder>, sortOption: SortOption): List<MusicFolder> {
     return when (sortOption) {
         SortOption.FolderNameAZ -> folders.sortedWith(
-            compareBy<MusicFolder> { it.name.lowercase() }
+            PinyinSortKey.ascending<MusicFolder> { it.name }
                 .thenBy { it.path }
         )
         SortOption.FolderNameZA -> folders.sortedWith(
-            compareByDescending<MusicFolder> { it.name.lowercase() }
+            PinyinSortKey.ascending<MusicFolder> { it.name }.reversed()
                 .thenBy { it.path }
         )
         SortOption.FolderSongCountAsc -> folders.sortedWith(
             compareBy<MusicFolder> { it.totalSongCount }
-                .thenBy { it.name.lowercase() }
+                .then(PinyinSortKey.ascending<MusicFolder> { it.name })
                 .thenBy { it.path }
         )
         SortOption.FolderSongCountDesc -> folders.sortedWith(
             compareByDescending<MusicFolder> { it.totalSongCount }
-                .thenBy { it.name.lowercase() }
+                .then(PinyinSortKey.ascending<MusicFolder> { it.name })
                 .thenBy { it.path }
         )
         SortOption.FolderSubdirCountAsc -> folders.sortedWith(
             compareBy<MusicFolder> { it.totalSubFolderCount }
-                .thenBy { it.name.lowercase() }
+                .then(PinyinSortKey.ascending<MusicFolder> { it.name })
                 .thenBy { it.path }
         )
         SortOption.FolderSubdirCountDesc -> folders.sortedWith(
             compareByDescending<MusicFolder> { it.totalSubFolderCount }
-                .thenBy { it.name.lowercase() }
+                .then(PinyinSortKey.ascending<MusicFolder> { it.name })
                 .thenBy { it.path }
         )
         else -> folders.sortedWith(
-            compareBy<MusicFolder> { it.name.lowercase() }
+            PinyinSortKey.ascending<MusicFolder> { it.name }
                 .thenBy { it.path }
         )
     }
@@ -3644,13 +3647,13 @@ private fun sortMusicFoldersByOption(folders: List<MusicFolder>, sortOption: Sor
 private fun sortSongsForFolderView(songs: List<Song>, sortOption: SortOption): List<Song> {
     return when (sortOption) {
         SortOption.FolderNameZA -> songs.sortedWith(
-            compareByDescending<Song> { it.title.lowercase() }
-                .thenBy { it.artist.lowercase() }
+            PinyinSortKey.ascending<Song> { it.title }.reversed()
+                .then(PinyinSortKey.ascending<Song> { it.artist })
                 .thenBy { it.id }
         )
         else -> songs.sortedWith(
-            compareBy<Song> { it.title.lowercase() }
-                .thenBy { it.artist.lowercase() }
+            PinyinSortKey.ascending<Song> { it.title }
+                .then(PinyinSortKey.ascending<Song> { it.artist })
                 .thenBy { it.id }
         )
     }

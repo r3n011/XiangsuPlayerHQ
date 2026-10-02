@@ -41,6 +41,16 @@
         name="settings_category_developer_subtitle"
     >Experimental features and debugging</string>
     <string name="settings_category_equalizer_title">Equalizer</string>
+    <string name="settings_category_usb_exclusive_title">USB exclusive</string>
+    <string name="usb_status_section">Device status</string>
+    <string name="usb_status_active">Exclusive active — audio bypasses the system mixer</string>
+    <string name="usb_status_inactive">Exclusive inactive (system mixer output)</string>
+    <string name="usb_status_no_device">No USB audio device detected — plug in a DAC and it will be found automatically</string>
+    <string name="usb_status_rescan">Rescan</string>
+    <string name="usb_status_switch_device">Change device</string>
+    <string name="usb_status_none_found">No USB audio device found</string>
+    <string name="usb_status_found">Found %1$d USB audio device(s)</string>
+    <string name="settings_category_usb_exclusive_subtitle">Bit-perfect output to an external USB DAC: bit depth, device and status</string>
     <string
         name="settings_category_equalizer_subtitle"
     >Adjust audio frequencies and presets</string>
@@ -258,7 +268,7 @@
     <string name="setcat_collage_pattern_label">Collage Pattern</string>
     <string
         name="setcat_collage_pattern_desc"
-    >Choose the shape arrangement for the Your Mix collage.</string>
+    >Style of the home top card: a collage pattern, or the featured carousel (sub-option).</string>
     <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
     <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
     <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
@@ -619,6 +629,8 @@
         name="setcat_force_daily_mix_subtitle"
     >Re-creates the daily mix playlist immediately.</string>
     <string name="setcat_force_stats_title">Force Stats Regeneration</string>
+    <string name="setcat_force_software_blur_title">Force legacy blur (test)</string>
+    <string name="setcat_force_software_blur_subtitle">Force the software/bitmap blur used on Android &lt; 12 so you can verify it on newer devices</string>
     <string
         name="setcat_force_stats_subtitle"
     >Clears cache and recalculates playback statistics.</string>
@@ -978,6 +990,14 @@
     <string name="setcat_carousel_no_peek">No peek</string>
     <string name="setcat_carousel_one_peek">One peek</string>
     <string name="setcat_carousel_style_desc">How the album carousel is displayed.</string>
+    <string name="setcat_home_top_style_label">Home top style</string>
+    <string name="setcat_home_top_style_desc">Show a collage wall or a featured carousel at the top of Home.</string>
+    <string name="setcat_home_top_style_collage">Collage wall</string>
+    <string name="setcat_home_top_style_featured">Featured carousel</string>
+    <string name="setcat_player_cover_style_label">Cover style</string>
+    <string name="setcat_player_cover_style_desc">How the player cover is displayed (Rhythm featured card).</string>
+    <string name="setcat_player_cover_style_default">Default carousel</string>
+    <string name="setcat_player_cover_style_featured">Featured card carousel</string>
     <string name="setcat_carousel_style_label">Carousel style</string>
     <string name="setcat_download_complete">Download complete</string>
     <string name="setcat_download_failed">Download failed</string>

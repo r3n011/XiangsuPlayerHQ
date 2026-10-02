@@ -133,6 +133,8 @@ fun SongInfoBottomSheet(
     onNavigateToArtistById: (Long) -> Unit = { onNavigateToArtist() },
     onOpenNeteaseArtistHomepage: (() -> Unit)? = null,
     onNavigateToGenre: () -> Unit,
+    /** 打开时落在哪一页：0 = 操作页，1 = 歌曲信息详情卡片（播放器「歌曲信息」入口用 1） */
+    initialPage: Int = 0,
     onEditSong: (
         title: String,
         artist: String,
@@ -377,7 +379,10 @@ fun SongInfoBottomSheet(
         songInfoViewModel.loadArtistsForSong(song)
     }
 
-    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = initialPage.coerceIn(0, 1),
+        pageCount = { 2 }
+    )
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val configuration = LocalConfiguration.current

@@ -49,7 +49,25 @@ object SoftBlur {
     const val DECODE_SIZE_SOFT = 48
 
     /** 调用方需要模糊、但系统不支持原生模糊时返回 true（此时应改用本对象的降级方案）。 */
-    fun needsSoftwareBlur(needBlur: Boolean): Boolean = needBlur && !isNativeBlurSupported
+    /**
+     * ⚡ 开发者选项：强制走「低版本软件模糊」（在高版本设备上验证低版本模糊是否正常）。
+     * 由偏好 `force_software_blur` 驱动，见 SettingsViewModel。
+     *
+     * ⚠️ 必须用 snapshot state 存：这个值在多个 composable 里是**组合期读取**的
+     * （`needsSoftwareBlur` / `decodeSize` / `rememberLowVersionBlurBackdrop(enabled)`），
+     * 以前用 `@Volatile var` 时改了开关不会触发重组 —— 表现就是「开发者选项里打开
+     * 强制低版本模糊，画面毫无变化」，要等下一次其它原因的重组（甚至重启）才生效。
+     */
+    private val forceSoftwareBlurState = mutableStateOf(false)
+
+    var forceSoftwareBlur: Boolean
+        get() = forceSoftwareBlurState.value
+        set(value) {
+            forceSoftwareBlurState.value = value
+        }
+
+    fun needsSoftwareBlur(needBlur: Boolean): Boolean =
+        needBlur && (!isNativeBlurSupported || forceSoftwareBlur)
 
     /**
      * 计算图片解码尺寸：

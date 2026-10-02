@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components.autoeq
 
 import androidx.compose.foundation.layout.Arrangement
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +19,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.HeadsetMic
 import androidx.compose.material.icons.rounded.NotInterested
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -56,7 +56,7 @@ fun AutoEQSuggestionDialog(
 ) {
     val haptics = LocalHapticFeedback.current
 
-    AlertDialog(
+    PixelAlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(

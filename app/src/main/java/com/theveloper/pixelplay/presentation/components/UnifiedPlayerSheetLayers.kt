@@ -71,6 +71,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     currentQueueSourceName: String,
     currentSheetContentState: PlayerSheetState,
     carouselStyle: String,
+    /** 播放器封面样式：默认轮播 / 精选轮播卡片 */
     fullPlayerLoadingTweaks: FullPlayerLoadingTweaks,
     isSheetDragGestureActive: Boolean = false,
     playerViewModel: PlayerViewModel,
@@ -347,6 +348,7 @@ internal fun UnifiedPlayerPrewarmLayer(
     currentQueueSourceName: String,
     infrequentPlayerState: StablePlayerState,
     carouselStyle: String,
+    /** 播放器封面样式：默认轮播 / 精选轮播卡片 */
     fullPlayerLoadingTweaks: FullPlayerLoadingTweaks,
     playerViewModel: PlayerViewModel,
     currentPositionProvider: () -> Long,

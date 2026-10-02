@@ -287,6 +287,9 @@ fun AppNavigation(
                         onOpenBilibiliDashboard = {
                             navController.navigateSafely(Screen.BilibiliFavorites.route)
                         },
+                        onOpenKugouDashboard = {
+                            navController.navigateSafely(Screen.KugouDashboard.route)
+                        },
                         playerViewModel = playerViewModel
                     )
                 }
@@ -627,7 +630,10 @@ fun AppNavigation(
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     NeteaseDashboardScreen(
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        onNavigateToAccounts = {
+                            navController.navigateSafely(Screen.Accounts.route)
+                        }
                     )
                 }
             }
@@ -690,6 +696,18 @@ fun AppNavigation(
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     JellyfinDashboardScreen(
                         onBack = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.KugouDashboard.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    com.theveloper.pixelplay.presentation.kugou.dashboard.KugouDashboardScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPlaylist = { playlistId ->
+                            navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlistId))
+                        }
                     )
                 }
             }

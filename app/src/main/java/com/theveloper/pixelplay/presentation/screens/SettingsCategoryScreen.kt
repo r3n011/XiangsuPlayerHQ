@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
+import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.components.BackupModuleSelectionDialog
 import com.theveloper.pixelplay.presentation.components.TranscodeCacheListDialog
 import com.theveloper.pixelplay.utils.TranscodeCacheManager
@@ -85,6 +86,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.ClearAll
+import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
@@ -142,7 +144,6 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveButtonGroup
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -156,6 +157,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -307,6 +309,7 @@ fun SettingsCategoryScreen(
     val isSyncing by settingsViewModel.isSyncing.collectAsStateWithLifecycle()
     val syncProgress by settingsViewModel.syncProgress.collectAsStateWithLifecycle()
     val dataTransferProgress by settingsViewModel.dataTransferProgress.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     val paletteRegenerateTargets by playerViewModel.paletteRegenerationTargets.collectAsStateWithLifecycle()
     val scrollHideChrome by playerViewModel.scrollHideChrome.collectAsStateWithLifecycle()
     val navRailStyle by playerViewModel.navRailStyle.collectAsStateWithLifecycle()
@@ -320,7 +323,6 @@ fun SettingsCategoryScreen(
     var showClearLyricsDialog by remember { mutableStateOf(false) }
     var vibrantBgConfirmTarget by remember { mutableStateOf<String?>(null) } // "lyrics" / "player"，低版本开启前需警告确认
     var showRebuildDatabaseWarning by remember { mutableStateOf(false) }
-    var showDiscoverOptionsDialog by remember { mutableStateOf(false) }
     var showDownloadPathDialog by remember { mutableStateOf(false) }
     var downloadPathOptions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var showRegenerateDailyMixDialog by remember { mutableStateOf(false) }
@@ -898,6 +900,174 @@ fun SettingsCategoryScreen(
                                 }
                             }
                         }
+                        SettingsCategory.USB_EXCLUSIVE -> {
+                            // ⚡ 设备状态卡：当前设备 / 独占是否真的激活 / 支持采样率，
+                            //    并给「重新扫描」「更换设备」两个入口（原来只有开关，状态看不见）
+                            val usbDeviceInfo = remember(uiState.currentUsbDeviceName) {
+                                uiState.currentUsbDeviceName
+                            }
+                            SettingsSubsection(title = stringResource(R.string.usb_status_section)) {
+                                Card(
+                                    shape = AbsoluteSmoothCornerShape(22.dp, 60),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (usbExclusiveActive) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerLow
+                                        }
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = uiState.currentUsbDeviceName
+                                                ?: stringResource(R.string.setcat_usb_exclusive_mode_subtitle_disconnected),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = buildString {
+                                                append(
+                                                    if (usbExclusiveActive) {
+                                                        stringResource(R.string.usb_status_active)
+                                                    } else {
+                                                        stringResource(R.string.usb_status_inactive)
+                                                    }
+                                                )
+                                                if (usbExclusiveActive) {
+                                                    append(" · ").append(uiState.usbOutputBitDepthBits).append("-bit")
+                                                }
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        if (usbDeviceInfo == null) {
+                                            Text(
+                                                text = stringResource(R.string.usb_status_no_device),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        val found = usbDacManager.scanDevices()
+                                                        if (found.isEmpty()) {
+                                                            playerViewModel.sendToast(
+                                                                context.getString(R.string.usb_status_none_found)
+                                                            )
+                                                        } else {
+                                                            playerViewModel.sendToast(
+                                                                context.getString(
+                                                                    R.string.usb_status_found,
+                                                                    found.size
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                            ) { Text(stringResource(R.string.usb_status_rescan)) }
+                                            FilledTonalButton(
+                                                onClick = { showUsbDeviceSelector = true },
+                                                modifier = Modifier.weight(1f)
+                                            ) { Text(stringResource(R.string.usb_status_switch_device)) }
+                                        }
+                                    }
+                                }
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.settings_category_usb_exclusive_title)) {
+                                    SwitchSettingItem(
+                                        title = stringResource(R.string.setcat_usb_exclusive_mode_title),
+                                        subtitle = run {
+                                            val base = uiState.currentUsbDeviceName?.let {
+                                                stringResource(R.string.setcat_usb_exclusive_mode_subtitle_connected, it)
+                                            } ?: stringResource(R.string.setcat_usb_exclusive_mode_subtitle_disconnected)
+                                            val depthSuffix = if (uiState.usbExclusiveModeEnabled) " · ${uiState.usbOutputBitDepthBits}-bit" else ""
+                                            val activeSuffix = if (usbExclusiveActive && usbActiveDevice != null) " · ✓" else ""
+                                            base + depthSuffix + activeSuffix
+                                        },
+                                        checked = uiState.usbExclusiveModeEnabled,
+                                        onCheckedChange = { enabled ->
+                                            if (enabled && uiState.currentUsbDeviceName == null) {
+                                                // ⚡ 自动发现 USB 音频设备：找到则直接使用并请求权限激活；
+                                                // 找不到再打开设备选择对话框
+                                                coroutineScope.launch {
+                                                    val found = usbDacManager.scanDevices()
+                                                    val first = found.firstOrNull()
+                                                    if (first != null) {
+                                                        settingsViewModel.selectUsbDevice(first)
+                                                        usbDacManager.requestAndActivateExclusiveMode(context, first) { success ->
+                                                            if (success) {
+                                                                settingsViewModel.setUsbExclusiveModeEnabled(true)
+                                                            } else {
+                                                                settingsViewModel.setUsbExclusiveModeEnabled(false)
+                                                                showUsbDeviceSelector = true
+                                                            }
+                                                        }
+                                                    } else {
+                                                        showUsbDeviceSelector = true
+                                                    }
+                                                }
+                                            } else {
+                                                settingsViewModel.setUsbExclusiveModeEnabled(enabled)
+                                            }
+                                        },
+                                        onClick = {
+                                            if (!uiState.usbExclusiveModeEnabled) {
+                                                showUsbDeviceSelector = true
+                                            }
+                                        },
+                                        leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                    // AAudio 低延迟后端已移除：播放输出恢复系统 AudioTrack（见
+                                    // DualPlayerEngine.buildAudioSink），AAudio 在曲尾会导致 EOS
+                                    // 不达、无法自动切歌，故不再提供该开关。
+                                    // USB 输出位深选项（仅在 USB 独占模式启用时可见）
+                                    if (uiState.usbExclusiveModeEnabled) {
+                                        val bitDepthOptions = mapOf(
+                                            "16" to stringResource(R.string.usb_bit_depth_16),
+                                            "24" to stringResource(R.string.usb_bit_depth_24),
+                                            "32" to stringResource(R.string.usb_bit_depth_32)
+                                        )
+                                        val bitDepthSubtitleRes = when (uiState.usbOutputBitDepthBits) {
+                                            24 -> R.string.setcat_usb_bit_depth_subtitle_24
+                                            32 -> R.string.setcat_usb_bit_depth_subtitle_32
+                                            else -> R.string.setcat_usb_bit_depth_subtitle_16
+                                        }
+                                        ThemeSelectorItem(
+                                            label = stringResource(R.string.setcat_usb_bit_depth_title),
+                                            description = stringResource(bitDepthSubtitleRes),
+                                            options = bitDepthOptions,
+                                            selectedKey = uiState.usbOutputBitDepthBits.toString(),
+                                            onSelectionChanged = { key ->
+                                                val bits = key.toIntOrNull() ?: 32
+                                                settingsViewModel.setUsbOutputBitDepth(bits)
+                                            },
+                                            leadingIcon = { Icon(painterResource(R.drawable.rounded_dataset_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                        )
+                                    }
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.settings_category_device_capabilities_title)) {
+                                SettingsItem(
+                                    title = stringResource(R.string.settings_category_usb_exclusive_title),
+                                    subtitle = stringResource(R.string.settings_category_usb_exclusive_subtitle),
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { navController.navigateSafely(Screen.DeviceCapabilities.route) }
+                                )
+                            }
+                        }
+
                         SettingsCategory.WEB_REMOTE -> {
                             val isWebRemoteEnabled by settingsViewModel.isWebRemoteEnabled.collectAsStateWithLifecycle()
                             val isWebRemoteSyncMode by settingsViewModel.isWebRemoteSyncMode.collectAsStateWithLifecycle()
@@ -1281,7 +1451,7 @@ fun SettingsCategoryScreen(
                                 context.dataStore.data.map { prefs ->
                                     StartupAnimationStyle.fromName(prefs[STARTUP_ANIMATION_STYLE_PREF_KEY])
                                 }
-                            }.collectAsStateWithLifecycle(initialValue = StartupAnimationStyle.EMERGE)
+                            }.collectAsStateWithLifecycle(initialValue = StartupAnimationStyle.DEFAULT)
 
                             SettingsSubsection(title = stringResource(R.string.setcat_appearance_startup_section)) {
                                 ThemeSelectorItem(
@@ -1853,13 +2023,40 @@ fun SettingsCategoryScreen(
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_home_collage)) {
+                                // ⚡ 主页顶部卡片样式：拼贴图案 +「精选轮播」子选项。
+                                //    精选轮播不再是独立的一级样式，而是拼贴图案里的一个选项：
+                                //    选中它 → 主页顶部换成精选轮播；选中其它 → 回到对应拼贴图案。
                                 ThemeSelectorItem(
                                     label = stringResource(R.string.setcat_collage_pattern_label),
                                     description = stringResource(R.string.setcat_collage_pattern_desc),
-                                    options = CollagePattern.entries.associate { it.storageKey to stringResource(it.labelResId) },
-                                    selectedKey = uiState.collagePattern.storageKey,
+                                    options = buildMap {
+                                        // 精选轮播放在最前面：列表项较多时它不会被挤到弹窗可视区之外
+                                        put(
+                                            com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_FEATURED,
+                                            stringResource(R.string.setcat_home_top_style_featured)
+                                        )
+                                        CollagePattern.entries.forEach { pattern ->
+                                            put(pattern.storageKey, stringResource(pattern.labelResId))
+                                        }
+                                    },
+                                    selectedKey = if (uiState.homeTopStyle ==
+                                        com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_FEATURED
+                                    ) {
+                                        com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_FEATURED
+                                    } else {
+                                        uiState.collagePattern.storageKey
+                                    },
                                     onSelectionChanged = { key ->
-                                        settingsViewModel.setCollagePattern(CollagePattern.fromStorageKey(key))
+                                        if (key == com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_FEATURED) {
+                                            settingsViewModel.setHomeTopStyle(
+                                                com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_FEATURED
+                                            )
+                                        } else {
+                                            settingsViewModel.setHomeTopStyle(
+                                                com.theveloper.pixelplay.data.preferences.HOME_TOP_STYLE_COLLAGE
+                                            )
+                                            settingsViewModel.setCollagePattern(CollagePattern.fromStorageKey(key))
+                                        }
                                     },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_view_column_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
@@ -2170,13 +2367,6 @@ fun SettingsCategoryScreen(
                                     }
                                 )
                                 SettingsItem(
-                                    title = stringResource(R.string.setcat_center_nav_title),
-                                    subtitle = buildDiscoverSubtitle(uiState.discoverShowRoaming, uiState.discoverShowRadio, uiState.discoverShowAi),
-                                    leadingIcon = { Icon(Icons.Rounded.Explore, null, tint = MaterialTheme.colorScheme.secondary) },
-                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    onClick = { showDiscoverOptionsDialog = true }
-                                )
-                                SettingsItem(
                                     title = stringResource(R.string.setcat_navbar_corner_title),
                                     subtitle = stringResource(R.string.setcat_navbar_corner_subtitle),
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_rounded_corner_24), null, tint = MaterialTheme.colorScheme.secondary) },
@@ -2449,76 +2639,6 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.outline_high_quality_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_usb_exclusive_mode_title),
-                                    subtitle = run {
-                                        val base = uiState.currentUsbDeviceName?.let {
-                                            stringResource(R.string.setcat_usb_exclusive_mode_subtitle_connected, it)
-                                        } ?: stringResource(R.string.setcat_usb_exclusive_mode_subtitle_disconnected)
-                                        val depthSuffix = if (uiState.usbExclusiveModeEnabled) " · ${uiState.usbOutputBitDepthBits}-bit" else ""
-                                        val activeSuffix = if (usbExclusiveActive && usbActiveDevice != null) " · ✓" else ""
-                                        base + depthSuffix + activeSuffix
-                                    },
-                                    checked = uiState.usbExclusiveModeEnabled,
-                                    onCheckedChange = { enabled ->
-                                        if (enabled && uiState.currentUsbDeviceName == null) {
-                                            // ⚡ 自动发现 USB 音频设备：找到则直接使用并请求权限激活；
-                                            // 找不到再打开设备选择对话框
-                                            coroutineScope.launch {
-                                                val found = usbDacManager.scanDevices()
-                                                val first = found.firstOrNull()
-                                                if (first != null) {
-                                                    settingsViewModel.selectUsbDevice(first)
-                                                    usbDacManager.requestAndActivateExclusiveMode(context, first) { success ->
-                                                        if (success) {
-                                                            settingsViewModel.setUsbExclusiveModeEnabled(true)
-                                                        } else {
-                                                            settingsViewModel.setUsbExclusiveModeEnabled(false)
-                                                            showUsbDeviceSelector = true
-                                                        }
-                                                    }
-                                                } else {
-                                                    showUsbDeviceSelector = true
-                                                }
-                                            }
-                                        } else {
-                                            settingsViewModel.setUsbExclusiveModeEnabled(enabled)
-                                        }
-                                    },
-                                    onClick = {
-                                        if (!uiState.usbExclusiveModeEnabled) {
-                                            showUsbDeviceSelector = true
-                                        }
-                                    },
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                                // AAudio 低延迟后端已移除：播放输出恢复系统 AudioTrack（见
-                                // DualPlayerEngine.buildAudioSink），AAudio 在曲尾会导致 EOS
-                                // 不达、无法自动切歌，故不再提供该开关。
-                                // USB 输出位深选项（仅在 USB 独占模式启用时可见）
-                                if (uiState.usbExclusiveModeEnabled) {
-                                    val bitDepthOptions = mapOf(
-                                        "16" to stringResource(R.string.usb_bit_depth_16),
-                                        "24" to stringResource(R.string.usb_bit_depth_24),
-                                        "32" to stringResource(R.string.usb_bit_depth_32)
-                                    )
-                                    val bitDepthSubtitleRes = when (uiState.usbOutputBitDepthBits) {
-                                        24 -> R.string.setcat_usb_bit_depth_subtitle_24
-                                        32 -> R.string.setcat_usb_bit_depth_subtitle_32
-                                        else -> R.string.setcat_usb_bit_depth_subtitle_16
-                                    }
-                                    ThemeSelectorItem(
-                                        label = stringResource(R.string.setcat_usb_bit_depth_title),
-                                        description = stringResource(bitDepthSubtitleRes),
-                                        options = bitDepthOptions,
-                                        selectedKey = uiState.usbOutputBitDepthBits.toString(),
-                                        onSelectionChanged = { key ->
-                                            val bits = key.toIntOrNull() ?: 32
-                                            settingsViewModel.setUsbOutputBitDepth(bits)
-                                        },
-                                        leadingIcon = { Icon(painterResource(R.drawable.rounded_dataset_24), null, tint = MaterialTheme.colorScheme.secondary) }
-                                    )
-                                }
-                                SwitchSettingItem(
                                     title = stringResource(R.string.setcat_persistent_shuffle_title),
                                     subtitle = stringResource(R.string.setcat_persistent_shuffle_subtitle),
                                     checked = uiState.persistentShuffleEnabled,
@@ -2786,6 +2906,15 @@ fun SettingsCategoryScreen(
                                     onClick = {
                                         settingsViewModel.resetSetupFlow()
                                     }
+                                )
+                                // ⚡ 低版本（API < 31）模糊测试开关：强制走软件/位图模糊，
+                                //    方便在高版本设备上验证低版本那套实现（原来错放在「触感反馈」里）
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_force_software_blur_title),
+                                    subtitle = stringResource(R.string.setcat_force_software_blur_subtitle),
+                                    checked = uiState.forceSoftwareBlur,
+                                    onCheckedChange = { settingsViewModel.setForceSoftwareBlur(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.BlurOn, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                             }
 
@@ -3159,7 +3288,7 @@ fun SettingsCategoryScreen(
 
     // ⚡ 安卓10及以下开启绚丽背景前的版本过低警告确认
     vibrantBgConfirmTarget?.let { target ->
-        AlertDialog(
+        PixelAlertDialog(
             onDismissRequest = { vibrantBgConfirmTarget = null },
             icon = {
                 Icon(Icons.Rounded.Warning, null, tint = MaterialTheme.colorScheme.error)
@@ -3192,7 +3321,7 @@ fun SettingsCategoryScreen(
     }
 
     if (showRegenerateAllPalettesDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             icon = {
                 Icon(
                     Icons.Outlined.Style,
@@ -3313,7 +3442,7 @@ fun SettingsCategoryScreen(
     
      // Dialogs logic (copied)
     if (showClearLyricsDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             icon = { Icon(Icons.Outlined.Warning, null) },
             title = { Text(stringResource(R.string.dialog_reset_lyrics_title)) },
             text = { Text(stringResource(R.string.dialog_cannot_undo)) },
@@ -3327,7 +3456,7 @@ fun SettingsCategoryScreen(
     if (showRebuildDatabaseWarning) {
         val syncIndicatorRebuilding = stringResource(R.string.sync_indicator_rebuilding)
         val toastRebuildingDatabase = stringResource(R.string.toast_rebuilding_database)
-        AlertDialog(
+        PixelAlertDialog(
             icon = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(R.string.dialog_rebuild_database_title)) },
             text = { Text(stringResource(R.string.dialog_rebuild_database_message)) },
@@ -3352,7 +3481,7 @@ fun SettingsCategoryScreen(
     }
 
     if (showDownloadPathDialog) {
-        AlertDialog(
+        PixelAlertDialog(
             icon = { Icon(Icons.Outlined.Folder, null, tint = MaterialTheme.colorScheme.secondary) },
             title = { Text(stringResource(R.string.setcat_download_path_title)) },
             onDismissRequest = { showDownloadPathDialog = false },
@@ -3386,46 +3515,9 @@ fun SettingsCategoryScreen(
         )
     }
 
-    if (showDiscoverOptionsDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscoverOptionsDialog = false },
-            title = { Text(stringResource(R.string.setcat_center_nav_title)) },
-            text = {
-                Column {
-                    Text(
-                        text = stringResource(R.string.discover_options_dialog_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    DialogCheckRow(
-                        title = stringResource(R.string.setcat_center_nav_roaming),
-                        checked = uiState.discoverShowRoaming,
-                        onCheckedChange = { settingsViewModel.setDiscoverShowRoaming(it) }
-                    )
-                    DialogCheckRow(
-                        title = stringResource(R.string.setcat_center_nav_radio),
-                        checked = uiState.discoverShowRadio,
-                        onCheckedChange = { settingsViewModel.setDiscoverShowRadio(it) }
-                    )
-                    DialogCheckRow(
-                        title = stringResource(R.string.discover_ai_title),
-                        checked = uiState.discoverShowAi,
-                        onCheckedChange = { settingsViewModel.setDiscoverShowAi(it) }
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDiscoverOptionsDialog = false }) {
-                    Text(stringResource(R.string.confirm), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        )
-    }
-
     if (showRegenerateDailyMixDialog) {
         val toastDailyMixRegenerationStarted = stringResource(R.string.toast_daily_mix_regeneration_started)
-        AlertDialog(
+        PixelAlertDialog(
             icon = { Icon(painterResource(R.drawable.rounded_instant_mix_24), null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text(stringResource(R.string.dialog_regenerate_daily_mix_title)) },
             text = { Text(stringResource(R.string.dialog_regenerate_daily_mix_body)) },
@@ -3447,7 +3539,7 @@ fun SettingsCategoryScreen(
 
     if (showRegenerateStatsDialog) {
         val toastStatsRegenerationStarted = stringResource(R.string.toast_stats_regeneration_started)
-        AlertDialog(
+        PixelAlertDialog(
             icon = { Icon(painterResource(R.drawable.rounded_monitoring_24), null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text(stringResource(R.string.dialog_regenerate_stats_title)) },
             text = { Text(stringResource(R.string.dialog_regenerate_stats_body)) },
@@ -3486,7 +3578,7 @@ fun SettingsCategoryScreen(
 
     if (showExportFormatDialog) {
         val backupFileNameFormat = stringResource(R.string.backup_file_name_format)
-        AlertDialog(
+        PixelAlertDialog(
             title = { Text(stringResource(R.string.setcat_export_backup_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -3621,45 +3713,6 @@ private fun buildBackupSelectionSummary(context: Context, selected: Set<BackupSe
         context.getString(R.string.backup_summary_all)
     } else {
         context.getString(R.string.backup_summary_partial, selected.size, total)
-    }
-}
-
-/** 「发现按钮」设置入口的副标题：按勾选个数给出直观说明。 */
-@Composable
-private fun buildDiscoverSubtitle(showRoaming: Boolean, showRadio: Boolean, showAi: Boolean): String {
-    val names = buildList {
-        if (showRoaming) add(stringResource(R.string.setcat_center_nav_roaming))
-        if (showRadio) add(stringResource(R.string.setcat_center_nav_radio))
-        if (showAi) add(stringResource(R.string.discover_ai_title))
-    }
-    return when (names.size) {
-        0 -> stringResource(R.string.discover_none_selected_desc)
-        1 -> stringResource(R.string.discover_single_selected_desc, names[0])
-        else -> stringResource(R.string.discover_multi_selected_desc, names.joinToString("、"))
-    }
-}
-
-/** 弹窗内的一行勾选项。 */
-@Composable
-private fun DialogCheckRow(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
