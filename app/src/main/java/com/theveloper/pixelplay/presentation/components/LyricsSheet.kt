@@ -1985,7 +1985,7 @@ fun LyricLineRow(
         label = "lineBlur"
     )
     // ⚡ API 31 以下没有 RenderEffect，Modifier.blur 对文字是空操作。
-    //    这些行改走 Modifier.softwareBlur：离屏降采样 + 双线性放大 = 真正的像素级模糊。
+    //    这些行改走 Modifier.softwareBlur：快照 → 降采样 → Blurry 真高斯 → 放大绘制。
     val softwareBlurActive = blurRadius > 0.dp && SoftBlur.needsSoftwareBlur(needBlur = true)
 
     // 行间距物理弹簧：不同距离的行 stiffness 递减（移动速度不同），
@@ -2033,7 +2033,7 @@ fun LyricLineRow(
     val romanizationColor = lineColor.copy(alpha = lineColor.alpha * 0.85f)
     val translationColor = lineColor.copy(alpha = lineColor.alpha * 0.55f)
 
-    // ⚡ 低版本的"远处歌词发虚"改由 Modifier.softwareBlur 承担（对整行内容做真正的像素级模糊），
+    // ⚡ 低版本的"远处歌词发虚"改由 Modifier.softwareBlur 承担（快照降采样后交给 Blurry 做真高斯），
     //    不再需要「同色阴影」那种假虚化——它只是套在锐利字形外的一层雾，
     //    API 28 以下甚至完全不渲染；API 31+ 仍走原生 Modifier.blur。
     val lineTextStyle = style
@@ -2045,10 +2045,9 @@ fun LyricLineRow(
         baseModifier
             .then(
                 when {
-                    // API 31 以下：离屏降采样 + 双线性放大 = 真正的像素级模糊
+                    // API 31 以下：快照 → 降采样 → Blurry 真高斯 → 放大绘制
                     softwareBlurActive -> Modifier.softwareBlur(
-                        // 模糊越强、降采样倍率越高（2~6 倍）
-                        downscale = (2f + blurRadius.value * 0.6f).roundToInt().coerceIn(2, 6),
+                        radius = blurRadius,
                         contentKey = listOf(
                             wrappedLine,
                             romanizationText,

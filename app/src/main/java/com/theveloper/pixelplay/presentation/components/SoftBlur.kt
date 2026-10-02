@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.components
 
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -10,19 +11,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import coil.size.Size
+import jp.wasabeef.blurry.blurBitmapWithBlurry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 import kotlin.math.roundToInt
 
 /**
@@ -33,9 +38,10 @@ import kotlin.math.roundToInt
  * 不报错、也不模糊，画面完全清晰。历史代码多处直接写 `.blur(40.dp)`，
  * 导致 Android 11 及以下**完全没有模糊效果**（这正是「低版本模糊没了」的原因）。
  *
- * 降级方案：把图片**解码到极小尺寸**再交给 Compose 放大铺满。放大时的双线性插值
- * 本身就是柔和的颜色过渡，观感接近高斯模糊；不依赖 RenderEffect、全版本可用，
- * 而且解码开销比常规尺寸更小。
+ * 降级方案按内容分三档，都不依赖 RenderEffect、全版本可用：
+ * - 图片背景（封面 / 自定义背景图）→ `BlurryBackdrop`（Blurry 真高斯）；
+ * - 任意 Compose 内容（歌词行「远处发虚」）→ `Modifier.softwareBlur`（快照降采样 + Blurry）；
+ * - 导航栏毛玻璃 → `rememberLowVersionBlurBackdrop`（整屏采集 + 盒式模糊）。
  */
 object SoftBlur {
 
@@ -89,26 +95,32 @@ object SoftBlur {
  * API 31 以下的「真模糊」修饰符：对内容整体做像素级模糊，
  * 而不是在清晰内容后面叠一层同色虚影（后者字形仍然是锐利的）。
  *
- * 原理：把内容录进 [GraphicsLayer] → 快照成位图 → **降采样**到 1/[downscale] 尺寸 →
- * 绘制时用双线性插值放大回原尺寸。降采样丢掉了高频细节，放大时的重采样就是模糊本身。
+ * 原理：把内容录进 [GraphicsLayer] → 快照成位图 → **降采样**到 1/[factor] 尺寸 →
+ * 交给 **Blurry**（jp.wasabeef）做真高斯模糊（RenderScript 优先，失败自动降级
+ * 纯 Java StackBlur）→ 绘制时用双线性插值放大回原尺寸。降采样既省算力，
+ * 又让模糊半径落在 RenderScript 的 25px 限制内；放大时的重采样再补一层平滑。
  * 全程不依赖 `RenderEffect`，Android 6.0 起可用（低版本 Compose 用 LayerSnapshot 完成快照）。
  *
- * 结果按 [contentKey]、[downscale] 和节点尺寸缓存：只有内容或强度变化时才重新快照。
+ * 结果按 [contentKey]、[factor] 和节点尺寸缓存：只有内容或强度档位变化时才重新计算。
  * 因此**逐帧动画（alpha / 缩放）必须放在本修饰符的外层**，否则每帧都会重新栅格化。
  *
- * 快照就绪前按原样绘制（不会闪空）；快照失败则退化为不模糊，不影响内容显示。
+ * 快照就绪前按原样绘制（不会闪空）；模糊失败则退化为降采样图，不影响内容显示。
  */
 @Composable
 fun Modifier.softwareBlur(
-    downscale: Int,
+    radius: Dp,
     contentKey: Any?,
 ): Modifier {
+    val context = LocalContext.current
     val layer = rememberGraphicsLayer()
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     var nodeSize by remember { mutableStateOf(IntSize.Zero) }
     var blurred by remember { mutableStateOf<ImageBitmap?>(null) }
-    val factor = downscale.coerceIn(1, 12)
+    // 与旧实现一致的降采样档位：模糊越强、降得越狠（2~6 倍）
+    val factor = (2f + radius.value * 0.6f).roundToInt().coerceIn(2, 6)
+    // Blurry 作用在降采样图上，半径等比缩小；ScriptIntrinsicBlur 只接受 (0, 25]
+    val blurRadius = (with(density) { radius.toPx() } / factor).roundToInt().coerceIn(1, 25)
 
     LaunchedEffect(contentKey, factor, nodeSize) {
         if (nodeSize.width <= 0 || nodeSize.height <= 0) return@LaunchedEffect
@@ -122,19 +134,17 @@ fun Modifier.softwareBlur(
         if (full.width <= 0 || full.height <= 0) return@LaunchedEffect
         val smallWidth = (full.width / factor).coerceAtLeast(1)
         val smallHeight = (full.height / factor).coerceAtLeast(1)
-        blurred = runCatching {
-            ImageBitmap(smallWidth, smallHeight).also { target ->
-                // 用位置参数：CanvasDrawScope.draw(Density, LayoutDirection, Canvas, Size, block)
-                CanvasDrawScope().draw(
-                    density,
-                    layoutDirection,
-                    Canvas(target),
-                    androidx.compose.ui.geometry.Size(smallWidth.toFloat(), smallHeight.toFloat())
-                ) {
-                    scale(1f / factor, 1f / factor, Offset.Zero) { drawImage(full) }
-                }
-            }
-        }.getOrNull()
+        // 降采样 + Blurry 真高斯都在后台线程做（RenderScript 建上下文不便宜）
+        blurred = withContext(Dispatchers.Default) {
+            runCatching {
+                val small = Bitmap.createScaledBitmap(
+                    full.asAndroidBitmap(), smallWidth, smallHeight, true
+                )
+                // 模糊失败（极端 ROM）就退回纯降采样图，观感与旧实现一致
+                (blurBitmapWithBlurry(context, small, blurRadius) ?: small).asImageBitmap()
+            }.onFailure { Timber.w(it, "softwareBlur: Blurry 模糊失败，退化为降采样") }
+                .getOrNull()
+        }
     }
 
     return this
