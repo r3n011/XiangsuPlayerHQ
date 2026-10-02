@@ -344,7 +344,11 @@ class KugouAccountApi @Inject constructor(
                                 item.optString("imgurl"),
                                 item.optString("img"),
                                 item.optString("pic"),
-                            )?.replace("http://", "https://"),
+                            )
+                                // ⚡ 酷狗封面 URL 带 {size} 占位符（如 stdmusic/{size}/xxx.jpg），
+                                //   不替换的话加载会 404 —— 同步下来的歌单就没封面
+                                ?.replace("{size}", "480")
+                                ?.replace("http://", "https://"),
                             // 「我喜欢」：名字或 is_def == 2
                             isDefaultLiked = name == LIKED_PLAYLIST_NAME || item.optInt("is_def", 0) == 2,
                         )

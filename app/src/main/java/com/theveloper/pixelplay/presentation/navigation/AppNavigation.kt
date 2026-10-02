@@ -711,6 +711,93 @@ fun AppNavigation(
                     )
                 }
             }
+            // ⚡ 听书（酷狗长音频）：书架 / 免费书库 / 搜索 / 专辑详情（章节播放）
+            composable(
+                Screen.Audiobook.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    com.theveloper.pixelplay.presentation.audiobook.AudiobookScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenLibrary = { navController.navigateSafely(Screen.AudiobookLibrary.route) },
+                        onOpenSearch = { navController.navigateSafely(Screen.AudiobookSearch.route) },
+                        onOpenAlbum = { album ->
+                            navController.navigateSafely(
+                                Screen.AudiobookAlbum.createRoute(
+                                    albumId = album.id,
+                                    title = album.name,
+                                    coverUrl = album.coverUrl,
+                                    author = album.author,
+                                    chapterCount = album.chapterCount,
+                                )
+                            )
+                        },
+                    )
+                }
+            }
+            composable(
+                Screen.AudiobookLibrary.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    com.theveloper.pixelplay.presentation.audiobook.AudiobookLibraryScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenAlbum = { album ->
+                            navController.navigateSafely(
+                                Screen.AudiobookAlbum.createRoute(
+                                    albumId = album.id,
+                                    title = album.name,
+                                    coverUrl = album.coverUrl,
+                                    author = album.author,
+                                    chapterCount = album.chapterCount,
+                                )
+                            )
+                        },
+                    )
+                }
+            }
+            composable(
+                Screen.AudiobookSearch.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    com.theveloper.pixelplay.presentation.audiobook.AudiobookSearchScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenAlbum = { album ->
+                            navController.navigateSafely(
+                                Screen.AudiobookAlbum.createRoute(
+                                    albumId = album.id,
+                                    title = album.name,
+                                    coverUrl = album.coverUrl,
+                                    author = album.author,
+                                    chapterCount = album.chapterCount,
+                                )
+                            )
+                        },
+                    )
+                }
+            }
+            composable(
+                route = Screen.AudiobookAlbum.route,
+                arguments = listOf(
+                    navArgument("albumId") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("cover") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("author") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("count") { type = NavType.IntType; defaultValue = 0 },
+                ),
+            ) { backStackEntry ->
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    com.theveloper.pixelplay.presentation.audiobook.AudiobookAlbumScreen(
+                        albumId = backStackEntry.arguments?.getString("albumId").orEmpty(),
+                        albumTitle = backStackEntry.arguments?.getString("title").orEmpty(),
+                        albumCoverUrl = backStackEntry.arguments?.getString("cover")
+                            ?.takeIf { it.isNotBlank() },
+                        albumAuthor = backStackEntry.arguments?.getString("author")
+                            ?.takeIf { it.isNotBlank() },
+                        albumChapterCount = backStackEntry.arguments?.getInt("count") ?: 0,
+                        onBack = { navController.popBackStack() },
+                        playerViewModel = playerViewModel,
+                    )
+                }
+            }
             composable(
                 Screen.DotDeviceSettings.route,
             ) {

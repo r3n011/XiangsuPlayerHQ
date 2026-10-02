@@ -81,4 +81,24 @@ sealed class Screen(val route: String) {
     object DotDeviceSettings : Screen("dot_device_settings")
     object Roaming : Screen("roaming_action")
     object Radio : Screen("radio")
+
+    // ⚡ 听书（酷狗长音频）：书架 → 免费书库 / 搜索 → 专辑详情（章节播放）
+    object Audiobook : Screen("audiobook")
+    object AudiobookLibrary : Screen("audiobook_library")
+    object AudiobookSearch : Screen("audiobook_search")
+    object AudiobookAlbum :
+        Screen("audiobook_album/{albumId}?title={title}&cover={cover}&author={author}&count={count}") {
+        fun createRoute(
+            albumId: String,
+            title: String,
+            coverUrl: String?,
+            author: String?,
+            chapterCount: Int,
+        ): String =
+            "audiobook_album/${android.net.Uri.encode(albumId)}" +
+                "?title=${android.net.Uri.encode(title)}" +
+                "&cover=${android.net.Uri.encode(coverUrl.orEmpty())}" +
+                "&author=${android.net.Uri.encode(author.orEmpty())}" +
+                "&count=$chapterCount"
+    }
 }

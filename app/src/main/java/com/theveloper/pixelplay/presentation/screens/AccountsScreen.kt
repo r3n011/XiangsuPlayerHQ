@@ -524,7 +524,7 @@ private fun ConnectedAccountCard(
                     Icon(
                         imageVector = Icons.Rounded.Sync,
                         contentDescription = null,
-                        tint = palette.iconTint,
+                        tint = palette.genericTint,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
@@ -561,7 +561,7 @@ private fun ConnectedAccountCard(
                             Icon(
                                 imageVector = Icons.Rounded.CloudQueue,
                                 contentDescription = null,
-                                tint = palette.iconTint,
+                                tint = palette.genericTint,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.size(8.dp))
@@ -767,7 +767,14 @@ private data class ServicePalette(
     val statusContainer: Color,
     val statusTint: Color,
     val primaryActionContainer: Color,
-    val primaryActionTint: Color
+    val primaryActionTint: Color,
+    /**
+     * 卡片里「通用图标」（同步、Cookie 等 Material 图标）的着色。
+     * ⚡ 必须是一个实色：品牌 logo 用 [iconTint] = [Color.Unspecified] 保留自身配色，
+     *    但同一个值套在 `Icons.Rounded.Sync` 这类单色图标上时 Unspecified = 用矢量默认色（黑），
+     *    深色模式下黑图标压黑底 → 看不见。缺省与 [iconTint] 相同。
+     */
+    val genericTint: Color = iconTint
 )
 
 @Composable
@@ -827,7 +834,9 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
             statusContainer = Color(0xFFD6E4FF),
             statusTint = Color(0xFF1B4FA8),
             primaryActionContainer = Color(0xFFD6E4FF),
-            primaryActionTint = Color(0xFF1B4FA8)
+            primaryActionTint = Color(0xFF1B4FA8),
+            // 同步 / Cookie 等通用图标用实色（Unspecified 会渲染成黑色，深色模式下看不见）
+            genericTint = Color(0xFF1B4FA8)
         )
         ExternalServiceAccount.BILIBILI -> ServicePalette(
             iconContainer = Color(0xFFFFF0F4),
@@ -835,7 +844,8 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
             statusContainer = Color(0xFFFFE0E8),
             statusTint = Color(0xFFB0265A),
             primaryActionContainer = Color(0xFFFFE0E8),
-            primaryActionTint = Color(0xFFB0265A)
+            primaryActionTint = Color(0xFFB0265A),
+            genericTint = Color(0xFFB0265A)
         )
     }
 }

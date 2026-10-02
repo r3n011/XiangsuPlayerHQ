@@ -98,6 +98,7 @@ truth = "1.4.5"
 retrofit = "3.0.0"
 okhttp = "5.3.2"
 zxing = "3.5.3"
+blurry = "4.0.1"
 mediarouterVersion = "1.8.1"
 playServicesCastFramework = "22.3.1"
 navigationRuntimeKtx = "2.9.8"
@@ -232,6 +233,7 @@ retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = 
 converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+blurry = { module = "jp.wasabeef:blurry", version.ref = "blurry" }
 logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouterVersion" }
 play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "playServicesCastFramework" }

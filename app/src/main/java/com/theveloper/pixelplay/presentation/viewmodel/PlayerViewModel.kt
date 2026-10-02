@@ -6772,6 +6772,29 @@ class PlayerViewModel @Inject constructor(
         )
     }
 
+    /**
+     * 构造 cloud://lx/{urlEncoded JSON} 占位 URI（[decodeLxSongInfoFromPlaceholderUri] 的逆运算）。
+     * JSON 键与 [LxMusicViewModel.buildLxPlaceholderUri] 完全一致，播放时由 JS 音源引擎
+     * 统一解析新鲜直链（用户导入的 JS 源优先，官方内置源兜底）。
+     */
+    private fun LxSongInfo.toLxPlaceholderUri(targetSource: String): String {
+        val songJson = org.json.JSONObject().apply {
+            put("id", id)
+            put("songmid", songmid)
+            put("hash", hash)
+            put("name", name)
+            put("singer", singer)
+            put("artistIds", artistIds)
+            put("album", albumName)
+            put("pic", pic)
+            put("duration", duration)
+            put("source", targetSource)
+        }
+        val encoded = java.net.URLEncoder.encode(songJson.toString(), "UTF-8")
+            .replace("+", "%20")
+        return "cloud://lx/$encoded"
+    }
+
     private fun parseMediaStoreAudioId(uriString: String): Long? {
         val normalizedUri = uriString.substringBefore('?').substringBefore('#')
         if (
@@ -8006,16 +8029,43 @@ class PlayerViewModel @Inject constructor(
         _isKugouFmMode.value = false
     }
 
-    /** 把一批 FM 推荐解析成可播的 Song（直链走现成的内置酷狗源，失败的单曲跳过）。 */
+    /**
+     * 播放一组落雪音源歌曲（不入库，cloud://lx 占位懒解析）：
+     * 听书章节等在线列表用，[startIndex] 指定从哪首开始。
+     * 解析链与私人 FM / 在线歌单一致：用户导入的 JS 音源优先，内置官方源兜底。
+     */
+    fun playLxSongs(
+        songs: List<LxSongInfo>,
+        startIndex: Int = 0,
+        queueName: String = "在线播放",
+    ) {
+        if (songs.isEmpty()) return
+        val built = songs.mapNotNull { info ->
+            buildCloudSong(
+                url = info.toLxPlaceholderUri(info.source.ifBlank { "kg" }),
+                title = info.name,
+                artist = info.singer,
+                cover = info.pic,
+                songId = "lx_${info.source.ifBlank { "kg" }}_" +
+                    info.hash.ifBlank { info.songmid.ifBlank { info.id } },
+                lxSource = info.source.ifBlank { "kg" },
+                platformSongId = info.songmid.ifBlank { info.hash },
+            )
+        }
+        if (built.isEmpty()) return
+        val start = built.getOrNull(startIndex.coerceIn(0, built.lastIndex)) ?: built.first()
+        playSongs(built, start, queueName)
+    }
+
+    /** 把一批 FM 推荐解析成可播的 Song。
+     *  ⚡ 不再预先走官方接口取直链：改用 `cloud://lx/{json}` 占位 URI，与网易云歌一样
+     *     在播放时统一解析 —— 用户导入的 JS 音源（插件）优先，官方内置源只做兜底。
+     */
     private suspend fun buildKugouFmSongs(
         batch: List<com.theveloper.pixelplay.data.lx.LxSongInfo>
     ): List<Song> = batch.mapNotNull { info ->
-        val url = runCatching {
-            builtInSourceSearchApi.resolvePlayUrl("kg", info, "320k")
-        }.getOrNull()
-        if (url.isNullOrBlank()) return@mapNotNull null
         buildCloudSong(
-            url = url,
+            url = info.toLxPlaceholderUri(info.source.ifBlank { "kg" }),
             title = info.name,
             artist = info.singer,
             cover = info.pic,

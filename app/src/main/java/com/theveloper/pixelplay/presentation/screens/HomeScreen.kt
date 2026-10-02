@@ -9,7 +9,9 @@ import com.theveloper.pixelplay.presentation.components.CarModeQuickActionsCard
 
 import android.content.Intent
 import androidx.activity.compose.ReportDrawnWhen
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,9 +44,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -629,6 +633,17 @@ fun HomeScreen(
                         playerViewModel.sendToast(kugouLoginToast)
                         navController.navigateSafely(Screen.Accounts.route)
                     }
+                },
+                // ⚡ 听书匿名可用，直接进书架
+                onAudiobookClick = { navController.navigateSafely(Screen.Audiobook.route) },
+                // ⚡ 一起听需要登录网易云（与播放器内入口、云端串流卡片一致）
+                onListenTogetherClick = {
+                    if (isNeteaseLoggedIn) {
+                        showTogetherSheet = true
+                    } else {
+                        playerViewModel.sendToast(neteaseLoginToast)
+                        navController.navigateSafely(Screen.Accounts.route)
+                    }
                 }
             )
 
@@ -1086,7 +1101,16 @@ fun HomeScreen(
                                                     }
                                                 },
                                                 onRecognitionClick = { showSongRecognitionSheet = true },
-                onKugouFmClick = { playerViewModel.startKugouFm() }
+                                                onKugouFmClick = { playerViewModel.startKugouFm() },
+                                                onAudiobookClick = { navController.navigateSafely(Screen.Audiobook.route) },
+                                                onListenTogetherClick = {
+                                                    if (isNeteaseLoggedIn) {
+                                                        showTogetherSheet = true
+                                                    } else {
+                                                        playerViewModel.sendToast(neteaseLoginToast)
+                                                        navController.navigateSafely(Screen.Accounts.route)
+                                                    }
+                                                }
                                             )
                                         }
                                     }
@@ -1975,8 +1999,8 @@ private data class DiscoverEntry(
     val containerColor: Color,
     val contentColor: Color,
     val onClick: () -> Unit,
-    /** 平台标记（如「网易云」「酷狗」），显示在标题下方 */
-    val badgeRes: Int? = null
+    /** 平台标记：品牌 logo（网易云 / 酷狗），统一裁成圆形显示在右上角 */
+    val badgeLogoRes: Int? = null
 )
 
 /** 卡片高度达到该值时，三个入口改为纵向铺满（手机横屏横向行给的固定高度）。 */
@@ -2008,7 +2032,10 @@ fun HomeDiscoverCard(
     onSimilarSongsClick: () -> Unit = {},
     onRecognitionClick: () -> Unit = {},
     // ⚡ 酷狗私人FM（移植自 md3Music）
-    onKugouFmClick: () -> Unit = {}
+    onKugouFmClick: () -> Unit = {},
+    // ⚡ 听书（酷狗长音频）/ 一起听（网易云）
+    onAudiobookClick: () -> Unit = {},
+    onListenTogetherClick: () -> Unit = {}
 ) {
     val scheme = MaterialTheme.colorScheme
     // 三个入口用 M3 的三套容器色：避免三个一模一样的色块挤在一起
@@ -2020,8 +2047,8 @@ fun HomeDiscoverCard(
                 containerColor = scheme.primaryContainer,
                 contentColor = scheme.onPrimaryContainer,
                 onClick = onRoamingClick,
-                // ⚡ 漫游是网易云的功能，标一下平台
-                badgeRes = R.string.source_badge_netease
+                // ⚡ 漫游是网易云的功能，右上角挂网易云 logo
+                badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
             )
         )
         if (showRadio) add(
@@ -2049,17 +2076,20 @@ fun HomeDiscoverCard(
                 labelRes = R.string.home_discover_heart_mode,
                 containerColor = scheme.primaryContainer,
                 contentColor = scheme.onPrimaryContainer,
-                onClick = onHeartModeClick
+                onClick = onHeartModeClick,
+                // 心动模式同样是网易云的功能
+                badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
             )
         )
-        // ⚡ 相似歌曲：以当前歌曲为种子播一串相似歌
+        // ⚡ 相似歌曲：以当前歌曲为种子播一串相似歌（网易云接口）
         add(
             DiscoverEntry(
                 icon = Icons.Rounded.LibraryMusic,
                 labelRes = R.string.home_discover_similar_songs,
                 containerColor = scheme.secondaryContainer,
                 contentColor = scheme.onSecondaryContainer,
-                onClick = onSimilarSongsClick
+                onClick = onSimilarSongsClick,
+                badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
             )
         )
         // ⚡ 酷狗私人FM：匿名可用的「私人推荐」无限流（移植自 md3Music）
@@ -2070,7 +2100,8 @@ fun HomeDiscoverCard(
                 containerColor = scheme.secondaryContainer,
                 contentColor = scheme.onSecondaryContainer,
                 onClick = onKugouFmClick,
-                badgeRes = R.string.source_badge_kugou
+                // 酷狗官方标是圆角方形，展示时统一裁成圆形
+                badgeLogoRes = R.drawable.ic_kugou
             )
         )
         // ⚡ 听歌识曲：录一段外放声音，匹配出歌曲
@@ -2081,6 +2112,28 @@ fun HomeDiscoverCard(
                 containerColor = scheme.tertiaryContainer,
                 contentColor = scheme.onTertiaryContainer,
                 onClick = onRecognitionClick
+            )
+        )
+        // ⚡ 听书：酷狗长音频书架（推荐分区 + 免费书库 + 搜索），匿名可用
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.AutoStories,
+                labelRes = R.string.home_discover_audiobook,
+                containerColor = scheme.tertiaryContainer,
+                contentColor = scheme.onTertiaryContainer,
+                onClick = onAudiobookClick,
+                badgeLogoRes = R.drawable.ic_kugou
+            )
+        )
+        // ⚡ 一起听：点开就用当前播放队列开房（需登录网易云，未登录提示并跳账户）
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Groups,
+                labelRes = R.string.home_discover_listen_together,
+                containerColor = scheme.primaryContainer,
+                contentColor = scheme.onPrimaryContainer,
+                onClick = onListenTogetherClick,
+                badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
             )
         )
     }
@@ -2140,7 +2193,9 @@ fun HomeDiscoverCard(
                     }
                 }
 
-                if (fillHeight) {
+                // ⚡ 纵向逐个铺满只在入口不多时好看：入口变多（现在 9 个）会把每行压到
+                //    40dp 以下，图标/文字全被裁掉 → 超过 6 个改用下面的 3 列网格换行。
+                if (fillHeight && entries.size <= 6) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2161,7 +2216,7 @@ fun HomeDiscoverCard(
                 } else {
                     // 固定高度下把入口按钮推到卡片底部；高度自适应时该 Spacer 为 0，布局不变
                     Spacer(Modifier.weight(1f))
-                    // ⚡ 每行 3 个等分：入口变多（6 个）时自动换行，不会挤成一排细条
+                    // ⚡ 每行 3 个等分：入口变多（9 个）时自动换行，不会挤成一排细条
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         entries.chunked(3).forEach { rowEntries ->
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2221,7 +2276,7 @@ private fun DiscoverActionTile(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                entry.badgeRes?.let { badgeRes -> DiscoverEntryBadge(badgeRes) }
+                entry.badgeLogoRes?.let { logoRes -> DiscoverEntryBadge(logoRes) }
             }
         } else {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -2244,10 +2299,10 @@ private fun DiscoverActionTile(
                         textAlign = TextAlign.Center,
                     )
                 }
-                // 平台标记浮在右上角（不占一行，保证所有入口等高等宽）
-                entry.badgeRes?.let { badgeRes ->
+                // 平台 logo 浮在右上角（不占一行，保证所有入口等高等宽）
+                entry.badgeLogoRes?.let { logoRes ->
                     Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                        DiscoverEntryBadge(badgeRes)
+                        DiscoverEntryBadge(logoRes)
                     }
                 }
             }
@@ -2274,19 +2329,28 @@ private fun DiscoverEntryIcon(entry: DiscoverEntry) {
     }
 }
 
-/** 平台徽标（网易云 / 酷狗）：中性小胶囊。 */
+/**
+ * 平台标记：品牌 logo（网易云 / 酷狗）。
+ * ⚡ 统一裁成圆形（酷狗官方标是圆角方形，裁圆后与网易云的圆形标一致），
+ *    并加一圈细描边，浅色 logo 落在浅色卡片上也能看清边界。
+ */
 @Composable
-private fun DiscoverEntryBadge(badgeRes: Int) {
-    Surface(
-        shape = AbsoluteSmoothCornerShape(8.dp, 60),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun DiscoverEntryBadge(logoRes: Int) {
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), CircleShape),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = stringResource(badgeRes),
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            maxLines = 1,
+        Image(
+            painter = painterResource(logoRes),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape),
         )
     }
 }

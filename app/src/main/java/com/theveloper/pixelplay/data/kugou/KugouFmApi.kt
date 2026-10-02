@@ -27,8 +27,8 @@ import timber.log.Timber
  * - 返回列表字段在 `data.song_list / songs / list / info` 里任取其一；
  * - **不强制登录**（uid=0 时不上送 userid），匿名也能拉。
  *
- * 返回 [LxSongInfo]（source = "kg"），播放链接交给现成的内置酷狗源解析
- * （`BuiltInSourceSearchApi.resolvePlayUrl("kg", …)`），不在这里取直链。
+ * 返回 [LxSongInfo]（source = "kg"），播放链接由 PlayerViewModel 打成 cloud://lx 占位，
+ * 实际播放时统一走 lx JS 音源引擎解析（用户导入的 JS 源优先，官方内置源兜底）。
  */
 @Singleton
 class KugouFmApi @Inject constructor(

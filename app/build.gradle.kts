@@ -380,6 +380,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.logging.interceptor)
     implementation(libs.zxing.core)
+    // 低版本（API < 31）模糊：Blurry 对位图做真正的高斯模糊（RenderScript 兼容实现）
+    implementation(libs.blurry)
     implementation(libs.gson)
     implementation(libs.quickjs.wrapper.android)
     implementation(libs.kotlinx.serialization.json)

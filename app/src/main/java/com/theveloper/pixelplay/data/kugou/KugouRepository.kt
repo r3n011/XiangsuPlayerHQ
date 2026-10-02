@@ -89,6 +89,12 @@ class KugouRepository @Inject constructor(
     /** 当前登录的酷狗 userid（未登录为 null）；账号面板展示用。 */
     val userId: String? get() = userIdOrNull
 
+    /** 设备标识（听书等其它需要签名的酷狗模块复用；听书不要求登录）。 */
+    val device: KugouDeviceIdentity get() = deviceIdentity
+
+    /** 登录 token（未登录为 null）；听书等签名请求按登录态带上。 */
+    val authToken: String? get() = tokenOrNull
+
     init {
         // 进程启动就恢复登录态，账号页/内置音源立刻能读到。
         // ⚡ 必须放在所有 StateFlow 声明之后：init 块按声明顺序执行，提前调用会写入尚未初始化的字段。

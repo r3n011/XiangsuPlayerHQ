@@ -31,6 +31,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.theveloper.pixelplay.presentation.components.blur.BlurryBackdrop
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -846,19 +847,17 @@ fun LyricsSheet(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         // ⚡ Android 12（API 31）以下没有 RenderEffect，Modifier.blur 在低版本
-                        //    是「空操作」——之前这里写 .blur(40.dp) 实际什么都没做，所以低版本
-                        //    看到的是完全清晰的封面（观感上就是"模糊没了"）。
-                        //    这里改用「极小尺寸解码 + 双线性放大」做软件模糊：把封面解码成 24×24
-                        //    再铺满全屏，放大时的双线性插值天然就是柔和的模糊过渡 —— 全版本可用、
-                        //    零额外依赖，也不需要 RenderEffect。
-                        SmartImage(
+                        //    是「空操作」。这里改用 Blurry（jp.wasabeef）对封面位图做**真高斯模糊**：
+                        //    以前是「把封面解码成 24×24 再放大」的假模糊，放大后是大色块，观感很差。
+                        BlurryBackdrop(
                             model = currentSong?.albumArtUriString,
-                            contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
+                            radius = 25,
+                            sampling = 2,
+                            decodeSizePx = 256,
                             contentScale = ContentScale.Crop,
-                            targetSize = SoftBlur.decodeSize(needBlur = true)
                         )
                     }
                 }
