@@ -288,6 +288,11 @@ class DualPlayerEngine @Inject constructor(
     //    cancelNext 必须放行，避免回填引发的 PLAYLIST_CHANGED 又把 master 音量强拉回 1f
     //    造成音量尖峰。
     private var transitionSwapped = false
+    // ⚡ 交叉淡入斜坡开始前 master 的音量快照（含用户音量 × ReplayGain × 各种 duck 的
+    //    合成结果）。淡入循环会把 playerA.volume 一路乘下去，中途被打断时 master 可能
+    //    停在半途的低音量上；打断后必须恢复到"过渡开始时那个值"，而不是硬写 1f。
+    //    见 restoreMasterVolumeAfterAbortedTransition()。
+    private var preTransitionMasterVolume: Float? = null
     private var preResolutionJob: Job? = null
     private var queueSnapshot: List<MediaItem> = emptyList()
     private var activeWindowStartIndex = 0
@@ -383,6 +388,30 @@ class DualPlayerEngine @Inject constructor(
     /** 按焦点闪避系数写入播放器音量。 */
     private fun setPlayerVolume(player: Player, base: Float) {
         player.volume = (base * focusDuckScale).coerceIn(0f, 1f)
+    }
+
+    /**
+     * 交叉淡入被中途打断后，把 master 音量还原到"淡入开始前"的值。
+     *
+     * 为什么不能写死 1f：master 的音量是用户音量、ReplayGain 增益、焦点闪避、
+     * AI 电台闪避、冷启动淡入五方共同写入的合成结果。写死 1f 会
+     *   1) 抹掉 ReplayGain 归一化（安静曲目突然全音量炸响）；
+     *   2) 抹掉用户自己设的音量（永远回到 100%）；
+     *   3) 打断正在进行的 duck 动画；
+     *   4) 最严重的是：ReplayGainProcessor.onPlayerVolumeChanged 会把这个 1f 当成
+     *      "用户手动改了音量"写进 userSelectedVolume，于是**用户的音量被永久改写成
+     *      100%**（开闪避时是 25%）。
+     *
+     * 没有快照可还原时（例如过渡在斜坡开始前就退出了）什么都不做 —— 此时 master 音量
+     * 本来就是对的，多写一次只会平白制造一次 onVolumeChanged 回调噪声。
+     */
+    private fun restoreMasterVolumeAfterAbortedTransition() {
+        val snapshot = preTransitionMasterVolume
+        preTransitionMasterVolume = null
+        if (!::playerA.isInitialized) return
+        // 快照本身是"过渡开始那一刻"的真实音量（已含当时的 duck 系数），不能再乘一次
+        // focusDuckScale，否则闪避会被重复施加。
+        playerA.volume = (snapshot ?: playerA.volume).coerceIn(0f, 1f)
     }
 
     private fun applyFocusDuck() {
@@ -3045,7 +3074,12 @@ class DualPlayerEngine @Inject constructor(
             val masterMediaId = if (::playerA.isInitialized) playerA.currentMediaItem?.mediaId else null
             if (masterMediaId == null || masterMediaId == transitionSourceMediaId) return
         }
-        val shouldPublishMasterPlayer = transitionRunning
+        // ⚡ 下面会清零 transitionRunning，先把"这次是否真的打断了一次正在跑的交叉淡入"取出来。
+        //    只有这种情况下 master 音量才可能被淡入斜坡留在半途的低电平上、需要还原；
+        //    绝大多数 cancelNext 调用（队列记账、切歌前的常规清理）都发生在非过渡态 ——
+        //    此时 master 音量是用户/RG/duck 的正确合成结果，一律**不碰**，
+        //    否则每次改队列都会把音量拽回 100%（见 restoreMasterVolumeAfterAbortedTransition）。
+        val interruptedTransition = transitionRunning
         transitionJob?.cancel()
         transitionRunning = false
         transitionSourceMediaId = null
@@ -3058,8 +3092,8 @@ class DualPlayerEngine @Inject constructor(
             } catch (e: Exception) { /* Ignore */ }
         }
         if (::playerA.isInitialized) {
-            setPlayerVolume(playerA, 1f)
-            if (shouldPublishMasterPlayer) {
+            if (interruptedTransition) {
+                restoreMasterVolumeAfterAbortedTransition()
                 onPlayerSwappedListeners.forEach { it(playerA) }
             }
         }
@@ -3086,7 +3120,7 @@ class DualPlayerEngine @Inject constructor(
             } catch (e: Exception) {
                 if (e !is kotlinx.coroutines.CancellationException && generation == transitionGeneration) {
                     Timber.tag("TransitionDebug").e(e, "Error performing transition")
-                    setPlayerVolume(playerA, 1f)
+                    restoreMasterVolumeAfterAbortedTransition()
                     setPauseAtEndOfMediaItems(false)
                     playerB?.stop()
                 }
@@ -3120,7 +3154,7 @@ class DualPlayerEngine @Inject constructor(
     private suspend fun performOverlapTransition(settings: TransitionSettings) {
         val auxiliaryPlayer = playerB
         if (auxiliaryPlayer == null || auxiliaryPlayer.mediaItemCount == 0) {
-            setPlayerVolume(playerA, 1f)
+            restoreMasterVolumeAfterAbortedTransition()
             setPauseAtEndOfMediaItems(false)
             return
         }
@@ -3133,13 +3167,16 @@ class DualPlayerEngine @Inject constructor(
         if (auxiliaryPlayer.playbackState == Player.STATE_IDLE) auxiliaryPlayer.prepare()
         if (auxiliaryPlayer.playbackState == Player.STATE_BUFFERING) {
             if (!awaitPlayerReady(auxiliaryPlayer, 3000L)) {
-                setPlayerVolume(playerA, 1f)
+                restoreMasterVolumeAfterAbortedTransition()
                 setPauseAtEndOfMediaItems(false)
                 return
             }
         }
 
         val outgoingStartVolume = playerA.volume.coerceIn(0f, 1f)
+        // ⚡ 淡入斜坡即将开始改写 playerA.volume，先把此刻的音量快照下来，供中途被打断时
+        //    还原（restoreMasterVolumeAfterAbortedTransition）。
+        preTransitionMasterVolume = outgoingStartVolume
         auxiliaryPlayer.volume = 0f
         if (!playerA.isPlaying && playerA.playbackState == Player.STATE_READY) playerA.play()
         auxiliaryPlayer.playWhenReady = true
@@ -3174,6 +3211,8 @@ class DualPlayerEngine @Inject constructor(
         outgoingPlayer.volume = 0f
         incomingPlayer.volume = ((incomingTrackReplayGainVolume ?: 1f) * focusDuckScale).coerceIn(0f, 1f)
         incomingTrackReplayGainVolume = null
+        // 过渡正常走完，快照已无恢复用途；新 master 的音量以上面这行为准。
+        preTransitionMasterVolume = null
 
         removeMasterPlayerListeners(outgoingPlayer)
 

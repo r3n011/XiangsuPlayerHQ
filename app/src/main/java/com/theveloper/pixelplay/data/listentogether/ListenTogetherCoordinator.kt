@@ -90,6 +90,8 @@ class ListenTogetherCoordinator @Inject constructor(
     private var failures = 0
     private var heartbeatTick = 0
     private var statusTick = 0
+    /** 空闲探测（不在房间时检查是否被拉进房间）的连续失败次数，用于退避，避免离线时每分钟锤一次。 */
+    private var idleFailures = 0
     private var firstSyncForRoom = true
     @Volatile
     private var suppressLocalUntilRealtime = 0L
@@ -275,16 +277,18 @@ class ListenTogetherCoordinator @Inject constructor(
                     refreshRoomStatus()
                 }
             } else {
-                // 空闲：每轮（60s）查一次账号是否被拉进房间（App 重启后自动恢复会话）
+                // 空闲：每轮查一次账号是否被拉进房间（App 重启后自动恢复会话）。
+                // ⚡ 失败（离线 / 服务连不上）时按轮数退避：60s → 120s → 240s → 480s，
+                //    否则断网时每分钟都会锤一次接口并产生一条错误日志。
                 statusTick = 0
-                refreshRoomStatus()
+                idleFailures = if (refreshRoomStatus()) 0 else (idleFailures + 1).coerceAtMost(MAX_IDLE_BACKOFF_SHIFT)
             }
 
             if (room != null && controller == null && !controllerConnectionPending) {
                 connectControllerIfNeeded()
             }
             val activeRoom = room ?: run {
-                delay(IDLE_POLL_MS)
+                delay(idlePollDelayMs())
                 return@run null
             } ?: continue
 
@@ -326,8 +330,9 @@ class ListenTogetherCoordinator @Inject constructor(
         }
     }
 
-    private suspend fun refreshRoomStatus() {
-        runCatching { api.roomStatus() }
+    /** 刷新房间状态；返回本次请求是否成功（供空闲探测决定是否退避）。 */
+    private suspend fun refreshRoomStatus(): Boolean {
+        return runCatching { api.roomStatus() }
             .onSuccess { latest ->
                 if (latest == null) {
                     if (room != null) resetRoom()
@@ -370,7 +375,11 @@ class ListenTogetherCoordinator @Inject constructor(
                 }
             }
             .onFailure { if (room != null) recordFailure(it) }
+            .isSuccess
     }
+
+    /** 空闲探测间隔：随连续失败次数退避（60s → 120s → 240s → 480s）。 */
+    private fun idlePollDelayMs(): Long = IDLE_POLL_MS shl idleFailures
 
     private suspend fun adoptRoom(latest: ListenTogetherRoom, isHost: Boolean) {
         room = latest
@@ -732,6 +741,7 @@ class ListenTogetherCoordinator @Inject constructor(
         failures = 0
         heartbeatTick = 0
         statusTick = 0
+        idleFailures = 0
         firstSyncForRoom = true
         lastRemoteQueueSignature = null
         lastRemoteCommandSignature = null
@@ -750,6 +760,8 @@ class ListenTogetherCoordinator @Inject constructor(
     private companion object {
         const val SYNC_INTERVAL_MS = 1_000L
         const val IDLE_POLL_MS = 60_000L
+        /** 空闲探测失败时的最大退避位移：60s << 3 = 8min */
+        const val MAX_IDLE_BACKOFF_SHIFT = 3
         const val STATUS_EVERY_TICKS = 5
         const val HEARTBEAT_EVERY_TICKS = 5
         const val QUEUE_DEBOUNCE_MS = 350L

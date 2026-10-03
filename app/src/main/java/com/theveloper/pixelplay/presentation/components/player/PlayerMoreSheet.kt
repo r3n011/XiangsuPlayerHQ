@@ -1,7 +1,9 @@
 package com.theveloper.pixelplay.presentation.components.player
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
@@ -19,17 +23,13 @@ import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -67,18 +67,21 @@ fun PlayerMoreSheet(
     onViewArtist: () -> Unit,
     onViewAlbum: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 4.dp
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(vertical = 12.dp)
         ) {
             // ── 头部：与 SongInfoBottomSheet 同款「封面 + 标题/歌手」布局 ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
                     .height(80.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -116,7 +119,7 @@ fun PlayerMoreSheet(
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
 
             MoreActionRow(
                 iconPainter = null,
@@ -163,8 +166,9 @@ fun PlayerMoreSheet(
 }
 
 /**
- * 与 SongInfoBottomSheet 操作行同一设计语言：surfaceContainerHigh 圆角卡片 +
- * ListItem（图标 + 标题），保证全应用各菜单观感一致。
+ * 与媒体库歌单详情「右上角更多」弹出菜单（PlaylistActionItem）同一设计语言：
+ * surfaceContainerHigh 圆角卡片行 + 圆形图标底 + titleMedium 文案，
+ * 保证两个入口的观感完全一致。
  */
 @Composable
 private fun MoreActionRow(
@@ -173,47 +177,50 @@ private fun MoreActionRow(
     label: String,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(16.dp)
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .clickable(onClick = onClick),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        ListItem(
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            leadingContent = {
-                val tint = MaterialTheme.colorScheme.onSurfaceVariant
-                when {
-                    iconVector != null -> Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        tint = tint
-                    )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center
+        ) {
+            val tint = MaterialTheme.colorScheme.primary
+            when {
+                iconVector != null -> Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = tint
+                )
 
-                    iconPainter != null -> Icon(
-                        painter = iconPainter,
-                        contentDescription = null,
-                        tint = tint
-                    )
+                iconPainter != null -> Icon(
+                    painter = iconPainter,
+                    contentDescription = null,
+                    tint = tint
+                )
 
-                    else -> Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = tint
-                    )
-                }
-            },
-            headlineContent = {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = GoogleSansRounded,
-                    color = MaterialTheme.colorScheme.onSurface
+                else -> Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = tint
                 )
             }
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            fontFamily = GoogleSansRounded,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

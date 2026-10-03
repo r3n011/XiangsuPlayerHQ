@@ -18,11 +18,16 @@ import java.nio.ByteOrder
  *   R = FR + 0.707·FC + 0.707·SR [+ 0.707·SBR] + 0.707·LFE
  * ```
  *
+ * ⚡ 每个输出声道再除以**系数绝对值之和**（5.1 ≈ 3.12，7.1 ≈ 3.83）做归一化。
+ * 没有这一步时，六个声道同时接近满幅会叠加到 ~3 倍满幅，写回 16bit / float 时被硬钳到
+ * ±满幅 —— 听感就是持续破音（5.1 音源尤其明显）。归一化保证任意输入组合都不削顶，
+ * 代价是 5.1 音源整体比立体声音源低约 10dB。
+ *
  * FFmpeg output channel order assumed:
  * - 5.1: FL, FR, FC, LFE, SL, SR
  * - 7.1: FL, FR, FC, LFE, SL, SR, SBL, SBR
  *
- * This processor is only active for 6-channel or 8-channel 16-bit PCM input.
+ * This processor is only active for 6-channel or 8-channel 16-bit PCM / float input.
  * All other formats are passed through without modification.
  */
 @UnstableApi
@@ -37,6 +42,12 @@ class SurroundDownmixProcessor : AudioProcessor {
 
         /** Largest supported surround layout (7.1). */
         private const val MAX_SUPPORTED_CHANNELS = 8
+
+        /** 5.1 单侧输出系数之和：1 + 0.707(FC) + 0.707(SL) + 0.707(LFE)。 */
+        private const val NORM_51 = 1f / (1f + COEFF_SURROUND + COEFF_SURROUND + COEFF_LFE)
+
+        /** 7.1 单侧输出系数之和：1 + 0.707(FC) + 0.707(SL) + 0.707(SBL) + 0.707(LFE)。 */
+        private const val NORM_71 = 1f / (1f + COEFF_SURROUND * 3f + COEFF_LFE)
 
         // 5.1 channel indices (FFmpeg order)
         private const val FL_51  = 0
@@ -89,50 +100,42 @@ class SurroundDownmixProcessor : AudioProcessor {
         if (!isActive()) return
 
         val channelCount = inputFormat.channelCount
+        val isFloat = inputFormat.encoding == C.ENCODING_PCM_FLOAT
+        val bytesPerSample = if (isFloat) Float.SIZE_BYTES else Short.SIZE_BYTES
+        val bytesPerFrame = channelCount * bytesPerSample
+        val frameCount = inputBuffer.remaining() / bytesPerFrame
+        if (frameCount <= 0) {
+            inputBuffer.position(inputBuffer.limit())
+            return
+        }
 
-        if (inputFormat.encoding == C.ENCODING_PCM_FLOAT) {
-            val bytesPerFrame = channelCount * Float.SIZE_BYTES
-            val frameCount = inputBuffer.remaining() / bytesPerFrame
-            outputBuffer = ensureOutputBuffer(frameCount * 2 * Float.SIZE_BYTES)
+        outputBuffer = ensureOutputBuffer(frameCount * 2 * bytesPerSample)
+        val source = inputBuffer.duplicate().order(ByteOrder.nativeOrder())
+        val is51 = channelCount == 6
 
-            val floatInput = inputBuffer.duplicate().order(ByteOrder.nativeOrder()).asFloatBuffer()
+        if (isFloat) {
+            val floatInput = source.asFloatBuffer()
             repeat(frameCount) {
                 floatInput.get(floatScratch, 0, channelCount)
-                val left: Float
-                val right: Float
-                if (channelCount == 6) {
-                    left = downmix51Left(floatScratch)
-                    right = downmix51Right(floatScratch)
-                } else {
-                    left = downmix71Left(floatScratch)
-                    right = downmix71Right(floatScratch)
-                }
+                val left = if (is51) downmix51Left(floatScratch) else downmix71Left(floatScratch)
+                val right = if (is51) downmix51Right(floatScratch) else downmix71Right(floatScratch)
                 outputBuffer.putFloat(left.coerceIn(-1f, 1f))
                 outputBuffer.putFloat(right.coerceIn(-1f, 1f))
             }
-            inputBuffer.position(inputBuffer.limit())
         } else {
-            val bytesPerFrame = channelCount * Short.SIZE_BYTES
-            val frameCount = inputBuffer.remaining() / bytesPerFrame
-            outputBuffer = ensureOutputBuffer(frameCount * 2 * Short.SIZE_BYTES)
-
-            val shortInput = inputBuffer.duplicate().order(ByteOrder.nativeOrder()).asShortBuffer()
+            val shortInput = source.asShortBuffer()
             repeat(frameCount) {
                 shortInput.get(shortScratch, 0, channelCount)
-                val left: Float
-                val right: Float
-                if (channelCount == 6) {
-                    left = downmix51Left(shortScratch)
-                    right = downmix51Right(shortScratch)
-                } else {
-                    left = downmix71Left(shortScratch)
-                    right = downmix71Right(shortScratch)
+                for (ch in 0 until channelCount) {
+                    floatScratch[ch] = shortScratch[ch] / 32768f
                 }
-                outputBuffer.putShort(left.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort())
-                outputBuffer.putShort(right.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort())
+                val left = if (is51) downmix51Left(floatScratch) else downmix71Left(floatScratch)
+                val right = if (is51) downmix51Right(floatScratch) else downmix71Right(floatScratch)
+                outputBuffer.putShort(toPcm16(left))
+                outputBuffer.putShort(toPcm16(right))
             }
-            inputBuffer.position(inputBuffer.limit())
         }
+        inputBuffer.position(inputBuffer.limit())
         outputBuffer.flip()
     }
 
@@ -170,39 +173,26 @@ class SurroundDownmixProcessor : AudioProcessor {
         outputFormat = AudioFormat.NOT_SET
     }
 
-    /** Left channel for a 5.1 surround frame (FL, FR, FC, LFE, SL, SR). */
-    private fun downmix51Left(s: ShortArray): Float {
-        return s[FL_51] + COEFF_SURROUND * s[FC_51] + COEFF_SURROUND * s[SL_51] + COEFF_LFE * s[LFE_51]
-    }
+    /** Float(-1..1) → 16bit，带钳位兜底（归一化后正常不会触发）。 */
+    private fun toPcm16(value: Float): Short =
+        (value.coerceIn(-1f, 1f) * Short.MAX_VALUE)
+            .toInt()
+            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            .toShort()
 
-    /** Right channel for a 5.1 surround frame (FL, FR, FC, LFE, SL, SR). */
-    private fun downmix51Right(s: ShortArray): Float {
-        return s[FR_51] + COEFF_SURROUND * s[FC_51] + COEFF_SURROUND * s[SR_51] + COEFF_LFE * s[LFE_51]
-    }
+    /** Left channel for a 5.1 surround frame (FL, FR, FC, LFE, SL, SR)，已归一化。 */
+    private fun downmix51Left(s: FloatArray): Float =
+        (s[FL_51] + COEFF_SURROUND * s[FC_51] + COEFF_SURROUND * s[SL_51] + COEFF_LFE * s[LFE_51]) * NORM_51
 
-    /** Left channel for a 7.1 surround frame (FL, FR, FC, LFE, SL, SR, SBL, SBR). */
-    private fun downmix71Left(s: ShortArray): Float {
-        return s[FL_71] + COEFF_SURROUND * s[FC_71] + COEFF_SURROUND * s[SL_71] + COEFF_SURROUND * s[SBL_71] + COEFF_LFE * s[LFE_71]
-    }
+    /** Right channel for a 5.1 surround frame (FL, FR, FC, LFE, SL, SR)，已归一化。 */
+    private fun downmix51Right(s: FloatArray): Float =
+        (s[FR_51] + COEFF_SURROUND * s[FC_51] + COEFF_SURROUND * s[SR_51] + COEFF_LFE * s[LFE_51]) * NORM_51
 
-    /** Right channel for a 7.1 surround frame (FL, FR, FC, LFE, SL, SR, SBL, SBR). */
-    private fun downmix71Right(s: ShortArray): Float {
-        return s[FR_71] + COEFF_SURROUND * s[FC_71] + COEFF_SURROUND * s[SR_71] + COEFF_SURROUND * s[SBR_71] + COEFF_LFE * s[LFE_71]
-    }
+    /** Left channel for a 7.1 surround frame (FL, FR, FC, LFE, SL, SR, SBL, SBR)，已归一化。 */
+    private fun downmix71Left(s: FloatArray): Float =
+        (s[FL_71] + COEFF_SURROUND * s[FC_71] + COEFF_SURROUND * s[SL_71] + COEFF_SURROUND * s[SBL_71] + COEFF_LFE * s[LFE_71]) * NORM_71
 
-    private fun downmix51Left(s: FloatArray): Float {
-        return s[FL_51] + COEFF_SURROUND * s[FC_51] + COEFF_SURROUND * s[SL_51] + COEFF_LFE * s[LFE_51]
-    }
-
-    private fun downmix51Right(s: FloatArray): Float {
-        return s[FR_51] + COEFF_SURROUND * s[FC_51] + COEFF_SURROUND * s[SR_51] + COEFF_LFE * s[LFE_51]
-    }
-
-    private fun downmix71Left(s: FloatArray): Float {
-        return s[FL_71] + COEFF_SURROUND * s[FC_71] + COEFF_SURROUND * s[SL_71] + COEFF_SURROUND * s[SBL_71] + COEFF_LFE * s[LFE_71]
-    }
-
-    private fun downmix71Right(s: FloatArray): Float {
-        return s[FR_71] + COEFF_SURROUND * s[FC_71] + COEFF_SURROUND * s[SR_71] + COEFF_SURROUND * s[SBR_71] + COEFF_LFE * s[LFE_71]
-    }
+    /** Right channel for a 7.1 surround frame (FL, FR, FC, LFE, SL, SR, SBL, SBR)，已归一化。 */
+    private fun downmix71Right(s: FloatArray): Float =
+        (s[FR_71] + COEFF_SURROUND * s[FC_71] + COEFF_SURROUND * s[SR_71] + COEFF_SURROUND * s[SBR_71] + COEFF_LFE * s[LFE_71]) * NORM_71
 }

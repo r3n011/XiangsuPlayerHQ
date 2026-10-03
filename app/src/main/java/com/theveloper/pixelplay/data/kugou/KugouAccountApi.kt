@@ -130,6 +130,123 @@ class KugouAccountApi @Inject constructor(
         }.onFailure { Timber.w(it, "KugouAccountApi: fetchUserInfo failed") }
     }
 
+    // ─── 对外：设备注册 ─────────────────────────────────────────────────────
+
+    /**
+     * `/risk/v2/r_register_dev`：注册设备，返回服务端下发的 dfid。
+     *
+     * ⚡ 本机随机生成的 dfid 未在酷狗注册过，长音频章节列表 / `/v5/url` 会被上游拒绝
+     * （`error_code 20028`）—— 参照项目能播、我们放不出来就是这个差异。它靠这个接口
+     * 拿服务端 dfid 并落盘复用（只在首次安装注册一次，重复注册会被风控当成一堆设备）。
+     *
+     * 请求体是 AES-128-CBC（key/iv 由 6 位随机串的 md5 前后各 16 字符派生）加密后的 base64，
+     * `p` 参数是 RSA PKCS#1 v1.5 加密的 `{aes, uid, token}` hex；响应体是 AES 密文，需解密后取 `data.dfid`。
+     */
+    suspend fun registerDevice(
+        device: KugouDeviceIdentity,
+        userId: String?,
+        token: String?,
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val deviceJson = JSONObject().apply {
+                put("availableRamSize", 4_983_533_568L)
+                put("availableRomSize", 48_114_719L)
+                put("availableSDSize", 48_114_717L)
+                put("basebandVer", "")
+                put("batteryLevel", 100)
+                put("batteryStatus", 3)
+                put("brand", android.os.Build.BRAND.ifBlank { "Xiaomi" })
+                put("buildSerial", "unknown")
+                put("device", android.os.Build.DEVICE.ifBlank { "marble" })
+                put("manufacturer", android.os.Build.MANUFACTURER.ifBlank { "Xiaomi" })
+                put("imsi", "")
+                put("accelerometer", false)
+                put("accelerometerValue", "")
+                put("gravity", false)
+                put("gravityValue", "")
+                put("gyroscope", false)
+                put("gyroscopeValue", "")
+                put("light", false)
+                put("lightValue", "")
+                put("magnetic", false)
+                put("magneticValue", "")
+                put("orientation", false)
+                put("orientationValue", "")
+                put("pressure", false)
+                put("pressureValue", "")
+                put("step_counter", false)
+                put("step_counterValue", "")
+                put("temperature", false)
+                put("temperatureValue", "")
+                put("imei", device.guid)
+                put("uuid", device.guid)
+            }.toString()
+
+            val aesKey = randomLower(6)
+            val md = md5Hex(aesKey)
+            val encKey = md.substring(0, 16)
+            val iv = md.substring(16, 32)
+            val aesStr = aesCbcBase64(deviceJson, encKey, iv)
+            val p = rsaPkcs1Hex(
+                """{"aes":"$aesKey","uid":${userId?.toLongOrNull() ?: 0L},"token":"${token.orEmpty()}"}"""
+            )
+
+            val clientTime = nowSeconds().toString()
+            val allParams = LinkedHashMap<String, String>()
+            allParams["dfid"] = device.dfid
+            allParams["mid"] = device.mid
+            allParams["uuid"] = "-"
+            allParams["appid"] = APP_ID
+            allParams["clientver"] = CLIENT_VER
+            allParams["clienttime"] = clientTime
+            if (!token.isNullOrBlank()) allParams["token"] = token
+            if (!userId.isNullOrBlank() && userId != "0") allParams["userid"] = userId
+            allParams["part"] = "1"
+            allParams["platid"] = "1"
+            allParams["p"] = p
+
+            // 签名覆盖的 body 是 base64 密文本身（string_body）
+            val signature = requestSignature(allParams, aesStr)
+            val urlBuilder = Uri.parse("$REGISTER_BASE/risk/v2/r_register_dev").buildUpon()
+            allParams.forEach { (k, v) -> urlBuilder.appendQueryParameter(k, v) }
+            urlBuilder.appendQueryParameter("signature", signature)
+
+            val request = Request.Builder()
+                .url(urlBuilder.build().toString())
+                .header("User-Agent", DEFAULT_UA)
+                .header("dfid", device.dfid)
+                .header("clienttime", clientTime)
+                .header("mid", device.mid)
+                .header("kg-rc", "1")
+                .header("kg-thash", "5d816a0")
+                .header("kg-rec", "1")
+                .header("kg-rf", "B9EDA08A64250DEFFBCADDEE00F8F25F")
+                .header("Content-Type", "text/plain; charset=utf-8")
+                .header(
+                    "Cookie",
+                    buildString {
+                        append("mid=").append(device.mid)
+                        if (!token.isNullOrBlank()) append("; token=").append(token)
+                        if (!userId.isNullOrBlank()) append("; userid=").append(userId)
+                    },
+                )
+                .post(aesStr.toRequestBody(TEXT_MEDIA))
+                .build()
+
+            val raw = okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) error("HTTP ${response.code}")
+                response.body?.bytes() ?: ByteArray(0)
+            }
+            // 响应是 AES 密文（arraybuffer）；个别情况下直接回明文 JSON，两种都兜住
+            val text = runCatching { aesCbcDecrypt(raw, encKey, iv) }
+                .getOrElse { String(raw) }
+            val root = JSONObject(text)
+            val dfid = root.optJSONObject("data")?.optString("dfid")
+            require(!dfid.isNullOrBlank()) { "注册设备未返回 dfid" }
+            dfid
+        }.onFailure { Timber.w(it, "KugouAccountApi: registerDevice failed") }
+    }
+
     // ─── 对外：扫码登录（web 签名）─────────────────────────────────────────
 
     /**
@@ -824,6 +941,40 @@ class KugouAccountApi @Inject constructor(
         return String(cipher.doFinal(bytes))
     }
 
+    /** AES/CBC/PKCS5，key/iv 按 ASCII 字节使用，输出 base64（设备注册用）。 */
+    private fun aesCbcBase64(data: String, key: String, iv: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(
+            Cipher.ENCRYPT_MODE,
+            SecretKeySpec(key.toByteArray(), "AES"),
+            IvParameterSpec(iv.toByteArray()),
+        )
+        return android.util.Base64.encodeToString(cipher.doFinal(data.toByteArray()), android.util.Base64.NO_WRAP)
+    }
+
+    /** AES/CBC/PKCS5 解密原始字节（设备注册响应体）。 */
+    private fun aesCbcDecrypt(data: ByteArray, key: String, iv: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            SecretKeySpec(key.toByteArray(), "AES"),
+            IvParameterSpec(iv.toByteArray()),
+        )
+        return String(cipher.doFinal(data))
+    }
+
+    /** RSA/ECB/PKCS1Padding（lite 公钥），输出小写 hex（设备注册的 `p` 参数）。 */
+    private fun rsaPkcs1Hex(plain: String): String {
+        val publicKey = KeyFactory.getInstance("RSA")
+            .generatePublic(X509EncodedKeySpec(litePublicKeyDer()))
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+        return cipher.doFinal(plain.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun randomLower(length: Int): String =
+        (1..length).map { ALPHANUM.random() }.joinToString("").lowercase()
+
     /**
      * 裸 RSA（无 padding，等价 CryptoJS 的 modPow）：
      * 明文右补 0 到 128 字节 → modPow → 左补 0 到 128 字节 → **大写** hex。
@@ -908,6 +1059,8 @@ class KugouAccountApi @Inject constructor(
 
     companion object {
         private const val GATEWAY = "https://gateway.kugou.com"
+        /** 设备注册走用户服务域名（参照项目 `/register/dev` → `/risk/v2/r_register_dev`）。 */
+        private const val REGISTER_BASE = "https://userservice.kugou.com"
         private const val LOGIN_WEB_BASE = "https://login-user.kugou.com"
         private const val LOGIN_SMS_BASE = "http://login.user.kugou.com"
         private const val APP_ID = "3116"
@@ -946,6 +1099,7 @@ class KugouAccountApi @Inject constructor(
             "Android15-1070-11083-46-0-DiscoveryDRADProtocol-wifi"
         private const val LOGIN_UA = "Android16-1070-11440-130-0-LOGIN-wifi"
         private val JSON_MEDIA = "application/json;charset=utf-8".toMediaType()
+        private val TEXT_MEDIA = "text/plain; charset=utf-8".toMediaType()
 
         /** 酷狗 Lite 版 RSA 公钥（1024-bit，与参考项目一致）。 */
         private const val LITE_PUBLIC_KEY =

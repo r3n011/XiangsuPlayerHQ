@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
@@ -120,6 +121,28 @@ class KugouRepository @Inject constructor(
     /** 设备标识（听书等其它需要签名的酷狗模块复用；听书不要求登录）。 */
     val device: KugouDeviceIdentity get() = deviceIdentity
 
+    /**
+     * 确保设备已注册：未注册时调用 `/risk/v2/r_register_dev` 拿服务端 dfid 并落盘，
+     * 之后一直复用（重复注册会被风控当成一堆设备，所以只在首次执行）。
+     * 已注册时是纯内存判断，不发请求。
+     */
+    suspend fun ensureDeviceRegistered(): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val current = deviceIdentity
+            if (prefs.getBoolean(KEY_DEVICE_REGISTERED, false)) return@runCatching current.dfid
+            val dfid = accountApi.registerDevice(current, userIdOrNull, tokenOrNull).getOrThrow()
+            prefs.edit()
+                .putString(KEY_DFID, dfid)
+                .putBoolean(KEY_DEVICE_REGISTERED, true)
+                .apply()
+            Timber.tag("KugouRepository").i("Device registered, dfid=%s", dfid.take(8))
+            dfid
+        }.onFailure { Timber.tag("KugouRepository").w(it, "ensureDeviceRegistered failed") }
+    }
+
+    /** 服务端 dfid 是否已就绪（false 表示当前 dfid 是本机随机值，长音频/直链可能被拒）。 */
+    val isDeviceRegistered: Boolean get() = prefs.getBoolean(KEY_DEVICE_REGISTERED, false)
+
     /** 登录 token（未登录为 null）；听书等签名请求按登录态带上。 */
     val authToken: String? get() = tokenOrNull
 
@@ -127,6 +150,11 @@ class KugouRepository @Inject constructor(
         // 进程启动就恢复登录态，账号页/内置音源立刻能读到。
         // ⚡ 必须放在所有 StateFlow 声明之后：init 块按声明顺序执行，提前调用会写入尚未初始化的字段。
         restoreSession()
+        // 首次安装注册设备（幂等：已注册过则只读一个内存标志，不发请求）。
+        // 未注册的随机 dfid 会被长音频章节 / v5/url 拒绝。
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { ensureDeviceRegistered() }
+        }
     }
 
     private fun randomDfid(): String =
@@ -365,6 +393,8 @@ class KugouRepository @Inject constructor(
         const val KEY_DFID = "kugou_dfid"
         const val KEY_GUID = "kugou_guid"
         const val KEY_DEV = "kugou_dev"
+        /** 服务端是否已下发 dfid（区分本机随机 dfid 与已注册 dfid）。 */
+        const val KEY_DEVICE_REGISTERED = "kugou_device_registered"
 
         /** 加密库 / 明文库之间需要互相补齐的凭证键（设备指纹类键不参与，避免覆盖）。 */
         val MIRRORED_CREDENTIAL_KEYS = listOf(

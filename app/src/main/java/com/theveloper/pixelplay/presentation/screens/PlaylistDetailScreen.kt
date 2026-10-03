@@ -536,27 +536,33 @@ fun PlaylistDetailScreen(
                             )
                     }
 
-                    // ⚡ 批量下载：复用「先确认再下载」的清单面板（在线可下 / 本地跳过）
-                    FilledTonalIconButton(
-                        onClick = { downloadSelectionSongs = localReorderableSongs },
-                        enabled = localReorderableSongs.isNotEmpty(),
-                        modifier = Modifier.size(76.dp),
-                        shape = AbsoluteSmoothCornerShape(
-                            cornerRadiusTL = 14.dp,
-                            smoothnessAsPercentTL = 60,
-                            cornerRadiusTR = 60.dp,
-                            smoothnessAsPercentTR = 60,
-                            cornerRadiusBR = 60.dp,
-                            smoothnessAsPercentBR = 60,
-                            cornerRadiusBL = 14.dp,
-                            smoothnessAsPercentBL = 60
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Download,
-                            contentDescription = stringResource(R.string.action_download_all),
-                            modifier = Modifier.size(22.dp)
-                        )
+                    // ⚡ 批量下载：复用「先确认再下载」的清单面板（在线可下 / 本地跳过）。
+                    //    歌单里一首在线歌都没有时不显示这个按钮 —— 全本地歌单没有可下载的内容，
+                    //    摆一个点了只能看「没有可下载的在线歌曲」的按钮反而多余。
+                    val hasOnlineSongs = remember(localReorderableSongs) {
+                        localReorderableSongs.any { playerViewModel.isOnlineSong(it) }
+                    }
+                    if (hasOnlineSongs) {
+                        FilledTonalIconButton(
+                            onClick = { downloadSelectionSongs = localReorderableSongs },
+                            modifier = Modifier.size(76.dp),
+                            shape = AbsoluteSmoothCornerShape(
+                                cornerRadiusTL = 14.dp,
+                                smoothnessAsPercentTL = 60,
+                                cornerRadiusTR = 60.dp,
+                                smoothnessAsPercentTR = 60,
+                                cornerRadiusBR = 60.dp,
+                                smoothnessAsPercentBR = 60,
+                                cornerRadiusBL = 14.dp,
+                                smoothnessAsPercentBL = 60
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Download,
+                                contentDescription = stringResource(R.string.action_download_all),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
 
                     if (isOnlinePlaylist) {

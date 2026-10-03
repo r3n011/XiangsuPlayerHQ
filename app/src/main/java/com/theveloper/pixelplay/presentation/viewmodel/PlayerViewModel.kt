@@ -308,7 +308,7 @@ class PlayerViewModel @Inject constructor(
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
     private val neteaseRepository: com.theveloper.pixelplay.data.netease.NeteaseRepository,
     val personalFmApi: com.theveloper.pixelplay.data.netease.PersonalFmApi,
-    private val songRecognitionClient: com.theveloper.pixelplay.data.netease.SongRecognitionClient,
+    private val songRecognitionRepository: com.theveloper.pixelplay.data.recognition.SongRecognitionRepository,
     private val kugouFmApi: com.theveloper.pixelplay.data.kugou.KugouFmApi,
     private val builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
     private val neteaseRecommendApi: com.theveloper.pixelplay.data.netease.NeteaseRecommendApi,
@@ -8013,7 +8013,7 @@ class PlayerViewModel @Inject constructor(
     val songRecognitionState: StateFlow<SongRecognitionState> = _songRecognitionState.asStateFlow()
 
     /**
-     * 开始一次听歌识曲：录一段（默认 6 秒）→ 生成音频指纹 → 网易云匹配。
+     * 开始一次听歌识曲：录一段（默认 6 秒）→ **同时**用网易云指纹与酷狗指纹识别 → 合并结果。
      * ⚠️ 调用前需要已经拿到 RECORD_AUDIO 权限（由 UI 侧申请）。
      */
     fun startSongRecognition(
@@ -8023,8 +8023,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             _songRecognitionState.value = SongRecognitionState.Listening
             runCatching {
-                val matches = songRecognitionClient.recognize(durationSeconds)
-                val songs = neteaseRepository.getNeteaseSongsByIds(matches.map { it.neteaseId })
+                val songs = songRecognitionRepository.recognize(durationSeconds)
                 _songRecognitionState.value = if (songs.isEmpty()) {
                     SongRecognitionState.Failed("没有识别出歌曲，换个安静点的环境再试试")
                 } else {

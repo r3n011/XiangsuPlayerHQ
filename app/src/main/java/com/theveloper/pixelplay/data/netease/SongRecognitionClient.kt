@@ -36,6 +36,24 @@ data class RecognizedSongMatch(
 )
 
 /**
+ * 一段录音的两种表示：浮点采样给网易云指纹（WASM），16bit 小端 PCM 给酷狗指纹（二进制 body）。
+ * 同一次录音同时喂给两家，避免开两条 AudioRecord 抢麦克风。
+ */
+data class CapturedAudio(
+    val samples: FloatArray,
+    val pcm16: ByteArray,
+) {
+    // FloatArray/ByteArray 的 equals 是引用比较，这里按内容实现，便于测试与去重
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is CapturedAudio) return false
+        return samples.contentEquals(other.samples) && pcm16.contentEquals(other.pcm16)
+    }
+
+    override fun hashCode(): Int = 31 * samples.contentHashCode() + pcm16.contentHashCode()
+}
+
+/**
  * 听歌识曲（音频指纹匹配）。
  *
  * 流程与 MeloX 的 Android 实现一致：
@@ -57,19 +75,34 @@ class SongRecognitionClient @Inject constructor(
 
     /** 录 [durationSeconds] 秒并识别。duration 限制在 3..15 秒（太长会让 GET query 过大被重置）。 */
     suspend fun recognize(durationSeconds: Int = DEFAULT_SECONDS): List<RecognizedSongMatch> {
-        require(durationSeconds in 3..15) { "识曲时长需在 3~15 秒之间" }
-        val samples = capture(durationSeconds)
-        val fingerprint = fingerprintRuntime.generate(samples)
-        return match(fingerprint, durationSeconds)
+        val captured = captureAudio(durationSeconds)
+        val fingerprint = generateFingerprint(captured.samples)
+        return matchNetease(fingerprint, durationSeconds)
     }
+
+    /**
+     * 只录音，不识别：返回浮点采样 + PCM16，供「网易云 + 酷狗」并行识别共用一次录音。
+     * duration 限制在 3..15 秒。
+     */
+    suspend fun captureAudio(durationSeconds: Int = DEFAULT_SECONDS): CapturedAudio {
+        require(durationSeconds in 3..15) { "识曲时长需在 3~15 秒之间" }
+        return capture(durationSeconds)
+    }
+
+    /** 生成网易云 shazam_v2 指纹（WebView + WASM，需在主线程跑）。 */
+    suspend fun generateFingerprint(samples: FloatArray): String = fingerprintRuntime.generate(samples)
+
+    /** 用指纹匹配网易云曲库。 */
+    suspend fun matchNetease(fingerprint: String, durationSeconds: Int): List<RecognizedSongMatch> =
+        match(fingerprint, durationSeconds)
 
     override fun close() {
         fingerprintRuntime.close()
     }
 
-    /** 录制 8 kHz 单声道 PCM（VOICE_RECOGNITION 音源，带降噪），返回 [-1,1] 浮点采样。 */
+    /** 录制 8 kHz 单声道 PCM（VOICE_RECOGNITION 音源，带降噪），返回浮点采样与 16bit 小端字节。 */
     @SuppressLint("MissingPermission")
-    private suspend fun capture(durationSeconds: Int): FloatArray = withContext(Dispatchers.IO) {
+    private suspend fun capture(durationSeconds: Int): CapturedAudio = withContext(Dispatchers.IO) {
         val channel = AudioFormat.CHANNEL_IN_MONO
         val encoding = AudioFormat.ENCODING_PCM_16BIT
         val minimum = AudioRecord.getMinBufferSize(SAMPLE_RATE, channel, encoding)
@@ -107,7 +140,14 @@ class SongRecognitionClient @Inject constructor(
             recorder.release()
         }
         if (offset < SAMPLE_RATE) throw IOException("没有收到足够的麦克风音频")
-        FloatArray(offset) { pcm[it] / 32768f }
+        val samples = FloatArray(offset) { pcm[it] / 32768f }
+        val pcm16 = ByteArray(offset * 2)
+        for (i in 0 until offset) {
+            val value = pcm[i].toInt()
+            pcm16[i * 2] = (value and 0xFF).toByte()
+            pcm16[i * 2 + 1] = ((value shr 8) and 0xFF).toByte()
+        }
+        CapturedAudio(samples, pcm16)
     }
 
     /** 指纹匹配：网易云明文 GET，不需要 Cookie / 登录。 */

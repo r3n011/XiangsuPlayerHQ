@@ -15,6 +15,8 @@ private val CODE_IN_MESSAGE = Regex("code=(-?\\d+)")
 /** status/get 空响应时的重试次数（对齐 MeloX：3 次、180ms×n 退避） */
 private const val STATUS_GET_ATTEMPTS = 3
 
+private const val TAG = "ListenTogetherApi"
+
 /**
  * 网易云「一起听」API 封装（基于内置 net.moriafly.ncm SDK）。
  *
@@ -253,8 +255,21 @@ class ListenTogetherApi {
             //    直接把原文丢给界面就会出现用户看不懂的「系统错误」。
             val rawMessage = error.message.orEmpty()
             val code = CODE_IN_MESSAGE.find(rawMessage)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            Timber.w(error, "ListenTogetherApi: %s 失败 path=%s code=%s", transport, path, code)
-            throw IOException(friendlyMessage(rawMessage, code))
+            val offline = isTransientNetworkError(error, code)
+            // ⚡ 离线 / 连不上是常态（一起听空闲时每 60s 会探测一次房间状态），
+            //    这类错误只记一行、不打完整堆栈：否则断网时 logcat 每分钟被一条几十行的
+            //    UnknownHostException 堆栈刷满，既没诊断价值又白耗电。真正的服务端错误才留堆栈。
+            if (offline) {
+                Timber.tag(TAG).d(
+                    "%s 暂时不可达 path=%s: %s",
+                    transport,
+                    path,
+                    rawMessage.ifBlank { error.javaClass.simpleName }
+                )
+            } else {
+                Timber.w(error, "ListenTogetherApi: %s 失败 path=%s code=%s", transport, path, code)
+            }
+            throw IOException(friendlyMessage(rawMessage, code, offline))
         }
         // 空响应体：网易云偶发返回空体，单独区分出来，便于上层决定重试 / 降级
         if (raw.isEmpty()) throw EmptyResponseException(path)
@@ -268,11 +283,31 @@ class ListenTogetherApi {
         return root
     }
 
+    /**
+     * 是否是「离线 / 暂时连不上」这类可自愈的传输错误（而不是服务端返回的业务错误）。
+     * 判据：没有服务端 code，且异常属于网络类（DNS 解析失败、超时、拒绝连接、TLS 失败等）。
+     */
+    private fun isTransientNetworkError(error: Throwable, code: Int?): Boolean {
+        if (code != null) return false
+        return when (error) {
+            is java.net.UnknownHostException,
+            is java.net.SocketTimeoutException,
+            is java.net.ConnectException,
+            is java.net.NoRouteToHostException,
+            is java.net.PortUnreachableException,
+            is javax.net.ssl.SSLException -> true
+            // 其它无 code 的 IO 异常（连接被重置等）同样按可自愈处理
+            is IOException -> error !is EmptyResponseException
+            else -> false
+        }
+    }
+
     /** 服务端文案 → 用户可读文案（原始信息保留在 logcat 里，界面不再直出「系统错误」） */
-    private fun friendlyMessage(rawMessage: String, code: Int?): String {
+    private fun friendlyMessage(rawMessage: String, code: Int?, offline: Boolean = false): String {
         val raw = rawMessage.trim()
         val codeSuffix = code?.let { "（$it）" }.orEmpty()
         return when {
+            offline -> "网络不可用，一起听暂时离线"
             raw.contains("系统错误") || raw.contains("系统繁忙") || code == 500 ->
                 "一起听服务暂时不可用$codeSuffix，正在自动重试"
             raw.contains("登录") || code == 301 || code == -462 ->

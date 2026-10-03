@@ -1196,7 +1196,9 @@ class MainActivity : ComponentActivity() {
                 Screen.AudiobookSearch.route,
                 Screen.AudiobookAlbum.route,
                 // ⚡ 酷狗账号面板：与网易云服务页一致，隐藏底部导航栏
-                Screen.KugouDashboard.route
+                Screen.KugouDashboard.route,
+                // ⚡ 下载管理页：整屏任务列表页，隐藏底部导航栏（否则遮住最后一条任务）
+                Screen.DownloadManager.route
             )
         }
         val isPlayerExpanded by remember {
@@ -1235,6 +1237,8 @@ class MainActivity : ComponentActivity() {
         }
 
         val navBarStyle by playerViewModel.navBarStyle.collectAsStateWithLifecycle()
+        // ⚡ 下载队列状态：批量下载时常驻顶部进度 chip（点击进入下载管理页）
+        val downloadInfos by playerViewModel.downloads.collectAsStateWithLifecycle()
         val navRailStyle by playerViewModel.navRailStyle.collectAsStateWithLifecycle()
         val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
         val navBarCornerRadiusRaw by playerViewModel.navBarCornerRadius.collectAsStateWithLifecycle()
@@ -1581,6 +1585,20 @@ class MainActivity : ComponentActivity() {
                                     onOpenSidebar = { scope.launch { drawerState.open() } }
                                 )
                             }
+                        }
+
+                        // ⚡ 批量下载常驻进度提示：显示「已下载 N / M 首」，点击进入下载管理页。
+                        //    与日语注音引擎 / 歌词字体下载共用同一个顶部 chip 组件（滑入、可滑动关闭、
+                        //    完成后驻留 2s 自动消失）。已经在下载管理页时不重复显示。
+                        if (currentRoute != Screen.DownloadManager.route) {
+                            com.theveloper.pixelplay.presentation.components.DownloadQueueTopChip(
+                                downloads = downloadInfos,
+                                onClick = { navController.navigateSafely(Screen.DownloadManager.route) },
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .statusBarsPadding()
+                                    .padding(top = 8.dp)
+                            )
                         }
                     }
 

@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.theveloper.pixelplay.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -68,6 +70,8 @@ sealed interface DownloadStatusPhase {
  * @param label chip 顶部的小标题（如"日语注音引擎"）
  * @param progressTextRes 带 %1$d 的进度文案
  * @param indeterminateTextRes 总长度未知时的文案
+ * @param statusTextOverride 直接指定状态文案（多任务聚合等无法用单个 %1$d 表达时用）
+ * @param onClick 点击 chip 的回调（如跳转到下载队列）；null 表示不可点
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -78,7 +82,9 @@ fun DownloadStatusTopChip(
     @StringRes indeterminateTextRes: Int,
     successText: String,
     failedText: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    statusTextOverride: String? = null,
+    onClick: (() -> Unit)? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val swipeOffsetX = remember { Animatable(0f) }
@@ -137,7 +143,7 @@ fun DownloadStatusTopChip(
     ) {
         val settled = settledPhase
 
-        val chipStatusText = when {
+        val chipStatusText = statusTextOverride ?: when {
             isDownloading -> {
                 val progressPercent = (phase as DownloadStatusPhase.Downloading).progressPercent
                 if (progressPercent >= 0) {
@@ -161,6 +167,11 @@ fun DownloadStatusTopChip(
         Surface(
             modifier = Modifier
                 .padding(horizontal = 24.dp)
+                // ⚡ 可点：点击 chip 跳转到下载队列（拖拽关闭仍由下方 pointerInput 处理，
+                //    detectDragGestures 只在超过滑动阈值后才 consume，普通点击不会被吞）
+                .then(
+                    if (onClick != null) Modifier.clickable { onClick?.invoke() } else Modifier
+                )
                 .graphicsLayer {
                     translationX = swipeOffsetX.value
                     translationY = swipeOffsetY.value
@@ -277,4 +288,60 @@ fun DownloadStatusTopChip(
             }
         }
     }
+}
+
+/**
+ * 「下载队列」常驻进度 chip：批量下载期间常驻在顶部，显示已下载数量，点击进入下载管理页。
+ *
+ * 复用 [DownloadStatusTopChip] 的视觉与交互（滑入 / 可滑动关闭 / 完成驻留后自动消失）：
+ * - 有任务在跑或暂停 → [DownloadStatusPhase.Downloading]，**常驻**显示「已下载 N / M 首」；
+ * - 全部完成 → [DownloadStatusPhase.Success]，驻留 2s 后自动消失；
+ * - 有失败且无进行中任务 → [DownloadStatusPhase.Failed]。
+ */
+@Composable
+fun DownloadQueueTopChip(
+    downloads: List<com.theveloper.pixelplay.data.service.http.MusicDownloadService.DownloadInfo>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (downloads.isEmpty()) return
+
+    val total = downloads.size
+    val completed = downloads.count { it.isComplete }
+    val failed = downloads.count { it.isFailed }
+    val inFlight = downloads.count { it.isActive || it.isPaused }
+
+    val phase: DownloadStatusPhase? = when {
+        inFlight > 0 -> {
+            // 总体进度：已完成算满，进行中的按其百分比折算
+            val inFlightProgress = downloads
+                .filter { it.isActive || it.isPaused }
+                .sumOf { it.progress.toDouble().coerceIn(0.0, 100.0) }
+            val percent = (((completed * 100.0) + inFlightProgress) / total).toInt().coerceIn(0, 100)
+            DownloadStatusPhase.Downloading(percent)
+        }
+        completed > 0 && failed == 0 -> DownloadStatusPhase.Success
+        failed > 0 -> DownloadStatusPhase.Failed()
+        else -> null
+    }
+    if (phase == null) return
+
+    val label = stringResource(R.string.download_queue_chip_label)
+    val statusText = when (phase) {
+        is DownloadStatusPhase.Downloading -> stringResource(R.string.download_queue_chip_progress, completed, total)
+        DownloadStatusPhase.Success -> stringResource(R.string.download_queue_chip_done, completed)
+        else -> stringResource(R.string.download_queue_chip_failed)
+    }
+
+    DownloadStatusTopChip(
+        phase = phase,
+        label = label,
+        progressTextRes = R.string.download_queue_chip_progress,
+        indeterminateTextRes = R.string.download_queue_chip_progress,
+        successText = stringResource(R.string.download_queue_chip_done, completed),
+        failedText = stringResource(R.string.download_queue_chip_failed),
+        modifier = modifier,
+        statusTextOverride = statusText,
+        onClick = onClick,
+    )
 }

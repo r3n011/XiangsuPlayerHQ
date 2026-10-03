@@ -244,27 +244,35 @@ class KugouAudiobookApi @Inject constructor(
             .put("tagid", 0)
             .put("page", page)
             .put("pagesize", pageSize)
-        val root = signedRequest(
-            method = "POST",
-            path = "/longaudio/v2/album_audios",
-            standard = true,
-            body = body,
-            xRouter = "openapi.kugou.com",
-            extraHeaders = mapOf("KG-TID" to "78"),
-        )
-        val list = when (val data = root.opt("data")) {
-            is JSONArray -> data
-            is JSONObject -> data.optJSONArray("audios")
-                ?: data.optJSONArray("list")
-                ?: data.optJSONArray("audio_list")
-            else -> null
-        } ?: return@io emptyList()
-        buildList {
-            for (i in 0 until list.length()) {
-                val item = list.optJSONObject(i) ?: continue
-                parseChapter(item)?.let(::add)
+
+        fun request(forceAnonymous: Boolean): List<KugouAudiobookChapter> {
+            val root = signedRequest(
+                method = "POST",
+                path = "/longaudio/v2/album_audios",
+                standard = true,
+                body = body,
+                xRouter = "openapi.kugou.com",
+                extraHeaders = mapOf("KG-TID" to "78"),
+                forceAnonymousDevice = forceAnonymous,
+            )
+            val list = when (val data = root.opt("data")) {
+                is JSONArray -> data
+                is JSONObject -> data.optJSONArray("audios")
+                    ?: data.optJSONArray("list")
+                    ?: data.optJSONArray("audio_list")
+                else -> null
+            } ?: return emptyList()
+            return buildList {
+                for (i in 0 until list.length()) {
+                    val item = list.optJSONObject(i) ?: continue
+                    parseChapter(item)?.let(::add)
+                }
             }
         }
+
+        // ⚡ 自愈：先用当前设备标识请求；空结果多半是「设备未注册被上游拒绝（HTTP 200 但
+        //    error_code=20028）」，此时自动用匿名设备 "-" 重试一次 —— 避免「暂无可用章节」。
+        request(forceAnonymous = false).ifEmpty { request(forceAnonymous = true) }
     }
 
     // ─── 播放直链（/v5/url，trackercdn）──────────────────────────────────
@@ -284,39 +292,48 @@ class KugouAudiobookApi @Inject constructor(
         quality: String = "320k",
     ): Result<String?> = io {
         if (hash.isBlank()) return@io null
-        val mid = ANONYMOUS_DEVICE
-        val userId = kugouRepository.userId?.takeIf { it.isNotBlank() && it != "0" } ?: "0"
-        val key = md5Hex("$hash$SIGN_KEY_STR$APP_ID$mid$userId")
-        for (q in listOf(kgQualityValue(quality), "128").distinct()) {
-            val root = signedRequest(
-                method = "GET",
-                path = "/v5/url",
-                xRouter = "trackercdn.kugou.com",
-                query = mapOf(
-                    "album_id" to (albumId?.takeIf { it.isNotBlank() } ?: "0"),
-                    "area_code" to 1,
-                    "hash" to hash,
-                    "ssa_flag" to "is_fromtrack",
-                    "version" to 11430,
-                    "page_id" to 967177915,
-                    "quality" to q,
-                    "album_audio_id" to (albumAudioId?.takeIf { it.isNotBlank() } ?: "0"),
-                    "behavior" to "play",
-                    "pid" to 411,
-                    "cmd" to 26,
-                    "pidversion" to 3001,
-                    "IsFreePart" to 0,
-                    "ppage_id" to "356753938,823673182,967485191",
-                    "cdnBackup" to 1,
-                    "module" to "",
-                    // 覆盖默认的 11440：/v5/url 用 11430（参照项目同款）
-                    "clientver" to 11430,
-                    "key" to key,
-                ),
-            )
-            extractDirectUrl(root)?.let { return@io it }
+
+        fun attempt(forceAnonymous: Boolean): String? {
+            // ⚡ key 必须用**与请求参数同一个** mid 计算：上游按 params.mid 校验 key，
+            //    两边不一致时 /v5/url 直接不给链接（参考项目也是从 params 里取 mid）。
+            val mid = resolveDeviceIds(forceAnonymous).mid
+            val userId = kugouRepository.userId?.takeIf { it.isNotBlank() && it != "0" } ?: "0"
+            val key = md5Hex("$hash$SIGN_KEY_STR$APP_ID$mid$userId")
+            for (q in listOf(kgQualityValue(quality), "128").distinct()) {
+                val root = signedRequest(
+                    method = "GET",
+                    path = "/v5/url",
+                    xRouter = "trackercdn.kugou.com",
+                    query = mapOf(
+                        "album_id" to (albumId?.takeIf { it.isNotBlank() } ?: "0"),
+                        "area_code" to 1,
+                        "hash" to hash,
+                        "ssa_flag" to "is_fromtrack",
+                        "version" to 11430,
+                        "page_id" to 967177915,
+                        "quality" to q,
+                        "album_audio_id" to (albumAudioId?.takeIf { it.isNotBlank() } ?: "0"),
+                        "behavior" to "play",
+                        "pid" to 411,
+                        "cmd" to 26,
+                        "pidversion" to 3001,
+                        "IsFreePart" to 0,
+                        "ppage_id" to "356753938,823673182,967485191",
+                        "cdnBackup" to 1,
+                        "module" to "",
+                        // 覆盖默认的 11440：/v5/url 用 11430（参照项目同款）
+                        "clientver" to 11430,
+                        "key" to key,
+                    ),
+                    forceAnonymousDevice = forceAnonymous,
+                )
+                extractDirectUrl(root)?.let { return it }
+            }
+            return null
         }
-        null
+
+        // ⚡ 自愈：当前设备标识拿不到直链（多半是未注册设备被拒）时，用匿名设备再试一遍。
+        attempt(forceAnonymous = false) ?: attempt(forceAnonymous = true)
     }
 
     /** 从 `/v5/url` 响应里取第一条可播直链（url 数组优先，其次 backupUrl）。 */
@@ -425,6 +442,8 @@ class KugouAudiobookApi @Inject constructor(
         standard: Boolean = false,
         xRouter: String? = null,
         extraHeaders: Map<String, String> = emptyMap(),
+        /** 强制使用匿名设备标识 "-"（未注册 dfid 被上游拒绝时的自愈重试用）。 */
+        forceAnonymousDevice: Boolean = false,
     ): JSONObject {
         val token = kugouRepository.authToken
         val userId = kugouRepository.userId
@@ -440,13 +459,10 @@ class KugouAudiobookApi @Inject constructor(
         //    酷狗登录会话（未登录时为空）。之前无条件写 "-" 会让部分长音频
         //    （如「安全警长啦咘啦哆」这类）在 /v5/url 拿不到直链：参考项目能播、
         //    我们放不出来就是这个差异。
-        val device = runCatching { kugouRepository.device }.getOrNull()
-        val deviceDfid = device?.dfid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE }
-        val deviceMid = device?.mid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE }
-        val deviceGuid = device?.guid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE }
-        params["dfid"] = deviceDfid ?: ANONYMOUS_DEVICE
-        params["mid"] = deviceMid ?: ANONYMOUS_DEVICE
-        params["uuid"] = deviceGuid ?: "-"
+        val ids = resolveDeviceIds(forceAnonymousDevice)
+        params["dfid"] = ids.dfid
+        params["mid"] = ids.mid
+        params["uuid"] = ids.uuid
         params["appid"] = appId
         params["clientver"] = clientVer
         params["clienttime"] = clientTime
@@ -499,6 +515,29 @@ class KugouAudiobookApi @Inject constructor(
     private fun md5Hex(text: String): String =
         MessageDigest.getInstance("MD5").digest(text.toByteArray())
             .joinToString("") { "%02x".format(it) }
+
+    /**
+     * 用于签名请求的设备标识。
+     *
+     * ⚡ **只有服务端注册过的 dfid 才能用**：本机随机生成的 dfid 从未在酷狗注册，
+     * 长音频章节 / `/v5/url` 会被上游按未注册设备拒绝（HTTP 200 但 body 里
+     * `status=0 / error_code=20028`，章节列表解析出来是空 → 「暂无可用章节」）。
+     * 参照项目靠 `/register/dev` 拿服务端 dfid；没注册成功时它同样回落匿名占位 `-`。
+     * 所以：已注册 → 用真实设备标识；未注册 → 一律 `-`（这是上一版验证过可用的行为）。
+     */
+    private fun resolveDeviceIds(forceAnonymous: Boolean = false): KugouDeviceIds {
+        if (forceAnonymous || !kugouRepository.isDeviceRegistered) {
+            return KugouDeviceIds(ANONYMOUS_DEVICE, ANONYMOUS_DEVICE, "-")
+        }
+        val device = runCatching { kugouRepository.device }.getOrNull()
+        return KugouDeviceIds(
+            dfid = device?.dfid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE } ?: ANONYMOUS_DEVICE,
+            mid = device?.mid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE } ?: ANONYMOUS_DEVICE,
+            uuid = device?.guid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE } ?: "-",
+        )
+    }
+
+    private data class KugouDeviceIds(val dfid: String, val mid: String, val uuid: String)
 
     // ─── 解析 ────────────────────────────────────────────────────────────
 

@@ -335,6 +335,7 @@ object AppModule {
         lxSearchApi: LxSearchApi,
         builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
         bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
+        kugouAudiobookApi: com.theveloper.pixelplay.data.kugou.KugouAudiobookApi,
         apiProviderPreferences: com.theveloper.pixelplay.data.preferences.ApiProviderPreferences
     ): LyricsRepository {
         return LyricsRepositoryImpl(
@@ -345,6 +346,7 @@ object AppModule {
             lxSearchApi = lxSearchApi,
             builtInSourceSearchApi = builtInSourceSearchApi,
             bilibiliSearchApi = bilibiliSearchApi,
+            kugouAudiobookApi = kugouAudiobookApi,
             apiProviderPreferences = apiProviderPreferences
         )
     }

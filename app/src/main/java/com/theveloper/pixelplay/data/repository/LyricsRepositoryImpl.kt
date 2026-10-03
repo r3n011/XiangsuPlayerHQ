@@ -528,6 +528,30 @@ class LyricsRepositoryImpl @Inject constructor(
     private fun builtInSourceTag(song: Song): String =
         parseCloudLxSource(song) ?: "unknown"
 
+    /**
+     * 提取酷狗 hash：听书章节 `kgaudio://{urlEncodedJson}` 与酷狗在线歌 `cloud://lx/{json}`（source=kg）。
+     *
+     * 听书章节的 contentUri 是 kgaudio:// 占位，不属 cloud://lx，走不到内置源 —— 以前这类
+     * 有声书完全没有歌词来源，最终落到网易云/AMLLDB/LRCLIB 搜书名，结果永远是「暂无歌词」。
+     * 这里统一取 hash，交给 [KugouAudiobookApi.fetchLyric] 走酷狗官方歌词接口。
+     * 其它来源（网易云/QQ/酷我/咪咕）返回 null，避免拿错家的 hash 去酷狗查。
+     */
+    private fun extractKugouHash(song: Song): String? {
+        val uri = song.contentUriString
+        if (uri.startsWith("kgaudio://", ignoreCase = true)) {
+            val encoded = uri.substringAfter("kgaudio://")
+            if (encoded.isBlank()) return null
+            return runCatching {
+                org.json.JSONObject(java.net.URLDecoder.decode(encoded, "UTF-8"))
+                    .optString("hash")
+                    .takeIf { it.isNotBlank() }
+            }.getOrNull()
+        }
+        val info = parseCloudLxSongInfo(song) ?: return null
+        if (!info.source.equals("kg", ignoreCase = true)) return null
+        return info.hash.takeIf { it.isNotBlank() }
+    }
+
     /** Lyrics → 原始 LRC 文本（用于落库/缓存，格式与 fetchFromRemote 内 ncm 转换一致） */
     private fun lyricsToLrc(lyrics: Lyrics): String {
         if (!lyrics.synced.isNullOrEmpty()) {
@@ -747,7 +771,9 @@ class LyricsRepositoryImpl @Inject constructor(
                 
                 // Smart title cleanup strategy (removes leading digits/spaces and truncates at -, (, ))
                 val smartTitle = cleanTitleSmart(cleanTitle)
-                if (smartTitle != cleanTitle && smartTitle.isNotBlank()) {
+                if (smartTitle != cleanTitle && smartTitle.isNotBlank() &&
+                    !isTooGenericSmartTitle(smartTitle, cleanTitle)
+                ) {
                     Log.d(TAG, "Adding smart search strategy for: '$smartTitle' (orig: '$cleanTitle')")
                     add(RemoteSearchStrategy("smart_track_only") {
                         lrcLibApiService.searchLyrics(trackName = smartTitle)
@@ -1770,7 +1796,9 @@ class LyricsRepositoryImpl @Inject constructor(
                 
                 // Smart title cleanup strategy
                 val smartTitle = cleanTitleSmart(cleanTitle)
-                if (smartTitle != cleanTitle && smartTitle.isNotBlank()) {
+                if (smartTitle != cleanTitle && smartTitle.isNotBlank() &&
+                    !isTooGenericSmartTitle(smartTitle, cleanTitle)
+                ) {
                     LogUtils.d(this@LyricsRepositoryImpl, "Adding smart search strategy for: '$smartTitle' (orig: '$cleanTitle')")
                     add(RemoteSearchStrategy("smart_track_only") {
                         lrcLibApiService.searchLyrics(trackName = smartTitle)
@@ -2112,6 +2140,29 @@ class LyricsRepositoryImpl @Inject constructor(
         
         // 3. Trim whitespace
         return cleaned.trim()
+    }
+
+    /**
+     * 清洗后的标题是否过于笼统，不足以单独拿去检索。
+     *
+     * 有声书章节标题常是「00 引子-请查收泡泡岛快递！」这种「序号 + 章节名 + 副标题」结构，
+     * 经 [cleanTitleSmart] 只剩「引子」两个字 —— 拿它去 LRCLIB 只会并发命中一堆无关结果
+     * （日志里 4 个并发请求全打在这上面），既浪费预算又可能匹配到错误歌词。
+     * 注意：只有清洗确实改动了标题时才会调用，正常短歌名（如「晴天」）不会走到这里。
+     */
+    private fun isTooGenericSmartTitle(smart: String, original: String): Boolean {
+        val s = smart.trim()
+        if (s.isEmpty()) return true
+        val cjk = s.count { it.code in 0x4E00..0x9FFF }
+        if (cjk > 0) {
+            // 纯 CJK 片段至少 3 个字才有区分度（「引子」「序章」「前言」一律拦掉）
+            if (cjk < 3) return true
+        } else if (s.count { it.isLetterOrDigit() } < 4) {
+            return true
+        }
+        // 清洗后信息量骤减（不足原长一半）同样视为不可靠
+        val originalLen = original.count { !it.isWhitespace() }
+        return originalLen > 0 && s.length * 2 < originalLen
     }
 }
 

@@ -486,4 +486,9 @@
     <string name="lyrics_font_chip_downloading_unknown">正在下载字体…</string>
     <string name="lyrics_font_chip_ready">字体已就绪</string>
     <string name="lyrics_font_chip_failed">字体下载失败</string>
+    <!-- 下载队列常驻进度 chip（批量下载时显示，点击进入下载管理） -->
+    <string name="download_queue_chip_label">下载</string>
+    <string name="download_queue_chip_progress">已下载 %1$d / %2$d 首</string>
+    <string name="download_queue_chip_done">已下载 %1$d 首</string>
+    <string name="download_queue_chip_failed">有下载失败，点击查看</string>
 </resources>

@@ -145,6 +145,7 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.components.AutoScrollingText
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
+import com.theveloper.pixelplay.presentation.components.subcomps.SongPlatformBadge
 import com.theveloper.pixelplay.presentation.components.player.AnimatedPlaybackControls
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerUiState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
@@ -2128,12 +2129,20 @@ fun QueuePlaylistSongItem(
                     Spacer(Modifier.width(16.dp))
 
                     Column(Modifier.weight(1f)) {
-                        Text(
-                            song.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            color = if (isCurrentSong) colors.primary else colors.onSurface,
-                            fontWeight = if (isCurrentSong) FontWeight.Bold else FontWeight.Normal,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        // ⚡ 歌名右侧带上「来源平台」徽标（与媒体库歌曲列表一致；本地歌曲不显示）
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                song.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                color = if (isCurrentSong) colors.primary else colors.onSurface,
+                                fontWeight = if (isCurrentSong) FontWeight.Bold else FontWeight.Normal,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            SongPlatformBadge(
+                                song = song,
+                                modifier = Modifier.padding(start = 6.dp)
+                            )
+                        }
                         Text(
                             song.displayArtist, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodyMedium,
