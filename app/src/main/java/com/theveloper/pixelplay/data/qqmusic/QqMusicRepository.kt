@@ -18,6 +18,7 @@ import com.theveloper.pixelplay.data.database.SourceType
 import com.theveloper.pixelplay.data.database.toSong
 import com.theveloper.pixelplay.data.network.qqmusic.QqMusicApiService
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
+import com.theveloper.pixelplay.data.remote.qqmusic.QqMusicPhoneAuthClient
 import com.theveloper.pixelplay.data.stream.BulkSyncResult
 import com.theveloper.pixelplay.data.stream.CloudMusicUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,6 +47,7 @@ class QqMusicRepository @Inject constructor(
     private val dao: QqMusicDao,
     private val musicDao: MusicDao,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
+    private val phoneAuthClient: QqMusicPhoneAuthClient,
     @ApplicationContext private val context: Context
 ) {
 
@@ -172,6 +174,28 @@ class QqMusicRepository @Inject constructor(
                 nickname
             }
         }
+    }
+
+    /**
+     * 发送手机号登录的短信验证码（仅中国大陆号码）。
+     * 官方可能要求安全验证，此时返回失败并提示改用网页登录。
+     */
+    suspend fun sendPhoneLoginCode(phone: String): Result<Unit> =
+        phoneAuthClient.sendCode(phone)
+
+    /**
+     * 手机号 + 验证码登录：拿到的 cookie 与网页登录抓到的完全同构，
+     * 统一交给 [loginWithCookies] 落盘、校验并拉取昵称。
+     */
+    suspend fun loginWithPhone(phone: String, code: String): Result<String> {
+        val cookies = phoneAuthClient.login(phone, code).getOrElse { return Result.failure(it) }
+        if (cookies.isEmpty()) {
+            return Result.failure(IllegalStateException("QQ 音乐登录未返回凭据，请改用网页登录"))
+        }
+        val cookieJson = JSONObject().apply {
+            cookies.forEach { (key, value) -> put(key, value) }
+        }.toString()
+        return loginWithCookies(cookieJson)
     }
 
     /** QQ 音乐音质档位：purl 文件名前缀 + 扩展名。 */

@@ -970,6 +970,8 @@ object NcmModulesFull {
             if (mode == 1) put("mode", "F")
             if (mode == 2) put("mode", "B"); if (id != null) put("id", id)
             if (mode == 3) put("mode", "S"); if (pid != null) put("pid", pid)
+            // mode 4 = 探索（E）：与熟悉（F）相对，多推没听过的新歌
+            if (mode == 4) put("mode", "E")
         }
     )
     suspend fun personalFmMode(mode: Int, id: String? = null, pid: String? = null) = personalFm(mode, id, pid)

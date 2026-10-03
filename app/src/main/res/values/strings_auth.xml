@@ -54,6 +54,10 @@
     <string name="auth_stay">Stay</string>
     <string name="auth_login_netease_title">Login to NetEase Music</string>
     <string name="auth_login_qq_title">Login to QQ Music</string>
+    <string name="qq_login_mode_web">Web login</string>
+    <string name="qq_login_mode_phone">Phone login</string>
+    <string name="qq_login_phone_note">Phone login only supports mainland China numbers; the SMS code is sent by QQ Music. If a security check is required, finish it via \"Web login\" and try again.</string>
+    <string name="qq_login_phone_hint">Your QQ Music playlists sync automatically after signing in</string>
     <string name="netease_login_required_toast">Please sign in to NetEase Cloud Music first</string>
     <string name="auth_web_cd_web_back">Web back</string>
     <string name="auth_web_cd_web_forward">Web forward</string>

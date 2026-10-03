@@ -1049,6 +1049,9 @@ private fun TabletSettingsScreen(
                         onOpenNavidromeDashboard = { outerNavController.navigateSafely(Screen.NavidromeDashboard.route) },
                         onOpenJellyfinDashboard = { outerNavController.navigateSafely(Screen.JellyfinDashboard.route) },
                         onOpenBilibiliDashboard = { outerNavController.navigateSafely(Screen.BilibiliFavorites.route) },
+                        // ⚡ 酷狗「打开服务」：这里以前漏传回调，走默认空实现 → 大屏（≥840dp）
+                        //    设置里的账户页点「打开服务」（或未登录自愈成功后）都是静默无反应。
+                        onOpenKugouDashboard = { outerNavController.navigateSafely(Screen.KugouDashboard.route) },
                         showBackButton = false
                     )
                 }

@@ -15,10 +15,13 @@
 
 <style>
 /* ══════════════════════════════════════════════════════════════════
-   配色直接取自应用主题 app/.../ui/theme/Color.kt，让站点与应用同源：
-     PixelPlayPurpleDark  #0F1827   PixelPlaySurface   #162236
-     PixelPlayPurplePrimary #5C9CFF PixelPlayPink     #F06292
-     PixelPlayOrange        #FF8A65  PixelPlayLightPurple #B8D4F5
+   配色取自应用主题 app/.../ui/theme/Color.kt，让站点与应用同源：
+     PixelPlayPurpleDark    #0F1827  ← 页面底色
+     PixelPlayPurplePrimary #5C9CFF  ← 主色，界面上只做点缀
+     PixelPlayLightPurple   #B8D4F5  ← 次级文字
+
+   刻意保留的克制：应用主题里的 #F06292 / #FF8A65 / #4DD0E1 不直接上屏。
+   M3E 强调 tonal 配色 —— 颜色只暗示、不抢戏，界面主体是明度层次而非色相。
    ══════════════════════════════════════════════════════════════════ */
 :root{
   --bg:#0F1827;
@@ -29,9 +32,6 @@
   --muted:#9DB0CC;
   --faint:#5E7092;
   --blue:#5C9CFF;
-  --pink:#F06292;
-  --orange:#FF8A65;
-  --cyan:#4DD0E1;
   --lavender:#B8D4F5;
 
   --font-cn:'Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
@@ -62,10 +62,9 @@ body{
 body.no-webgl #gl{ display:none }
 body.no-webgl{
   background:
-    radial-gradient(52vw 52vw at 12% 8%, rgba(92,156,255,.34), transparent 60%),
-    radial-gradient(44vw 44vw at 78% 42%, rgba(240,98,146,.26), transparent 62%),
-    radial-gradient(40vw 40vw at 22% 78%, rgba(255,138,101,.22), transparent 62%),
-    radial-gradient(30vw 30vw at 62% 6%, rgba(77,208,225,.18), transparent 62%),
+    radial-gradient(52vw 52vw at 12% 8%, rgba(92,156,255,.20), transparent 60%),
+    radial-gradient(44vw 44vw at 78% 42%, rgba(240,98,146,.11), transparent 62%),
+    radial-gradient(40vw 40vw at 22% 78%, rgba(255,138,101,.09), transparent 62%),
     var(--bg);
 }
 
@@ -153,9 +152,9 @@ h1 .en{
 /* 像素方块：呼应「像素播放器」这个名字 */
 .pixels{ display:flex; gap:5px; margin:clamp(16px,2.6vh,26px) 0 }
 .pixels i{ width:9px; height:9px; background:var(--blue); animation:px 2.6s ease-in-out infinite }
-.pixels i:nth-child(2){ background:var(--cyan);   animation-delay:.13s }
-.pixels i:nth-child(3){ background:var(--pink);   animation-delay:.26s }
-.pixels i:nth-child(4){ background:var(--orange); animation-delay:.39s }
+.pixels i:nth-child(2){ background:#9FB8DE; animation-delay:.13s }
+.pixels i:nth-child(3){ background:#D391A8; animation-delay:.26s }
+.pixels i:nth-child(4){ background:#C99A86; animation-delay:.39s }
 .pixels i:nth-child(5){ background:var(--lavender); animation-delay:.52s }
 @keyframes px{ 0%,100%{ opacity:.2; transform:translateY(0) } 50%{ opacity:1; transform:translateY(-5px) } }
 
@@ -254,7 +253,7 @@ section{ padding:clamp(60px,10vh,116px) 0 }
   transition:color .25s, border-color .25s, transform .25s, background .25s;
 }
 .chip:hover{ color:var(--text); border-color:var(--line-hi); transform:translateY(-2px); background:rgba(30,46,72,.85) }
-.chip i{ width:5px; height:5px; border-radius:50%; background:var(--c,var(--blue)); box-shadow:0 0 8px var(--c,var(--blue)) }
+.chip i{ width:5px; height:5px; border-radius:50%; background:var(--c,var(--blue)); box-shadow:0 0 5px var(--c,var(--blue)); opacity:.85 }
 
 /* 技术规格表 */
 .specs{
@@ -292,8 +291,8 @@ body.no-webgl .stage-fallback{ display:grid; grid-template-columns:repeat(auto-f
   border:1px solid var(--line-hi); border-radius:22px;
   padding:clamp(30px,5vw,56px);
   background:
-    radial-gradient(80% 130% at 0% 0%, rgba(92,156,255,.2), transparent 58%),
-    radial-gradient(70% 120% at 100% 100%, rgba(240,98,146,.14), transparent 58%),
+    radial-gradient(80% 130% at 0% 0%, rgba(92,156,255,.13), transparent 58%),
+    radial-gradient(70% 120% at 100% 100%, rgba(240,98,146,.08), transparent 58%),
     rgba(22,34,54,.66);
   backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
   text-align:center;
@@ -388,55 +387,55 @@ footer{ border-top:1px solid var(--line); padding:clamp(34px,6vh,56px) 0 clamp(4
     </div>
 
     <div class="grid rise">
-      <article class="card" style="--c:var(--blue)">
+      <article class="card" style="--c:#6E9BE0">
         <span class="dot"></span><span class="n">01</span>
         <h3>绚丽背景</h3>
         <p>把封面纹理揉进双三次 Hermite 网格，随时间缓慢旋转、跟低频鼓点呼吸。你现在看到的这个页面背景，就是同一套算法。</p>
       </article>
 
-      <article class="card" style="--c:var(--cyan)">
+      <article class="card" style="--c:#86A9C8">
         <span class="dot"></span><span class="n">02</span>
         <h3>高保真解码</h3>
         <p>Media3 ExoPlayer + FFmpeg，配合经 JNI 接入的 miniaudio。原生播放 DSD64 / DFF，支持外置 USB DAC 与 ReplayGain 音量归一化。</p>
       </article>
 
-      <article class="card" style="--c:var(--pink)">
+      <article class="card" style="--c:#D391A8">
         <span class="dot"></span><span class="n">03</span>
         <h3>逐字歌词</h3>
         <p>网易云、AMLL、LRCLIB 多源可配优先级，日语罗马音引擎按需下载；可拖拽、可贴边收起的悬浮歌词，支持翻译与本地歌词。</p>
       </article>
 
-      <article class="card" style="--c:var(--orange)">
+      <article class="card" style="--c:#C99A86">
         <span class="dot"></span><span class="n">04</span>
         <h3>无缝与交叉淡入</h3>
         <p>完整的 Gapless 曲目间平滑过渡，交叉淡入淡出时长可自定义 —— 古典与 DJ 专辑里，这一条比什么都重要。</p>
       </article>
 
-      <article class="card" style="--c:var(--blue)">
+      <article class="card" style="--c:#6E9BE0">
         <span class="dot"></span><span class="n">05</span>
         <h3>云端打通</h3>
         <p>QQ 音乐、网易云、酷狗、Bilibili、Jellyfin、Navidrome、Telegram、Google Drive —— 统一收敛成同一个媒体库和同一条播放队列。</p>
       </article>
 
-      <article class="card" style="--c:var(--cyan)">
+      <article class="card" style="--c:#86A9C8">
         <span class="dot"></span><span class="n">06</span>
         <h3>AI 助手</h3>
         <p>AI 歌单生成、元数据补全、播放列表质量评分。Gemini、DeepSeek、OpenAI、Groq、OpenRouter 都能接，并统计 token 花费。</p>
       </article>
 
-      <article class="card" style="--c:var(--pink)">
+      <article class="card" style="--c:#D391A8">
         <span class="dot"></span><span class="n">07</span>
         <h3>媒体库管理</h3>
         <p>按歌曲、专辑、艺术家、流派、文件夹与播放列表浏览；智能解析多艺术家，TagLib / Jaudiotagger 直接改写标签。</p>
       </article>
 
-      <article class="card" style="--c:var(--orange)">
+      <article class="card" style="--c:#C99A86">
         <span class="dot"></span><span class="n">08</span>
         <h3>AutoEq 均衡器</h3>
         <p>完整参数化 EQ，自动读取耳机内参曲线生成补偿预设，另有摇滚、流行、古典等风格预设与自定义方案。</p>
       </article>
 
-      <article class="card" style="--c:var(--blue)">
+      <article class="card" style="--c:#6E9BE0">
         <span class="dot"></span><span class="n">09</span>
         <h3>连接性</h3>
         <p>Chromecast 推流、Android Auto、车机、Glance 桌面小组件与 Wear OS 手表；内置 Ktor 服务，浏览器打开网页即可遥控。</p>
@@ -453,17 +452,17 @@ footer{ border-top:1px solid var(--line); padding:clamp(34px,6vh,56px) 0 clamp(4
     </div>
 
     <div class="chips rise">
-      <span class="chip" style="--c:#5C9CFF"><i></i>网易云音乐</span>
-      <span class="chip" style="--c:#4DD0E1"><i></i>QQ 音乐</span>
-      <span class="chip" style="--c:#F06292"><i></i>酷狗音乐</span>
-      <span class="chip" style="--c:#FF8A65"><i></i>Bilibili</span>
-      <span class="chip" style="--c:#5C9CFF"><i></i>Jellyfin</span>
-      <span class="chip" style="--c:#4DD0E1"><i></i>Navidrome</span>
-      <span class="chip" style="--c:#F06292"><i></i>Subsonic</span>
-      <span class="chip" style="--c:#FF8A65"><i></i>Telegram</span>
-      <span class="chip" style="--c:#B8D4F5"><i></i>Google Drive</span>
-      <span class="chip" style="--c:#5C9CFF"><i></i>像素音源市场</span>
-      <span class="chip" style="--c:#9DB0CC"><i></i>本地媒体库</span>
+      <span class="chip" style="--c:#6E9BE0"><i></i>网易云音乐</span>
+      <span class="chip" style="--c:#7FB6DE"><i></i>QQ 音乐</span>
+      <span class="chip" style="--c:#D391A8"><i></i>酷狗音乐</span>
+      <span class="chip" style="--c:#D9A0B4"><i></i>Bilibili</span>
+      <span class="chip" style="--c:#9FB8DE"><i></i>Jellyfin</span>
+      <span class="chip" style="--c:#7FA9D8"><i></i>Navidrome</span>
+      <span class="chip" style="--c:#A8C4E4"><i></i>Subsonic</span>
+      <span class="chip" style="--c:#86A9C8"><i></i>Telegram</span>
+      <span class="chip" style="--c:#9FC0B4"><i></i>Google Drive</span>
+      <span class="chip" style="--c:#8CA6C8"><i></i>像素音源市场</span>
+      <span class="chip" style="--c:#8296B4"><i></i>本地媒体库</span>
     </div>
   </section>
 
@@ -594,6 +593,7 @@ const FRAG = /* glsl */`
   uniform float uScroll;   // 滚动进度 0..1
   uniform vec2  uMouse;    // -1..1
   uniform float uCell;     // 网格密度（窄屏用小网格）
+  uniform float uAspect;   // 宽高比，用来把暗角算成圆形
   uniform float uSettle;   // 进入时 0→1，避免第一帧闪烁
 
   const float TAU = 6.28318530718;
@@ -620,28 +620,32 @@ const FRAG = /* glsl */`
     return s;
   }
 
-  // 应用主题色：蓝 / 粉 / 橙 / 青 / 淡紫
-  vec3 palette(float i){
-    i = mod(floor(i), 5.0);
-    if(i < 0.5) return vec3(0.361, 0.612, 1.000);
-    if(i < 1.5) return vec3(0.941, 0.384, 0.573);
-    if(i < 2.5) return vec3(1.000, 0.541, 0.396);
-    if(i < 3.5) return vec3(0.302, 0.816, 0.882);
-    return vec3(0.722, 0.831, 0.961);
-  }
+  // M3E 的配色是"tonal"的：主色占主导，surface 沉下去，
+  // 颜色只做暗示。这里给的是低彩度色带，而不是五个色相轮转。
+  const vec3 SURFACE   = vec3(0.059, 0.094, 0.153);  // #0F1827 PixelPlayPurpleDark
+  const vec3 PRIMARY   = vec3(0.361, 0.612, 1.000);  // #5C9CFF
+  const vec3 SECONDARY = vec3(0.941, 0.384, 0.573);  // #F06292
 
-  // 单个控制点的颜色：各自相位呼吸，整体随滚动漂移色相
+  // 单个控制点：低频起伏的明度 + 极少量 secondary
   vec3 cell(vec2 c, float t){
-    float n = hash21(c + 3.17);
-    vec3 col = palette(n * 5.0 + t * 0.22 + uScroll * 1.7);
+    float n  = hash21(c + 3.17);
+    float n2 = hash21(c + 11.31);
 
-    float phase = n * TAU;
-    float pulse = 0.5 + 0.5 * sin(t * 1.5 + phase);
-    col *= 0.58 + 0.44 * pulse + uEnergy * 0.5 * pulse;
+    // 明度：避免整屏同亮，也别亮到抢正文
+    float tone = 0.20 + 0.46 * n + 0.10 * sin(t * 0.5 + n2 * TAU);
 
-    // 轻微向灰靠拢，避免整屏过饱和
+    // 色相：绝大多数格子就是 primary；只有一小撮蹭一点 secondary
+    float accent = smoothstep(0.80, 1.0, n) * (0.5 + 0.5 * sin(t * 0.23 + n2 * TAU));
+    vec3 col = mix(PRIMARY, SECONDARY, accent * 0.35);
+
+    // 压低彩度 —— 这是 M3E 和"彩虹渐变"最大的区别
+    float pulse = 0.5 + 0.5 * sin(t * 1.2 + n * TAU);
+    float chroma = 0.20 + 0.16 * uEnergy * pulse;
     float lum = dot(col, vec3(0.299, 0.587, 0.114));
-    return mix(col, vec3(lum), 0.14);
+    col = mix(vec3(lum), col, chroma);
+
+    // 明度映射回 surface 所在的深色区间
+    return mix(SURFACE, col, tone);
   }
 
   // 双三次 Hermite 网格插值
@@ -658,8 +662,9 @@ const FRAG = /* glsl */`
 
   void main(){
     vec2 p = vUv - 0.5;
-    p += vec2(uMouse.x * 0.045, uMouse.y * 0.035 + uScroll * 0.10);
-    float r = length(p);
+    p.x *= uAspect;                       // 等比坐标：暗角才是圆的
+    p += vec2(uMouse.x * 0.045 * uAspect, uMouse.y * 0.035 + uScroll * 0.10);
+    float r = length(p) / 0.62;           // 归一化，四角 ≈ 1
 
     float t = uTime * 0.5;
 
@@ -675,31 +680,34 @@ const FRAG = /* glsl */`
     vec2 guv = q * 0.88 + 0.5;
     vec3 col = gridSample(guv, uTime);
 
-    // 高频"封面纹理"揉进网格
+    // 高频"封面纹理"揉进网格 —— 幅度很小，只是让大面积不那么平
     float tex = fbm(guv * 15.0 + vec2(uTime * 0.04, 0.0));
-    col *= 0.87 + 0.26 * tex;
+    col *= 0.95 + 0.10 * tex;
 
-    // 像素网格线：名字里那个"像素"
+    // 像素网格线：名字里那个"像素"，只留一丝结构
     vec2 g = abs(fract(guv * uCell) - 0.5);
-    float line = smoothstep(0.43, 0.5, max(g.x, g.y));
-    col = mix(col, col * 0.66 + vec3(0.015, 0.030, 0.060), line * 0.55);
+    float line = smoothstep(0.44, 0.5, max(g.x, g.y));
+    col += vec3(0.016, 0.019, 0.025) * line * 0.30;
 
-    // 指针光晕
-    col += vec3(0.16, 0.30, 0.55) * exp(-3.0 * length(p - uMouse * 0.32)) * 0.55;
+    // tonal spot：M3 那种压在内容后面的一团柔光（近中性，只微冷）
+    col += vec3(0.050, 0.058, 0.072) * exp(-2.4 * length(p - vec2(0.0, -0.10)));
 
-    // 暗角 + 底部压暗，保证正文可读
-    col *= smoothstep(1.20, 0.16, r);
-    col = mix(col, vec3(0.059, 0.094, 0.153), smoothstep(0.62, 1.40, r) * 0.75);
+    // 指针光晕，同样保持低彩度
+    col += vec3(0.070, 0.082, 0.100) * exp(-3.4 * length(p - uMouse * 0.32)) * 0.20;
+
+    // 暗角 + 向主题底色收敛，保证正文可读
+    col *= smoothstep(1.15, 0.10, r);
+    col = mix(col, SURFACE, smoothstep(0.35, 1.10, r) * 0.92);
 
     // 颗粒
     float grain = hash21(gl_FragCoord.xy + fract(uTime) * vec2(131.1, 77.7));
-    col += (grain - 0.5) * 0.022;
+    col += (grain - 0.5) * 0.020;
 
     col *= uSettle;
 
-    gl_FragColor = vec4(max(col, 0.0), 1.0);
-    #include <tonemapping_fragment>
-    #include <colorspace_fragment>
+    // 颜色按显示空间（sRGB）直接输出，不走 tone mapping / colorspace 转换，
+    // 这样 CSS 里那套 #5C9CFF / #F06292 能和画布对得上。
+    gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
   }
 `;
 
@@ -708,7 +716,6 @@ const FRAG = /* glsl */`
    ══════════════════════════════════════════════════════════════════ */
 
 const canvas = document.getElementById('gl');
-const stageEl = document.getElementById('stage');
 const shotsEl = document.getElementById('screens');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -724,12 +731,13 @@ if (!renderer || !renderer.getContext()) {
   document.body.classList.add('no-webgl');
 }
 
-const PALETTE = ['#5C9CFF', '#F06292', '#FF8A65', '#4DD0E1'];
+// 粒子与手机辉光也走同一套低彩度点缀色
+const PALETTE = ['#6E9BE0', '#9FB8DE', '#D391A8', '#86A9C8'];
 const SHOTS = [
-  { file: '../assets/screenshot1.jpg', label: 'Now Playing', c: '#5C9CFF' },
-  { file: '../assets/screenshot2.jpg', label: 'Lyrics',      c: '#F06292' },
-  { file: '../assets/screenshot3.jpg', label: 'Library',     c: '#FF8A65' },
-  { file: '../assets/screenshot4.jpg', label: 'Settings',    c: '#4DD0E1' },
+  { file: '../assets/screenshot1.jpg', label: 'Now Playing', c: '#6E9BE0' },
+  { file: '../assets/screenshot2.jpg', label: 'Lyrics',      c: '#9FB8DE' },
+  { file: '../assets/screenshot3.jpg', label: 'Library',     c: '#D391A8' },
+  { file: '../assets/screenshot4.jpg', label: 'Settings',    c: '#86A9C8' },
 ];
 
 /* 手机截图纹���：把圆角机身 + 边框 + 截图 + 高光一次性画进 canvas，
@@ -828,9 +836,10 @@ function buildPhones() {
   SHOTS.forEach((s, i) => {
     const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.98, color: 0xffffff });
     const mesh = new THREE.Mesh(geo, mat);
-    const a = (i - (n - 1) / 2) * 0.52;           // 沿弧线排开
-    const radius = 7.4;
-    mesh.position.set(Math.sin(a) * radius, 0, -Math.cos(a) * radius + radius);
+    // 弧心在相机这一侧，所以两侧的手机要转回来、并稍稍退后
+    const SPREAD = 6.9, ARC = 0.45;
+    const a = (i / (n - 1) - 0.5) * 2 * ARC;
+    mesh.position.set(Math.sin(a) * SPREAD, 0, -Math.abs(a) * 1.6);
     mesh.rotation.y = -a;
     mesh.userData = { a, base: mesh.position.clone(), phase: i * 1.3, i };
     group.add(mesh);
@@ -883,12 +892,12 @@ function init() {
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120);
-  camera.position.set(0, 0, 9.4);
+  camera.position.set(0, 0, 2.2);
   scene.add(camera);
 
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.06;
+  // 截图是 UI，不做 tone mapping，否则颜色会被 ACES 压偏
+  renderer.toneMapping = THREE.NoToneMapping;
 
   // 背景平面挂在相机下，始终正对并铺满视野
   bgMat = new THREE.ShaderMaterial({
@@ -899,6 +908,7 @@ function init() {
       uScroll: { value: 0 },
       uMouse:  { value: new THREE.Vector2(0, 0) },
       uCell:   { value: 7.0 },
+      uAspect: { value: 1.4 },
       uSettle: { value: 0 },
     },
   });
@@ -912,7 +922,7 @@ function init() {
   scene.add(dust);
 
   phones = buildPhones();
-  phones.position.set(0, 0, 40);   // 初始在远处，等滚到该区域再推进来
+  phones.position.set(0, 0, -34);   // 初始在远处，等滚到该区域再推进来
   scene.add(phones);
 
   resize();
@@ -920,7 +930,7 @@ function init() {
 
   // 带 ?debug 时暴露内部对象，方便在控制台里检查渲染状态
   if (new URLSearchParams(location.search).has('debug')) {
-    window.__pixelplay = { THREE, renderer, scene, camera, bgMat, phones, bgMesh, spin };
+    window.__pixelplay = { THREE, renderer, scene, camera, bgMat, phones, bgMesh, spin, updatePhones };
   }
 
   if (reduced) { tickStatic(); } else { requestAnimationFrame(tick); }
@@ -940,6 +950,7 @@ function resize() {
   const h = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * dist;
   bgMesh.scale.set(h * camera.aspect * 1.02, h * 1.02, 1);
   bgMat.uniforms.uCell.value = W < 700 ? 6.0 : 8.0;
+  bgMat.uniforms.uAspect.value = camera.aspect;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -953,14 +964,14 @@ addEventListener('pointermove', (e) => {
 }, { passive: true });
 
 // 轮播拖拽（画布是 pointer-events:none，所以事件直接挂在 document 上）
-const drag = { on: false, x: 0, start: 0, base: 0, inside: false };
+const drag = { on: false, x: 0, start: 0 };
 function inStage(e) {
   const r = shotsEl.getBoundingClientRect();
   return e.clientY > r.top && e.clientY < r.bottom && e.clientX > r.left && e.clientX < r.right;
 }
 addEventListener('pointerdown', (e) => {
   if (!phones || !inStage(e)) return;
-  drag.on = true; drag.x = e.clientX; drag.start = spin.target; drag.inside = true;
+  drag.on = true; drag.x = e.clientX; drag.start = spin.target;
 }, { passive: true });
 addEventListener('pointermove', (e) => {
   if (drag.on) spin.target = drag.start + (e.clientX - drag.x) * 0.0055;
@@ -974,7 +985,6 @@ const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
 const easeOut = (v) => 1 - Math.pow(1 - v, 3);
 
 let clock = 0;
-let stageP = 0;
 
 function tick() {
   requestAnimationFrame(tick);
@@ -1001,10 +1011,10 @@ function tick() {
   bgMesh.position.x = mouse.x * 0.28;
   bgMesh.position.y = mouse.y * 0.2;
 
-  // 相机随滚动微微后仰
+  // 相机随指针轻微平移，视线始终落在轮播上
   camera.position.x += (mouse.x * 0.42 - camera.position.x) * 0.035;
   camera.position.y += (-mouse.y * 0.26 - camera.position.y) * 0.035;
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(0, 0, -3.2);
 
   dust.rotation.z = clock * 0.008;
   dust.position.x = mouse.x * 0.6;
@@ -1021,13 +1031,13 @@ function updatePhones() {
   if (!onScreen) return;
 
   // 该区块从下方滚入时推进并展开
-  const p = clamp01((innerHeight * 0.62 - r.top) / (innerHeight * 0.55));
-  stageP = p;
+  const p = clamp01((innerHeight * 0.72 - r.top) / (innerHeight * 0.55));
 
   const e = easeOut(p);
-  const z = 40 + (0 - 40) * e;
-  phones.position.set(0, (1 - e) * -0.8, z);
-  phones.scale.setScalar(0.62 + 0.38 * e);
+  // 窄屏整体缩小，保证整个环都在视野里（指数曲线：桌面保持 1.0，竖屏才明显收缩）
+  const fit = Math.max(0.12, Math.min(1, Math.pow(Math.max(camera.aspect, 0.2) / 1.25, 1.45)));
+  phones.position.set(0, (1 - e) * -0.9, -34 + (-6.8 - -34) * e);
+  phones.scale.setScalar((0.42 + 0.58 * e) * fit);
 
   if (!drag.on) spin.target += 0.0022;
   spin.value += (spin.target - spin.value) * 0.075;

@@ -244,6 +244,11 @@
     <string name="home_discover_similar_songs">相似歌曲</string>
     <string name="home_discover_recognition">听歌识曲</string>
     <string name="home_discover_kugou_fm">私人FM</string>
+    <string name="roaming_mode_title">漫游模式</string>
+    <string name="roaming_mode_familiar">熟悉</string>
+    <string name="roaming_mode_familiar_desc">多推荐你常听的口味</string>
+    <string name="roaming_mode_explore">探索</string>
+    <string name="roaming_mode_explore_desc">多推荐没听过的新歌</string>
     <string name="home_featured_quality_lossless">无损</string>
     <string name="home_featured_quality_hires">Hi-Res</string>
     <string name="home_featured_quality_hq">HQ</string>

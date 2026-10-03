@@ -246,6 +246,11 @@
     <string name="home_discover_similar_songs">Similar songs</string>
     <string name="home_discover_recognition">Song recognition</string>
     <string name="home_discover_kugou_fm">Personal FM</string>
+    <string name="roaming_mode_title">Roaming mode</string>
+    <string name="roaming_mode_familiar">Familiar</string>
+    <string name="roaming_mode_familiar_desc">Lean towards what you already listen to</string>
+    <string name="roaming_mode_explore">Explore</string>
+    <string name="roaming_mode_explore_desc">Lean towards songs you have not heard</string>
     <string name="home_featured_quality_lossless">Lossless</string>
     <string name="home_featured_quality_hires">Hi-Res</string>
     <string name="home_featured_quality_hq">HQ</string>

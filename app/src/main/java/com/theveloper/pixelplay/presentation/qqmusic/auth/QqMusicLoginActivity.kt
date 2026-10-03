@@ -58,7 +58,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -121,6 +123,17 @@ private fun QqMusicLoginScreen(
     viewModel: QqMusicLoginViewModel = hiltViewModel(),
     onClose: () -> Unit
 ) {
+    // 登录方式：0 = 网页登录（WebView 抓 cookie），1 = 手机号 + 短信验证码
+    var loginMode by rememberSaveable { mutableIntStateOf(0) }
+    if (loginMode == 1) {
+        QqMusicPhoneLoginScreen(
+            viewModel = viewModel,
+            onBackToWeb = { loginMode = 0 },
+            onClose = onClose,
+        )
+        return
+    }
+
     val loginState by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -252,6 +265,21 @@ private fun QqMusicLoginScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = stringResource(R.string.auth_cd_back)
+                        )
+                    }
+                },
+                actions = {
+                    // ⚡ 切到「手机号 + 短信验证码」登录（官方接口要求安全验证时可切回网页登录）
+                    TextButton(
+                        onClick = { loginMode = 1 },
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.qq_login_mode_phone),
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 },

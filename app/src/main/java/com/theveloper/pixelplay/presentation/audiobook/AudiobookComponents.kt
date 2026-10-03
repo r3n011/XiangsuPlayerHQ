@@ -95,12 +95,15 @@ class AudiobookTopBarState internal constructor(
  * 创建 [AudiobookTopBarState]：绑定听书页的 [listState]，自动处理
  * 「滚动收起 / 回顶展开」与收起进度换算。
  *
+ * 行为与关于页 / 账户页 / 设置分类页保持完全一致（同样的展开高度与吸附规则）：
+ * 松手时按当前高度是否过半决定吸附方向，且只有列表回到顶部才允许重新展开。
+ *
  * @param maxTopBarHeight 展开态高度（收起态固定为 64dp + 状态栏高度）
  */
 @Composable
 fun rememberAudiobookTopBarState(
     listState: LazyListState,
-    maxTopBarHeight: Dp = 140.dp,
+    maxTopBarHeight: Dp = 170.dp,
 ): AudiobookTopBarState {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -120,11 +123,13 @@ fun rememberAudiobookTopBarState(
             ).coerceIn(0f, 1f)
     }
 
-    // 松手后：回到列表顶部就弹回展开，否则保持收起
+    // 松手后：按当前高度过半与否决定吸附方向（与关于页 / 账户页一致），
+    // 并且只有列表回到顶部才允许重新展开，否则保持收起。
     LaunchedEffect(listState.isScrollInProgress) {
         if (!listState.isScrollInProgress) {
+            val shouldExpand = heightPx.value > (minHeightPx + maxHeightPx) / 2f
             val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-            val target = if (atTop) maxHeightPx else minHeightPx
+            val target = if (shouldExpand && atTop) maxHeightPx else minHeightPx
             if (heightPx.value != target) {
                 heightPx.animateTo(target, spring(stiffness = Spring.StiffnessMedium))
             }

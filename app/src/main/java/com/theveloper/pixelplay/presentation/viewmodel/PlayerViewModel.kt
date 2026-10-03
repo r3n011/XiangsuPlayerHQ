@@ -82,6 +82,7 @@ import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 import com.theveloper.pixelplay.data.preferences.TabletPlayerLayout
 import com.theveloper.pixelplay.data.preferences.PlayerStyle
+import com.theveloper.pixelplay.data.preferences.RoamingMode
 import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
 import com.theveloper.pixelplay.presentation.components.PlayerThumbStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
@@ -410,6 +411,8 @@ class PlayerViewModel @Inject constructor(
     // ─── 漫游模式状态 ───────────────────────────────────────────────────
     private val _isRoamingMode = MutableStateFlow(false)
     val isRoamingMode: StateFlow<Boolean> = _isRoamingMode.asStateFlow()
+    /** 本轮漫游使用的模式（后续续拉推荐沿用，避免熟悉/探索混用） */
+    private var activeRoamingMode: RoamingMode = RoamingMode.default
 
     // ─── 酷狗私人FM ────────────────────────────────────────────────────
     // ⚡ 移植自 md3Music 的酷狗私人FM：档位（红心/探索/小众）+ 游标续拉 + 队列去重。
@@ -506,6 +509,15 @@ class PlayerViewModel @Inject constructor(
             userPreferencesRepository.setMiniPlayerStyle(style)
         }
     }
+
+    /** ⚡ 网易云漫游模式（熟悉 / 探索）：首页「漫游」入口弹出选择，记住上次选择 */
+    val roamingMode: StateFlow<RoamingMode> = userPreferencesRepository
+        .roamingModeFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = RoamingMode.default
+        )
 
     /** 滚动时隐藏底部 chrome（底栏移出屏幕 + mini player 下移），默认开启 */
     val scrollHideChrome: StateFlow<Boolean> = userPreferencesRepository
@@ -8224,8 +8236,10 @@ class PlayerViewModel @Inject constructor(
     /**
      * 启动私人漫游模式
      * 获取推荐 → 批量获取详情和URL → 构造Song对象 → 用队列播放 → 打开全屏播放器
+     *
+     * @param mode 漫游模式（熟悉 / 探索）。传 null 时用上次记住的模式。
      */
-    fun startRoamingMode() {
+    fun startRoamingMode(mode: RoamingMode? = null) {
         viewModelScope.launch {
             if (!neteaseRepository.isLoggedIn) {
                 _toastEvents.emit("请先在设置中登录网易云账户")
@@ -8291,7 +8305,17 @@ class PlayerViewModel @Inject constructor(
                 }
 
                 // 1. 获取私人 FM 推荐（一次性取较多，提高命中有 URL 歌曲的概率）
-                val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie).getOrElse { err ->
+                //    漫游模式：显式传入则记住，否则沿用上次选择
+                val effectiveRoamingMode = mode
+                    ?: userPreferencesRepository.roamingModeFlow.first()
+                if (mode != null) {
+                    userPreferencesRepository.setRoamingMode(mode)
+                }
+                activeRoamingMode = effectiveRoamingMode
+                val songIds = personalFmApi.fetchPersonalFmRecommendations(
+                    cookie,
+                    effectiveRoamingMode.apiMode
+                ).getOrElse { err ->
                     Timber.e(err, "startRoamingMode: fetchPersonalFmRecommendations failed")
                     _toastEvents.emit("获取推荐失败：${err.message}")
                     return@launch
@@ -8649,7 +8673,10 @@ class PlayerViewModel @Inject constructor(
                 val cookie = neteaseRepository.getCookieString()
                 if (cookie.isBlank()) return@launch
 
-                val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie).getOrNull()
+                val songIds = personalFmApi.fetchPersonalFmRecommendations(
+                    cookie,
+                    activeRoamingMode.apiMode
+                ).getOrNull()
                     ?: return@launch
 
                 if (songIds.isEmpty()) return@launch
@@ -8809,7 +8836,10 @@ class PlayerViewModel @Inject constructor(
     private suspend fun loadMoreRoamingSongsInternal(count: Int) {
         val cookie = neteaseRepository.getCookieString()
         if (cookie.isBlank()) return
-        val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie).getOrNull() ?: return
+        val songIds = personalFmApi.fetchPersonalFmRecommendations(
+            cookie,
+            activeRoamingMode.apiMode
+        ).getOrNull() ?: return
         if (songIds.isEmpty()) return
 
         val existingQueue = _playerUiState.value.currentPlaybackQueue

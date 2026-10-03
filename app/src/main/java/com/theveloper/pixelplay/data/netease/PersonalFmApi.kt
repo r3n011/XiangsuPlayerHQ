@@ -88,14 +88,16 @@ class PersonalFmApi @Inject constructor(
     /**
      * 获取私人 FM 推荐歌曲列表（本地 SDK 直连官方加密接口）
      * @param cookie 用户的网易云 cookie 字符串（会合并进本地会话，保证登录态一致）
+     * @param fmMode 漫游模式（见 [com.theveloper.pixelplay.data.preferences.RoamingMode.apiMode]：
+     *   1 = 熟悉 F、4 = 探索 E，0 = 官方默认）
      * @return 推荐歌曲 ID 列表（Long 类型）
      */
-    suspend fun fetchPersonalFmRecommendations(cookie: String): Result<List<Long>> {
+    suspend fun fetchPersonalFmRecommendations(cookie: String, fmMode: Int = 0): Result<List<Long>> {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                Timber.d("$TAG: Fetching personal FM recommendations")
+                Timber.d("$TAG: Fetching personal FM recommendations (mode=$fmMode)")
                 syncCookieToSession(cookie)
-                val map = NcmApi.full.personalFm().getOrNull()
+                val map = NcmApi.full.personalFm(mode = fmMode).getOrNull()
                     ?: return@withContext Result.failure(Exception("personal_fm 请求失败"))
                 val root = ncmMapToJson(map)
                     ?: return@withContext Result.failure(Exception("personal_fm 响应解析失败"))

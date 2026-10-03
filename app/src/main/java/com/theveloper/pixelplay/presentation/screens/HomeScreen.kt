@@ -154,6 +154,7 @@ import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.StatsOverviewCard
 import com.theveloper.pixelplay.presentation.components.AiRecommendationCard
 import com.theveloper.pixelplay.presentation.components.AiMixSheet
+import com.theveloper.pixelplay.presentation.components.RoamingModeSheet
 import com.theveloper.pixelplay.presentation.components.resolveMainScreenBottomGradientHeight
 import com.theveloper.pixelplay.presentation.model.collectRecentlyPlayedSongIds
 import com.theveloper.pixelplay.presentation.model.mapRecentlyPlayedSongs
@@ -429,6 +430,9 @@ fun HomeScreen(
     var hasShownSetupHint by rememberSaveable { mutableStateOf(false) }
     var showHearingGuardRestReminder by remember { mutableStateOf(false) }
     var showAiMixSheet by remember { mutableStateOf(false) }
+    // ⚡ 网易云漫游模式选择（熟悉 / 探索）：点「发现」卡片的漫游入口先弹这个
+    var showRoamingModeSheet by remember { mutableStateOf(false) }
+    val roamingMode by playerViewModel.roamingMode.collectAsStateWithLifecycle()
     var showHomeCardOrderSheet by remember { mutableStateOf(false) }
     var showMessagesLoginDialog by remember { mutableStateOf(false) }
     var showFriendPickerSheet by remember { mutableStateOf(false) }
@@ -602,7 +606,7 @@ fun HomeScreen(
                 showAi = discoverShowAi,
                 onRoamingClick = {
                     if (isNeteaseLoggedIn) {
-                        playerViewModel.startRoamingMode()
+                        showRoamingModeSheet = true
                     } else {
                         showNeteaseLoginRequiredDialog = true
                     }
@@ -1096,7 +1100,7 @@ fun HomeScreen(
                                                 showAi = discoverShowAi,
                                                 onRoamingClick = {
                                                     if (isNeteaseLoggedIn) {
-                                                        playerViewModel.startRoamingMode()
+                                                        showRoamingModeSheet = true
                                                     } else {
                                                         showNeteaseLoginRequiredDialog = true
                                                     }
@@ -1667,6 +1671,18 @@ fun HomeScreen(
             aiMixViewModel = aiMixViewModel,
             playerViewModel = playerViewModel,
             onDismissRequest = { showAiMixSheet = false }
+        )
+    }
+
+    // ⚡ 漫游模式选择（熟悉 / 探索）：选中即开始漫游并记住选择
+    if (showRoamingModeSheet) {
+        RoamingModeSheet(
+            currentMode = roamingMode,
+            onPick = { mode ->
+                showRoamingModeSheet = false
+                playerViewModel.startRoamingMode(mode)
+            },
+            onDismissRequest = { showRoamingModeSheet = false }
         )
     }
 

@@ -478,6 +478,8 @@ class UserPreferencesRepository @Inject constructor(
         val DISCOVER_SHOW_ROAMING = booleanPreferencesKey("discover_show_roaming")
         val DISCOVER_SHOW_RADIO = booleanPreferencesKey("discover_show_radio")
         val DISCOVER_SHOW_AI = booleanPreferencesKey("discover_show_ai")
+        /** 网易云漫游（私人 FM）模式：熟悉 / 探索（记住上次选择） */
+        val ROAMING_MODE = stringPreferencesKey("roaming_mode")
         /** 首次打开时「还没导入 JS 音源」的提示是否已经提示过 */
         val LX_SOURCE_PROMPT_DISMISSED = booleanPreferencesKey("lx_source_prompt_dismissed")
         /** 开发者选项：强制使用低版本（软件/位图）模糊，便于在高版本设备上验证 */
@@ -2373,6 +2375,15 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setCenterNavButtonMode(mode: CenterNavButtonMode) {
         dataStore.edit { it[PreferencesKeys.CENTER_NAV_BUTTON_MODE] = mode.storageKey }
+    }
+
+    // ─── 网易云漫游模式（熟悉 / 探索）────────────────────────────────────────────
+
+    val roamingModeFlow: Flow<RoamingMode> =
+        pref { RoamingMode.fromStorageKey(it[PreferencesKeys.ROAMING_MODE]) }
+
+    suspend fun setRoamingMode(mode: RoamingMode) {
+        dataStore.edit { it[PreferencesKeys.ROAMING_MODE] = mode.storageKey }
     }
 
     // ─── Discover sheet visibility ──────────────────────────────────────────────
