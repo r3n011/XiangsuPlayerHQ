@@ -421,6 +421,8 @@ fun FullPlayerContent(
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     // Tablet player layout preference
     val tabletPlayerLayout by playerViewModel.tabletPlayerLayout.collectAsStateWithLifecycle()
+    // ⚡ 车机模式：开启后播放器强制平行布局（左播放器 / 右歌词）
+    val isCarModeEnabled by playerViewModel.carModeEnabled.collectAsStateWithLifecycle()
     // ⚡ 播放器样式（经典 / Expressive）：Expressive 移植自 Rhythm 的 expressive player
     val playerStyle by playerViewModel.playerStyle.collectAsStateWithLifecycle()
     val playerAccentBackground by playerViewModel.playerAccentBackground.collectAsStateWithLifecycle()
@@ -1466,8 +1468,10 @@ fun FullPlayerContent(
                 val playerWindowWidthDp = with(playerWindowDensity) { playerWindowSize.width.toDp() }
                 val playerWindowIsLandscape = playerWindowSize.width > playerWindowSize.height
                 val isTablet = playerWindowWidthDp >= 840.dp
-                val useParallelLayout = isTablet && isLandscape && playerWindowIsLandscape &&
-                    tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+                // ⚡ 车机模式：强制平行布局（左播放器 / 右歌词），不看方向与「平板播放器布局」偏好
+                val useParallelLayout = isCarModeEnabled ||
+                    (isTablet && isLandscape && playerWindowIsLandscape &&
+                        tabletPlayerLayout == TabletPlayerLayout.PARALLEL)
 
                 // 平行布局歌词设置卡片状态（在调用方管理，以便 metadata 歌词按钮可切换）
                 var showParallelLyricsSettings by remember { mutableStateOf(false) }
@@ -1641,9 +1645,11 @@ fun FullPlayerContent(
     val overlayWindowSize = LocalWindowInfo.current.containerSize
     val overlayWindowDensity = LocalDensity.current
     val isTablet = with(overlayWindowDensity) { overlayWindowSize.width.toDp() } >= 840.dp
-    val useParallelLayout = isTablet && isLandscape &&
-        overlayWindowSize.width > overlayWindowSize.height &&
-        tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+    // ⚡ 车机模式：强制平行布局（与上面渲染内容时的判断保持一致）
+    val useParallelLayout = isCarModeEnabled ||
+        (isTablet && isLandscape &&
+            overlayWindowSize.width > overlayWindowSize.height &&
+            tabletPlayerLayout == TabletPlayerLayout.PARALLEL)
     if (!useParallelLayout) {
     AnimatedVisibility(
         visible = showLyricsSheet,

@@ -1060,6 +1060,17 @@ class PlayerViewModel @Inject constructor(
             initialValue = TabletPlayerLayout.VERTICAL
         )
 
+    /**
+     * 车机模式：开启时播放器**强制**走平行布局（左播放器 / 右歌词），
+     * 不再看屏幕方向与「平板播放器布局」偏好。
+     */
+    val carModeEnabled: StateFlow<Boolean> = userPreferencesRepository.carModeEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     fun setTabletPlayerLayout(layout: TabletPlayerLayout) {
         viewModelScope.launch {
             userPreferencesRepository.setTabletPlayerLayout(layout)

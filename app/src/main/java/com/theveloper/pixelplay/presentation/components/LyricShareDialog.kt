@@ -113,11 +113,12 @@ internal fun LyricShareDialog(
     var error by remember { mutableStateOf<String?>(null) }
 
     // ⚡ 面板从**下往上**滑入（起始位置 = 面板自身高度，即屏幕下方），而不是原地淡入上浮。
+    //    时长/缓动与下面的「落位」完全一致，两个动作同步收尾才不会显得各走各的。
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         appear.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 360, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = LANDING_DURATION_MS, easing = FastOutSlowInEasing)
         )
     }
     // 关闭统一走这里：先播退出动画，播完再通知上层销毁
@@ -132,20 +133,27 @@ internal fun LyricShareDialog(
     }
 
     // ⚡ 共享元素式的「落位」：长按的那一行先按它在歌词列表里的位置与大小出现，
-    //    再飞到它在本面板里的行位置 —— 与面板上滑同时进行，接上「从歌词里拽出来」的连续感。
+    //    再飞到它在本面板里的行位置 —— 与面板上滑同时进行（同长同缓动），
+    //    落地那一刻正好是面板停稳的那一刻，接上「从歌词里拽出来」的连续感。
     var landedBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     val landing = remember { Animatable(1f) }
+    // ⚡ 落位只播一次：目标行滚出可视区时 onGloballyPositioned 会清空/重设 landedBounds，
+    //    若不加这个开关，滚出去再滚回来动画会**重播**一遍。
+    var landingPlayed by remember { mutableStateOf(false) }
     LaunchedEffect(landedBounds, originBounds) {
+        if (landingPlayed) return@LaunchedEffect
         val ob = originBounds
         val tb = landedBounds
         if (ob == null || tb == null || tb.height <= 0f) {
-            landing.snapTo(1f)
+            // 没有起点（例如非长按进入）就不播，直接显示真实行
+            if (ob == null) landing.snapTo(1f)
             return@LaunchedEffect
         }
+        landingPlayed = true
         landing.snapTo(0f)
         landing.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = LANDING_DURATION_MS, easing = FastOutSlowInEasing)
         )
     }
 
@@ -293,16 +301,20 @@ internal fun LyricShareDialog(
                                     }
                                 } else Modifier
                             )
-                            // 落位期间本行淡入（「英雄元素」飞到这里后接管）
+                            // 落位期间本行隐藏（由「英雄元素」代表它飞行），落地瞬间接管。
+                            // 硬切换而非交叉淡入：英雄元素落地时的位置/字号与这一行完全重合，
+                            // 切换看不出来；交叉淡入反而会让两行字叠在一起发糊。
                             .then(
-                                if (isLandingRow && originBounds != null && landedBounds != null) {
-                                    Modifier.graphicsLayer { alpha = landing.value }
+                                if (isLandingRow && originBounds != null &&
+                                    landedBounds != null && landing.value < 1f
+                                ) {
+                                    Modifier.graphicsLayer { alpha = 0f }
                                 } else Modifier
                             )
                             .clip(RoundedCornerShape(14.dp))
                             .background(rowColor)
                             .clickable { selected = if (chosen) selected - index else selected + index }
-                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                            .padding(horizontal = SHARE_ROW_H_PADDING, vertical = SHARE_ROW_V_PADDING)
                     ) {
                         Text(
                             text = line,
@@ -392,34 +404,38 @@ internal fun LyricShareDialog(
         }
 
         // ⚡ 落位动画的「英雄元素」：把长按的那句歌词画在**面板之上**（不受 LazyColumn 裁剪），
-        //    从它在歌词列表里的位置/大小，连续地飞到面板中对应行的位置；面板同时从下往上滑入。
-        //    于是视觉上就是「那句歌词被压下去、被拽出来，正好落进面板里的那一行」。
+        //    从它在歌词列表里的位置/大小，连续地飞到面板中对应行的**文字位置**；面板同时上滑。
+        //    终点严格对齐到那一行的文字框（含行内 16dp/14dp 内边距），
+        //    所以落地瞬间硬切换成真实行时看不出跳变。
         val heroOrigin = originBounds
         val heroTarget = landedBounds
         val heroP = landing.value
         if (heroOrigin != null && heroTarget != null && heroTarget.height > 0f && heroP < 1f) {
-            // 行的「静止位置」= 当前窗口位置 - 面板滑动位移（与面板滑动无关）
-            val targetRestTop = heroTarget.top - panelShift
-            val heroTop = heroOrigin.top + (targetRestTop - heroOrigin.top) * heroP
-            val heroLeft = heroOrigin.left + (heroTarget.left - heroOrigin.left) * heroP
-            val heroScale0 = (heroOrigin.height / heroTarget.height).coerceIn(0.5f, 2.5f)
+            val density = LocalDensity.current
+            val padH = with(density) { SHARE_ROW_H_PADDING.toPx() }
+            val padV = with(density) { SHARE_ROW_V_PADDING.toPx() }
+            // 目标 = 该行文字框（行框去掉内边距），并换算成与面板滑动无关的静止坐标
+            val targetTop = heroTarget.top - panelShift + padV
+            val targetLeft = heroTarget.left + padH
+            val targetWidth = (heroTarget.width - padH * 2).coerceAtLeast(1f)
+            val heroTop = heroOrigin.top + (targetTop - heroOrigin.top) * heroP
+            val heroLeft = heroOrigin.left + (targetLeft - heroOrigin.left) * heroP
+            val heroWidth = heroOrigin.width + (targetWidth - heroOrigin.width) * heroP
+            val heroScale0 = (heroOrigin.height / (heroTarget.height - padV * 2).coerceAtLeast(1f))
+                .coerceIn(0.5f, 2.5f)
             val heroScale = heroScale0 + (1f - heroScale0) * heroP
             Text(
                 text = lines.getOrNull(initialIndex).orEmpty(),
                 color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = GoogleSansRounded,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .width(with(LocalDensity.current) { heroTarget.width.toDp() })
+                    .width(with(density) { heroWidth.toDp() })
                     .offset { IntOffset(heroLeft.roundToInt(), heroTop.roundToInt()) }
                     .graphicsLayer {
                         transformOrigin = TransformOrigin(0f, 0f)
                         scaleX = heroScale
                         scaleY = heroScale
-                        // 末段淡出，交回面板里真实的那一行
-                        alpha = 1f - heroP
                     }
             )
         }
@@ -606,6 +622,13 @@ internal suspend fun shareLyricImage(
  * Isolation 是持续流动的，静态图取一个固定的、形态舒展的时间点即可。
  */
 private const val SHARE_BACKGROUND_TIME_SEC = 12f
+
+/** 面板滑入与「落位」共用的时长：两者同长同缓动，才会同步收尾、显得连贯。 */
+private const val LANDING_DURATION_MS = 420
+
+/** 歌词行的内边距（「英雄元素」的终点要对齐到行的**文字框**，必须与这里一致）。 */
+private val SHARE_ROW_H_PADDING = 16.dp
+private val SHARE_ROW_V_PADDING = 14.dp
 
 /** 按像素宽度折行（中英文都按字符宽度累计，够用且不依赖排版引擎） */
 private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {    if (text.isBlank()) return listOf("")
