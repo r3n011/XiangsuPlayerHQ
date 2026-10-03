@@ -125,8 +125,10 @@ float3 applyLightWave(float3 okLabColor, float2 uv) {
         )
     );
     // ⚡ 低频能量同时增强光波幅度：鼓点上明度波纹更明显（液态跟随的一部分）
+    //    基线从 1.1 收到 0.97：光波不再整体提亮，而是围绕取色后的暗底做明暗起伏，
+    //    保证压在背景上的歌词 / 控制按钮始终有对比度。
     okLabColor.x = clamp(
-        okLabColor.x * (1.1 + clamp(u_bass, 0.0, 1.0) * 0.10 - 0.1 * wave3),
+        okLabColor.x * (0.97 + clamp(u_bass, 0.0, 1.0) * 0.06 - 0.08 * wave3),
         0.0,
         1.0
     );
@@ -190,8 +192,8 @@ half4 main(float2 fragCoord) {
     }
 
     // ⚡ 律动亮度脉冲：鼓点上画面轻微提亮（clamp 统一收在最后；辅助项，主表现是
-    //    波纹相位推进与流速提升）
-    color *= (1.0 + bass * 0.12);
+    //    波纹相位推进与流速提升）。幅度从 0.12 收到 0.06，避免鼓点把背景顶得发白。
+    color *= (1.0 + bass * 0.06);
 
     float3 clamped = clamp(color, 0.0, 1.0);
     return half4(clamped.r, clamped.g, clamped.b, 1.0);
@@ -328,7 +330,14 @@ internal class IsolationBackgroundState(
         val next = FloatArray(12)
         for (i in 0 until 4) {
             val rgb = palette[paletteOrder[i]]
-            srgbToOkLab(floatArrayOf(rgb[0] / 255f, rgb[1] / 255f, rgb[2] / 255f)).copyInto(next, i * 3)
+            val lab = srgbToOkLab(floatArrayOf(rgb[0] / 255f, rgb[1] / 255f, rgb[2] / 255f))
+            // ⚡ 取色统一压暗：AMLL 原版把封面主色直接铺满全屏，亮部太刺眼，
+            //    歌词 / 按钮压在上面时对比度不够。这里把 OkLab 的 L 压到深色区间，
+            //    彩度略收一点（避免整屏糊成高饱和色块），并给暗部兜一个下限免得死黑。
+            lab[0] = (lab[0] * 0.70f).coerceIn(0.045f, 0.56f)
+            lab[1] *= 0.90f
+            lab[2] *= 0.90f
+            lab.copyInto(next, i * 3)
         }
         transitionTo(next)
     }
@@ -453,7 +462,7 @@ internal object IsolationCpuRenderer {
         val bassClamped = bass.coerceIn(0f, 1f)
         val bassScale = 1f + bassClamped * 0.10f
         val bassPhase = bassClamped * 2.6f
-        val bassBrightness = 1f + bassClamped * 0.12f
+        val bassBrightness = 1f + bassClamped * 0.06f
 
         val ditherOffX = (randomValues[0] + randomValues[1] * 0.5f) * 97f
         val ditherOffY = (randomValues[1] + randomValues[2] * 0.5f) * 97f
@@ -518,7 +527,8 @@ internal object IsolationCpuRenderer {
                                 rndZ,
                         ),
                     )
-                    lab[0] = (lab[0] * (1.1f + bassClamped * 0.10f - 0.1f * wave3)).coerceIn(0f, 1f)
+                    // ⚡ 与 shader 保持一致：光波基线 0.97（不再整体提亮）
+                    lab[0] = (lab[0] * (0.97f + bassClamped * 0.06f - 0.08f * wave3)).coerceIn(0f, 1f)
                 }
                 okLabToSrgb(lab, srgb)
 

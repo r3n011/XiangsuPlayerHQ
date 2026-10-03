@@ -70,10 +70,13 @@ fun ExpressiveTopBarContent(
     titleMinWidthAxis: Float = DefaultTopBarTitleCompressedWidthAxis,
     supportingContent: (@Composable () -> Unit)? = null,
     // ⚡ 收起态标题胶囊：collapseFraction 后段在标题背后淡入一个胶囊底（毛玻璃顶栏样式用）
-    collapsedTitleCapsule: Boolean = false
+    collapsedTitleCapsule: Boolean = false,
+    // ⚡ 标题只在收起后出现（展开态交给页面自己的大标题，避免同一书名显示两遍）
+    titleOnlyWhenCollapsed: Boolean = false
 ) {
     val clampedFraction = collapseFraction.coerceIn(0f, 1f)
     val titleScale = lerp(titleScaleRange.first, titleScaleRange.second, clampedFraction)
+    val titleAlpha = if (titleOnlyWhenCollapsed) clampedFraction else 1f
     val titlePaddingStart = lerp(expandedTitleStartPadding, collapsedTitleStartPadding, clampedFraction)
     val titlePaddingEnd = lerp(expandedTitleEndPadding, collapsedTitleEndPadding, clampedFraction)
     val titleVerticalBiasTarget = collapsedTitleVerticalBias
@@ -160,6 +163,7 @@ fun ExpressiveTopBarContent(
                     maxLines = maxLines,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
+                        .alpha(titleAlpha)
                         // ⚡ 收起态胶囊底：绘制在标题背后、向外扩 12/6dp，不影响文本布局
                         .drawBehind {
                             if (capsuleAlpha > 0.01f) {

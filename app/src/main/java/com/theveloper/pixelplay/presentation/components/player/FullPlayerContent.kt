@@ -1428,17 +1428,20 @@ fun FullPlayerContent(
                             modifier = Modifier.fillMaxSize()
                         )
                         // ⚡ 可读性遮罩：绚丽背景是高饱和彩色流体，亮部会压低歌名/歌词/控制
-                        //    文字的对比度。叠一层轻微的黑色的垂直渐变（上浅下深）——顶部尽量
-                        //    保留背景观感，歌词与底部控制区适度压暗保证文字可读。
+                        //    文字的对比度。叠一层黑色的垂直渐变（上浅下深）——顶部尽量
+                        //    保留背景观感，歌词与底部控制区压暗保证文字可读。
+                        //    配合 Isolation 取色端已经整体压暗（L*0.70），这里的强度按
+                        //    「中段歌词 / 底部控制」重点补，不再只靠底部一档。
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
                                     Brush.verticalGradient(
                                         colorStops = arrayOf(
-                                            0.0f to Color.Black.copy(alpha = 0.08f),
-                                            0.45f to Color.Black.copy(alpha = 0.20f),
-                                            1.0f to Color.Black.copy(alpha = 0.40f)
+                                            0.0f to Color.Black.copy(alpha = 0.16f),
+                                            0.40f to Color.Black.copy(alpha = 0.34f),
+                                            0.72f to Color.Black.copy(alpha = 0.46f),
+                                            1.0f to Color.Black.copy(alpha = 0.56f)
                                         )
                                     )
                                 )

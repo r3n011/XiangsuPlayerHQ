@@ -198,7 +198,7 @@ class QqMusicPhoneAuthClient @Inject constructor(
     }
 
     private fun JSONObject.findBusinessObject(): JSONObject? {
-        val firstLevel = listOf(this) + listOf("data", "response", "result").mapNotNull(::objectValue)
+        val firstLevel = listOf(this) + listOf("data", "response", "result").mapNotNull { objectValue(it) }
         firstLevel.forEach { root -> root.objectValue(LOGIN_MODULE)?.let { return it } }
         firstLevel.drop(1).forEach { wrapper ->
             listOf("data", "response", "result").forEach { name ->

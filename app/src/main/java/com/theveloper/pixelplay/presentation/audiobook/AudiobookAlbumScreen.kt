@@ -238,7 +238,8 @@ fun AudiobookAlbumScreen(
         }
 
         // 渐入式顶栏：与关于页 / 账户页 / 专辑详情页同款
-        // 书名放顶栏、作者放下面 AlbumHeader，避免同一信息重复显示两遍
+        // ⚡ 书名由页面自己的 AlbumHeader 展示（大标题），顶栏展开态不画标题；
+        //    只有列表上滑收起后才在顶栏显示书名，避免同一信息并排显示两遍。
         CollapsibleCommonTopBar(
             title = displayTitle,
             collapseFraction = topBarState.collapseFraction,
@@ -246,11 +247,12 @@ fun AudiobookAlbumScreen(
             onBackClick = onBack,
             expandedTitleStartPadding = 20.dp,
             collapsedTitleStartPadding = 68.dp,
+            titleOnlyWhenCollapsed = true,
         )
     }
 }
 
-/** 专辑头部：封面 + 集数 + 简介（超长可展开）。书名 / 作者由顶部渐入式顶栏展示，此处不再重复。 */
+/** 专辑头部：封面 + 书名 + 作者 + 集数 + 简介（超长可展开）。 */
 @Composable
 private fun AlbumHeader(
     title: String,
@@ -275,6 +277,15 @@ private fun AlbumHeader(
             )
             Spacer(Modifier.width(16.dp))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 author?.takeIf { it.isNotBlank() }?.let {
                     Text(
                         text = it,

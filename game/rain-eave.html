@@ -172,8 +172,8 @@ function makeStone(size = 512, tiles = 4) {
 
       // ── 水洼：低频团块 × 只积在低处（缝里）
       const blob = fbm(x * 0.021 + 11.3, y * 0.021 + 4.7, 3);
-      const low = smoothstep(0.66, 0.40, h);
-      const puddle = clamp01((blob - 0.50) * 5.2) * low;
+      const low = smoothstep(0.70, 0.38, h);
+      const puddle = clamp01((blob - 0.455) * 5.2) * low;
 
       // ── albedo：深板岩，缝里偏冷并带一点苔
       const base = 0.085 + 0.055 * tint + 0.045 * grain;
@@ -186,9 +186,10 @@ function makeStone(size = 512, tiles = 4) {
 
       a.data[i] = cr * 255; a.data[i + 1] = cg * 255; a.data[i + 2] = cb * 255; a.data[i + 3] = 255;
 
-      // ── roughness：湿 = 光滑，所以水洼区粗糙度很低
+      // 水洼粗糙度别压到 0：太低会让提灯在正下方烧出一个镜面光斑，
+      // 看起来像地上贴了块发光贴纸。0.13 刚好是"湿"的光泽。
       const dry = 0.92 - 0.10 * grain;
-      const rough = lerp(dry, 0.045, puddle);
+      const rough = lerp(dry, 0.13, puddle);
       r.data[i] = r.data[i + 1] = r.data[i + 2] = rough * 255; r.data[i + 3] = 255;
 
       p.data[i] = p.data[i + 1] = p.data[i + 2] = puddle * 255; p.data[i + 3] = 255;
@@ -315,14 +316,14 @@ renderer.toneMappingExposure = 1.42;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const FOG_COL = 0x0A1220;
-scene.fog = new THREE.FogExp2(FOG_COL, 0.052);
+const FOG_COL = 0x1A2738;
+scene.fog = new THREE.FogExp2(FOG_COL, 0.030);
 scene.background = (() => {
   const c = mkCanvas(4), g = c.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 0, 4);
-  grad.addColorStop(0, '#0B1524');
-  grad.addColorStop(0.55, '#0A1220');
-  grad.addColorStop(1, '#060A12');
+  grad.addColorStop(0, '#24354A');
+  grad.addColorStop(0.55, '#1A2738');
+  grad.addColorStop(1, '#0E1622');
   g.fillStyle = grad; g.fillRect(0, 0, 4, 4);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -337,7 +338,7 @@ camera.lookAt(CAM_LOOK);
 
 // 环境光：夜雨不是全黑的。地面色那档专门用来照亮朝下的面（檐底、柱底），
 // 没有它整个屋檐会是一块纯黑。
-const hemi = new THREE.HemisphereLight(0x33465F, 0x1B2430, 0.62);
+const hemi = new THREE.HemisphereLight(0x33465F, 0x2C3848, 0.70);
 scene.add(hemi);
 // 一点来自雨云后方的方向光，给屋檐和柱子勾边
 const rim = new THREE.DirectionalLight(0x6E86A8, 0.45);
@@ -381,7 +382,7 @@ function buildComposer(quality) {
   if (composer) composer.dispose();
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.62, 0.72, 0.72);
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.40, 0.78, 0.86);
   bloomPass.enabled = quality > 0;
   composer.addPass(bloomPass);
   finishPass = new ShaderPass(FinishShader);
@@ -407,16 +408,17 @@ function buildEnvironment() {
       void main(){
         vec3 d = normalize(vP);
         float up = d.y * 0.5 + 0.5;
-        // 夜空 → 地面反射
-        vec3 sky = mix(vec3(0.030,0.052,0.090), vec3(0.012,0.020,0.038), smoothstep(0.5,1.0,up));
-        vec3 grd = vec3(0.016,0.020,0.026);
+        // 这张图会被当成湿面的反射源，所以整体不能太暗 ——
+        // 环境贴图是"湿"这件事唯一的高光来源，压暗了地面就只剩漫反射。
+        vec3 sky = mix(vec3(0.075,0.105,0.150), vec3(0.030,0.048,0.078), smoothstep(0.5,1.0,up));
+        vec3 grd = vec3(0.045,0.052,0.062);
         vec3 col = mix(grd, sky, smoothstep(0.42, 0.62, up));
         // 窗方向的暖光斑
         vec3 win = normalize(vec3(0.28, 0.22, -1.0));
         float w = pow(max(dot(d, win), 0.0), 26.0);
         col += vec3(1.00, 0.66, 0.34) * w * 1.5;
         float w2 = pow(max(dot(d, win), 0.0), 5.0);
-        col += vec3(0.60, 0.40, 0.22) * w2 * 0.14;
+        col += vec3(0.60, 0.40, 0.22) * w2 * 0.16;
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
@@ -533,12 +535,14 @@ function buildWall() {
 /* 从窗口斜射进院子的丁达尔光锥 */
 function buildLightCone() {
   const from = WORLD.window.clone();
-  const to = new THREE.Vector3(-0.8, 0.0, 1.6);
+  // 收在地面上方一点。压到 y=0 会让锥体底面贴着地砖铺开，
+  // 看上去就是一块贴在地面上的亮三角形，而不是一束光。
+  const to = new THREE.Vector3(-0.6, 0.55, 1.2);
   const dir = to.clone().sub(from);
   const len = dir.length();
   dir.normalize();
 
-  const geo = new THREE.CylinderGeometry(3.3, 0.85, len, 28, 1, true);
+  const geo = new THREE.CylinderGeometry(2.0, 0.75, len, 28, 1, true);
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
@@ -647,11 +651,17 @@ function buildEaves() {
   scene.add(lip);
 
   // 檐柱，给画面一点竖向结构（放在取景范围内，别丢到画面外）
-  for (const x of [-6.6, 6.6]) {
-    const col = new THREE.Mesh(new THREE.BoxGeometry(0.30, WORLD.eaveY + 2.6, 0.30), woodMat);
-    col.position.set(x, (WORLD.eaveY + 2.6) / 2, WORLD.eaveZ + 0.9);
+  for (const x of [-4.7, 4.7]) {
+    const col = new THREE.Mesh(new THREE.BoxGeometry(0.26, WORLD.eaveY + 2.6, 0.26), woodMat);
+    col.position.set(x, (WORLD.eaveY + 2.6) / 2, WORLD.eaveZ + 0.5);
     scene.add(col);
   }
+
+  // 檐下的一盏很暗的冷光，专职把屋檐底面和柱子从纯黑里捞出来。
+  // 只靠半球光的 groundColor 不够 —— 檐底几乎正对下方，拿到的是最暗那一档。
+  const eaveFill = new THREE.PointLight(0x5E7392, 9.0, 13, 2);
+  eaveFill.position.set(0, WORLD.eaveY - 0.75, WORLD.eaveZ - 1.4);
+  scene.add(eaveFill);
 
   // 水滴（细长球），位置是时间的确定函数
   const geo = new THREE.SphereGeometry(1, 6, 6);
@@ -703,7 +713,7 @@ const RAIN_VERT = /* glsl */`
   attribute vec3 aRand;          // x: 速度 y: 长度 z: 相位
   uniform float uTime, uWind, uRainAmount, uFallH;
   uniform vec3 uWinPos, uLanternPos;
-  uniform float uWidth;
+  uniform float uWidth, uPxScale;   // uPxScale = 视口高 / (2·tan(fov/2))
   varying float vAlpha;
   varying vec2 vUv;
   varying float vWarm;
@@ -719,24 +729,38 @@ const RAIN_VERT = /* glsl */`
     base.x += lean;
     base.z += lean * 0.35;
 
+    float dCam = distance(base, cameraPosition);
+
     vec3 fall = normalize(vec3(uWind * 0.16, -1.0, uWind * 0.06));
-    vec3 side = normalize(vec3(-fall.z, 0.0, fall.x));
+    vec3 toCam = cameraPosition - base;
+    // 横轴必须"面向相机"。早先用的 (-fall.z, 0, fall.x) 在风很小的时候
+    // 两个分量都趋近 0，方向基本是随机的，雨丝就会时而正对时而侧对。
+    vec3 side = cross(fall, normalize(toCam));
+    float sl = length(side);
+    side = sl > 1e-3 ? side / sl : vec3(1.0, 0.0, 0.0);
 
     float len = (0.34 + aRand.y * 0.42) * (0.55 + uRainAmount * 0.75);
-    vec3 wp = base + side * (position.x * uWidth * (0.7 + aRand.y)) + fall * (-position.y * len);
+
+    // 关键：给雨丝一个屏幕空间的最小宽度。
+    // 纯世界空间宽度在远处只有零点几个像素，栅格化会把它按像素中心取整，
+    // 于是 1 万条雨丝会织出一张规则的摩尔纹格子。
+    float minW = 1.35 * dCam / uPxScale;
+    float w = max(uWidth * (0.7 + aRand.y), minW);
+
+    vec3 wp = base + side * (position.x * w) + fall * (-position.y * len);
 
     // 亮度：靠近光源才看得见
     float dW = distance(wp, uWinPos);
     float dL = distance(wp, uLanternPos);
-    float lit = 0.14
-              + 2.40 / (1.0 + dW * dW * 0.20)
-              + 2.80 / (1.0 + dL * dL * 0.26);
-    lit *= (0.55 + 0.45 * uRainAmount);
+    // 环境项是雨的主体：真实雨幕大部分不是被灯照亮的，而是散射天光。
+    // 灯只负责在近处勾出几根更亮的丝。
+    float lit = 0.40
+              + 2.20 / (1.0 + dW * dW * 0.22)
+              + 2.60 / (1.0 + dL * dL * 0.28);
+    lit *= (0.32 + 0.68 * uRainAmount);
 
-    // 太近的雨丝会变成一坨，剔除掉
-    float dCam = distance(wp, cameraPosition);
     float nearFade = smoothstep(0.35, 1.4, dCam);
-    float farFade  = 1.0 - smoothstep(22.0, 34.0, dCam);
+    float farFade  = 1.0 - smoothstep(20.0, 30.0, dCam);
 
     vAlpha = clamp(lit, 0.0, 2.2) * nearFade * farFade;
     vWarm = clamp(1.1 / (1.0 + dW * dW * 0.10), 0.0, 1.0);
@@ -789,9 +813,10 @@ function buildRain(count) {
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     uniforms: {
       uTime: { value: 0 }, uWind: { value: 0 }, uRainAmount: { value: 0.6 },
-      uFallH: { value: B.h }, uWidth: { value: 0.0095 },
+      uFallH: { value: B.h }, uWidth: { value: 0.0085 },
+      uPxScale: { value: 785 },
       uWinPos: { value: WORLD.window.clone() },
-      uLanternPos: { value: new THREE.Vector3(0, 0.6, 0) },
+      uLanternPos: { value: new THREE.Vector3(0, LANTERN_Y, 0) },
     },
   });
   rainMesh = new THREE.Mesh(geo, rainMat);
@@ -829,15 +854,18 @@ const RIPPLE_FRAG = /* glsl */`
     return vec2(hash12(p), hash12(p + vec2(37.7, 11.3)));
   }
 
-  // 地面是 PlaneGeometry(46,46) 绕 X 轴 -90°、再平移到 z=-2，
-  // 所以世界坐标 → 地面 UV 的换算是：
-  //   u = x/46 + 0.5 ,  v = (-z-2)/46 + 0.5 ,  再平铺 6 次
-  // 写错会导致涟漪落在干石板上。
+  // 地面是 PlaneGeometry(46,46) 绕 X 轴 -90°、再平移到 z=-2。
+  // 推导：局部 (x,y) 经 R_x(-90°) 变成 (x, 0, -y)，再加位移 z=-2，
+  // 所以 世界z = -局部y - 2  →  局部y = -世界z - 2，
+  // 而 v = 局部y/46 + 0.5，于是：
+  //   u = x/46 + 0.5 ,  v = (-z - 2)/46 + 0.5 ,  再平铺 6 次
+  // 注意 GROUND_OFFSET 是正的 2.0：写成 -2.0 会让取样上下翻转，
+  // 涟漪就落在干石板上了。
   #define GROUND_SIZE 46.0
-  #define GROUND_Z -2.0
+  #define GROUND_OFFSET 2.0
   #define STONE_REP 6.0
   vec2 stoneUV(vec2 xz){
-    vec2 uv = vec2(xz.x / GROUND_SIZE + 0.5, (-xz.y - GROUND_Z) / GROUND_SIZE + 0.5);
+    vec2 uv = vec2(xz.x / GROUND_SIZE + 0.5, (-xz.y - GROUND_OFFSET) / GROUND_SIZE + 0.5);
     return fract(uv * STONE_REP);
   }
 
@@ -896,15 +924,17 @@ const RIPPLE_FRAG = /* glsl */`
 
     vec3 n = normalize(vec3(-grad.x * 0.045, 1.0, -grad.y * 0.045));
 
-    // 高光：窗光 + 提灯，各自算一次
+    // 高光：窗光 + 提灯，各自算一次。
+    // 指数不能给太大 —— pow(90) 只剩一个针尖大的点，
+    // 湿地该有的是一片被拉长的高光，不是亮点。
     vec3 V = normalize(cameraPosition - vWorld);
     float sp = 0.0;
     vec3 lw = normalize(uWinPos - vWorld);
-    sp += pow(max(dot(reflect(-V, n), lw), 0.0), 90.0) * uWinI;
+    sp += pow(max(dot(reflect(-V, n), lw), 0.0), 26.0) * uWinI * 0.85;
     vec3 ll = normalize(uLanternPos - vWorld);
-    sp += pow(max(dot(reflect(-V, n), ll), 0.0), 60.0) * uLanternI;
-    // 波峰本身的一点亮边
-    sp += abs(h) * 0.22;
+    sp += pow(max(dot(reflect(-V, n), ll), 0.0), 18.0) * uLanternI * 0.75;
+    // 波峰本身的一点亮边，让涟漪即使没有光也能读出来
+    sp += abs(h) * 0.30;
 
     vec3 col = vec3(0.62, 0.74, 0.90) * sp + vec3(1.0, 0.80, 0.58) * sp * 0.35;
     float alpha = clamp(sp * 0.9, 0.0, 1.0) * wet;
@@ -922,7 +952,7 @@ function buildRipplePlane() {
       uRipples: { value: rippleSlot },
       uPuddle: { value: puddleMaskTex },
       uWinPos: { value: WORLD.window.clone() },
-      uLanternPos: { value: new THREE.Vector3(0, 0.6, 0) },
+      uLanternPos: { value: new THREE.Vector3(0, LANTERN_Y, 0) },
       uWinI: { value: 1.0 }, uLanternI: { value: 1.0 },
       uRainAmount: { value: 0.6 },
     },
@@ -1008,7 +1038,7 @@ function buildPlants() {
     // 开花后在地面留下的一摊光。
     // 注意：不能挂进植物 group —— 植物会随风摇摆，贴地平面会跟着歪。
     const pool = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.8, 2.8),
+      new THREE.PlaneGeometry(2.4, 2.4),
       new THREE.MeshBasicMaterial({
         map: lightPoolTex, transparent: true, opacity: 0,
         blending: THREE.AdditiveBlending, depthWrite: false,
@@ -1032,9 +1062,10 @@ function buildPlants() {
 /* ══════════════════════════════════════════════════════════════════
    10. 提灯（玩家）
    ══════════════════════════════════════════════════════════════════ */
+const LANTERN_Y = 0.86;
 const lantern = {
-  pos: new THREE.Vector3(0, 0.62, 1.2),
-  target: new THREE.Vector3(0, 0.62, 1.2),
+  pos: new THREE.Vector3(0, LANTERN_Y, 1.2),
+  target: new THREE.Vector3(0, LANTERN_Y, 1.2),
   light: null, glow: null, group: null, pool: null,
   range: 3.6,
 };
@@ -1079,7 +1110,7 @@ function buildLantern() {
     })
   );
   pool.rotation.x = -Math.PI / 2;
-  pool.position.set(0, 0.01, 0);
+  pool.position.set(0, -LANTERN_Y + 0.006, 0);
   g.add(pool);
 
   const light = new THREE.PointLight(0xFFC890, 7.5, 10, 2);
@@ -1321,7 +1352,7 @@ const tmpV = new THREE.Vector3();
 // 把灯限制在画面内。窗口比例变了（比如拖成竖条），硬编码的 bounds
 // 仍然可能把灯送到视锥外面，所以再按 NDC 夹一次。
 function clampToView(v, margin = 0.82) {
-  tmpV.set(v.x, 0.62, v.z).project(camera);
+  tmpV.set(v.x, LANTERN_Y, v.z).project(camera);
   if (Math.abs(tmpV.x) > margin) {
     tmpV.set(clamp(tmpV.x, -margin, margin), 0, 0).unproject(camera);
     v.x = tmpV.x;
@@ -1336,7 +1367,7 @@ function updateInput(dt) {
     if (ray.ray.intersectPlane(groundPlane, hitPoint)) {
       lantern.target.set(
         clamp(hitPoint.x, -WORLD.bounds.x, WORLD.bounds.x),
-        0.62,
+        LANTERN_Y,
         clamp(hitPoint.z, WORLD.bounds.zBack, WORLD.bounds.zFront)
       );
       clampToView(lantern.target);
@@ -1400,6 +1431,11 @@ function applyQuality() {
   if (dustMotes) dustMotes.material.uniforms.uPixelRatio.value = dprCap;
 }
 
+function updatePxScale() {
+  if (rainMat) rainMat.uniforms.uPxScale.value =
+    innerHeight / (2 * Math.tan((camera.fov * Math.PI / 180) / 2));
+}
+
 function resize() {
   const w = innerWidth, h = innerHeight;
   camera.aspect = w / h;
@@ -1407,6 +1443,7 @@ function resize() {
   renderer.setSize(w, h);
   if (composer) composer.setSize(w, h);
   if (bloomPass) bloomPass.resolution.set(w, h);
+  updatePxScale();
 }
 addEventListener('resize', resize, { passive: true });
 
@@ -1472,7 +1509,7 @@ function step(dt) {
   lantern.light.distance = 4.5 + lantern.range * 1.6;
   lantern.glow.scale.setScalar(1.10 + 0.10 * breathe);
   lantern.glow.material.opacity = 0.50 + 0.10 * breathe;
-  lantern.pool.material.opacity = 0.11 + 0.04 * breathe;
+  lantern.pool.material.opacity = 0.07 + 0.03 * breathe;
   windowLight.intensity = 7.5 * (0.97 + 0.03 * Math.sin(clock * 0.4));
   windowPane.material.uniforms.uTime.value = clock;
   lightCone.material.uniforms.uTime.value = clock;
@@ -1497,7 +1534,7 @@ function step(dt) {
       p.g.rotation.z = s * 0.02;
       p.g.rotation.x = Math.cos(clock * 0.43 + p.swayPhase) * 0.016;
       p.flower.material.emissiveIntensity = 0.85 + 0.2 * Math.sin(clock * 0.8 + p.swayPhase);
-      p.pool.material.opacity = lerp(p.pool.material.opacity, 0.30, dt * 0.5);
+      p.pool.material.opacity = lerp(p.pool.material.opacity, 0.13, dt * 0.5);
       continue;
     }
 
@@ -1570,6 +1607,7 @@ buildAmbience();
 buildRipplePlane();
 buildRain(RAIN_COUNTS[perf.level]);
 buildComposer(perf.level);
+updatePxScale();
 applyQuality();
 tick();
 

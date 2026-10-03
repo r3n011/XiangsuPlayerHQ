@@ -65,6 +65,8 @@ fun CollapsibleCommonTopBar(
     enableExpandedTitleWidthCompression: Boolean = true,
     titleWidthCompressionThreshold: Dp? = null,
     titleMinWidthAxis: Float = 78f,
+    /** true = 展开态不画标题（页面自己有同名大标题），只有收起后才淡入标题 */
+    titleOnlyWhenCollapsed: Boolean = false,
     syncStatusBarWithContainer: Boolean = true,
     supportingContent: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
@@ -197,7 +199,8 @@ fun CollapsibleCommonTopBar(
                 titleWidthCompressionThreshold = titleWidthCompressionThreshold,
                 titleMinWidthAxis = titleMinWidthAxis,
                 supportingContent = supportingContent,
-                collapsedTitleCapsule = blurStyleEnabled
+                collapsedTitleCapsule = blurStyleEnabled,
+                titleOnlyWhenCollapsed = titleOnlyWhenCollapsed
                 // 垂直布局按旧版（ExpressiveTopBarContent 默认 -1f=贴顶），不传即走旧版；
                 // 新样式与旧版的唯一差异：收起标题胶囊 + 左侧加大起始 padding 避开返回按钮
             )
