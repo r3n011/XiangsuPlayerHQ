@@ -117,6 +117,14 @@ fun Modifier.softwareBlur(
     val layoutDirection = LocalLayoutDirection.current
     var nodeSize by remember { mutableStateOf(IntSize.Zero) }
     var blurred by remember { mutableStateOf<ImageBitmap?>(null) }
+    /**
+     * 是否有一次「重新录制 layer → 重新模糊」在等绘制阶段完成。
+     *
+     * ⚡ **绝不再把 blurred 置空**：旧实现每次重算都先 `blurred = null`，重算窗口内这一行
+     * 会退回绘制实时（清晰）内容 —— 只要重算被频繁触发，就表现为「清晰 / 模糊」逐帧来回闪
+     * （低版本歌词一直闪烁的根因）。现在始终保留上一张模糊图，新图算好后再原子替换。
+     */
+    var snapshotPending by remember { mutableStateOf(true) }
     // 与旧实现一致的降采样档位：模糊越强、降得越狠（2~6 倍）
     val factor = (2f + radius.value * 0.6f).roundToInt().coerceIn(2, 6)
     // Blurry 作用在降采样图上，半径等比缩小；ScriptIntrinsicBlur 只接受 (0, 25]
@@ -124,46 +132,71 @@ fun Modifier.softwareBlur(
 
     LaunchedEffect(contentKey, factor, nodeSize) {
         if (nodeSize.width <= 0 || nodeSize.height <= 0) return@LaunchedEffect
-        // 内容变化时先丢掉旧结果，让接下来这帧重新录制 layer
-        blurred = null
-        // 等两帧：第一帧把 blurred = null 的重组落到绘制阶段（重新录制 layer），
-        // 第二帧确保录制已经完成，快照拿到的才是新内容。
+        // 请求重新录制（不清缓存），等两帧确保录制已落到绘制阶段
+        snapshotPending = true
         withFrameNanos { }
         withFrameNanos { }
-        val full = runCatching { layer.toImageBitmap() }.getOrNull() ?: return@LaunchedEffect
-        if (full.width <= 0 || full.height <= 0) return@LaunchedEffect
+        val full = runCatching { layer.toImageBitmap() }.getOrNull()
+        if (full == null || full.width <= 0 || full.height <= 0) {
+            snapshotPending = false
+            return@LaunchedEffect
+        }
         val smallWidth = (full.width / factor).coerceAtLeast(1)
         val smallHeight = (full.height / factor).coerceAtLeast(1)
-        // 降采样 + Blurry 真高斯都在后台线程做（RenderScript 建上下文不便宜）
-        blurred = withContext(Dispatchers.Default) {
+        // 降采样 + 纯 Kotlin 盒式模糊都在后台线程做
+        val result = withContext(Dispatchers.Default) {
             runCatching {
                 val small = Bitmap.createScaledBitmap(
                     full.asAndroidBitmap(), smallWidth, smallHeight, true
                 )
-                // 模糊失败（极端 ROM）就退回纯降采样图，观感与旧实现一致
-                (blurBitmapWithBlurry(context, small, blurRadius) ?: small).asImageBitmap()
-            }.onFailure { Timber.w(it, "softwareBlur: Blurry 模糊失败，退化为降采样") }
+                val out = blurBitmapWithBlurry(context, small, blurRadius) ?: small
+                // ⚡ 部分设备上 layer.toImageBitmap() 会拿到**全透明**的空图：用它绘制会让
+                //    整行「消失」（歌词行一会儿有一会儿没有）。空图直接丢弃，继续用上一张；
+                //    一直没有可用结果就退回绘制实时内容（清晰但不闪、不丢行）。
+                if (out.isFullyTransparent()) null else out.asImageBitmap()
+            }.onFailure { Timber.w(it, "softwareBlur: 模糊失败，保留上一张结果") }
                 .getOrNull()
         }
+        if (result != null) blurred = result
+        snapshotPending = false
     }
 
     return this
         .onSizeChanged { nodeSize = it }
         .drawWithContent {
             val target = IntSize(size.width.roundToInt(), size.height.roundToInt())
+            if (target.width <= 0 || target.height <= 0) return@drawWithContent
             val cached = blurred
-            if (cached != null && target.width > 0 && target.height > 0) {
-                drawImage(
-                    image = cached,
-                    dstSize = target,
-                    filterQuality = FilterQuality.High
-                )
-            } else {
-                // 用位置参数：GraphicsLayer.record(Density, LayoutDirection, IntSize, block)
+            if (snapshotPending || cached == null) {
+                // 需要新内容：录进 layer 供快照；屏幕上仍画上一张模糊图（有的话），避免闪
                 layer.record(density, layoutDirection, target) {
                     this@drawWithContent.drawContent()
                 }
-                drawLayer(layer)
+                if (cached != null) {
+                    drawImage(image = cached, dstSize = target, filterQuality = FilterQuality.High)
+                } else {
+                    drawLayer(layer)
+                }
+            } else {
+                drawImage(image = cached, dstSize = target, filterQuality = FilterQuality.High)
             }
         }
+}
+
+/** 位图是否全透明（识别「快照拿到空图」的异常，避免整行消失）。 */
+private fun Bitmap.isFullyTransparent(): Boolean {
+    val w = width
+    val h = height
+    if (w <= 0 || h <= 0) return true
+    val step = 8
+    var y = 0
+    while (y < h) {
+        var x = 0
+        while (x < w) {
+            if (((getPixel(x, y) ushr 24) and 0xFF) > 8) return false
+            x += step
+        }
+        y += step
+    }
+    return true
 }

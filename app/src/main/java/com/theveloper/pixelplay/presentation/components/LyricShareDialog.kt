@@ -29,12 +29,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,13 +53,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -67,6 +74,8 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.presentation.components.isolation.IsolationBackgroundState
+import com.theveloper.pixelplay.presentation.components.isolation.IsolationCpuRenderer
 import com.theveloper.pixelplay.presentation.components.isolation.extractIsolationPalette
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import java.io.File
@@ -74,12 +83,14 @@ import java.io.FileOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 /**
  * 歌词长按分享（参考 MeloX 的 `MeloXLyricShareDialog`）：
  * 全屏面板里逐行多选（默认选中长按的那一行），支持「分享文本」与「生成图片」。
  *
  * 图片是 Canvas 直接绘制的一张 1080 宽卡片（封面 + 选中的歌词 + 歌名歌手），
+ * 背景用与播放器「绚丽背景」相同的 Isolation 流体渐变算法生成。
  * 写到 cacheDir 后经 FileProvider 分享（`file_paths.xml` 已包含 cache-path）。
  */
 @Composable
@@ -90,6 +101,8 @@ internal fun LyricShareDialog(
     lines: List<String>,
     initialIndex: Int,
     onDismiss: () -> Unit,
+    /** 长按那一行在**窗口坐标**里的位置：用于把它「飞」到面板里对应行的位置（共享元素式衔接） */
+    originBounds: androidx.compose.ui.geometry.Rect? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -99,17 +112,12 @@ internal fun LyricShareDialog(
     var generating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // ⚡ 连贯的进出动画：进入时淡入 + 轻微上浮（带一点回弹），退出时反向播完再真正关闭。
-    //    之前 Dialog 直接硬切，观感很生硬。
+    // ⚡ 面板从**下往上**滑入（起始位置 = 面板自身高度，即屏幕下方），而不是原地淡入上浮。
     val appear = remember { Animatable(0f) }
-    val slidePx = with(LocalDensity.current) { 26.dp.toPx() }
     LaunchedEffect(Unit) {
         appear.animateTo(
             targetValue = 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
+            animationSpec = tween(durationMillis = 360, easing = FastOutSlowInEasing)
         )
     }
     // 关闭统一走这里：先播退出动画，播完再通知上层销毁
@@ -117,22 +125,50 @@ internal fun LyricShareDialog(
         scope.launch {
             appear.animateTo(
                 targetValue = 0f,
-                animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
             )
             onDismiss()
         }
     }
 
+    // ⚡ 共享元素式的「落位」：长按的那一行先按它在歌词列表里的位置与大小出现，
+    //    再飞到它在本面板里的行位置 —— 与面板上滑同时进行，接上「从歌词里拽出来」的连续感。
+    var landedBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    val landing = remember { Animatable(1f) }
+    LaunchedEffect(landedBounds, originBounds) {
+        val ob = originBounds
+        val tb = landedBounds
+        if (ob == null || tb == null || tb.height <= 0f) {
+            landing.snapTo(1f)
+            return@LaunchedEffect
+        }
+        landing.snapTo(0f)
+        landing.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing)
+        )
+    }
+
+    // ⚡ 面板高度（用于「从下往上滑入」与落位时的位移补偿）
+    val panelHeightPx = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.height.toFloat()
+    }
+    // 面板当前的滑动位移：面板内的行在窗口里的位置 = 静止位置 + 这个位移。
+    // 落位动画要把「行在窗口里的目标位置」减去它，才能得到与面板滑动无关的静止位置。
+    val panelShift = (1f - appear.value) * panelHeightPx
+
     Dialog(
         onDismissRequest = dismissAnimated,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
                     alpha = appear.value
-                    translationY = (1f - appear.value) * slidePx
+                    // 起始位置 = 面板高度（屏幕下方），即整块面板从下往上推入
+                    translationY = (1f - appear.value) * size.height
                 }
                 .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
@@ -222,16 +258,19 @@ internal fun LyricShareDialog(
                 }
             }
 
-            // 歌词多选
+            // 歌词多选。列表直接定位到长按那一行 —— 这样「落位」的目标位置就在可视区里，
+            // 那句歌词才会准确地落到面板中它自己的位置上。
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
+                state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex),
                 contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 itemsIndexed(lines, key = { index, line -> "share-$index-$line" }) { index, line ->
                     val chosen = index in selected
+                    val isLandingRow = index == initialIndex
                     // 选中态用颜色过渡而不是硬切，勾选 / 取消更顺滑
                     val rowColor by animateColorAsState(
                         targetValue = if (chosen) {
@@ -245,6 +284,21 @@ internal fun LyricShareDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            // 先量出本行在窗口里的位置（未做位移前的真实位置），供落位动画用
+                            .then(
+                                if (isLandingRow) {
+                                    Modifier.onGloballyPositioned { coords ->
+                                        val rect = coords.boundsInWindow()
+                                        if (landedBounds != rect) landedBounds = rect
+                                    }
+                                } else Modifier
+                            )
+                            // 落位期间本行淡入（「英雄元素」飞到这里后接管）
+                            .then(
+                                if (isLandingRow && originBounds != null && landedBounds != null) {
+                                    Modifier.graphicsLayer { alpha = landing.value }
+                                } else Modifier
+                            )
                             .clip(RoundedCornerShape(14.dp))
                             .background(rowColor)
                             .clickable { selected = if (chosen) selected - index else selected + index }
@@ -336,6 +390,40 @@ internal fun LyricShareDialog(
                 }
             }
         }
+
+        // ⚡ 落位动画的「英雄元素」：把长按的那句歌词画在**面板之上**（不受 LazyColumn 裁剪），
+        //    从它在歌词列表里的位置/大小，连续地飞到面板中对应行的位置；面板同时从下往上滑入。
+        //    于是视觉上就是「那句歌词被压下去、被拽出来，正好落进面板里的那一行」。
+        val heroOrigin = originBounds
+        val heroTarget = landedBounds
+        val heroP = landing.value
+        if (heroOrigin != null && heroTarget != null && heroTarget.height > 0f && heroP < 1f) {
+            // 行的「静止位置」= 当前窗口位置 - 面板滑动位移（与面板滑动无关）
+            val targetRestTop = heroTarget.top - panelShift
+            val heroTop = heroOrigin.top + (targetRestTop - heroOrigin.top) * heroP
+            val heroLeft = heroOrigin.left + (heroTarget.left - heroOrigin.left) * heroP
+            val heroScale0 = (heroOrigin.height / heroTarget.height).coerceIn(0.5f, 2.5f)
+            val heroScale = heroScale0 + (1f - heroScale0) * heroP
+            Text(
+                text = lines.getOrNull(initialIndex).orEmpty(),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontFamily = GoogleSansRounded,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .width(with(LocalDensity.current) { heroTarget.width.toDp() })
+                    .offset { IntOffset(heroLeft.roundToInt(), heroTop.roundToInt()) }
+                    .graphicsLayer {
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = heroScale
+                        scaleY = heroScale
+                        // 末段淡出，交回面板里真实的那一行
+                        alpha = 1f - heroP
+                    }
+            )
+        }
+        }
     }
 }
 
@@ -390,23 +478,54 @@ internal suspend fun shareLyricImage(
         // 封面（Coil 缓存解码，失败则跳过）
         val cover = loadArtworkBitmap(context, artworkUrl, 320)
 
-        // ⚡ 跟随封面取色：复用 Isolation 背景那套调色板（同一模块 internal 可直接调用），
-        //    取到的颜色先整体压暗再画，所以任何封面色（包括浅色封面）下歌词都保持可读。
+        // ⚡ 背景用与播放器「绚丽背景」**完全相同的生成算法**：AMLL Isolation 流体渐变。
+        //    直接复用 IsolationBackgroundState（随机布局 + OkLab 四色过渡）与
+        //    IsolationCpuRenderer（AGSL 路径的 CPU 等价实现，App 内低版本设备走的就是它），
+        //    而不是自己拿调色板画几个圆。与 App 内做法一致：低分辨率求值 + 双线性放大
+        //    （Isolation 是极低频渐变，放大几乎无损），避免 1080×N 逐像素求值过慢。
         val palette = cover?.let { bmp ->
             runCatching { extractIsolationPalette(bmp).palette }.getOrNull()
         }.orEmpty()
-        val baseColor = palette.firstOrNull()?.let { darkenRgb(it, 0.30f) }
-            ?: Color.parseColor("#141419")
-        canvas.drawColor(baseColor)
-        // 压暗后的大色斑，营造跟封面同源的氛围渐变
-        palette.drop(1).take(3).forEachIndexed { index, rgb ->
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = darkenRgb(rgb, 0.50f)
-                alpha = 150
+        run {
+            val isoState = IsolationBackgroundState(lightWave = true, dithering = true)
+            // applyPalette 需要 4 个主色（内部按 paletteOrder 索引 0..3），不足时回退默认配色
+            if (palette.size >= 4) {
+                isoState.rollRandomParameters()
+                isoState.applyPalette(palette)
+            } else {
+                isoState.rollRandomParameters()
+                isoState.applyDefaultColors()
             }
-            val cx = width * ((index % 2) + 0.5f) / 2f
-            val cy = height * ((index / 2) + 0.5f) / 2f
-            canvas.drawCircle(cx, cy, width * 0.62f, paint)
+            // 调色板过渡是逐帧插值的：导出静态图时先把它推到终点
+            repeat(90) { isoState.updateColorBuffer(16f) }
+
+            val longSide = 256
+            val scale = longSide / maxOf(width, height).toFloat()
+            val lowW = maxOf(8, (width * scale).toInt())
+            val lowH = maxOf(8, (height * scale).toInt())
+            val pixels = IntArray(lowW * lowH)
+            IsolationCpuRenderer.render(
+                colorBuffer = isoState.colorBuffer,
+                randomValues = isoState.randomValues,
+                flowParams = isoState.flowParams,
+                angleJitter = isoState.angleJitter,
+                lightWave = true,
+                dithering = true,
+                bass = 0f,
+                timeSec = SHARE_BACKGROUND_TIME_SEC,
+                width = lowW,
+                height = lowH,
+                outPixels = pixels,
+            )
+            val lowBitmap = Bitmap.createBitmap(lowW, lowH, Bitmap.Config.ARGB_8888)
+            lowBitmap.setPixels(pixels, 0, lowW, 0, 0, lowW, lowH)
+            canvas.drawBitmap(
+                lowBitmap,
+                null,
+                RectF(0f, 0f, width.toFloat(), height.toFloat()),
+                Paint(Paint.FILTER_BITMAP_FLAG)
+            )
+            lowBitmap.recycle()
         }
         // 再叠一层黑色垂直渐变，保证文字对比度（取色只影响氛围，不影响可读性）
         canvas.drawRect(
@@ -482,13 +601,11 @@ internal suspend fun shareLyricImage(
     context.startActivity(Intent.createChooser(intent, title))
 }
 
-/** 把调色板里的 sRGB（0..255）压暗成绘制用色：取色只负责氛围，可读性靠压暗 + 黑色渐变兜底 */
-private fun darkenRgb(rgb: FloatArray, factor: Float): Int {
-    val r = (rgb.getOrElse(0) { 0f } * factor).coerceIn(0f, 255f).toInt()
-    val g = (rgb.getOrElse(1) { 0f } * factor).coerceIn(0f, 255f).toInt()
-    val b = (rgb.getOrElse(2) { 0f } * factor).coerceIn(0f, 255f).toInt()
-    return Color.rgb(r, g, b)
-}
+/**
+ * 导出分享图时 Isolation 背景的采样时刻（秒）。
+ * Isolation 是持续流动的，静态图取一个固定的、形态舒展的时间点即可。
+ */
+private const val SHARE_BACKGROUND_TIME_SEC = 12f
 
 /** 按像素宽度折行（中英文都按字符宽度累计，够用且不依赖排版引擎） */
 private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {    if (text.isBlank()) return listOf("")

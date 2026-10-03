@@ -100,6 +100,16 @@ class QqMusicLoginViewModel @Inject constructor(
         _phoneUi.update { it.copy(securityChallengeUrl = null) }
     }
 
+    /** 关掉内联错误卡片。 */
+    fun clearPhoneError() {
+        _phoneUi.update { it.copy(error = null) }
+    }
+
+    /** 从「验证码」步骤退回「手机号」步骤（重新填手机号）。 */
+    fun backToPhoneStep() {
+        _phoneUi.update { it.copy(codeSent = false, error = null) }
+    }
+
     fun submitPhoneLogin() {
         val current = _phoneUi.value
         if (current.phone.length != 11) {

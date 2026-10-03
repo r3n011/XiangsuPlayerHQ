@@ -24,6 +24,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.util.lerp
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -350,6 +353,8 @@ fun LyricsSheet(
         .collectAsStateWithLifecycle(initialValue = null)
     // ⚡ 歌词长按分享：记录被长按的行下标，非空时展示分享面板（多选行 → 分享文本 / 生成图片）
     var shareLyricIndex by remember { mutableStateOf<Int?>(null) }
+    // 长按那一行在窗口里的位置：交给分享面板做「从歌词里飞出来」的落位动画
+    var shareOriginBounds by remember { mutableStateOf<Rect?>(null) }
     // totalDuration 只在 SyncedLyricsList 内部使用，单独订阅
     val totalDuration by stablePlayerStateFlow
         .map { it.totalDuration }
@@ -1013,7 +1018,11 @@ fun LyricsSheet(
                                     artworkUrl = shareSong.albumArtUriString,
                                     lines = synced.map { it.line },
                                     initialIndex = shareIndex,
-                                    onDismiss = { shareLyricIndex = null }
+                                    originBounds = shareOriginBounds,
+                                    onDismiss = {
+                                        shareLyricIndex = null
+                                        shareOriginBounds = null
+                                    }
                                 )
                             }
                             SyncedLyricsList(
@@ -1038,8 +1047,11 @@ fun LyricsSheet(
                                     )
                                     resetImmersiveTimer()
                                 },
-                                // ⚡ 长按某一行 → 打开歌词分享面板（默认选中该行）
-                                onLineLongPress = { index -> shareLyricIndex = index },
+                                // ⚡ 长按某一行 → 打开歌词分享面板（默认选中该行，并从该行位置飞入）
+                                onLineLongPress = { index, bounds ->
+                                    shareLyricIndex = index
+                                    shareOriginBounds = bounds
+                                },
                                 highlightZoneFraction = highlightZoneFraction,
                                 highlightOffsetDp = highlightOffsetDp,
                                 autoscrollAnimationSpec = resolvedAutoscrollSpec,
@@ -1618,8 +1630,8 @@ fun SyncedLyricsList(
     containerColor: Color,
     textStyle: TextStyle,
     onLineClick: (SyncedLine) -> Unit,
-    /** 长按歌词行（打开歌词分享面板），参数为该行下标 */
-    onLineLongPress: ((Int) -> Unit)? = null,
+    /** 长按歌词行（打开歌词分享面板）：参数为该行下标 + 该行在窗口中的位置（落位动画用） */
+    onLineLongPress: ((Int, Rect) -> Unit)? = null,
     highlightZoneFraction: Float,
     highlightOffsetDp: Dp,
     autoscrollAnimationSpec: AnimationSpec<Float>,
@@ -1866,7 +1878,7 @@ fun SyncedLyricsList(
                                 .fillMaxWidth()
                                 .testTag("synced_line_${line.time}"),
                             onClick = { onLineClick(line) },
-                            onLongClick = onLineLongPress?.let { callback -> { callback(index) } }
+                            onLongClick = onLineLongPress?.let { callback -> { bounds -> callback(index, bounds) } }
                         )
                     } else {
                         BubblesLine(
@@ -1921,12 +1933,28 @@ fun LyricLineRow(
     accentColor: Color,
     style: TextStyle,
     textMeasurer: TextMeasurer? = null,
-    /** 长按歌词行（歌词分享入口）；为空则不响应长按 */
-    onLongClick: (() -> Unit)? = null,
+    /** 长按歌词行（歌词分享入口）；回调带上该行在窗口里的位置，供分享面板做「落位」动画 */
+    onLongClick: ((Rect) -> Unit)? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val sanitizedLine = remember(line.line) { sanitizeLyricLineText(line.line) }
+
+    // ⚡ 按压反馈：按住（含长按）时整行轻微缩小 + 变暗，松手弹回 —— 让「长按分享」有实体感。
+    val pressInteraction = remember { MutableInteractionSource() }
+    val pressed by pressInteraction.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 900f),
+        label = "lyricPressScale"
+    )
+    val pressAlpha by animateFloatAsState(
+        targetValue = if (pressed) 0.78f else 1f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 900f),
+        label = "lyricPressAlpha"
+    )
+    // 本行在窗口中的位置：长按分享时交给面板，让那句歌词「飞」到面板里自己的位置上
+    var rowBounds by remember { mutableStateOf(Rect.Zero) }
 
     // ── 防裁切：放大歌词后自动判断是否超出容器宽度，超出则智能换行 ──
     var containerWidthPx by remember { mutableIntStateOf(0) }
@@ -2083,46 +2111,53 @@ fun LyricLineRow(
     val lineTextStyle = style
     val secondaryTextStyle = secondaryStyle
 
-    // 模糊放在 alpha/缩放【内层】：模糊结果是静态的，可按内容缓存；
-    // 逐帧变化的 alpha/缩放交给外层 graphicsLayer，低版本才不会每帧重新栅格化一行文字。
-    val animatedModifier = if (useAnimatedLyrics) {
-        baseModifier
-            .then(
-                when {
-                    // API 31 以下：快照 → 降采样 → Blurry 真高斯 → 放大绘制
-                    softwareBlurActive -> Modifier.softwareBlur(
-                        radius = blurRadius,
-                        contentKey = listOf(
-                            wrappedLine,
-                            romanizationText,
-                            translationText,
-                            // ⚡ lineColor 是 animateColorAsState，逐帧变化；直接当 key 会让这一行
-                            //    **每帧**重新快照。量化成 4 档后，一次切行最多重建 3 次，
-                            //    而模糊行本身是柔和的，这点颜色滞后看不出来。
-                            lineColor.copy(alpha = (lineColor.alpha * 4f).roundToInt() / 4f),
-                            style
-                        )
-                    )
-                    // API 31+：原生 GPU 模糊
-                    blurRadius > 0.dp -> Modifier.blur(blurRadius)
-                    else -> Modifier
-                }
+    // ⚡ 逐帧变化的 scale / alpha / 按压反馈必须放在**模糊之外**（修饰符链更靠前 = 外层）。
+    //    软件模糊是对整块内容做「快照 → 降采样 → 模糊 → 缓存」；若把逐帧变换放在内层，
+    //    快照会把它们一起烘进去：既让缩放/透明度停在快照时的旧值，又让重算被逐帧触发 ——
+    //    这正是低版本歌词「一直闪烁 / 行忽有忽无」的根因。
+    val transformModifier: Modifier = if (useAnimatedLyrics) {
+        Modifier.graphicsLayer {
+            scaleX = effectiveScale * pressScale
+            scaleY = effectiveScale * pressScale
+            this.alpha = alpha * pressAlpha
+            translationY = 0f
+            transformOrigin = TransformOrigin(
+                pivotFractionX = when (lyricsAlignment) {
+                    "center" -> 0.5f
+                    "right" -> 1f
+                    else -> 0f
+                },
+                pivotFractionY = 0.5f
             )
-            .graphicsLayer {
-                scaleX = effectiveScale
-                scaleY = effectiveScale
-                this.alpha = alpha
-                translationY = 0f
-                transformOrigin = TransformOrigin(
-                    pivotFractionX = when (lyricsAlignment) {
-                        "center" -> 0.5f
-                        "right" -> 1f
-                        else -> 0f
-                    },
-                    pivotFractionY = 0.5f
-                )
-            }
-    } else baseModifier
+        }
+    } else {
+        Modifier.graphicsLayer {
+            scaleX = pressScale
+            scaleY = pressScale
+            this.alpha = pressAlpha
+        }
+    }
+    // 内层：只对**静态文字**做模糊（内容不变就不重算）
+    val blurModifier: Modifier = when {
+        // API 31 以下（或强制软件模糊）：快照 → 降采样 → 纯 Kotlin 盒式模糊 → 放大绘制
+        softwareBlurActive -> Modifier.softwareBlur(
+            radius = blurRadius,
+            contentKey = listOf(
+                wrappedLine,
+                romanizationText,
+                translationText,
+                // ⚡ lineColor 是 animateColorAsState，逐帧变化；直接当 key 会让这一行
+                //    **每帧**重新快照。量化成 4 档后，一次切行最多重建 3 次，
+                //    而模糊行本身是柔和的，这点颜色滞后看不出来。
+                lineColor.copy(alpha = (lineColor.alpha * 4f).roundToInt() / 4f),
+                style
+            )
+        )
+        // API 31+：原生 GPU 模糊
+        blurRadius > 0.dp -> Modifier.blur(blurRadius)
+        else -> Modifier
+    }
+    val animatedModifier = baseModifier.then(transformModifier).then(blurModifier)
 
     val horizontalAlignment = when (lyricsAlignment) {
         "center" -> Alignment.CenterHorizontally
@@ -2146,10 +2181,13 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
+                .onGloballyPositioned { rowBounds = it.boundsInWindow() }
                 .clip(RoundedCornerShape(12.dp))
                 .combinedClickable(
+                    interactionSource = pressInteraction,
+                    indication = null,
                     onClick = { onClick() },
-                    onLongClick = onLongClick
+                    onLongClick = { onLongClick?.invoke(rowBounds) }
                 )
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
@@ -2225,10 +2263,13 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
+                .onGloballyPositioned { rowBounds = it.boundsInWindow() }
                 .clip(RoundedCornerShape(12.dp))
                 .combinedClickable(
+                    interactionSource = pressInteraction,
+                    indication = null,
                     onClick = { onClick() },
-                    onLongClick = onLongClick
+                    onLongClick = { onLongClick?.invoke(rowBounds) }
                 )
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
