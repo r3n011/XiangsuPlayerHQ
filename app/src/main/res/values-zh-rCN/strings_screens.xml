@@ -217,6 +217,7 @@
     <string name="about_donation_channel_alipay">支付宝</string>
     <string name="about_donation_channel_wechat">微信支付</string>
     <string name="about_donation_no_wechat">未安装微信，请扫描上方二维码捐赠。</string>
+    <string name="about_donation_wechat_opened">已打开微信，请用「扫一扫」扫描上方二维码捐赠。</string>
     <string name="about_donation_thanks_title">感谢名单</string>
     <string name="about_donation_thanks_subtitle">感谢以下朋友对本项目的支持</string>
     <string name="about_donation_thanks_note">名单会持续更新，如有遗漏欢迎联系开发者。</string>
@@ -249,6 +250,12 @@
     <string name="roaming_mode_familiar_desc">多推荐你常听的口味</string>
     <string name="roaming_mode_explore">探索</string>
     <string name="roaming_mode_explore_desc">多推荐没听过的新歌</string>
+    <string name="lyric_share_title">分享歌词</string>
+    <string name="lyric_share_select_all">全选</string>
+    <string name="lyric_share_selected_count">已选择 %1$d 行</string>
+    <string name="lyric_share_text">分享文本</string>
+    <string name="lyric_share_image">生成图片</string>
+    <string name="lyric_share_generating">生成中…</string>
     <string name="home_featured_quality_lossless">无损</string>
     <string name="home_featured_quality_hires">Hi-Res</string>
     <string name="home_featured_quality_hq">HQ</string>

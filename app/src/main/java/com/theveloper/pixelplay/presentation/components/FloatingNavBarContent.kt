@@ -6,6 +6,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -108,12 +110,41 @@ fun FloatingNavBarContent(
     val searchItem = remember(navItems) { navItems.find { it.screen.route == Screen.Search.route } }
     val otherItems = remember(navItems) { navItems.filter { it.screen.route != Screen.Search.route } }
 
+    // ⚡ 与 mini player 共用同一套折叠宽度规则：宽屏 + 横屏时两条栏都是 520dp 且右对齐，
+    //    这样底栏的左右边缘和上面的 mini player 对齐（此前底栏铺满全宽，比 mini player 宽一截）。
+    val collapsedBarWidth = rememberCollapsedBarWidth()
+    val stretchToEdges = collapsedBarWidth.limitWidth
+
+    /** 单个导航项的点击逻辑（两种布局共用） */
+    val onItemClick: (BottomNavItem) -> Unit = { item ->
+        val itemRoute = item.screen.route
+        val isCenterActionTab = itemRoute == Screen.Roaming.route
+        val isAlreadySelected = latestCurrentRoute == itemRoute
+
+        if (isCenterActionTab) {
+            onCenterNavClick()
+        } else if (!isAlreadySelected) {
+            // ⚡ 防抖用「时间戳」而不是「布尔开关 + 协程复位」：后者一旦协程被取消
+            //   （重组/切换页面），开关会永久停在 false → 之后点导航栏完全没反应。
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - lastNavTimestamp >= debounceTimeout) {
+                if (navController.navigateToTopLevelSafely(itemRoute)) {
+                    lastNavTimestamp = now
+                }
+            }
+        }
+    }
+
     // 布局：[导航胶囊组] [搜索圆]
-    // 使用 fillMaxWidth + Center 让 Row 自动居中，子项用 weight(1f) 约束防止溢出。
-    // Row 的固有尺寸测量确保导航组尽可能紧凑，多余空间均匀分配。
+    // - 宽屏（底栏被限宽到 520dp）时：两组元件分列两端（SpaceBetween），左右边缘与 mini player 对齐；
+    // - 其余情况：整行居中，保持原有观感。
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        // ⚡ 自动决定是否「始终显示每个页面的名字」：宽度够（宽屏/横屏）就全部显示文字，
+    //    此时切换动画用「选中指示器平移」；不够就回到「只有选中项展开文字」的原有动画。
+    val showAllLabels = maxWidth >= NavBarAllLabelsMinWidth
     Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (stretchToEdges) Arrangement.SpaceBetween else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         // === 导航胶囊组（所有导航项放在同一个胶囊容器内） ===
@@ -148,33 +179,23 @@ fun FloatingNavBarContent(
                     vertical = NavGroupPaddingVertical * dpiScale
                 )
         ) {
-            otherItems.forEach { item ->
-                val isSelected = currentRoute != null && currentRoute == item.screen.route
-                FloatingNavItem(
-                    item = item,
-                    isSelected = isSelected,
+            if (showAllLabels) {
+                // 名字全部显示：选中指示器在各项之间平移
+                LabeledNavGroup(
+                    items = otherItems,
+                    currentRoute = currentRoute,
                     dpiScale = dpiScale,
-                    onClick = {
-                        val itemRoute = item.screen.route
-                        val isCenterActionTab = itemRoute == Screen.Roaming.route
-                        val isAlreadySelected = latestCurrentRoute == itemRoute
-
-                        if (isCenterActionTab) {
-                            onCenterNavClick()
-                            return@FloatingNavItem
-                        }
-
-                        // ⚡ 防抖用「时间戳」而不是「布尔开关 + 协程复位」：后者一旦协程被取消
-                        //   （重组/切换页面），开关会永久停在 false → 之后点导航栏完全没反应。
-                        if (!isAlreadySelected) {
-                            val now = android.os.SystemClock.elapsedRealtime()
-                            if (now - lastNavTimestamp < debounceTimeout) return@FloatingNavItem
-                            if (navController.navigateToTopLevelSafely(itemRoute)) {
-                                lastNavTimestamp = now
-                            }
-                        }
-                    }
+                    onItemClick = onItemClick
                 )
+            } else {
+                otherItems.forEach { item ->
+                    FloatingNavItem(
+                        item = item,
+                        isSelected = currentRoute != null && currentRoute == item.screen.route,
+                        dpiScale = dpiScale,
+                        onClick = { onItemClick(item) }
+                    )
+                }
             }
         }
 
@@ -209,6 +230,7 @@ fun FloatingNavBarContent(
                     }
                 )
             }
+        }
         }
     }
 }
@@ -326,6 +348,135 @@ private val NavPillSpacing = 7.dp
 /** 胶囊横向 padding：左右基本对称，左侧比右侧宽 1px，抵消文字的轻微横向重量 */
 private val NavPillPaddingStart = 16.dp
 private val NavPillPaddingEnd = 15.dp
+
+/**
+ * 「始终显示所有页面名字」的最小可用宽度：底栏被限宽到 520dp（宽屏 + 横屏）时空间足够，
+ * 就全部显示文字并用「选中指示器平移」；窄屏（竖屏手机）保持「只有选中项展开文字」的原有动画。
+ */
+private val NavBarAllLabelsMinWidth = 470.dp
+
+/** 显示名字时每个导航项的固定宽度（选中指示器按「该项宽度 + 间距」平移） */
+private val NavLabeledItemWidth = 100.dp
+
+/**
+ * 显示全部名字时的导航组：一个选中指示器（药丸）在各项之间平移，每项「图标 + 文字」常显。
+ * 与不显示名字时的唯一区别就在这里：后者是选中项自己展开文字。
+ */
+@Composable
+private fun LabeledNavGroup(
+    items: List<BottomNavItem>,
+    currentRoute: String?,
+    dpiScale: Float,
+    onItemClick: (BottomNavItem) -> Unit,
+) {
+    val selectedIndex = items.indexOfFirst { currentRoute != null && it.screen.route == currentRoute }
+    val indicatorOffset by animateDpAsState(
+        targetValue = (NavLabeledItemWidth + NavGroupItemSpacing) * dpiScale *
+            selectedIndex.coerceAtLeast(0),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "navIndicatorOffset"
+    )
+
+    Box {
+        // 选中指示器：随选中项平移的药丸（不是每项各自变色）
+        if (selectedIndex >= 0) {
+            Box(
+                modifier = Modifier
+                    .offset(x = indicatorOffset)
+                    .width(NavLabeledItemWidth * dpiScale)
+                    .height(NavPillHeight * dpiScale)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(NavGroupItemSpacing * dpiScale)) {
+            items.forEach { item ->
+                LabeledNavItem(
+                    item = item,
+                    isSelected = currentRoute != null && item.screen.route == currentRoute,
+                    dpiScale = dpiScale,
+                    onClick = { onItemClick(item) }
+                )
+            }
+        }
+    }
+}
+
+/** 常显名字的导航项（背景由外层滑动指示器负责，这里只画图标 + 文字 + 按压反馈） */
+@Composable
+private fun LabeledNavItem(
+    item: BottomNavItem,
+    isSelected: Boolean,
+    dpiScale: Float,
+    onClick: () -> Unit,
+) {
+    val labelText = stringResource(item.labelResId)
+    val contentColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(250),
+        label = "labeledNavContentColor"
+    )
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "labeledNavPressScale"
+    )
+    val iconResId = if (isSelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
+        item.selectedIconResId
+    } else {
+        item.iconResId
+    }
+
+    Row(
+        modifier = Modifier
+            .width(NavLabeledItemWidth * dpiScale)
+            .height(NavPillHeight * dpiScale)
+            .clip(RoundedCornerShape(percent = 50))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        when {
+            item.imageVectorIcon != null -> Icon(
+                imageVector = item.imageVectorIcon,
+                contentDescription = labelText,
+                tint = contentColor,
+                modifier = Modifier.size(NavPillIconSize * dpiScale)
+            )
+            iconResId != null -> Icon(
+                painter = painterResource(id = iconResId),
+                contentDescription = labelText,
+                tint = contentColor,
+                modifier = Modifier.size(NavPillIconSize * dpiScale)
+            )
+        }
+        Text(
+            text = labelText,
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = NavPillSpacing * dpiScale)
+        )
+    }
+}
 
 /**
  * 悬浮导航项：未选中时只显示图标，选中时收缩成"图标 + 文字"的动态选中胶囊。

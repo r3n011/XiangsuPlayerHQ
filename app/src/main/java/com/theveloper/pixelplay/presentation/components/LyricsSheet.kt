@@ -50,6 +50,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -347,6 +348,8 @@ fun LyricsSheet(
         .map { it.currentSong }
         .distinctUntilChanged()
         .collectAsStateWithLifecycle(initialValue = null)
+    // ⚡ 歌词长按分享：记录被长按的行下标，非空时展示分享面板（多选行 → 分享文本 / 生成图片）
+    var shareLyricIndex by remember { mutableStateOf<Int?>(null) }
     // totalDuration 只在 SyncedLyricsList 内部使用，单独订阅
     val totalDuration by stablePlayerStateFlow
         .map { it.totalDuration }
@@ -1000,6 +1003,19 @@ fun LyricsSheet(
                     true -> {
                         val lyricsData = lyrics
                         lyricsData?.synced?.let { synced ->
+                            // ⚡ 歌词长按分享面板（默认选中长按的那一行）
+                            val shareIndex = shareLyricIndex
+                            val shareSong = currentSong
+                            if (shareIndex != null && shareSong != null) {
+                                LyricShareDialog(
+                                    title = shareSong.title,
+                                    artist = shareSong.displayArtist,
+                                    artworkUrl = shareSong.albumArtUriString,
+                                    lines = synced.map { it.line },
+                                    initialIndex = shareIndex,
+                                    onDismiss = { shareLyricIndex = null }
+                                )
+                            }
                             SyncedLyricsList(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -1022,6 +1038,8 @@ fun LyricsSheet(
                                     )
                                     resetImmersiveTimer()
                                 },
+                                // ⚡ 长按某一行 → 打开歌词分享面板（默认选中该行）
+                                onLineLongPress = { index -> shareLyricIndex = index },
                                 highlightZoneFraction = highlightZoneFraction,
                                 highlightOffsetDp = highlightOffsetDp,
                                 autoscrollAnimationSpec = resolvedAutoscrollSpec,
@@ -1600,6 +1618,8 @@ fun SyncedLyricsList(
     containerColor: Color,
     textStyle: TextStyle,
     onLineClick: (SyncedLine) -> Unit,
+    /** 长按歌词行（打开歌词分享面板），参数为该行下标 */
+    onLineLongPress: ((Int) -> Unit)? = null,
     highlightZoneFraction: Float,
     highlightOffsetDp: Dp,
     autoscrollAnimationSpec: AnimationSpec<Float>,
@@ -1845,7 +1865,8 @@ fun SyncedLyricsList(
                             modifier = parallaxModifier
                                 .fillMaxWidth()
                                 .testTag("synced_line_${line.time}"),
-                            onClick = { onLineClick(line) }
+                            onClick = { onLineClick(line) },
+                            onLongClick = onLineLongPress?.let { callback -> { callback(index) } }
                         )
                     } else {
                         BubblesLine(
@@ -1900,6 +1921,8 @@ fun LyricLineRow(
     accentColor: Color,
     style: TextStyle,
     textMeasurer: TextMeasurer? = null,
+    /** 长按歌词行（歌词分享入口）；为空则不响应长按 */
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -2124,7 +2147,10 @@ fun LyricLineRow(
             modifier = animatedModifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .clickable { onClick() }
+                .combinedClickable(
+                    onClick = { onClick() },
+                    onLongClick = onLongClick
+                )
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
         ) {
@@ -2200,7 +2226,10 @@ fun LyricLineRow(
             modifier = animatedModifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .clickable { onClick() }
+                .combinedClickable(
+                    onClick = { onClick() },
+                    onLongClick = onLongClick
+                )
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
         ) {

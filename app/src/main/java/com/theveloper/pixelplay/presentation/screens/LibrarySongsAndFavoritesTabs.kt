@@ -94,6 +94,11 @@ fun LibraryFavoritesTab(
     hasCurrentSong: Boolean = false
 ) {
     val listState = rememberLazyGridState()
+    // ⚡ 媒体库「回到顶部」：把列表状态注册给父级（父级据此显示回到顶部按钮并执行滚动）
+    LibraryScrollToTopRegistration(
+        tabId = com.theveloper.pixelplay.data.model.LibraryTabId.LIKED.storageKey,
+        state = listState
+    )
     val coroutineScope = rememberCoroutineScope()
     val visibilityCallback by rememberUpdatedState(onLocateCurrentSongVisibilityChanged)
     val registerActionCallback by rememberUpdatedState(onRegisterLocateCurrentSongAction)

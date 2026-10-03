@@ -205,9 +205,8 @@ fun AlbumCarouselSection(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        // 预览轮播的缩略图是「窄条」，不能再强制正方形（会撑出格子）；
-                        // 其它样式保持原来的 1:1 封面。
-                        .then(if (isPreviewStyle) Modifier else Modifier.aspectRatio(1f))
+                        // 与原版一致：封面始终是 1:1 正方形（预览只是让出右侧 20% 的空间）
+                        .aspectRatio(1f)
                         .clickable(
                             enabled = isFocusedItem && song.albumId != -1L,
                             interactionSource = remember { MutableInteractionSource() },

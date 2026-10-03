@@ -142,8 +142,8 @@ fun RoundedHorizontalMultiBrowseCarousel(
         CarouselStyle.NO_PEEK -> 0
         CarouselStyle.ONE_PEEK -> 1
         CarouselStyle.TWO_PEEK -> 2
-        // 预览轮播：中间大图 + 两侧各一张缩略图（[small, large, small]）
-        CarouselStyle.PREVIEW -> 2
+        // 预览轮播与原版「单侧预览」一致：大图 + 右侧一张预览
+        CarouselStyle.PREVIEW -> 1
         else -> 1 // Default to one peek
     }
 
@@ -208,22 +208,19 @@ fun RoundedHorizontalMultiBrowseCarousel(
                         add(smallSize) // Next peek
                     }
                 }
-                CarouselStyle.PREVIEW -> {
-                    // ⚡ 预览轮播（仿首页精选轮播的平板多浏览）：中间一张大封面，
-                    //    两侧各露出一张圆角缩略图 —— 用 [small, large, small] 手工 keyline，
-                    //    比例对齐首页那套（大图约 62% 宽，缩略图约 24% 宽）。
-                    val largeSize = carouselWidthPx * 0.62f
-                    val smallSize = carouselWidthPx * 0.24f
-                    keylineListOf(
-                        carouselMainAxisSize = carouselWidthPx,
-                        itemSpacing = spacingPx,
-                        carouselAlignment = CarouselAlignment.Center
-                    ) {
-                        add(smallSize) // 上一张缩略图
-                        add(largeSize) // 当前封面
-                        add(smallSize) // 下一张缩略图
-                    }
-                }
+                CarouselStyle.PREVIEW -> multiBrowseKeylineList(
+                    // ⚡ 预览轮播 = 原版「单侧预览」：大图 80% 宽、右侧露出下一张缩略图，
+                    //    封面本身仍是正方形（尺寸与无预览一致，只是让出 20% 给预览）。
+                    density = density,
+                    carouselMainAxisSize = carouselWidthPx,
+                    preferredItemSize = carouselWidthPx * 0.8f,
+                    itemSpacing = spacingPx,
+                    itemCount = itemCount,
+                    alignment = CarouselAlignment.Start,
+                    largeCounts = intArrayOf(1),
+                    mediumCounts = intArrayOf(0),
+                    smallCounts = intArrayOf(1)
+                )
                 else -> multiBrowseKeylineList( // Default to one peek
                     density = density,
                     carouselMainAxisSize = carouselWidthPx,

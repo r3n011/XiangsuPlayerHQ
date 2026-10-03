@@ -434,13 +434,19 @@ class KugouAudiobookApi @Inject constructor(
         val salt = if (standard) STD_ROUTE else ROUTE
 
         val params = LinkedHashMap<String, String>()
-        // ⚡ 设备标识固定用占位值 "-"：本机 dfid/mid 没有在酷狗注册过，
-        //    长音频章节 / v5/url 会直接拒绝未注册设备 —— chapters 返回
-        //    `status=0 error_code=20028`、/v5/url 不给链接，表现就是
-        //    「点开专辑没有可用章节」。参照项目在设备未注册时同样回落 "-"。
-        params["dfid"] = ANONYMOUS_DEVICE
-        params["mid"] = ANONYMOUS_DEVICE
-        params["uuid"] = "-"
+        // ⚡ 设备标识：优先用本机真实设备信息（dfid/mid），拿不到才回落占位 "-"。
+        //    参照项目同样是「设备信息优先，其次参数/cookie，最后 '-'」——它靠
+        //    /register/dev 拿服务端下发的 dfid 并落盘复用；我们这边 dfid 来自
+        //    酷狗登录会话（未登录时为空）。之前无条件写 "-" 会让部分长音频
+        //    （如「安全警长啦咘啦哆」这类）在 /v5/url 拿不到直链：参考项目能播、
+        //    我们放不出来就是这个差异。
+        val device = runCatching { kugouRepository.device }.getOrNull()
+        val deviceDfid = device?.dfid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE }
+        val deviceMid = device?.mid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE }
+        val deviceGuid = device?.guid?.takeIf { it.isNotBlank() && it != ANONYMOUS_DEVICE }
+        params["dfid"] = deviceDfid ?: ANONYMOUS_DEVICE
+        params["mid"] = deviceMid ?: ANONYMOUS_DEVICE
+        params["uuid"] = deviceGuid ?: "-"
         params["appid"] = appId
         params["clientver"] = clientVer
         params["clienttime"] = clientTime
@@ -461,9 +467,9 @@ class KugouAudiobookApi @Inject constructor(
         val requestBuilder = Request.Builder()
             .url(urlBuilder.build().toString())
             .header("User-Agent", DEFAULT_UA)
-            .header("dfid", ANONYMOUS_DEVICE)
+            .header("dfid", params["dfid"].orEmpty())
             .header("clienttime", clientTime)
-            .header("mid", ANONYMOUS_DEVICE)
+            .header("mid", params["mid"].orEmpty())
             .header("kg-rc", "1")
             .header("kg-thash", "5d816a0")
             .header("kg-rec", "1")
@@ -471,7 +477,7 @@ class KugouAudiobookApi @Inject constructor(
             .header(
                 "Cookie",
                 buildString {
-                    append("mid=").append(ANONYMOUS_DEVICE)
+                    append("mid=").append(params["mid"].orEmpty())
                     if (!token.isNullOrBlank()) append("; token=").append(token)
                     if (!userId.isNullOrBlank()) append("; userid=").append(userId)
                 },
@@ -548,6 +554,51 @@ class KugouAudiobookApi @Inject constructor(
             item.optString("full_intro"),
         ),
     )
+
+    /**
+     * 酷狗歌词（听书章节 / 酷狗在线歌都用它）。
+     *
+     * 与参照项目 `getLyricResult` 同链路：
+     * 1. `GET /search/lyric?hash=<小写>&man=yes` → `data.candidates[]`，取第一个候选的 `id` / `accesskey`；
+     * 2. `GET /lyric?id=&fmt=lrc&decode=true[&accesskey=]` → `data.content`（decode=true 时服务端已解码，直接是 LRC）。
+     *
+     * 听书章节之前完全没接歌词：章节模型里没有 lyric 字段，播放走 kgaudio:// 后落到通用链路
+     * （网易云 / AMLLDB / LRCLIB）当然搜不到有声书 —— 这就是「听书歌词请求没做」。
+     */
+    suspend fun fetchLyric(hash: String): Result<String?> = io {
+        val normalizedHash = hash.trim().lowercase()
+        if (normalizedHash.isBlank()) return@io null
+
+        val search = signedRequest(
+            method = "GET",
+            path = "/search/lyric",
+            query = mapOf("hash" to normalizedHash, "man" to "yes"),
+            standard = true,
+        )
+        val candidates = (search.opt("data") as? JSONObject)?.optJSONArray("candidates")
+            ?: search.optJSONArray("candidates")
+        val first = (0 until (candidates?.length() ?: 0))
+            .mapNotNull { candidates?.optJSONObject(it) }
+            .firstOrNull { it.optString("id").isNotBlank() }
+            ?: return@io null
+        val lyricId = first.optString("id")
+        val accessKey = first.optString("accesskey").takeIf { it.isNotBlank() }
+
+        val query = LinkedHashMap<String, Any?>()
+        query["id"] = lyricId
+        query["fmt"] = "lrc"
+        query["decode"] = "true"
+        if (accessKey != null) query["accesskey"] = accessKey
+        val lyric = signedRequest(
+            method = "GET",
+            path = "/lyric",
+            query = query,
+            standard = true,
+        )
+        val content = (lyric.opt("data") as? JSONObject)?.optString("content").orEmpty()
+            .ifBlank { lyric.optString("content") }
+        content.takeIf { it.isNotBlank() }
+    }
 
     private fun parseChapter(item: JSONObject): KugouAudiobookChapter? {
         val hash = firstNonBlank(

@@ -76,6 +76,15 @@
     <string name="action_add_to_queue">添加到队列</string>
     <string name="action_download_all">批量下载</string>
     <string name="cd_download_all">批量下载选中歌曲</string>
+    <string name="download_selection_title">批量下载</string>
+    <string name="download_selection_summary">%1$d 首可下载，%2$d 首本地歌曲将跳过</string>
+    <string name="download_selection_online">可下载（在线）· %1$d 首</string>
+    <string name="download_selection_local">本地歌曲（跳过）· %1$d 首</string>
+    <string name="download_selection_confirm">下载 %1$d 首</string>
+    <string name="download_selection_none">没有可下载的在线歌曲</string>
+    <string name="download_selection_badge_online">在线</string>
+    <string name="download_selection_badge_local">本地</string>
+    <string name="download_selection_clear_all">取消全选</string>
     <string name="action_queue_next">下一首</string>
     <string name="cd_send_song_to_watch">将歌曲发送到手表</string>
     <string name="cd_watch_unavailable">手表不可用</string>

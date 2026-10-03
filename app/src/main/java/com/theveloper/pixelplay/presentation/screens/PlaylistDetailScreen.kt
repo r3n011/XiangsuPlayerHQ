@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DragIndicator
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
@@ -253,8 +254,23 @@ fun PlaylistDetailScreen(
     var isRemoveModeEnabled by remember { mutableStateOf(false) }
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
     var showPlaylistOptionsSheet by remember { mutableStateOf(false) }
+    // ⚡ 批量下载：非空时展示「在线可下 / 本地跳过」确认面板（与媒体库/队列共用同一套逻辑）
+    var downloadSelectionSongs by remember { mutableStateOf<List<Song>?>(null) }
     var showEditPlaylistDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    // ⚡ 批量下载确认面板：列出歌单里哪些歌在线可下、哪些是本地文件，确认后再入队
+    downloadSelectionSongs?.let { songs ->
+        com.theveloper.pixelplay.presentation.components.DownloadSelectionSheet(
+            songs = songs,
+            isOnline = { playerViewModel.isOnlineSong(it) },
+            onConfirm = { online ->
+                downloadSelectionSongs = null
+                if (online.isNotEmpty()) playerViewModel.downloadSongs(online)
+            },
+            onDismissRequest = { downloadSelectionSongs = null }
+        )
+    }
 
     val m3uExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("audio/x-mpegurl")
@@ -518,6 +534,29 @@ fun PlaylistDetailScreen(
                                 maxLines = 2,
                                 lineHeight = 20.sp
                             )
+                    }
+
+                    // ⚡ 批量下载：复用「先确认再下载」的清单面板（在线可下 / 本地跳过）
+                    FilledTonalIconButton(
+                        onClick = { downloadSelectionSongs = localReorderableSongs },
+                        enabled = localReorderableSongs.isNotEmpty(),
+                        modifier = Modifier.size(76.dp),
+                        shape = AbsoluteSmoothCornerShape(
+                            cornerRadiusTL = 14.dp,
+                            smoothnessAsPercentTL = 60,
+                            cornerRadiusTR = 60.dp,
+                            smoothnessAsPercentTR = 60,
+                            cornerRadiusBR = 60.dp,
+                            smoothnessAsPercentBR = 60,
+                            cornerRadiusBL = 14.dp,
+                            smoothnessAsPercentBL = 60
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Download,
+                            contentDescription = stringResource(R.string.action_download_all),
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
 
                     if (isOnlinePlaylist) {

@@ -76,6 +76,15 @@
     <string name="action_add_to_queue">Add to queue</string>
     <string name="action_download_all">Download all</string>
     <string name="cd_download_all">Download selected songs</string>
+    <string name="download_selection_title">Batch download</string>
+    <string name="download_selection_summary">%1$d downloadable, %2$d local song(s) will be skipped</string>
+    <string name="download_selection_online">Downloadable (online) · %1$d</string>
+    <string name="download_selection_local">Local songs (skipped) · %1$d</string>
+    <string name="download_selection_confirm">Download %1$d</string>
+    <string name="download_selection_none">No downloadable online songs</string>
+    <string name="download_selection_badge_online">Online</string>
+    <string name="download_selection_badge_local">Local</string>
+    <string name="download_selection_clear_all">Deselect all</string>
     <string name="action_queue_next">Next</string>
     <string name="cd_send_song_to_watch">Send song to watch</string>
     <string name="cd_watch_unavailable">Watch unavailable</string>

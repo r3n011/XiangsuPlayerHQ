@@ -123,13 +123,13 @@ fun rememberAudiobookTopBarState(
             ).coerceIn(0f, 1f)
     }
 
-    // 松手后：按当前高度过半与否决定吸附方向（与关于页 / 账户页一致），
-    // 并且只有列表回到顶部才允许重新展开，否则保持收起。
+    // 松手后：回到列表顶部就展开（下拉到顶必须能重新看到标题），否则保持收起。
+    // ⚠️ 这里不能用「高度过半才展开」的吸附规则：听书页为了保下拉刷新**不拦截下拉滚动**，
+    //    顶栏无法靠下拉拉回高度，一旦完全收起就再也回不到展开态（标题永远消失）。
     LaunchedEffect(listState.isScrollInProgress) {
         if (!listState.isScrollInProgress) {
-            val shouldExpand = heightPx.value > (minHeightPx + maxHeightPx) / 2f
             val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-            val target = if (shouldExpand && atTop) maxHeightPx else minHeightPx
+            val target = if (atTop) maxHeightPx else minHeightPx
             if (heightPx.value != target) {
                 heightPx.animateTo(target, spring(stiffness = Spring.StiffnessMedium))
             }

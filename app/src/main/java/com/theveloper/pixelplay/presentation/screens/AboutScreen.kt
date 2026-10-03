@@ -1573,6 +1573,7 @@ private fun openWeChatDonation(context: Context) {
     val candidates = listOf(
         Intent(Intent.ACTION_VIEW, uri),
         Intent(Intent.ACTION_VIEW, uri).setPackage(WECHAT_PACKAGE),
+        Intent(Intent.ACTION_VIEW, Uri.parse("weixin://")).setPackage(WECHAT_PACKAGE),
     )
     for (intent in candidates) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -1585,10 +1586,31 @@ private fun openWeChatDonation(context: Context) {
             // 继续尝试下一个候选
         }
     }
+
+    // ⚡ 收款链接都打不开时分两种情况，别再一律报「未安装微信」：
+    //    - 装了微信：直接打开微信主界面，提示用户用「扫一扫」扫上方二维码；
+    //    - 确实没装：才提示未安装。
+    if (isWeChatInstalled(context)) {
+        val launchIntent = context.packageManager
+            .getLaunchIntentForPackage(WECHAT_PACKAGE)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (launchIntent != null && runCatching { context.startActivity(launchIntent) }.isSuccess) {
+            android.widget.Toast
+                .makeText(context, R.string.about_donation_wechat_opened, android.widget.Toast.LENGTH_LONG)
+                .show()
+            return
+        }
+    }
     android.widget.Toast
         .makeText(context, R.string.about_donation_no_wechat, android.widget.Toast.LENGTH_SHORT)
         .show()
 }
+
+/** 微信是否安装（依赖 AndroidManifest 里的 `<queries>` 声明，否则 Android 11+ 会误判） */
+private fun isWeChatInstalled(context: Context): Boolean = runCatching {
+    context.packageManager.getPackageInfo(WECHAT_PACKAGE, 0)
+    true
+}.getOrDefault(false)
 
 /** 单个收款码板：白底 + 二维码 + 渠道名（两张图版式已统一，渲染大小一致）。 */
 @Composable

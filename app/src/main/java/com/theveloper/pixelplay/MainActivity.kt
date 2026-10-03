@@ -2303,13 +2303,37 @@ Trace.endSection()
                 { playerViewModel.onSearchNavIconDoubleTapped() }
             }
 
+            // ⚡ 悬浮底栏与 mini player 共用同一套折叠宽度规则（rememberCollapsedBarWidth）：
+            //    宽屏 + 横屏时两条栏都是 520dp 且右对齐 —— 底栏左右边缘因此与上面的 mini player 对齐
+            //    （此前底栏铺满整宽，比 mini player 宽出一截）；竖屏不限宽、照旧铺满。
+            val collapsedBarWidth = com.theveloper.pixelplay.presentation.components.rememberCollapsedBarWidth()
+            val floatingLimitWidth =
+                navBarStyle == NavBarStyle.FLOATING && collapsedBarWidth.limitWidth
             Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
+                    .align(
+                        if (floatingLimitWidth && collapsedBarWidth.alignEnd) {
+                            Alignment.BottomEnd
+                        } else {
+                            Alignment.BottomCenter
+                        }
+                    )
+                    .then(
+                        if (floatingLimitWidth) {
+                            Modifier.widthIn(max = collapsedBarWidth.maxWidth)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+                    )
                     .then(
                         if (navBarStyle == NavBarStyle.FLOATING) {
-                            Modifier.padding(start = 12.dp, end = 12.dp, bottom = bottomBarPadding)
+                            // 限宽时不再额外内缩，保证底栏内容与 mini player 同宽同边；
+                            // 竖屏（未限宽）保持原来的 12dp 内缩观感。
+                            if (floatingLimitWidth) {
+                                Modifier.padding(bottom = bottomBarPadding)
+                            } else {
+                                Modifier.padding(start = 12.dp, end = 12.dp, bottom = bottomBarPadding)
+                            }
                         } else {
                             Modifier.padding(bottom = bottomBarPadding)
                         }

@@ -24,6 +24,7 @@
     <!-- Library Toolbar & Navigation -->
     <string name="library_cd_watch_transfer">手表传输</string>
     <string name="library_cd_open_settings">设置</string>
+    <string name="library_scroll_to_top">回到顶部</string>
     <string name="library_tab_edit">编辑</string>
     <string name="library_cd_reorder_tabs">重新排列标签页</string>
     <string name="library_cd_expand_tab_menu">展开菜单</string>

@@ -77,17 +77,15 @@ fun BlurryBackdrop(
                 ContentScale.FillBounds -> ImageView.ScaleType.FIT_XY
                 else -> ImageView.ScaleType.CENTER_CROP
             }
-            // 只在换图时重新模糊（Blurry 的 into() 是异步的，重复调用会白算）
+            // ⚡ 模糊引擎改成纯 Kotlin 的盒式模糊（StackBlur）：Blurry 内部走 RenderScript，
+            //    RS 在 Android 12+ 已废弃、部分 ROM 驱动不可用会直接失败 —— 低版本歌词背景
+            //    因此完全没有模糊。纯 CPU 实现全版本可用，且这里已经先解码成小图，开销很小。
             if (view.tag !== source) {
                 view.tag = source
                 runCatching {
-                    Blurry.with(context)
-                        .radius(radius.coerceIn(1, 25))
-                        .sampling(sampling.coerceAtLeast(1))
-                        .async()
-                        .from(source)
-                        .into(view)
-                }.onFailure { Timber.w(it, "BlurryBackdrop: Blurry 模糊失败") }
+                    val blurred = StackBlur.blur(source, radius.coerceIn(1, 25), sampling.coerceAtLeast(1))
+                    view.setImageBitmap(blurred)
+                }.onFailure { Timber.w(it, "BlurryBackdrop: 软件模糊失败") }
             }
         },
     )

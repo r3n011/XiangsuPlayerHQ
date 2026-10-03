@@ -401,15 +401,15 @@ fun UnifiedPlayerSheetV2(
         animatePlayerSheet(targetExpanded = targetExpanded && showPlayerContentArea)
     }
 
-    // ⚡ 仅"宽屏 + 横屏"时限制折叠态迷你条的最大宽度（对齐 Rhythm），避免被拉成一条横跨全屏的长带；
-    //    多余空间留在左侧（即 NavigationRail 一侧），所以是右对齐。
-    //    ⚠️ 竖屏（含平板竖屏）不做限制：竖屏下迷你条本来就该铺满整条宽度。
-    val isTabletWidth = with(density) { screenWidthPx.toDp() } >= 600.dp
-    val limitCollapsedWidth = isTabletWidth && isLandscape
+    // ⚡ 折叠态迷你条的宽度 / 对齐：与悬浮底栏共用同一份规则（见 rememberCollapsedBarWidth），
+    //    保证两条栏左右边缘对齐。规则：宽屏 + 横屏 → 最大 520dp 且右对齐（多余空间留在左侧
+    //    导航栏那一侧）；竖屏（含平板竖屏）不限宽、铺满。
+    val collapsedBarWidth = rememberCollapsedBarWidth()
+    val limitCollapsedWidth = collapsedBarWidth.limitWidth
     val collapsedMaxWidthPx = remember(limitCollapsedWidth, density) {
-        if (limitCollapsedWidth) with(density) { 520.dp.toPx() } else 0f
+        if (limitCollapsedWidth) with(density) { collapsedBarWidth.maxWidth.toPx() } else 0f
     }
-    val collapsedAlignEnd = limitCollapsedWidth
+    val collapsedAlignEnd = collapsedBarWidth.alignEnd
 
     // ⚡ 全胶囊样式：折叠态圆角取迷你条高度的一半（展开时插值回方角）
     val miniPlayerStyleForShape by playerViewModel.miniPlayerStyle.collectAsStateWithLifecycle()

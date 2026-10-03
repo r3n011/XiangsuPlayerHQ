@@ -2,34 +2,31 @@ package jp.wasabeef.blurry
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.theveloper.pixelplay.presentation.components.blur.StackBlur
+import timber.log.Timber
 
 /**
- * Blurry 的「位图进 → 位图出」同步入口（桥接文件）。
+ * 低版本（API < 31）软件模糊的「位图进 → 位图出」同步入口。
  *
- * ⚡ 为什么不用公开 API：Blurry 4.0.1 只能把模糊结果画进 `ImageView`
- * （`Blurry.with(ctx)…from(bmp).into(iv)`），拿不回 Bitmap；而 Compose 里
- * （歌词行模糊等）需要在后台线程同步拿到位图再自己绘制。
- * 引擎类 [Blur] / [BlurFactor] 是**包私有**的 —— 本文件声明在同一个包里，
- * 因此可以直接调用。这就是 `BitmapComposer.into()` 内部走的那条路：
- * RenderScript ScriptIntrinsicBlur 优先，失败自动降级纯 Java StackBlur。
+ * ⚡ 引擎已从 Blurry（RenderScript）换成**纯 Kotlin 的盒式模糊**（[StackBlur]）：
+ * RenderScript 在 Android 12+ 已废弃，且部分 ROM / 设备的 RS 驱动不可用 —— Blurry 会直接
+ * 失败（它只兜底 RSRuntimeException，很多设备抛的是别的异常），而旧代码失败后只回退成
+ * 「降采样图」，等于**根本没有模糊**。这正是「低版本歌词模糊出不来」的原因。
+ * 现在换成纯 CPU 实现，任何版本 / 任何 ROM 都可用；调用方本来就先降采样到 24~256px，
+ * 计算量很小，所以放在后台线程即可。
  *
- * ⚠️ 半径必须夹在 1..25：`ScriptIntrinsicBlur.setRadius` 越界会抛
- *    IllegalArgumentException，Blurry 只会捕获 RSRuntimeException，不会兜底。
- * ⚠️ RenderScript 建上下文有开销，调用方应放到后台线程执行。
- * ⚠️ R8 混淆不受影响：这里是直接字节码引用，会被一并重写（不依赖反射）。
+ * 保留原函数名（调用方 [com.theveloper.pixelplay.presentation.components.SoftBlur] 与
+ * `BlurryBackdrop` 都用它），签名不变。
  */
 internal fun blurBitmapWithBlurry(
     context: Context,
     source: Bitmap,
     radius: Int,
-    /** 采样倍率：>1 时 Blurry 内部先降采样、模糊后再放大回原尺寸 */
+    /** 采样倍率：>1 时先降采样、模糊后再放大回原尺寸 */
     sampling: Int = 1,
 ): Bitmap? {
     if (source.isRecycled || source.width <= 0 || source.height <= 0) return null
-    val factor = BlurFactor()
-    factor.width = source.width
-    factor.height = source.height
-    factor.radius = radius.coerceIn(1, 25)
-    factor.sampling = sampling.coerceAtLeast(1)
-    return Blur.of(context, source, factor)
+    return runCatching { StackBlur.blur(source, radius.coerceIn(1, 25), sampling) }
+        .onFailure { Timber.w(it, "blurBitmapWithBlurry: 纯 Kotlin 模糊失败") }
+        .getOrNull()
 }

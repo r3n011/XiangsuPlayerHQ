@@ -122,6 +122,8 @@ private data class RemoteLyricsMatch(
 class LyricsRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val lrcLibApiService: LrcLibApiService,
+    /** 酷狗歌词（`/search/lyric` → `/lyric`）：听书章节与酷狗在线歌都靠它 */
+    private val kugouAudiobookApi: com.theveloper.pixelplay.data.kugou.KugouAudiobookApi,
     private val lyricsDao: com.theveloper.pixelplay.data.database.LyricsDao,
     private val okHttpClient: OkHttpClient,
     private val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi,
@@ -636,6 +638,18 @@ class LyricsRepositoryImpl @Inject constructor(
             "lrclib" to step
         } else null
 
+        // ⚡ 酷狗歌词：听书章节（kgaudio://）与酷狗在线歌（cloud://lx 里 source=kg）都带 hash，
+        //    直接走酷狗 `/search/lyric` → `/lyric`。以前听书章节完全没接歌词 —— 落到
+        //    网易云/AMLLDB/LRCLIB 当然搜不到有声书，表现就是「听书永远暂无歌词」。
+        val kugouStep: Pair<String, suspend () -> Lyrics?>? = run {
+            val hash = extractKugouHash(song) ?: return@run null
+            val step: suspend () -> Lyrics? = {
+                kugouAudiobookApi.fetchLyric(hash).getOrNull()
+                    ?.let { text -> LyricsUtils.parseLyrics(text).takeIf { it.isValid() } }
+            }
+            "kugou" to step
+        }
+
         // ⚡ 顺序基本由用户在「API 管理」里排的来源顺序决定（可逐个上移/下移），
         //   唯一例外：cloud://lx 歌曲的内置源固定排到最前（见下）。磁盘缓存是本地兜底，固定在最后。
         val stepByKey: Map<String, Pair<String, suspend () -> Lyrics?>?> = mapOf(
@@ -651,6 +665,8 @@ class LyricsRepositoryImpl @Inject constructor(
             //   必须排在最前。否则默认顺序里网易云的 16s 时间片会把 18s 总预算吃光，
             //   内置源永远轮不到 —— 用户感知就是「酷狗私人 FM / 在线歌曲几乎都没有歌词」。
             builtInStep?.let(::add)
+            // ⚡ 酷狗歌词紧跟内置源：听书章节 / 酷狗歌都是同一家的内容，本地源最准
+            kugouStep?.let(::add)
             api.lyricsSourceOrder
                 .mapNotNull { stepByKey[it.stepKey] }
                 .filterNot { it.first == LyricsSourceKey.BUILT_IN.stepKey }
@@ -684,6 +700,7 @@ class LyricsRepositoryImpl @Inject constructor(
     private fun stepBudgetMs(tag: String): Long = when (tag) {
         // 内部已是"官方 8s + 镜像 6s"，这里给足一点避免被外层提前掐断
         "netease" -> 16_000L
+        "kugou" -> 6_000L
         "amll" -> 8_000L
         "lrclib" -> 8_000L
         "builtin" -> 6_000L

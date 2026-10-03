@@ -50,6 +50,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Repeat
@@ -260,6 +261,8 @@ fun QueueBottomSheet(
     val colors = MaterialTheme.colorScheme
     var showTimerOptions by rememberSaveable { mutableStateOf(false) }
     var showClearQueueDialog by remember { mutableStateOf(false) }
+    // ⚡ 批量下载确认面板：非空时展示「在线可下 / 本地跳过」清单（队列里混着本地与在线歌曲）
+    var downloadSelectionSongs by remember { mutableStateOf<List<Song>?>(null) }
     var isFabExpanded by rememberSaveable { mutableStateOf(false) }
     // Hoist resource strings at composition time so they react to locale changes
     // and can be safely captured in onClick lambdas.
@@ -276,6 +279,19 @@ fun QueueBottomSheet(
 
     BackHandler(enabled = isVisible && isFabExpanded) {
         isFabExpanded = false
+    }
+
+    // ⚡ 批量下载确认面板：列出队列里哪些歌在线可下、哪些是本地文件，确认后再入队
+    downloadSelectionSongs?.let { songs ->
+        DownloadSelectionSheet(
+            songs = songs,
+            isOnline = { viewModel.isOnlineSong(it) },
+            onConfirm = { online ->
+                downloadSelectionSongs = null
+                if (online.isNotEmpty()) viewModel.downloadSongs(online)
+            },
+            onDismissRequest = { downloadSelectionSongs = null }
+        )
     }
 
     // Use the real player index from MediaController if available to resolve duplicates.
@@ -1104,6 +1120,16 @@ fun QueueBottomSheet(
                                     }
                                 )
                             }
+                            QueueToolbarMenuButton(
+                                text = stringResource(R.string.action_download_all),
+                                icon = Icons.Rounded.Download,
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                onClick = {
+                                    isFabExpanded = false
+                                    downloadSelectionSongs = queue
+                                }
+                            )
                             QueueToolbarMenuButton(
                                 text = stringResource(R.string.presentation_batch_e_action_clear_queue),
                                 icon = Icons.Filled.ClearAll,

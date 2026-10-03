@@ -217,6 +217,7 @@
     <string name="about_donation_channel_alipay">Alipay</string>
     <string name="about_donation_channel_wechat">WeChat Pay</string>
     <string name="about_donation_no_wechat">WeChat isn\'t installed — please scan the QR code above instead.</string>
+    <string name="about_donation_wechat_opened">WeChat is open — scan the QR code above to donate.</string>
     <string name="about_donation_thanks_title">Thank-you list</string>
     <string name="about_donation_thanks_subtitle">Thanks to everyone who has supported this project</string>
     <string name="about_donation_thanks_note">The list is updated over time — contact the developer if anything is missing.</string>
@@ -251,6 +252,12 @@
     <string name="roaming_mode_familiar_desc">Lean towards what you already listen to</string>
     <string name="roaming_mode_explore">Explore</string>
     <string name="roaming_mode_explore_desc">Lean towards songs you have not heard</string>
+    <string name="lyric_share_title">Share lyrics</string>
+    <string name="lyric_share_select_all">Select all</string>
+    <string name="lyric_share_selected_count">%1$d line(s) selected</string>
+    <string name="lyric_share_text">Share as text</string>
+    <string name="lyric_share_image">Generate image</string>
+    <string name="lyric_share_generating">Generating…</string>
     <string name="home_featured_quality_lossless">Lossless</string>
     <string name="home_featured_quality_hires">Hi-Res</string>
     <string name="home_featured_quality_hq">HQ</string>

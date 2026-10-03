@@ -2088,25 +2088,22 @@ private fun FullPlayerAlbumCoverSection(
     ) {
         // 计算基础尺寸
         val externalHeightConstraint = maxHeight
-        // ⚡ 预览轮播（仿首页精选轮播的平板多浏览）：封面槽要占满整宽才能露出两侧缩略图，
-        //    高度按「大封面 = 62% 宽度」的正方形算；其它样式仍是正方形封面槽。
-        val isPreviewCarousel = carouselStyle == CarouselStyle.PREVIEW
         val widthBasedHeight = when (carouselStyle) {
             CarouselStyle.NO_PEEK -> maxWidth
+            // 预览轮播 = 原版「单侧预览」：封面槽收到 80% 宽，让出的空间给右侧预览
+            CarouselStyle.PREVIEW -> maxWidth * 0.8f
             CarouselStyle.ONE_PEEK -> maxWidth * 0.8f
             CarouselStyle.TWO_PEEK -> maxWidth * 0.6f
-            CarouselStyle.PREVIEW -> maxWidth * 0.62f
             else -> maxWidth
         }
 
         // 竖屏模式：封面应该是正方形，取宽度的最小值
         // 横屏模式：使用外部高度约束或宽度计算高度的较小值
         val carouselHeight = minOf(externalHeightConstraint, widthBasedHeight)
-        val coverSlotModifier = if (isPreviewCarousel) {
-            Modifier.fillMaxWidth().height(carouselHeight)
-        } else {
-            Modifier.widthIn(max = carouselHeight).height(carouselHeight)
-        }
+        // 与原版一致：封面槽始终是正方形（预览通过 keyline 在槽内让出右侧空间）
+        val coverSlotModifier = Modifier
+            .widthIn(max = carouselHeight)
+            .height(carouselHeight)
 
         DelayedContent(
             shouldDelay = shouldDelay,

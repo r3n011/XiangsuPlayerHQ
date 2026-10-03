@@ -86,6 +86,11 @@ fun LibrarySongsTab(
 ) {
     val listState = rememberLazyGridState()
     val dummyListState = rememberLazyGridState()
+    // ⚡ 媒体库「回到顶部」：把列表状态注册给父级（父级据此显示回到顶部按钮并执行滚动）
+    LibraryScrollToTopRegistration(
+        tabId = com.theveloper.pixelplay.data.model.LibraryTabId.SONGS.storageKey,
+        state = listState
+    )
     val pullToRefreshState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
     val visibilityCallback by rememberUpdatedState(onLocateCurrentSongVisibilityChanged)

@@ -2078,35 +2078,26 @@ fun HomeDiscoverCard(
     onListenTogetherClick: () -> Unit = {}
 ) {
     val scheme = MaterialTheme.colorScheme
-    // 三个入口用 M3 的三套容器色：避免三个一模一样的色块挤在一起
+    // ⚡ 配色语言统一（此前 primary/secondary/tertiary 是随手分配的，九宫格里看着乱）：
+    //    网易云系 = primary、酷狗系 = tertiary、本地功能 = secondary；
+    //    顺序也按这三组排（网易云 → 酷狗 → 本地），不再交错。
+    val neteaseContainer = scheme.primaryContainer
+    val neteaseOnContainer = scheme.onPrimaryContainer
+    val kugouContainer = scheme.tertiaryContainer
+    val kugouOnContainer = scheme.onTertiaryContainer
+    val localContainer = scheme.secondaryContainer
+    val localOnContainer = scheme.onSecondaryContainer
     val entries = buildList {
+        // ── 网易云系 ──
         if (showRoaming) add(
             DiscoverEntry(
                 icon = Icons.Rounded.PlayArrow,
                 labelRes = R.string.setcat_center_nav_roaming,
-                containerColor = scheme.primaryContainer,
-                contentColor = scheme.onPrimaryContainer,
+                containerColor = neteaseContainer,
+                contentColor = neteaseOnContainer,
                 onClick = onRoamingClick,
                 // ⚡ 漫游是网易云的功能，右上角挂网易云 logo
                 badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
-            )
-        )
-        if (showRadio) add(
-            DiscoverEntry(
-                icon = Icons.Rounded.Radio,
-                labelRes = R.string.setcat_center_nav_radio,
-                containerColor = scheme.secondaryContainer,
-                contentColor = scheme.onSecondaryContainer,
-                onClick = onRadioClick
-            )
-        )
-        if (showAi) add(
-            DiscoverEntry(
-                icon = Icons.Rounded.AutoAwesome,
-                labelRes = R.string.discover_ai_title,
-                containerColor = scheme.tertiaryContainer,
-                contentColor = scheme.onTertiaryContainer,
-                onClick = onAiClick
             )
         )
         // ⚡ 网易云心动模式：以当前歌曲为种子，"永远接着听"
@@ -2114,10 +2105,9 @@ fun HomeDiscoverCard(
             DiscoverEntry(
                 icon = Icons.Rounded.Favorite,
                 labelRes = R.string.home_discover_heart_mode,
-                containerColor = scheme.primaryContainer,
-                contentColor = scheme.onPrimaryContainer,
+                containerColor = neteaseContainer,
+                contentColor = neteaseOnContainer,
                 onClick = onHeartModeClick,
-                // 心动模式同样是网易云的功能
                 badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
             )
         )
@@ -2126,43 +2116,10 @@ fun HomeDiscoverCard(
             DiscoverEntry(
                 icon = Icons.Rounded.LibraryMusic,
                 labelRes = R.string.home_discover_similar_songs,
-                containerColor = scheme.secondaryContainer,
-                contentColor = scheme.onSecondaryContainer,
+                containerColor = neteaseContainer,
+                contentColor = neteaseOnContainer,
                 onClick = onSimilarSongsClick,
                 badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
-            )
-        )
-        // ⚡ 酷狗私人FM：匿名可用的「私人推荐」无限流（移植自 md3Music）
-        add(
-            DiscoverEntry(
-                icon = Icons.Rounded.Podcasts,
-                labelRes = R.string.home_discover_kugou_fm,
-                containerColor = scheme.secondaryContainer,
-                contentColor = scheme.onSecondaryContainer,
-                onClick = onKugouFmClick,
-                // 酷狗官方标是圆角方形，展示时统一裁成圆形
-                badgeLogoRes = R.drawable.ic_kugou
-            )
-        )
-        // ⚡ 听歌识曲：录一段外放声音，匹配出歌曲
-        add(
-            DiscoverEntry(
-                icon = Icons.Rounded.Mic,
-                labelRes = R.string.home_discover_recognition,
-                containerColor = scheme.tertiaryContainer,
-                contentColor = scheme.onTertiaryContainer,
-                onClick = onRecognitionClick
-            )
-        )
-        // ⚡ 听书：酷狗长音频书架（推荐分区 + 免费书库 + 搜索），匿名可用
-        add(
-            DiscoverEntry(
-                icon = Icons.Rounded.AutoStories,
-                labelRes = R.string.home_discover_audiobook,
-                containerColor = scheme.tertiaryContainer,
-                contentColor = scheme.onTertiaryContainer,
-                onClick = onAudiobookClick,
-                badgeLogoRes = R.drawable.ic_kugou
             )
         )
         // ⚡ 一起听：点开就用当前播放队列开房（需登录网易云，未登录提示并跳账户）
@@ -2170,10 +2127,63 @@ fun HomeDiscoverCard(
             DiscoverEntry(
                 icon = Icons.Rounded.Groups,
                 labelRes = R.string.home_discover_listen_together,
-                containerColor = scheme.primaryContainer,
-                contentColor = scheme.onPrimaryContainer,
+                containerColor = neteaseContainer,
+                contentColor = neteaseOnContainer,
                 onClick = onListenTogetherClick,
                 badgeLogoRes = R.drawable.netease_cloud_music_logo_icon_206716__1_
+            )
+        )
+        // ── 酷狗系 ──
+        // ⚡ 酷狗私人FM：匿名可用的「私人推荐」无限流（移植自 md3Music）
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Podcasts,
+                labelRes = R.string.home_discover_kugou_fm,
+                containerColor = kugouContainer,
+                contentColor = kugouOnContainer,
+                onClick = onKugouFmClick,
+                // 酷狗官方标是圆角方形，展示时统一裁成圆形
+                badgeLogoRes = R.drawable.ic_kugou
+            )
+        )
+        // ⚡ 听书：酷狗长音频书架（推荐分区 + 免费书库 + 搜索），匿名可用
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.AutoStories,
+                labelRes = R.string.home_discover_audiobook,
+                containerColor = kugouContainer,
+                contentColor = kugouOnContainer,
+                onClick = onAudiobookClick,
+                badgeLogoRes = R.drawable.ic_kugou
+            )
+        )
+        // ── 本地功能（不依赖账号）──
+        if (showRadio) add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Radio,
+                labelRes = R.string.setcat_center_nav_radio,
+                containerColor = localContainer,
+                contentColor = localOnContainer,
+                onClick = onRadioClick
+            )
+        )
+        if (showAi) add(
+            DiscoverEntry(
+                icon = Icons.Rounded.AutoAwesome,
+                labelRes = R.string.discover_ai_title,
+                containerColor = localContainer,
+                contentColor = localOnContainer,
+                onClick = onAiClick
+            )
+        )
+        // ⚡ 听歌识曲：录一段外放声音，匹配出歌曲
+        add(
+            DiscoverEntry(
+                icon = Icons.Rounded.Mic,
+                labelRes = R.string.home_discover_recognition,
+                containerColor = localContainer,
+                contentColor = localOnContainer,
+                onClick = onRecognitionClick
             )
         )
     }

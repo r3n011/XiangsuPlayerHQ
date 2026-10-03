@@ -12,6 +12,14 @@ import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.material.icons.rounded.VerticalAlignTop
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -589,6 +597,8 @@ fun LibraryScreen(
     val isShuffleEnabled = remember(stablePlayerState) { stablePlayerState.isShuffleEnabled }
     val currentSong = remember(stablePlayerState) { stablePlayerState.currentSong }
     var showMultiSelectionSheet by remember { mutableStateOf(false) }
+    // ⚡ 批量下载确认面板：非空时展示「在线可下 / 本地跳过」清单
+    var downloadSelectionSongs by remember { mutableStateOf<List<Song>?>(null) }
     var selectedAlbums by remember { mutableStateOf<List<Album>>(emptyList()) }
     val selectedAlbumIds = remember(selectedAlbums) { selectedAlbums.map { it.id }.toSet() }
     val isAlbumSelectionMode = selectedAlbums.isNotEmpty()
@@ -1726,7 +1736,44 @@ fun LibraryScreen(
                         }
 
                         // Box wrapper to allow floating SelectionCountPill overlay
+                        // ⚡ 媒体库「回到顶部」：各 Tab 把自己的滚动状态注册到这份注册表，
+                        //    父级据此决定按钮显隐并执行滚动（Tab 的列表状态父级拿不到，所以反过来注册）。
+                        val libraryScrollRegistry = remember { mutableStateMapOf<String, LibraryScrollToTopEntry>() }
+                        CompositionLocalProvider(LocalLibraryScrollRegistry provides libraryScrollRegistry) {
                         Box(modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current)) {
+                            // ⚡ 回到顶部按钮：当前 Tab 的列表离开顶部时浮出（对齐参考项目的定位按钮样式）
+                            val scrollToTopEntry = libraryScrollRegistry[currentTabId.storageKey]
+                            val scrollToTopProgress by animateFloatAsState(
+                                targetValue = if (scrollToTopEntry?.awayFromTop?.value == true) 1f else 0f,
+                                animationSpec = tween(durationMillis = 180),
+                                label = "libraryScrollToTopVisibility"
+                            )
+                            if (scrollToTopProgress > 0.01f) {
+                                FloatingActionButton(
+                                    onClick = {
+                                        scrollToTopEntry?.let { entry ->
+                                            scope.launch { entry.scrollToTop() }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(start = 16.dp, bottom = 16.dp)
+                                        .zIndex(10f)
+                                        .graphicsLayer {
+                                            alpha = scrollToTopProgress
+                                            val s = 0.8f + 0.2f * scrollToTopProgress
+                                            scaleX = s
+                                            scaleY = s
+                                        },
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.VerticalAlignTop,
+                                        contentDescription = stringResource(R.string.library_scroll_to_top)
+                                    )
+                                }
+                            }
                             HorizontalPager(
                                 state = pagerState,
                                 modifier = Modifier
@@ -1981,6 +2028,7 @@ fun LibraryScreen(
                                     .align(Alignment.TopCenter)
                                     .zIndex(1f)
                             )
+                        }
                         }
                     }
                 }
@@ -2276,10 +2324,23 @@ fun LibraryScreen(
                 showMultiSelectionSheet = false
                 showBatchEditSheet = true
             },
-            // ⚡ 批量下载：选中项里有在线歌曲才显示按钮；本地歌曲由 downloadSongs 过滤并在提示里说明
-            onDownloadAll = if (selectedSongs.any { playerViewModel.isOnlineSong(it) }) {
-                { playerViewModel.downloadSongs(selectedSongs) }
+            // ⚡ 批量下载：先弹确认面板列出「哪些在线可下 / 哪些本地跳过」，确认后再入队
+            onDownloadAll = if (selectedSongs.isNotEmpty()) {
+                { downloadSelectionSongs = selectedSongs }
             } else null
+        )
+    }
+
+    // 批量下载确认面板（在线 / 本地分组）
+    downloadSelectionSongs?.let { songs ->
+        com.theveloper.pixelplay.presentation.components.DownloadSelectionSheet(
+            songs = songs,
+            isOnline = { playerViewModel.isOnlineSong(it) },
+            onConfirm = { online ->
+                downloadSelectionSongs = null
+                if (online.isNotEmpty()) playerViewModel.downloadSongs(online)
+            },
+            onDismissRequest = { downloadSelectionSongs = null }
         )
     }
 
