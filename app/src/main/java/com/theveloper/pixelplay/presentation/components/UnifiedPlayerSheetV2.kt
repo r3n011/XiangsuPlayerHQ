@@ -714,12 +714,24 @@ fun UnifiedPlayerSheetV2(
                             .layout { measurable, constraints ->
                                 val targetHeightPx = playerContentAreaHeightPxProvider()
                                     .toInt().coerceAtLeast(0)
-                                val startPaddingPx = currentHorizontalPaddingStartPxProvider()
+                                val rawStartPaddingPx = currentHorizontalPaddingStartPxProvider()
                                     .toInt().coerceAtLeast(0)
-                                val endPaddingPx = currentHorizontalPaddingEndPxProvider()
+                                val rawEndPaddingPx = currentHorizontalPaddingEndPxProvider()
                                     .toInt().coerceAtLeast(0)
-                                val innerWidth = (constraints.maxWidth - startPaddingPx - endPaddingPx)
-                                    .coerceAtLeast(0)
+                                // ⚡ 兜底：折叠态水平内边距是「按窗口尺寸」算出来的，而这里用的是当前布局
+                                //    约束。旋转 / 分屏 / 从后台恢复时两者可能短暂不一致（窗口已按新方向算好
+                                //    平板限宽补偿，约束还是旧宽度），相减会把 innerWidth 压到接近 0 ——
+                                //    表现就是迷你条塌成一个小方块（用户反馈的「mini player 长度偶发 bug」）。
+                                //    这里给可用宽度兜底：折叠态至少保留 240dp（且不超过整宽），
+                                //    并同步收窄起始内边距，保证内容始终落在可视范围内。
+                                val minInnerWidth = minOf(
+                                    constraints.maxWidth,
+                                    with(density) { 240.dp.roundToPx() }
+                                )
+                                val innerWidth = (constraints.maxWidth - rawStartPaddingPx - rawEndPaddingPx)
+                                    .coerceAtLeast(minInnerWidth)
+                                val startPaddingPx = rawStartPaddingPx
+                                    .coerceAtMost((constraints.maxWidth - innerWidth).coerceAtLeast(0))
 
                                 val placeable = measurable.measure(
                                     constraints.copy(

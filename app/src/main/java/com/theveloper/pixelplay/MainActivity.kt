@@ -310,6 +310,16 @@ class MainActivity : ComponentActivity() {
          * 即使当前是竖屏。默认 false，未提供时行为与以前完全一致。
          */
         val LocalForceTabletLayout = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+        /**
+         * 迷你播放条**当前**的下移量（px，滚动隐藏底部 chrome 时逐帧变化）。
+         *
+         * 供页面内的浮层（媒体库「回到顶部」按钮）在**绘制阶段**读取：浮层想一直贴在迷你条
+         * 正上方，就必须跟着迷你条一起下移。用 lambda 暴露而不是直接给 Dp/px 值，是为了让
+         * 读取方把它放进 `graphicsLayer`，只重绘不重组。
+         */
+        val LocalMiniPlayerScrollShiftPx =
+            androidx.compose.runtime.staticCompositionLocalOf<() -> Float> { { 0f } }
     }
 
     private val playerViewModel: PlayerViewModel by viewModels()
@@ -1411,6 +1421,18 @@ class MainActivity : ComponentActivity() {
             (miniPlayerBottomMarginDp - systemNavBarInset).coerceAtLeast(0.dp)
         }
 
+        // ⚡ 迷你条「当前」下移量（px）的**绘制阶段**取值器：页面里的浮层（媒体库的「回到顶部」按钮）
+        //    需要始终贴在迷你条正上方，而迷你条会随「滚动隐藏底部 chrome」逐帧下移。
+        //    用 lambda 暴露，让读取方在 graphicsLayer 里求值 —— 只触发重绘，不会每帧重组页面。
+        val miniPlayerScrollShiftPxProvider: () -> Float = remember(
+            miniPlayerScrollShiftMaxDp,
+            bottomNavBarProgressState,
+            densityValue
+        ) {
+            val maxShiftPx = with(densityValue) { miniPlayerScrollShiftMaxDp.toPx() }
+            { maxShiftPx * (1f - bottomNavBarProgressState.value) }
+        }
+
         // NavigationRail 的水平 padding:使用稳定值,不依赖动画值,避免位置抖动
         val navRailPaddingDp = if (isTabletShell && !isCarModeEnabled) {
             // 横屏且非车机模式时,给内容留出 Rail 空间（悬浮 96dp / 停靠 84dp）
@@ -1459,7 +1481,9 @@ class MainActivity : ComponentActivity() {
             LocalHapticFeedback provides scopedHapticFeedback,
             LocalHazeState provides hazeState,
             // 竖屏强制平板布局：供各页面读取（HomeScreen / 设置页 / 播放器等）
-            LocalForceTabletLayout provides forceTabletLayout
+            LocalForceTabletLayout provides forceTabletLayout,
+            // 迷你条当前下移量：页面浮层（媒体库「回到顶部」按钮）跟着迷你条走
+            LocalMiniPlayerScrollShiftPx provides miniPlayerScrollShiftPxProvider
         ) {
             // Auto-close sidebar drawer when player expands
             LaunchedEffect(isPlayerExpanded) {

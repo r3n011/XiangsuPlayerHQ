@@ -129,6 +129,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
@@ -887,6 +888,23 @@ fun LibraryScreen(
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
     val bottomGradientHeight = if (navBarStyle == NavBarStyle.FLOATING) 0.dp
         else resolveMainScreenBottomGradientHeight(navBarCompactMode)
+
+    // ⚡ 「回到顶部」按钮定位：悬浮在 mini player 正上方（右端）。
+    //    之前固定在左下角（BottomStart），平板上与左侧 NavigationRail 处于同一角落、观感上"没有这个按钮"，
+    //    手机上也会压住列表左下角的封面。现在改成贴着 mini player 顶边：迷你条在哪，按钮就在哪。
+    //    底部偏移量与 MainActivity 里 mini player 的 bottom margin 保持同一套规则
+    //    （真实横屏/平板没有底部导航栏 → 只留系统安全区；悬浮底栏 → 迷你条高度 + 安全区；
+    //      其余样式 → 底栏占位高度），这样按钮永远刚好落在迷你条上沿。
+    val isLandscapeWindow = LocalWindowInfo.current.containerSize.let { it.width > it.height }
+    val miniPlayerBottomOffsetDp = when {
+        isLandscapeWindow -> maxOf(systemNavBarInset, 8.dp)
+        navBarStyle == NavBarStyle.FLOATING -> MiniPlayerHeight + systemNavBarInset
+        else -> bottomBarHeightDp
+    }
+    val scrollToTopFabBottomPadding = miniPlayerBottomOffsetDp + MiniPlayerHeight + 8.dp
+    // 迷你条「滚动隐藏底部 chrome」时的下移量：按钮跟着一起下移，才能始终贴在迷你条正上方
+    // （在 graphicsLayer 里读取，只重绘不重组）。
+    val miniPlayerScrollShiftPxProvider = MainActivity.LocalMiniPlayerScrollShiftPx.current
 
     val dm = LocalPixelPlayDarkTheme.current
 
@@ -1756,14 +1774,19 @@ fun LibraryScreen(
                                         }
                                     },
                                     modifier = Modifier
-                                        .align(Alignment.BottomStart)
-                                        .padding(start = 16.dp, bottom = 16.dp)
+                                        // ⚡ 悬浮在 mini player 正上方（右端）：平板上不再被左侧导航栏遮挡，
+                                        //    手机上也不再压住列表左下角；按钮跟着迷你条走。
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 16.dp, bottom = scrollToTopFabBottomPadding)
                                         .zIndex(10f)
                                         .graphicsLayer {
                                             alpha = scrollToTopProgress
                                             val s = 0.8f + 0.2f * scrollToTopProgress
                                             scaleX = s
                                             scaleY = s
+                                            // ⚡ 跟着迷你条下移：媒体库上滑时底部 chrome 收起、迷你条下移，
+                                            //    按钮同步下移才不会与迷你条脱节（也不会压住它）。
+                                            translationY = miniPlayerScrollShiftPxProvider()
                                         },
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
