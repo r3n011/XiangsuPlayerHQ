@@ -320,7 +320,9 @@ class ListenTogetherCoordinator @Inject constructor(
                 heartbeatTick = 0
                 sendHeartbeat(activeRoom)
             }
-            delay(SYNC_INTERVAL_MS)
+            // ⚡ 连续失败时退避（1s → 2s → 4s → 8s）：服务端「系统错误 / 限流」时
+            //    每秒锤接口只会把限流拖得更久；成功一次立刻回到 1s。
+            delay(syncDelayMs())
         }
     }
 
@@ -712,6 +714,9 @@ class ListenTogetherCoordinator @Inject constructor(
         Timber.w(error, "ListenTogether: sync failure #%d", failures)
     }
 
+    /** 同步轮询间隔：连续失败时指数退避，避免把服务端限流拖得更久 */
+    private fun syncDelayMs(): Long = SYNC_INTERVAL_MS shl failures.coerceIn(0, MAX_BACKOFF_SHIFT)
+
     private fun setError(message: String) {
         _state.update { it.copy(lastError = message) }
     }
@@ -763,6 +768,9 @@ class ListenTogetherCoordinator @Inject constructor(
         const val HOST_WAITING_POLL_MS = 3_000L
 
         const val DRIFT_CORRECTION_MS = 1_200L
+
+        /** 同步退避的最大位移：SYNC_INTERVAL_MS << 3 = 8s */
+        const val MAX_BACKOFF_SHIFT = 3
 
         /** 激活提示：一起听开启时自动弹一次 */
         const val ACTIVATION_MESSAGE = "一起听已开启：期间仅支持播放网易云歌曲"

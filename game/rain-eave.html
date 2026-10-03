@@ -176,13 +176,15 @@ function makeStone(size = 512, tiles = 4) {
       const puddle = clamp01((blob - 0.455) * 5.2) * low;
 
       // ── albedo：深板岩，缝里偏冷并带一点苔
-      const base = 0.085 + 0.055 * tint + 0.045 * grain;
+      // 石板本身是深灰的，但漫反射全靠环境光乘出来 —— 压太暗的话
+      // 湿面那一层高光就没有对比可以依托了。
+      const base = 0.165 + 0.075 * tint + 0.060 * grain;
       let cr = base * 1.00, cg = base * 1.06, cb = base * 1.20;
       const moss = grout * smoothstep(0.62, 0.85, fbm(x * 0.05, y * 0.05, 3));
-      cr = lerp(cr, 0.055, moss * 0.7); cg = lerp(cg, 0.085, moss * 0.7); cb = lerp(cb, 0.055, moss * 0.7);
-      cr = lerp(cr, 0.028, grout * 0.8); cg = lerp(cg, 0.031, grout * 0.8); cb = lerp(cb, 0.040, grout * 0.8);
+      cr = lerp(cr, 0.075, moss * 0.7); cg = lerp(cg, 0.115, moss * 0.7); cb = lerp(cb, 0.072, moss * 0.7);
+      cr = lerp(cr, 0.042, grout * 0.8); cg = lerp(cg, 0.046, grout * 0.8); cb = lerp(cb, 0.058, grout * 0.8);
       // 水洼里颜色更深更黑
-      cr = lerp(cr, cr * 0.34, puddle); cg = lerp(cg, cg * 0.36, puddle); cb = lerp(cb, cb * 0.42, puddle);
+      cr = lerp(cr, cr * 0.40, puddle); cg = lerp(cg, cg * 0.42, puddle); cb = lerp(cb, cb * 0.48, puddle);
 
       a.data[i] = cr * 255; a.data[i + 1] = cg * 255; a.data[i + 2] = cb * 255; a.data[i + 3] = 255;
 
@@ -229,7 +231,7 @@ function makePlaster(size = 256) {
       const i = (y * size + x) * 4;
       const n = fbm(x * 0.09, y * 0.09, 4);
       const streak = fbm(x * 0.5, y * 0.02, 3);   // 竖向雨痕
-      const v = 0.30 + 0.20 * n - 0.10 * streak;
+      const v = 0.48 + 0.28 * n - 0.14 * streak;
       img.data[i] = v * 255 * 1.02;
       img.data[i + 1] = v * 255 * 1.00;
       img.data[i + 2] = v * 255 * 0.98;
@@ -273,24 +275,34 @@ function makeLeafCluster(size = 256, count = 7) {
   return c;
 }
 
-function makeFlower(size = 128, hue = 38) {
+// 花：参数化生成少量形状差异。14 株全用同一朵花会很塑料，
+// 这里按索引在 5 种里挑，花瓣数量和色相都略有不同。
+function makeFlower(variant = 0, size = 128) {
   const c = mkCanvas(size), g = c.getContext('2d');
   g.clearRect(0, 0, size, size);
   const cx = size / 2, cy = size / 2;
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
+  const hue = [38, 26, 46, 14, 34][variant % 5];
+  const petals = [5, 6, 8, 5, 6][variant % 5];
+  const spread = [0.085, 0.075, 0.062, 0.095, 0.070][variant % 5];
+
+  for (let i = 0; i < petals; i++) {
+    const a = (i / petals) * Math.PI * 2 + variant * 0.31;
     g.save(); g.translate(cx, cy); g.rotate(a);
     const grad = g.createLinearGradient(0, 0, 0, -size * 0.40);
-    grad.addColorStop(0, `hsla(${hue} 42% 78% / .95)`);
-    grad.addColorStop(1, `hsla(${hue - 8} 34% 58% / .88)`);
+    grad.addColorStop(0, `hsla(${hue} ${30 + variant * 3}% ${72 - variant * 2}% / .92)`);
+    grad.addColorStop(1, `hsla(${hue - 10} 26% ${48 + variant * 2}% / .85)`);
     g.fillStyle = grad;
     g.beginPath();
-    g.ellipse(0, -size * 0.20, size * 0.085, size * 0.19, 0, 0, Math.PI * 2);
+    g.ellipse(0, -size * 0.19, size * spread, size * (0.185 - variant * 0.008), 0, 0, Math.PI * 2);
     g.fill();
     g.restore();
   }
-  g.fillStyle = `hsl(${hue + 18} 46% 68%)`;
-  g.beginPath(); g.arc(cx, cy, size * 0.075, 0, Math.PI * 2); g.fill();
+  // 花心
+  const cg = g.createRadialGradient(cx, cy, 0, cx, cy, size * 0.09);
+  cg.addColorStop(0, `hsl(${hue + 16} 40% 62%)`);
+  cg.addColorStop(1, `hsl(${hue + 10} 34% 42%)`);
+  g.fillStyle = cg;
+  g.beginPath(); g.arc(cx, cy, size * 0.072, 0, Math.PI * 2); g.fill();
   return c;
 }
 
@@ -308,7 +320,14 @@ function makeGlow(size = 128, inner = 'rgba(255,255,255,1)', outer = 'rgba(255,2
 /* ══════════════════════════════════════════════════════════════════
    2. 渲染器 / 相机 / 后期
    ══════════════════════════════════════════════════════════════════ */
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+// 无头截图时需要 preserveDrawingBuffer：不开启的话，WebGL 的后备缓冲在
+// 合成到页面之前就被清掉了，--screenshot 抓到的是一张全黑图。
+const HEADLESS_SHOT = new URLSearchParams(location.search).has('auto');
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+  preserveDrawingBuffer: HEADLESS_SHOT,
+});
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -338,10 +357,10 @@ camera.lookAt(CAM_LOOK);
 
 // 环境光：夜雨不是全黑的。地面色那档专门用来照亮朝下的面（檐底、柱底），
 // 没有它整个屋檐会是一块纯黑。
-const hemi = new THREE.HemisphereLight(0x33465F, 0x2C3848, 0.70);
+const hemi = new THREE.HemisphereLight(0x3E5570, 0x33404F, 0.95);
 scene.add(hemi);
 // 一点来自雨云后方的方向光，给屋檐和柱子勾边
-const rim = new THREE.DirectionalLight(0x6E86A8, 0.45);
+const rim = new THREE.DirectionalLight(0x7E96B8, 0.62);
 rim.position.set(-6, 9, -4);
 scene.add(rim);
 
@@ -471,7 +490,10 @@ function buildWall() {
   const tex = toTexture(makePlaster(256), 6, true);
   const wallMat = new THREE.MeshStandardMaterial({
     map: tex, roughness: 0.92, metalness: 0,
-    color: 0x6E7480,
+    // 墙是画面里最大的一块受光面，颜色给得太深就永远读不出材质。
+    // 之前 0x6E7480 配 0.16~0.26 的贴图，乘出来基本还是黑的。
+    color: 0xC8D2E0,
+    envMapIntensity: 1.2,
   });
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.wallW, WORLD.wallH), wallMat);
   wall.position.set(0, WORLD.wallH / 2, WORLD.wallZ);
@@ -638,14 +660,14 @@ const drips = [];
 let dripMesh;
 
 function buildEaves() {
-  const woodMat = new THREE.MeshStandardMaterial({ color: 0x2B2218, roughness: 0.82, metalness: 0 });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x4A3B2C, roughness: 0.82, metalness: 0 });
   const roof = new THREE.Mesh(new THREE.BoxGeometry(WORLD.wallW, 0.30, 4.2), woodMat);
   roof.position.set(0, WORLD.eaveY + 0.34, WORLD.eaveZ - 2.1);
   roof.rotation.x = 0.075;
   scene.add(roof);
 
   // 前沿的瓦口（比檐板亮一档，好让"檐"这条线在暗部里读得出来）
-  const lipMat = new THREE.MeshStandardMaterial({ color: 0x4A3B2A, roughness: 0.7, metalness: 0.1 });
+  const lipMat = new THREE.MeshStandardMaterial({ color: 0x6E5842, roughness: 0.7, metalness: 0.1 });
   const lip = new THREE.Mesh(new THREE.BoxGeometry(WORLD.wallW, 0.17, 0.24), lipMat);
   lip.position.set(0, WORLD.eaveY, WORLD.eaveZ);
   scene.add(lip);
@@ -988,16 +1010,21 @@ const lightPoolTex = (() => {
 function buildPlants() {
   const leafTex = new THREE.CanvasTexture(makeLeafCluster(256, 7));
   leafTex.colorSpace = THREE.SRGBColorSpace;
-  const flowerTex = new THREE.CanvasTexture(makeFlower(128, 36));
-  flowerTex.colorSpace = THREE.SRGBColorSpace;
 
-  const stemMat = new THREE.MeshStandardMaterial({ color: 0x2A3524, roughness: 0.9 });
+  // 5 种花贴图轮流用，避免 14 朵一模一样
+  const flowerTex = [0, 1, 2, 3, 4].map(v => {
+    const t = new THREE.CanvasTexture(makeFlower(v, 128));
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  });
+
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x3C4A32, roughness: 0.9 });
   const leafMat = new THREE.MeshStandardMaterial({
     map: leafTex, transparent: false, alphaTest: 0.45,
-    side: THREE.DoubleSide, roughness: 0.85, color: 0x9FB08A,
+    side: THREE.DoubleSide, roughness: 0.85, color: 0xC4D4B0,
   });
-  const flowerMat = new THREE.MeshStandardMaterial({
-    map: flowerTex, transparent: false, alphaTest: 0.4,
+  const flowerMatFor = (i) => new THREE.MeshStandardMaterial({
+    map: flowerTex[i % flowerTex.length], transparent: false, alphaTest: 0.4,
     side: THREE.DoubleSide, roughness: 0.6,
     emissive: 0xFFB877, emissiveIntensity: 0.0,
   });
@@ -1005,7 +1032,10 @@ function buildPlants() {
   const stemGeo = new THREE.CylinderGeometry(0.012, 0.028, 1, 6);
   stemGeo.translate(0, 0.5, 0);
   const leafGeo = new THREE.PlaneGeometry(0.62, 0.62);
-  const flowerGeo = new THREE.PlaneGeometry(0.30, 0.30);
+  // 花是 billboard：始终面向相机。侧看变成一条线太假了，
+// 而每株都建一个 SpriteMaterial 会多 14 个 drawcall，所以共用几何、
+// 只在每帧里转朝向。
+const flowerGeo = new THREE.PlaneGeometry(0.26, 0.26);
 
   // 布点要落在相机能看见的范围里 —— 取景在 z≈-3..3 之间，
   // 半宽只有 3.5~5.5 米，早先摆到 ±6 之外的话整片都是空的。
@@ -1030,7 +1060,7 @@ function buildPlants() {
     leaves.scale.setScalar(size * 1.15);
     g.add(leaves);
 
-    const flower = new THREE.Mesh(flowerGeo, flowerMat.clone());
+    const flower = new THREE.Mesh(flowerGeo, flowerMatFor(i));
     flower.position.y = size * 1.02;
     flower.scale.setScalar(0.001);
     g.add(flower);
@@ -1281,7 +1311,8 @@ function thunderSound(when) {
 }
 
 // 五声音阶，开花时的钟
-const PENTA = [293.66, 329.63, 392.00, 440.00, 493.88, 587.33];
+// D 小调五声，避免开花音落在明亮的大三和弦上
+const PENTA = [293.66, 311.13, 349.23, 392.00, 466.16, 523.25];
 function chimeSound(when, pitch) {
   const ctx = audio.ctx;
   const out = ctx.createGain();
@@ -1447,7 +1478,13 @@ function resize() {
 }
 addEventListener('resize', resize, { passive: true });
 
+// 冻结后 rAF 循环彻底停下，不再排队也不再渲染。
+// 无头截图必须这样：SwiftShader 下一帧要几秒，
+// 而 --virtual-time-budget 会拼命往前推虚拟时间，于是永远等不到截图。
+let frozen = false;
+
 function tick() {
+  if (frozen) return;
   requestAnimationFrame(tick);
   const now = performance.now() / 1000;
   let dt = now - last;
@@ -1538,12 +1575,15 @@ function step(dt) {
       continue;
     }
 
-    const d = lantern.pos.distanceTo(p.g.position);
-    const lightF = clamp01(1 - d / lantern.range);
-    if (lightF > 0.02) {
-      // 平方衰减会让边缘几乎不生长，实际游玩时灯稍微偏一点就"没反应"，
-      // 所以保留一段线性底。同时把整体速率提到 ~20s 能在灯下开一朵。
-      const f = lightF * (0.35 + 0.65 * lightF);
+    // 两盏灯：提灯（可移动、暖）和窗（固定、远处但一直亮）。
+    // 只算提灯的话，站在窗边（离提灯远）的植物就永远长不大。
+    const dL = lantern.pos.distanceTo(p.g.position);
+    const dW = WORLD.window.distanceTo(p.g.position);
+    const lanternF = clamp01(1 - dL / lantern.range);
+    const windowF = clamp01(1 - dW / 7.5) * 0.42;
+    const f = Math.max(lanternF * (0.35 + 0.65 * lanternF), windowF);
+
+    if (f > 0.015) {
       p.growth += f * waterFactor * dt * 0.050;
       if (p.growth >= 1) bloom(p);
     }
@@ -1572,10 +1612,16 @@ function applyGrowth(p, t) {
   p.leaves.scale.setScalar(s * lerp(0.42, 1.15, ease));
   p.leaves.visible = g > 0.04;
   // 未开花时微微朝灯倾一点
-  const lean = clamp01(1 - p.g.position.distanceTo(lantern.pos) / lantern.range);
+  const lean = Math.max(
+    clamp01(1 - p.g.position.distanceTo(lantern.pos) / lantern.range),
+    clamp01(1 - p.g.position.distanceTo(WORLD.window) / 7.5) * 0.5
+  );
   p.g.rotation.z = Math.sin(t * 0.9 + p.swayPhase) * 0.025 * (0.4 + weather.rain) + lean * 0.05;
   p.g.rotation.x = Math.cos(t * 0.75 + p.swayPhase) * 0.02 * (0.4 + weather.rain);
   p.flower.scale.setScalar(Math.max(0.001, ease * p.size * 0.95));
+  // 只抵消掉水平朝向，保留花自身的摇摆
+  p.flower.rotation.y = -p.g.rotation.y;
+  p.leaves.rotation.y = -p.g.rotation.y * 0.6;
 }
 
 function bloom(p) {
@@ -1598,7 +1644,7 @@ function bloom(p) {
    16. 组装与启动
    ══════════════════════════════════════════════════════════════════ */
 buildEnvironment();
-const stone = buildGround();
+buildGround();
 buildWall();
 buildEaves();
 buildPlants();
@@ -1635,6 +1681,60 @@ if (DEBUG) {
     start, spawnRipple,
     setQuality: (l) => { perf.level = l; applyQuality(); },
   };
+
+  // 无头截图用：?debug&auto 跳过开场，&ff=秒数&rain=0..1&at=x,z&q=0..2
+  const qs = new URLSearchParams(location.search);
+  if (qs.has('auto')) {
+    frozen = true;              // 先掐死主循环
+    if (qs.has('q')) perf.level = parseInt(qs.get('q'), 10);
+    applyQuality();
+    started = true;
+    document.getElementById('gate').classList.add('gone');
+    if (qs.has('rain')) weather.t = weather.period * parseFloat(qs.get('rain'));
+    if (qs.has('at')) {
+      const [ax, az] = qs.get('at').split(',').map(Number);
+      lantern.target.set(ax, LANTERN_Y, az);
+      lantern.pos.copy(lantern.target);
+    }
+    const ff = parseFloat(qs.get('ff') || '0');
+    const frames = Math.round(ff * 60);
+    for (let i = 0; i < frames; i++) step(1 / 60);
+
+    // 后备缓冲需要在同一个任务里读+写，否则 SwiftShader 下会被清掉，
+    // 读出来全是 0。写进一个 data URI img，无头截图就能抓到真正的画面。
+    const gl = renderer.getContext();
+    const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+    composer.render();
+    const px = new Uint8Array(w * h * 4);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const g2 = cv.getContext('2d');
+    const img = g2.createImageData(w, h);
+    // readPixels 是下上颠倒的，翻回来
+    for (let y = 0; y < h; y++) {
+      const src = (h - 1 - y) * w * 4, dst = y * w * 4;
+      img.data.set(px.subarray(src, src + w * 4), dst);
+    }
+    g2.putImageData(img, 0, 0);
+
+    // renderer 的 canvas 缩到窗口大小，再用它盖住页面
+    renderer.domElement.style.display = 'none';
+    cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:0';
+    document.body.insertBefore(cv, document.body.firstChild);
+
+    let sum = 0, n = 0;
+    for (let i = 0; i < px.length; i += 4 * 97) { sum += px[i] + px[i + 1] + px[i + 2]; n++; }
+    document.title = [
+      'rain-eave',
+      'fb=' + w + 'x' + h,
+      'glErr=' + gl.getError(),
+      'meanRGB=' + (n ? (sum / n / 3).toFixed(1) : 'na'),
+      'blooms=' + bloomCount,
+      'rain=' + weather.rain.toFixed(2),
+      'lost=' + gl.isContextLost(),
+    ].join(' | ');
+  }
 }
 </script>
 </body>

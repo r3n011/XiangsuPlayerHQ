@@ -793,6 +793,8 @@
     <string name="setcat_carousel_no_peek">无预览</string>
     <string name="setcat_carousel_one_peek">单侧预览</string>
     <string name="setcat_carousel_style_desc">专辑轮播的显示方式。</string>
+    <string name="setcat_carousel_style_preview">预览轮播</string>
+    <string name="setcat_carousel_style_classic">旧版（无预览）</string>
     <string name="setcat_home_top_style_label">主页顶部样式</string>
     <string name="setcat_home_top_style_desc">主页顶部展示拼贴墙或精选轮播卡片。</string>
     <string name="setcat_home_top_style_collage">拼贴墙</string>

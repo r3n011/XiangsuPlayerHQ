@@ -229,6 +229,7 @@ import com.theveloper.pixelplay.data.backup.model.RestorePlan
 import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
+import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
@@ -2019,6 +2020,24 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Outlined.LinearScale, null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely(Screen.PlayerProgressStyle.route) }
+                                )
+                                // ⚡ 播放器封面轮播样式：旧版（无预览）/ 预览轮播
+                                //    （预览轮播仿首页精选轮播的平板多浏览：中间大封面 + 两侧缩略图，只显示封面）
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_carousel_style_label),
+                                    description = stringResource(R.string.setcat_carousel_style_desc),
+                                    options = mapOf(
+                                        CarouselStyle.PREVIEW to stringResource(R.string.setcat_carousel_style_preview),
+                                        CarouselStyle.NO_PEEK to stringResource(R.string.setcat_carousel_style_classic)
+                                    ),
+                                    selectedKey = if (uiState.carouselStyle == CarouselStyle.PREVIEW) {
+                                        CarouselStyle.PREVIEW
+                                    } else {
+                                        // 旧的 one_peek / two_peek 都归到「旧版」这一项显示
+                                        CarouselStyle.NO_PEEK
+                                    },
+                                    onSelectionChanged = { settingsViewModel.setCarouselStyle(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.ViewCarousel, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                             }
 

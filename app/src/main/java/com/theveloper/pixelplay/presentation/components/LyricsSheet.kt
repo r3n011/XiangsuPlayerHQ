@@ -735,7 +735,11 @@ fun LyricsSheet(
                 scaleY = scale
                 translationY = lerp(0f, size.height * 0.08f, p)
             }
-            .clip(RoundedCornerShape(32.dp))
+            // ⚡ 屏幕圆角：以前这里无条件 clip(RoundedCornerShape(32.dp))，在「四角是直角」的
+            //    老设备（非全面屏）上会把四个角切掉，露出窗口背景 —— 浅色主题下就是四个白角。
+            //    改成用设备真实圆角半径：Android 12+ 读 Display.getRoundedCorner，
+            //    读不到 / 旧系统一律 0（方角）。方角只是把背景铺到边角，物理屏幕圆角时也不会露馅。
+            .clip(RoundedCornerShape(rememberDeviceCornerRadius()))
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {

@@ -142,6 +142,8 @@ fun RoundedHorizontalMultiBrowseCarousel(
         CarouselStyle.NO_PEEK -> 0
         CarouselStyle.ONE_PEEK -> 1
         CarouselStyle.TWO_PEEK -> 2
+        // 预览轮播：中间大图 + 两侧各一张缩略图（[small, large, small]）
+        CarouselStyle.PREVIEW -> 2
         else -> 1 // Default to one peek
     }
 
@@ -204,6 +206,22 @@ fun RoundedHorizontalMultiBrowseCarousel(
                         add(smallSize) // Previous peek
                         add(largeSize) // Focused item
                         add(smallSize) // Next peek
+                    }
+                }
+                CarouselStyle.PREVIEW -> {
+                    // ⚡ 预览轮播（仿首页精选轮播的平板多浏览）：中间一张大封面，
+                    //    两侧各露出一张圆角缩略图 —— 用 [small, large, small] 手工 keyline，
+                    //    比例对齐首页那套（大图约 62% 宽，缩略图约 24% 宽）。
+                    val largeSize = carouselWidthPx * 0.62f
+                    val smallSize = carouselWidthPx * 0.24f
+                    keylineListOf(
+                        carouselMainAxisSize = carouselWidthPx,
+                        itemSpacing = spacingPx,
+                        carouselAlignment = CarouselAlignment.Center
+                    ) {
+                        add(smallSize) // 上一张缩略图
+                        add(largeSize) // 当前封面
+                        add(smallSize) // 下一张缩略图
                     }
                 }
                 else -> multiBrowseKeylineList( // Default to one peek

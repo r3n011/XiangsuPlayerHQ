@@ -5,6 +5,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
+import kotlinx.coroutines.delay
+
+/** 网易云偶发返回空响应体：与真实业务错误区分开，便于上层决定重试 / 降级 eapi。 */
+internal class EmptyResponseException(path: String) : IOException("网易云返回了空响应（$path）")
+
+private val CODE_IN_MESSAGE = Regex("code=(-?\\d+)")
+
+/** status/get 空响应时的重试次数（对齐 MeloX：3 次、180ms×n 退避） */
+private const val STATUS_GET_ATTEMPTS = 3
 
 /**
  * 网易云「一起听」API 封装（基于内置 net.moriafly.ncm SDK）。
@@ -31,13 +40,29 @@ class ListenTogetherApi {
 
     /** 查询当前账号所在的一起听房间；不在房间时返回 null */
     suspend fun roomStatus(): ListenTogetherRoom? {
-        // status/get 对 weapi 兼容更好：weapi 空响应时降级 eapi（与 MeloX 行为一致）
-        val root = runCatching {
-            weapi("/api/listen/together/status/get", emptyMap())
-        }.getOrElse { error ->
-            Timber.d(error, "ListenTogetherApi: status/get weapi failed, falling back to eapi")
-            eapi("/api/listen/together/status/get", emptyMap())
+        // ⚡ status/get 固定走 weapi（MeloX 与 NeteaseCloudMusicApi 都是这么写死的），
+        //    且**只在 weapi 返回空响应时**才降级 eapi：真实的服务端错误（系统错误 / 登录失效）
+        //    必须原样抛出，否则会被伪装成「不在房间」，房间会莫名其妙消失。
+        //    空响应本身也重试几次（网易云偶发返回空体），退避 180ms×n，与 MeloX 一致。
+        var sawEmptyResponse = false
+        for (attempt in 0 until STATUS_GET_ATTEMPTS) {
+            val result = runCatching { weapi("/api/listen/together/status/get", emptyMap()) }
+            result.getOrNull()?.let { root -> return parseStatus(root) }
+            val error = result.exceptionOrNull()
+            if (error is EmptyResponseException) {
+                sawEmptyResponse = true
+                if (attempt < STATUS_GET_ATTEMPTS - 1) delay(180L * (attempt + 1))
+            } else {
+                throw error ?: IOException("一起听状态查询失败")
+            }
         }
+        if (!sawEmptyResponse) return null
+        Timber.w("ListenTogetherApi: status/get weapi 连续空响应，降级 eapi")
+        return parseStatus(eapi("/api/listen/together/status/get", emptyMap()))
+    }
+
+    /** 解析 status/get 的响应：不在房间 / 没有房间信息都返回 null */
+    private fun parseStatus(root: JSONObject): ListenTogetherRoom? {
         val data = root.optJSONObject("data") ?: return null
         val roomInfo = data.optJSONObject("roomInfo")
         val inRoom = if (data.has("inRoom")) data.optBoolean("inRoom", false) else roomInfo != null
@@ -207,32 +232,57 @@ class ListenTogetherApi {
 
     // ─── 内部工具 ─────────────────────────────────────────────────────
 
-    private suspend fun eapi(path: String, params: Map<String, Any?>): JSONObject {
-        val body = NcmApi.FullAccess.rawEapi(path, params).getOrThrow()
-        val root = JSONObject(body)
+    private suspend fun eapi(path: String, params: Map<String, Any?>): JSONObject =
+        request(path, params, isEapi = true)
+
+    private suspend fun weapi(path: String, params: Map<String, Any?>): JSONObject =
+        request(path, params, isEapi = false)
+
+    private suspend fun request(
+        path: String,
+        params: Map<String, Any?>,
+        isEapi: Boolean,
+    ): JSONObject {
+        val transport = if (isEapi) "eapi" else "weapi"
+        val raw = if (isEapi) {
+            NcmApi.FullAccess.rawEapi(path, params)
+        } else {
+            NcmApi.FullAccess.rawWeapi(path, params)
+        }.getOrElse { error ->
+            // ⚡ 服务端错误统一在这里翻译 + 记日志：底层抛的是 "NCM code=xxx msg=yyy"，
+            //    直接把原文丢给界面就会出现用户看不懂的「系统错误」。
+            val rawMessage = error.message.orEmpty()
+            val code = CODE_IN_MESSAGE.find(rawMessage)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            Timber.w(error, "ListenTogetherApi: %s 失败 path=%s code=%s", transport, path, code)
+            throw IOException(friendlyMessage(rawMessage, code))
+        }
+        // 空响应体：网易云偶发返回空体，单独区分出来，便于上层决定重试 / 降级
+        if (raw.isEmpty()) throw EmptyResponseException(path)
+        val root = JSONObject(raw)
         val code = root.optInt("code", 200)
         if (code !in 200..299) {
-            throw IOException(
-                root.optString("message").ifBlank {
-                    root.optString("msg").ifBlank { "一起听请求失败（$code）" }
-                }
-            )
+            val message = root.optString("message").ifBlank { root.optString("msg") }
+            Timber.w("ListenTogetherApi: %s 返回 code=%s message=%s path=%s", transport, code, message, path)
+            throw IOException(friendlyMessage(message, code))
         }
         return root
     }
 
-    private suspend fun weapi(path: String, params: Map<String, Any?>): JSONObject {
-        val body = NcmApi.FullAccess.rawWeapi(path, params).getOrThrow()
-        val root = JSONObject(body)
-        val code = root.optInt("code", 200)
-        if (code !in 200..299) {
-            throw IOException(
-                root.optString("message").ifBlank {
-                    root.optString("msg").ifBlank { "一起听请求失败（$code）" }
-                }
-            )
+    /** 服务端文案 → 用户可读文案（原始信息保留在 logcat 里，界面不再直出「系统错误」） */
+    private fun friendlyMessage(rawMessage: String, code: Int?): String {
+        val raw = rawMessage.trim()
+        val codeSuffix = code?.let { "（$it）" }.orEmpty()
+        return when {
+            raw.contains("系统错误") || raw.contains("系统繁忙") || code == 500 ->
+                "一起听服务暂时不可用$codeSuffix，正在自动重试"
+            raw.contains("登录") || code == 301 || code == -462 ->
+                "网易云登录状态已失效，请重新登录后再试"
+            raw.contains("频繁") || code == 429 ->
+                "操作过于频繁，请稍后再试"
+            raw.isNotBlank() -> raw
+            code != null -> "一起听请求失败$codeSuffix"
+            else -> "一起听请求失败"
         }
-        return root
     }
 
     private fun validateAction(root: JSONObject, fallback: String) {

@@ -990,6 +990,8 @@
     <string name="setcat_carousel_no_peek">No peek</string>
     <string name="setcat_carousel_one_peek">One peek</string>
     <string name="setcat_carousel_style_desc">How the album carousel is displayed.</string>
+    <string name="setcat_carousel_style_preview">Preview carousel</string>
+    <string name="setcat_carousel_style_classic">Classic (no peek)</string>
     <string name="setcat_home_top_style_label">Home top style</string>
     <string name="setcat_home_top_style_desc">Show a collage wall or a featured carousel at the top of Home.</string>
     <string name="setcat_home_top_style_collage">Collage wall</string>

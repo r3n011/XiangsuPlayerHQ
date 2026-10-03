@@ -183,6 +183,9 @@ fun AlbumCarouselSection(
     }
 
     val corner = 18.dp//lerp(36.dp, 15.dp, expansionFraction.coerceIn(0f, 1f))
+    // ⚡ 预览轮播：仿首页精选轮播（平板）的多浏览布局 —— 中间大封面 + 两侧圆角缩略图。
+    //    其它样式沿用原来的「强制无预览边缘」行为，互不影响。
+    val isPreviewStyle = carouselStyle == CarouselStyle.PREVIEW
 
     BoxWithConstraints(modifier = modifier) {
         val availableWidth = this.maxWidth
@@ -193,7 +196,7 @@ fun AlbumCarouselSection(
             itemSpacing = itemSpacing,
             itemCornerRadius = corner,
             suppressNoPeekSettleCorrection = requestedTargetIndex != null || programmaticScrollInProgress,
-            carouselStyle = CarouselStyle.NO_PEEK, // 强制无预览边缘
+            carouselStyle = if (isPreviewStyle) CarouselStyle.PREVIEW else CarouselStyle.NO_PEEK,
             carouselWidth = availableWidth, // Pass the full width for layout calculations
             itemKey = { index -> carouselItemKeys.getOrNull(index) ?: "queue_item_$index" },
             content = { index ->
@@ -202,7 +205,9 @@ fun AlbumCarouselSection(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .aspectRatio(1f)
+                        // 预览轮播的缩略图是「窄条」，不能再强制正方形（会撑出格子）；
+                        // 其它样式保持原来的 1:1 封面。
+                        .then(if (isPreviewStyle) Modifier else Modifier.aspectRatio(1f))
                         .clickable(
                             enabled = isFocusedItem && song.albumId != -1L,
                             interactionSource = remember { MutableInteractionSource() },

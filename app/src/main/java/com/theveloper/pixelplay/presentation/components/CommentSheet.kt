@@ -450,7 +450,10 @@ fun CommentSheet(
                 scaleX = scale
                 scaleY = scale
                 translationY = lerp(0f, size.height * 0.08f, p)
-            },
+            }
+            // ⚡ 与歌词页一致：根布局按设备真实屏幕圆角裁切（读不到就是 0dp 方角）。
+            //    圆角屏上贴合屏幕圆角；四角为直角的老设备上保持方角，背景铺满不露窗口底色。
+            .clip(RoundedCornerShape(rememberDeviceCornerRadius())),
         containerColor = colorScheme.surface,
         contentColor = colorScheme.onSurface,
         topBar = {

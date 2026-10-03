@@ -372,12 +372,16 @@ fun UnifiedPlayerSheetV2(
 
     // Keep the mini player anchored to the latest collapsed target whenever
     // the navbar height/visibility changes under it.
-    LaunchedEffect(sheetCollapsedTargetY, sheetMotionController) {
+    // ⚡ 也把「真实窗口尺寸」挂进 key：旋转（尤其横→竖→横）时容器高度会变，
+    //    但 sheet 状态本身可能没变化，这里必须重新同步一次，
+    //    否则旋转打断展开/收起动画后会停在半路，播放器就卡在错误的位置/尺寸。
+    LaunchedEffect(sheetCollapsedTargetY, sheetMotionController, windowSize) {
         sheetMotionController.syncToExpansion(sheetCollapsedTargetY)
     }
 
     var previousSheetState by remember { mutableStateOf(currentSheetContentState) }
-    LaunchedEffect(showPlayerContentArea, currentSheetContentState) {
+    // ⚡ windowSize 同上：旋转后重新驱动一次展开/收起动画，避免停在中间状态
+    LaunchedEffect(showPlayerContentArea, currentSheetContentState, windowSize) {
         val targetExpanded = showPlayerContentArea && currentSheetContentState == PlayerSheetState.EXPANDED
         if (previousSheetState != currentSheetContentState) {
             AdvancedPerformanceDiagnostics.recordEventIfEnabled(

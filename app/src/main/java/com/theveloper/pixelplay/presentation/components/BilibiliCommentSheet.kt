@@ -639,6 +639,10 @@ fun BilibiliCommentSheet(
     }
 
     Scaffold(
+        // ⚡ 与网易云评论页 / 歌词页一致：根布局按设备真实屏幕圆角裁切（读不到就是 0dp 方角）
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(rememberDeviceCornerRadius())),
         containerColor = colorScheme.surface,
         contentColor = colorScheme.onSurface,
         topBar = {

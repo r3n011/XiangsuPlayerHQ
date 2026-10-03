@@ -121,7 +121,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -1456,10 +1456,18 @@ fun FullPlayerContent(
                     .graphicsLayer { alpha = contentAlpha * (customPlayerControlsOpacity / 100f) }
             ) {
                 // Check if we should use parallel layout on tablet
-                // ⚡ 竖屏时强制走手机布局，只有横屏平板才启用平行布局
-                val configuration = LocalConfiguration.current
-                val isTablet = configuration.screenWidthDp >= 840
-                val useParallelLayout = isTablet && isLandscape && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+                // ⚡ 竖屏时强制走手机布局，只有横屏平板才启用平行布局。
+                //    ⚠️ 平板判断必须用「真实窗口尺寸」：本项目的 Compose 版本里
+                //    LocalConfiguration.screenWidthDp 在旋转后可能不更新（横→竖→横 时会拿到
+                //    上一次方向的值），布局分支就会和实际窗口对不上 —— 表现就是旋转后播放器
+                //    被挤在一边、平行布局错位。LocalWindowInfo.containerSize 始终是真实值。
+                val playerWindowSize = LocalWindowInfo.current.containerSize
+                val playerWindowDensity = LocalDensity.current
+                val playerWindowWidthDp = with(playerWindowDensity) { playerWindowSize.width.toDp() }
+                val playerWindowIsLandscape = playerWindowSize.width > playerWindowSize.height
+                val isTablet = playerWindowWidthDp >= 840.dp
+                val useParallelLayout = isTablet && isLandscape && playerWindowIsLandscape &&
+                    tabletPlayerLayout == TabletPlayerLayout.PARALLEL
 
                 // 平行布局歌词设置卡片状态（在调用方管理，以便 metadata 歌词按钮可切换）
                 var showParallelLyricsSettings by remember { mutableStateOf(false) }
@@ -1629,9 +1637,13 @@ fun FullPlayerContent(
     }
     // Only show lyrics sheet overlay when NOT in parallel layout
     // ⚡ 竖屏时平行布局不生效，歌词面板正常显示
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 840
-    val useParallelLayout = isTablet && isLandscape && tabletPlayerLayout == TabletPlayerLayout.PARALLEL
+    //    （判断条件与上面渲染内容时完全一致：都用真实窗口尺寸，避免旋转后两者不一致）
+    val overlayWindowSize = LocalWindowInfo.current.containerSize
+    val overlayWindowDensity = LocalDensity.current
+    val isTablet = with(overlayWindowDensity) { overlayWindowSize.width.toDp() } >= 840.dp
+    val useParallelLayout = isTablet && isLandscape &&
+        overlayWindowSize.width > overlayWindowSize.height &&
+        tabletPlayerLayout == TabletPlayerLayout.PARALLEL
     if (!useParallelLayout) {
     AnimatedVisibility(
         visible = showLyricsSheet,
@@ -2076,22 +2088,24 @@ private fun FullPlayerAlbumCoverSection(
     ) {
         // 计算基础尺寸
         val externalHeightConstraint = maxHeight
+        // ⚡ 预览轮播（仿首页精选轮播的平板多浏览）：封面槽要占满整宽才能露出两侧缩略图，
+        //    高度按「大封面 = 62% 宽度」的正方形算；其它样式仍是正方形封面槽。
+        val isPreviewCarousel = carouselStyle == CarouselStyle.PREVIEW
         val widthBasedHeight = when (carouselStyle) {
             CarouselStyle.NO_PEEK -> maxWidth
             CarouselStyle.ONE_PEEK -> maxWidth * 0.8f
             CarouselStyle.TWO_PEEK -> maxWidth * 0.6f
+            CarouselStyle.PREVIEW -> maxWidth * 0.62f
             else -> maxWidth
         }
-        
+
         // 竖屏模式：封面应该是正方形，取宽度的最小值
         // 横屏模式：使用外部高度约束或宽度计算高度的较小值
-        val carouselHeight = if (externalHeightConstraint < maxWidth) {
-            // 竖屏模式：取外部高度约束（正方形）和宽度计算高度的较小值
-            // 正方形时 externalHeightConstraint 应该等于宽度，所以 minOf 会取较小的那个
-            minOf(externalHeightConstraint, widthBasedHeight)
+        val carouselHeight = minOf(externalHeightConstraint, widthBasedHeight)
+        val coverSlotModifier = if (isPreviewCarousel) {
+            Modifier.fillMaxWidth().height(carouselHeight)
         } else {
-            // 横屏模式：使用外部高度约束或宽度计算高度的较小值
-            minOf(externalHeightConstraint, widthBasedHeight)
+            Modifier.widthIn(max = carouselHeight).height(carouselHeight)
         }
 
         DelayedContent(
@@ -2100,7 +2114,7 @@ private fun FullPlayerAlbumCoverSection(
             applyPlaceholderDelayOnClose = loadingTweaks.applyPlaceholdersOnClose,
             switchOnDragRelease = loadingTweaks.switchOnDragRelease,
             isSheetDragGestureActive = isSheetDragGestureActive,
-            sharedBoundsModifier = Modifier.widthIn(max = carouselHeight).height(carouselHeight),
+            sharedBoundsModifier = coverSlotModifier,
             expansionFractionProvider = expansionFractionProvider,
             isExpandedOverride = currentSheetState == PlayerSheetState.EXPANDED,
             normalStartThreshold = 0.08f,
@@ -2109,9 +2123,7 @@ private fun FullPlayerAlbumCoverSection(
             placeholder = {
                 if (loadingTweaks.transparentPlaceholders) {
                     Box(
-                        Modifier
-                            .widthIn(max = carouselHeight) // 正方形
-                            .height(carouselHeight)
+                        coverSlotModifier
                             .graphicsLayer {
                                 scaleX = albumArtScale
                                 scaleY = albumArtScale
@@ -2122,8 +2134,7 @@ private fun FullPlayerAlbumCoverSection(
                         height = carouselHeight,
                         color = placeholderColor,
                         onColor = placeholderOnColor,
-                        modifier = Modifier
-                            .widthIn(max = carouselHeight) // 正方形
+                        modifier = coverSlotModifier
                             .graphicsLayer {
                                 scaleX = albumArtScale
                                 scaleY = albumArtScale
@@ -2145,9 +2156,7 @@ private fun FullPlayerAlbumCoverSection(
                 },
                 onAlbumClick = onAlbumClick,
                 carouselStyle = carouselStyle,
-                modifier = Modifier
-                    .widthIn(max = carouselHeight) // 限制宽度等于高度，实现正方形
-                    .height(carouselHeight)
+                modifier = coverSlotModifier
                     .graphicsLayer {
                         scaleX = albumArtScale
                         scaleY = albumArtScale
