@@ -1684,7 +1684,18 @@ class MusicService : MediaLibraryService() {
                     ?: currentMediaItem?.mediaId
                     ?: getString(R.string.unknown_song_title)
                 val errorMessage = error.localizedMessage ?: error.message ?: "Unknown error"
-                val toastMessage = getString(R.string.player_playback_error, "$trackTitle ($errorMessage)")
+                // ⚡ ExoPlayer 顶层文案常是 "Unexpected runtime error" 这类泛化描述，真正的原因
+                //    （解码器 / 音频输出 / 自定义 AudioProcessor 抛的异常）在 cause 链末端。
+                //    把根因带进 toast，否则用户截图里只有一句无从下手的英文。
+                val rootCause = generateSequence(error.cause) { it.cause }.lastOrNull()
+                val causeText = rootCause
+                    ?.let { it.message?.takeIf { msg -> msg.isNotBlank() } ?: it.javaClass.simpleName }
+                    ?.takeIf { it != errorMessage }
+                val detail = if (causeText != null) "$errorMessage: $causeText" else errorMessage
+                Timber.tag(TAG).e(
+                    "PlaybackError code=${error.errorCode} title=$trackTitle detail=$detail rootCause=$rootCause"
+                )
+                val toastMessage = getString(R.string.player_playback_error, "$trackTitle ($detail)")
                 android.widget.Toast.makeText(this@MusicService, toastMessage, android.widget.Toast.LENGTH_LONG).show()
             }
         }

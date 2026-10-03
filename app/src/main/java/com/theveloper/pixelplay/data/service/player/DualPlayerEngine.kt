@@ -1659,7 +1659,10 @@ class DualPlayerEngine @Inject constructor(
             "=== 播放错误恢复 tryRecoverFromError: errorCode=${error.errorCode} " +
                 "uri=$failingUriString pos=${player.currentPosition}ms dur=${player.duration}ms " +
                 "state=${player.playbackState} repeat=${player.repeatMode} " +
-                "next=${player.hasNextMediaItem()} wasPlaying=$wasPlaying ==="
+                "next=${player.hasNextMediaItem()} wasPlaying=$wasPlaying " +
+                // ⚡ 带上根因链：ERROR_CODE_UNSPECIFIED 的顶层文案是 "Unexpected runtime error"，
+                //    不看 cause 无法定位（解码器 / 音频输出 / 自定义 AudioProcessor）。
+                "cause=${generateSequence(error.cause) { it.cause }.joinToString(" <- ") { it.javaClass.simpleName + "(" + it.message + ")" }} ==="
         )
 
         // Track retries per item to prevent infinite loops

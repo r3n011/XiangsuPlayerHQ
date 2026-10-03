@@ -15,9 +15,28 @@ import org.json.JSONObject
 import timber.log.Timber
 
 /**
- * QQ 音乐「手机号 + 短信验证码」登录（对齐参考实现 MeloX 的 QQMusicPhoneAuthClient）。
+ * QQ 音乐风控要求安全验证。
  *
- * 走官方 `musicu.fcg` 的 `music.login.LoginServer` 模块：
+ * 携带服务端**原样返回**的 `securityURL` 与业务响应 JSON：上层可以据此在应用内完成人机验证
+ * （极验弹窗 / 内联 WebView）后重试，而不是让用户改用网页登录。
+ * [rawResponse] 同时会打进 logcat，便于在没有真机联调时确认真实字段。
+ */
+class QqMusicSecurityChallengeException(
+    val businessCode: Int,
+    val securityUrl: String,
+    val rawResponse: String,
+) : IOException(
+    buildString {
+        append("QQ 音乐要求安全验证（code=").append(businessCode)
+        if (securityUrl.isNotBlank()) append("，securityURL=").append(securityUrl.take(200))
+        append("）")
+    }
+)
+
+/**
+ * QQ 音乐「手机号 + 短信验证码」登录（官方 musicu.fcg 的 music.login.LoginServer 模块）。
+ *
+ * 走官方接口：
  * - 发送验证码：`method = SendPhoneAuthCode`，param `{tmeAppid, phoneNo, areaCode}`；
  * - 验证码登录：`method = Login`，param `{code, phoneNo, loginMode = 1}`。
  *
@@ -25,8 +44,8 @@ import timber.log.Timber
  * 这里统一合并成一份 cookie 表交给 [com.theveloper.pixelplay.data.qqmusic.QqMusicRepository] 落盘，
  * 与网页登录（WebView 抓 cookie）走同一套后续逻辑。
  *
- * 注意：官方接口可能要求「安全验证」（业务码 20276 或返回 securityURL），
- * 这种情况只能让用户改用网页登录完成验证，这里会抛出带说明的异常。
+ * 被风控拦截时抛 [QqMusicSecurityChallengeException]（含 securityURL 与响应原文），不再直接
+ * 让用户改用网页登录。
  */
 @Singleton
 class QqMusicPhoneAuthClient @Inject constructor(
@@ -34,6 +53,7 @@ class QqMusicPhoneAuthClient @Inject constructor(
 ) {
 
     private companion object {
+        const val TAG = "QqMusicPhoneAuth"
         const val AUTH_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg"
         const val LOGIN_MODULE = "music.login.LoginServer"
         const val AREA_CODE = "86"
@@ -75,6 +95,9 @@ class QqMusicPhoneAuthClient @Inject constructor(
         return httpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("QQ 音乐请求失败：HTTP ${response.code}")
             val bodyText = response.body?.string().orEmpty()
+            // ⚡ 原样打印响应：风控拦截时只有看到真实字段（code / securityURL / errMsg）
+            //    才能确定该走极验弹窗还是内联 WebView，否则只能靠猜。
+            Timber.tag(TAG).d("raw response: %s", bodyText)
             val body = runCatching { JSONObject(bodyText) }
                 .getOrElse { throw IOException("QQ 音乐返回了无法解析的响应") }
             PhoneHttpResponse(body, response.headers.values("Set-Cookie"))
@@ -143,8 +166,15 @@ class QqMusicPhoneAuthClient @Inject constructor(
         if (businessCode != 0) {
             val securityUrl = data.stringValue("securityURL")
                 .ifBlank { business.stringValue("securityURL") }
+                .ifBlank { response.stringValue("securityURL") }
+            val rawJson = business.toString()
+            // ⚡ 风控 / 业务错误的原文全部落日志：这是"到底返回了啥"的唯一可见处
+            Timber.tag(TAG).w(
+                "business error: code=%s securityURL=%s response=%s",
+                businessCode, securityUrl, rawJson
+            )
             if (businessCode == 20276 || securityUrl.isNotBlank()) {
-                throw IOException("QQ 音乐要求安全验证，请改用「网页登录」完成验证后再试")
+                throw QqMusicSecurityChallengeException(businessCode, securityUrl, rawJson)
             }
             throw IOException(
                 business.errorMessage(response.errorMessage("QQ 音乐请求失败（$businessCode）"), data)

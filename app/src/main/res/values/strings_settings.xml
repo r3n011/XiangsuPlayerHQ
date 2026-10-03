@@ -20,6 +20,10 @@
     <string
         name="settings_category_playback_subtitle"
     >Audio behavior, crossfade, and background play</string>
+    <string name="settings_category_download_title">Downloads</string>
+    <string
+        name="settings_category_download_subtitle"
+    >Queue, quality, folder, file naming, and tag embedding</string>
     <string name="settings_category_behavior_title">Behavior</string>
     <string
         name="settings_category_behavior_subtitle"
@@ -882,7 +886,7 @@
     <string name="setcat_floating_lyrics_animation_subtitle">Animate expanding the controls and resizing; turn off to switch instantly.</string>
     
     <!-- Download Settings -->
-    <string name="setcat_download_settings">Download Settings</string>
+    <string name="setcat_download_settings">Song downloads</string>
     <string name="setcat_download_path_title">Download Path</string>
     <string name="setcat_download_file_name_label">Download file name</string>
     <string name="setcat_download_file_name_desc">How downloaded files are named.</string>

@@ -443,6 +443,7 @@ private fun getSettingsCategoryTitles(): Map<String, String> {
         SettingsCategory.AI_INTEGRATION.id to stringResource(R.string.settings_search_category_ai_integration),
         SettingsCategory.WEB_REMOTE.id to stringResource(R.string.settings_category_web_remote_title),
         SettingsCategory.LIBRARY.id to stringResource(R.string.settings_search_category_library),
+        SettingsCategory.DOWNLOAD.id to stringResource(R.string.settings_category_download_title),
         SettingsCategory.API_MANAGEMENT.id to stringResource(R.string.settings_category_api_title),
         SettingsCategory.APPEARANCE.id to stringResource(R.string.settings_search_category_appearance),
         SettingsCategory.PLAYBACK.id to stringResource(R.string.settings_search_category_playback),
@@ -523,7 +524,7 @@ private fun getSettingsKeywordItems(): List<Pair<String, SettingsCategory>> {
         stringResource(R.string.settings_search_keyword_car_mode) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_transcode) to SettingsCategory.PLAYBACK,
         stringResource(R.string.settings_search_keyword_audio_focus) to SettingsCategory.PLAYBACK,
-        stringResource(R.string.settings_search_keyword_download) to SettingsCategory.PLAYBACK,
+        stringResource(R.string.settings_search_keyword_download) to SettingsCategory.DOWNLOAD,
         stringResource(R.string.settings_search_keyword_daily_mix) to SettingsCategory.DEVELOPER,
         stringResource(R.string.settings_search_keyword_stats) to SettingsCategory.DEVELOPER,
         stringResource(R.string.settings_search_keyword_maintenance) to SettingsCategory.DEVELOPER,
@@ -628,13 +629,13 @@ private fun getSettingsItemIndex(): List<Pair<String, SettingsCategory>> = listO
     stringResource(R.string.music_quality_high) to SettingsCategory.PLAYBACK,
     stringResource(R.string.music_quality_standard) to SettingsCategory.PLAYBACK,
     // 行为
-    // 下载（实际渲染在「播放」分类底部，搜索必须指到同一页，否则搜「下载」跳错分类找不到）
-    stringResource(R.string.setcat_download_settings) to SettingsCategory.PLAYBACK,
-    stringResource(R.string.setcat_download_path_title) to SettingsCategory.PLAYBACK,
-    stringResource(R.string.download_manager_title) to SettingsCategory.PLAYBACK,
-    stringResource(R.string.setcat_download_quality_label) to SettingsCategory.PLAYBACK,
-    stringResource(R.string.setcat_download_file_name_label) to SettingsCategory.PLAYBACK,
-    stringResource(R.string.setcat_download_skip_existing_title) to SettingsCategory.PLAYBACK,
+    // 下载（已独立成一级分类「下载设置」，搜索全部指向该分类）
+    stringResource(R.string.setcat_download_settings) to SettingsCategory.DOWNLOAD,
+    stringResource(R.string.setcat_download_path_title) to SettingsCategory.DOWNLOAD,
+    stringResource(R.string.download_manager_title) to SettingsCategory.DOWNLOAD,
+    stringResource(R.string.setcat_download_quality_label) to SettingsCategory.DOWNLOAD,
+    stringResource(R.string.setcat_download_file_name_label) to SettingsCategory.DOWNLOAD,
+    stringResource(R.string.setcat_download_skip_existing_title) to SettingsCategory.DOWNLOAD,
     stringResource(R.string.setcat_folders) to SettingsCategory.BEHAVIOR,
     stringResource(R.string.setcat_folder_back_gesture_title) to SettingsCategory.BEHAVIOR,
     stringResource(R.string.setcat_player_gestures) to SettingsCategory.BEHAVIOR,
@@ -1437,6 +1438,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.AI_INTEGRATION -> Color(0xFF5B3FA0) to Color(0xFFE8DFFF)
             SettingsCategory.WEB_REMOTE -> Color(0xFF2E7D32) to Color(0xFFC8E6C9)
             SettingsCategory.LIBRARY -> Color(0xFF004A77) to Color(0xFFC2E7FF) 
+            SettingsCategory.DOWNLOAD -> Color(0xFF3B3B6B) to Color(0xFFDDE1FF)
             SettingsCategory.USB_EXCLUSIVE -> Color(0xFF4A3000) to Color(0xFFFFDF9E)
             SettingsCategory.APPEARANCE -> Color(0xFF7D5260) to Color(0xFFFFD8E4) 
             SettingsCategory.PLAYBACK -> Color(0xFF633B48) to Color(0xFFFFD8EC) 
@@ -1455,6 +1457,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.AI_INTEGRATION -> Color(0xFFE8DFFF) to Color(0xFF4A2E8A)
             SettingsCategory.WEB_REMOTE -> Color(0xFFC8E6C9) to Color(0xFF1B5E20)
             SettingsCategory.LIBRARY -> Color(0xFFD7E3FF) to Color(0xFF005AC1)
+            SettingsCategory.DOWNLOAD -> Color(0xFFDDE1FF) to Color(0xFF2A2A5A)
             SettingsCategory.USB_EXCLUSIVE -> Color(0xFFFFDF9E) to Color(0xFF3D2A00)
             SettingsCategory.APPEARANCE -> Color(0xFFFFD8E4) to Color(0xFF631835)
             SettingsCategory.PLAYBACK -> Color(0xFFFFD8EC) to Color(0xFF631B4B)

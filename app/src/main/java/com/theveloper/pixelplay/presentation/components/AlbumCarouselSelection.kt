@@ -9,7 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -207,6 +209,10 @@ fun AlbumCarouselSection(
                         .fillMaxSize()
                         // 与原版一致：封面始终是 1:1 正方形（预览只是让出右侧 20% 的空间）
                         .aspectRatio(1f)
+                        // ⚡ 内容层显式圆角：carousel 的 mask 裁剪在某些 keyline 组合（如预览轮播）
+                        //    下 maskRect 会算到 item 之外，导致圆角落在可视区外、看起来是直角。
+                        //    这里按 item 自身 bounds 再裁一次，与 mask 取交集，保证封面一定是圆角。
+                        .clip(RoundedCornerShape(corner))
                         .clickable(
                             enabled = isFocusedItem && song.albumId != -1L,
                             interactionSource = remember { MutableInteractionSource() },

@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DeveloperBoard
 import androidx.compose.material.icons.rounded.DeveloperMode
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
@@ -51,6 +52,14 @@ enum class SettingsCategory(
         titleRes = R.string.settings_category_library_title,
         subtitleRes = R.string.settings_category_library_subtitle,
         icon = Icons.Rounded.LibraryMusic
+    ),
+    // ⚡ 歌曲下载集中到独立一级分类：下载管理（队列）/ 音质 / 路径 / 文件名模板 / 内嵌选项。
+    //    此前埋在「播放」页最底部，用户找不到。
+    DOWNLOAD(
+        id = "download",
+        titleRes = R.string.settings_category_download_title,
+        subtitleRes = R.string.settings_category_download_subtitle,
+        icon = Icons.Rounded.Download
     ),
     USB_EXCLUSIVE(
         id = "usb_exclusive",

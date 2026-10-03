@@ -2,6 +2,8 @@ package com.theveloper.pixelplay.presentation.components.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +77,10 @@ fun PlayerMoreSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // ⚡ 可上下滑动：选项最多有 7 条（歌曲信息/评论/下载/分享/一起听/艺术家/专辑），
+                //    小屏或横屏下总高度会超过弹窗上限，最后几条会被挤出屏幕点不到。
+                //    内容整体滚动（ModalBottomSheet 自身已处理系统栏 insets，这里不再重复留白）。
+                .verticalScroll(rememberScrollState())
                 .padding(vertical = 12.dp)
         ) {
             // ── 头部：与 SongInfoBottomSheet 同款「封面 + 标题/歌手」布局 ──

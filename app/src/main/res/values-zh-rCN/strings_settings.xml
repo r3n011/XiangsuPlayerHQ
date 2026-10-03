@@ -20,6 +20,10 @@
     <string
         name="settings_category_playback_subtitle"
     >音频行为、淡入淡出和后台播放</string>
+    <string name="settings_category_download_title">下载设置</string>
+    <string
+        name="settings_category_download_subtitle"
+    >下载队列、音质、目录、文件名与标签内嵌</string>
     <string name="settings_category_behavior_title">交互</string>
     <string
         name="settings_category_behavior_subtitle"
@@ -777,7 +781,7 @@
     <string name="setcat_floating_lyrics_animation_subtitle">展开控制条、调整大小时做平滑过渡；关闭则瞬间切换。</string>
     
     <!-- Download Settings -->
-    <string name="setcat_download_settings">下载设置</string>
+    <string name="setcat_download_settings">歌曲下载</string>
     <string name="setcat_download_path_title">下载路径</string>
     <string name="setcat_download_file_name_label">下载文件名</string>
     <string name="setcat_download_file_name_desc">下载歌曲的文件命名方式。</string>
