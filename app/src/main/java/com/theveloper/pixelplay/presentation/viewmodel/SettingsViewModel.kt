@@ -1706,6 +1706,30 @@ class SettingsViewModel @Inject constructor(
     val homeTopListEnabled: StateFlow<Boolean> = userPreferencesRepository.homeTopListEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    // ⚡ 下载：文件名模板 + 跳过已存在文件
+    val downloadFileNameTemplate: StateFlow<String> =
+        userPreferencesRepository.downloadFileNameTemplateFlow
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5000),
+                com.theveloper.pixelplay.data.preferences.DownloadFileNameTemplate.ARTIST_TITLE
+            )
+
+    val downloadSkipExisting: StateFlow<Boolean> = userPreferencesRepository.downloadSkipExistingFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun setDownloadFileNameTemplate(value: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setDownloadFileNameTemplate(value)
+        }
+    }
+
+    fun setDownloadSkipExisting(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setDownloadSkipExisting(enabled)
+        }
+    }
+
     val isWebRemoteEnabled: StateFlow<Boolean> = aiPreferencesRepository.isWebRemoteEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 

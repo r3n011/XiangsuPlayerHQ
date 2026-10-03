@@ -884,6 +884,13 @@
     <!-- Download Settings -->
     <string name="setcat_download_settings">Download Settings</string>
     <string name="setcat_download_path_title">Download Path</string>
+    <string name="setcat_download_file_name_label">Download file name</string>
+    <string name="setcat_download_file_name_desc">How downloaded files are named.</string>
+    <string name="setcat_download_file_name_artist_title">Artist - Title</string>
+    <string name="setcat_download_file_name_title_artist">Title - Artist</string>
+    <string name="setcat_download_file_name_title_only">Title only</string>
+    <string name="setcat_download_skip_existing_title">Skip existing files</string>
+    <string name="setcat_download_skip_existing_subtitle">Skip when a file with the same name already exists in the target folder.</string>
     
     <!-- Car Mode Quick Actions -->
     <string name="car_mode_quick_actions_title">Quick Actions</string>

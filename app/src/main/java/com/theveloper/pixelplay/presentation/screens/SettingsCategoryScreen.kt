@@ -2798,6 +2798,32 @@ fun SettingsCategoryScreen(
                                         downloadFolderPicker.launch(null)
                                     }
                                 )
+                                // ⚡ 下载文件名模板（歌手 - 歌名 / 歌名 - 歌手 / 歌名）
+                                val downloadFileNameTemplate by settingsViewModel.downloadFileNameTemplate.collectAsStateWithLifecycle()
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_download_file_name_label),
+                                    description = stringResource(R.string.setcat_download_file_name_desc),
+                                    options = mapOf(
+                                        com.theveloper.pixelplay.data.preferences.DownloadFileNameTemplate.ARTIST_TITLE
+                                            to stringResource(R.string.setcat_download_file_name_artist_title),
+                                        com.theveloper.pixelplay.data.preferences.DownloadFileNameTemplate.TITLE_ARTIST
+                                            to stringResource(R.string.setcat_download_file_name_title_artist),
+                                        com.theveloper.pixelplay.data.preferences.DownloadFileNameTemplate.TITLE
+                                            to stringResource(R.string.setcat_download_file_name_title_only)
+                                    ),
+                                    selectedKey = downloadFileNameTemplate,
+                                    onSelectionChanged = { settingsViewModel.setDownloadFileNameTemplate(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Tag, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                // ⚡ 目标目录已有同名文件时跳过（默认开）
+                                val downloadSkipExisting by settingsViewModel.downloadSkipExisting.collectAsStateWithLifecycle()
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_download_skip_existing_title),
+                                    subtitle = stringResource(R.string.setcat_download_skip_existing_subtitle),
+                                    checked = downloadSkipExisting,
+                                    onCheckedChange = { settingsViewModel.setDownloadSkipExisting(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Download, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
                             }
 
                         }

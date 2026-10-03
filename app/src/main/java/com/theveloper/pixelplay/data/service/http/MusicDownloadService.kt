@@ -21,15 +21,29 @@ import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
+import com.theveloper.pixelplay.data.preferences.DownloadFileNameTemplate
+import com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
 import com.theveloper.pixelplay.data.preferences.PersistedDownloadEntry
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
+import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
 import com.theveloper.pixelplay.utils.LyricsUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
+import java.io.RandomAccessFile
+import javax.inject.Inject
+import javax.inject.Provider
+import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,19 +54,32 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
-import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
-import javax.inject.Inject
-import javax.inject.Singleton
 
+/**
+ * 在线歌曲下载服务。
+ *
+ * 与参考实现（lx-music-desktop 的下载管线）对齐的关键行为：
+ * - **队列 + 并发上限**：所有任务先入队（[DownloadStatus.Waiting]），最多同时跑
+ *   [MAX_CONCURRENT_DOWNLOADS] 个；支持暂停 / 继续 / 取消；
+ * - **失败重试 + 退避**：每首最多 [MAX_RETRY] 次，间隔 [RETRY_DELAY_MS]；
+ *   链接过期（401/403/410）或网络错误会**重新解析直链**再试；
+ * - **断点续传**：先下到缓存临时文件，服务端支持 Range 时带 `Range` 续传并做
+ *   重叠字节校验，416 / 校验失败则删档重来；
+ * - **临时文件 + 完成后落盘**：失败/取消只留临时文件（会被清理），目标目录不会
+ *   出现半个文件；元数据标签也因此在**临时文件**上写 —— SAF 目录同样能写标签；
+ * - **扩展名按真实类型**：从响应 Content-Type（兜底 URL 后缀 / 音质档位）推导，
+ *   不再一律 `.mp3`；
+ * - **文件名模板 / 跳过已存在**：可在设置里配置。
+ */
 @Singleton
 class MusicDownloadService @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val neteaseRepository: javax.inject.Provider<NeteaseRepository>,
-    private val qqMusicRepository: javax.inject.Provider<QqMusicRepository>,
-    private val navidromeRepository: javax.inject.Provider<NavidromeRepository>,
+    private val neteaseRepository: Provider<NeteaseRepository>,
+    private val qqMusicRepository: Provider<QqMusicRepository>,
+    private val navidromeRepository: Provider<NavidromeRepository>,
+    /** 在线源按需解析直链（cloud://lx、kgaudio://、bilibili:// 等，不再依赖播放缓存） */
+    private val playerEngine: Provider<DualPlayerEngine>,
     private val okHttpClient: OkHttpClient,
     private val songMetadataEditor: SongMetadataEditor,
     private val lyricsRepository: LyricsRepository
@@ -62,11 +89,32 @@ class MusicDownloadService @Inject constructor(
         private const val DOWNLOAD_CHANNEL_ID = "pixelplay_download_channel"
         private const val DOWNLOAD_NOTIFICATION_ID_BASE = 3000
 
+        /** 同时进行的下载数上限（对齐参考实现默认 3） */
+        private const val MAX_CONCURRENT_DOWNLOADS = 3
+
+        /** 单首最大重试次数 / 重试间隔 */
+        private const val MAX_RETRY = 3
+        private const val RETRY_DELAY_MS = 1_000L
+
+        /** 续传时重发的重叠字节数：用于校验服务端返回的是同一份数据 */
+        private const val RESUME_OVERLAP_BYTES = 10
+
+        /** 文件名（含扩展名）最大长度，避免超出文件系统限制 */
+        private const val MAX_FILE_NAME_LENGTH = 150
+
+        /** 判定「文件已存在」的最小体积（小于它的多半是失败残留） */
+        private const val EXISTING_FILE_MIN_BYTES = 100L
+
+        private const val TEMP_DIR_NAME = "downloads"
+
         /** 在线歌曲的自定义播放 scheme（由播放引擎懒解析真实直链，非本地文件） */
         private val ONLINE_CUSTOM_SCHEMES = listOf(
-            "cloud://", "netease://", "qq://", "kw://", "kg://", "mg://", "bilibili://"
+            "cloud://", "netease://", "qqmusic://", "qq://", "kw://", "kg://", "mg://",
+            "kgaudio://", "bilibili://", "navidrome://", "jellyfin://", "gdrive://", "telegram://"
         )
     }
+
+    enum class DownloadStatus { Waiting, Running, Paused, Error, Completed }
 
     data class DownloadInfo(
         val songId: String,
@@ -75,11 +123,38 @@ class MusicDownloadService @Inject constructor(
         val progress: Float,
         val isComplete: Boolean,
         val isFailed: Boolean,
-        val filePath: String?
+        val filePath: String?,
+        val status: DownloadStatus = when {
+            isComplete -> DownloadStatus.Completed
+            isFailed -> DownloadStatus.Error
+            else -> DownloadStatus.Running
+        },
+        /** 最终文件名（含扩展名），仅用于展示 */
+        val fileName: String? = null,
+    ) {
+        val isActive: Boolean
+            get() = status == DownloadStatus.Waiting || status == DownloadStatus.Running
+        val isPaused: Boolean get() = status == DownloadStatus.Paused
+    }
+
+    /** 内部任务：比 [DownloadInfo] 多持有原始 [Song]、解析出的直链与协程句柄 */
+    private class Task(
+        val song: Song,
+        var preferredUrl: String?,
+        var onFinished: ((Boolean) -> Unit)?,
+        var status: DownloadStatus = DownloadStatus.Waiting,
+        var job: Job? = null,
+        var progress: Float = 0f,
+        var fileName: String? = null,
+        var filePath: String? = null,
     )
 
     private val _downloads = MutableStateFlow<List<DownloadInfo>>(emptyList())
     val downloads: StateFlow<List<DownloadInfo>> = _downloads.asStateFlow()
+
+    /** 任务表（含进行中）；[taskLock] 保护。已完成的任务保留在表里以便跳过重复下载。 */
+    private val tasks = LinkedHashMap<String, Task>()
+    private val taskLock = Any()
 
     // ⚡ 下载索引缓存：songId → DownloadInfo。getDownloadInfo 原先对下载列表线性扫描
     // （O(M)），媒体库放歌构建大队列时每首歌都要查一次（O(N×M)），低性能设备上会明显
@@ -99,6 +174,9 @@ class MusicDownloadService @Inject constructor(
     private val notificationManager: NotificationManager? by lazy {
         context.getSystemService(NotificationManager::class.java)
     }
+
+    private val tempDir: File
+        get() = File(context.cacheDir, TEMP_DIR_NAME).apply { if (!exists()) mkdirs() }
 
     init {
         createDownloadChannel()
@@ -122,7 +200,8 @@ class MusicDownloadService @Inject constructor(
                         progress = 100f,
                         isComplete = true,
                         isFailed = false,
-                        filePath = it.filePath
+                        filePath = it.filePath,
+                        status = DownloadStatus.Completed
                     )
                 }
             rebuildDownloadIndex()
@@ -159,21 +238,130 @@ class MusicDownloadService @Inject constructor(
         }
     }
 
-    fun isDownloading(songId: String): Boolean =
-        _downloads.value.any { it.songId == songId && !it.isComplete && !it.isFailed }
+    fun isDownloading(songId: String): Boolean = synchronized(taskLock) {
+        tasks[songId]?.status.let { it == DownloadStatus.Waiting || it == DownloadStatus.Running }
+    }
+
+    fun isPaused(songId: String): Boolean =
+        synchronized(taskLock) { tasks[songId]?.status == DownloadStatus.Paused }
 
     /**
-     * 后台启动下载（非挂起）：在应用级作用域中执行，立即返回。
-     * [preferredUrl] 为播放链路已解析好的真实流 URL，可绕过网易云 API 限速与落雪引擎，
-     * 避免与播放争抢资源。下载结果通过 [downloads] StateFlow 与 [onFinished] 回调暴露。
+     * 加入下载队列（非挂起，立即返回）。
+     *
+     * - 已完成 → 直接回调成功；
+     * - 已暂停 / 失败 → 重新排队（继续下载）；
+     * - 排队中 / 进行中 → 忽略（避免重复任务）。
+     *
+     * [preferredUrl] 为播放链路已解析好的真实流 URL，可绕过官方 API 限速与落雪引擎，
+     * 避免与播放争抢资源；为 null 时由 [resolveStreamUrl] 现解析。
      */
     fun startDownload(song: Song, preferredUrl: String? = null, onFinished: ((Boolean) -> Unit)? = null) {
         val songId = song.id
-        if (isDownloading(songId)) return
-        appScope.launch {
-            val success = downloadSong(song, preferredUrl) != null
-            mainHandler.post { onFinished?.invoke(success) }
+        val existingInfo = getDownloadInfo(songId)
+        if (existingInfo?.isComplete == true) {
+            mainHandler.post { onFinished?.invoke(true) }
+            return
         }
+
+        synchronized(taskLock) {
+            val task = tasks[songId]
+            when (task?.status) {
+                DownloadStatus.Waiting, DownloadStatus.Running -> {
+                    task.onFinished = onFinished ?: task.onFinished
+                    return
+                }
+                else -> {
+                    if (task != null) {
+                        task.preferredUrl = preferredUrl ?: task.preferredUrl
+                        task.onFinished = onFinished
+                        task.status = DownloadStatus.Waiting
+                        task.progress = 0f
+                    } else {
+                        tasks[songId] = Task(
+                            song = song,
+                            preferredUrl = preferredUrl,
+                            onFinished = onFinished
+                        )
+                    }
+                }
+            }
+        }
+        updateDownloadStatus(
+            songId = songId,
+            title = song.title,
+            artist = song.displayArtist,
+            progress = 0f,
+            status = DownloadStatus.Waiting,
+            filePath = null,
+            fileName = null
+        )
+        pump()
+    }
+
+    /** 暂停：进行中的任务取消协程（已下的部分留在临时文件里，可继续续传） */
+    fun pauseDownload(songId: String) {
+        val task = synchronized(taskLock) {
+            val t = tasks[songId] ?: return
+            if (t.status == DownloadStatus.Completed || t.status == DownloadStatus.Error) return
+            t.status = DownloadStatus.Paused
+            t.job?.cancel()
+            t.job = null
+            t
+        }
+        updateDownloadStatus(
+            songId = songId,
+            title = task.song.title,
+            artist = task.song.displayArtist,
+            progress = task.progress,
+            status = DownloadStatus.Paused,
+            filePath = null,
+            fileName = task.fileName
+        )
+        showDownloadNotification(notificationIdFor(songId), task.song.title, task.progress, isDone = true, success = true, text = "已暂停")
+        pump()
+    }
+
+    /** 继续（暂停后重新排队） */
+    fun resumeDownload(songId: String) {
+        val task = synchronized(taskLock) {
+            val t = tasks[songId] ?: return
+            if (t.status != DownloadStatus.Paused && t.status != DownloadStatus.Error) return
+            t.status = DownloadStatus.Waiting
+            t
+        }
+        updateDownloadStatus(
+            songId = songId,
+            title = task.song.title,
+            artist = task.song.displayArtist,
+            progress = task.progress,
+            status = DownloadStatus.Waiting,
+            filePath = null,
+            fileName = task.fileName
+        )
+        pump()
+    }
+
+    /** 取消：终止任务、删除临时文件与状态记录 */
+    fun cancelDownload(songId: String) {
+        val task = synchronized(taskLock) {
+            val t = tasks.remove(songId)
+            t?.job?.cancel()
+            t
+        }
+        deleteTempFile(songId)
+        _downloads.value = _downloads.value.filterNot { it.songId == songId }
+        rebuildDownloadIndex()
+        runCatching { NotificationManagerCompat.from(context).cancel(notificationIdFor(songId)) }
+        task?.onFinished?.let { cb -> mainHandler.post { cb(false) } }
+        pump()
+    }
+
+    /** 仅移除「已下载」记录（不删文件，也不影响正在跑的任务） */
+    fun removeDownload(songId: String) {
+        if (isDownloading(songId)) return
+        _downloads.value = _downloads.value.filterNot { it.songId == songId }
+        rebuildDownloadIndex()
+        persistDownloads()
     }
 
     fun isOnlineSong(song: Song): Boolean {
@@ -193,279 +381,458 @@ class MusicDownloadService @Inject constructor(
         return ONLINE_CUSTOM_SCHEMES.any { uri.startsWith(it, ignoreCase = true) }
     }
 
-    suspend fun downloadSong(song: Song, preferredUrl: String? = null): String? {
-        return try {
-            val songId = song.id
-            val existing = _downloads.value.find { it.songId == songId }
-            if (existing != null && existing.isComplete) {
-                return existing.filePath
+    // ─── 队列调度 ─────────────────────────────────────────────────────────
+
+    /** 按并发上限启动等待中的任务（每次状态变化后调用） */
+    private fun pump() {
+        val toStart = synchronized(taskLock) {
+            val running = tasks.values.count { it.status == DownloadStatus.Running }
+            val slots = (MAX_CONCURRENT_DOWNLOADS - running).coerceAtLeast(0)
+            if (slots == 0) return
+            tasks.values
+                .filter { it.status == DownloadStatus.Waiting }
+                .take(slots)
+                .onEach { it.status = DownloadStatus.Running }
+        }
+        toStart.forEach { task ->
+            task.job = appScope.launch {
+                var success = false
+                try {
+                    success = runTask(task)
+                } catch (cancelled: CancellationException) {
+                    // 暂停 / 取消：状态已由 pause/cancel 设置好，这里不覆盖
+                    throw cancelled
+                } finally {
+                    synchronized(taskLock) {
+                        if (task.status == DownloadStatus.Running) {
+                            task.status = if (success) DownloadStatus.Completed else DownloadStatus.Error
+                        }
+                        task.job = null
+                    }
+                }
+                mainHandler.post { task.onFinished?.invoke(success) }
+                if (success) persistDownloads()
+                pump()
             }
-
-            val notificationId = DOWNLOAD_NOTIFICATION_ID_BASE + (songId.hashCode() and 0x7FFFFFFF) % 1000
-            updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, false, null)
-            showDownloadNotification(notificationId, song.title, 0f, isDone = false)
-
-            // 优先使用播放链路已解析的 URL，其次才走 getStreamUrl（官方 API + 落雪引擎）
-            val streamUrl = preferredUrl?.takeIf { it.startsWith("http", ignoreCase = true) }
-                ?: getStreamUrl(song)
-            if (streamUrl.isNullOrEmpty()) {
-                Timber.w("MusicDownloadService: No stream URL available for songId=$songId")
-                updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, true, null)
-                showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
-                return null
-            }
-
-            val fileName = sanitizeFileName("${song.displayArtist} - ${song.title}.mp3")
-            val outputPath = getOutputFilePath(fileName)
-
-            if (outputPath == null) {
-                Timber.w("MusicDownloadService: Cannot determine output path")
-                updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, true, null)
-                showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
-                return null
-            }
-
-            val result = downloadFileWithProgress(streamUrl, outputPath) { progress ->
-                updateDownloadStatus(songId, song.title, song.displayArtist, progress, false, false, null)
-                showDownloadNotification(notificationId, song.title, progress, isDone = false)
-            }
-
-            if (result) {
-                updateDownloadStatus(songId, song.title, song.displayArtist, 100f, true, false, outputPath)
-                showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true)
-                // ⚡ 持久化下载索引：进程重启后仍可命中本地播放。
-                persistDownloads()
-                // 下载完成后自动补全元数据：写音频标签（标题/歌手/专辑/封面/歌词）、
-                // 生成同目录 .lrc 歌词文件并刷新 MediaStore
-                enrichDownloadedFile(song, outputPath)
-                outputPath
-            } else {
-                updateDownloadStatus(songId, song.title, song.displayArtist, 0f, false, true, null)
-                showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
-                null
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "MusicDownloadService: Failed to download songId=${song.id}")
-            updateDownloadStatus(song.id, song.title, song.displayArtist, 0f, false, true, null)
-            val notificationId = DOWNLOAD_NOTIFICATION_ID_BASE + (song.id.hashCode() and 0x7FFFFFFF) % 1000
-            showDownloadNotification(notificationId, song.title, 0f, isDone = true, success = false)
-            null
         }
     }
 
-    /** 在通知栏展示下载进度（进行中/完成/失败），完成后几秒自动清除 */
-    private fun showDownloadNotification(
-        notificationId: Int,
-        title: String,
-        progress: Float,
-        isDone: Boolean,
-        success: Boolean = true
-    ) {
+    // ─── 单个任务 ─────────────────────────────────────────────────────────
+
+    private suspend fun runTask(task: Task): Boolean {
+        val song = task.song
+        val songId = song.id
+        val notificationId = notificationIdFor(songId)
+        val quality = readQualityPreference()
+
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-            ) return
+            // 1. 解析直链（播放缓存 → 在线源按需解析 → 各平台 API）
+            val streamUrl = resolveStreamUrl(song, task.preferredUrl)
+            if (streamUrl.isNullOrBlank()) {
+                Timber.w("MusicDownloadService: 无法解析直链 songId=$songId")
+                failTask(task, notificationId, "无法获取下载地址")
+                return false
+            }
 
-            val builder = NotificationCompat.Builder(context, DOWNLOAD_CHANNEL_ID)
-                .setSmallIcon(com.theveloper.pixelplay.R.drawable.monochrome_player)
-                .setContentTitle(title)
-                .setOnlyAlertOnce(true)
-                .setOngoing(!isDone)
+            // 2. 下载到缓存临时文件（Range 续传 + 重试）
+            val tempFile = tempFileFor(songId)
+            val outcome = downloadWithRetry(task, streamUrl, tempFile, notificationId)
+            if (outcome == null || !tempFile.exists() || tempFile.length() <= 0L) {
+                deleteTempFile(songId)
+                failTask(task, notificationId, "下载失败")
+                return false
+            }
 
-            if (isDone) {
-                builder
-                    .setContentText(if (success) "下载完成" else "下载失败")
-                    .setAutoCancel(true)
-            } else {
-                val pct = progress.toInt().coerceIn(0, 100)
-                builder
-                    .setContentText("下载中 $pct%")
-                    .setProgress(100, pct, progress <= 0f)
-                // 点击通知回到播放页
-                val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                if (openAppIntent != null) {
-                    builder.setContentIntent(
-                        PendingIntent.getActivity(
-                            context,
-                            notificationId,
-                            openAppIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                    )
+            // 3. 扩展名按真实类型（Content-Type → URL 后缀 → 音质档位）
+            val ext = decideExtension(outcome.mimeType, streamUrl, quality)
+            val fileName = buildFileName(song, ext)
+            task.fileName = fileName
+
+            // 4. 目标位置：已存在同名文件（且体积正常）→ 直接视为完成，跳过重复下载
+            val destination = resolveDestination(fileName)
+            if (destination == null) {
+                deleteTempFile(songId)
+                failTask(task, notificationId, "无法确定保存位置")
+                return false
+            }
+            val skipExisting = runCatching {
+                userPreferencesRepository.downloadSkipExistingFlow.first()
+            }.getOrDefault(true)
+            val existingPath = destination.existingPathIfUsable(fileName)
+            if (skipExisting && existingPath != null) {
+                deleteTempFile(songId)
+                task.filePath = existingPath
+                updateDownloadStatus(songId, song.title, song.displayArtist, 100f, DownloadStatus.Completed, existingPath, fileName)
+                showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true, text = "已存在，跳过")
+                return true
+            }
+
+            // 5. 元数据标签写在**临时文件**上：SAF 目录同样能带上标签
+            val lrcText = writeTags(song, tempFile.absolutePath)
+
+            // 6. 落到目标位置（SAF 拷贝 / 公共目录移动）
+            updateDownloadStatus(songId, song.title, song.displayArtist, 100f, DownloadStatus.Running, null, fileName)
+            showDownloadNotification(notificationId, song.title, 100f, isDone = false, text = "正在写入文件…")
+            val finalPath = destination.commit(tempFile, fileName)
+            if (finalPath == null) {
+                deleteTempFile(songId)
+                failTask(task, notificationId, "写入目标目录失败")
+                return false
+            }
+
+            // 7. 同目录 .lrc + MediaStore 收录
+            if (!lrcText.isNullOrBlank()) writeLrcFile(finalPath, lrcText)
+            scanFile(finalPath)
+
+            task.filePath = finalPath
+            updateDownloadStatus(songId, song.title, song.displayArtist, 100f, DownloadStatus.Completed, finalPath, fileName)
+            showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true, text = "下载完成")
+            return true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            Timber.e(e, "MusicDownloadService: 下载异常 songId=$songId")
+            deleteTempFile(songId)
+            failTask(task, notificationId, "下载失败")
+            return false
+        }
+    }
+
+    private fun failTask(task: Task, notificationId: Int, text: String) {
+        updateDownloadStatus(
+            songId = task.song.id,
+            title = task.song.title,
+            artist = task.song.displayArtist,
+            progress = task.progress,
+            status = DownloadStatus.Error,
+            filePath = null,
+            fileName = task.fileName
+        )
+        showDownloadNotification(notificationId, task.song.title, task.progress, isDone = true, success = false, text = text)
+    }
+
+    /**
+     * 带重试与断点续传的下载：写 [tempFile]。
+     *
+     * - 服务端支持 Range 且临时文件已有内容 → 带 `Range` 续传（重发 [RESUME_OVERLAP_BYTES]
+     *   字节并校验，不一致 / 416 则删档重来）；
+     * - 401 / 403 / 410（直链过期）或网络异常 → 清掉 preferredUrl 重新解析后重试；
+     * - 最多 [MAX_RETRY] 次，间隔 [RETRY_DELAY_MS]。
+     */
+    private suspend fun downloadWithRetry(
+        task: Task,
+        initialUrl: String,
+        tempFile: File,
+        notificationId: Int,
+    ): DownloadOutcome? {
+        var url = initialUrl
+        var lastError: Throwable? = null
+        for (attempt in 1..MAX_RETRY) {
+            try {
+                val outcome = downloadOnce(url, tempFile, notificationId, task)
+                if (outcome != null) return outcome
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                lastError = e
+                Timber.w(e, "MusicDownloadService: 第 $attempt 次下载失败 songId=${task.song.id}")
+                // ⚡ 保留已下载的临时文件：网络抖动 / 直链过期后下一次尝试可以续传。
+                //    只有 416 或续传校验失败才需要删档重来（那两种情况已在 downloadOnce 里删过）。
+                if (attempt < MAX_RETRY) {
+                    val refreshed = resolveStreamUrl(task.song, preferredUrl = null)
+                    if (!refreshed.isNullOrBlank()) url = refreshed
+                }
+            }
+            if (attempt < MAX_RETRY) delay(RETRY_DELAY_MS * attempt)
+        }
+        Timber.w(lastError, "MusicDownloadService: 重试耗尽 songId=${task.song.id}")
+        return null
+    }
+
+    private data class DownloadOutcome(val mimeType: String)
+
+    /** 单次下载：支持 Range 续传与重叠校验；返回内容类型 */
+    private suspend fun downloadOnce(
+        url: String,
+        tempFile: File,
+        notificationId: Int,
+        task: Task,
+    ): DownloadOutcome? = withContext(Dispatchers.IO) {
+        var resumeFrom = if (tempFile.exists()) tempFile.length() else 0L
+        if (resumeFrom < RESUME_OVERLAP_BYTES) {
+            tempFile.delete()
+            resumeFrom = 0L
+        }
+        val overlap = if (resumeFrom > 0) readTail(tempFile, RESUME_OVERLAP_BYTES) else null
+
+        val request = Request.Builder()
+            .url(url)
+            .apply { if (resumeFrom > 0) header("Range", "bytes=${resumeFrom - RESUME_OVERLAP_BYTES}-") }
+            .build()
+
+        okHttpClient.newCall(request).execute().use { response ->
+            if (response.code == 416) {
+                // 范围不合法（多半是临时文件比服务端文件还长）→ 删档重来
+                tempFile.delete()
+                throw IllegalStateException("HTTP 416：Range 不被接受，已重置临时文件")
+            }
+            if (response.code == 401 || response.code == 403 || response.code == 410) {
+                throw IllegalStateException("HTTP ${response.code}：直链已失效")
+            }
+            if (!response.isSuccessful) {
+                throw IllegalStateException("HTTP ${response.code}")
+            }
+            val body = response.body ?: throw IllegalStateException("响应体为空")
+            val mimeType = body.contentType()?.toString().orEmpty()
+            val totalLength = body.contentLength()
+            val appending = resumeFrom > 0 && response.code == 206
+
+            var written = if (appending) resumeFrom - RESUME_OVERLAP_BYTES else 0L
+            val fullLength = if (appending && totalLength > 0) written + totalLength else totalLength
+            if (!appending) tempFile.delete()
+
+            body.byteStream().use { input ->
+                // 续传：先校验重发的前 N 字节与临时文件尾部一致，否则删档重来
+                if (appending && overlap != null) {
+                    val head = ByteArray(RESUME_OVERLAP_BYTES)
+                    var read = 0
+                    while (read < RESUME_OVERLAP_BYTES) {
+                        val n = input.read(head, read, RESUME_OVERLAP_BYTES - read)
+                        if (n <= 0) break
+                        read += n
+                    }
+                    if (read < RESUME_OVERLAP_BYTES || !head.contentEquals(overlap)) {
+                        tempFile.delete()
+                        throw IllegalStateException("续传校验失败，已重置临时文件")
+                    }
+                }
+
+                FileOutputStream(tempFile, appending).use { output ->
+                    copyStream(input, output) { chunk ->
+                        written += chunk
+                        reportProgress(task, notificationId, written, fullLength)
+                    }
                 }
             }
 
-            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
-            if (isDone) {
-                mainHandler.postDelayed({
-                    runCatching { NotificationManagerCompat.from(context).cancel(notificationId) }
-                }, 4000)
+            if (fullLength > 0 && written < fullLength) {
+                throw IllegalStateException("下载不完整：$written/$fullLength")
             }
-        } catch (t: Throwable) {
-            Timber.w(t, "MusicDownloadService: 通知展示失败")
+            DownloadOutcome(mimeType)
         }
+    }
+
+    private inline fun copyStream(input: InputStream, output: OutputStream, onChunk: (Int) -> Unit) {
+        val buffer = ByteArray(64 * 1024)
+        while (true) {
+            val read = input.read(buffer)
+            if (read <= 0) break
+            output.write(buffer, 0, read)
+            onChunk(read)
+        }
+        runCatching { output.flush() }
+    }
+
+    private fun reportProgress(task: Task, notificationId: Int, written: Long, total: Long) {
+        val progress = if (total > 0) (written.toFloat() / total.toFloat() * 100f).coerceIn(0f, 99f) else 0f
+        if (progress - task.progress < 1f && progress < 99f) return
+        task.progress = progress
+        updateDownloadStatus(
+            songId = task.song.id,
+            title = task.song.title,
+            artist = task.song.displayArtist,
+            progress = progress,
+            status = DownloadStatus.Running,
+            filePath = null,
+            fileName = task.fileName
+        )
+        showDownloadNotification(notificationId, task.song.title, progress, isDone = false)
+    }
+
+    private fun readTail(file: File, count: Int): ByteArray? = runCatching {
+        RandomAccessFile(file, "r").use { raf ->
+            val length = raf.length()
+            if (length < count) return null
+            raf.seek(length - count)
+            ByteArray(count).also { raf.readFully(it) }
+        }
+    }.getOrNull()
+
+    // ─── 直链解析 ─────────────────────────────────────────────────────────
+
+    /**
+     * 解析可下载的直链：
+     * 1. 播放链路已解析的 URL（[preferredUrl]，最省事且避免与播放争抢）；
+     * 2. 在线源自定义 scheme（`cloud://lx`、`kgaudio://`、`bilibili://` 等）→ 播放引擎按需解析；
+     * 3. 各平台官方 API（网易云 / QQ / Navidrome），按用户音质档位并各自向下回退。
+     */
+    private suspend fun resolveStreamUrl(song: Song, preferredUrl: String?): String? {
+        preferredUrl?.takeIf { it.startsWith("http", ignoreCase = true) }?.let { return it }
+
+        val contentUri = song.contentUriString
+        if (!contentUri.isNullOrBlank() &&
+            ONLINE_CUSTOM_SCHEMES.any { contentUri.startsWith(it, ignoreCase = true) }
+        ) {
+            runCatching {
+                val resolved = playerEngine.get().resolveCloudUri(Uri.parse(contentUri))
+                resolved.toString().takeIf { it.startsWith("http", ignoreCase = true) }
+            }.onSuccess { if (it != null) return it }
+                .onFailure { Timber.w(it, "MusicDownloadService: 自定义 scheme 解析失败 $contentUri") }
+        }
+
+        return getStreamUrl(song)
     }
 
     private suspend fun getStreamUrl(song: Song): String? {
         return when {
             song.neteaseId != null -> {
                 // 使用用户设置的首选音质（无损耗 FLAC 等），API 内部失败会自动回退
-                val quality = try {
-                    com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
-                        .neteaseLevelFor(userPreferencesRepository.musicQualityValueFlow.first())
-                } catch (_: Exception) {
-                    "exhigh"
-                }
+                val quality = MusicQualityCatalog.neteaseLevelFor(readQualityPreference())
                 neteaseRepository.get().getSongUrl(song.neteaseId, quality).getOrNull()
             }
             song.qqMusicMid != null -> {
                 // 使用用户设置的首选音质（无损/320k 等），无对应权限时按档位向下回退
-                val quality = try {
-                    userPreferencesRepository.musicQualityValueFlow.first()
-                } catch (_: Exception) {
-                    null
-                }
-                qqMusicRepository.get().getSongUrl(song.qqMusicMid, quality).getOrNull()
+                qqMusicRepository.get().getSongUrl(song.qqMusicMid, readQualityPreference()).getOrNull()
             }
-            song.navidromeId != null -> {
-                navidromeRepository.get().getStreamUrl(song.navidromeId)
-            }
+            song.navidromeId != null -> navidromeRepository.get().getStreamUrl(song.navidromeId)
             else -> null
         }
     }
 
-    private suspend fun getOutputFilePath(fileName: String): String? {
-        val downloadPathPref = userPreferencesRepository.getDownloadPath()
-        
-        return if (downloadPathPref.startsWith("content://")) {
+    private suspend fun readQualityPreference(): String = runCatching {
+        userPreferencesRepository.musicQualityValueFlow.first()
+    }.getOrDefault("320k")
+
+    // ─── 文件名 / 扩展名 / 目标位置 ─────────────────────────────────────────
+
+    /** 从 Content-Type（兜底 URL 后缀、音质档位）推导扩展名 */
+    private fun decideExtension(mimeType: String, url: String, quality: String): String {
+        val mime = mimeType.substringBefore(';').trim().lowercase()
+        when {
+            mime.contains("flac") -> return "flac"
+            mime.contains("mp4") || mime.contains("m4a") || mime.contains("aac") -> return "m4a"
+            mime.contains("opus") -> return "opus"
+            mime.contains("ogg") || mime.contains("vorbis") -> return "ogg"
+            mime.contains("wav") || mime.contains("x-wav") -> return "wav"
+            mime.contains("ape") -> return "ape"
+            mime.contains("mpeg") || mime.contains("mp3") -> return "mp3"
+        }
+        val fromUrl = url.substringBefore('?').substringAfterLast('/').substringAfterLast('.', "")
+            .lowercase()
+            .takeIf { it.length in 2..5 && it.all(Char::isLetterOrDigit) }
+        if (fromUrl != null) return fromUrl
+        // 兜底：按音质档位猜（无损档给 flac，其余 mp3）
+        return when (quality.lowercase()) {
+            "24bit", "hires", "flac", "lossless", "ape", "wav" -> "flac"
+            else -> "mp3"
+        }
+    }
+
+    /** 按设置的文件名模板生成文件名（非法字符替换、长度裁剪） */
+    private suspend fun buildFileName(song: Song, extension: String): String {
+        val template = runCatching {
+            userPreferencesRepository.downloadFileNameTemplateFlow.first()
+        }.getOrDefault(DownloadFileNameTemplate.ARTIST_TITLE)
+        val artist = song.displayArtist.ifBlank { "未知歌手" }
+        val title = song.title.ifBlank { "未知歌曲" }
+        val base = when (template) {
+            DownloadFileNameTemplate.TITLE_ARTIST -> "$title - $artist"
+            DownloadFileNameTemplate.TITLE -> title
+            else -> "$artist - $title"
+        }
+        val sanitized = sanitizeFileName(base)
+        val clipped = if (sanitized.length > MAX_FILE_NAME_LENGTH - extension.length - 1) {
+            sanitized.take((MAX_FILE_NAME_LENGTH - extension.length - 1).coerceAtLeast(1))
+        } else {
+            sanitized
+        }
+        return "$clipped.$extension"
+    }
+
+    private fun sanitizeFileName(name: String): String =
+        name.replace("[\\\\/:*?\"<>|]".toRegex(), "_").trim().ifBlank { "audio" }
+
+    /** 目标位置抽象：SAF 目录 / 公共 Music 目录 */
+    private sealed interface Destination {
+        /** 已存在可用文件时返回其路径（跳过重复下载） */
+        fun existingPathIfUsable(fileName: String): String?
+
+        /** 把临时文件落到目标位置，返回最终路径（失败返回 null） */
+        fun commit(tempFile: File, fileName: String): String?
+    }
+
+    private class SafDestination(
+        private val context: Context,
+        private val treeUri: Uri,
+    ) : Destination {
+        override fun existingPathIfUsable(fileName: String): String? = runCatching {
+            DocumentFile.fromTreeUri(context, treeUri)
+                ?.findFile(fileName)
+                ?.takeIf { it.isFile && it.length() >= EXISTING_FILE_MIN_BYTES }
+                ?.uri?.toString()
+        }.getOrNull()
+
+        override fun commit(tempFile: File, fileName: String): String? = runCatching {
+            val parent = DocumentFile.fromTreeUri(context, treeUri) ?: return null
+            parent.findFile(fileName)?.takeIf { it.isFile }?.delete()
+            val target = parent.createFile(mimeTypeForName(fileName), fileName) ?: return null
+            context.contentResolver.openOutputStream(target.uri)?.use { output ->
+                tempFile.inputStream().use { input -> input.copyTo(output) }
+            } ?: return null
+            tempFile.delete()
+            target.uri.toString()
+        }.getOrNull()
+    }
+
+    private class FileDestination(private val target: File) : Destination {
+        override fun existingPathIfUsable(fileName: String): String? =
+            target.takeIf { it.isFile && it.length() >= EXISTING_FILE_MIN_BYTES }?.absolutePath
+
+        override fun commit(tempFile: File, fileName: String): String? = runCatching {
+            target.parentFile?.mkdirs()
+            if (target.exists()) target.delete()
+            if (tempFile.renameTo(target)) return target.absolutePath
+            // 跨文件系统（缓存 → 外置存储）时退化为拷贝
+            tempFile.inputStream().use { input ->
+                FileOutputStream(target).use { output -> input.copyTo(output) }
+            }
+            tempFile.delete()
+            target.absolutePath
+        }.getOrNull()
+    }
+
+    private suspend fun resolveDestination(fileName: String): Destination? {
+        val downloadPathPref = runCatching { userPreferencesRepository.getDownloadPath() }.getOrDefault("")
+        if (downloadPathPref.startsWith("content://")) {
             val uri = Uri.parse(downloadPathPref)
-            try {
-                val documentFile = DocumentFile.fromTreeUri(context, uri)
-                documentFile?.createFile("audio/mpeg", fileName)?.uri?.toString()
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to create file in SAF directory")
-                fallbackToPublicDirectory(fileName)
+            if (DocumentFile.fromTreeUri(context, uri) != null) {
+                return SafDestination(context, uri)
             }
-        } else {
-            fallbackToPublicDirectory(fileName)
+            Timber.w("MusicDownloadService: SAF 目录不可用，回退公共 Music 目录")
         }
-    }
-
-    private fun fallbackToPublicDirectory(fileName: String): String {
-        val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).absolutePath)
-        if (!downloadDir.exists()) {
-            downloadDir.mkdirs()
+        val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).absolutePath)
+        if (!dir.exists() && !dir.mkdirs()) {
+            Timber.w("MusicDownloadService: 无法创建公共 Music 目录")
+            return null
         }
-        return File(downloadDir, fileName).absolutePath
+        return FileDestination(File(dir, fileName))
     }
 
-    private suspend fun downloadFileWithProgress(url: String, outputPath: String, onProgress: (Float) -> Unit): Boolean = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url(url)
-            .build()
-
-        val response = okHttpClient.newCall(request).execute()
-        response.use { resp ->
-            if (!resp.isSuccessful) {
-                Timber.w("Download failed: ${resp.code}")
-                return@withContext false
-            }
-
-            val body = resp.body ?: throw Exception("Empty response body")
-            val contentLength = body.contentLength()
-
-            if (outputPath.startsWith("content://")) {
-                context.contentResolver.openOutputStream(Uri.parse(outputPath))?.use { outputStream ->
-                    val buffer = ByteArray(8192)
-                    var bytesRead: Int
-                    var totalBytesRead: Long = 0
-
-                    body.byteStream().use { inputStream ->
-                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                            outputStream.write(buffer, 0, bytesRead)
-                            totalBytesRead += bytesRead
-                            if (contentLength > 0) {
-                                val progress = (totalBytesRead.toFloat() / contentLength.toFloat()) * 100f
-                                onProgress(progress)
-                            }
-                        }
-                    }
-                }
-            } else {
-                FileOutputStream(File(outputPath)).use { outputStream ->
-                    val buffer = ByteArray(8192)
-                    var bytesRead: Int
-                    var totalBytesRead: Long = 0
-
-                    body.byteStream().use { inputStream ->
-                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                            outputStream.write(buffer, 0, bytesRead)
-                            totalBytesRead += bytesRead
-                            if (contentLength > 0) {
-                                val progress = (totalBytesRead.toFloat() / contentLength.toFloat()) * 100f
-                                onProgress(progress)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        true
-    }
-
-    private fun updateDownloadStatus(songId: String, title: String, artist: String, progress: Float, isComplete: Boolean, isFailed: Boolean, filePath: String?) {
-        // ⚡ 必须做 upsert：之前用 `.map{...}.ifEmpty{ 新增 }`，只有列表整体为空时才会插入新条目。
-        //    第一次下载把列表变成非空后，之后任何新歌曲的状态更新都会被静默丢弃，
-        //    导致 downloads.find { it.songId == 新歌 } 恒为 null —— 表现就是"只有第一次下载能显示进度"。
-        val current = _downloads.value
-        val index = current.indexOfFirst { it.songId == songId }
-        _downloads.value = if (index >= 0) {
-            current.toMutableList().apply {
-                this[index] = this[index].copy(
-                    title = title,
-                    artist = artist,
-                    progress = progress,
-                    isComplete = isComplete,
-                    isFailed = isFailed,
-                    filePath = filePath
-                )
-            }
-        } else {
-            current + DownloadInfo(songId, title, artist, progress, isComplete, isFailed, filePath)
-        }
-        rebuildDownloadIndex()
-    }
-
-    fun getDownloadInfo(songId: String): DownloadInfo? {
-        val index = downloadIndex
-        return if (index.isNotEmpty()) index[songId] else _downloads.value.find { it.songId == songId }
-    }
-
-    fun removeDownload(songId: String) {
-        _downloads.value = _downloads.value.filterNot { it.songId == songId }
-        rebuildDownloadIndex()
-        persistDownloads()
-    }
+    // ─── 元数据 / 歌词 ─────────────────────────────────────────────────────
 
     /**
-     * 下载完成后自动补全元数据：
-     * 1. 从在线封面 URL 下载封面图
-     * 2. 从 LyricsRepository 获取歌词（网易云/LRCLIB/AMLLDB）
-     * 3. 把标题/歌手/专辑/歌词/封面写入音频文件标签
-     * 4. 在音频文件同目录生成 .lrc 歌词文件
-     * 5. 刷新 MediaStore 让系统收录下载的文件
-     * 任何一步失败都不会影响下载本身，仅记录日志。
+     * 下载完成后自动补全元数据（在临时文件上做，因此 SAF 目录也能带标签）：
+     * 封面下载 → 歌词获取 → 写音频标签（标题/歌手/专辑/封面/歌词）。
+     * 返回歌词文本，供落盘后写同目录 .lrc 使用。任何一步失败都不影响下载本身。
      */
-    private suspend fun enrichDownloadedFile(song: Song, outputPath: String) {
+    private suspend fun writeTags(song: Song, tempFilePath: String): String? {
         try {
-            // 1. 下载封面（仅远程 URL）
             val coverArt = song.albumArtUriString
                 ?.takeIf {
                     it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true)
                 }
                 ?.let { downloadCoverArt(it) }
 
-            // 2. 获取歌词
             var lrcText: String? = null
             try {
                 val lyrics = lyricsRepository.getLyrics(
@@ -481,33 +848,20 @@ class MusicDownloadService @Inject constructor(
                 Timber.w(e, "MusicDownloadService: 歌词获取失败 songId=${song.id}")
             }
 
-            // 3. 写音频标签（SAF content:// 路径无法直接改文件，跳过）
-            if (!outputPath.startsWith("content://")) {
-                val ok = songMetadataEditor.writeDownloadedFileTags(
-                    filePath = outputPath,
-                    title = song.title,
-                    artist = song.displayArtist,
-                    album = song.album,
-                    albumArtist = song.albumArtist,
-                    lyrics = lrcText,
-                    coverArtUpdate = coverArt
-                )
-                Timber.d("MusicDownloadService: 元数据补全 ${if (ok) "成功" else "失败"} songId=${song.id}")
-            } else {
-                Timber.d("MusicDownloadService: SAF 路径跳过标签写入 songId=${song.id}")
-            }
-
-            // 4. 写 .lrc 歌词文件
-            if (lrcText != null) {
-                writeLrcFile(outputPath, lrcText)
-            }
-
-            // 5. 刷新 MediaStore 让系统识别新下载的文件
-            if (!outputPath.startsWith("content://")) {
-                MediaScannerConnection.scanFile(context, arrayOf(outputPath), null, null)
-            }
+            val ok = songMetadataEditor.writeDownloadedFileTags(
+                filePath = tempFilePath,
+                title = song.title,
+                artist = song.displayArtist,
+                album = song.album,
+                albumArtist = song.albumArtist,
+                lyrics = lrcText,
+                coverArtUpdate = coverArt
+            )
+            Timber.d("MusicDownloadService: 元数据补全 ${if (ok) "成功" else "失败"} songId=${song.id}")
+            return lrcText
         } catch (e: Exception) {
-            Timber.e(e, "MusicDownloadService: enrichDownloadedFile failed songId=${song.id}")
+            Timber.e(e, "MusicDownloadService: writeTags failed songId=${song.id}")
+            return null
         }
     }
 
@@ -541,6 +895,7 @@ class MusicDownloadService @Inject constructor(
                 val parentDoc = DocumentFile.fromSingleUri(context, Uri.parse(audioPath))?.parentFile
                 val lrcName = audioPath.substringAfterLast('/').substringBeforeLast('.') + ".lrc"
                 if (parentDoc != null) {
+                    parentDoc.findFile(lrcName)?.delete()
                     parentDoc.createFile("text/x-lrc", lrcName)?.let { doc ->
                         context.contentResolver.openOutputStream(doc.uri)?.use { out ->
                             out.write(lrcContent.toByteArray(Charsets.UTF_8))
@@ -556,7 +911,136 @@ class MusicDownloadService @Inject constructor(
         }
     }
 
-    private fun sanitizeFileName(name: String): String {
-        return name.replace("[\\\\/:*?\"<>|]".toRegex(), "_")
+    private fun scanFile(path: String) {
+        if (path.startsWith("content://")) return
+        runCatching { MediaScannerConnection.scanFile(context, arrayOf(path), null, null) }
     }
+
+    // ─── 状态 / 通知 / 临时文件 ─────────────────────────────────────────────
+
+    private fun tempFileFor(songId: String): File =
+        File(tempDir, "${songId.hashCode().toUInt().toString(16)}.part")
+
+    private fun deleteTempFile(songId: String) {
+        runCatching { tempFileFor(songId).takeIf { it.exists() }?.delete() }
+    }
+
+    private fun notificationIdFor(songId: String): Int =
+        DOWNLOAD_NOTIFICATION_ID_BASE + (songId.hashCode() and 0x7FFFFFFF) % 1000
+
+    private fun updateDownloadStatus(
+        songId: String,
+        title: String,
+        artist: String,
+        progress: Float,
+        status: DownloadStatus,
+        filePath: String?,
+        fileName: String?,
+    ) {
+        // ⚡ 必须做 upsert：之前用 `.map{...}.ifEmpty{ 新增 }`，只有列表整体为空时才会插入新条目。
+        //    第一次下载把列表变成非空后，之后任何新歌曲的状态更新都会被静默丢弃，
+        //    导致 downloads.find { it.songId == 新歌 } 恒为 null —— 表现就是"只有第一次下载能显示进度"。
+        val current = _downloads.value
+        val index = current.indexOfFirst { it.songId == songId }
+        val isComplete = status == DownloadStatus.Completed
+        val isFailed = status == DownloadStatus.Error
+        _downloads.value = if (index >= 0) {
+            current.toMutableList().apply {
+                val old = this[index]
+                this[index] = old.copy(
+                    title = title,
+                    artist = artist,
+                    progress = progress,
+                    isComplete = isComplete,
+                    isFailed = isFailed,
+                    filePath = filePath ?: old.filePath.takeIf { isComplete },
+                    status = status,
+                    fileName = fileName ?: old.fileName
+                )
+            }
+        } else {
+            current + DownloadInfo(
+                songId = songId,
+                title = title,
+                artist = artist,
+                progress = progress,
+                isComplete = isComplete,
+                isFailed = isFailed,
+                filePath = filePath,
+                status = status,
+                fileName = fileName
+            )
+        }
+        rebuildDownloadIndex()
+    }
+
+    fun getDownloadInfo(songId: String): DownloadInfo? {
+        val index = downloadIndex
+        return if (index.isNotEmpty()) index[songId] else _downloads.value.find { it.songId == songId }
+    }
+
+    /** 在通知栏展示下载进度（进行中/暂停/完成/失败），完成后几秒自动清除 */
+    private fun showDownloadNotification(
+        notificationId: Int,
+        title: String,
+        progress: Float,
+        isDone: Boolean,
+        success: Boolean = true,
+        text: String? = null,
+    ) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) return
+
+            val builder = NotificationCompat.Builder(context, DOWNLOAD_CHANNEL_ID)
+                .setSmallIcon(com.theveloper.pixelplay.R.drawable.monochrome_player)
+                .setContentTitle(title)
+                .setOnlyAlertOnce(true)
+                .setOngoing(!isDone)
+
+            if (isDone) {
+                builder
+                    .setContentText(text ?: if (success) "下载完成" else "下载失败")
+                    .setAutoCancel(true)
+            } else {
+                val pct = progress.toInt().coerceIn(0, 100)
+                builder
+                    .setContentText(text ?: "下载中 $pct%")
+                    .setProgress(100, pct, progress <= 0f)
+                // 点击通知回到播放页
+                val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                if (openAppIntent != null) {
+                    builder.setContentIntent(
+                        PendingIntent.getActivity(
+                            context,
+                            notificationId,
+                            openAppIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                    )
+                }
+            }
+
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+            if (isDone) {
+                mainHandler.postDelayed({
+                    runCatching { NotificationManagerCompat.from(context).cancel(notificationId) }
+                }, 4000)
+            }
+        } catch (t: Throwable) {
+            Timber.w(t, "MusicDownloadService: 通知展示失败")
+        }
+    }
+}
+
+/** 由扩展名推断 MIME（SAF createFile 需要） */
+private fun mimeTypeForName(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {
+    "flac" -> "audio/flac"
+    "m4a" -> "audio/mp4"
+    "opus" -> "audio/opus"
+    "ogg" -> "audio/ogg"
+    "wav" -> "audio/x-wav"
+    "ape" -> "audio/ape"
+    else -> "audio/mpeg"
 }

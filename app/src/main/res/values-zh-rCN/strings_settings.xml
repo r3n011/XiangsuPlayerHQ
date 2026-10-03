@@ -779,6 +779,13 @@
     <!-- Download Settings -->
     <string name="setcat_download_settings">下载设置</string>
     <string name="setcat_download_path_title">下载路径</string>
+    <string name="setcat_download_file_name_label">下载文件名</string>
+    <string name="setcat_download_file_name_desc">下载歌曲的文件命名方式。</string>
+    <string name="setcat_download_file_name_artist_title">歌手 - 歌名</string>
+    <string name="setcat_download_file_name_title_artist">歌名 - 歌手</string>
+    <string name="setcat_download_file_name_title_only">仅歌名</string>
+    <string name="setcat_download_skip_existing_title">跳过已存在的文件</string>
+    <string name="setcat_download_skip_existing_subtitle">目标目录已有同名文件时直接跳过，不重复下载。</string>
     <string name="setcat_netease_quality_title">网易云首选音质</string>
     <string name="music_quality_title">播放音质</string>
     <string name="music_quality_subtitle">在线音源的播放音质偏好，更高音质消耗更多流量。</string>

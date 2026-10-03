@@ -76,6 +76,14 @@ console.log('running smoke tests against', BASE, '\n');
   check('grown: 帧仍非黑', parseFloat(r.meanRGB) > 1.5, r.meanRGB);
 }
 
+// 4b. 提灯绕场一周：验证不把灯按在植物上也能推进生长（窗光贡献）
+{
+  const r = await run('debug=1&auto=1&sweep=240&q=0');
+  console.log('sweep ', JSON.stringify(r));
+  check('sweep: 无 GL 错误', r.glErr === '0', r.glErr);
+  check('sweep: 绕场也能开花', parseInt(r.blooms, 10) > 0, r.blooms);
+}
+
 // 5. 最高画质档：bloom 打开也不能崩
 {
   const r = await run('debug=1&auto=1&ff=30&q=2');

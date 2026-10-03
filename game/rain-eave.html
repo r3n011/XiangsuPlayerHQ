@@ -1700,6 +1700,21 @@ if (DEBUG) {
     const frames = Math.round(ff * 60);
     for (let i = 0; i < frames; i++) step(1 / 60);
 
+    // 提灯绕场一周，模拟真实游玩。这样才能验证"植物不靠近灯也能长"
+    // 这条逻辑（窗光贡献）确实生效，而不是一直把灯按在某株上。
+    if (qs.has('sweep')) {
+      const n2 = Math.round(parseFloat(qs.get('sweep')) * 60);
+      for (let i = 0; i < n2; i++) {
+        const u = (i / n2) * Math.PI * 2;
+        lantern.target.set(
+          clamp(Math.sin(u) * 2.6, -WORLD.bounds.x, WORLD.bounds.x),
+          LANTERN_Y,
+          clamp(1.0 + Math.cos(u) * 1.8, WORLD.bounds.zBack, WORLD.bounds.zFront)
+        );
+        step(1 / 60);
+      }
+    }
+
     // 后备缓冲需要在同一个任务里读+写，否则 SwiftShader 下会被清掉，
     // 读出来全是 0。写进一个 data URI img，无头截图就能抓到真正的画面。
     const gl = renderer.getContext();
