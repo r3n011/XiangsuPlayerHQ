@@ -95,6 +95,19 @@ class QqMusicLoginViewModel @Inject constructor(
         repository.mergePhoneAuthCookies(cookieHeader)
     }
 
+    /**
+     * 安全验证完成：合并 cookie + UA，清掉入口，并**自动重发一次验证码**。
+     *
+     * ⚡ 以前只合并 cookie、不自动重试，用户完成验证后什么都没发生（「验证了也没用，验证码呢」）。
+     *    这里验证一完成就立刻带着验证态重发，成功即进入验证码步骤。
+     */
+    fun onSecurityVerified(cookieHeader: String, userAgent: String) {
+        if (cookieHeader.isNotBlank()) repository.mergePhoneAuthCookies(cookieHeader)
+        if (userAgent.isNotBlank()) repository.setPhoneAuthUserAgent(userAgent)
+        _phoneUi.update { it.copy(securityChallengeUrl = null, error = null, countdown = 0) }
+        sendPhoneCode()
+    }
+
     /** 用户已完成（或放弃）安全验证：清掉入口，避免一直挂在界面上。 */
     fun clearSecurityChallenge() {
         _phoneUi.update { it.copy(securityChallengeUrl = null) }
@@ -103,6 +116,12 @@ class QqMusicLoginViewModel @Inject constructor(
     /** 关掉内联错误卡片。 */
     fun clearPhoneError() {
         _phoneUi.update { it.copy(error = null) }
+    }
+
+    /** 重新打开安全验证弹窗（自动弹出的那个被用户关掉后，面板上的入口还能再进）。 */
+    fun reopenSecurityCheck(url: String) {
+        if (url.isBlank()) return
+        _phoneUi.update { it.copy(securityChallengeUrl = url) }
     }
 
     /** 从「验证码」步骤退回「手机号」步骤（重新填手机号）。 */

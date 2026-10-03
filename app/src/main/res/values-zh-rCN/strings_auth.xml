@@ -59,7 +59,7 @@
     <string name="qq_login_phone_note">手机号登录仅支持中国大陆号码；短信验证码由 QQ 音乐官方下发。若提示需要安全验证，可直接在下方入口于应用内完成，再重新获取验证码。</string>
     <string name="qq_login_phone_hint">登录成功后会自动同步你的 QQ 音乐歌单</string>
     <string name="qq_login_security_title">需要安全验证</string>
-    <string name="qq_login_security_body">QQ 音乐风控要求先完成安全验证。点「去验证」在应用内完成，然后回到这里重新获取验证码。</string>
+    <string name="qq_login_security_body">QQ 音乐风控要求先完成安全验证。点「去验证」在弹窗里完成，完成后会自动重新发送验证码。</string>
     <string name="qq_login_security_open">去验证</string>
     <string name="qq_login_security_ignore">稍后</string>
     <string name="qq_login_brand_title">连接 QQ 音乐</string>

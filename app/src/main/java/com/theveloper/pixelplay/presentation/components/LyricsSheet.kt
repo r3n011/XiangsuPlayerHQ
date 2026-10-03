@@ -24,9 +24,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.util.lerp
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -353,8 +350,6 @@ fun LyricsSheet(
         .collectAsStateWithLifecycle(initialValue = null)
     // ⚡ 歌词长按分享：记录被长按的行下标，非空时展示分享面板（多选行 → 分享文本 / 生成图片）
     var shareLyricIndex by remember { mutableStateOf<Int?>(null) }
-    // 长按那一行在窗口里的位置：交给分享面板做「从歌词里飞出来」的落位动画
-    var shareOriginBounds by remember { mutableStateOf<Rect?>(null) }
     // totalDuration 只在 SyncedLyricsList 内部使用，单独订阅
     val totalDuration by stablePlayerStateFlow
         .map { it.totalDuration }
@@ -1018,11 +1013,7 @@ fun LyricsSheet(
                                     artworkUrl = shareSong.albumArtUriString,
                                     lines = synced.map { it.line },
                                     initialIndex = shareIndex,
-                                    originBounds = shareOriginBounds,
-                                    onDismiss = {
-                                        shareLyricIndex = null
-                                        shareOriginBounds = null
-                                    }
+                                    onDismiss = { shareLyricIndex = null }
                                 )
                             }
                             SyncedLyricsList(
@@ -1047,11 +1038,8 @@ fun LyricsSheet(
                                     )
                                     resetImmersiveTimer()
                                 },
-                                // ⚡ 长按某一行 → 打开歌词分享面板（默认选中该行，并从该行位置飞入）
-                                onLineLongPress = { index, bounds ->
-                                    shareLyricIndex = index
-                                    shareOriginBounds = bounds
-                                },
+                                // ⚡ 长按某一行 → 打开歌词分享面板（默认选中该行）
+                                onLineLongPress = { index -> shareLyricIndex = index },
                                 highlightZoneFraction = highlightZoneFraction,
                                 highlightOffsetDp = highlightOffsetDp,
                                 autoscrollAnimationSpec = resolvedAutoscrollSpec,
@@ -1630,8 +1618,8 @@ fun SyncedLyricsList(
     containerColor: Color,
     textStyle: TextStyle,
     onLineClick: (SyncedLine) -> Unit,
-    /** 长按歌词行（打开歌词分享面板）：参数为该行下标 + 该行在窗口中的位置（落位动画用） */
-    onLineLongPress: ((Int, Rect) -> Unit)? = null,
+    /** 长按歌词行（打开歌词分享面板），参数为该行下标 */
+    onLineLongPress: ((Int) -> Unit)? = null,
     highlightZoneFraction: Float,
     highlightOffsetDp: Dp,
     autoscrollAnimationSpec: AnimationSpec<Float>,
@@ -1878,7 +1866,7 @@ fun SyncedLyricsList(
                                 .fillMaxWidth()
                                 .testTag("synced_line_${line.time}"),
                             onClick = { onLineClick(line) },
-                            onLongClick = onLineLongPress?.let { callback -> { bounds -> callback(index, bounds) } }
+                            onLongClick = onLineLongPress?.let { callback -> { callback(index) } }
                         )
                     } else {
                         BubblesLine(
@@ -1933,8 +1921,8 @@ fun LyricLineRow(
     accentColor: Color,
     style: TextStyle,
     textMeasurer: TextMeasurer? = null,
-    /** 长按歌词行（歌词分享入口）；回调带上该行在窗口里的位置，供分享面板做「落位」动画 */
-    onLongClick: ((Rect) -> Unit)? = null,
+    /** 长按歌词行（歌词分享入口）；为空则不响应长按 */
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -1953,8 +1941,6 @@ fun LyricLineRow(
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 900f),
         label = "lyricPressAlpha"
     )
-    // 本行在窗口中的位置：长按分享时交给面板，让那句歌词「飞」到面板里自己的位置上
-    var rowBounds by remember { mutableStateOf(Rect.Zero) }
 
     // ── 防裁切：放大歌词后自动判断是否超出容器宽度，超出则智能换行 ──
     var containerWidthPx by remember { mutableIntStateOf(0) }
@@ -2181,13 +2167,12 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
-                .onGloballyPositioned { rowBounds = it.boundsInWindow() }
                 .clip(RoundedCornerShape(12.dp))
                 .combinedClickable(
                     interactionSource = pressInteraction,
                     indication = null,
                     onClick = { onClick() },
-                    onLongClick = { onLongClick?.invoke(rowBounds) }
+                    onLongClick = onLongClick
                 )
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment
@@ -2263,13 +2248,12 @@ fun LyricLineRow(
         Column(
             modifier = animatedModifier
                 .fillMaxWidth()
-                .onGloballyPositioned { rowBounds = it.boundsInWindow() }
                 .clip(RoundedCornerShape(12.dp))
                 .combinedClickable(
                     interactionSource = pressInteraction,
                     indication = null,
                     onClick = { onClick() },
-                    onLongClick = { onLongClick?.invoke(rowBounds) }
+                    onLongClick = onLongClick
                 )
                 .padding(vertical = animatedVerticalPadding, horizontal = 2.dp),
             horizontalAlignment = horizontalAlignment

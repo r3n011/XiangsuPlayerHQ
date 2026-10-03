@@ -77,6 +77,20 @@ class QqMusicPhoneAuthClient @Inject constructor(
         Timber.tag(TAG).d("merged external cookies: %d chars", cookieHeader.length)
     }
 
+    /**
+     * 安全验证 WebView 使用的 User-Agent。
+     *
+     * ⚡ 风控校验时会把「完成验证的那个会话」与后续请求做比对，UA 不一致时验证态可能不被承认
+     *    （表现：验证完了再发验证码仍然 20276）。这里把 WebView 的 UA 原样带到 API 请求上。
+     */
+    private var externalUserAgent = ""
+
+    fun setExternalUserAgent(userAgent: String) {
+        if (userAgent.isBlank()) return
+        externalUserAgent = userAgent
+        Timber.tag(TAG).d("merged external user-agent: %s", userAgent.take(60))
+    }
+
     /** 发送短信验证码 */
     suspend fun sendCode(phone: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -108,6 +122,7 @@ class QqMusicPhoneAuthClient @Inject constructor(
             .url(AUTH_URL)
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
+            .apply { if (externalUserAgent.isNotBlank()) header("User-Agent", externalUserAgent) }
             .apply { if (cookieHeader.isNotBlank()) header("Cookie", cookieHeader) }
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()

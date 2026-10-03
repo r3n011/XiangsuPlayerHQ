@@ -190,6 +190,10 @@ class QqMusicRepository @Inject constructor(
     fun mergePhoneAuthCookies(cookieHeader: String) =
         phoneAuthClient.mergeExternalCookies(cookieHeader)
 
+    /** 把安全验证 WebView 的 User-Agent 带到手机号登录请求上（验证态比对用）。 */
+    fun setPhoneAuthUserAgent(userAgent: String) =
+        phoneAuthClient.setExternalUserAgent(userAgent)
+
     /**
      * 手机号 + 验证码登录：拿到的 cookie 与网页登录抓到的完全同构，
      * 统一交给 [loginWithCookies] 落盘、校验并拉取昵称。

@@ -5594,8 +5594,6 @@ private fun ParallelLyricsPanel(
     // ⚡ 歌词长按分享（与普通模式 LyricsSheet 完全一致）：平行布局此前没接 onLineLongPress，
     //    长按歌词没有任何反应。这里补上：长按某行 → 打开分享面板并默认选中该行。
     var shareLyricIndex by remember { mutableStateOf<Int?>(null) }
-    // 长按那一行在窗口里的位置：交给分享面板做「从歌词里飞出来」的落位动画
-    var shareOriginBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     val shareSong by stablePlayerStateFlow
         .map { it.currentSong }
         .distinctUntilChanged()
@@ -5642,11 +5640,7 @@ private fun ParallelLyricsPanel(
                             artworkUrl = shareSongNow.albumArtUriString,
                             lines = synced.map { it.line },
                             initialIndex = shareIndex,
-                            originBounds = shareOriginBounds,
-                            onDismiss = {
-                                shareLyricIndex = null
-                                shareOriginBounds = null
-                            }
+                            onDismiss = { shareLyricIndex = null }
                         )
                     }
                     SyncedLyricsList(
@@ -5664,11 +5658,8 @@ private fun ParallelLyricsPanel(
                         onLineClick = { line ->
                             onSeekTo((line.time.toLong() - lyricsSyncOffset).coerceAtLeast(0L))
                         },
-                        // ⚡ 长按某一行 → 打开歌词分享面板（与普通模式一致，并从该行位置飞入）
-                        onLineLongPress = { index, bounds ->
-                            shareLyricIndex = index
-                            shareOriginBounds = bounds
-                        },
+                        // ⚡ 长按某一行 → 打开歌词分享面板（与普通模式一致）
+                        onLineLongPress = { index -> shareLyricIndex = index },
                         highlightZoneFraction = 0.08f,
                         highlightOffsetDp = 32.dp,
                         autoscrollAnimationSpec = spring(stiffness = Spring.StiffnessLow),

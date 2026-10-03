@@ -59,7 +59,7 @@
     <string name="qq_login_phone_note">Phone login only supports mainland China numbers; the SMS code is sent by QQ Music. If a security check is required, finish it in-app from the entry below, then request the code again.</string>
     <string name="qq_login_phone_hint">Your QQ Music playlists sync automatically after signing in</string>
     <string name="qq_login_security_title">Security check required</string>
-    <string name="qq_login_security_body">QQ Music asks for a security check first. Tap "Verify" to finish it in-app, then come back and request the code again.</string>
+    <string name="qq_login_security_body">QQ Music asks for a security check first. Tap "Verify" to finish it in the popup — the code will be re-sent automatically.</string>
     <string name="qq_login_security_open">Verify</string>
     <string name="qq_login_security_ignore">Later</string>
     <string name="qq_login_brand_title">Connect QQ Music</string>

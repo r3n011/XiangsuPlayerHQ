@@ -125,18 +125,28 @@ private fun QqMusicLoginScreen(
 ) {
     // 登录方式：0 = 网页登录（WebView 抓 cookie），1 = 手机号 + 短信验证码
     var loginMode by rememberSaveable { mutableIntStateOf(0) }
-    // ⚡ 风控要求安全验证时的 securityURL：非空时切到网页登录并直接加载该验证页
-    var securityCheckUrl by rememberSaveable { mutableStateOf<String?>(null) }
     if (loginMode == 1) {
         QqMusicPhoneLoginScreen(
             viewModel = viewModel,
             onBackToWeb = { loginMode = 0 },
             onClose = onClose,
             onOpenSecurityCheck = { url ->
-                securityCheckUrl = url
-                loginMode = 0
+                // 面板上的入口：手动再打开一次验证弹窗（自动弹出被关掉后还能进来）
+                viewModel.reopenSecurityCheck(url)
             },
         )
+        // ⚡ 风控一返回 securityURL 就**自动弹出**验证弹窗（不需要用户点任何按钮），
+        //    验证完成后自动带上 cookie/UA 重发验证码。
+        val phoneUi by viewModel.phoneUi.collectAsStateWithLifecycle()
+        phoneUi.securityChallengeUrl?.let { url ->
+            QqMusicSecurityCheckDialog(
+                url = url,
+                onDismiss = { viewModel.clearSecurityChallenge() },
+                onFinished = { cookieHeader, userAgent ->
+                    viewModel.onSecurityVerified(cookieHeader, userAgent)
+                }
+            )
+        }
         return
     }
 
@@ -284,7 +294,6 @@ private fun QqMusicLoginScreen(
                                 CookieManager.getInstance().getCookie(url)
                                     ?.let(viewModel::syncExternalCookies)
                             }
-                            securityCheckUrl = null
                             loginMode = 1
                         },
                         modifier = Modifier.padding(end = 6.dp)
@@ -492,8 +501,6 @@ private fun QqMusicLoginScreen(
             ) {
                 QqMusicWebView(
                     modifier = Modifier.fillMaxSize(),
-                    // 安全验证时直接加载服务端下发的 securityURL，否则走默认登录页
-                    initialUrl = securityCheckUrl ?: QqMusicLoginActivity.TARGET_URL,
                     onWebViewCreated = { created ->
                         webView = created
                         webUiState = webUiState.copy(
