@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>像素播放器 PixelPlay · Android 音乐播放器</title>
+<meta name="description" content="像素播放器 PixelPlay —— 基于 Jetpack Compose 与 Material 3 的 Android 音乐播放器。高保真解码、DSD/DFF 原生播放、逐字歌词、云端音源与 AI 歌单。">
+<meta property="og:title" content="像素播放器 PixelPlay">
+<meta property="og:description" content="一款美观且功能丰富的 Android 音乐播放器。">
+<meta property="og:image" content="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp">
+<link rel="icon" href="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Azeret+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   配色直接取自应用主题 app/.../ui/theme/Color.kt，让站点与应用同源：
+     PixelPlayPurpleDark  #0F1827   PixelPlaySurface   #162236
+     PixelPlayPurplePrimary #5C9CFF PixelPlayPink     #F06292
+     PixelPlayOrange        #FF8A65  PixelPlayLightPurple #B8D4F5
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#0F1827;
+  --surface:#162236;
+  --line:rgba(140,170,220,.14);
+  --line-hi:rgba(92,156,255,.45);
+  --text:#E8EEF9;
+  --muted:#9DB0CC;
+  --faint:#5E7092;
+  --blue:#5C9CFF;
+  --pink:#F06292;
+  --orange:#FF8A65;
+  --cyan:#4DD0E1;
+  --lavender:#B8D4F5;
+
+  --font-cn:'Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --font-mono:'Azeret Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --pad:clamp(20px,5vw,72px);
+  --maxw:1200px;
+}
+
+*,*::before,*::after{ box-sizing:border-box }
+html{ scroll-behavior:smooth; -webkit-text-size-adjust:100% }
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-cn);
+  font-weight:300;
+  line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* WebGL 画布：固定在底层，正文浮于其上。降级时用 CSS 渐变兜底。 */
+#gl{
+  position:fixed; inset:0; width:100%; height:100%;
+  z-index:0; pointer-events:none; display:block;
+}
+body.no-webgl #gl{ display:none }
+body.no-webgl{
+  background:
+    radial-gradient(52vw 52vw at 12% 8%, rgba(92,156,255,.34), transparent 60%),
+    radial-gradient(44vw 44vw at 78% 42%, rgba(240,98,146,.26), transparent 62%),
+    radial-gradient(40vw 40vw at 22% 78%, rgba(255,138,101,.22), transparent 62%),
+    radial-gradient(30vw 30vw at 62% 6%, rgba(77,208,225,.18), transparent 62%),
+    var(--bg);
+}
+
+/* 细颗粒 + 像素点阵，叠在画布之上压住塑料感 */
+.fx{ position:fixed; inset:0; z-index:1; pointer-events:none }
+.fx-dots{
+  background-image:radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size:24px 24px;
+  -webkit-mask-image:radial-gradient(ellipse 92% 72% at 50% 0%, #000 18%, transparent 76%);
+  mask-image:radial-gradient(ellipse 92% 72% at 50% 0%, #000 18%, transparent 76%);
+}
+.fx-grain{
+  opacity:.15; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* 让正文区域始终有足够对比度 */
+.veil{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:linear-gradient(180deg, rgba(15,24,39,0) 0%, rgba(15,24,39,.55) 34%, rgba(15,24,39,.72) 100%);
+}
+
+.shell{
+  position:relative; z-index:3;
+  max-width:var(--maxw); margin:0 auto;
+  padding:0 var(--pad);
+}
+
+/* ───────────────────────────── 顶栏 ───────────────────────────── */
+.nav{
+  position:fixed; top:0; left:0; right:0; z-index:20;
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  background:rgba(15,24,39,.42);
+  border-bottom:1px solid transparent;
+  transition:border-color .35s, background .35s;
+}
+.nav.stuck{ border-bottom-color:var(--line); background:rgba(15,24,39,.74) }
+.nav .inner{
+  max-width:var(--maxw); margin:0 auto;
+  padding:14px var(--pad);
+  display:flex; align-items:center; justify-content:space-between; gap:18px;
+}
+.brand{ display:flex; align-items:center; gap:11px; text-decoration:none; color:var(--text) }
+.brand img{ width:28px; height:28px; border-radius:8px }
+.brand span{ font-weight:500; letter-spacing:-.01em; font-size:.98rem }
+.nav-links{ display:flex; gap:clamp(14px,2.2vw,28px); align-items:center }
+.nav-links a{
+  color:var(--muted); text-decoration:none; font-size:.83rem;
+  transition:color .25s; white-space:nowrap;
+}
+.nav-links a:hover{ color:var(--text) }
+@media (max-width:720px){ .nav-links a.opt{ display:none } }
+
+/* ───────────────────────────── HERO ───────────────────────────── */
+.hero{
+  min-height:100svh;
+  display:flex; flex-direction:column; justify-content:center;
+  padding:clamp(96px,15vh,150px) 0 clamp(56px,10vh,110px);
+}
+.eyebrow{
+  display:inline-flex; align-items:center; gap:10px; align-self:flex-start;
+  font-family:var(--font-mono); font-size:11px; font-weight:400;
+  letter-spacing:.22em; text-transform:uppercase; color:var(--faint);
+  margin-bottom:clamp(18px,3vh,30px);
+}
+.eyebrow::before{ content:''; width:26px; height:1px; background:var(--line-hi) }
+
+h1{
+  margin:0;
+  font-size:clamp(3.2rem,12vw,8rem);
+  font-weight:900; line-height:.94; letter-spacing:-.035em;
+  background:linear-gradient(168deg,#FFFFFF 6%,#B8D4F5 46%,#5C9CFF 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 0 68px rgba(92,156,255,.16);
+}
+h1 .en{
+  display:block;
+  font-family:var(--font-mono);
+  font-size:clamp(.7rem,2.1vw,.95rem);
+  font-weight:400; letter-spacing:.42em; text-transform:uppercase;
+  color:var(--faint);
+  -webkit-text-fill-color:var(--faint);
+  margin-bottom:.5em;
+}
+
+/* 像素方块：呼应「像素播放器」这个名字 */
+.pixels{ display:flex; gap:5px; margin:clamp(16px,2.6vh,26px) 0 }
+.pixels i{ width:9px; height:9px; background:var(--blue); animation:px 2.6s ease-in-out infinite }
+.pixels i:nth-child(2){ background:var(--cyan);   animation-delay:.13s }
+.pixels i:nth-child(3){ background:var(--pink);   animation-delay:.26s }
+.pixels i:nth-child(4){ background:var(--orange); animation-delay:.39s }
+.pixels i:nth-child(5){ background:var(--lavender); animation-delay:.52s }
+@keyframes px{ 0%,100%{ opacity:.2; transform:translateY(0) } 50%{ opacity:1; transform:translateY(-5px) } }
+
+.lede{
+  max-width:48ch;
+  font-size:clamp(1rem,2.2vw,1.18rem);
+  color:var(--muted);
+  margin:0 0 clamp(28px,4.5vh,42px);
+}
+.lede b{ color:var(--text); font-weight:500 }
+
+.cta{ display:flex; flex-wrap:wrap; gap:12px }
+.btn{
+  display:inline-flex; align-items:center; gap:9px;
+  padding:14px 26px; border-radius:999px;
+  font-family:var(--font-mono); font-size:12.5px; font-weight:600; letter-spacing:.06em;
+  text-decoration:none; cursor:pointer; border:1px solid transparent;
+  transition:transform .28s cubic-bezier(.2,.8,.3,1), box-shadow .28s, background .28s, border-color .28s, color .28s;
+}
+.btn-main{ background:var(--blue); color:#04101F; box-shadow:0 12px 36px -14px var(--blue) }
+.btn-main:hover{ transform:translateY(-2px); box-shadow:0 18px 44px -14px var(--blue) }
+.btn-ghost{ color:var(--text); border-color:var(--line); background:rgba(255,255,255,.025); backdrop-filter:blur(8px) }
+.btn-ghost:hover{ border-color:var(--line-hi); transform:translateY(-2px) }
+.btn:active{ transform:translateY(0) }
+
+.stats{
+  display:flex; flex-wrap:wrap; gap:clamp(22px,5vw,58px);
+  margin:clamp(38px,6.5vh,68px) 0 0; padding-top:clamp(22px,4vh,32px);
+  border-top:1px solid var(--line);
+}
+.stat dt{
+  font-family:var(--font-mono); font-size:clamp(1.35rem,3.6vw,2rem);
+  font-weight:600; line-height:1; color:var(--text);
+}
+.stat dd{ margin:8px 0 0; font-size:11.5px; color:var(--faint); letter-spacing:.1em; font-family:var(--font-mono); text-transform:uppercase }
+
+.scroll-hint{
+  margin-top:clamp(28px,5vh,48px);
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--faint);
+  display:flex; align-items:center; gap:10px;
+}
+.scroll-hint::after{
+  content:''; width:38px; height:1px;
+  background:linear-gradient(90deg,var(--line-hi),transparent);
+  animation:sweep 2.4s ease-in-out infinite;
+}
+@keyframes sweep{ 0%,100%{ transform:scaleX(.35); transform-origin:left } 50%{ transform:scaleX(1); transform-origin:left } }
+
+/* ───────────────────────────── 通用 section ───────────────────────────── */
+section{ padding:clamp(60px,10vh,116px) 0 }
+.head{ margin-bottom:clamp(30px,4.5vh,50px) }
+.head .idx{
+  display:block; margin-bottom:13px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.22em; color:var(--blue);
+}
+.head h2{
+  margin:0 0 12px;
+  font-size:clamp(1.6rem,4.4vw,2.6rem);
+  font-weight:700; letter-spacing:-.022em; line-height:1.2;
+}
+.head p{ margin:0; color:var(--muted); max-width:54ch; font-size:.96rem }
+
+/* 功能卡片：玻璃态 + 悬停描边亮起 */
+.grid{ display:grid; gap:1px; grid-template-columns:repeat(auto-fit,minmax(272px,1fr));
+  background:var(--line); border:1px solid var(--line); border-radius:18px; overflow:hidden }
+.card{
+  position:relative; padding:clamp(24px,3.2vw,34px);
+  background:rgba(22,34,54,.62); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  transition:background .3s;
+}
+.card::after{
+  content:''; position:absolute; inset:0; border:1px solid transparent;
+  transition:border-color .3s, box-shadow .3s; pointer-events:none;
+}
+.card:hover{ background:rgba(28,44,70,.82) }
+.card:hover::after{ border-color:var(--line-hi); box-shadow:inset 0 0 44px -14px var(--c,var(--blue)) }
+.card .n{ display:block; margin-bottom:15px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.18em; color:var(--faint) }
+.card h3{ margin:0 0 9px; font-size:1.04rem; font-weight:500; letter-spacing:-.01em }
+.card p{ margin:0; font-size:.875rem; color:var(--muted); line-height:1.72 }
+.card .dot{
+  position:absolute; top:clamp(24px,3.2vw,34px); right:clamp(24px,3.2vw,34px);
+  width:6px; height:6px; border-radius:50%; background:var(--c,var(--blue)); opacity:.5;
+  transition:opacity .3s, box-shadow .3s;
+}
+.card:hover .dot{ opacity:1; box-shadow:0 0 12px var(--c,var(--blue)) }
+
+/* 音源标签墙 */
+.chips{ display:flex; flex-wrap:wrap; gap:9px }
+.chip{
+  display:inline-flex; align-items:center; gap:9px;
+  padding:10px 17px; border-radius:999px;
+  border:1px solid var(--line); background:rgba(22,34,54,.6);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  font-size:.83rem; color:var(--muted);
+  transition:color .25s, border-color .25s, transform .25s, background .25s;
+}
+.chip:hover{ color:var(--text); border-color:var(--line-hi); transform:translateY(-2px); background:rgba(30,46,72,.85) }
+.chip i{ width:5px; height:5px; border-radius:50%; background:var(--c,var(--blue)); box-shadow:0 0 8px var(--c,var(--blue)) }
+
+/* 技术规格表 */
+.specs{
+  border:1px solid var(--line); border-radius:18px; overflow:hidden;
+  background:rgba(22,34,54,.5); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.specs div{
+  display:grid; grid-template-columns:minmax(120px,180px) 1fr; gap:18px;
+  padding:clamp(15px,2vw,20px) clamp(18px,2.6vw,28px);
+  border-bottom:1px solid var(--line);
+  font-size:.875rem;
+}
+.specs div:last-child{ border-bottom:0 }
+.specs dt{ font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); padding-top:3px }
+.specs dd{ margin:0; color:var(--muted) }
+.specs dd b{ color:var(--text); font-weight:500 }
+@media (max-width:560px){ .specs div{ grid-template-columns:1fr; gap:6px } }
+
+/* 3D 轮播区：这一段给画布留出高度 */
+#screens{ position:relative }
+.stage{ height:clamp(360px,64vh,620px); margin-top:clamp(20px,4vh,40px) }
+.stage-fallback{ display:none; gap:14px }
+body.no-webgl .stage{ display:none }
+body.no-webgl .stage-fallback{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)) }
+.stage-fallback figure{ margin:0; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--surface) }
+.stage-fallback img{ display:block; width:100%; height:auto }
+.stage-fallback figcaption{ padding:10px 14px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint) }
+.stage-hint{
+  text-align:center; margin-top:clamp(14px,3vh,26px);
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--faint);
+}
+
+/* 下载 CTA */
+.cta-card{
+  border:1px solid var(--line-hi); border-radius:22px;
+  padding:clamp(30px,5vw,56px);
+  background:
+    radial-gradient(80% 130% at 0% 0%, rgba(92,156,255,.2), transparent 58%),
+    radial-gradient(70% 120% at 100% 100%, rgba(240,98,146,.14), transparent 58%),
+    rgba(22,34,54,.66);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  text-align:center;
+}
+.cta-card h2{ margin:0 0 12px; font-size:clamp(1.5rem,4vw,2.3rem); font-weight:700; letter-spacing:-.022em }
+.cta-card p{ margin:0 auto clamp(24px,4vh,34px); max-width:52ch; color:var(--muted); font-size:.95rem }
+.cta-card .cta{ justify-content:center }
+.cta-note{ margin:clamp(20px,3.4vh,28px) 0 0; font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; color:var(--faint) }
+
+/* ───────────────────────────── 页脚 ───────────────────────────── */
+footer{ border-top:1px solid var(--line); padding:clamp(34px,6vh,56px) 0 clamp(44px,8vh,70px); margin-top:clamp(36px,6vh,72px) }
+.foot{ display:flex; flex-wrap:wrap; gap:16px; align-items:baseline; justify-content:space-between }
+.foot .brand{ display:flex; align-items:center; gap:12px }
+.foot .brand img{ width:30px; height:30px; border-radius:8px }
+.foot .brand span{ font-weight:500 }
+.meta{ margin:0; font-family:var(--font-mono); font-size:11px; letter-spacing:.09em; color:var(--faint) }
+.meta a{ color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line) }
+.meta a:hover{ color:var(--blue); border-color:var(--blue) }
+
+/* 滚动显现 */
+.rise{ opacity:0; transform:translateY(22px); transition:opacity .85s cubic-bezier(.2,.8,.3,1), transform .85s cubic-bezier(.2,.8,.3,1) }
+.rise.in{ opacity:1; transform:none }
+
+@media (prefers-reduced-motion:reduce){
+  html{ scroll-behavior:auto }
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important }
+  .rise{ opacity:1; transform:none }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="fx fx-dots" aria-hidden="true"></div>
+<div class="fx fx-grain" aria-hidden="true"></div>
+<div class="veil" aria-hidden="true"></div>
+
+<nav class="nav" id="nav">
+  <div class="inner">
+    <a class="brand" href="#top">
+      <img src="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" alt="像素播放器图标">
+      <span>像素播放器 PixelPlay</span>
+    </a>
+    <div class="nav-links">
+      <a class="opt" href="#features">特性</a>
+      <a class="opt" href="#sources">音源</a>
+      <a class="opt" href="#specs">规格</a>
+      <a class="opt" href="#screens">界面</a>
+      <a href="https://github.com/theovilardo/PixelPlayer/releases" target="_blank" rel="noopener">下载 ↗</a>
+    </div>
+  </div>
+</nav>
+
+<div class="shell" id="top">
+
+  <!-- ══════════════ HERO ══════════════ -->
+  <header class="hero">
+    <p class="eyebrow">Android · Jetpack Compose · Material 3</p>
+
+    <h1><span class="en">PixelPlay</span>像素<br>播放器</h1>
+
+    <div class="pixels" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+
+    <p class="lede">
+      一款<b>美观且功能丰富</b>的 Android 音乐播放器。
+      从 Hi-Res 原生解码到云端流媒体，从逐字歌词到 AI 歌单 ——
+      把专业的音乐体验，装进一个精心打磨的界面。
+    </p>
+
+    <div class="cta">
+      <a class="btn btn-main" href="https://github.com/theovilardo/PixelPlayer/releases" target="_blank" rel="noopener">立即下载</a>
+      <a class="btn btn-ghost" href="#features">浏览特性</a>
+    </div>
+
+    <dl class="stats">
+      <div class="stat"><dt>v1.6.5</dt><dd>当前版本</dd></div>
+      <div class="stat"><dt>DSD</dt><dd>原生解码</dd></div>
+      <div class="stat"><dt>11</dt><dd>界面语言</dd></div>
+      <div class="stat"><dt>API 23+</dt><dd>最低系统</dd></div>
+    </dl>
+
+    <p class="scroll-hint">向下滚动</p>
+  </header>
+
+  <!-- ══════════════ 特性 ══════════════ -->
+  <section id="features">
+    <div class="head rise">
+      <span class="idx">01 / FEATURES</span>
+      <h2>不只是播放器</h2>
+      <p>播放、解码、歌词、云端、AI —— 每一块都按能长期每天使用的标准来做。</p>
+    </div>
+
+    <div class="grid rise">
+      <article class="card" style="--c:var(--blue)">
+        <span class="dot"></span><span class="n">01</span>
+        <h3>绚丽背景</h3>
+        <p>把封面纹理揉进双三次 Hermite 网格，随时间缓慢旋转、跟低频鼓点呼吸。你现在看到的这个页面背景，就是同一套算法。</p>
+      </article>
+
+      <article class="card" style="--c:var(--cyan)">
+        <span class="dot"></span><span class="n">02</span>
+        <h3>高保真解码</h3>
+        <p>Media3 ExoPlayer + FFmpeg，配合经 JNI 接入的 miniaudio。原生播放 DSD64 / DFF，支持外置 USB DAC 与 ReplayGain 音量归一化。</p>
+      </article>
+
+      <article class="card" style="--c:var(--pink)">
+        <span class="dot"></span><span class="n">03</span>
+        <h3>逐字歌词</h3>
+        <p>网易云、AMLL、LRCLIB 多源可配优先级，日语罗马音引擎按需下载；可拖拽、可贴边收起的悬浮歌词，支持翻译与本地歌词。</p>
+      </article>
+
+      <article class="card" style="--c:var(--orange)">
+        <span class="dot"></span><span class="n">04</span>
+        <h3>无缝与交叉淡入</h3>
+        <p>完整的 Gapless 曲目间平滑过渡，交叉淡入淡出时长可自定义 —— 古典与 DJ 专辑里，这一条比什么都重要。</p>
+      </article>
+
+      <article class="card" style="--c:var(--blue)">
+        <span class="dot"></span><span class="n">05</span>
+        <h3>云端打通</h3>
+        <p>QQ 音乐、网易云、酷狗、Bilibili、Jellyfin、Navidrome、Telegram、Google Drive —— 统一收敛成同一个媒体库和同一条播放队列。</p>
+      </article>
+
+      <article class="card" style="--c:var(--cyan)">
+        <span class="dot"></span><span class="n">06</span>
+        <h3>AI 助手</h3>
+        <p>AI 歌单生成、元数据补全、播放列表质量评分。Gemini、DeepSeek、OpenAI、Groq、OpenRouter 都能接，并统计 token 花费。</p>
+      </article>
+
+      <article class="card" style="--c:var(--pink)">
+        <span class="dot"></span><span class="n">07</span>
+        <h3>媒体库管理</h3>
+        <p>按歌曲、专辑、艺术家、流派、文件夹与播放列表浏览；智能解析多艺术家，TagLib / Jaudiotagger 直接改写标签。</p>
+      </article>
+
+      <article class="card" style="--c:var(--orange)">
+        <span class="dot"></span><span class="n">08</span>
+        <h3>AutoEq 均衡器</h3>
+        <p>完整参数化 EQ，自动读取耳机内参曲线生成补偿预设，另有摇滚、流行、古典等风格预设与自定义方案。</p>
+      </article>
+
+      <article class="card" style="--c:var(--blue)">
+        <span class="dot"></span><span class="n">09</span>
+        <h3>连接性</h3>
+        <p>Chromecast 推流、Android Auto、车机、Glance 桌面小组件与 Wear OS 手表；内置 Ktor 服务，浏览器打开网页即可遥控。</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════ 音源 ══════════════ -->
+  <section id="sources">
+    <div class="head rise">
+      <span class="idx">02 / SOURCES</span>
+      <h2>一个界面，收拢所有音乐</h2>
+      <p>本地文件与在线服务并存，搜索、收藏、歌单与下载走同一套交互。</p>
+    </div>
+
+    <div class="chips rise">
+      <span class="chip" style="--c:#5C9CFF"><i></i>网易云音乐</span>
+      <span class="chip" style="--c:#4DD0E1"><i></i>QQ 音乐</span>
+      <span class="chip" style="--c:#F06292"><i></i>酷狗音乐</span>
+      <span class="chip" style="--c:#FF8A65"><i></i>Bilibili</span>
+      <span class="chip" style="--c:#5C9CFF"><i></i>Jellyfin</span>
+      <span class="chip" style="--c:#4DD0E1"><i></i>Navidrome</span>
+      <span class="chip" style="--c:#F06292"><i></i>Subsonic</span>
+      <span class="chip" style="--c:#FF8A65"><i></i>Telegram</span>
+      <span class="chip" style="--c:#B8D4F5"><i></i>Google Drive</span>
+      <span class="chip" style="--c:#5C9CFF"><i></i>像素音源市场</span>
+      <span class="chip" style="--c:#9DB0CC"><i></i>本地媒体库</span>
+    </div>
+  </section>
+
+  <!-- ══════════════ 规格 ══════════════ -->
+  <section id="specs">
+    <div class="head rise">
+      <span class="idx">03 / TECH</span>
+      <h2>技术规格</h2>
+      <p>面向发烧友的解码链路，配上不折腾的日常体验。</p>
+    </div>
+
+    <dl class="specs rise">
+      <div>
+        <dt>音频引擎</dt>
+        <dd><b>Media3 ExoPlayer + FFmpeg</b>，JNI 层接入 miniaudio；AAudio 直通输出，USB 独占模式支持外置 DAC</dd>
+      </div>
+      <div>
+        <dt>支持格式</dt>
+        <dd>MP3、FLAC、AAC、OGG、WAV、ALAC、M4A、<b>DSD / DFF</b>，附带格式转换器（DFF → WAV 等）</dd>
+      </div>
+      <div>
+        <dt>播放特性</dt>
+        <dd>Gapless 无缝播放、可配置交叉淡入淡出、ReplayGain 归一化、随机与全部循环模式、队列拖拽重排</dd>
+      </div>
+      <div>
+        <dt>系统要求</dt>
+        <dd><b>Android 6.0（API 23）</b> 及以上，推荐 6GB RAM；USB DAC 功能需要 USB OTG</dd>
+      </div>
+      <div>
+        <dt>技术栈</dt>
+        <dd>Kotlin 2.3 · Compose · Material You · Hilt · Room · DataStore · Retrofit / OkHttp · Coil · WorkManager · Glance</dd>
+      </div>
+      <div>
+        <dt>工程结构</dt>
+        <dd>Gradle 多模块：<b>app</b>（主应用）· <b>shared</b> · <b>wear</b>（Wear OS）· <b>baselineprofile</b>（启动加速）</dd>
+      </div>
+      <div>
+        <dt>发布构建</dt>
+        <dd>full / lite 双风味（lite 不打包 TDLib），arm64-v8a · armeabi-v7a · x86_64 三个 ABI 分包，附带 SHA-256 校验</dd>
+      </div>
+      <div>
+        <dt>从源码构建</dt>
+        <dd>JDK 21+ · Android SDK 37+ · NDK（首次构建会编译 miniaudio 原生库）</dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- ══════════════ 3D 界面轮播 ══════════════ -->
+  <section id="screens">
+    <div class="head rise">
+      <span class="idx">04 / INTERFACE</span>
+      <h2>看一眼</h2>
+      <p>拖动可以旋转 —— 四个界面，四种场景。</p>
+    </div>
+
+    <div class="stage" id="stage" aria-hidden="true"></div>
+
+    <div class="stage-fallback">
+      <figure><img src="../assets/screenshot1.jpg" alt="播放界面" loading="lazy"><figcaption>Now Playing</figcaption></figure>
+      <figure><img src="../assets/screenshot2.jpg" alt="歌词界面" loading="lazy"><figcaption>Lyrics</figcaption></figure>
+      <figure><img src="../assets/screenshot3.jpg" alt="媒体库" loading="lazy"><figcaption>Library</figcaption></figure>
+      <figure><img src="../assets/screenshot4.jpg" alt="设置" loading="lazy"><figcaption>Settings</figcaption></figure>
+    </div>
+
+    <p class="stage-hint">← 拖动旋转 →</p>
+  </section>
+
+  <!-- ══════════════ 下载 ══════════════ -->
+  <section id="download">
+    <div class="cta-card rise">
+      <h2>拿去听</h2>
+      <p>
+        从 GitHub Releases 下载对应 ABI 的安装包。喜欢折腾的话，整个项目也可以直接克隆自行构建 ——
+        需要 JDK 21、Android SDK 37 与 NDK。
+      </p>
+      <div class="cta">
+        <a class="btn btn-main" href="https://github.com/theovilardo/PixelPlayer/releases" target="_blank" rel="noopener">下载安装包</a>
+        <a class="btn btn-ghost" href="https://github.com/theovilardo/PixelPlayer" target="_blank" rel="noopener">查看源码</a>
+      </div>
+      <p class="cta-note">full / lite 风味 · arm64-v8a / armeabi-v7a / x86_64 · v1.6.5 (62)</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot">
+      <div class="brand">
+        <img src="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" alt="">
+        <span>像素播放器 · PixelPlay</span>
+      </div>
+      <p class="meta">
+        Made with ❤️ by <a href="https://github.com/theovilardo" target="_blank" rel="noopener">theovilardo</a> ·
+        <a href="../LICENSE">专有许可证</a>
+      </p>
+    </div>
+  </footer>
+
+</div>
+
+<!-- ══════════════ three.js ══════════════ -->
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ══════════════════════════════════════════════════════════════════
+   1. 背景着色器 —— 复刻应用「绚丽背景」的做法
+      把封面/画布纹理揉进 GRID×GRID 的控制点网格，双三次 Hermite
+      插值出平滑渐变；控制点自身随时间旋转与呼吸，叠高频纹理与
+      像素网格线。配色与 Color.kt 一致。
+   ══════════════════════════════════════════════════════════════════ */
+
+const VERT = /* glsl */`
+  varying vec2 vUv;
+  void main(){
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const FRAG = /* glsl */`
+  precision highp float;
+  varying vec2 vUv;
+
+  uniform float uTime;
+  uniform float uEnergy;   // 0..1，低频"鼓点"强度
+  uniform float uScroll;   // 滚动进度 0..1
+  uniform vec2  uMouse;    // -1..1
+  uniform float uCell;     // 网格密度（窄屏用小网格）
+  uniform float uSettle;   // 进入时 0→1，避免第一帧闪烁
+
+  const float TAU = 6.28318530718;
+
+  float hash21(vec2 p){
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+
+  float vnoise(vec2 p){
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+
+  float fbm(vec2 p){
+    float s = 0.0, a = 0.5;
+    for(int i = 0; i < 3; i++){ s += a * vnoise(p); p *= 2.03; a *= 0.5; }
+    return s;
+  }
+
+  // 应用主题色：蓝 / 粉 / 橙 / 青 / 淡紫
+  vec3 palette(float i){
+    i = mod(floor(i), 5.0);
+    if(i < 0.5) return vec3(0.361, 0.612, 1.000);
+    if(i < 1.5) return vec3(0.941, 0.384, 0.573);
+    if(i < 2.5) return vec3(1.000, 0.541, 0.396);
+    if(i < 3.5) return vec3(0.302, 0.816, 0.882);
+    return vec3(0.722, 0.831, 0.961);
+  }
+
+  // 单个控制点的颜色：各自相位呼吸，整体随滚动漂移色相
+  vec3 cell(vec2 c, float t){
+    float n = hash21(c + 3.17);
+    vec3 col = palette(n * 5.0 + t * 0.22 + uScroll * 1.7);
+
+    float phase = n * TAU;
+    float pulse = 0.5 + 0.5 * sin(t * 1.5 + phase);
+    col *= 0.58 + 0.44 * pulse + uEnergy * 0.5 * pulse;
+
+    // 轻微向灰靠拢，避免整屏过饱和
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    return mix(col, vec3(lum), 0.14);
+  }
+
+  // 双三次 Hermite 网格插值
+  vec3 gridSample(vec2 uv, float t){
+    vec2 p = uv * uCell;
+    vec2 i = floor(p), f = p - i;
+    vec2 w = f * f * (3.0 - 2.0 * f);
+    vec3 a = cell(i,               t);
+    vec3 b = cell(i + vec2(1.0,0.0), t);
+    vec3 c = cell(i + vec2(0.0,1.0), t);
+    vec3 d = cell(i + vec2(1.0,1.0), t);
+    return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
+  }
+
+  void main(){
+    vec2 p = vUv - 0.5;
+    p += vec2(uMouse.x * 0.045, uMouse.y * 0.035 + uScroll * 0.10);
+    float r = length(p);
+
+    float t = uTime * 0.5;
+
+    // 有机扭曲，让网格边界像流体一样起伏
+    float n1 = fbm(p * 2.2 + vec2(t * 0.14, -t * 0.10));
+    float n2 = fbm(p * 4.6 - vec2(t * 0.11,  t * 0.09));
+    vec2 q = p + 0.20 * vec2(n1 - 0.5, n2 - 0.5);
+
+    // 缓慢旋转
+    float ang = t * 0.045 + (n1 - 0.5) * 0.7;
+    q = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * q;
+
+    vec2 guv = q * 0.88 + 0.5;
+    vec3 col = gridSample(guv, uTime);
+
+    // 高频"封面纹理"揉进网格
+    float tex = fbm(guv * 15.0 + vec2(uTime * 0.04, 0.0));
+    col *= 0.87 + 0.26 * tex;
+
+    // 像素网格线：名字里那个"像素"
+    vec2 g = abs(fract(guv * uCell) - 0.5);
+    float line = smoothstep(0.43, 0.5, max(g.x, g.y));
+    col = mix(col, col * 0.66 + vec3(0.015, 0.030, 0.060), line * 0.55);
+
+    // 指针光晕
+    col += vec3(0.16, 0.30, 0.55) * exp(-3.0 * length(p - uMouse * 0.32)) * 0.55;
+
+    // 暗角 + 底部压暗，保证正文可读
+    col *= smoothstep(1.20, 0.16, r);
+    col = mix(col, vec3(0.059, 0.094, 0.153), smoothstep(0.62, 1.40, r) * 0.75);
+
+    // 颗粒
+    float grain = hash21(gl_FragCoord.xy + fract(uTime) * vec2(131.1, 77.7));
+    col += (grain - 0.5) * 0.022;
+
+    col *= uSettle;
+
+    gl_FragColor = vec4(max(col, 0.0), 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+/* ══════════════════════════════════════════════════════════════════
+   2. 场景搭建
+   ══════════════════════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('gl');
+const stageEl = document.getElementById('stage');
+const shotsEl = document.getElementById('screens');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let renderer, camera, scene, bgMesh, bgMat, phones, dust;
+let W = 0, H = 0, dpr = 1;
+
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  renderer = null;
+}
+if (!renderer || !renderer.getContext()) {
+  document.body.classList.add('no-webgl');
+}
+
+const PALETTE = ['#5C9CFF', '#F06292', '#FF8A65', '#4DD0E1'];
+const SHOTS = [
+  { file: '../assets/screenshot1.jpg', label: 'Now Playing', c: '#5C9CFF' },
+  { file: '../assets/screenshot2.jpg', label: 'Lyrics',      c: '#F06292' },
+  { file: '../assets/screenshot3.jpg', label: 'Library',     c: '#FF8A65' },
+  { file: '../assets/screenshot4.jpg', label: 'Settings',    c: '#4DD0E1' },
+];
+
+/* 手机截图纹���：把圆角机身 + 边框 + 截图 + 高光一次性画进 canvas，
+   免去圆角几何与手动 UV 的麻烦。 */
+function phoneTexture(img, label, accent) {
+  const Wd = 560, Ht = 1180, R = 62, pad = 20;
+  const cv = document.createElement('canvas');
+  cv.width = Wd; cv.height = Ht;
+  const g = cv.getContext('2d');
+  if (!g) return null;
+
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+
+  // 外壳
+  const shell = g.createLinearGradient(0, 0, Wd, Ht);
+  shell.addColorStop(0, '#2A3B57');
+  shell.addColorStop(0.5, '#162236');
+  shell.addColorStop(1, '#0D1524');
+  rr(0, 0, Wd, Ht, R);
+  g.fillStyle = shell;
+  g.fill();
+
+  // 屏幕底色
+  rr(pad, pad, Wd - pad * 2, Ht - pad * 2, R - 14);
+  g.fillStyle = '#0F1827';
+  g.fill();
+
+  // 截图（object-fit: cover 裁切）
+  if (img && img.width && img.height) {
+    const sw = Wd - pad * 2, sh = Ht - pad * 2;
+    const scale = Math.max(sw / img.width, sh / img.height);
+    const dw = img.width * scale, dh = img.height * scale;
+    g.save();
+    rr(pad, pad, sw, sh, R - 14);
+    g.clip();
+    g.drawImage(img, (sw - dw) / 2, (sh - dh) / 2, dw, dh);
+    // 顶部渐隐，模拟状态栏压暗
+    const fade = g.createLinearGradient(0, pad, 0, pad + sh * 0.18);
+    fade.addColorStop(0, 'rgba(15,24,39,.5)');
+    fade.addColorStop(1, 'rgba(15,24,39,0)');
+    g.fillStyle = fade;
+    g.fillRect(pad, pad, sw, sh * 0.18);
+    g.restore();
+  } else {
+    // 图片没加载出来时的兜底渐变
+    const ph = g.createLinearGradient(pad, pad, Wd, Ht);
+    ph.addColorStop(0, accent);
+    ph.addColorStop(1, '#162236');
+    rr(pad, pad, Wd - pad * 2, Ht - pad * 2, R - 14);
+    g.fillStyle = ph; g.fill();
+  }
+
+  // 高光斜切
+  g.save();
+  rr(pad, pad, Wd - pad * 2, Ht - pad * 2, R - 14);
+  g.clip();
+  const gl = g.createLinearGradient(0, 0, Wd, Ht);
+  gl.addColorStop(0, 'rgba(255,255,255,.14)');
+  gl.addColorStop(0.35, 'rgba(255,255,255,.02)');
+  gl.addColorStop(0.6, 'rgba(255,255,255,0)');
+  g.fillStyle = gl;
+  g.fillRect(pad, pad, Wd - pad * 2, Ht - pad * 2);
+  g.restore();
+
+  // 屏幕描边 + 主题色边光
+  rr(pad + 1, pad + 1, Wd - pad * 2 - 2, Ht - pad * 2 - 2, R - 14);
+  g.strokeStyle = 'rgba(184,212,245,.22)';
+  g.lineWidth = 2;
+  g.stroke();
+
+  rr(1, 1, Wd - 2, Ht - 2, R);
+  g.strokeStyle = accent + '55';
+  g.lineWidth = 3;
+  g.stroke();
+
+  // 标签条
+  g.font = '600 30px "Azeret Mono", monospace';
+  g.fillStyle = 'rgba(15,24,39,.62)';
+  g.beginPath(); g.roundRect(24, Ht - 92, g.measureText(label).width + 46, 52, 26); g.fill();
+  g.fillStyle = accent;
+  g.textBaseline = 'middle';
+  g.fillText(label, 47, Ht - 64);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 1;
+  return tex;
+}
+
+function buildPhones() {
+  const group = new THREE.Group();
+  const geo = new THREE.PlaneGeometry(2.05, 4.32);
+  const loader = new THREE.TextureLoader();
+  const n = SHOTS.length;
+
+  SHOTS.forEach((s, i) => {
+    const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.98, color: 0xffffff });
+    const mesh = new THREE.Mesh(geo, mat);
+    const a = (i - (n - 1) / 2) * 0.52;           // 沿弧线排开
+    const radius = 7.4;
+    mesh.position.set(Math.sin(a) * radius, 0, -Math.cos(a) * radius + radius);
+    mesh.rotation.y = -a;
+    mesh.userData = { a, base: mesh.position.clone(), phase: i * 1.3, i };
+    group.add(mesh);
+
+    // 背后的辉光
+    const glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.9, 6.0),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(s.c), transparent: true, opacity: 0.10,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    glow.position.z = -0.12;
+    mesh.add(glow);
+
+    loader.load(
+      s.file,
+      (img) => { const t = phoneTexture(img, s.label, s.c); if (t) mat.map = t; mat.needsUpdate = true; },
+      undefined,
+      () => { const t = phoneTexture(null, s.label, s.c); if (t) mat.map = t; mat.needsUpdate = true; }
+    );
+  });
+
+  return group;
+}
+
+function buildDust() {
+  const N = 340;
+  const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
+  const c = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    pos[i * 3]     = (Math.random() - 0.5) * 26;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 16;
+    pos[i * 3 + 2] = -8 - Math.random() * 22;
+    c.set(PALETTE[i % PALETTE.length]).multiplyScalar(0.35 + Math.random() * 0.65);
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({
+    size: 0.075, vertexColors: true, transparent: true, opacity: 0.62,
+    blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+  }));
+}
+
+function init() {
+  if (!renderer) return;
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120);
+  camera.position.set(0, 0, 9.4);
+  scene.add(camera);
+
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.06;
+
+  // 背景平面挂在相机下，始终正对并铺满视野
+  bgMat = new THREE.ShaderMaterial({
+    vertexShader: VERT, fragmentShader: FRAG, depthTest: false, depthWrite: false,
+    uniforms: {
+      uTime:   { value: 0 },
+      uEnergy: { value: 0 },
+      uScroll: { value: 0 },
+      uMouse:  { value: new THREE.Vector2(0, 0) },
+      uCell:   { value: 7.0 },
+      uSettle: { value: 0 },
+    },
+  });
+  bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), bgMat);
+  bgMesh.position.z = -30;
+  bgMesh.renderOrder = -1;
+  bgMesh.frustumCulled = false;
+  camera.add(bgMesh);
+
+  dust = buildDust();
+  scene.add(dust);
+
+  phones = buildPhones();
+  phones.position.set(0, 0, 40);   // 初始在远处，等滚到该区域再推进来
+  scene.add(phones);
+
+  resize();
+  addEventListener('resize', resize, { passive: true });
+
+  // 带 ?debug 时暴露内部对象，方便在控制台里检查渲染状态
+  if (new URLSearchParams(location.search).has('debug')) {
+    window.__pixelplay = { THREE, renderer, scene, camera, bgMat, phones, bgMesh, spin };
+  }
+
+  if (reduced) { tickStatic(); } else { requestAnimationFrame(tick); }
+}
+
+function resize() {
+  if (!renderer) return;
+  W = innerWidth; H = innerHeight;
+  dpr = Math.min(devicePixelRatio || 1, W < 700 ? 1.5 : 2);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(W, H, false);
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+
+  // 让背景平面精确铺满（距离 30 处的可见高度）
+  const dist = Math.abs(bgMesh.position.z);
+  const h = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * dist;
+  bgMesh.scale.set(h * camera.aspect * 1.02, h * 1.02, 1);
+  bgMat.uniforms.uCell.value = W < 700 ? 6.0 : 8.0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   3. 交互与主循环
+   ══════════════════════════════════════════════════════════════════ */
+
+const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+addEventListener('pointermove', (e) => {
+  mouse.tx = (e.clientX / W) * 2 - 1;
+  mouse.ty = -((e.clientY / H) * 2 - 1);
+}, { passive: true });
+
+// 轮播拖拽（画布是 pointer-events:none，所以事件直接挂在 document 上）
+const drag = { on: false, x: 0, start: 0, base: 0, inside: false };
+function inStage(e) {
+  const r = shotsEl.getBoundingClientRect();
+  return e.clientY > r.top && e.clientY < r.bottom && e.clientX > r.left && e.clientX < r.right;
+}
+addEventListener('pointerdown', (e) => {
+  if (!phones || !inStage(e)) return;
+  drag.on = true; drag.x = e.clientX; drag.start = spin.target; drag.inside = true;
+}, { passive: true });
+addEventListener('pointermove', (e) => {
+  if (drag.on) spin.target = drag.start + (e.clientX - drag.x) * 0.0055;
+}, { passive: true });
+addEventListener('pointerup', () => { drag.on = false; }, { passive: true });
+addEventListener('pointercancel', () => { drag.on = false; }, { passive: true });
+
+const spin = { value: -0.42, target: -0.42 };
+
+const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+const easeOut = (v) => 1 - Math.pow(1 - v, 3);
+
+let clock = 0;
+let stageP = 0;
+
+function tick() {
+  requestAnimationFrame(tick);
+  if (!renderer) return;
+  clock += 1 / 60;
+
+  // 缓动跟随指针
+  mouse.x += (mouse.tx - mouse.x) * 0.045;
+  mouse.y += (mouse.ty - mouse.y) * 0.045;
+
+  // 滚动进度
+  const max = Math.max(1, document.body.scrollHeight - innerHeight);
+  const scroll = clamp01(scrollY / max);
+  bgMat.uniforms.uScroll.value = scroll;
+  bgMat.uniforms.uTime.value = clock;
+  bgMat.uniforms.uSettle.value += (1 - bgMat.uniforms.uSettle.value) * 0.03;
+
+  // 模拟低频鼓点：两段不同节奏的正弦叠加，落在 0..1
+  const beat = Math.pow(Math.max(0, Math.sin(clock * 2.1)), 9) * 0.55
+             + Math.pow(Math.max(0, Math.sin(clock * 1.37 + 1.2)), 7) * 0.35;
+  bgMat.uniforms.uEnergy.value = 0.18 + beat * 0.55;
+  bgMat.uniforms.uMouse.value.set(mouse.x, mouse.y);
+
+  bgMesh.position.x = mouse.x * 0.28;
+  bgMesh.position.y = mouse.y * 0.2;
+
+  // 相机随滚动微微后仰
+  camera.position.x += (mouse.x * 0.42 - camera.position.x) * 0.035;
+  camera.position.y += (-mouse.y * 0.26 - camera.position.y) * 0.035;
+  camera.lookAt(0, 0, 0);
+
+  dust.rotation.z = clock * 0.008;
+  dust.position.x = mouse.x * 0.6;
+
+  updatePhones();
+
+  renderer.render(scene, camera);
+}
+
+function updatePhones() {
+  const r = shotsEl.getBoundingClientRect();
+  const onScreen = r.bottom > -300 && r.top < innerHeight + 300;
+  phones.visible = onScreen;
+  if (!onScreen) return;
+
+  // 该区块从下方滚入时推进并展开
+  const p = clamp01((innerHeight * 0.62 - r.top) / (innerHeight * 0.55));
+  stageP = p;
+
+  const e = easeOut(p);
+  const z = 40 + (0 - 40) * e;
+  phones.position.set(0, (1 - e) * -0.8, z);
+  phones.scale.setScalar(0.62 + 0.38 * e);
+
+  if (!drag.on) spin.target += 0.0022;
+  spin.value += (spin.target - spin.value) * 0.075;
+  phones.rotation.y = spin.value * e;
+
+  // 鼠标靠近某台手机时把它顶出来
+  const n = SHOTS.length;
+  const focus = clamp01(Math.abs(mouse.x) * 1.35);
+  for (const m of phones.children) {
+    const { phase, i } = m.userData;
+    const side = ((i - (n - 1) / 2) / ((n - 1) / 2 || 1));
+    const bob = Math.sin(clock * 0.85 + phase) * 0.09;
+    const lift = (Math.abs(side) > 0.35 ? 1 : 0.25) * focus * 0.45 * e;
+    m.position.y = m.userData.base.y + bob + lift * -side * 0.5;
+    m.position.z = m.userData.base.z + lift;
+    m.rotation.z = bob * 0.06 + (drag.on ? 0 : side * focus * 0.03);
+  }
+}
+
+function tickStatic() {
+  // prefers-reduced-motion：只画一帧静态画面
+  if (!renderer) return;
+  bgMat.uniforms.uTime.value = 6.5;
+  bgMat.uniforms.uSettle.value = 1;
+  bgMat.uniforms.uEnergy.value = 0.3;
+  updatePhones();
+  renderer.render(scene, camera);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   4. 常规 DOM 行为
+   ══════════════════════════════════════════════════════════════════ */
+
+const nav = document.getElementById('nav');
+addEventListener('scroll', () => {
+  nav.classList.toggle('stuck', scrollY > 40);
+}, { passive: true });
+
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (!e.isIntersecting) return;
+    e.target.style.transitionDelay = (i * 55) + 'ms';
+    e.target.classList.add('in');
+    io.unobserve(e.target);
+  });
+}, { rootMargin: '0px 0px -10% 0px', threshold: 0.06 });
+document.querySelectorAll('.rise').forEach((el) => io.observe(el));
+
+init();
+</script>
+
+</body>
+</html>

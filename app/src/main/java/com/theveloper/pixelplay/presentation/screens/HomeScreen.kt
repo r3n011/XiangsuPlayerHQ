@@ -959,14 +959,32 @@ fun HomeScreen(
 
                 if (isWideTabletLayout) {
                     // ⚡ 平板横屏：对齐 Rhythm 的平板布局 —— 卡片不再横向滚动，
-                    //    而是按奇偶分到左右两列、每列内竖向堆叠；唱片墙作为第一张
+                    //    而是按奇偶分到左右两列、每列内竖向堆叠。
+                    //    「精选轮播」是横向多浏览的宽卡片：整宽独占一行（对齐 Rhythm 的平板形态），
+                    //    半列宽只露得出一张卡、还常比旁边卡片高出一截；拼贴图案仍作为第一张
                     //    卡片参与双列排列（不是整宽置顶的大图）。
+                    val featuredOwnRow =
+                        homeTopStyle == HOME_TOP_STYLE_FEATURED && yourMixSongs.isNotEmpty()
+                    if (featuredOwnRow) {
+                        item(
+                            key = "tablet_featured_row",
+                            contentType = "tablet_featured_row"
+                        ) {
+                            HomeFeaturedCarousel(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(if (isCarModeEnabled) 250.dp else 360.dp)
+                                    .padding(horizontal = 16.dp),
+                                tabletStyle = true,
+                            )
+                        }
+                    }
                     item(
                         key = "tablet_two_column_cards",
                         contentType = "tablet_two_column_cards"
                     ) {
                         val tabletCards = buildList {
-                            if (yourMixSongs.isNotEmpty()) add("card_collage")
+                            if (yourMixSongs.isNotEmpty() && !featuredOwnRow) add("card_collage")
                             addAll(renderableHomeCards)
                         }
                         val leftCards = tabletCards.filterIndexed { index, _ -> index % 2 == 0 }
@@ -975,7 +993,7 @@ fun HomeScreen(
                         // ⚡ 平板双列只统一**宽度**（两列等宽），高度各卡片按内容自适应
                         //    （对齐 Rhythm 的平板双列：列内卡片高度不再强行拉齐成同一高度）
                         val cardSizeModifier = Modifier.fillMaxWidth()
-                        // 唱片墙 / 精选轮播内部是 fillMaxSize，必须由外层给高度（与竖屏一致）；
+                        // 唱片墙内部是 fillMaxSize，必须由外层给高度（与竖屏一致）；
                         // 左右内边距与其它卡片保持一致（原来它是整列宽，比别的卡片宽出一截，
                         // 视觉上就会显得其它卡片偏窄）
                         val collageHeight = if (isCarModeEnabled) 250.dp else 360.dp
@@ -983,14 +1001,11 @@ fun HomeScreen(
                         @Composable
                         fun TabletCard(cardId: String) {
                             if (cardId == "card_collage") {
-                                val collageModifier = cardSizeModifier
-                                    .height(collageHeight)
-                                    .padding(horizontal = 16.dp)
-                                if (homeTopStyle == HOME_TOP_STYLE_FEATURED) {
-                                    HomeFeaturedCarousel(modifier = collageModifier, tabletStyle = true)
-                                } else {
-                                    HomeCollageCard(modifier = collageModifier)
-                                }
+                                HomeCollageCard(
+                                    modifier = cardSizeModifier
+                                        .height(collageHeight)
+                                        .padding(horizontal = 16.dp)
+                                )
                             } else {
                                 HomeCardContent(
                                     cardId = cardId,
