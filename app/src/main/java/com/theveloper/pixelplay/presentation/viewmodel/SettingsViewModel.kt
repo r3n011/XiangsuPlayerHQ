@@ -168,6 +168,8 @@ data class SettingsUiState(
     val showLyricsTrackInfo: Boolean = true,
     val transportControlsFlatStyle: Boolean = false,
     val carModeEnabled: Boolean = false,
+    /** 竖屏强制平板布局：竖屏下也用左侧导航栏 + 平板内容排版。 */
+    val forceTabletLayout: Boolean = false,
     /** 「软件缩放」百分比（只改变本 App 的排版尺寸，默认 100）。 */
     val uiScale: Int = UserPreferencesRepository.UI_SCALE_DEFAULT,
     // 悬浮歌词（桌面歌词）
@@ -880,6 +882,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.carModeEnabledFlow.collect { enabled ->
                 _uiState.update { it.copy(carModeEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.forceTabletLayoutFlow.collect { enabled ->
+                _uiState.update { it.copy(forceTabletLayout = enabled) }
             }
         }
 
@@ -2328,6 +2336,13 @@ class SettingsViewModel @Inject constructor(
     fun setCarModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setCarModeEnabled(enabled)
+        }
+    }
+
+    /** 「竖屏强制平板布局」：竖屏下也用平板外壳与内容排版。 */
+    fun setForceTabletLayout(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setForceTabletLayout(enabled)
         }
     }
 

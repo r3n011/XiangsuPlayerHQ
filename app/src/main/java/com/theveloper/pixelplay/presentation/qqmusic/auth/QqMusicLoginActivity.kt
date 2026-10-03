@@ -125,11 +125,17 @@ private fun QqMusicLoginScreen(
 ) {
     // 登录方式：0 = 网页登录（WebView 抓 cookie），1 = 手机号 + 短信验证码
     var loginMode by rememberSaveable { mutableIntStateOf(0) }
+    // ⚡ 风控要求安全验证时的 securityURL：非空时切到网页登录并直接加载该验证页
+    var securityCheckUrl by rememberSaveable { mutableStateOf<String?>(null) }
     if (loginMode == 1) {
         QqMusicPhoneLoginScreen(
             viewModel = viewModel,
             onBackToWeb = { loginMode = 0 },
             onClose = onClose,
+            onOpenSecurityCheck = { url ->
+                securityCheckUrl = url
+                loginMode = 0
+            },
         )
         return
     }
@@ -269,9 +275,18 @@ private fun QqMusicLoginScreen(
                     }
                 },
                 actions = {
-                    // ⚡ 切到「手机号 + 短信验证码」登录（官方接口要求安全验证时可切回网页登录）
+                    // ⚡ 切到「手机号 + 短信验证码」登录；顺带把 WebView 的 cookie
+                    //   （含刚完成的安全验证态）合并进手机号登录链路，否则重试仍会被风控拦。
                     TextButton(
-                        onClick = { loginMode = 1 },
+                        onClick = {
+                            runCatching {
+                                val url = webView?.url ?: QqMusicLoginActivity.TARGET_URL
+                                CookieManager.getInstance().getCookie(url)
+                                    ?.let(viewModel::syncExternalCookies)
+                            }
+                            securityCheckUrl = null
+                            loginMode = 1
+                        },
                         modifier = Modifier.padding(end = 6.dp)
                     ) {
                         Text(
@@ -477,6 +492,8 @@ private fun QqMusicLoginScreen(
             ) {
                 QqMusicWebView(
                     modifier = Modifier.fillMaxSize(),
+                    // 安全验证时直接加载服务端下发的 securityURL，否则走默认登录页
+                    initialUrl = securityCheckUrl ?: QqMusicLoginActivity.TARGET_URL,
                     onWebViewCreated = { created ->
                         webView = created
                         webUiState = webUiState.copy(
@@ -543,6 +560,8 @@ private fun rememberQqMusicLoginTitleStyle(): TextStyle {
 @Composable
 private fun QqMusicWebView(
     modifier: Modifier = Modifier,
+    /** 首次加载的地址；安全验证时传入服务端返回的 securityURL */
+    initialUrl: String = QqMusicLoginActivity.TARGET_URL,
     onWebViewCreated: (WebView) -> Unit,
     onNavigationChanged: (WebView) -> Unit,
     onLoadingChanged: (Boolean, String?) -> Unit,
@@ -635,7 +654,7 @@ private fun QqMusicWebView(
                     }
                 }
 
-                loadUrl(QqMusicLoginActivity.TARGET_URL)
+                loadUrl(initialUrl)
                 onWebViewCreated(this)
             }
         }

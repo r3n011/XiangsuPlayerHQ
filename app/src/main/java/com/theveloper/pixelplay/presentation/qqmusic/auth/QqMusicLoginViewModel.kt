@@ -28,6 +28,8 @@ data class QqMusicPhoneUiState(
     val countdown: Int = 0,
     val codeSent: Boolean = false,
     val error: String? = null,
+    /** 风控要求安全验证时的 `securityURL`：非空时面板上出现「去完成安全验证」入口 */
+    val securityChallengeUrl: String? = null,
 )
 
 @HiltViewModel
@@ -58,7 +60,7 @@ class QqMusicLoginViewModel @Inject constructor(
         }
         if (_phoneUi.value.sendingCode || _phoneUi.value.countdown > 0) return
 
-        _phoneUi.update { it.copy(sendingCode = true, error = null) }
+        _phoneUi.update { it.copy(sendingCode = true, error = null, securityChallengeUrl = null) }
         viewModelScope.launch {
             repository.sendPhoneLoginCode(phone).fold(
                 onSuccess = {
@@ -66,12 +68,36 @@ class QqMusicLoginViewModel @Inject constructor(
                     startCountdown()
                 },
                 onFailure = { err ->
+                    // ⚡ 风控（code=20276）会带一个 securityURL：不要在界面上直出那一长串，
+                    //    改为可操作的提示 + 「去完成安全验证」入口（在应用内 WebView 完成后再重试）。
+                    val challenge = err as? com.theveloper.pixelplay.data.remote.qqmusic.QqMusicSecurityChallengeException
                     _phoneUi.update {
-                        it.copy(sendingCode = false, error = err.message ?: "验证码发送失败")
+                        it.copy(
+                            sendingCode = false,
+                            error = if (challenge != null) {
+                                "QQ 音乐要求先完成安全验证：点下方按钮完成验证，再回来重新获取验证码"
+                            } else {
+                                err.message ?: "验证码发送失败"
+                            },
+                            securityChallengeUrl = challenge?.securityUrl?.takeIf { url -> url.isNotBlank() }
+                        )
                     }
                 }
             )
         }
+    }
+
+    /**
+     * 把安全验证 WebView 拿到的 cookie 合并进手机号登录链路。
+     * 风控验证态靠 cookie 延续，合并后重新获取验证码才会通过。
+     */
+    fun syncExternalCookies(cookieHeader: String) {
+        repository.mergePhoneAuthCookies(cookieHeader)
+    }
+
+    /** 用户已完成（或放弃）安全验证：清掉入口，避免一直挂在界面上。 */
+    fun clearSecurityChallenge() {
+        _phoneUi.update { it.copy(securityChallengeUrl = null) }
     }
 
     fun submitPhoneLogin() {

@@ -2780,6 +2780,14 @@ fun SettingsCategoryScreen(
                                     onCheckedChange = { settingsViewModel.setCarModeEnabled(it) },
                                     leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                                // ⚡ 竖屏强制平板布局（车机模式下方）：竖屏下也用左侧导航栏 + 平板排版
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_force_tablet_layout_title),
+                                    subtitle = stringResource(R.string.setcat_force_tablet_layout_subtitle),
+                                    checked = uiState.forceTabletLayout,
+                                    onCheckedChange = { settingsViewModel.setForceTabletLayout(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.TabletAndroid, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_transcode_cache_title)) {

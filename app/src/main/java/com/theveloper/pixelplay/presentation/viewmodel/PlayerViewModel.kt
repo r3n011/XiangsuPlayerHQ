@@ -8290,6 +8290,12 @@ class PlayerViewModel @Inject constructor(
 
             _isRoamingLoading.value = true
             _isRoamingMode.value = true
+            // ⚡ 漫游、酷狗私人FM、心动模式三者互斥，且各自的续拉逻辑只认自己的标记。
+            //    这里必须把另外两个清掉：漫游是自己组装队列、**不走 playSongs**（playSongs 才会
+            //    清这些标记），否则先开酷狗FM再开漫游时 FM 标记仍为 true —— 点「私人FM」
+            //    会误报「已在播放中」，而且 FM 的续拉会继续往漫游队列里追加酷狗的歌。
+            _isKugouFmMode.value = false
+            _isHeartMode.value = false
 
             // 先打开播放器显示加载状态，提供即时视觉反馈
             val loadingSong = Song(

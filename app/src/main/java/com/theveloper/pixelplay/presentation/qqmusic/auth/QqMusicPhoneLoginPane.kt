@@ -61,6 +61,8 @@ fun QqMusicPhoneLoginScreen(
     viewModel: QqMusicLoginViewModel,
     onBackToWeb: () -> Unit,
     onClose: () -> Unit,
+    /** 风控要求安全验证：把 securityURL 交给 Activity，切到网页登录并加载该验证页 */
+    onOpenSecurityCheck: (String) -> Unit = {},
 ) {
     val loginState by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -140,7 +142,10 @@ fun QqMusicPhoneLoginScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            QqMusicPhoneLoginPane(viewModel = viewModel)
+            QqMusicPhoneLoginPane(
+                viewModel = viewModel,
+                onOpenSecurityCheck = onOpenSecurityCheck
+            )
         }
     }
 }
@@ -154,6 +159,8 @@ fun QqMusicPhoneLoginScreen(
 fun QqMusicPhoneLoginPane(
     viewModel: QqMusicLoginViewModel,
     modifier: Modifier = Modifier,
+    /** 风控要求安全验证时：把 securityURL 交给上层，用应用内 WebView 打开完成验证 */
+    onOpenSecurityCheck: (String) -> Unit = {},
 ) {
     val phoneUi by viewModel.phoneUi.collectAsStateWithLifecycle()
 
@@ -246,6 +253,56 @@ fun QqMusicPhoneLoginPane(
                     fontFamily = GoogleSansRounded,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
+            }
+        }
+
+        // ⚡ 风控要求安全验证（code=20276）：不要把那一长串 securityURL 直出给用户，
+        //    给一个可操作的入口 —— 在应用内 WebView 打开验证页，完成后再回来重试。
+        phoneUi.securityChallengeUrl?.let { url ->
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = stringResource(R.string.qq_login_security_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = stringResource(R.string.qq_login_security_body),
+                        modifier = Modifier.padding(top = 4.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = GoogleSansRounded,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = viewModel::clearSecurityChallenge) {
+                            Text(
+                                text = stringResource(R.string.qq_login_security_ignore),
+                                fontFamily = GoogleSansRounded
+                            )
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Button(onClick = { onOpenSecurityCheck(url) }) {
+                            Text(
+                                text = stringResource(R.string.qq_login_security_open),
+                                fontFamily = GoogleSansRounded,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
         }
 

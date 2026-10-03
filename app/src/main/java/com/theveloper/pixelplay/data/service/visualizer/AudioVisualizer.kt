@@ -46,6 +46,12 @@ class AudioVisualizer @Inject constructor() {
     companion object {
         const val BANDS = 25
         private const val FFT_SIZE = 512
+        /**
+         * 频谱分析的目标采样率：高于它时按整数倍抽样喂 FFT。
+         * 保证 192k / 384k 高解析素材的分析开销与 48k 一致（原版没有这个采集器，
+         * 我们新增后必须避免高采样率下音频渲染线程欠载导致的爆音）。
+         */
+        private const val TARGET_ANALYSIS_RATE = 48_000
         private const val FRAME_RATE = 60 // 发布频率：约 60Hz
         private const val SMOOTH = 0.45f // 平滑系数：新帧占比
         private const val minDb = -55f
@@ -226,11 +232,19 @@ class AudioVisualizer @Inject constructor() {
     // ── 透传处理器：偷看 PCM 填 window ──
     private inner class SpectrumCaptureProcessor : AudioProcessor {
         private var inputEnded = false
+        /** 自有输出缓冲：透传时拷贝到这里，而不是把上游缓冲的 duplicate() 直接交出去 */
+        private var cachedOutput: ByteBuffer? = null
+        /** 喂 FFT 的抽样步长：高采样率下按比例跳采样，保证分析开销与 48k 时相当 */
+        private var decimation = 1
+
         override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
             sampleRate = inputAudioFormat.sampleRate
             channelCount = inputAudioFormat.channelCount
             isFloat = inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
             bytesPerSample = if (isFloat) Float.SIZE_BYTES else Short.SIZE_BYTES
+            // ⚡ 192k / 384k 素材若逐采样喂 FFT，渲染线程的分析次数是 48k 的 4~8 倍，
+            //    容易在音频线程上造成欠载 → 爆音/咔哒。按比例抽样后开销与采样率无关。
+            decimation = (inputAudioFormat.sampleRate / TARGET_ANALYSIS_RATE).coerceAtLeast(1)
             configured = true
             return inputAudioFormat
         }
@@ -241,36 +255,49 @@ class AudioVisualizer @Inject constructor() {
             val remaining = inputBuffer.remaining()
             if (remaining == 0) {
                 inputBuffer.position(inputBuffer.limit())
-                outputBuffer = inputBuffer.duplicate()
+                outputBuffer = AudioProcessor.EMPTY_BUFFER
                 return
             }
-            // 透传：原 bufer 原样输出
-            outputBuffer = inputBuffer.duplicate()
-            // 用另一份读 source 偷看，不动 outputBuffer 的 position
-            val src = inputBuffer.duplicate()
-            inputBuffer.position(inputBuffer.limit())
 
+            // ⚡ 透传改为「拷贝到自有缓冲」：此前直接返回 inputBuffer.duplicate()，
+            //    与 Media3 内部输入缓冲共享同一块内存 —— 上游下次 queueInput 复用该缓冲时，
+            //    尚未被消费完的输出就可能读到被覆盖的数据（杂音/爆音）。
+            //    Media3 自带处理器都是写自己的输出缓冲，这里保持一致。
+            var out = cachedOutput
+            if (out == null || out.capacity() < remaining) {
+                out = ByteBuffer.allocateDirect(remaining).order(ByteOrder.nativeOrder())
+                cachedOutput = out
+            }
+            out.clear()
+            out.put(inputBuffer) // 顺带把 inputBuffer 消费到 limit
+            out.flip()
+            outputBuffer = out
+
+            // 频谱 / 波形「偷看」：只从自有缓冲读，绝不改动输出内容
             val bytesPerFrame = channelCount * bytesPerSample
-            if (bytesPerFrame <= 0) return
+            if (bytesPerFrame <= 0 || channelCount <= 0) return
+            val src = out.duplicate().order(ByteOrder.nativeOrder())
             val frames = src.remaining() / bytesPerFrame
             if (frames == 0) return
-            if (channelCount <= 0) return
 
             if (isFloat) {
-                val bb = src.order(ByteOrder.nativeOrder())
-                repeat(frames) {
+                val bb = src.asFloatBuffer()
+                for (i in 0 until frames) {
                     var acc = 0f
-                    repeat(channelCount) { acc += bb.float }
-                    pushSample(acc / channelCount)
+                    for (c in 0 until channelCount) acc += bb.get()
+                    val v = acc / channelCount
+                    // 抽样帧喂 FFT；其余帧只更新波形峰值（保持峰值精度）
+                    if (i % decimation == 0) pushSample(v) else accumulateWaveform(v)
                 }
             } else {
-                val bb = src.order(ByteOrder.nativeOrder())
-                repeat(frames) {
+                val bb = src.asShortBuffer()
+                for (i in 0 until frames) {
                     var acc = 0f
-                    repeat(channelCount) {
-                        acc += bb.short.toFloat() / Short.MAX_VALUE.toFloat()
+                    for (c in 0 until channelCount) {
+                        acc += bb.get().toFloat() / Short.MAX_VALUE.toFloat()
                     }
-                    pushSample(acc / channelCount)
+                    val v = acc / channelCount
+                    if (i % decimation == 0) pushSample(v) else accumulateWaveform(v)
                 }
             }
         }

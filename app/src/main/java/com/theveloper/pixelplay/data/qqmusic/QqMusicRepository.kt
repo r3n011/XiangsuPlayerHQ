@@ -184,6 +184,13 @@ class QqMusicRepository @Inject constructor(
         phoneAuthClient.sendCode(phone)
 
     /**
+     * 把安全验证 WebView 的 cookie 合并进手机号登录链路。
+     * 风控（code=20276）要求先完成安全验证时，在应用内完成验证后调用，验证态才会延续。
+     */
+    fun mergePhoneAuthCookies(cookieHeader: String) =
+        phoneAuthClient.mergeExternalCookies(cookieHeader)
+
+    /**
      * 手机号 + 验证码登录：拿到的 cookie 与网页登录抓到的完全同构，
      * 统一交给 [loginWithCookies] 落盘、校验并拉取昵称。
      */

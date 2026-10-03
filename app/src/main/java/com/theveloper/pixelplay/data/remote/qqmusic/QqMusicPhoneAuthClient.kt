@@ -62,6 +62,21 @@ class QqMusicPhoneAuthClient @Inject constructor(
     /** 上一次请求携带的 cookie（发送验证码时服务端会下发临时 cookie，登录时要带上） */
     private var requestCookie = ""
 
+    /**
+     * 外部（安全验证 WebView）拿到的 cookie。
+     *
+     * ⚡ 风控要求安全验证（code=20276）时，验证态通常靠 cookie 延续：在应用内的 WebView 里
+     * 完成验证后，把 WebView 的 cookie 合并进来，再次发送验证码才不会被同一套风控拦下。
+     */
+    private var externalCookie = ""
+
+    /** 合并安全验证 WebView 的 cookie（`name=value; name2=value2` 形式）。 */
+    fun mergeExternalCookies(cookieHeader: String) {
+        if (cookieHeader.isBlank()) return
+        externalCookie = cookieHeader
+        Timber.tag(TAG).d("merged external cookies: %d chars", cookieHeader.length)
+    }
+
     /** 发送短信验证码 */
     suspend fun sendCode(phone: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -85,11 +100,15 @@ class QqMusicPhoneAuthClient @Inject constructor(
         }
 
     private fun post(payload: JSONObject): PhoneHttpResponse {
+        // 会话 cookie 与外部（安全验证）cookie 一起带上
+        val cookieHeader = listOf(requestCookie, externalCookie)
+            .filter { it.isNotBlank() }
+            .joinToString("; ")
         val request = Request.Builder()
             .url(AUTH_URL)
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
-            .apply { if (requestCookie.isNotBlank()) header("Cookie", requestCookie) }
+            .apply { if (cookieHeader.isNotBlank()) header("Cookie", cookieHeader) }
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
         return httpClient.newCall(request).execute().use { response ->

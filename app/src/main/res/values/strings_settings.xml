@@ -863,6 +863,8 @@
     <!-- Car Mode -->
     <string name="setcat_car_mode_title">Car Mode</string>
     <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <string name="setcat_force_tablet_layout_title">Force tablet layout in portrait</string>
+    <string name="setcat_force_tablet_layout_subtitle">Use the tablet layout (side navigation rail + wide content) even in portrait. Great for large phones and foldables.</string>
     <!-- Interface scale (Appearance category) -->
     <string name="setcat_ui_scale_section">Interface Scale</string>
     <string name="setcat_ui_scale_title">UI Scale (app only)</string>

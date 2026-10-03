@@ -304,6 +304,12 @@ class MainActivity : ComponentActivity() {
         val LocalHazeState = androidx.compose.runtime.staticCompositionLocalOf<dev.chrisbanes.haze.HazeState> {
             error("No HazeState provided")
         }
+
+        /**
+         * 竖屏强制平板布局（设置里可开）。为 true 时，各页面按平板/横屏那套排版渲染，
+         * 即使当前是竖屏。默认 false，未提供时行为与以前完全一致。
+         */
+        val LocalForceTabletLayout = androidx.compose.runtime.staticCompositionLocalOf { false }
     }
 
     private val playerViewModel: PlayerViewModel by viewModels()
@@ -1106,6 +1112,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         val isCarModeEnabled by userPreferencesRepository.carModeEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
+        // ⚡ 竖屏强制平板布局：竖屏下也走平板外壳（左侧导航栏 + 平板内容排版）。
+        //    统一折算成 isTabletShell，下面所有「导航栏形态」的判断都用它。
+        val forceTabletLayout by userPreferencesRepository.forceTabletLayoutFlow.collectAsStateWithLifecycle(initialValue = false)
+        // 平板外壳：真实横屏，或竖屏强制平板布局（设置开关）。导航栏形态/内容留白都用它。
+        val isTabletShell = isLandscape || forceTabletLayout
         // ⚡ 底部导航栏不再有「发现」按钮：漫游/电台/AI 入口统一移到主页顶部
         //   的「发现」按钮（见 HomeScreen 的 HomeDiscoverButton / HomeDiscoverSheet）
 
@@ -1223,14 +1234,14 @@ class MainActivity : ComponentActivity() {
         //   播放器展开时不隐藏底部导航栏:
         //   - 播放器容器已移到最外层 Box(z-index 高于 Scaffold),会自然覆盖在导航栏上面
         //   - 避免"播放器展开 + 导航栏收起"两个动画同时进行导致的卡顿
-        val shouldHideBottomNavBar by remember(isSearchActive, routeHidden, isLandscape) {
+        val shouldHideBottomNavBar by remember(isSearchActive, routeHidden, isTabletShell) {
             derivedStateOf {
-                if (isLandscape) false
+                if (isTabletShell) false
                 else isSearchActive || routeHidden
             }
         }
-        // 横屏 NavigationRail：始终保持在平板模式下可见（不因搜索激活而隐藏）
-        val shouldHideNavigationRail by remember(isSearchActive, isLandscape) {
+        // 平板 NavigationRail：始终保持在平板模式下可见（不因搜索激活而隐藏）
+        val shouldHideNavigationRail by remember(isSearchActive, isTabletShell) {
             derivedStateOf {
                 false
             }
@@ -1401,7 +1412,7 @@ class MainActivity : ComponentActivity() {
         }
 
         // NavigationRail 的水平 padding:使用稳定值,不依赖动画值,避免位置抖动
-        val navRailPaddingDp = if (isLandscape && !isCarModeEnabled) {
+        val navRailPaddingDp = if (isTabletShell && !isCarModeEnabled) {
             // 横屏且非车机模式时,给内容留出 Rail 空间（悬浮 96dp / 停靠 84dp）
             // 不使用动画值,避免 sheetCollapsedTargetY 每帧变化
             if (navRailStyle == NavRailStyle.DOCKED) 84.dp else 96.dp
@@ -1446,7 +1457,9 @@ class MainActivity : ComponentActivity() {
         CompositionLocalProvider(
             LocalAppHapticsConfig provides appHapticsConfig,
             LocalHapticFeedback provides scopedHapticFeedback,
-            LocalHazeState provides hazeState
+            LocalHazeState provides hazeState,
+            // 竖屏强制平板布局：供各页面读取（HomeScreen / 设置页 / 播放器等）
+            LocalForceTabletLayout provides forceTabletLayout
         ) {
             // Auto-close sidebar drawer when player expands
             LaunchedEffect(isPlayerExpanded) {
@@ -1507,9 +1520,9 @@ class MainActivity : ComponentActivity() {
                             playerViewModel.collapsePlayerSheet()
                         }
                     }
-                    if (isLandscape && !isCarModeEnabled) {
-                        // ⚡ 横屏 NavigationRail:使用独立的 Composable,通过 Stable 参数提升重组性能
-                        // 车机模式下隐藏导航栏,为驾驶场景优化
+                    if (isTabletShell && !isCarModeEnabled) {
+                        // ⚡ 平板 NavigationRail:使用独立的 Composable,通过 Stable 参数提升重组性能
+                        // 车机模式下隐藏导航栏,为驾驶场景优化；竖屏强制平板布局时同样显示
                         MainNavigationRail(
                             navController = navController,
                             navItems = commonNavItems,
@@ -1532,7 +1545,7 @@ class MainActivity : ComponentActivity() {
                                 .then(navBarLowVersionBlur.contentModifier)
                                 .nestedScroll(scrollChromeConnection),
                             bottomBar = {
-                                if (!isLandscape) {
+                                if (!isTabletShell) {
                                     // ⚡ 这里只放一个「占位 spacer」，底栏本体挪到最外层 Box 的最后渲染
                                     //   （见下方 MainBottomNavigationBar 浮层）——底栏作为浮层永远是最上层，
                                     //   不会被播放器面板 / 展开遮罩压住导致点不动。
@@ -1587,19 +1600,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // ⚡ 批量下载常驻进度提示：显示「已下载 N / M 首」，点击进入下载管理页。
-                        //    与日语注音引擎 / 歌词字体下载共用同一个顶部 chip 组件（滑入、可滑动关闭、
-                        //    完成后驻留 2s 自动消失）。已经在下载管理页时不重复显示。
-                        if (currentRoute != Screen.DownloadManager.route) {
-                            com.theveloper.pixelplay.presentation.components.DownloadQueueTopChip(
-                                downloads = downloadInfos,
-                                onClick = { navController.navigateSafely(Screen.DownloadManager.route) },
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .statusBarsPadding()
-                                    .padding(top = 8.dp)
-                            )
-                        }
                     }
 
                     // ⚡ 播放器容器移到最外层 Box，全屏显示（与 NavigationRail 同级）
@@ -1751,7 +1751,7 @@ class MainActivity : ComponentActivity() {
                     // 避免导航切换动画期间每帧触发重组。
                     // 圆角/边距等用稳定值足矣,动画由 sheet 内部的 SheetMotionController 处理。
                     if (shouldRenderPlayerSheet) {
-                        val isNavBarHiddenValue = if (isLandscape) shouldHideNavigationRail else shouldHideBottomNavBar
+                        val isNavBarHiddenValue = if (isTabletShell) shouldHideNavigationRail else shouldHideBottomNavBar
                         UnifiedPlayerSheetV2(
                             playerViewModel = playerViewModel,
                             sheetCollapsedTargetY = sheetCollapsedTargetY,
@@ -1829,7 +1829,7 @@ class MainActivity : ComponentActivity() {
                 //   从结构上保证导航栏永远可点。此前它放在 Scaffold 的 bottomBar 槽里，
                 //   一旦上层节点覆盖该区域，点击就被整体吃掉（表现为「点导航栏完全没反应」）。
                 //   占位仍由 Scaffold 的 bottomBar spacer 负责，页面底部间距不受影响。
-                if (!isLandscape) {
+                if (!isTabletShell) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -1862,6 +1862,23 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+            }
+        }
+
+        // ⚡ 批量下载常驻进度提示：显示「已下载 N / M 首」，点击进入下载管理页。
+        //    必须画在**最外层 Box 之后**（即整棵树最后绘制的浮层）—— 之前放在内容层里，
+        //    播放器面板 / 迷你播放条 / 底部导航栏 / NavigationRail 都会盖住它。
+        //    外层这个 Box 自身没有 pointerInput，不会拦截触摸，点击照常落到下层。
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (currentRoute != Screen.DownloadManager.route) {
+                com.theveloper.pixelplay.presentation.components.DownloadQueueTopChip(
+                    downloads = downloadInfos,
+                    onClick = { navController.navigateSafely(Screen.DownloadManager.route) },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(top = 8.dp)
+                )
             }
         }
 

@@ -758,6 +758,8 @@
     <!-- Car Mode -->
     <string name="setcat_car_mode_title">车机模式</string>
     <string name="setcat_car_mode_subtitle">为驾驶场景优化：更大的控件、减少动画、提升性能。</string>
+    <string name="setcat_force_tablet_layout_title">竖屏强制平板布局</string>
+    <string name="setcat_force_tablet_layout_subtitle">竖屏下也使用平板布局（左侧导航栏 + 平板内容排版），适合大屏手机或折叠屏。</string>
     <!-- 界面缩放（外观分类） -->
     <string name="setcat_ui_scale_section">界面缩放</string>
     <string name="setcat_ui_scale_title">软件缩放（仅本应用）</string>

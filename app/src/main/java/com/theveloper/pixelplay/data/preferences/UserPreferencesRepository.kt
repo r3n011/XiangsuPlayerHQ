@@ -473,6 +473,8 @@ class UserPreferencesRepository @Inject constructor(
 
         // Car mode
         val CAR_MODE_ENABLED = booleanPreferencesKey("car_mode_enabled")
+        /** 竖屏强制平板布局：竖屏下也按平板/横屏那套外壳与内容布局渲染。 */
+        val FORCE_TABLET_LAYOUT = booleanPreferencesKey("force_tablet_layout")
         /** 「软件缩放」百分比（只影响本 App 的排版尺寸，不动系统 DPI）。 */
         val UI_SCALE = intPreferencesKey("ui_scale")
 
@@ -2361,6 +2363,19 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setCarModeEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.CAR_MODE_ENABLED] = enabled }
+    }
+
+    // ─── 竖屏强制平板布局 ────────────────────────────────────────────────────
+
+    /**
+     * 竖屏下是否强制使用平板布局（左侧导航栏 + 平板内容排版）。
+     * 关闭时按真实方向走：竖屏 = 手机布局，横屏 = 平板布局。
+     */
+    val forceTabletLayoutFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.FORCE_TABLET_LAYOUT] ?: false }
+
+    suspend fun setForceTabletLayout(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.FORCE_TABLET_LAYOUT] = enabled }
     }
 
     // ─── UI Scale ────────────────────────────────────────────────────────────

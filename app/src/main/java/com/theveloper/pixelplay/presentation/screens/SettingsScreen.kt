@@ -146,7 +146,10 @@ fun SettingsScreen(
     val windowWidthDp = with(LocalDensity.current) {
         LocalWindowInfo.current.containerSize.width.toDp()
     }
-    val isTablet = windowWidthDp >= 840.dp
+    // ⚡ 「竖屏强制平板布局」开启时，够宽（≥600dp，如平板竖屏 / 折叠屏）也走双栏平板设置；
+    //    窄屏手机（<600dp）仍用单栏，否则双栏在竖屏下会被挤得没法看。
+    val forceTabletLayout = com.theveloper.pixelplay.MainActivity.LocalForceTabletLayout.current
+    val isTablet = windowWidthDp >= 840.dp || (forceTabletLayout && windowWidthDp >= 600.dp)
 
     if (isTablet) {
         TabletSettingsScreen(

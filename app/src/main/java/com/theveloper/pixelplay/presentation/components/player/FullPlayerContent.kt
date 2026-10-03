@@ -5314,12 +5314,38 @@ private fun FullPlayerParallelLayout(
                 .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         )
 
-        // Right side: Lyrics only (no controls/search/background)
+        // Right side: Lyrics only (no controls/search)
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
         ) {
+            // ⚡ 与普通模式的 LyricsSheet 保持一致：开启「歌词绚丽背景」时，歌词侧用**同一套**
+            //    IsolationBackground（AppleMusicRotatingBackground，AMLL 流体渐变）算法生成背景，
+            //    并同样叠加「歌词纯色遮罩」的 alpha。此前这两个参数传进来却完全没被使用，
+            //    导致平行布局的歌词区背景与普通模式不一致。
+            val currentSongForBg by playerViewModel.stablePlayerState
+                .map { it.currentSong }
+                .distinctUntilChanged()
+                .collectAsStateWithLifecycle(initialValue = null)
+            if (lyricsVibrantBackgroundEnabled) {
+                currentSongForBg?.albumArtUriString?.let { albumArtUri ->
+                    AppleMusicRotatingBackground(
+                        albumArtUri = albumArtUri,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+            if (lyricsSolidOverlayAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            LocalMaterialTheme.current.primaryContainer
+                                .copy(alpha = lyricsSolidOverlayAlpha)
+                        )
+                )
+            }
             ParallelLyricsPanel(
                 stablePlayerStateFlow = playerViewModel.stablePlayerState,
                 playbackPositionFlow = playerViewModel.currentPlaybackPosition,
@@ -5585,6 +5611,14 @@ private fun ParallelLyricsPanel(
         }
     }
 
+    // ⚡ 歌词长按分享（与普通模式 LyricsSheet 完全一致）：平行布局此前没接 onLineLongPress，
+    //    长按歌词没有任何反应。这里补上：长按某行 → 打开分享面板并默认选中该行。
+    var shareLyricIndex by remember { mutableStateOf<Int?>(null) }
+    val shareSong by stablePlayerStateFlow
+        .map { it.currentSong }
+        .distinctUntilChanged()
+        .collectAsStateWithLifecycle(initialValue = null)
+
     Box(modifier = Modifier.fillMaxSize()) {
         when (showSynced) {
             null -> {
@@ -5616,6 +5650,19 @@ private fun ParallelLyricsPanel(
             true -> {
                 lyrics?.synced?.let { synced ->
                     val syncedListState = rememberLazyListState()
+                    // 长按分享面板（默认选中长按的那一行）
+                    val shareIndex = shareLyricIndex
+                    val shareSongNow = shareSong
+                    if (shareIndex != null && shareSongNow != null) {
+                        com.theveloper.pixelplay.presentation.components.LyricShareDialog(
+                            title = shareSongNow.title,
+                            artist = shareSongNow.displayArtist,
+                            artworkUrl = shareSongNow.albumArtUriString,
+                            lines = synced.map { it.line },
+                            initialIndex = shareIndex,
+                            onDismiss = { shareLyricIndex = null }
+                        )
+                    }
                     SyncedLyricsList(
                         modifier = Modifier
                             .fillMaxSize()
@@ -5631,6 +5678,8 @@ private fun ParallelLyricsPanel(
                         onLineClick = { line ->
                             onSeekTo((line.time.toLong() - lyricsSyncOffset).coerceAtLeast(0L))
                         },
+                        // ⚡ 长按某一行 → 打开歌词分享面板（与普通模式一致）
+                        onLineLongPress = { index -> shareLyricIndex = index },
                         highlightZoneFraction = 0.08f,
                         highlightOffsetDp = 32.dp,
                         autoscrollAnimationSpec = spring(stiffness = Spring.StiffnessLow),

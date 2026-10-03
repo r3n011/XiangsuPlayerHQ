@@ -10,6 +10,13 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +51,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -89,13 +99,41 @@ internal fun LyricShareDialog(
     var generating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    // ⚡ 连贯的进出动画：进入时淡入 + 轻微上浮（带一点回弹），退出时反向播完再真正关闭。
+    //    之前 Dialog 直接硬切，观感很生硬。
+    val appear = remember { Animatable(0f) }
+    val slidePx = with(LocalDensity.current) { 26.dp.toPx() }
+    LaunchedEffect(Unit) {
+        appear.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        )
+    }
+    // 关闭统一走这里：先播退出动画，播完再通知上层销毁
+    val dismissAnimated: () -> Unit = {
+        scope.launch {
+            appear.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
+            )
+            onDismiss()
+        }
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismissAnimated,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    alpha = appear.value
+                    translationY = (1f - appear.value) * slidePx
+                }
                 .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
                 .navigationBarsPadding()
@@ -112,7 +150,7 @@ internal fun LyricShareDialog(
                     color = MaterialTheme.colorScheme.primary,
                     fontFamily = GoogleSansRounded,
                     modifier = Modifier
-                        .clickable(onClick = onDismiss)
+                        .clickable(onClick = dismissAnimated)
                         .padding(8.dp)
                 )
                 Text(
@@ -167,13 +205,20 @@ internal fun LyricShareDialog(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = stringResource(R.string.lyric_share_selected_count, selected.size),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.48f),
-                        fontFamily = GoogleSansRounded,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    // 选中行数变化时用淡入淡出过渡（AnimatedContent 会把旧值淡出、新值淡入）
+                    AnimatedContent(
+                        targetState = selected.size,
+                        label = "shareSelectedCount"
+                    ) { count ->
+                        Text(
+                            text = stringResource(R.string.lyric_share_selected_count, count),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             }
 
@@ -187,17 +232,21 @@ internal fun LyricShareDialog(
             ) {
                 itemsIndexed(lines, key = { index, line -> "share-$index-$line" }) { index, line ->
                     val chosen = index in selected
+                    // 选中态用颜色过渡而不是硬切，勾选 / 取消更顺滑
+                    val rowColor by animateColorAsState(
+                        targetValue = if (chosen) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                        },
+                        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                        label = "shareRowColor"
+                    )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                if (chosen) {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerLow
-                                }
-                            )
+                            .background(rowColor)
                             .clickable { selected = if (chosen) selected - index else selected + index }
                             .padding(horizontal = 16.dp, vertical = 14.dp)
                     ) {
@@ -274,13 +323,16 @@ internal fun LyricShareDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(
-                        text = stringResource(
-                            if (generating) R.string.lyric_share_generating else R.string.lyric_share_image
-                        ),
-                        fontFamily = GoogleSansRounded,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    // 「生成图片 / 生成中」文案切换用淡入淡出，而不是硬切
+                    AnimatedContent(targetState = generating, label = "shareGenerating") { gen ->
+                        Text(
+                            text = stringResource(
+                                if (gen) R.string.lyric_share_generating else R.string.lyric_share_image
+                            ),
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }

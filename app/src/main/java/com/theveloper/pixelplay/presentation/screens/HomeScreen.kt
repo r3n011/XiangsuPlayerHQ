@@ -562,10 +562,14 @@ fun HomeScreen(
 
     // Drawer state for sidebar
     // 与全屏播放器一致的可靠横屏判断：监听 View 全局布局（旋转/分屏时 View 尺寸必然变化）
-    val isLandscape = rememberWindowIsLandscape()
+    // ⚡ 「竖屏强制平板布局」开启时同样按平板/横屏那套内容排版渲染（左侧导航栏由 MainActivity 负责）。
+    val forceTabletLayout = MainActivity.LocalForceTabletLayout.current
+    val isLandscape = rememberWindowIsLandscape() || forceTabletLayout
     // ⚡ 平板横屏（≥600dp）：对齐 Rhythm 平板的「整宽精选 + 左右两列竖向卡片」布局，
     //    替代横向滚动卡片行；手机横屏仍保留原有横向行。
-    val isWideTabletLayout = isLandscape && LocalConfiguration.current.screenWidthDp >= 600
+    //    强制平板布局时不再要求 ≥600dp（竖屏手机/折叠屏宽度可能不到 600dp）。
+    val isWideTabletLayout =
+        forceTabletLayout || (isLandscape && LocalConfiguration.current.screenWidthDp >= 600)
 
     /** 卡片当前是否具备渲染条件（数据/开关），双列分组与单列共用。 */
     fun isHomeCardVisibleNow(cardId: String): Boolean = when (cardId) {

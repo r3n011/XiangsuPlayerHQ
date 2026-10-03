@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,8 +70,13 @@ fun PlayerMoreSheet(
     onViewArtist: () -> Unit,
     onViewAlbum: () -> Unit
 ) {
+    // ⚡ 必须跳过「半展开」状态：默认的半展开会让 sheet 自身的展开手势与内容滚动
+    //    争抢竖直拖动，上滑一次之后所有条目都点不动了。直接全展开 + 内容自己滚动
+    //    （与 LyricsMoreBottomSheet 同款做法）。
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 4.dp
     ) {
