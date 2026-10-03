@@ -6586,6 +6586,47 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /** 暂停下载（已下载的部分保留，继续时会断点续传） */
+    fun pauseDownload(songId: String) {
+        musicDownloadServiceProvider.get().pauseDownload(songId)
+    }
+
+    /** 继续被暂停 / 重试失败的下载 */
+    fun resumeDownload(songId: String) {
+        musicDownloadServiceProvider.get().resumeDownload(songId)
+    }
+
+    /** 取消下载并清理临时文件 */
+    fun cancelDownload(songId: String) {
+        musicDownloadServiceProvider.get().cancelDownload(songId)
+    }
+
+    /** 仅移除「已下载」记录（不删文件，用于下载管理里的「清除已完成」） */
+    fun removeDownload(songId: String) {
+        musicDownloadServiceProvider.get().removeDownload(songId)
+    }
+
+    /**
+     * 批量下载（媒体库 / 队列多选）：只把**在线歌曲**加入下载队列，
+     * 本地歌曲直接跳过并在提示里说明数量（本地歌本来就在设备上，无需下载）。
+     */
+    fun downloadSongs(songs: List<Song>) {
+        val service = musicDownloadServiceProvider.get()
+        val online = songs.filter { service.isOnlineSong(it) }
+        val skippedLocal = songs.size - online.size
+        if (online.isEmpty()) {
+            _toastEvents.tryEmit("选中的都是本地歌曲，无需下载")
+            return
+        }
+        online.forEach { song -> service.startDownload(song, preferredUrl = null, onFinished = null) }
+        _toastEvents.tryEmit(
+            buildString {
+                append("已加入下载队列：${online.size} 首")
+                if (skippedLocal > 0) append("（跳过 $skippedLocal 首本地歌曲）")
+            }
+        )
+    }
+
     private suspend fun resolveFavoriteSongId(song: Song?): String? {
         song ?: return null
         if (song.id.toLongOrNull() != null) {

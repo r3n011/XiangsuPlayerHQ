@@ -2275,7 +2275,11 @@ fun LibraryScreen(
             onBatchEdit = {
                 showMultiSelectionSheet = false
                 showBatchEditSheet = true
-            }
+            },
+            // ⚡ 批量下载：选中项里有在线歌曲才显示按钮；本地歌曲由 downloadSongs 过滤并在提示里说明
+            onDownloadAll = if (selectedSongs.any { playerViewModel.isOnlineSong(it) }) {
+                { playerViewModel.downloadSongs(selectedSongs) }
+            } else null
         )
     }
 

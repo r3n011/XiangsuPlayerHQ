@@ -17,6 +17,8 @@ sealed class Screen(val route: String) {
     }
     object PaletteStyle : Screen("palette_style_settings")
     object PlayerProgressStyle : Screen("player_progress_style_settings")
+    /** 下载管理（下载队列 / 进行中 / 已完成） */
+    object DownloadManager : Screen("download_manager")
     object Experimental : Screen("experimental_settings")
     object NavBarCrRad : Screen("nav_bar_corner_radius")
     object PlaylistDetail : Screen("playlist_detail/{playlistId}") {

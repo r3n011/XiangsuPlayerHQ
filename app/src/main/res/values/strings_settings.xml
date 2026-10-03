@@ -891,6 +891,24 @@
     <string name="setcat_download_file_name_title_only">Title only</string>
     <string name="setcat_download_skip_existing_title">Skip existing files</string>
     <string name="setcat_download_skip_existing_subtitle">Skip when a file with the same name already exists in the target folder.</string>
+    <string name="setcat_download_embed_cover_title">Embed cover art</string>
+    <string name="setcat_download_embed_cover_subtitle">Write the cover art into the audio file tags (local artwork is embedded too).</string>
+    <string name="setcat_download_embed_lyrics_title">Embed lyrics</string>
+    <string name="setcat_download_embed_lyrics_subtitle">Write lyrics into the audio file tags so players can read them.</string>
+    <string name="setcat_download_write_lrc_title">Also save a .lrc file</string>
+    <string name="setcat_download_write_lrc_subtitle">Create a matching .lrc next to the downloaded audio file.</string>
+    <string name="setcat_download_quality_label">Download quality</string>
+    <string name="setcat_download_quality_desc">Quality used when downloading songs; can follow the playback quality.</string>
+    <string name="setcat_download_quality_follow">Same as playback</string>
+    <string name="setcat_download_manager_subtitle">View the download queue, in-progress and finished downloads.</string>
+    <string name="download_manager_title">Downloads</string>
+    <string name="download_manager_empty">No downloads yet</string>
+    <string name="download_manager_clear_completed">Clear completed</string>
+    <string name="download_manager_pause">Pause</string>
+    <string name="download_manager_resume">Resume</string>
+    <string name="download_manager_retry">Retry</string>
+    <string name="download_manager_cancel">Cancel</string>
+    <string name="download_manager_waiting">Waiting</string>
     
     <!-- Car Mode Quick Actions -->
     <string name="car_mode_quick_actions_title">Quick Actions</string>

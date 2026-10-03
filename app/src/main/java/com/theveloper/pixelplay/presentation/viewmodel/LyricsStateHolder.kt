@@ -192,7 +192,9 @@ class LyricsStateHolder @Inject constructor(
                 }
 
                 if (fetchedLyrics != null) break
-                if (!isNeteaseSong(song) || attempt >= MAX_LYRICS_FETCH_RETRIES) break
+                // ⚡ 重试不再限定网易云：本地歌 / 其它在线源一次失败就直接显示「暂无歌词」
+                //    太脆弱（网络抖动、单源限流都会命中）。统一按次数 + 耗时上限重试。
+                if (attempt >= MAX_LYRICS_FETCH_RETRIES) break
                 // ⚡ 只有"快速返回空结果"才值得重试。若本次是超时/长时间等待（单次上限 30s，
                 //   3 次最坏 ≈ 90s），再重试只会让歌词页一直停在"正在加载歌词" ——
                 //   用户感知就是"歌词永远加载不出来"。超时后直接收口为"暂无歌词"。
@@ -221,8 +223,10 @@ class LyricsStateHolder @Inject constructor(
             if (currentTargetSongId != targetSongId) return@launch
             loadCallback?.onLyricsLoadFinished(targetSongId, fetchedLyrics)
 
-            if (fetchedLyrics == null && !isNeteaseSong(song)) {
-                android.util.Log.d("LyricsStateHolder", "非网易云歌曲歌词加载失败，自动触发搜索: ${song.title}")
+            if (fetchedLyrics == null) {
+                // ⚡ 任何歌曲拿不到歌词都再走一次「本地 → 在线搜索」兜底：
+                //    以前只对非网易云歌做，网易云歌一旦拉取失败就直接显示「暂无歌词」。
+                android.util.Log.d("LyricsStateHolder", "歌词加载为空，自动触发搜索: ${song.title}")
                 triggerAutoLyricsSearch(song, sourcePreference)
             }
         }

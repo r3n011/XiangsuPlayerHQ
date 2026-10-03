@@ -189,6 +189,7 @@
     <string name="song_info_download">Download</string>
     <string name="song_info_downloading_progress">Downloading %1$d%%</string>
     <string name="song_info_downloaded">Downloaded</string>
+    <string name="song_info_download_paused">Paused, tap to resume</string>
     <string name="song_info_download_failed">Download failed</string>
     <string name="multi_selection_songs_count_upper">%1$d SONGS</string>
     <string name="multi_selection_songs_selected">selected</string>

@@ -61,6 +61,7 @@ import com.theveloper.pixelplay.presentation.screens.GenreDetailScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.PlayerProgressStyleSettingsScreen
+import com.theveloper.pixelplay.presentation.screens.DownloadManagerScreen
 import com.theveloper.pixelplay.presentation.screens.PlaylistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.RecentlyPlayedScreen
 import com.theveloper.pixelplay.presentation.screens.RadioScreen
@@ -533,6 +534,16 @@ fun AppNavigation(
                     PlayerProgressStyleSettingsScreen(
                         playerViewModel = playerViewModel,
                         settingsViewModel = hiltViewModel(),
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.DownloadManager.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    DownloadManagerScreen(
+                        playerViewModel = playerViewModel,
                         onBackClick = { navController.popBackStack() }
                     )
                 }

@@ -125,6 +125,9 @@ enum class PlayerStyle(val storageKey: String) {
  * 而不是硬编码固定档位。用于音质设置选项动态化 + 播放时按音源向下匹配。
  */
 object MusicQualityCatalog {
+    /** 下载音质「跟随播放音质」的哨兵值 */
+    const val FOLLOW_PLAYBACK = "follow"
+
     // 音质优先级（高 → 低）。覆盖内置/自定义脚本常见 qualitys 值，含网易云 VIP 音质。
     private val QUALITY_ORDER = listOf(
         "jymaster", "sky", "jyeffect", "atmos", "master",
@@ -484,6 +487,14 @@ class UserPreferencesRepository @Inject constructor(
         val DOWNLOAD_FILE_NAME_TEMPLATE = stringPreferencesKey("download_file_name_template")
         /** 目标目录已有同名文件时跳过下载 */
         val DOWNLOAD_SKIP_EXISTING = booleanPreferencesKey("download_skip_existing")
+        /** 下载时内嵌封面 */
+        val DOWNLOAD_EMBED_COVER = booleanPreferencesKey("download_embed_cover")
+        /** 下载时内嵌歌词标签 */
+        val DOWNLOAD_EMBED_LYRICS = booleanPreferencesKey("download_embed_lyrics")
+        /** 下载时同时写同名 .lrc 歌词文件 */
+        val DOWNLOAD_WRITE_LRC = booleanPreferencesKey("download_write_lrc")
+        /** 下载音质：follow = 跟随播放音质，其余为 MusicQualityCatalog 里的音质值 */
+        val DOWNLOAD_QUALITY_VALUE = stringPreferencesKey("download_quality_value")
         /** 首次打开时「还没导入 JS 音源」的提示是否已经提示过 */
         val LX_SOURCE_PROMPT_DISMISSED = booleanPreferencesKey("lx_source_prompt_dismissed")
         /** 开发者选项：强制使用低版本（软件/位图）模糊，便于在高版本设备上验证 */
@@ -2406,6 +2417,38 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setDownloadSkipExisting(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.DOWNLOAD_SKIP_EXISTING] = enabled }
+    }
+
+    /** 下载时内嵌封面（默认开） */
+    val downloadEmbedCoverFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.DOWNLOAD_EMBED_COVER] ?: true }
+
+    suspend fun setDownloadEmbedCover(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.DOWNLOAD_EMBED_COVER] = enabled }
+    }
+
+    /** 下载时内嵌歌词标签（默认开） */
+    val downloadEmbedLyricsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.DOWNLOAD_EMBED_LYRICS] ?: true }
+
+    suspend fun setDownloadEmbedLyrics(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.DOWNLOAD_EMBED_LYRICS] = enabled }
+    }
+
+    /** 下载时写同名 .lrc（默认开） */
+    val downloadWriteLrcFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.DOWNLOAD_WRITE_LRC] ?: true }
+
+    suspend fun setDownloadWriteLrc(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.DOWNLOAD_WRITE_LRC] = enabled }
+    }
+
+    /** 下载音质（[MusicQualityCatalog.FOLLOW_PLAYBACK] = 跟随播放音质） */
+    val downloadQualityValueFlow: Flow<String> =
+        pref { it[PreferencesKeys.DOWNLOAD_QUALITY_VALUE] ?: MusicQualityCatalog.FOLLOW_PLAYBACK }
+
+    suspend fun setDownloadQualityValue(value: String) {
+        dataStore.edit { it[PreferencesKeys.DOWNLOAD_QUALITY_VALUE] = value }
     }
 
     // ─── Discover sheet visibility ──────────────────────────────────────────────

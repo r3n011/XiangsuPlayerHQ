@@ -189,6 +189,7 @@
     <string name="song_info_download">下载</string>
     <string name="song_info_downloading_progress">正在下载 %1$d%%</string>
     <string name="song_info_downloaded">已下载</string>
+    <string name="song_info_download_paused">已暂停，点击继续</string>
     <string name="song_info_download_failed">下载失败</string>
     <string name="multi_selection_songs_count_upper">%1$d 首歌曲</string>
     <string name="multi_selection_songs_selected">已选择</string>

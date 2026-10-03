@@ -394,25 +394,28 @@ class MusicDownloadService @Inject constructor(
                 .take(slots)
                 .onEach { it.status = DownloadStatus.Running }
         }
-        toStart.forEach { task ->
-            task.job = appScope.launch {
-                var success = false
-                try {
-                    success = runTask(task)
-                } catch (cancelled: CancellationException) {
-                    // 暂停 / 取消：状态已由 pause/cancel 设置好，这里不覆盖
-                    throw cancelled
-                } finally {
-                    synchronized(taskLock) {
-                        if (task.status == DownloadStatus.Running) {
-                            task.status = if (success) DownloadStatus.Completed else DownloadStatus.Error
+        // 任务句柄在同一把锁里赋值：否则「刚排队就被暂停」会拿不到 job 而取消不掉
+        synchronized(taskLock) {
+            toStart.forEach { task ->
+                task.job = appScope.launch {
+                    var success = false
+                    try {
+                        success = runTask(task)
+                    } catch (cancelled: CancellationException) {
+                        // 暂停 / 取消：状态已由 pause/cancel 设置好，这里不覆盖
+                        throw cancelled
+                    } finally {
+                        synchronized(taskLock) {
+                            if (task.status == DownloadStatus.Running) {
+                                task.status = if (success) DownloadStatus.Completed else DownloadStatus.Error
+                            }
+                            task.job = null
                         }
-                        task.job = null
                     }
+                    mainHandler.post { task.onFinished?.invoke(success) }
+                    if (success) persistDownloads()
+                    pump()
                 }
-                mainHandler.post { task.onFinished?.invoke(success) }
-                if (success) persistDownloads()
-                pump()
             }
         }
     }
@@ -468,7 +471,8 @@ class MusicDownloadService @Inject constructor(
             }
 
             // 5. 元数据标签写在**临时文件**上：SAF 目录同样能带上标签
-            val lrcText = writeTags(song, tempFile.absolutePath)
+            val embed = readEmbedOptions()
+            val lrcText = writeTags(song, tempFile.absolutePath, embed)
 
             // 6. 落到目标位置（SAF 拷贝 / 公共目录移动）
             updateDownloadStatus(songId, song.title, song.displayArtist, 100f, DownloadStatus.Running, null, fileName)
@@ -481,7 +485,7 @@ class MusicDownloadService @Inject constructor(
             }
 
             // 7. 同目录 .lrc + MediaStore 收录
-            if (!lrcText.isNullOrBlank()) writeLrcFile(finalPath, lrcText)
+            if (embed.writeLrc && !lrcText.isNullOrBlank()) writeLrcFile(finalPath, lrcText)
             scanFile(finalPath)
 
             task.filePath = finalPath
@@ -699,9 +703,21 @@ class MusicDownloadService @Inject constructor(
         }
     }
 
-    private suspend fun readQualityPreference(): String = runCatching {
-        userPreferencesRepository.musicQualityValueFlow.first()
-    }.getOrDefault("320k")
+    /**
+     * 下载使用的音质：设置里选了具体档位就用它，选「跟随播放音质」则用播放音质。
+     * 各平台解析层内部仍会按档位向下回退。
+     */
+    private suspend fun readQualityPreference(): String {
+        val downloadQuality = runCatching {
+            userPreferencesRepository.downloadQualityValueFlow.first()
+        }.getOrDefault(MusicQualityCatalog.FOLLOW_PLAYBACK)
+        if (downloadQuality.isNotBlank() && downloadQuality != MusicQualityCatalog.FOLLOW_PLAYBACK) {
+            return downloadQuality
+        }
+        return runCatching {
+            userPreferencesRepository.musicQualityValueFlow.first()
+        }.getOrDefault("320k")
+    }
 
     // ─── 文件名 / 扩展名 / 目标位置 ─────────────────────────────────────────
 
@@ -822,46 +838,115 @@ class MusicDownloadService @Inject constructor(
 
     /**
      * 下载完成后自动补全元数据（在临时文件上做，因此 SAF 目录也能带标签）：
-     * 封面下载 → 歌词获取 → 写音频标签（标题/歌手/专辑/封面/歌词）。
+     * 封面获取 → 歌词获取 → 写音频标签（标题/歌手/专辑/封面/歌词）。
      * 返回歌词文本，供落盘后写同目录 .lrc 使用。任何一步失败都不影响下载本身。
      */
-    private suspend fun writeTags(song: Song, tempFilePath: String): String? {
+    private suspend fun writeTags(song: Song, tempFilePath: String, options: EmbedOptions): String? {
         try {
-            val coverArt = song.albumArtUriString
-                ?.takeIf {
-                    it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true)
-                }
-                ?.let { downloadCoverArt(it) }
+            val needLyrics = options.embedLyrics || options.writeLrc
+            val lrcText = if (needLyrics) fetchLyricsText(song) else null
+            if (!options.embedCover && !options.embedLyrics) return lrcText
 
-            var lrcText: String? = null
-            try {
-                val lyrics = lyricsRepository.getLyrics(
-                    song,
-                    sourcePreference = LyricsSourcePreference.API_FIRST,
-                    forceRefresh = true
-                )
-                if (lyrics != null) {
-                    val text = LyricsUtils.toLrcString(lyrics)
-                    if (text.isNotBlank()) lrcText = text
-                }
-            } catch (e: Exception) {
-                Timber.w(e, "MusicDownloadService: 歌词获取失败 songId=${song.id}")
-            }
+            val coverArt = if (options.embedCover) resolveCoverArt(song) else null
+            val embeddedLyrics = if (options.embedLyrics) lrcText else null
 
-            val ok = songMetadataEditor.writeDownloadedFileTags(
+            // ⚡ 失败重试一次：写标签偶发失败多半是临时 IO 抖动，第二次通常能成。
+            var ok = songMetadataEditor.writeDownloadedFileTags(
                 filePath = tempFilePath,
                 title = song.title,
                 artist = song.displayArtist,
                 album = song.album,
                 albumArtist = song.albumArtist,
-                lyrics = lrcText,
+                lyrics = embeddedLyrics,
                 coverArtUpdate = coverArt
             )
+            if (!ok) {
+                Timber.w("MusicDownloadService: 标签写入失败，重试一次 songId=${song.id}")
+                ok = songMetadataEditor.writeDownloadedFileTags(
+                    filePath = tempFilePath,
+                    title = song.title,
+                    artist = song.displayArtist,
+                    album = song.album,
+                    albumArtist = song.albumArtist,
+                    lyrics = embeddedLyrics,
+                    coverArtUpdate = coverArt
+                )
+            }
             Timber.d("MusicDownloadService: 元数据补全 ${if (ok) "成功" else "失败"} songId=${song.id}")
             return lrcText
         } catch (e: Exception) {
             Timber.e(e, "MusicDownloadService: writeTags failed songId=${song.id}")
             return null
+        }
+    }
+
+    /** 下载相关的内嵌开关（设置 → 下载设置） */
+    private data class EmbedOptions(
+        val embedCover: Boolean,
+        val embedLyrics: Boolean,
+        val writeLrc: Boolean,
+    )
+
+    private suspend fun readEmbedOptions(): EmbedOptions = EmbedOptions(
+        embedCover = runCatching { userPreferencesRepository.downloadEmbedCoverFlow.first() }.getOrDefault(true),
+        embedLyrics = runCatching { userPreferencesRepository.downloadEmbedLyricsFlow.first() }.getOrDefault(true),
+        writeLrc = runCatching { userPreferencesRepository.downloadWriteLrcFlow.first() }.getOrDefault(true),
+    )
+
+    /** 取歌词文本（在线源 → 本地 .lrc），失败返回 null，不影响下载 */
+    private suspend fun fetchLyricsText(song: Song): String? = try {
+        val lyrics = lyricsRepository.getLyrics(
+            song,
+            sourcePreference = LyricsSourcePreference.API_FIRST,
+            forceRefresh = false
+        )
+        lyrics?.let { LyricsUtils.toLrcString(it) }?.takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+        Timber.w(e, "MusicDownloadService: 歌词获取失败 songId=${song.id}")
+        null
+    }
+
+    /**
+     * 封面：远程 URL 直接下载；本地歌曲的封面（content:// / file://）也读出来内嵌，
+     * 否则本地库歌曲下载后永远没有封面（之前只认 http(s)，表现就是"内嵌封面时有时无"）。
+     */
+    private suspend fun resolveCoverArt(song: Song): CoverArtUpdate? {
+        val art = song.albumArtUriString?.takeIf { it.isNotBlank() } ?: return null
+        return when {
+            art.startsWith("http://", ignoreCase = true) || art.startsWith("https://", ignoreCase = true) ->
+                downloadCoverArt(art)
+            art.startsWith("content://", ignoreCase = true) || art.startsWith("file://", ignoreCase = true) ->
+                readLocalCoverArt(art)
+            else -> null
+        }
+    }
+
+    private suspend fun readLocalCoverArt(uriString: String): CoverArtUpdate? = withContext(Dispatchers.IO) {
+        try {
+            val uri = Uri.parse(uriString)
+            val bytes = if (uriString.startsWith("file://", ignoreCase = true)) {
+                File(uri.path ?: return@withContext null).takeIf { it.isFile }?.readBytes()
+            } else {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    // 封面不可能太大，限制 8MB 防止读到异常数据
+                    val buffer = java.io.ByteArrayOutputStream()
+                    val chunk = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (total <= 8L * 1024 * 1024) {
+                        val read = input.read(chunk)
+                        if (read <= 0) break
+                        buffer.write(chunk, 0, read)
+                        total += read
+                    }
+                    buffer.toByteArray()
+                }
+            } ?: return@withContext null
+            if (bytes.isEmpty()) return@withContext null
+            val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            CoverArtUpdate(bytes = bytes, mimeType = mime)
+        } catch (e: Exception) {
+            Timber.w(e, "MusicDownloadService: 本地封面读取失败 $uriString")
+            null
         }
     }
 
@@ -919,7 +1004,7 @@ class MusicDownloadService @Inject constructor(
     // ─── 状态 / 通知 / 临时文件 ─────────────────────────────────────────────
 
     private fun tempFileFor(songId: String): File =
-        File(tempDir, "${songId.hashCode().toUInt().toString(16)}.part")
+        File(tempDir, "${songId.hashCode().toUInt().toString(16)}_${songId.length}.part")
 
     private fun deleteTempFile(songId: String) {
         runCatching { tempFileFor(songId).takeIf { it.exists() }?.delete() }

@@ -628,6 +628,8 @@ class SongMetadataEditor(
                 isProblematicFlacFile(filePath) is FlacAnalysisResult.Problematic
             val useVorbisJavaPrimary = effectiveExt == "opus"
             val useJAudioTaggerPrimary = effectiveExt in setOf("wav", "ogg") || isHighResFlac
+            // 主路径是 TagLib（含"TagLib 失败后回退 jaudiotagger"）时才用 TagLib 读回校验
+            val tagLibPrimary = !useVorbisJavaPrimary && !useJAudioTaggerPrimary
 
             val runPipeline: (String) -> Boolean = { path ->
                 if (useVorbisJavaPrimary) {
@@ -711,8 +713,23 @@ class SongMetadataEditor(
                             out.fd.sync()
                         }
                     }
-                    Timber.tag(TAG).d("writeDownloadedFileTags: SUCCESS - $filePath")
-                    true
+                    // ⚡ 写回后做一次真校验，而不是无条件相信流水线的返回值：
+                    //    1) 体积不为 0 且容器仍可识别 —— 防"写标签把文件写坏/清空"；
+                    //    2) TagLib 主路径下再读回 TITLE —— 之前它遇到高采样/高比特 FLAC
+                    //       会直接 `return true` 却什么都不写，调用方以为成功，
+                    //       文件里其实没标签（表现就是"内嵌元数据时好时坏"）。
+                    val integrityOk = file.length() > 0L &&
+                        detectContainerFormat(filePath) != DetectedContainer.UNKNOWN
+                    val tagsOk = integrityOk && when {
+                        !tagLibPrimary -> true
+                        else -> verifyTagLibTitle(filePath, title)
+                    }
+                    if (!tagsOk) {
+                        Timber.tag(TAG).w(
+                            "writeDownloadedFileTags: 校验未通过 (integrity=$integrityOk, tags=$tagsOk) - $filePath"
+                        )
+                    }
+                    tagsOk
                 } else {
                     Timber.tag(TAG).w("writeDownloadedFileTags: tag write failed - $filePath")
                     false
@@ -724,6 +741,21 @@ class SongMetadataEditor(
             Timber.tag(TAG).e(e, "writeDownloadedFileTags failed: $filePath")
             false
         }
+    }
+
+    /**
+     * 读回 TITLE 校验标签是否真的写进去了（只用于 TagLib 能解析的容器）。
+     * 读不到元数据 / 标题为空都视为校验失败，让调用方知道"这次没写进去"而不是静默成功。
+     */
+    private fun verifyTagLibTitle(filePath: String, expectedTitle: String): Boolean {
+        if (expectedTitle.isBlank()) return true
+        return runCatching {
+            ParcelFileDescriptor.open(File(filePath), ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                val metadata = TagLib.getMetadata(fd.detachFd())
+                val title = metadata?.propertyMap?.get("TITLE")?.firstOrNull().orEmpty()
+                title.isNotBlank()
+            }
+        }.getOrDefault(false)
     }
 
 

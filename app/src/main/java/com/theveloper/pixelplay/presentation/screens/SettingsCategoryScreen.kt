@@ -2789,6 +2789,32 @@ fun SettingsCategoryScreen(
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_download_settings)) {
+                                // ⚡ 下载管理：队列 / 进行中 / 已暂停 / 失败 / 已完成
+                                SettingsItem(
+                                    title = stringResource(R.string.download_manager_title),
+                                    subtitle = stringResource(R.string.setcat_download_manager_subtitle),
+                                    leadingIcon = { Icon(Icons.Rounded.Download, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { navController.navigateSafely(Screen.DownloadManager.route) }
+                                )
+                                // ⚡ 下载音质：可单独指定，或跟随播放音质
+                                val downloadQualityValue by settingsViewModel.downloadQualityValue.collectAsStateWithLifecycle()
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_download_quality_label),
+                                    description = stringResource(R.string.setcat_download_quality_desc),
+                                    options = buildMap {
+                                        put(
+                                            com.theveloper.pixelplay.data.preferences.MusicQualityCatalog.FOLLOW_PLAYBACK,
+                                            stringResource(R.string.setcat_download_quality_follow)
+                                        )
+                                        uiState.availableMusicQualities.forEach { quality ->
+                                            put(quality, com.theveloper.pixelplay.data.preferences.MusicQualityCatalog.labelFor(quality))
+                                        }
+                                    },
+                                    selectedKey = downloadQualityValue,
+                                    onSelectionChanged = { settingsViewModel.setDownloadQualityValue(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_download_path_title),
                                     subtitle = if (uiState.downloadPath.startsWith("content://")) "自定义目录" else uiState.downloadPath,
@@ -2823,6 +2849,31 @@ fun SettingsCategoryScreen(
                                     checked = downloadSkipExisting,
                                     onCheckedChange = { settingsViewModel.setDownloadSkipExisting(it) },
                                     leadingIcon = { Icon(Icons.Rounded.Download, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                // ⚡ 下载内嵌：封面 / 歌词标签 / 同名 .lrc
+                                val downloadEmbedCover by settingsViewModel.downloadEmbedCover.collectAsStateWithLifecycle()
+                                val downloadEmbedLyrics by settingsViewModel.downloadEmbedLyrics.collectAsStateWithLifecycle()
+                                val downloadWriteLrc by settingsViewModel.downloadWriteLrc.collectAsStateWithLifecycle()
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_download_embed_cover_title),
+                                    subtitle = stringResource(R.string.setcat_download_embed_cover_subtitle),
+                                    checked = downloadEmbedCover,
+                                    onCheckedChange = { settingsViewModel.setDownloadEmbedCover(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Image, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_download_embed_lyrics_title),
+                                    subtitle = stringResource(R.string.setcat_download_embed_lyrics_subtitle),
+                                    checked = downloadEmbedLyrics,
+                                    onCheckedChange = { settingsViewModel.setDownloadEmbedLyrics(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.Style, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_download_write_lrc_title),
+                                    subtitle = stringResource(R.string.setcat_download_write_lrc_subtitle),
+                                    checked = downloadWriteLrc,
+                                    onCheckedChange = { settingsViewModel.setDownloadWriteLrc(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.Language, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                             }
 

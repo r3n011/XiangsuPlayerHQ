@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FolderZip
 import androidx.compose.material.icons.rounded.HeartBroken
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -106,7 +107,9 @@ fun MultiSelectionBottomSheet(
     onToggleLikeAll: (shouldLike: Boolean) -> Unit,
     onShareAll: () -> Unit,
     onDeleteAll: (activity: Activity, onResult: (Boolean) -> Unit) -> Unit,
-    onBatchEdit: () -> Unit
+    onBatchEdit: () -> Unit,
+    /** 批量下载：仅当选中项里存在在线歌曲时由调用方传入，本地歌曲由调用方过滤 */
+    onDownloadAll: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -403,6 +406,40 @@ fun MultiSelectionBottomSheet(
                         }
                     }
                     
+                    // Row 2.5: 批量下载（仅选中项含在线歌曲时出现；本地歌曲由调用方过滤并提示）
+                    if (onDownloadAll != null) {
+                        item {
+                            FilledTonalButton(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 56.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                shape = CircleShape,
+                                onClick = {
+                                    onDownloadAll()
+                                    onDismiss()
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Download,
+                                    contentDescription = stringResource(R.string.cd_download_all)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                TightWrapText(
+                                    text = stringResource(R.string.action_download_all),
+                                    modifier = Modifier.padding(end = 4.dp),
+                                    overflow = TextOverflow.Ellipsis,
+                                    maxLines = 2,
+                                    lineHeight = 20.sp
+                                )
+                            }
+                        }
+                    }
+
                     // Row 3: Add to Playlist, Delete
                     item {
                         Row(
@@ -414,7 +451,7 @@ fun MultiSelectionBottomSheet(
                         ) {
                             FilledTonalButton(
                                 modifier = Modifier
-                                    .weight(0.5f)
+                                    .weight(0.6f)
                                     .heightIn(min = 66.dp),
                                 colors = ButtonDefaults.filledTonalButtonColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,

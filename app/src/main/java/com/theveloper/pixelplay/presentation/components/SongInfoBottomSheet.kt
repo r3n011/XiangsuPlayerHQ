@@ -596,7 +596,14 @@ fun SongInfoBottomSheet(
                                         if (isOnlineSong) {
                                             DownloadActionRow(
                                                 downloadInfo = songDownloadInfo,
-                                                onClick = { playerViewModel.downloadSong(song) }
+                                                onClick = { playerViewModel.downloadSong(song) },
+                                                onPauseToggle = {
+                                                    if (songDownloadInfo?.isPaused == true) {
+                                                        playerViewModel.resumeDownload(song.id)
+                                                    } else {
+                                                        playerViewModel.pauseDownload(song.id)
+                                                    }
+                                                }
                                             )
                                         }
 
@@ -1901,13 +1908,16 @@ private fun Row3Actions(
 private fun DownloadActionRow(
     downloadInfo: com.theveloper.pixelplay.data.service.http.MusicDownloadService.DownloadInfo?,
     onClick: () -> Unit,
+    onPauseToggle: () -> Unit,
 ) {
-    val isDownloading = downloadInfo != null && !downloadInfo.isComplete && !downloadInfo.isFailed
+    val isActive = downloadInfo?.isActive == true
+    val isPaused = downloadInfo?.isPaused == true
     val label = when {
-        isDownloading -> stringResource(
+        isActive -> stringResource(
             R.string.song_info_downloading_progress,
             downloadInfo.progress.toInt().coerceIn(0, 100)
         )
+        isPaused -> stringResource(R.string.song_info_download_paused)
         downloadInfo?.isComplete == true -> stringResource(R.string.song_info_downloaded)
         downloadInfo?.isFailed == true -> stringResource(R.string.song_info_download_failed)
         else -> stringResource(R.string.song_info_download)
@@ -1922,17 +1932,22 @@ private fun DownloadActionRow(
         ),
         contentPadding = PaddingValues(horizontal = 10.dp),
         shape = CircleShape,
-        enabled = !isDownloading,
-        onClick = onClick
+        // 已完成没有可点的动作；进行中可暂停、已暂停可继续、失败可重试
+        enabled = downloadInfo?.isComplete != true,
+        onClick = if (isActive || isPaused) onPauseToggle else onClick
     ) {
-        if (isDownloading) {
-            CircularProgressIndicator(
+        when {
+            isActive -> CircularProgressIndicator(
                 modifier = Modifier.size(22.dp),
                 strokeWidth = 3.dp,
                 progress = { (downloadInfo.progress / 100f).coerceIn(0f, 1f) }
             )
-        } else {
-            Icon(
+            isPaused -> Icon(
+                modifier = Modifier.size(24.dp),
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = stringResource(R.string.song_info_download_paused)
+            )
+            else -> Icon(
                 modifier = Modifier.size(24.dp),
                 imageVector = Icons.Rounded.Download,
                 contentDescription = stringResource(R.string.song_info_download)

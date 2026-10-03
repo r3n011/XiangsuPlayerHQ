@@ -1730,6 +1730,40 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ⚡ 下载内嵌：封面 / 歌词标签 / 同名 .lrc
+    val downloadEmbedCover: StateFlow<Boolean> = userPreferencesRepository.downloadEmbedCoverFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val downloadEmbedLyrics: StateFlow<Boolean> = userPreferencesRepository.downloadEmbedLyricsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val downloadWriteLrc: StateFlow<Boolean> = userPreferencesRepository.downloadWriteLrcFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun setDownloadEmbedCover(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setDownloadEmbedCover(enabled) }
+    }
+
+    fun setDownloadEmbedLyrics(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setDownloadEmbedLyrics(enabled) }
+    }
+
+    fun setDownloadWriteLrc(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setDownloadWriteLrc(enabled) }
+    }
+
+    /** 下载音质（follow = 跟随播放音质） */
+    val downloadQualityValue: StateFlow<String> = userPreferencesRepository.downloadQualityValueFlow
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            com.theveloper.pixelplay.data.preferences.MusicQualityCatalog.FOLLOW_PLAYBACK
+        )
+
+    fun setDownloadQualityValue(value: String) {
+        viewModelScope.launch { userPreferencesRepository.setDownloadQualityValue(value) }
+    }
+
     val isWebRemoteEnabled: StateFlow<Boolean> = aiPreferencesRepository.isWebRemoteEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 

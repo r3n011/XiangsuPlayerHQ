@@ -74,6 +74,8 @@
     <string name="cd_play_next_in_queue">下一首播放</string>
     <string name="cd_add_to_playlist">添加到播放列表</string>
     <string name="action_add_to_queue">添加到队列</string>
+    <string name="action_download_all">批量下载</string>
+    <string name="cd_download_all">批量下载选中歌曲</string>
     <string name="action_queue_next">下一首</string>
     <string name="cd_send_song_to_watch">将歌曲发送到手表</string>
     <string name="cd_watch_unavailable">手表不可用</string>

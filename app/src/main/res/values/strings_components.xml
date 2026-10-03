@@ -74,6 +74,8 @@
     <string name="cd_play_next_in_queue">Play next in queue</string>
     <string name="cd_add_to_playlist">Add to playlist</string>
     <string name="action_add_to_queue">Add to queue</string>
+    <string name="action_download_all">Download all</string>
+    <string name="cd_download_all">Download selected songs</string>
     <string name="action_queue_next">Next</string>
     <string name="cd_send_song_to_watch">Send song to watch</string>
     <string name="cd_watch_unavailable">Watch unavailable</string>
