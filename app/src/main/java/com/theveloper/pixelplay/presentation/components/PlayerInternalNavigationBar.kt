@@ -118,7 +118,12 @@ internal fun resolveNavBarSurfaceHeight(
 ): Dp {
     return when (navBarStyle) {
         NavBarStyle.FULL_WIDTH -> resolveNavBarContentHeight(compactMode) + systemNavBarInset
-        NavBarStyle.FLOATING -> NavBarContentHeightFloating + systemNavBarInset
+        // ⚡ 悬浮底栏高度**不再叠加系统 inset**：调用方在 Surface 外层已经用
+        //    `padding(bottom = systemNavBarInset)` 把整条栏抬到手势条之上，
+        //    这里再加一次会让 inset 被算两遍 —— 悬浮栏整体高出约一个手势条的高度
+        //    （表现就是「导航栏离屏幕底部太高」）。高度固定为 MiniPlayerHeight，
+        //    与上面的迷你播放条严格同高。
+        NavBarStyle.FLOATING -> NavBarContentHeightFloating
         else -> resolveNavBarContentHeight(compactMode)
     }
 }
