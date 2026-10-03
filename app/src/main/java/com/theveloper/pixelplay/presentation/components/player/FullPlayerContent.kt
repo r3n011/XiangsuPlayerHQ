@@ -1404,6 +1404,16 @@ fun FullPlayerContent(
             label = "orientationAlpha"
         )
         Box(modifier = Modifier.fillMaxSize()) {
+            // ⚡ 不透明底：播放器背景是「自定义背景图 / 绚丽背景」叠加出来的，两者都可能
+            //    整帧画不出东西（未选自定义图、歌曲没有封面、绚丽背景着色器在个别驱动上
+            //    失败）——播放器面板本身是透明 Surface，少了这一层就会「背景透明 →
+            //    直接看到后面的界面」。这里先铺一层专辑主题的最暗面色（**不参与下面那层的
+            //    方向切换淡入淡出**，任何时刻都是不透明的），背景缺失时只是少一层装饰。
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(surfaceContainerLowest)
+            )
             // ⚡ 自定义播放器背景：置于所有播放器内容之下（开关关闭或未选图时不绘制）
             //    背景不参与「播放器不透明度」——该设置只作用于背景之外的所有元素
             Box(

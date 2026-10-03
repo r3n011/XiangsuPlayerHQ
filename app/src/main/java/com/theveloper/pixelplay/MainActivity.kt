@@ -1430,7 +1430,8 @@ class MainActivity : ComponentActivity() {
             densityValue
         ) {
             val maxShiftPx = with(densityValue) { miniPlayerScrollShiftMaxDp.toPx() }
-            { maxShiftPx * (1f - bottomNavBarProgressState.value) }
+            val provider: () -> Float = { maxShiftPx * (1f - bottomNavBarProgressState.value) }
+            provider
         }
 
         // NavigationRail 的水平 padding:使用稳定值,不依赖动画值,避免位置抖动

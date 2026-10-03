@@ -31,7 +31,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.theveloper.pixelplay.presentation.components.blur.BlurryBackdrop
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -840,34 +839,14 @@ fun LyricsSheet(
                     currentSong?.albumArtUriString != null
 
             if (!hasCustomBackground && lyricsVibrantBackgroundEnabled) {
-                if (Build.VERSION.SDK_INT >= 31 && currentSong?.albumArtUriString != null) {
-                    // 高版本：Apple Music 风格 4 块封面旋转 + 重模糊（RenderEffect）
-                    AppleMusicRotatingBackground(
-                        albumArtUri = currentSong?.albumArtUriString,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = currentSong?.albumArtUriString != null,
-                        enter = fadeIn(animationSpec = tween(400)),
-                        exit = fadeOut(animationSpec = tween(300)),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // ⚡ Android 12（API 31）以下没有 RenderEffect，Modifier.blur 在低版本
-                        //    是「空操作」。这里改用 Blurry（jp.wasabeef）对封面位图做**真高斯模糊**：
-                        //    以前是「把封面解码成 24×24 再放大」的假模糊，放大后是大色块，观感很差。
-                        BlurryBackdrop(
-                            model = currentSong?.albumArtUriString,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
-                            radius = 25,
-                            sampling = 2,
-                            decodeSizePx = 256,
-                            contentScale = ContentScale.Crop,
-                        )
-                    }
-                }
+                // ⚡ 低版本不再单独走 CPU 模糊背景（封面解码 → 软件高斯 → 放大）：那层在低端机上
+                //    既费电又容易一帧有一帧无地闪，观感还不如纯色。现在统一交给
+                //    AppleMusicRotatingBackground —— 它内部按设备能力降级：AGSL 可用时是流体渐变，
+                //    低版本 / 着色器不可用时是**不透明纯色**（取封面主色）。
+                AppleMusicRotatingBackground(
+                    albumArtUri = currentSong?.albumArtUriString,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             // 纯色遮罩优先：开启时用均匀纯色压暗背景，替代渐变遮罩，避免两层叠加

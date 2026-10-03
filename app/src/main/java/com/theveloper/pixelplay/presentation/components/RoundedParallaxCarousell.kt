@@ -858,6 +858,10 @@ private data class Arrangement(
             targetLargeSize: Float,
             largeCounts: IntArray,
         ): Arrangement? {
+            // ⚡ 参数本身构不成合法区间时直接放弃（返回 null → 上层给空 keyline 列表）：
+            //    否则下面的 coerceIn 会抛「Cannot coerce value to an empty range」把整个 App 带崩。
+            if (availableSpace <= 0f || maxSmallSize < minSmallSize) return null
+
             var best: Arrangement? = null
             var bestCost = Float.MAX_VALUE
 
@@ -868,7 +872,13 @@ private data class Arrangement(
                     for (sc in smallCounts) {
                         // fijar tamaños (small acotado, medium entre small y large, large <= target)
                         val large = min(targetLargeSize, availableSpace)
+                        // ⚡ 容器比「最小小图尺寸」还窄时（播放器封面槽在动画/横竖屏切换途中会短暂
+                        //    塌成很小的宽度），small 会大于 large —— 下面 medium 的
+                        //    coerceIn(small, large) 就成了空区间，直接抛
+                        //    "Cannot coerce value to an empty range: maximum ... is less than minimum ..."。
+                        //    这里把 small 收进 large 之内，保证区间始终合法。
                         val small = targetSmallSize.coerceIn(minSmallSize, maxSmallSize)
+                            .coerceAtMost(large)
                         val medium = if (targetMediumSize > 0f) {
                             targetMediumSize.coerceIn(small, large)
                         } else (large + small) / 2f
@@ -915,7 +925,12 @@ private fun multiBrowseKeylineList(
     smallCounts: IntArray = intArrayOf(1),
     alignment: CarouselAlignment = CarouselAlignment.Start
 ): KeylineList {
-    if (carouselMainAxisSize == 0f || preferredItemSize == 0f) return emptyKeylineList()
+    // ⚡ 容器宽度比「最小小图尺寸」还窄时给不出有意义的 keyline：直接返回空列表，
+    //    让 carousel 这一帧退化成不渲染（下一帧尺寸正常后自动恢复），
+    //    而不是算出 small > large 的非法区间把 App 崩掉。
+    if (carouselMainAxisSize <= 0f || preferredItemSize <= 0f) return emptyKeylineList()
+    if (carouselMainAxisSize < minSmallItemSize) return emptyKeylineList()
+    if (maxSmallItemSize < minSmallItemSize) return emptyKeylineList()
 
     var resolvedSmallCounts = smallCounts
     val targetLargeSize = min(preferredItemSize, carouselMainAxisSize)

@@ -427,6 +427,21 @@ private fun interleavedGradientNoise(px: Float, py: Float): Float =
     fractF(52.9829189f * fractF(px * 0.06711056f + py * 0.00583715f))
 
 /**
+ * 取调色板里第 [index] 个主色的不透明 sRGB 分量（0..1，写入 [out] 的前三位）。
+ *
+ * 「绚丽背景」渲染失败时的兜底底色用它 —— 走的是与 [IsolationCpuRenderer] 完全相同的
+ * OkLab → sRGB 变换，降级后的底色与正常渲染的取色一致，不会跳成另一种颜色。
+ */
+internal fun isolationPaletteSrgb(colorBuffer: FloatArray, index: Int, out: FloatArray) {
+    val i = index.coerceIn(0, 3) * 3
+    val lab = floatArrayOf(colorBuffer[i], colorBuffer[i + 1], colorBuffer[i + 2])
+    okLabToSrgb(lab, out)
+    out[0] = out[0].coerceIn(0f, 1f)
+    out[1] = out[1].coerceIn(0f, 1f)
+    out[2] = out[2].coerceIn(0f, 1f)
+}
+
+/**
  * Isolation 片元函数的 CPU 实现，与 [ISOLATION_SHADER_SRC] 逐行对应。
  * 输出低分辨率 ARGB 像素，绘制端双线性放大到全屏 —— Isolation 本身是
  * 极低频的平滑渐变，低分辨率求值 + 放大在视觉上与逐像素几乎无差。
