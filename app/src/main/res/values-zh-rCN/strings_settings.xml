@@ -994,4 +994,15 @@
     <string name="setcat_lanzou_test_dialog_title">蓝奏云下载流程测试</string>
     <string name="setcat_lanzou_test_close">关闭</string>
     <string name="setcat_lanzou_test_open_browser">浏览器打开第一个直链</string>
+    <string name="setcat_lyrics_bg_style_title">歌词背景</string>
+    <string name="setcat_lyrics_bg_style_desc">歌词页背景样式：绚丽流体渐变 / 封面取色纯色 / 纯色（跟随主题）。</string>
+    <string name="setcat_player_bg_style_title">播放器背景</string>
+    <string name="setcat_player_bg_style_desc">播放器背景样式：绚丽流体渐变 / 封面取色纯色 / 纯色（跟随主题）。</string>
+    <string name="setcat_bg_style_vibrant">绚丽背景</string>
+    <string name="setcat_bg_style_palette">取色背景</string>
+    <string name="setcat_bg_style_solid">纯色背景</string>
+    <string name="setcat_lyrics_mono_colors_title">歌词按钮与文字黑白</string>
+    <string name="setcat_lyrics_mono_colors_desc">开启后歌词界面的按钮和文字强制为纯黑 / 纯白（暗色主题白、亮色主题黑）；关闭时与当前一致。</string>
+    <string name="setcat_player_mono_colors_title">播放器按钮与文字黑白</string>
+    <string name="setcat_player_mono_colors_desc">开启后播放器的按钮和文字强制为纯黑 / 纯白（暗色主题白、亮色主题黑）；关闭时与当前一致。</string>
 </resources>

@@ -71,6 +71,7 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
 import com.theveloper.pixelplay.data.provider.SharedArtworkContentProvider
+import com.theveloper.pixelplay.data.preferences.BackgroundStyle
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.LibraryManualOrderType
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
@@ -588,6 +589,36 @@ class PlayerViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = true
+        )
+    // ⚡ 背景样式（三选一：绚丽 / 取色 / 纯色），播放器与歌词页分开
+    val playerBackgroundStyle: StateFlow<BackgroundStyle> = userPreferencesRepository
+        .playerBackgroundStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = BackgroundStyle.VIBRANT
+        )
+    val lyricsBackgroundStyle: StateFlow<BackgroundStyle> = userPreferencesRepository
+        .lyricsBackgroundStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = BackgroundStyle.VIBRANT
+        )
+    // ⚡ 按钮 / 文字强制黑白（跟随主题明暗：暗色白色、亮色黑色），默认关闭
+    val playerMonoContentColors: StateFlow<Boolean> = userPreferencesRepository
+        .playerMonoContentColorsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
+        )
+    val lyricsMonoContentColors: StateFlow<Boolean> = userPreferencesRepository
+        .lyricsMonoContentColorsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
         )
     /**
      * High-frequency playback position should not force global UI recomposition.

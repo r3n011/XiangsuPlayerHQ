@@ -18,6 +18,7 @@ import com.theveloper.pixelplay.data.backup.model.RestorePlan
 import com.theveloper.pixelplay.data.backup.model.RestoreResult
 import com.theveloper.pixelplay.data.backup.model.ValidationError
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
+import com.theveloper.pixelplay.data.preferences.BackgroundStyle
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.ThemePreference
@@ -145,6 +146,12 @@ data class SettingsUiState(
     val animatedLyricsBlurStrength: Float = 1f,
     val lyricsVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
     val playerVibrantBackgroundEnabled: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R,
+    /** 背景样式三选一（绚丽 / 取色 / 纯色），播放器与歌词页分开 */
+    val playerBackgroundStyle: BackgroundStyle = BackgroundStyle.VIBRANT,
+    val lyricsBackgroundStyle: BackgroundStyle = BackgroundStyle.VIBRANT,
+    /** 按钮 / 文字强制黑白（跟随主题明暗），默认关闭 */
+    val playerMonoContentColors: Boolean = false,
+    val lyricsMonoContentColors: Boolean = false,
     val disableBlurAllOver: Boolean = false,
     val useNewTopBar: Boolean = true,
     val navBarBlurEnabled: Boolean = true,
@@ -797,6 +804,26 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.playerVibrantBackgroundEnabledFlow.collect { enabled ->
                 _uiState.update { it.copy(playerVibrantBackgroundEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.playerBackgroundStyleFlow.collect { style ->
+                _uiState.update { it.copy(playerBackgroundStyle = style) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.lyricsBackgroundStyleFlow.collect { style ->
+                _uiState.update { it.copy(lyricsBackgroundStyle = style) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.playerMonoContentColorsFlow.collect { enabled ->
+                _uiState.update { it.copy(playerMonoContentColors = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.lyricsMonoContentColorsFlow.collect { enabled ->
+                _uiState.update { it.copy(lyricsMonoContentColors = enabled) }
             }
         }
 
@@ -1621,6 +1648,32 @@ class SettingsViewModel @Inject constructor(
     fun setPlayerVibrantBackgroundEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setPlayerVibrantBackgroundEnabled(enabled)
+        }
+    }
+
+    /** 背景样式三选一：绚丽 / 取色 / 纯色 */
+    fun setPlayerBackgroundStyle(style: BackgroundStyle) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerBackgroundStyle(style)
+        }
+    }
+
+    fun setLyricsBackgroundStyle(style: BackgroundStyle) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLyricsBackgroundStyle(style)
+        }
+    }
+
+    /** 按钮 / 文字强制黑白（跟随主题明暗），播放器与歌词页分开 */
+    fun setPlayerMonoContentColors(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerMonoContentColors(enabled)
+        }
+    }
+
+    fun setLyricsMonoContentColors(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLyricsMonoContentColors(enabled)
         }
     }
 

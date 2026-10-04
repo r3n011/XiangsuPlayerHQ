@@ -83,6 +83,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -148,6 +149,7 @@ import kotlinx.coroutines.flow.map
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.theveloper.pixelplay.data.preferences.BackgroundStyle
 import com.theveloper.pixelplay.data.preferences.dataStore
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
 
@@ -177,7 +179,27 @@ internal data class LyricsSheetColors(
     val syncButtonContent: Color
 )
 
-internal fun lyricsSheetColors(colorScheme: ColorScheme): LyricsSheetColors {
+internal fun lyricsSheetColors(colorScheme: ColorScheme, forceMono: Boolean = false): LyricsSheetColors {
+    // ⚡ 强制黑白（歌词界面的开关，默认关闭）：跟随主题明暗 —— 暗色主题白色、亮色主题黑色；
+    //    填充按钮（播放/同步）同样变黑白，内容取反色。关闭时逐字节与原实现一致。
+    if (forceMono) {
+        val darkTheme = colorScheme.surface.luminance() < 0.5f
+        val mono = if (darkTheme) Color.White else Color.Black
+        val inverse = if (darkTheme) Color.Black else Color.White
+        return LyricsSheetColors(
+            container = colorScheme.primaryContainer,
+            content = mono,
+            controlContainer = colorScheme.surfaceContainerLowest,
+            controlContent = mono,
+            accent = mono,
+            accentContent = inverse,
+            lyricHighlight = mono,
+            playPauseContainer = mono,
+            playPauseContent = inverse,
+            syncButtonContainer = mono,
+            syncButtonContent = inverse
+        )
+    }
     val container = colorScheme.primaryContainer
     val content = colorScheme.onPrimaryContainer
     val accent = colorScheme.primary
@@ -295,7 +317,10 @@ fun LyricsSheet(
     customPlayerControlsOpacity: Int,
     lyricsGradientOverlayEnabled: Boolean,
     lyricsSolidOverlayAlpha: Float = 0f,
-    lyricsVibrantBackgroundEnabled: Boolean = true,
+    /** 歌词页背景样式：绚丽流体 / 取色（静态封面主色）/ 纯色（跟随主题） */
+    lyricsBackgroundStyle: BackgroundStyle = BackgroundStyle.VIBRANT,
+    /** 歌词界面按钮 / 文字强制黑白（跟随主题明暗），默认关闭 */
+    forceMonoColors: Boolean = false,
     modifier: Modifier = Modifier,
     swipeThreshold: Dp = 100.dp,
     highlightZoneFraction: Float = 0.08f, // Reduced from 0.22 for less padding
@@ -355,7 +380,9 @@ fun LyricsSheet(
         .distinctUntilChanged()
         .collectAsStateWithLifecycle(initialValue = 0L)
 
-    val sheetColors = remember(colorScheme) { lyricsSheetColors(colorScheme) }
+    val sheetColors = remember(colorScheme, forceMonoColors) {
+        lyricsSheetColors(colorScheme, forceMono = forceMonoColors)
+    }
     val backgroundColor = sheetColors.controlContainer
     val onBackgroundColor = sheetColors.controlContent
     val containerColor = sheetColors.container
@@ -829,23 +856,25 @@ fun LyricsSheet(
             val hasCustomBackground =
                 customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank()
 
-            // ⚡ 绚丽背景是否真的在绘制（开关开着 + 有封面 + 没有自定义背景图）。
+            // ⚡ 背景层是否真的在绘制（样式非「纯色」+ 有封面 + 没有自定义背景图）。
             //   下面的「歌词渐变遮罩」在它生效时必须让位：那层 0.4 → 0.95 的渐变会把网格
-            //   盖成一块纯色 —— 表现就是「歌词绚丽背景打开了却只有纯色」。
+            //   盖成一块纯色 —— 表现就是「歌词背景开了却只有纯色」。
             //   这与播放器背景的处理保持一致，也对齐 AMLL（背景是纯效果层，不带 scrim）。
-            val vibrantBackgroundActive =
+            val backgroundActive =
                 !hasCustomBackground &&
-                    lyricsVibrantBackgroundEnabled &&
+                    lyricsBackgroundStyle != BackgroundStyle.SOLID &&
                     currentSong?.albumArtUriString != null
 
-            if (!hasCustomBackground && lyricsVibrantBackgroundEnabled) {
+            if (!hasCustomBackground && lyricsBackgroundStyle != BackgroundStyle.SOLID) {
                 // ⚡ 低版本不再单独走 CPU 模糊背景（封面解码 → 软件高斯 → 放大）：那层在低端机上
                 //    既费电又容易一帧有一帧无地闪，观感还不如纯色。现在统一交给
-                //    AppleMusicRotatingBackground —— 它内部按设备能力降级：AGSL 可用时是流体渐变，
-                //    低版本 / 着色器不可用时是**不透明纯色**（取封面主色）。
+                //    AppleMusicRotatingBackground —— 内部按样式/设备能力渲染：
+                //    绚丽 = AGSL 流体渐变（低版本 / 着色器不可用时为 Cloudy 模糊封面）；
+                //    取色 = 静态封面主色纯色。
                 AppleMusicRotatingBackground(
                     albumArtUri = currentSong?.albumArtUriString,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    style = lyricsBackgroundStyle
                 )
             }
 
@@ -856,9 +885,9 @@ fun LyricsSheet(
                         .fillMaxSize()
                         .background(containerColor.copy(alpha = lyricsSolidOverlayAlpha))
                 )
-            } else if (lyricsGradientOverlayEnabled && !vibrantBackgroundActive) {
+            } else if (lyricsGradientOverlayEnabled && !backgroundActive) {
                 // 渐变遮罩：上下柔和渐变，提升文字可读性（受「歌词渐变遮罩」开关控制）。
-                // 绚丽背景正在绘制时跳过这层（见 vibrantBackgroundActive 的说明），
+                // 背景层正在绘制时跳过这层（见 backgroundActive 的说明），
                 // 否则网格会被 0.4 → 0.95 的渐变盖成纯色。
                 Box(
                     modifier = Modifier
@@ -872,7 +901,7 @@ fun LyricsSheet(
                             )
                         )
                 )
-            } else if (vibrantBackgroundActive) {
+            } else if (backgroundActive) {
                 // ⚡ 绚丽背景生效时也要给歌词留一层「轻」遮罩：Isolation 流体背景虽然是
                 //    低频渐变，但亮部（尤其浅色封面）仍会顶掉歌词对比度。这里用远低于
                 //    纯色档的透明度（0.12 → 0.42）——压住亮部的同时不会把流体盖成纯色。

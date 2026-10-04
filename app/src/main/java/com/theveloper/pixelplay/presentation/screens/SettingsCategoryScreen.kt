@@ -234,6 +234,7 @@ import com.theveloper.pixelplay.data.backup.model.ModuleRestoreDetail
 import com.theveloper.pixelplay.data.backup.model.RestorePlan
 import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
+import com.theveloper.pixelplay.data.preferences.BackgroundStyle
 import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.LaunchTab
@@ -1783,41 +1784,55 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Rounded.Layers, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
-                                // 绚丽背景在安卓10及以下（SDK <= 29）软件模糊效果一般，
-                                // 不硬性禁用：低版本默认关闭，开启时弹警告确认。
-                                val vibrantBgSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_lyrics_vibrant_bg_title),
-                                    subtitle = if (vibrantBgSupported)
-                                        stringResource(R.string.setcat_lyrics_vibrant_bg_desc)
-                                    else
-                                        stringResource(R.string.setcat_vibrant_bg_warning_message),
-                                    checked = uiState.lyricsVibrantBackgroundEnabled,
-                                    onCheckedChange = { enable ->
-                                        if (enable && !vibrantBgSupported) {
-                                            vibrantBgConfirmTarget = "lyrics"
-                                        } else {
-                                            settingsViewModel.setLyricsVibrantBackgroundEnabled(enable)
-                                        }
+                                // ⚡ 背景样式三选一（原「歌词绚丽背景」开关升级而来）：
+                                //    绚丽背景 = 流体渐变；取色背景 = 静态封面主色；纯色背景 = 跟随主题
+                                //    （即原开关关闭时的观感）。旧开关的「开/关」自动迁移为 绚丽/纯色。
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_lyrics_bg_style_title),
+                                    description = stringResource(R.string.setcat_lyrics_bg_style_desc),
+                                    options = mapOf(
+                                        BackgroundStyle.VIBRANT.name to stringResource(R.string.setcat_bg_style_vibrant),
+                                        BackgroundStyle.PALETTE.name to stringResource(R.string.setcat_bg_style_palette),
+                                        BackgroundStyle.SOLID.name to stringResource(R.string.setcat_bg_style_solid)
+                                    ),
+                                    selectedKey = uiState.lyricsBackgroundStyle.name,
+                                    onSelectionChanged = { key ->
+                                        settingsViewModel.setLyricsBackgroundStyle(BackgroundStyle.fromName(key))
                                     },
                                     leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_player_vibrant_bg_title),
-                                    subtitle = if (vibrantBgSupported)
-                                        stringResource(R.string.setcat_player_vibrant_bg_desc)
-                                    else
-                                        stringResource(R.string.setcat_vibrant_bg_warning_message),
-                                    checked = uiState.playerVibrantBackgroundEnabled,
-                                    onCheckedChange = { enable ->
-                                        if (enable && !vibrantBgSupported) {
-                                            vibrantBgConfirmTarget = "player"
-                                        } else {
-                                            settingsViewModel.setPlayerVibrantBackgroundEnabled(enable)
-                                        }
+                                // ⚡ 背景样式三选一（原「播放器绚丽背景」开关升级而来）
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_player_bg_style_title),
+                                    description = stringResource(R.string.setcat_player_bg_style_desc),
+                                    options = mapOf(
+                                        BackgroundStyle.VIBRANT.name to stringResource(R.string.setcat_bg_style_vibrant),
+                                        BackgroundStyle.PALETTE.name to stringResource(R.string.setcat_bg_style_palette),
+                                        BackgroundStyle.SOLID.name to stringResource(R.string.setcat_bg_style_solid)
+                                    ),
+                                    selectedKey = uiState.playerBackgroundStyle.name,
+                                    onSelectionChanged = { key ->
+                                        settingsViewModel.setPlayerBackgroundStyle(BackgroundStyle.fromName(key))
                                     },
                                     leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
+                                // ⚡ 按钮 / 文字强制黑白（跟随主题明暗：暗色主题白色、亮色主题黑色）。
+                                //    默认关闭，关闭时与当前观感完全一致。
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_lyrics_mono_colors_title),
+                                    subtitle = stringResource(R.string.setcat_lyrics_mono_colors_desc),
+                                    checked = uiState.lyricsMonoContentColors,
+                                    onCheckedChange = { settingsViewModel.setLyricsMonoContentColors(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.LightMode, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_player_mono_colors_title),
+                                    subtitle = stringResource(R.string.setcat_player_mono_colors_desc),
+                                    checked = uiState.playerMonoContentColors,
+                                    onCheckedChange = { settingsViewModel.setPlayerMonoContentColors(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.LightMode, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
                                 // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）

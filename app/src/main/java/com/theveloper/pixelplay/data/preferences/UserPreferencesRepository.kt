@@ -213,6 +213,24 @@ data class PersistedDownloadEntry(
     val filePath: String = ""
 )
 
+/**
+ * 播放器 / 歌词页的背景样式（三选一）。
+ *
+ * - [VIBRANT] 绚丽背景：AMLL 流体渐变（低版本 / 着色器不可用时自动降级为 Cloudy 模糊封面）；
+ * - [PALETTE] 取色背景：静态的封面主色纯色（封面色调氛围，不流动）；
+ * - [SOLID] 纯色背景：不绘制任何背景层，直接跟随主题表面色（此前的「关闭绚丽背景」观感）。
+ */
+enum class BackgroundStyle {
+    VIBRANT,
+    PALETTE,
+    SOLID;
+
+    companion object {
+        fun fromName(raw: String?): BackgroundStyle =
+            entries.firstOrNull { it.name == raw } ?: VIBRANT
+    }
+}
+
 @Singleton
 class UserPreferencesRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
@@ -513,6 +531,12 @@ class UserPreferencesRepository @Inject constructor(
         val LYRICS_VIBRANT_BACKGROUND_ENABLED = booleanPreferencesKey("lyrics_vibrant_background_enabled")
         // Player vibrant (album rotating blurred) background
         val PLAYER_VIBRANT_BACKGROUND_ENABLED = booleanPreferencesKey("player_vibrant_background_enabled")
+        // 背景样式三选一（绚丽 / 取色 / 纯色）；旧布尔开关仅用于读取迁移
+        val LYRICS_BACKGROUND_STYLE = stringPreferencesKey("lyrics_background_style")
+        val PLAYER_BACKGROUND_STYLE = stringPreferencesKey("player_background_style")
+        // 按钮 / 文字强制黑白（跟随主题明暗：暗色模式白色、亮色模式黑色），默认关闭
+        val PLAYER_MONO_CONTENT_COLORS = booleanPreferencesKey("player_mono_content_colors")
+        val LYRICS_MONO_CONTENT_COLORS = booleanPreferencesKey("lyrics_mono_content_colors")
 
         // Download settings
         val DOWNLOAD_PATH = stringPreferencesKey("download_path")
@@ -1896,6 +1920,54 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     /** 低版本默认关闭，高版本默认开启 */
     private fun vibrantBackgroundDefault(): Boolean = vibrantBackgroundRecommended
+
+    /**
+     * 背景样式（三选一）。旧键（布尔开关）存在、新键不存在时按「开=绚丽 / 关=纯色」迁移；
+     * 都没有时跟随 [vibrantBackgroundDefault]（低版本默认纯色，高版本默认绚丽）。
+     */
+    val lyricsBackgroundStyleFlow: Flow<BackgroundStyle> =
+        pref { prefs ->
+            prefs[PreferencesKeys.LYRICS_BACKGROUND_STYLE]?.let(BackgroundStyle::fromName)
+                ?: if (prefs[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] ?: vibrantBackgroundDefault()) {
+                    BackgroundStyle.VIBRANT
+                } else {
+                    BackgroundStyle.SOLID
+                }
+        }
+
+    suspend fun setLyricsBackgroundStyle(style: BackgroundStyle) {
+        dataStore.edit { it[PreferencesKeys.LYRICS_BACKGROUND_STYLE] = style.name }
+    }
+
+    val playerBackgroundStyleFlow: Flow<BackgroundStyle> =
+        pref { prefs ->
+            prefs[PreferencesKeys.PLAYER_BACKGROUND_STYLE]?.let(BackgroundStyle::fromName)
+                ?: if (prefs[PreferencesKeys.PLAYER_VIBRANT_BACKGROUND_ENABLED] ?: vibrantBackgroundDefault()) {
+                    BackgroundStyle.VIBRANT
+                } else {
+                    BackgroundStyle.SOLID
+                }
+        }
+
+    suspend fun setPlayerBackgroundStyle(style: BackgroundStyle) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_BACKGROUND_STYLE] = style.name }
+    }
+
+    /** 播放器按钮 / 文字强制黑白（跟随主题明暗），默认关闭 */
+    val playerMonoContentColorsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.PLAYER_MONO_CONTENT_COLORS] ?: false }
+
+    suspend fun setPlayerMonoContentColors(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_MONO_CONTENT_COLORS] = enabled }
+    }
+
+    /** 歌词界面按钮 / 文字强制黑白，默认关闭 */
+    val lyricsMonoContentColorsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.LYRICS_MONO_CONTENT_COLORS] ?: false }
+
+    suspend fun setLyricsMonoContentColors(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.LYRICS_MONO_CONTENT_COLORS] = enabled }
+    }
 
     val lyricsVibrantBackgroundEnabledFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.LYRICS_VIBRANT_BACKGROUND_ENABLED] ?: vibrantBackgroundDefault() }

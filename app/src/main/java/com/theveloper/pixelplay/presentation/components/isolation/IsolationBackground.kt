@@ -107,6 +107,14 @@ private const val RENDERER_AGSL = 1
 private const val RENDERER_SOLID = 2
 
 /**
+ * 档位：**取色背景（静态封面主色）**。
+ *
+ * 「取色背景」样式专用：直接把封面调色板主色铺成不透明纯色（复用 [SolidIsolationCanvas]），
+ * 不跑流体着色器、不做能力探测 —— 有封面色调的氛围，但不流动。
+ */
+private const val RENDERER_STATIC_PALETTE = 3
+
+/**
  * 「绚丽背景」渲染能力缓存（进程级）。
  *
  * 个别机型 / 驱动上 AGSL 着色器会编译失败或**画不出任何像素**（表现为播放器背景透明、
@@ -278,6 +286,11 @@ internal fun IsolationBackground(
     modifier: Modifier = Modifier,
     lightWave: Boolean = true,
     dithering: Boolean = true,
+    /**
+     * true = 取色背景：直接铺静态的封面主色纯色（不走 AGSL / 能力探测，不流动）；
+     * false = 绚丽背景：流体渐变（低版本 / 着色器不可用时自动降级为 Cloudy 模糊封面）。
+     */
+    staticPalette: Boolean = false,
 ) {
     val state = remember { IsolationBackgroundState(lightWave = lightWave, dithering = dithering) }
 
@@ -351,8 +364,12 @@ internal fun IsolationBackground(
     // ⚡ 渲染档位：先在后台探测一次设备能力（AGSL 着色器在硬件画布上能否真的画出像素），
     //    探测期间只画不透明兜底纯色 —— 保证任何时刻都不会出现「背景透明」。
     //    探测不过或渲染失败即永久降档到兜底（封面模糊背景）。
-    var rendererLevel by remember { mutableIntStateOf(IsolationCapability.cachedLevel()) }
-    LaunchedEffect(Unit) {
+    //    取色背景（staticPalette=true）直接进静态档：不探测、不跑着色器。
+    var rendererLevel by remember(staticPalette) {
+        mutableIntStateOf(if (staticPalette) RENDERER_STATIC_PALETTE else IsolationCapability.cachedLevel())
+    }
+    LaunchedEffect(staticPalette) {
+        if (staticPalette) return@LaunchedEffect
         // 只有「还没探测过」才需要异步探测；已探测过的直接沿用缓存档位，不会闪一帧纯色
         if (rendererLevel == RENDERER_PROBING) {
             rendererLevel = withContext(Dispatchers.Default) { IsolationCapability.initialLevel() }
@@ -375,6 +392,7 @@ internal fun IsolationBackground(
             lastActivityNanos = lastActivity,
             onRendererFailed = onAgsFailed,
         )
+        RENDERER_STATIC_PALETTE -> SolidIsolationCanvas(state, modifier)
         else -> FallbackIsolationBackground(
             state = state,
             albumArtUri = albumArtUri,

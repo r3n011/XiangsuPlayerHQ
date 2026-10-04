@@ -1092,4 +1092,15 @@
     <string name="setcat_lanzou_test_dialog_title">Lanzou download flow test</string>
     <string name="setcat_lanzou_test_close">Close</string>
     <string name="setcat_lanzou_test_open_browser">Open first direct link in browser</string>
+    <string name="setcat_lyrics_bg_style_title">Lyrics background</string>
+    <string name="setcat_lyrics_bg_style_desc">Lyrics background style: vibrant gradient, cover-palette color, or plain theme color.</string>
+    <string name="setcat_player_bg_style_title">Player background</string>
+    <string name="setcat_player_bg_style_desc">Player background style: vibrant gradient, cover-palette color, or plain theme color.</string>
+    <string name="setcat_bg_style_vibrant">Vibrant</string>
+    <string name="setcat_bg_style_palette">Palette</string>
+    <string name="setcat_bg_style_solid">Solid</string>
+    <string name="setcat_lyrics_mono_colors_title">Monochrome lyrics buttons &amp; text</string>
+    <string name="setcat_lyrics_mono_colors_desc">Force lyrics buttons and text to pure black / white (white in dark theme, black in light theme). Off keeps the current look.</string>
+    <string name="setcat_player_mono_colors_title">Monochrome player buttons &amp; text</string>
+    <string name="setcat_player_mono_colors_desc">Force player buttons and text to pure black / white (white in dark theme, black in light theme). Off keeps the current look.</string>
 </resources>

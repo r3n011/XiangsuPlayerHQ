@@ -119,6 +119,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -182,6 +183,7 @@ import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
+import com.theveloper.pixelplay.data.preferences.BackgroundStyle
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
@@ -416,8 +418,11 @@ fun FullPlayerContent(
     val customPlayerControlsOpacity by playerViewModel.customPlayerControlsOpacity.collectAsStateWithLifecycle()
     val lyricsGradientOverlayEnabled by playerViewModel.lyricsGradientOverlayEnabled.collectAsStateWithLifecycle()
     val lyricsSolidOverlayAlpha by playerViewModel.lyricsSolidOverlayAlpha.collectAsStateWithLifecycle()
-    val lyricsVibrantBackgroundEnabled by playerViewModel.lyricsVibrantBackgroundEnabled.collectAsStateWithLifecycle()
-    val playerVibrantBackgroundEnabled by playerViewModel.playerVibrantBackgroundEnabled.collectAsStateWithLifecycle()
+    // ⚡ 背景样式三选一（绚丽 / 取色 / 纯色），播放器与歌词页分开控制
+    val playerBackgroundStyle by playerViewModel.playerBackgroundStyle.collectAsStateWithLifecycle()
+    val lyricsBackgroundStyle by playerViewModel.lyricsBackgroundStyle.collectAsStateWithLifecycle()
+    // ⚡ 歌词界面按钮 / 文字强制黑白开关
+    val lyricsMonoContentColors by playerViewModel.lyricsMonoContentColors.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     // Tablet player layout preference
     val tabletPlayerLayout by playerViewModel.tabletPlayerLayout.collectAsStateWithLifecycle()
@@ -582,9 +587,18 @@ fun FullPlayerContent(
     //   此处再套一层 animateColorAsState(400ms) 会导致双重插值——
     //   每个 ColorScheme 变化触发 9 个动画同时启动，每帧 9×400ms 插值 = 严重卡顿。
     //   移除后切歌颜色过渡仍平滑（由 SheetThemeState 驱动），且大幅减少 recomposition。
-    val playerOnBaseColor = LocalMaterialTheme.current.onPrimaryContainer
-    val playerAccentColor = LocalMaterialTheme.current.primary
-    val playerOnAccentColor = LocalMaterialTheme.current.onPrimary
+    // ⚡ 按钮 / 文字强制黑白（默认关闭；关闭时与原行为完全一致）。
+    //    取色跟随主题明暗：暗色主题 → 白；亮色主题 → 黑；accent 填充按钮同样变黑白，内容取反色。
+    val monoPlayerContent by playerViewModel.playerMonoContentColors.collectAsStateWithLifecycle()
+    val isDarkPlayerSurface = LocalMaterialTheme.current.surface.luminance() < 0.5f
+    val monoPlayerColor = if (isDarkPlayerSurface) Color.White else Color.Black
+    val monoPlayerInverseColor = if (isDarkPlayerSurface) Color.Black else Color.White
+    val playerOnBaseColor =
+        if (monoPlayerContent) monoPlayerColor else LocalMaterialTheme.current.onPrimaryContainer
+    val playerAccentColor =
+        if (monoPlayerContent) monoPlayerColor else LocalMaterialTheme.current.primary
+    val playerOnAccentColor =
+        if (monoPlayerContent) monoPlayerInverseColor else LocalMaterialTheme.current.onPrimary
 
     // ⚡ 无色块样式（用户可选）：上一曲/播放/下一曲渲染为纯图标，
     //   不带色块背景（容器透明、图标统一用背景色），对齐设置里的开关
@@ -1430,14 +1444,15 @@ fun FullPlayerContent(
                     scrimAlpha = 0.25f
                 )
                 // 歌词背景那套「封面旋转 + 重模糊」氛围背景，复刻到播放器背景：
-                // 未使用自定义背景图且开启「播放器绚丽背景」开关时启用（与歌词背景分开控制，默认启用）
-                if (playerVibrantBackgroundEnabled &&
+                // 未使用自定义背景图且样式非「纯色背景」时启用（与歌词背景分开控制，默认绚丽）
+                if (playerBackgroundStyle != BackgroundStyle.SOLID &&
                     !(customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank())
                 ) {
                     song?.albumArtUriString?.let { albumArtUri ->
                         AppleMusicRotatingBackground(
                             albumArtUri = albumArtUri,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            style = playerBackgroundStyle
                         )
                         // ⚡ 可读性遮罩：绚丽背景是高饱和彩色流体，亮部会压低歌名/歌词/控制
                         //    文字的对比度。叠一层黑色的垂直渐变（上浅下深）——顶部尽量
@@ -1603,7 +1618,7 @@ fun FullPlayerContent(
                         customPlayerControlsOpacity = customPlayerControlsOpacity,
                         lyricsGradientOverlayEnabled = lyricsGradientOverlayEnabled,
                         lyricsSolidOverlayAlpha = lyricsSolidOverlayAlpha,
-                        lyricsVibrantBackgroundEnabled = lyricsVibrantBackgroundEnabled,
+                        lyricsBackgroundStyle = lyricsBackgroundStyle,
                         immersiveLyricsEnabled = immersiveLyricsEnabled,
                         immersiveLyricsTimeout = immersiveLyricsTimeout,
                         isImmersiveTemporarilyDisabled = isImmersiveTemporarilyDisabled,
@@ -1726,7 +1741,8 @@ fun FullPlayerContent(
             customPlayerControlsOpacity = customPlayerControlsOpacity,
             lyricsGradientOverlayEnabled = lyricsGradientOverlayEnabled,
             lyricsSolidOverlayAlpha = lyricsSolidOverlayAlpha,
-            lyricsVibrantBackgroundEnabled = lyricsVibrantBackgroundEnabled
+            lyricsBackgroundStyle = lyricsBackgroundStyle,
+            forceMonoColors = lyricsMonoContentColors
         )
     }
     } // end if (!useParallelLayout)
@@ -5228,7 +5244,7 @@ private fun FullPlayerParallelLayout(
     customPlayerControlsOpacity: Int,
     lyricsGradientOverlayEnabled: Boolean,
     lyricsSolidOverlayAlpha: Float,
-    lyricsVibrantBackgroundEnabled: Boolean,
+    lyricsBackgroundStyle: BackgroundStyle,
     immersiveLyricsEnabled: Boolean,
     immersiveLyricsTimeout: Long,
     isImmersiveTemporarilyDisabled: Boolean,
