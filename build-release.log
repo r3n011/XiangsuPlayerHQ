@@ -107,3 +107,5 @@
 > Task :app:kspLiteReleaseKotlin
 > Task :app:processFullReleaseResources
 > Task :app:processLiteReleaseResources
+> Task :app:compileFullReleaseKotlin
+> Task :app:compileLiteReleaseKotlin
