@@ -56,16 +56,29 @@ class LanzouCloudApi {
 
     /**
      * 从文件名解析版本号
-     * 支持格式：PixelPlay-{versionName}-{versionCode}-{date}-arm64.apk
-     *         或：PixelPlay-{versionName}-{versionCode}-{date}-universal.apk
-     *         或：PixelPlay-{versionName}-{versionCode}-{date}-release.apk（对齐 example.py target_name）
+     * 支持格式：PixelPlay-{versionName}-{versionCode}-{date}-{变体后缀}.apk
+     * 变体后缀是任意组合（release / liteRelease-arm64 / fullRelease-universal 等），
+     * 因此只锚定 `版本-编号-日期-` 的前三段结构，不再假设后缀形式 ——
+     * 旧正则要求日期后直接接 arm64|universal|release，遇到 liteRelease/fullRelease
+     * 会匹配失败导致 versionName 全为 null、版本比对失效。
      */
     fun parseVersionFromFileName(fileName: String): String? {
         val apkName = fileName.removeSuffix(".apk")
-        // 匹配 PixelPlay-{versionName}-{versionCode}-{date}-{variant} 格式
-        val regex = Regex("""PixelPlay-([\d.]+)-\d+-\d+-(arm64|universal|release)""")
+        val regex = Regex("""PixelPlay-([0-9][\w.]*?)-\d+-\d+-""")
         val match = regex.find(apkName)
         return match?.groupValues?.get(1)
+    }
+
+    /**
+     * 解析蓝奏云 acw_sc__v2 JS 挑战页（提取 arg1 并计算 cookie 值）。
+     * ⚡ 直链的 CDN 域名（动态 dom，如 slsstm2.dmpdmp.com）与分享域是**独立**的挑战会话：
+     *   下载器拿到 text/html 挑战页时用它解出 cookie，携带挑战响应的会话 cookie 重试。
+     * 非挑战页返回 null。
+     */
+    fun solveAcwChallenge(html: String): String? {
+        val arg1 = Regex("""var\s+arg1\s*=\s*'([^']+)'""").find(html)?.groupValues?.get(1)
+            ?: return null
+        return generateAcwCookieV3(arg1)
     }
 
     /**
@@ -253,11 +266,11 @@ class LanzouCloudApi {
 
         // 提取 ajax 参数
         val action = Regex("""'action':\s*'([^']+)'""").find(buttonPage)?.groupValues?.get(1)
-        val ajaxdata = Regex("""var\s+ajaxdata\s*=\s*'([^']+)';""").find(buttonPage)?.groupValues?.get(1)
-        val wpSign = Regex("""var\s+wp_sign\s*=\s*'([^']+)';""").find(buttonPage)?.groupValues?.get(1)
+        val ajaxdata = Regex("""var\s+ajaxdata\s*=\s*'([^']+)'""").find(buttonPage)?.groupValues?.get(1)
+        val wpSign = Regex("""var\s+wp_sign\s*=\s*'([^']+)'""").find(buttonPage)?.groupValues?.get(1)
         val websign = Regex("""'websign':\s*'([^']+)'""").find(buttonPage)?.groupValues?.get(1)
         val ajaxUrl = Regex("""url\s*:\s*'(/ajaxm[^']+)'""").find(buttonPage)?.groupValues?.get(1)
-        if (action == null || ajaxdata == null || wpSign == null || websign == null || ajaxUrl == null) {
+        if (action == null || ajaxdata == null || wpSign == null || websign == null) {
             Timber.w("Lanzou: missing ajax params for ${entry.name}")
             return null
         }
@@ -273,19 +286,39 @@ class LanzouCloudApi {
         ajaxForm["kd"] = kdns.toString()
         ajaxForm["ves"] = ves.toString()
 
-        val dlJson = session.post("https://$host$ajaxUrl", ajaxForm, referer = buttonUrl)
-        // Python 版不校验 zt，直接取 url 字段拼直链；为空则失败
-        val dlObj = JSONObject(dlJson)
-        val urlPart = dlObj.optString("url")
-        if (urlPart.isBlank()) {
-            Timber.w("Lanzou: ajax failed for ${entry.name}: $dlJson")
+        // ⚡ 蓝奏云新版 /fn 页把下载接口从相对路径 /ajaxm 改为**绝对域名的 ajaxfile.php**
+        //    （var domain1/domain2 双镜像，url : dom_ajaxs 由 killdnsweb.js 运行时决定）。
+        //    旧正则只找 `url : '/ajaxm...'`，新版页面永远提取不到 → 全部文件解析失败。
+        //    两种形式都兼容：相对路径拼 host；绝对地址逐个镜像尝试。
+        val ajaxTargets: List<String> = ajaxUrl?.let { listOf("https://$host$it") }
+            ?: Regex("""var\s+domain\d+\s*=\s*'([^']+)'""").findAll(buttonPage)
+                .map { it.groupValues[1] }
+                .toList()
+        if (ajaxTargets.isEmpty()) {
+            Timber.w("Lanzou: no ajax target for ${entry.name}")
             return null
         }
-        // ⚡ 优先用 ajax 返回的真实 CDN 域名 dom（蓝奏云经常更换 CDN 域名，
-        // 硬编码 slssm.dmpdmp.com 一旦失效会导致下载 404/无法访问），
-        // dom 缺失时才回退硬编码域名
+
+        val dlObj = ajaxTargets.firstNotNullOfOrNull { target ->
+            runCatching { JSONObject(session.post(target, ajaxForm, referer = buttonUrl)) }
+                .onFailure { Timber.w(it, "Lanzou: ajax request failed for ${entry.name} on $target") }
+                .getOrNull()
+        } ?: run {
+            Timber.w("Lanzou: all ajax targets failed for ${entry.name}")
+            return null
+        }
+        val urlPart = dlObj.optString("url")
+        if (urlPart.isBlank()) {
+            Timber.w("Lanzou: ajax failed for ${entry.name}: $dlObj")
+            return null
+        }
+        // ⚡ 优先用 ajax 返回的真实 CDN 域名 dom（蓝奏云经常更换 CDN 域名）。
+        //    dom 缺失时用页面自身的兜底域 developer2oss.lanzouc.com:661（kdns==0 分支），
+        //    最后才回退旧硬编码域名。
         val dom = dlObj.optString("dom").takeIf { it.isNotBlank() }?.trimEnd('/')
-        val base = dom ?: "https://slssm.dmpdmp.com"
+        val base = dom
+            ?: "https://developer2oss.lanzouc.com:661".takeIf { kdns == 0 }
+            ?: "https://slssm.dmpdmp.com"
         return "$base/file/$urlPart"
     }
 

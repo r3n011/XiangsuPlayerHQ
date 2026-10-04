@@ -65,8 +65,13 @@ class ListenTogetherViewModel @Inject constructor(
                 return@launch
             }
             val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie)
-                .getOrElse {
-                    coordinator.startHostRoomWithSongs(emptyList(), failureMessage = "获取漫游推荐失败：${it.message}")
+                .getOrElse { error ->
+                    // 漫游推荐失败：直接给出原因（过一遍友好映射，避免服务端原文直出）
+                    coordinator.reportError(
+                        "获取漫游推荐失败：" +
+                            com.theveloper.pixelplay.data.listentogether
+                                .friendlyListenTogetherMessage(error.message.orEmpty())
+                    )
                     return@launch
                 }
             val songs = neteaseRepository.getNeteaseSongsByIds(songIds)

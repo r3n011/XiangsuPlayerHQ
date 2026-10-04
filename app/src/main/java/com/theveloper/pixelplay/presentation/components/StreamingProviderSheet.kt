@@ -1,6 +1,8 @@
 package com.theveloper.pixelplay.presentation.components
 
 import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -39,7 +42,7 @@ import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
  * Uses a segmented Material 3 Expressive list that matches the other
  * bottom sheets in the app while keeping provider order and icon colors intact.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun StreamingProviderSheet(
     onDismissRequest: () -> Unit,
@@ -77,6 +80,11 @@ fun StreamingProviderSheet(
         // ⚡ 入口已经有 8 个（一起听 / Telegram / Drive / Subsonic / Jellyfin / 网易云 /
         //   QQ音乐 / 酷狗），小屏上内容会超出弹窗高度、最后几行被挤出屏幕点不到；
         //   这里让整块内容可上下滑动（弹窗本身仍可下拉关闭）。
+        // ⚡ 禁用内容列表的 stretch overscroll：material3（1.5.0-alpha）弹窗里，列表滚到顶部
+        //   后继续下拉的位移会先被系统拉伸效果吃掉（列表先"拉丝"），剩下的才交给 sheet，
+        //   两个动画互相争抢就是「下拉关闭时抽搐」的来源。关掉 overscroll 后下拉位移
+        //   全部直达 sheet 的嵌套滚动，跟手不抖。
+        CompositionLocalProvider(LocalOverscrollFactory provides null) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -265,6 +273,7 @@ fun StreamingProviderSheet(
                     )
                 }
             }
+        }
         }
     }
 }

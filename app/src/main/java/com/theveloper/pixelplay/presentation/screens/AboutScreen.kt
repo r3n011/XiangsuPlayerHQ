@@ -481,10 +481,10 @@ fun AboutScreen(
         }
     }
 
-    /** 蓝奏云直链被 CDN 人机验证拦截时的兜底：浏览器打开分享页手动下载 */
-    fun openLanzouInBrowser() {
+    /** 浏览器打开链接（蓝奏云直链的下载交给浏览器：CDN 挑战 / 中转页由浏览器处理）；url 为空时回退分享页 */
+    fun openLanzouInBrowser(url: String? = null) {
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(UpdateChecker.LANZOU_SHARE_URL))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url ?: UpdateChecker.LANZOU_SHARE_URL))
             context.startActivity(intent)
         } catch (e: ActivityNotFoundException) {
             Timber.e(e, "No browser available")
@@ -683,7 +683,7 @@ fun AboutScreen(
                 onBackgroundDownload = { candidates ->
                     ApkDownloadService.start(context, candidates)
                 },
-                onOpenLanzouInBrowser = { openLanzouInBrowser() }
+                onOpenInBrowser = { url -> openLanzouInBrowser(url) }
             )
         }
 

@@ -116,6 +116,9 @@ playServicesWearable = "20.0.1"
 # Haze blur effect
 haze = "1.7.2"
 
+# Cloudy：Compose 模糊，低版本（API < 31）回落 CPU 实现（绚丽背景兜底档用）
+cloudy = "0.6.1"
+
 # 友盟移动统计 U-App（common 为统计业务 SDK，asms 为公共基础组件）
 umengCommon = "9.9.10"
 umengAsms = "1.8.7.2"
@@ -269,6 +272,9 @@ horologist-composables = { module = "com.google.android.horologist:horologist-co
 # Haze blur effect
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "haze" }
+
+# Cloudy blur effect
+cloudy = { module = "com.github.skydoves:cloudy", version.ref = "cloudy" }
 
 # Play Services Wearable (Data Layer API)
 play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "playServicesWearable" }

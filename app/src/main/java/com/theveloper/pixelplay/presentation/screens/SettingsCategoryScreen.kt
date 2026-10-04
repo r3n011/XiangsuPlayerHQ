@@ -52,7 +52,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,6 +86,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CardGiftcard
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.BlurOn
@@ -201,6 +204,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.style.TextAlign
@@ -215,9 +219,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.backup.model.BackupHistoryEntry
 import com.theveloper.pixelplay.data.backup.model.BackupOperationType
@@ -2982,6 +2988,71 @@ fun SettingsCategoryScreen(
                             }
                         }
                         SettingsCategory.DEVELOPER -> {
+                            // ⚡ 蓝奏云下载流程测试（开发者选项）：解析更新分享链接并列出
+                            //    文件 / 版本识别 / 直链，验证应用内更新通道是否正常。
+                            var lanzouTestRunning by remember { mutableStateOf(false) }
+                            var lanzouTestReport by remember { mutableStateOf<String?>(null) }
+                            var lanzouTestFirstUrl by remember { mutableStateOf<String?>(null) }
+
+                            lanzouTestReport?.let { report ->
+                                PixelAlertDialog(
+                                    onDismissRequest = { lanzouTestReport = null },
+                                    title = {
+                                        Text(
+                                            text = stringResource(R.string.setcat_lanzou_test_dialog_title),
+                                            fontFamily = GoogleSansRounded
+                                        )
+                                    },
+                                    text = {
+                                        Text(
+                                            text = report,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            modifier = Modifier
+                                                .heightIn(max = 420.dp)
+                                                .verticalScroll(rememberScrollState())
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = { lanzouTestReport = null }) {
+                                            Text(
+                                                text = stringResource(R.string.setcat_lanzou_test_close),
+                                                fontFamily = GoogleSansRounded
+                                            )
+                                        }
+                                    },
+                                    dismissButton = if (lanzouTestFirstUrl != null) {
+                                        {
+                                            TextButton(onClick = {
+                                                val url = lanzouTestFirstUrl
+                                                lanzouTestReport = null
+                                                if (url != null) {
+                                                    runCatching {
+                                                        context.startActivity(
+                                                            android.content.Intent(
+                                                                android.content.Intent.ACTION_VIEW,
+                                                                android.net.Uri.parse(url)
+                                                            )
+                                                        )
+                                                    }.onFailure {
+                                                        android.widget.Toast.makeText(
+                                                            context,
+                                                            R.string.update_no_browser,
+                                                            android.widget.Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                }
+                                            }) {
+                                                Text(
+                                                    text = stringResource(R.string.setcat_lanzou_test_open_browser),
+                                                    fontFamily = GoogleSansRounded
+                                                )
+                                            }
+                                        }
+                                    } else null
+                                )
+                            }
+
                             SettingsSubsection(title = stringResource(R.string.setcat_experiments)) {
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_experimental_title),
@@ -3006,6 +3077,75 @@ fun SettingsCategoryScreen(
                                     checked = uiState.forceSoftwareBlur,
                                     onCheckedChange = { settingsViewModel.setForceSoftwareBlur(it) },
                                     leadingIcon = { Icon(Icons.Outlined.BlurOn, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                // ⚡ 蓝奏云下载流程测试：解析更新分享链接 → 列出文件 / 版本识别 / 直链，
+                                //    验证应用内更新通道（解析 → 版本比对 → 浏览器下载）是否正常
+                                SettingsItem(
+                                    title = stringResource(R.string.setcat_lanzou_test_title),
+                                    subtitle = if (lanzouTestRunning) {
+                                        stringResource(R.string.setcat_lanzou_test_running)
+                                    } else {
+                                        stringResource(R.string.setcat_lanzou_test_subtitle)
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = if (lanzouTestRunning) {
+                                        {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(20.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+                                    } else {
+                                        {
+                                            Icon(
+                                                Icons.Rounded.ChevronRight,
+                                                stringResource(R.string.cd_open),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        if (lanzouTestRunning) return@SettingsItem
+                                        lanzouTestRunning = true
+                                        lanzouTestReport = null
+                                        lanzouTestFirstUrl = null
+                                        scope.launch {
+                                            val lanzouApi = com.theveloper.pixelplay.data.github.LanzouCloudApi()
+                                            val result = withContext(Dispatchers.IO) {
+                                                lanzouApi.resolveShare(
+                                                    com.theveloper.pixelplay.data.github.UpdateChecker.LANZOU_SHARE_URL,
+                                                    com.theveloper.pixelplay.data.github.UpdateChecker.LANZOU_PASSWORD
+                                                )
+                                            }
+                                            result.fold(
+                                                onSuccess = { files ->
+                                                    lanzouTestFirstUrl = files.firstOrNull()?.downloadUrl
+                                                    lanzouTestReport = if (files.isEmpty()) {
+                                                        "解析成功，但没有解析出任何文件"
+                                                    } else {
+                                                        buildString {
+                                                            append("解析成功：共 ${files.size} 个文件\n")
+                                                            files.forEachIndexed { index, file ->
+                                                                append("\n${index + 1}. ${file.fileName}")
+                                                                append("\n   版本识别：${file.versionName ?: "未识别"}")
+                                                                append("\n   大小：${file.fileSize}")
+                                                                append(
+                                                                    "\n   直链：${file.downloadUrl.take(88)}" +
+                                                                        if (file.downloadUrl.length > 88) "…" else ""
+                                                                )
+                                                                append("\n")
+                                                            }
+                                                            append("\n点下方「浏览器打开第一个直链」可继续验证下载跳转")
+                                                        }
+                                                    }
+                                                },
+                                                onFailure = { error ->
+                                                    lanzouTestReport = "解析失败：${error.message ?: error.javaClass.simpleName}"
+                                                }
+                                            )
+                                            lanzouTestRunning = false
+                                        }
+                                    }
                                 )
                             }
 

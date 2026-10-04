@@ -203,6 +203,9 @@ half4 main(float2 fragCoord) {
 /** 换封面时调色板过渡的时长。 */
 internal const val PALETTE_TRANSITION_MS = 1000f
 
+/** 兜底（Cloudy 模糊封面）层遮罩透明度的默认值（无封面 / 默认配色时）。 */
+internal const val DEFAULT_FALLBACK_SCRIM_ALPHA = 0.22f
+
 /** 还没拿到封面时用的中性深色配色（sRGB [0,1]），与 AMLL 一致。 */
 private val DEFAULT_COLORS = listOf(
     floatArrayOf(0.09f, 0.09f, 0.11f),
@@ -244,6 +247,13 @@ internal class IsolationBackgroundState(
     var bassEnergy = 0f
         private set
     private var lastBassUpdateMs = 0L
+
+    /**
+     * 兜底档（Cloudy 模糊封面）上的压暗遮罩透明度，随封面明度自适应：
+     * 亮封面约 0.34、暗封面约 0.12（见 [applyPalette] 的「智能亮度」）。
+     */
+    var fallbackScrimAlpha = DEFAULT_FALLBACK_SCRIM_ALPHA
+        private set
 
     /** 频段数据更新（约 60Hz）：上升快跟、下降缓慢释放，避免画面抖跳。 */
     fun updateBassEnergy(rawLevel: Float) {
@@ -327,14 +337,32 @@ internal class IsolationBackgroundState(
 
     /** 提取封面调色板（阻塞，建议在后台线程调用）并开始 1s 的 OkLab 过渡。 */
     fun applyPalette(palette: List<FloatArray>) {
+        // ⚡ 智能亮度：先算封面整体明度（四主色 OkLab L 均值），再按它自适应压暗曲线——
+        //    亮封面压得更狠、上限更低（不然整屏发白发灰、盖住歌词），暗封面压得轻、
+        //    下限抬高（不然整屏糊成死黑）。中档封面（0.26~0.50）保持原有参数不变。
+        var meanL = 0f
+        for (i in 0 until 4) {
+            val rgb = palette[paletteOrder[i]]
+            meanL += srgbToOkLab(floatArrayOf(rgb[0] / 255f, rgb[1] / 255f, rgb[2] / 255f))[0]
+        }
+        meanL /= 4f
+        val tBright = ((meanL - 0.50f) / 0.28f).coerceIn(0f, 1f)
+        val tDark = ((0.26f - meanL) / 0.21f).coerceIn(0f, 1f)
+        val lFactor = 0.70f + 0.16f * tDark - 0.14f * tBright
+        val lFloor = 0.045f + 0.075f * tDark
+        val lCap = 0.56f - 0.12f * tBright
+        // 兜底（Cloudy 模糊封面）层的遮罩强度跟随同一套自适应：亮封面多压、暗封面少压
+        fallbackScrimAlpha = 0.22f + 0.12f * tBright - 0.10f * tDark
+
         val next = FloatArray(12)
         for (i in 0 until 4) {
             val rgb = palette[paletteOrder[i]]
             val lab = srgbToOkLab(floatArrayOf(rgb[0] / 255f, rgb[1] / 255f, rgb[2] / 255f))
-            // ⚡ 取色统一压暗：AMLL 原版把封面主色直接铺满全屏，亮部太刺眼，
+            // ⚡ 取色压暗：AMLL 原版把封面主色直接铺满全屏，亮部太刺眼，
             //    歌词 / 按钮压在上面时对比度不够。这里把 OkLab 的 L 压到深色区间，
             //    彩度略收一点（避免整屏糊成高饱和色块），并给暗部兜一个下限免得死黑。
-            lab[0] = (lab[0] * 0.70f).coerceIn(0.045f, 0.56f)
+            //    压暗系数 / 上下限按封面明度自适应（见上方「智能亮度」）。
+            lab[0] = (lab[0] * lFactor).coerceIn(lFloor, lCap)
             lab[1] *= 0.90f
             lab[2] *= 0.90f
             lab.copyInto(next, i * 3)
@@ -343,6 +371,7 @@ internal class IsolationBackgroundState(
     }
 
     fun applyDefaultColors() {
+        fallbackScrimAlpha = DEFAULT_FALLBACK_SCRIM_ALPHA
         transitionTo(DEFAULT_OKLAB_COLORS.copyOf())
     }
 }

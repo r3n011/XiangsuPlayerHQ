@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -92,9 +94,13 @@ internal fun QqMusicSecurityCheckDialog(
 
         Surface(
             modifier = Modifier
+                // ⚡ 不再全屏铺满：验证页（halfScreen=true）本身是手机版布局，
+                //    全屏在平板上会显得又空又大。改为居中的手机比例弹窗 ——
+                //    宽度不超过 460dp，高度占屏幕 85%，任何设备上都是一列可读的验证框。
                 .fillMaxWidth()
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 40.dp),
+                .padding(horizontal = 16.dp, vertical = 40.dp)
+                .widthIn(max = 460.dp)
+                .fillMaxHeight(0.85f),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerLow,
             tonalElevation = 4.dp

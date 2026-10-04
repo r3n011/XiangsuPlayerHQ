@@ -123,7 +123,13 @@ fun PlaylistContainer(
     onPlaylistSelectionToggle: (Playlist) -> Unit = {},
     playlistSelectionStateHolder: PlaylistSelectionStateHolder? = null,
     onReorder: ((List<String>) -> Unit)? = null,
-    dailyRecommendHeader: (@Composable () -> Unit)? = null
+    dailyRecommendHeader: (@Composable () -> Unit)? = null,
+    /**
+     * 媒体库「回到顶部」注册键：传入 [com.theveloper.pixelplay.data.model.LibraryTabId.PLAYLISTS]
+     * 的 storageKey 才会把列表滚动状态注册给媒体库父级（按钮据此显隐并执行滚动）。
+     * 其它使用场景（如歌单管理弹窗）不传，不影响注册表。
+     */
+    scrollToTopRegistrationKey: String? = null
 ) {
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -217,7 +223,8 @@ fun PlaylistContainer(
                         onPlaylistLongPress = onPlaylistLongPress,
                         onPlaylistSelectionToggle = onPlaylistSelectionToggle,
                         onReorder = onReorder,
-                        dailyRecommendHeader = dailyRecommendHeader
+                        dailyRecommendHeader = dailyRecommendHeader,
+                        scrollToTopRegistrationKey = scrollToTopRegistrationKey
                     )
                 }
             }
@@ -255,7 +262,9 @@ fun PlaylistItems(
     onPlaylistLongPress: (Playlist) -> Unit = {},
     onPlaylistSelectionToggle: (Playlist) -> Unit = {},
     onReorder: ((List<String>) -> Unit)? = null,
-    dailyRecommendHeader: (@Composable () -> Unit)? = null
+    dailyRecommendHeader: (@Composable () -> Unit)? = null,
+    /** 媒体库「回到顶部」注册键（由 PlaylistContainer 转发），其它场景不传 */
+    scrollToTopRegistrationKey: String? = null
 ) {
     val hasCurrentSong by remember(playerViewModel) {
         playerViewModel.stablePlayerState
@@ -263,6 +272,13 @@ fun PlaylistItems(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
     val listState = rememberLazyListState()
+    // ⚡ 媒体库「回到顶部」：仅在媒体库歌单 Tab 里注册（注册键由调用方传入）
+    if (scrollToTopRegistrationKey != null) {
+        com.theveloper.pixelplay.presentation.screens.LibraryScrollToTopRegistration(
+            tabId = scrollToTopRegistrationKey,
+            state = listState
+        )
+    }
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val appHapticsConfig = LocalAppHapticsConfig.current

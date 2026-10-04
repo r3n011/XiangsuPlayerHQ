@@ -88,4 +88,13 @@
     <string name="auth_error_no_cookies">No cookies found. Log in first.</string>
     <string name="auth_error_netease_login_incomplete">Login not detected yet. Complete NetEase login before pressing Done.</string>
     <string name="auth_error_qq_login_incomplete">Login not detected yet. Complete QQ Music login before pressing Done.</string>
+    <string name="auth_phone_login_subtitle">Log in with the SMS code sent to your NetEase-bound phone number.</string>
+    <string name="auth_phone_number_label">Phone number</string>
+    <string name="auth_captcha_label">SMS code</string>
+    <string name="auth_send_captcha">Send code</string>
+    <string name="auth_captcha_resend_seconds">Resend in %1$ds</string>
+    <string name="auth_phone_login_action">Log in</string>
+    <string name="auth_phone_login_use_web">Having trouble? Use web login instead</string>
+    <string name="auth_phone_invalid">Enter a valid phone number</string>
+    <string name="auth_captcha_invalid">Enter the SMS verification code</string>
 </resources>

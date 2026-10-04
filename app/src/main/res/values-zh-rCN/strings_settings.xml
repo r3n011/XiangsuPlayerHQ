@@ -988,4 +988,10 @@
     <string name="setcat_miniplayer_style_material">Material</string>
     <string name="setcat_miniplayer_style_expressive">Expressive</string>
     <string name="setcat_miniplayer_corner_radius">迷你条圆角</string>
+    <string name="setcat_lanzou_test_title">测试蓝奏云下载流程</string>
+    <string name="setcat_lanzou_test_subtitle">解析更新分享链接，列出文件 / 版本识别 / 直链，验证应用内更新通道是否正常。</string>
+    <string name="setcat_lanzou_test_running">正在解析分享链接…</string>
+    <string name="setcat_lanzou_test_dialog_title">蓝奏云下载流程测试</string>
+    <string name="setcat_lanzou_test_close">关闭</string>
+    <string name="setcat_lanzou_test_open_browser">浏览器打开第一个直链</string>
 </resources>

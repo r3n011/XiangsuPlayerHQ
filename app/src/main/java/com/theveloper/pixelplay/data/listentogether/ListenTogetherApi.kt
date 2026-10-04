@@ -303,22 +303,8 @@ class ListenTogetherApi {
     }
 
     /** 服务端文案 → 用户可读文案（原始信息保留在 logcat 里，界面不再直出「系统错误」） */
-    private fun friendlyMessage(rawMessage: String, code: Int?, offline: Boolean = false): String {
-        val raw = rawMessage.trim()
-        val codeSuffix = code?.let { "（$it）" }.orEmpty()
-        return when {
-            offline -> "网络不可用，一起听暂时离线"
-            raw.contains("系统错误") || raw.contains("系统繁忙") || code == 500 ->
-                "一起听服务暂时不可用$codeSuffix，正在自动重试"
-            raw.contains("登录") || code == 301 || code == -462 ->
-                "网易云登录状态已失效，请重新登录后再试"
-            raw.contains("频繁") || code == 429 ->
-                "操作过于频繁，请稍后再试"
-            raw.isNotBlank() -> raw
-            code != null -> "一起听请求失败$codeSuffix"
-            else -> "一起听请求失败"
-        }
-    }
+    private fun friendlyMessage(rawMessage: String, code: Int?, offline: Boolean = false): String =
+        friendlyListenTogetherMessage(rawMessage, code, offline)
 
     private fun validateAction(root: JSONObject, fallback: String) {
         val data = root.optJSONObject("data")
@@ -404,5 +390,34 @@ class ListenTogetherApi {
             if (raw.isNotBlank()) return raw
         }
         return ""
+    }
+}
+
+/**
+ * 服务端 / SDK 文案 → 用户可读文案。
+ *
+ * ⚡ 一起听的错误来源不止 [ListenTogetherApi] 一条链：开房时拉歌单走的是仓库层、
+ *    同步循环里取歌曲详情也可能抛 SDK 原文（如「系统错误」「NCM code=500 msg=系统错误」）。
+ *    这些异常最终都会经 `error.message` 显示在面板的错误栏里 —— 统一在这里映射，
+ *    保证任何来源的错误都不会把服务端原文直出给用户（原文仍完整留在 logcat）。
+ */
+internal fun friendlyListenTogetherMessage(
+    rawMessage: String,
+    code: Int? = null,
+    offline: Boolean = false,
+): String {
+    val raw = rawMessage.trim()
+    val codeSuffix = code?.let { "（$it）" }.orEmpty()
+    return when {
+        offline -> "网络不可用，一起听暂时离线"
+        raw.contains("系统错误") || raw.contains("系统繁忙") || code == 500 ->
+            "一起听服务暂时不可用$codeSuffix，正在自动重试"
+        raw.contains("登录") || code == 301 || code == -462 ->
+            "网易云登录状态已失效，请重新登录后再试"
+        raw.contains("频繁") || code == 429 ->
+            "操作过于频繁，请稍后再试"
+        raw.isNotBlank() -> raw
+        code != null -> "一起听请求失败$codeSuffix"
+        else -> "一起听请求失败"
     }
 }

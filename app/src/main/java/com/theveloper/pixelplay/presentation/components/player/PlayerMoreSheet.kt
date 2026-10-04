@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.components.player
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +32,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +56,7 @@ import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
  * surfaceContainerHigh 圆角卡片行 + ListItem；「歌曲信息」入口直接落到
  * SongInfoBottomSheet 的歌曲信息详情卡片页（initialPage = 1）。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PlayerMoreSheet(
     song: Song,
@@ -80,15 +83,20 @@ fun PlayerMoreSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 4.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                // ⚡ 可上下滑动：选项最多有 7 条（歌曲信息/评论/下载/分享/一起听/艺术家/专辑），
-                //    小屏或横屏下总高度会超过弹窗上限，最后几条会被挤出屏幕点不到。
-                //    内容整体滚动（ModalBottomSheet 自身已处理系统栏 insets，这里不再重复留白）。
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 12.dp)
-        ) {
+        // ⚡ 禁用内容列表的 stretch overscroll：material3（1.5.0-alpha）弹窗里，列表滚到顶部后
+        //    继续下拉的位移会先被系统拉伸效果吃掉（列表先"拉丝"），剩下的才交给 sheet 移动，
+        //    两个动画互相争抢就是「下拉关闭时抽搐」的来源。关掉 overscroll 后下拉位移
+        //    全部直达 sheet 的嵌套滚动，跟手不抖。
+        CompositionLocalProvider(LocalOverscrollFactory provides null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // ⚡ 可上下滑动：选项最多有 7 条（歌曲信息/评论/下载/分享/一起听/艺术家/专辑），
+                    //    小屏或横屏下总高度会超过弹窗上限，最后几条会被挤出屏幕点不到。
+                    //    内容整体滚动（ModalBottomSheet 自身已处理系统栏 insets，这里不再重复留白）。
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 12.dp)
+            ) {
             // ── 头部：与 SongInfoBottomSheet 同款「封面 + 标题/歌手」布局 ──
             Row(
                 modifier = Modifier
@@ -173,6 +181,7 @@ fun PlayerMoreSheet(
                 label = stringResource(R.string.player_more_view_album),
                 onClick = onViewAlbum
             )
+        }
         }
     }
 }

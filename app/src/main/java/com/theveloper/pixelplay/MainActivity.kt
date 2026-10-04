@@ -320,6 +320,17 @@ class MainActivity : ComponentActivity() {
          */
         val LocalMiniPlayerScrollShiftPx =
             androidx.compose.runtime.staticCompositionLocalOf<() -> Float> { { 0f } }
+
+        /**
+         * 迷你播放条的**底部总占位**（真实 bottom margin + [MiniPlayerBottomSpacer]）。
+         *
+         * 供页面浮层（媒体库「回到顶部」按钮）定位：按钮的 bottom padding =
+         * 这个值 + MiniPlayerHeight + 视觉间隙，即可精确贴在迷你条上沿。
+         * 迷你条的边距规则（横屏 / 平板 / 悬浮底栏 / 隐藏底栏路由、inset=0 时的最小间距兜底）
+         * 只在这里算一次；页面本地复刻必然有漏 —— 复刻漏一条按钮就会和迷你条重叠。
+         */
+        val LocalMiniPlayerBottomOffsetDp =
+            androidx.compose.runtime.staticCompositionLocalOf { 0.dp }
     }
 
     private val playerViewModel: PlayerViewModel by viewModels()
@@ -1484,7 +1495,9 @@ class MainActivity : ComponentActivity() {
             // 竖屏强制平板布局：供各页面读取（HomeScreen / 设置页 / 播放器等）
             LocalForceTabletLayout provides forceTabletLayout,
             // 迷你条当前下移量：页面浮层（媒体库「回到顶部」按钮）跟着迷你条走
-            LocalMiniPlayerScrollShiftPx provides miniPlayerScrollShiftPxProvider
+            LocalMiniPlayerScrollShiftPx provides miniPlayerScrollShiftPxProvider,
+            // 迷你条底部总占位：媒体库「回到顶部」按钮贴着迷你条上沿定位用
+            LocalMiniPlayerBottomOffsetDp provides miniPlayerBottomMarginDp + MiniPlayerBottomSpacer
         ) {
             // Auto-close sidebar drawer when player expands
             LaunchedEffect(isPlayerExpanded) {

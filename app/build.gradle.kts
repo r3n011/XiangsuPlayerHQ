@@ -121,8 +121,8 @@ android {
         minSdk = 23
         targetSdk = 36
         multiDexEnabled = true
-        versionCode = 63
-        versionName = "1.6.6"
+        versionCode = 64
+        versionName = "1.6.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -333,6 +333,9 @@ dependencies {
     // Haze blur effect
     implementation(libs.haze)
     implementation(libs.haze.materials)
+
+    // Cloudy blur effect（低版本 CPU 回落，绚丽背景兜底档）
+    implementation(libs.cloudy)
 
     // DI & Navigation
     implementation(libs.hilt.android)

@@ -15,7 +15,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -916,14 +915,18 @@ private fun mainRootExitTransition(
     MainRootDirection.FORWARD -> {
         slideOutHorizontally(
             animationSpec = MAIN_ROOT_TRANSITION_SPEC,
-            targetOffsetX = { -(it * 0.5f).toInt() }
-        ) + fadeOut(animationSpec = MAIN_ROOT_FADE_SPEC)
+            // ⚡ 整页滑出、不淡出：旧 Tab 提前淡出（原来 190ms 就透明、380ms 才销毁）会让
+            //    屏幕像素与 haze 模糊源不一致 —— 界面已经消失，底栏/顶栏的模糊还挂着旧页
+            //    内容直到转场结束（残影）。保持不透明并整页滑出屏幕，转场结束时正好离开
+            //    组合，模糊源与屏幕全程一致，不会出现残影、也不会中断模糊。
+            targetOffsetX = { -it }
+        )
     }
     MainRootDirection.BACKWARD -> {
         slideOutHorizontally(
             animationSpec = MAIN_ROOT_TRANSITION_SPEC,
-            targetOffsetX = { (it * 0.5f).toInt() }
-        ) + fadeOut(animationSpec = MAIN_ROOT_FADE_SPEC)
+            targetOffsetX = { it }
+        )
     }
     null -> fallback
 }

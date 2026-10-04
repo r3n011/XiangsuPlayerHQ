@@ -5,12 +5,26 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.graphics.HardwareRenderer
 import android.graphics.Paint
+import android.graphics.PixelFormat
+import android.graphics.RenderNode
 import android.graphics.RuntimeShader
+import android.hardware.HardwareBuffer
+import android.media.ImageReader
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -25,8 +39,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
@@ -34,11 +51,14 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import coil.size.Size
+import com.skydoves.cloudy.cloudy
 import com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -59,6 +79,12 @@ private const val AGSL_LOW_POWER_FPS_CAP = 30
 private const val SOLID_FPS_CAP = 8
 private const val SOLID_LOW_POWER_FPS_CAP = 4
 
+/**
+ * 兜底档封面模糊半径（Cloudy）。内容是静态封面位图，只在换封面时算一次，
+ * 低版本（Cloudy 的 CPU 实现）也不会持续占电。
+ */
+private const val FALLBACK_BLUR_RADIUS = 24
+
 /** 音频电平多久没更新就视为"没有在播放"（可视化约 60Hz 发布）。 */
 private const val PLAYBACK_IDLE_NANOS = 700_000_000L
 
@@ -71,11 +97,12 @@ private const val RENDERER_PROBING = 0
 private const val RENDERER_AGSL = 1
 
 /**
- * 档位：**纯色兜底**。
+ * 档位：**兜底（封面模糊背景）**。
  *
  * 低版本设备（无 AGSL）、以及 AGSL 着色器探测不过 / 画不出来的设备都落到这一档：
- * 只用封面调色板铺一层不透明纯色，不跑任何逐像素的 CPU 求值（CPU 求值在低端机上
- * 既费电又容易一帧有一帧无地闪）。换歌时颜色仍按 1s 的 OkLab 过渡平滑跟上。
+ * 底层是封面调色板主色的不透明纯色，其上叠加 Cloudy 模糊的封面图（见
+ * [FallbackIsolationBackground]）。不做任何逐像素的 CPU 求值，
+ * 换歌时颜色仍按 1s 的 OkLab 过渡平滑跟上。
  */
 private const val RENDERER_SOLID = 2
 
@@ -123,13 +150,20 @@ private object IsolationCapability {
     }
 
     /**
-     * 真机探测 AGSL：用最小尺寸画一次，再读回像素判断**是不是真的画出了东西**。
-     * 只看「有没有抛异常」不够 —— 驱动不支持时常见的是静默画不出（全透明）。
+     * 真机探测 AGSL：在**硬件加速画布**（RenderNode → HardwareRenderer → ImageReader）
+     * 上用最小尺寸画一次，再读回像素判断**是不是真的画出了东西**。
+     *
+     * 探测后端必须与真实渲染后端一致 —— Compose 在屏渲染走的是硬件加速画布：
+     * - Android 16 起，RuntimeShader 在软件画布（Bitmap 创建的 Canvas）上会直接抛
+     *   `IllegalArgumentException: Software rendering doesn't support RuntimeShader`。
+     *   旧实现用软件位图探测，导致高版本设备必然探测失败、被误降级成纯色；
+     * - 即便在允许软件渲染的旧版本上，Skia CPU 路径也验证不了 GPU 驱动问题，
+     *   两方面都指向：只能在硬件画布上探测。
      */
     private fun probeAgsShader(): Boolean = runCatching {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@runCatching false
         val shader = RuntimeShader(ISOLATION_SHADER_SRC)
-        shader.setFloatUniform("u_resolution", 4f, 4f)
+        shader.setFloatUniform("u_resolution", 16f, 16f)
         shader.setFloatUniform("u_time", 0f)
         shader.setFloatUniform("u_color0", 0.20f, 0.00f, 0.00f)
         shader.setFloatUniform("u_color1", 0.22f, 0.02f, 0.00f)
@@ -141,23 +175,76 @@ private object IsolationCapability {
         shader.setFloatUniform("u_enableLightWave", 1f)
         shader.setFloatUniform("u_enableDithering", 1f)
         shader.setFloatUniform("u_bass", 0f)
-        val bitmap = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
-        try {
-            android.graphics.Canvas(bitmap).drawRect(
-                0f, 0f, 4f, 4f,
-                Paint().apply { this.shader = shader }
-            )
-            var painted = false
-            for (y in 0 until 4) {
-                for (x in 0 until 4) {
-                    if ((bitmap.getPixel(x, y) ushr 24) > 0) painted = true
-                }
+        val paint = Paint().apply { this.shader = shader }
+        // HardwareRenderer 要求使用方线程带 Looper：丢到专用 HandlerThread 上同步执行
+        val probeThread = HandlerThread("IsolationAgsProbe").apply { start() }
+        val done = CountDownLatch(1)
+        var painted = false
+        Handler(probeThread.looper).post {
+            try {
+                painted = runCatching { drawProbeRectOnHardwareCanvas(paint) }.getOrDefault(false)
+            } finally {
+                done.countDown()
             }
-            painted
+        }
+        try {
+            done.await(4, TimeUnit.SECONDS) && painted
         } finally {
-            bitmap.recycle()
+            probeThread.quitSafely()
         }
     }.getOrDefault(false)
+
+    /** 把探测矩形画进硬件画布并读回像素，判断 GPU 是否真的画出了不透明内容。 */
+    private fun drawProbeRectOnHardwareCanvas(paint: Paint): Boolean {
+        val size = 16
+        val renderer = HardwareRenderer()
+        renderer.setLightSourceAlpha(0f, 0f)
+        renderer.setLightSourceGeometry(0f, 0f, 0f, 0f)
+        @Suppress("WrongConstant") // usage 是按位或组合的 int flag，Lint 误报
+        val reader = ImageReader.newInstance(
+            size, size, PixelFormat.RGBA_8888, 2,
+            HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or
+                HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or
+                HardwareBuffer.USAGE_CPU_READ_RARELY,
+        )
+        var image: android.media.Image? = null
+        try {
+            renderer.setSurface(reader.surface)
+            val node = RenderNode("IsolationAgsProbe")
+            node.setPosition(0, 0, size, size)
+            val canvas = node.beginRecording(size, size)
+            canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(), paint)
+            node.endRecording()
+            renderer.setContentRoot(node)
+            renderer.createRenderRequest()
+                .setWaitForPresent(true)
+                .syncAndDraw()
+            // GPU 出帧异步落进 ImageReader：慢驱动上多等几轮
+            repeat(10) {
+                if (image != null) return@repeat
+                image = reader.acquireLatestImage()
+                if (image == null) SystemClock.sleep(50)
+            }
+            val img = image ?: return false
+            try {
+                val plane = img.planes[0]
+                val buffer = plane.buffer
+                val rowStride = plane.rowStride
+                for (y in 0 until size) {
+                    for (x in 0 until size) {
+                        val alpha = buffer.get(y * rowStride + x * 4 + 3).toInt() and 0xff
+                        if (alpha > 0) return true
+                    }
+                }
+                return false
+            } finally {
+                img.close()
+            }
+        } finally {
+            reader.close()
+            renderer.setSurface(null)
+        }
+    }
 }
 
 /**
@@ -180,8 +267,8 @@ private fun DrawScope.drawIsolationFallbackBase(colorBuffer: FloatArray) {
  * 换封面 = 重掷随机布局 + 1s 的 OkLab 调色板过渡。
  *
  * **渲染档位（优雅降级）**：
- * - API 33+ 且 AGSL 探测通过 → AGSL 单 pass 着色器；
- * - 其余情况（低版本设备 / 着色器不可用）→ 不透明纯色（调色板主色），
+ * - API 33+ 且 AGSL 探测通过（硬件画布上真的画出像素）→ AGSL 单 pass 着色器；
+ * - 其余情况（低版本设备 / 着色器不可用）→ 封面模糊背景（Cloudy）+ 调色板主色底，
  *   不做任何逐像素的 CPU 求值，既不闪也不费电。
  * 两档都保证背景**不透明**。
  */
@@ -196,8 +283,11 @@ internal fun IsolationBackground(
 
     val context = LocalContext.current
     val imageLoader = context.imageLoader
+    // 兜底档的封面模糊背景直接复用取色管线解码好的位图（Coil 缓存实例，勿 recycle）
+    var coverBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(albumArtUri) {
         if (albumArtUri.isNullOrBlank()) {
+            coverBitmap = null
             state.applyDefaultColors()
             return@LaunchedEffect
         }
@@ -212,9 +302,11 @@ internal fun IsolationBackground(
             }.getOrNull()
         }
         if (bitmap == null) {
+            coverBitmap = null
             state.applyDefaultColors()
             return@LaunchedEffect
         }
+        coverBitmap = bitmap
         val palette = withContext(Dispatchers.Default) {
             extractIsolationPalette(bitmap)
         }
@@ -256,9 +348,9 @@ internal fun IsolationBackground(
     val isLowPower: () -> Boolean = { powerSaveMode.value }
     val lastActivity: () -> Long = { lastLevelsNanos.longValue }
 
-    // ⚡ 渲染档位：先在后台探测一次设备能力（AGSL 着色器能否真的画出像素），
+    // ⚡ 渲染档位：先在后台探测一次设备能力（AGSL 着色器在硬件画布上能否真的画出像素），
     //    探测期间只画不透明兜底纯色 —— 保证任何时刻都不会出现「背景透明」。
-    //    探测不过或渲染失败即永久降档到纯色。
+    //    探测不过或渲染失败即永久降档到兜底（封面模糊背景）。
     var rendererLevel by remember { mutableIntStateOf(IsolationCapability.cachedLevel()) }
     LaunchedEffect(Unit) {
         // 只有「还没探测过」才需要异步探测；已探测过的直接沿用缓存档位，不会闪一帧纯色
@@ -277,11 +369,18 @@ internal fun IsolationBackground(
         RENDERER_AGSL -> AgslIsolationCanvas(
             state = state,
             modifier = modifier,
+            albumArtUri = albumArtUri,
+            coverBitmap = coverBitmap,
             isLowPower = isLowPower,
             lastActivityNanos = lastActivity,
             onRendererFailed = onAgsFailed,
         )
-        else -> SolidIsolationCanvas(state, modifier)
+        else -> FallbackIsolationBackground(
+            state = state,
+            albumArtUri = albumArtUri,
+            coverBitmap = coverBitmap,
+            modifier = modifier,
+        )
     }
 }
 
@@ -404,14 +503,16 @@ private fun rememberIsolationFrameDriver(
 private fun AgslIsolationCanvas(
     state: IsolationBackgroundState,
     modifier: Modifier,
+    albumArtUri: String?,
+    coverBitmap: Bitmap?,
     isLowPower: () -> Boolean,
     lastActivityNanos: () -> Long,
     onRendererFailed: () -> Unit,
 ) {
-    // 着色器连创建都失败（驱动不支持 AGSL）：先画纯色兜底，下一帧起永久降档。
+    // 着色器连创建都失败（驱动不支持 AGSL）：先画兜底，下一帧起永久降档。
     val shader = remember { runCatching { RuntimeShader(ISOLATION_SHADER_SRC) }.getOrNull() }
     if (shader == null) {
-        SolidIsolationCanvas(state, modifier)
+        FallbackIsolationBackground(state, albumArtUri, coverBitmap, modifier)
         LaunchedEffect(Unit) { onRendererFailed() }
         return
     }
@@ -462,11 +563,56 @@ private fun AgslIsolationCanvas(
 }
 
 /**
- * 纯色兜底档（低版本设备 / 着色器不可用）：只用调色板主色铺满一层不透明纯色。
+ * 兜底档（低版本设备 / 着色器不可用）：**封面模糊背景（Cloudy）+ 调色板主色底**。
  *
- * 不做任何逐像素的 CPU 求值，因此既不会闪也不费电；颜色过渡仍以低帧率推进，
- * 换歌时不会硬切。
+ * - 底层 [SolidIsolationCanvas]：调色板主色的不透明纯色，封面加载前 / 失败时的兜底，
+ *   颜色过渡仍以低帧率推进，换歌时不会硬切；
+ * - 上层封面模糊图：复用取色管线解码好的位图（256px 放大 + Cloudy 模糊）。内容是静态的，
+ *   只在换封面时算一次模糊 —— API 31+ 走硬件 RenderEffect，更低版本由 Cloudy 落到
+ *   CPU 实现（https://github.com/skydoves/Cloudy），低版本也有真正意义上的「绚丽背景」。
+ * - 轻微压暗与 AGSL 档的取色压暗（OkLab L*0.70）观感对齐，保证歌词 / 控件对比度。
  */
+@Composable
+private fun FallbackIsolationBackground(
+    state: IsolationBackgroundState,
+    albumArtUri: String?,
+    coverBitmap: Bitmap?,
+    modifier: Modifier,
+) {
+    Box(modifier) {
+        SolidIsolationCanvas(state, Modifier.fillMaxSize())
+        if (coverBitmap != null && !albumArtUri.isNullOrBlank()) {
+            Image(
+                bitmap = coverBitmap.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        // 放大一点：模糊（RenderEffect / CPU 采样）在边缘会采到透明，
+                        // 不放大四周会有一圈发暗的边
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+                    .cloudy(FALLBACK_BLUR_RADIUS),
+            )
+            // ⚡ 压暗遮罩随封面明度自适应（亮封面压狠些、暗封面几乎不压），
+            //    与取色的 1s OkLab 过渡同步渐变，换歌不会跳。
+            val scrimAlpha by animateFloatAsState(
+                targetValue = state.fallbackScrimAlpha,
+                animationSpec = tween(durationMillis = PALETTE_TRANSITION_MS.toInt()),
+                label = "isolationFallbackScrim",
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = scrimAlpha))
+            )
+        }
+    }
+}
+
+/** 兜底档底色：调色板主色的不透明纯色（也作为模糊封面加载前的占位）。 */
 @Composable
 private fun SolidIsolationCanvas(
     state: IsolationBackgroundState,

@@ -2022,8 +2022,8 @@ fun LyricLineRow(
         label = "lineBlur"
     )
     // ⚡ API 31 以下没有 RenderEffect，Modifier.blur 对文字是空操作。
-    //    这些行改走 Modifier.softwareBlur：快照 → 降采样 → Blurry 真高斯 → 放大绘制。
-    val softwareBlurActive = blurRadius > 0.dp && SoftBlur.needsSoftwareBlur(needBlur = true)
+    //    低版本**不再**用 CPU 软件模糊兜底（快照 → 降采样 → 盒式模糊 → 放大）：
+    //    低端机上既费电，又容易出现「一帧有一帧无」的闪烁。现在低版本直接不模糊远处歌词。
 
     // 行间距物理弹簧：不同距离的行 stiffness 递减（移动速度不同），
     // dampingRatio 0.38~0.42 产生明显过冲——切换时上方行被“挤压”（间距先明显变小），
@@ -2070,9 +2070,8 @@ fun LyricLineRow(
     val romanizationColor = lineColor.copy(alpha = lineColor.alpha * 0.85f)
     val translationColor = lineColor.copy(alpha = lineColor.alpha * 0.55f)
 
-    // ⚡ 低版本的"远处歌词发虚"改由 Modifier.softwareBlur 承担（快照降采样后交给 Blurry 做真高斯），
-    //    不再需要「同色阴影」那种假虚化——它只是套在锐利字形外的一层雾，
-    //    API 28 以下甚至完全不渲染；API 31+ 仍走原生 Modifier.blur。
+    // ⚡ 「远处歌词发虚」只在 API 31+ 走原生 Modifier.blur；低版本没有 RenderEffect，
+    //    也不再降级到 CPU 软件模糊（耗电 + 闪烁），直接保持清晰。
     val lineTextStyle = style
     val secondaryTextStyle = secondaryStyle
 
@@ -2103,25 +2102,9 @@ fun LyricLineRow(
         }
     }
     // 内层：只对**静态文字**做模糊（内容不变就不重算）
-    val blurModifier: Modifier = when {
-        // API 31 以下（或强制软件模糊）：快照 → 降采样 → 纯 Kotlin 盒式模糊 → 放大绘制
-        softwareBlurActive -> Modifier.softwareBlur(
-            radius = blurRadius,
-            contentKey = listOf(
-                wrappedLine,
-                romanizationText,
-                translationText,
-                // ⚡ lineColor 是 animateColorAsState，逐帧变化；直接当 key 会让这一行
-                //    **每帧**重新快照。量化成 4 档后，一次切行最多重建 3 次，
-                //    而模糊行本身是柔和的，这点颜色滞后看不出来。
-                lineColor.copy(alpha = (lineColor.alpha * 4f).roundToInt() / 4f),
-                style
-            )
-        )
-        // API 31+：原生 GPU 模糊
-        blurRadius > 0.dp -> Modifier.blur(blurRadius)
-        else -> Modifier
-    }
+    // ⚡ 只用原生 GPU 模糊（API 31+）。低版本 Modifier.blur 是空操作，也不降级到 CPU 软件模糊 ——
+    //    远处歌词直接保持清晰，不会有软件模糊带来的耗电与闪烁。
+    val blurModifier: Modifier = if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier
     val animatedModifier = baseModifier.then(transformModifier).then(blurModifier)
 
     val horizontalAlignment = when (lyricsAlignment) {

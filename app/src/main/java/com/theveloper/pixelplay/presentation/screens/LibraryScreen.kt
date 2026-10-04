@@ -129,7 +129,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
@@ -889,19 +888,14 @@ fun LibraryScreen(
     val bottomGradientHeight = if (navBarStyle == NavBarStyle.FLOATING) 0.dp
         else resolveMainScreenBottomGradientHeight(navBarCompactMode)
 
-    // ⚡ 「回到顶部」按钮定位：悬浮在 mini player 正上方（右端）。
-    //    之前固定在左下角（BottomStart），平板上与左侧 NavigationRail 处于同一角落、观感上"没有这个按钮"，
-    //    手机上也会压住列表左下角的封面。现在改成贴着 mini player 顶边：迷你条在哪，按钮就在哪。
-    //    底部偏移量与 MainActivity 里 mini player 的 bottom margin 保持同一套规则
-    //    （真实横屏/平板没有底部导航栏 → 只留系统安全区；悬浮底栏 → 迷你条高度 + 安全区；
-    //      其余样式 → 底栏占位高度），这样按钮永远刚好落在迷你条上沿。
-    val isLandscapeWindow = LocalWindowInfo.current.containerSize.let { it.width > it.height }
-    val miniPlayerBottomOffsetDp = when {
-        isLandscapeWindow -> maxOf(systemNavBarInset, 8.dp)
-        navBarStyle == NavBarStyle.FLOATING -> MiniPlayerHeight + systemNavBarInset
-        else -> bottomBarHeightDp
-    }
-    val scrollToTopFabBottomPadding = miniPlayerBottomOffsetDp + MiniPlayerHeight + 8.dp
+    // ⚡ 「回到顶部」按钮定位：悬浮在 mini player 正上方（右端）——迷你条在哪，按钮就在哪。
+    //    迷你条的底部占位（横屏 / 平板 / 悬浮底栏 / 隐藏底栏路由、inset=0 时的最小间距兜底）
+    //    由 MainActivity 统一算好提供（LocalMiniPlayerBottomOffsetDp），页面不再本地复刻：
+    //    之前本地复刻漏了「inset=0 兜底最小间距」和 MiniPlayerBottomSpacer，
+    //    按钮的 8dp 间隙被 spacer 吃掉、inset=0 的机型上还会直接压到迷你条上。
+    //    这里只需再补按钮自身的视觉间隙。
+    val scrollToTopFabBottomPadding = MainActivity.LocalMiniPlayerBottomOffsetDp.current +
+        MiniPlayerHeight + 8.dp
     // 迷你条「滚动隐藏底部 chrome」时的下移量：按钮跟着一起下移，才能始终贴在迷你条正上方
     // （在 graphicsLayer 里读取，只重绘不重组）。
     val miniPlayerScrollShiftPxProvider = MainActivity.LocalMiniPlayerScrollShiftPx.current
@@ -3263,6 +3257,14 @@ fun LibraryFoldersTab(
     ) { (playlistMode, targetPath) ->
         // Each navigation destination gets its own independant ListState
         val listState = rememberLazyListState()
+        // ⚡ 媒体库「回到顶部」：文件夹 Tab 每个子路径都有自己的列表状态（AnimatedContent 切换），
+        //    只有「当前可见路径」才注册 —— enabled 随导航切换并自动清理，注册表不会指向
+        //    已经滑出屏幕的旧列表（否则按钮显隐失效、点击也滚不动当前列表）。
+        LibraryScrollToTopRegistration(
+            tabId = com.theveloper.pixelplay.data.model.LibraryTabId.FOLDERS.storageKey,
+            state = listState,
+            enabled = targetPath == (currentFolder?.path ?: FOLDER_NAVIGATION_ROOT_KEY)
+        )
         val coroutineScope = rememberCoroutineScope()
         val view = LocalView.current
         val appHapticsConfig = LocalAppHapticsConfig.current

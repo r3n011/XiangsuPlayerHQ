@@ -56,22 +56,9 @@ fun UpdateAvailableDialog(
     onDismiss: () -> Unit,
     onDownload: (List<ApkDownloadInstaller.DownloadCandidate>) -> Unit,
     onBackgroundDownload: (List<ApkDownloadInstaller.DownloadCandidate>) -> Unit = {},
-    onOpenLanzouInBrowser: () -> Unit = {}
+    /** 在浏览器中打开链接（蓝奏云直链的下载由浏览器完成：CDN 挑战 / 中转页交给浏览器处理） */
+    onOpenInBrowser: (String) -> Unit = {}
 ) {
-    // 蓝奏云直链（已同步时可用）+ GitHub 兜底，两个下载源独立展示、互不掺和
-    val lanzouCandidates = remember(updateInfo) {
-        if (updateInfo.isLanzouSynced) {
-            updateInfo.lanzouFiles.map {
-                ApkDownloadInstaller.DownloadCandidate(
-                    url = it.downloadUrl,
-                    cookie = it.cookie.ifBlank { null },
-                    referer = it.referer.ifBlank { null }
-                )
-            }
-        } else {
-            emptyList()
-        }
-    }
     // GitHub 下载：按设备 ABI 自动推荐架构，用户可手动切换 64/32 位
     val deviceAbis = remember { Build.SUPPORTED_ABIS.toList() }
     // 版本选择：完整版（含 Telegram）/ 精简版（no-telegram）。当前安装的精简版用户默认推荐精简版。
@@ -79,12 +66,38 @@ fun UpdateAvailableDialog(
     var useLite by remember(updateInfo) {
         mutableStateOf(hasLiteVariant && !com.theveloper.pixelplay.BuildConfig.TELEGRAM_ENABLED)
     }
+
     val archKeys = remember(updateInfo, useLite) { updateInfo.availableArchKeys(useLite) }
     val recommendedArchKey = remember(updateInfo, useLite) { updateInfo.preferredArchKey(deviceAbis, useLite) }
     var selectedArchKey by remember(updateInfo, useLite) {
         mutableStateOf(updateInfo.preferredArchKey(deviceAbis, useLite))
     }
     val githubUrl = selectedArchKey?.let { updateInfo.abiMapFor(useLite)[it] } ?: updateInfo.apkUrl
+
+    // 蓝奏云直链（已同步时可用）+ GitHub 兜底，两个下载源独立展示、互不掺和。
+    // ⚡ 蓝奏云分享里同时有多个文件（arm64 / arm32 / x86_64，lite / full 变体）：
+    //    浏览器下载只能带一个链接，这里**完全跟随用户在界面上做的选择** ——
+    //    变体用 useLite（精简版/完整版开关）、架构用 selectedArchKey（64/32 位选择），
+    //    与 GitHub 侧的选择保持联动；都没命中时才退回设备 ABI 推荐顺序。
+    //    否则会下载到装不上的架构。排序权重见 [lanzouFileRank]。
+    val lanzouFilesOrdered = remember(updateInfo, useLite, deviceAbis, selectedArchKey) {
+        if (updateInfo.isLanzouSynced) {
+            updateInfo.lanzouFiles.sortedBy {
+                lanzouFileRank(it.fileName, deviceAbis, useLite, selectedArchKey)
+            }
+        } else {
+            emptyList()
+        }
+    }
+    val lanzouCandidates = remember(lanzouFilesOrdered) {
+        lanzouFilesOrdered.map {
+            ApkDownloadInstaller.DownloadCandidate(
+                url = it.downloadUrl,
+                cookie = it.cookie.ifBlank { null },
+                referer = it.referer.ifBlank { null }
+            )
+        }
+    }
     val hasAnySource = lanzouCandidates.isNotEmpty() || !githubUrl.isNullOrBlank()
 
     val isDownloading = downloadState is ApkDownloadInstaller.DownloadState.Downloading
@@ -310,8 +323,11 @@ fun UpdateAvailableDialog(
                         ) {
                             if (lanzouCandidates.isNotEmpty()) {
                                 Button(
-                                    // ⚡ 只传蓝奏云候选，绝不静默追加 GitHub（选蓝奏云就只走蓝奏云）
-                                    onClick = { onDownload(lanzouCandidates) },
+                                    // ⚡ 蓝奏云新版直链后面还有 CDN 挑战 + 中转页（ajax.php）两道机关，
+                                    //    应用内下载过不去；把**解析出的直链**直接交给浏览器 —— 挑战、
+                                    //    中转跳转、最终下载全部由浏览器完成（与网页打开行为一致）。
+                                    //    直链已按「当前安装变体 + 设备 ABI」排好序，第一个即最优文件。
+                                    onClick = { onOpenInBrowser(lanzouCandidates.first().url) },
                                     shape = actionShape,
                                     enabled = canDownload,
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -321,6 +337,19 @@ fun UpdateAvailableDialog(
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onPrimary,
+                                    )
+                                }
+                                // ⚡ 明示将下载哪个文件（架构 / 变体），避免用户怀疑"下错架构"
+                                lanzouFilesOrdered.firstOrNull()?.let { selected ->
+                                    Text(
+                                        text = "将下载：${selected.fileName}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 4.dp),
                                     )
                                 }
                             }
@@ -473,7 +502,12 @@ fun UpdateAvailableDialog(
                             // ⚡ 蓝奏云直链被 CDN 人机验证拦截：提供「浏览器打开」兜底，而不是换 GitHub 源
                             if (isLanzouError) {
                                 OutlinedButton(
-                                    onClick = onOpenLanzouInBrowser,
+                                    onClick = {
+                                        onOpenInBrowser(
+                                            lanzouCandidates.firstOrNull()?.url
+                                                ?: UpdateChecker.LANZOU_SHARE_URL
+                                        )
+                                    },
                                     shape = actionShape,
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
@@ -485,19 +519,17 @@ fun UpdateAvailableDialog(
                                 }
                             }
                             // 后台更新：关闭弹窗后用前台服务下载，通知栏实时显示进度
-                            if (hasAnySource && !isDownloading && !isInstalling) {
+                            // ⚡ 仅 GitHub 源支持应用内下载；蓝奏云直链需浏览器过挑战，不走此路径
+                            if (!githubUrl.isNullOrBlank() && !isDownloading && !isInstalling) {
                                 TextButton(
                                     onClick = {
-                                        val bgCandidates = if (lanzouCandidates.isNotEmpty()) {
-                                            lanzouCandidates
-                                        } else {
+                                        onBackgroundDownload(
                                             listOfNotNull(
                                                 githubUrl?.let {
                                                     ApkDownloadInstaller.DownloadCandidate(url = it)
                                                 }
                                             )
-                                        }
-                                        onBackgroundDownload(bgCandidates)
+                                        )
                                         onDismiss()
                                     },
                                     shape = actionShape,
@@ -534,4 +566,59 @@ private fun archLabelRes(key: String): Int = when (key) {
     "x86" -> R.string.update_arch_x86
     "arm" -> R.string.update_arch_arm
     else -> R.string.update_arch_arm64
+}
+
+/**
+ * 蓝奏云文件排序权重（越小越优先）：
+ * 1) 变体与用户选择一致（精简版 / 完整版开关 [preferLite]）优先（权重 0），
+ *    变动最低；
+ * 2) 架构**优先跟随用户在界面上的 64/32 位选择**（[selectedArchKey]，与 GitHub 侧联动），
+ *    命中记 0；未命中才按设备 ABI 推荐顺序（arm64 设备 → arm64 最优），
+ *    universal / 无架构标识次之，与设备不匹配的架构最后。
+ * 变体权重乘以 100，保证「变体正确」比「架构正确」更优先（用户跑的是 lite 版时，
+ * 宁可下另一个架构的 lite 也不该悄悄换成 full）。
+ */
+private fun lanzouFileRank(
+    fileName: String,
+    deviceAbis: List<String>,
+    preferLite: Boolean,
+    selectedArchKey: String?,
+): Int {
+    val name = fileName.lowercase()
+    val variantRank = when {
+        preferLite && name.contains("lite") -> 0
+        !preferLite && name.contains("full") -> 0
+        !name.contains("lite") && !name.contains("full") -> 20
+        else -> 60
+    }
+    val selectedToken = archTokenFor(selectedArchKey)
+    val archRank = if (selectedToken != null && name.contains(selectedToken)) {
+        0
+    } else {
+        val deviceRank = deviceAbis.withIndex().firstOrNull { (_, abi) ->
+            name.contains(abiTokenFor(abi))
+        }?.index?.times(5) ?: when {
+            name.contains("universal") -> 8
+            else -> 30
+        }
+        // +2：让「用户选择的架构」严格优于任何设备默认顺序
+        deviceRank + 2
+    }
+    return variantRank * 100 + archRank
+}
+
+/** GitHub 侧架构键 → 蓝奏云文件名里的架构标识（arm32 文件命名） */
+private fun archTokenFor(archKey: String?): String? = when (archKey?.lowercase()) {
+    null, "" -> null
+    "arm" -> "arm32"
+    else -> archKey.lowercase()
+}
+
+/** 设备 ABI → 蓝奏云文件名里的架构标识 */
+private fun abiTokenFor(abi: String): String = when {
+    abi.startsWith("arm64") -> "arm64"
+    abi.startsWith("armeabi") -> "arm32"
+    abi.startsWith("x86_64") -> "x86_64"
+    abi.startsWith("x86") -> "x86"
+    else -> abi.lowercase()
 }

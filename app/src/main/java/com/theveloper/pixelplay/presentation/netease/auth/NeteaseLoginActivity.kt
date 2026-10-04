@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,10 +45,12 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarHost
@@ -58,9 +62,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.ExperimentalTextApi
@@ -69,6 +76,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -79,6 +87,7 @@ import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import androidx.compose.ui.res.stringResource
 import android.content.Context
@@ -100,7 +109,239 @@ class NeteaseLoginActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PixelPlayTheme {
-                NeteaseWebLoginScreen(onClose = { finish() })
+                // ⚡ 默认手机号验证码登录（对齐 MeloX），网页登录作为兜底入口
+                NeteaseLoginEntryScreen(onClose = { finish() })
+            }
+        }
+    }
+}
+
+/**
+ * 网易云登录入口：默认展示**手机号验证码登录**（参照 MeloX 的登录方式），
+ * 「网页登录」作为兜底（触发网易云风控 / 原生登录失败时改走 WebView 完成安全验证）。
+ */
+@Composable
+fun NeteaseLoginEntryScreen(
+    viewModel: NeteaseLoginViewModel = hiltViewModel(),
+    onClose: () -> Unit
+) {
+    var useWebLogin by remember { mutableStateOf(false) }
+    if (useWebLogin) {
+        NeteaseWebLoginScreen(viewModel = viewModel, onClose = onClose)
+    } else {
+        NeteasePhoneLoginScreen(
+            viewModel = viewModel,
+            onUseWebLogin = { useWebLogin = true },
+            onClose = onClose
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun NeteasePhoneLoginScreen(
+    viewModel: NeteaseLoginViewModel,
+    onUseWebLogin: () -> Unit,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+    val loginState by viewModel.state.collectAsStateWithLifecycle()
+    val captchaState by viewModel.captchaState.collectAsStateWithLifecycle()
+    val titleStyle = rememberNeteaseLoginTitleStyle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 与 MeloX 一致：国家码固定 86，60 秒重发倒计时
+    val ctcode = "86"
+    var phone by remember { mutableStateOf("") }
+    var captcha by remember { mutableStateOf("") }
+    var resendSeconds by remember { mutableIntStateOf(0) }
+
+    val phoneValid = phone.toList().all { it.isDigit() } && phone.length in 5..15
+    val captchaValid = captcha.toList().all { it.isDigit() } && captcha.length in 4..8
+
+    val snackbarScope = rememberCoroutineScope()
+    fun showSnackBar(message: String) {
+        snackbarScope.launch { snackbarHostState.showSnackbar(message) }
+    }
+
+    LaunchedEffect(loginState) {
+        when (val state = loginState) {
+            is NeteaseLoginState.Success -> {
+                Toast.makeText(context, context.getString(R.string.toast_welcome_user, state.nickname), Toast.LENGTH_SHORT).show()
+                onClose()
+            }
+
+            is NeteaseLoginState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.clearError()
+            }
+
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(captchaState) {
+        when (val state = captchaState) {
+            is NeteaseCaptchaState.Sent -> resendSeconds = 60
+            is NeteaseCaptchaState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.clearCaptchaError()
+            }
+
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(resendSeconds) {
+        while (resendSeconds > 0) {
+            delay(1_000)
+            resendSeconds--
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.auth_login_netease_title),
+                        style = titleStyle,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                },
+                navigationIcon = {
+                    FilledIconButton(
+                        modifier = Modifier.padding(start = 6.dp),
+                        onClick = onClose,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.auth_cd_back)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.auth_phone_login_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = GoogleSansRounded,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = phone,
+                onValueChange = { input -> phone = input.filter { it.isDigit() }.take(15) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(text = stringResource(R.string.auth_phone_number_label), fontFamily = GoogleSansRounded) },
+                prefix = { Text(text = "+$ctcode ", fontFamily = GoogleSansRounded) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                enabled = loginState !is NeteaseLoginState.Loading
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = captcha,
+                    onValueChange = { input -> captcha = input.filter { it.isDigit() }.take(8) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text(text = stringResource(R.string.auth_captcha_label), fontFamily = GoogleSansRounded) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    enabled = loginState !is NeteaseLoginState.Loading
+                )
+                FilledTonalButton(
+                    onClick = { viewModel.sendCaptcha(phone, ctcode) },
+                    enabled = phoneValid && resendSeconds == 0 &&
+                        captchaState !is NeteaseCaptchaState.Sending &&
+                        loginState !is NeteaseLoginState.Loading,
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    if (captchaState is NeteaseCaptchaState.Sending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else if (resendSeconds > 0) {
+                        Text(
+                            text = stringResource(R.string.auth_captcha_resend_seconds, resendSeconds),
+                            fontFamily = GoogleSansRounded
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.auth_send_captcha),
+                            fontFamily = GoogleSansRounded
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    when {
+                        !phoneValid -> showSnackBar(context.getString(R.string.auth_phone_invalid))
+                        !captchaValid -> showSnackBar(context.getString(R.string.auth_captcha_invalid))
+                        else -> viewModel.loginWithPhoneCaptcha(phone, captcha, ctcode)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                enabled = loginState !is NeteaseLoginState.Loading,
+                shape = CircleShape
+            ) {
+                if (loginState is NeteaseLoginState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.auth_phone_login_action),
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(
+                onClick = onUseWebLogin,
+                enabled = loginState !is NeteaseLoginState.Loading,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.auth_phone_login_use_web),
+                    fontFamily = GoogleSansRounded,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

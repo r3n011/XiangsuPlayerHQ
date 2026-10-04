@@ -55,6 +55,9 @@ class ApkDownloadInstaller {
         "https://github.akams.cn/"
     )
 
+    /** 蓝奏云直链 CDN 的 acw_sc__v2 挑战求解 */
+    private val lanzouApi = LanzouCloudApi()
+
     /**
      * 下载候选：URL + 可选 Cookie/Referer。
      * 蓝奏云直链必须携带解析会话的 Cookie 与 Referer，否则 CDN 返回人机验证页。
@@ -96,36 +99,98 @@ class ApkDownloadInstaller {
             try {
                 triedLanzou = triedLanzou || candidate.cookie != null
                 Timber.d("APK 下载源 [${index + 1}/${expandedCandidates.size}]: ${candidate.url}")
-                connection = (URL(candidate.url).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 20000
-                    readTimeout = 45000
-                    addRequestProperty("User-Agent", USER_AGENT)
-                    addRequestProperty("Accept", "application/octet-stream,application/vnd.android.package-archive,*/*")
-                    // ⚡ 蓝奏云 CDN 强制 gzip 压缩响应：声明 identity 避免 APK 被压成乱码；
-                    //    Cookie + Referer 用于绕过 CDN 人机验证页
-                    addRequestProperty("Accept-Encoding", "identity")
-                    candidate.cookie?.let { addRequestProperty("Cookie", it) }
-                    candidate.referer?.let { addRequestProperty("Referer", it) }
-                    instanceFollowRedirects = true
+
+                // ⚡ 蓝奏云 CDN（阿里 ESA）对直链先发 acw_sc__v2 JS 挑战（gzip HTML 页）：
+                //    真实浏览器执行 JS 解出 cookie、连同挑战响应的 acw_tc / cdn_sec_tc 会话
+                //    cookie 一起重试，才能拿到文件流。这里代理解挑战并重试一次。
+                val lanzouSession = LinkedHashMap<String, String>()
+                candidate.cookie?.split(';')
+                    ?.map { it.trim() }
+                    ?.filter { '=' in it }
+                    ?.forEach { pair ->
+                        val (name, value) = pair.split('=', limit = 2)
+                        lanzouSession[name] = value
+                    }
+
+                var isApkStream = false
+                var challengeAttempt = 0
+                while (!isApkStream) {
+                    connection = (URL(candidate.url).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = 20000
+                        readTimeout = 45000
+                        addRequestProperty("User-Agent", USER_AGENT)
+                        addRequestProperty("Accept", "application/octet-stream,application/vnd.android.package-archive,*/*")
+                        // ⚡ 蓝奏云 CDN 强制 gzip 压缩响应：声明 identity 避免 APK 被压成乱码；
+                        //    Cookie + Referer 用于绕过 CDN 人机验证页
+                        addRequestProperty("Accept-Encoding", "identity")
+                        if (candidate.cookie != null && lanzouSession.isNotEmpty()) {
+                            addRequestProperty(
+                                "Cookie",
+                                lanzouSession.entries.joinToString("; ") { (k, v) -> "$k=$v" }
+                            )
+                        }
+                        candidate.referer?.let { addRequestProperty("Referer", it) }
+                        instanceFollowRedirects = true
+                    }
+
+                    val responseCode = connection.responseCode
+                    if (responseCode !in 200..299) {
+                        throw RuntimeException("下载失败: HTTP $responseCode")
+                    }
+
+                    val contentType = connection.contentType.orEmpty()
+                    val isLanzouCandidate = candidate.cookie != null
+                    if (contentType.contains("text/html", ignoreCase = true) &&
+                        isLanzouCandidate && challengeAttempt == 0
+                    ) {
+                        // 挑战页：解 arg1 → acw_sc__v2，合并 Set-Cookie 会话后重试一次
+                        challengeAttempt = 1
+                        val encoding = connection.getHeaderField("Content-Encoding")?.lowercase().orEmpty()
+                        val html = connection.inputStream.use { input ->
+                            val bytes = if (encoding.contains("gzip")) {
+                                GZIPInputStream(input).readBytes()
+                            } else {
+                                input.readBytes()
+                            }
+                            String(bytes, Charsets.UTF_8)
+                        }
+                        val solved = lanzouApi.solveAcwChallenge(html)
+                        if (solved == null) {
+                            // 不是挑战页而是普通错误页：按无效源处理
+                            throw RuntimeException("响应不是 APK（content-type=$contentType）")
+                        }
+                        lanzouSession["acw_sc__v2"] = solved
+                        connection.headerFields?.forEach { (key, values) ->
+                            if (key != null && key.equals("Set-Cookie", ignoreCase = true)) {
+                                values.forEach { rawCookie ->
+                                    val kv = rawCookie.substringBefore(';').trim()
+                                    val idx = kv.indexOf('=')
+                                    if (idx > 0) {
+                                        lanzouSession[kv.substring(0, idx).trim()] = kv.substring(idx + 1).trim()
+                                    }
+                                }
+                            }
+                        }
+                        connection.disconnect()
+                        connection = null
+                        continue
+                    }
+                    if (contentType.contains("text/html", ignoreCase = true)) {
+                        // 镜像/CDN 可能返回 HTML 错误页而非 APK，直接判为无效源
+                        throw RuntimeException("响应不是 APK（content-type=$contentType）")
+                    }
+                    isApkStream = true
                 }
 
-                val responseCode = connection.responseCode
-                if (responseCode !in 200..299) {
-                    throw RuntimeException("下载失败: HTTP $responseCode")
-                }
-
-                // 镜像/CDN 可能返回 HTML 错误页而非 APK，直接判为无效源
-                val contentType = connection.contentType.orEmpty()
-                if (contentType.contains("text/html", ignoreCase = true)) {
-                    throw RuntimeException("响应不是 APK（content-type=$contentType）")
-                }
-
-                val totalBytes = connection.contentLengthLong
+                // 挑战重试循环里可能把 connection 置空过，此处必须已持有有效连接
+                val activeConnection = connection
+                    ?: throw RuntimeException("下载连接未建立")
+                val totalBytes = activeConnection.contentLengthLong
                 var downloadedBytes = 0L
                 var lastEmitTime = 0L
 
-                connection.inputStream.use { input ->
+                activeConnection.inputStream.use { input ->
                     FileOutputStream(file).use { output ->
                         val buffer = ByteArray(8192)
                         var bytesRead: Int

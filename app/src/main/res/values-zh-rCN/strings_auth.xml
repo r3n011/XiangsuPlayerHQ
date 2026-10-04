@@ -88,4 +88,13 @@
     <string name="auth_error_no_cookies">未找到 Cookie。请先登录。</string>
     <string name="auth_error_netease_login_incomplete">尚未检测到登录。点击完成前，请先完成网易云音乐登录。</string>
     <string name="auth_error_qq_login_incomplete">尚未检测到登录。点击完成前，请先完成 QQ 音乐登录。</string>
+    <string name="auth_phone_login_subtitle">使用网易云绑定手机号接收短信验证码登录。</string>
+    <string name="auth_phone_number_label">手机号</string>
+    <string name="auth_captcha_label">短信验证码</string>
+    <string name="auth_send_captcha">获取验证码</string>
+    <string name="auth_captcha_resend_seconds">%1$d 秒后重发</string>
+    <string name="auth_phone_login_action">登录</string>
+    <string name="auth_phone_login_use_web">遇到问题？改用网页登录</string>
+    <string name="auth_phone_invalid">请输入正确的手机号</string>
+    <string name="auth_captcha_invalid">请输入短信验证码</string>
 </resources>

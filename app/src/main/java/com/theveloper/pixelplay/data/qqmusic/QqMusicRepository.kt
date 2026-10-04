@@ -462,7 +462,11 @@ class QqMusicRepository @Inject constructor(
                             if (songCount == 0) continue
                             val id = pl.optLong("tid", 0L)
                             if (id <= 0L) continue
-                            val name = pl.optString("diss_name", "")
+                            // ⚡ 「创建的歌单」接口在不同时期/账号上返回过明文或 base64 两种形态，
+                            //    统一过严格校验的解码（明文原样返回，base64 才解码）
+                            val name = decodeBase64IfNeeded(
+                                pl.optString("diss_name", "").ifBlank { pl.optString("dissname", "") }
+                            )
                             if (name.isBlank()) continue
                             val previous = entitiesById.put(
                                 id,
@@ -600,6 +604,8 @@ class QqMusicRepository @Inject constructor(
                 var songBegin = 0
                 var page = 0
                 var expectedSongCount = -1
+                // 歌单详情响应自带的歌单名（列表接口缺失 / 实体未落库时的兜底，避免写死通用名）
+                var detailName: String? = null
 
                 while (true) {
                     val raw = api.getPlaylistDetail(
@@ -616,6 +622,12 @@ class QqMusicRepository @Inject constructor(
 
                     val cdlist = root.optJSONArray("cdlist") ?: throw Exception("No cdlist")
                     val firstCd = cdlist.optJSONObject(0) ?: throw Exception("Empty cdlist")
+                    if (detailName == null) {
+                        detailName = listOf("dissname", "diss_name", "dirname", "title")
+                            .map { key -> firstCd.optString(key) }
+                            .firstOrNull { it.isNotBlank() }
+                            ?.let { decodeBase64IfNeeded(it) }
+                    }
                     val songlist = firstCd.optJSONArray("songlist") ?: break
                     val fetchedCount = songlist.length()
                     if (fetchedCount == 0) break
@@ -661,9 +673,12 @@ class QqMusicRepository @Inject constructor(
                 dao.insertSongs(entities)
 
                 // Update app playlist
-                val playlistName = entities.firstOrNull()?.let { "QQ Music Playlist" } ?: "Playlist $playlistId"
-                // Ideally we should get the actual name from the list, but for now we search
-                val name = dao.getAllPlaylistsList().find { it.id == playlistId }?.name ?: playlistName
+                // ⚡ 名字优先级：本地歌单表（列表接口，已严格解码）→ 详情接口自带的歌单名 → 通用兜底。
+                //    旧实现直接写死 "QQ Music Playlist" / "Playlist {id}"，在实体缺失
+                //    （单独同步某个歌单、增量同步）时会显示错误名字 —— 即「有概率名字不对」。
+                val name = dao.getAllPlaylistsList().find { it.id == playlistId }?.name?.takeIf { it.isNotBlank() }
+                    ?: detailName?.takeIf { it.isNotBlank() }
+                    ?: "QQ Music Playlist"
                 updateAppPlaylistForQqMusicPlaylist(playlistId, name, entities)
 
                 syncUnifiedLibrarySongsFromQqMusic()
@@ -776,19 +791,25 @@ class QqMusicRepository @Inject constructor(
     /**
      * Decode Base64-encoded string if it looks like Base64.
      * QQ Music FCG endpoints return some fields as Base64 after Zlib decompression.
+     *
+     * ⚡ 必须**严格校验**：只有解码结果是一段合法 UTF-8 文本时才采用，否则原样返回。
+     *    旧实现只排除 \u0000，导致「本来就是明文、但恰好只含 [A-Za-z0-9+/=] 的名字」
+     *    （如 "Rock"、"Top100"）被错误解码成乱码（表现为「有概率歌单名不对」）；
+     *    新版接口 / 部分响应返回明文，只有老 fcg 响应才是 base64，无法从字段名区分。
      */
     private fun decodeBase64IfNeeded(input: String): String {
         if (input.isBlank()) return input
-        // Check if it looks like Base64: only contains A-Za-z0-9+/= and no Chinese/special chars
-        val base64Pattern = Regex("^[A-Za-z0-9+/=]+$")
-        if (!base64Pattern.matches(input)) return input
-        // Must be at least 4 chars and valid length for Base64
-        if (input.length < 4) return input
+        // 只可能是 base64 的字符集与长度（4 的倍数）
+        if (!Regex("^[A-Za-z0-9+/]+={0,2}$").matches(input)) return input
+        if (input.length < 4 || input.length % 4 != 0) return input
         return try {
             val decoded = Base64.decode(input, Base64.DEFAULT)
-            val result = String(decoded, Charsets.UTF_8)
-            // Verify the decoded result contains actual readable text
-            if (result.isNotBlank() && !result.contains('\u0000')) result else input
+            if (decoded.isEmpty()) return input
+            // UTF-8 严格校验：出现替换字符或不可打印控制符 → 判定为「本来就是明文」，不解码
+            val text = String(decoded, Charsets.UTF_8)
+            val hasReplacement = text.contains('\uFFFD')
+            val hasControl = text.any { it.code < 0x20 && it != '\n' && it != '\t' }
+            if (text.isNotBlank() && !hasReplacement && !hasControl) text else input
         } catch (_: Exception) {
             input
         }

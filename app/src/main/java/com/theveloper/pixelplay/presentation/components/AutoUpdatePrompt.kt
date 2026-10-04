@@ -183,6 +183,13 @@ fun AutoUpdatePrompt(
             },
             onBackgroundDownload = { candidates ->
                 ApkDownloadService.start(context, candidates)
+            },
+            onOpenInBrowser = { url ->
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (e: android.content.ActivityNotFoundException) {
+                    android.widget.Toast.makeText(context, R.string.update_no_browser, android.widget.Toast.LENGTH_SHORT).show()
+                }
             }
         )
     }

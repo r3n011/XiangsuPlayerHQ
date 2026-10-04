@@ -1086,4 +1086,10 @@
     <string name="setcat_miniplayer_style_material">Material</string>
     <string name="setcat_miniplayer_style_expressive">Expressive</string>
     <string name="setcat_miniplayer_corner_radius">Mini player corner radius</string>
+    <string name="setcat_lanzou_test_title">Test Lanzou download flow</string>
+    <string name="setcat_lanzou_test_subtitle">Resolve the update share link and list files, detected versions and direct URLs (verifies the in-app update channel).</string>
+    <string name="setcat_lanzou_test_running">Resolving share link…</string>
+    <string name="setcat_lanzou_test_dialog_title">Lanzou download flow test</string>
+    <string name="setcat_lanzou_test_close">Close</string>
+    <string name="setcat_lanzou_test_open_browser">Open first direct link in browser</string>
 </resources>

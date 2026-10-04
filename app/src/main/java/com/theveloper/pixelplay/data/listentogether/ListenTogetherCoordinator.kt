@@ -136,7 +136,9 @@ class ListenTogetherCoordinator @Inject constructor(
                 if (error is CancellationException) throw error
                 Timber.w(error, "ListenTogether: startHostRoom failed")
                 resetRoom()
-                setError(error.message ?: "开始一起听失败")
+                // ⚡ 拉歌单等非 API 链路的异常文案可能是服务端原文（如「系统错误」），
+                //    统一过一遍友好映射，不让原文直出面板
+                setError(error.userFacingMessage() ?: "开始一起听失败")
             }
         }
     }
@@ -168,7 +170,7 @@ class ListenTogetherCoordinator @Inject constructor(
                 if (error is CancellationException) throw error
                 Timber.w(error, "ListenTogether: startHostRoomWithSongs failed")
                 resetRoom()
-                setError(error.message ?: failureMessage)
+                setError(error.userFacingMessage() ?: failureMessage)
             }
         }
     }
@@ -222,7 +224,7 @@ class ListenTogetherCoordinator @Inject constructor(
                 if (error is CancellationException) throw error
                 Timber.w(error, "ListenTogether: joinRoom failed")
                 resetRoom()
-                setError(error.message ?: "加入一起听失败")
+                setError(error.userFacingMessage() ?: "加入一起听失败")
             }
         }
     }
@@ -717,11 +719,17 @@ class ListenTogetherCoordinator @Inject constructor(
             it.copy(
                 phase = if (room == null) ListenTogetherPhase.Idle else ListenTogetherPhase.Reconnecting,
                 consecutiveFailures = failures,
-                lastError = error.message ?: it.lastError
+                // 统一走友好映射：同步循环里也可能夹着非一起听 API 的异常（取歌曲详情等），
+                // 避免「系统错误」这类服务端原文直出面板
+                lastError = error.userFacingMessage() ?: it.lastError
             )
         }
         Timber.w(error, "ListenTogether: sync failure #%d", failures)
     }
+
+    /** 异常 → 用户可读文案；空白消息返回 null（保留原有提示） */
+    private fun Throwable.userFacingMessage(): String? =
+        message?.takeIf { it.isNotBlank() }?.let { friendlyListenTogetherMessage(it) }
 
     /** 同步轮询间隔：连续失败时指数退避，避免把服务端限流拖得更久 */
     private fun syncDelayMs(): Long = SYNC_INTERVAL_MS shl failures.coerceIn(0, MAX_BACKOFF_SHIFT)

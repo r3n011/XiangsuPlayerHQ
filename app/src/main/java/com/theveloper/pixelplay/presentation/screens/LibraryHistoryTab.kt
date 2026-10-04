@@ -130,6 +130,13 @@ fun LibraryHistoryTab(
         return
     }
 
+    // ⚡ 媒体库「回到顶部」：注册历史网格的滚动状态（空态 / 加载态不注册，按钮自然隐藏）
+    val historyGridState = rememberLazyGridState()
+    LibraryScrollToTopRegistration(
+        tabId = LibraryTabId.HISTORY.storageKey,
+        state = historyGridState
+    )
+
     val queueSongs = remember(historyItems) { historyItems.map { it.song } }
     val queueName = stringResource(R.string.tab_history)
     val pullToRefreshState = rememberPullToRefreshState()
@@ -151,7 +158,7 @@ fun LibraryHistoryTab(
             }
         ) {
             LazyVerticalGrid(
-                state = rememberLazyGridState(),
+                state = historyGridState,
                 columns = rememberLibraryListGridCells(),
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),

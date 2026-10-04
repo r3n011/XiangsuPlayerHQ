@@ -104,6 +104,11 @@ fun LibraryAlbumsTab(
     val listState = rememberLazyGridState()
     val dummyListState = rememberLazyGridState()
     val dummyGridState = rememberLazyGridState()
+    // ⚡ 媒体库「回到顶部」：专辑 Tab 有列表 / 网格两种视图，按当前视图注册对应的滚动状态
+    LibraryScrollToTopRegistration(
+        tabId = com.theveloper.pixelplay.data.model.LibraryTabId.ALBUMS.storageKey,
+        state = if (isListView) listState else gridState
+    )
     val context = LocalContext.current
     val imageLoader = context.imageLoader
 
@@ -515,6 +520,11 @@ fun LibraryArtistsTab(
 
     val listState = rememberLazyGridState()
     val dummyListState = rememberLazyGridState()
+    // ⚡ 媒体库「回到顶部」：注册歌手网格的滚动状态
+    LibraryScrollToTopRegistration(
+        tabId = com.theveloper.pixelplay.data.model.LibraryTabId.ARTISTS.storageKey,
+        state = listState
+    )
     val artistFastScrollLabelProvider = remember(artists, currentArtistSortOption) {
         { index: Int ->
             artistFastScrollLabel(
@@ -737,7 +747,9 @@ fun LibraryPlaylistsTab(
         onPlaylistLongPress = onPlaylistLongPress,
         onPlaylistSelectionToggle = onPlaylistSelectionToggle,
         onReorder = onReorder,
-        dailyRecommendHeader = dailyRecommendHeader
+        dailyRecommendHeader = dailyRecommendHeader,
+        // ⚡ 媒体库「回到顶部」：把歌单列表的滚动状态注册给媒体库父级
+        scrollToTopRegistrationKey = com.theveloper.pixelplay.data.model.LibraryTabId.PLAYLISTS.storageKey
     )
 }
 

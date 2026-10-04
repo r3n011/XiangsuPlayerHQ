@@ -150,8 +150,21 @@ class QqMusicLoginViewModel @Inject constructor(
                     _state.value = QqMusicLoginState.Success(nickname)
                 },
                 onFailure = { err ->
+                    // ⚡ 风控在「提交验证码登录」这一步同样可能拦截（code=20276 带 securityURL）。
+                    //    之前只有发验证码那步处理了挑战，登录步只会把原始异常文本塞进错误卡片，
+                    //    没有任何可操作入口 —— 表现就是「输入验证码后提交没有任何用，登录不了」。
+                    //    这里对齐发码步：给出可操作提示 + 弹出安全验证 WebView（完成后自动重发验证码）。
+                    val challenge = err as? com.theveloper.pixelplay.data.remote.qqmusic.QqMusicSecurityChallengeException
                     _phoneUi.update {
-                        it.copy(submitting = false, error = err.message ?: "登录失败，请重试")
+                        it.copy(
+                            submitting = false,
+                            error = if (challenge != null) {
+                                "QQ 音乐要求完成安全验证：完成验证后会自动重发验证码，请用新验证码重新登录"
+                            } else {
+                                err.message ?: "登录失败，请重试"
+                            },
+                            securityChallengeUrl = challenge?.securityUrl?.takeIf { url -> url.isNotBlank() }
+                        )
                     }
                     _state.value = QqMusicLoginState.Idle
                 }

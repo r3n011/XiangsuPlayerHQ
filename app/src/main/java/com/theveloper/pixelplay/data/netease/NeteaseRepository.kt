@@ -143,6 +143,91 @@ class NeteaseRepository @Inject constructor(
     }
 
     /**
+     * 发送网易云短信验证码（手机号登录第一步）。
+     * 链路与 MeloX 的网易云手机登录一致：weapi `/api/sms/captcha/sent`。
+     */
+    suspend fun sendPhoneCaptcha(phone: String, ctcode: String = "86"): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = net.moriafly.ncm.NcmApi.sentSmsCaptcha(phone, ctcode).getOrThrow()
+                val code = (body["code"] as? Number)?.toInt() ?: -1
+                if (code !in 200..299) {
+                    throw IllegalStateException(netEasePhoneAuthErrorMessage(code, body))
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Timber.w(e, "sendPhoneCaptcha: failed")
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 手机号 + 短信验证码登录（weapi `/api/w/login/cellphone`，captcha 登录）。
+     * 登录成功后把响应里的 cookie（含 MUSIC_U）转成 JSON 走 [loginWithCookies]
+     * 复用既有的持久化 + 验活 + 用户信息保存链路，返回昵称。
+     */
+    suspend fun loginWithPhoneCaptcha(phone: String, captcha: String, ctcode: String = "86"): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = net.moriafly.ncm.NcmApi.loginCellphone(
+                    phone = phone,
+                    captcha = captcha,
+                    ctcode = ctcode
+                ).getOrThrow()
+                val code = (body["code"] as? Number)?.toInt() ?: -1
+                if (code !in 200..299) {
+                    throw IllegalStateException(netEasePhoneAuthErrorMessage(code, body))
+                }
+                val cookieHeader = body["cookie"] as? String
+                if (cookieHeader.isNullOrBlank() || !cookieHeader.contains("MUSIC_U=")) {
+                    return@withContext Result.failure(
+                        IllegalStateException("登录响应未包含有效会话，请改用网页登录或稍后重试")
+                    )
+                }
+                val cookieJson = JSONObject().apply {
+                    cookieHeader.split(';')
+                        .map { it.trim() }
+                        .filter { '=' in it }
+                        .forEach { pair ->
+                            val (name, value) = pair.split('=', limit = 2)
+                            put(name, value)
+                        }
+                }.toString()
+                loginWithCookies(cookieJson)
+            } catch (e: Exception) {
+                Timber.w(e, "loginWithPhoneCaptcha: failed")
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 网易云手机号登录的错误 / 风控提示（对齐 MeloX neteasePhoneAuthError 的识别规则）：
+     * 命中风控码（702 / 8810 / 8820 / 8830 / 8860 / 10001-10004）或响应带
+     * redirectUrl / checkToken 字段时，引导用户改走网页登录完成安全验证。
+     */
+    private fun netEasePhoneAuthErrorMessage(code: Int, body: Map<String, Any?>?): String {
+        if (code in 200..299) return "登录成功"
+        val data = body?.get("data") as? Map<*, *>
+        val loginExt = body?.get("loginExtData") as? Map<*, *>
+        val hasChallenge = listOfNotNull(body, data, loginExt).any { map ->
+            (map["redirectUrl"] as? String)?.isNotBlank() == true ||
+                (map["checkToken"] as? String)?.isNotBlank() == true
+        }
+        val isRiskChallenge = code == 702 ||
+            code in setOf(8810, 8820, 8830, 8860) ||
+            code in 10001..10004 ||
+            hasChallenge
+        return if (isRiskChallenge) {
+            "网易云要求额外安全验证，请改用网页登录完成验证"
+        } else {
+            (body?.get("message") as? String)?.takeIf { it.isNotBlank() }
+                ?: "网易云登录失败（$code）"
+        }
+    }
+
+    /**
      * Save cookies from WebView login result and initialize the API client.
      * Returns the user's nickname on success.
      */
