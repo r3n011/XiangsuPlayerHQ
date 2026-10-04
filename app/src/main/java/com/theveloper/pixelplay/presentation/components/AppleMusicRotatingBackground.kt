@@ -28,11 +28,10 @@ fun AppleMusicRotatingBackground(
             albumArtUri = albumArtUri,
             modifier = modifier,
         )
-        BackgroundStyle.PALETTE -> IsolationBackground(
-            albumArtUri = albumArtUri,
-            modifier = modifier,
-            staticPalette = true,
-        )
+        // 取色背景：由调用方的根底色换用封面配色的 primaryContainer 承担
+        // （对齐原版 SheetThemeState.playerAreaBackground = miniPlayerScheme.primaryContainer），
+        // 这里不再叠画任何层 —— 否则会盖住 primaryContainer 底色。
+        BackgroundStyle.PALETTE -> Unit
         // 纯色背景：什么都不画（调用方不渲染此组件也算同一观感）
         BackgroundStyle.SOLID -> Unit
     }

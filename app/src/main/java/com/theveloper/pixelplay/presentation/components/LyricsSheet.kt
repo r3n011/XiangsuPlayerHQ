@@ -383,7 +383,14 @@ fun LyricsSheet(
     val sheetColors = remember(colorScheme, forceMonoColors) {
         lyricsSheetColors(colorScheme, forceMono = forceMonoColors)
     }
-    val backgroundColor = sheetColors.controlContainer
+    // ⚡ 取色背景样式：底色用封面配色的 primaryContainer（对齐原版
+    //    SheetThemeState.playerAreaBackground = miniPlayerScheme.primaryContainer）；
+    //    其余样式跟随主题 surfaceContainerLowest。
+    val backgroundColor = if (lyricsBackgroundStyle == BackgroundStyle.PALETTE) {
+        colorScheme.primaryContainer
+    } else {
+        sheetColors.controlContainer
+    }
     val onBackgroundColor = sheetColors.controlContent
     val containerColor = sheetColors.container
     val contentColor = sheetColors.content
@@ -856,21 +863,20 @@ fun LyricsSheet(
             val hasCustomBackground =
                 customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank()
 
-            // ⚡ 背景层是否真的在绘制（样式非「纯色」+ 有封面 + 没有自定义背景图）。
+            // ⚡ 流体背景层是否真的在绘制（仅「绚丽」样式 + 有封面 + 没有自定义背景图）。
             //   下面的「歌词渐变遮罩」在它生效时必须让位：那层 0.4 → 0.95 的渐变会把网格
             //   盖成一块纯色 —— 表现就是「歌词背景开了却只有纯色」。
-            //   这与播放器背景的处理保持一致，也对齐 AMLL（背景是纯效果层，不带 scrim）。
+            //   取色背景（primaryContainer 底色）与纯色背景一样不需要让位。
             val backgroundActive =
                 !hasCustomBackground &&
-                    lyricsBackgroundStyle != BackgroundStyle.SOLID &&
+                    lyricsBackgroundStyle == BackgroundStyle.VIBRANT &&
                     currentSong?.albumArtUriString != null
 
-            if (!hasCustomBackground && lyricsBackgroundStyle != BackgroundStyle.SOLID) {
+            if (!hasCustomBackground && lyricsBackgroundStyle == BackgroundStyle.VIBRANT) {
                 // ⚡ 低版本不再单独走 CPU 模糊背景（封面解码 → 软件高斯 → 放大）：那层在低端机上
                 //    既费电又容易一帧有一帧无地闪，观感还不如纯色。现在统一交给
-                //    AppleMusicRotatingBackground —— 内部按样式/设备能力渲染：
-                //    绚丽 = AGSL 流体渐变（低版本 / 着色器不可用时为 Cloudy 模糊封面）；
-                //    取色 = 静态封面主色纯色。
+                //    AppleMusicRotatingBackground —— 绚丽样式：AGSL 流体渐变
+                //   （低版本 / 着色器不可用时为 Cloudy 模糊封面）。
                 AppleMusicRotatingBackground(
                     albumArtUri = currentSong?.albumArtUriString,
                     modifier = Modifier.fillMaxSize(),

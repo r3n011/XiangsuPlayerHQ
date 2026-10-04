@@ -1423,10 +1423,19 @@ fun FullPlayerContent(
             //    失败）——播放器面板本身是透明 Surface，少了这一层就会「背景透明 →
             //    直接看到后面的界面」。这里先铺一层专辑主题的最暗面色（**不参与下面那层的
             //    方向切换淡入淡出**，任何时刻都是不透明的），背景缺失时只是少一层装饰。
+            // ⚡ 取色背景样式：底色换用封面配色的 primaryContainer（对齐原版
+            //    SheetThemeState.playerAreaBackground = miniPlayerScheme.primaryContainer），
+            //    随封面配色自动过渡；其余样式保持 surfaceContainerLowest。
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(surfaceContainerLowest)
+                    .background(
+                        if (playerBackgroundStyle == BackgroundStyle.PALETTE) {
+                            LocalMaterialTheme.current.primaryContainer
+                        } else {
+                            surfaceContainerLowest
+                        }
+                    )
             )
             // ⚡ 自定义播放器背景：置于所有播放器内容之下（开关关闭或未选图时不绘制）
             //    背景不参与「播放器不透明度」——该设置只作用于背景之外的所有元素
@@ -1444,8 +1453,9 @@ fun FullPlayerContent(
                     scrimAlpha = 0.25f
                 )
                 // 歌词背景那套「封面旋转 + 重模糊」氛围背景，复刻到播放器背景：
-                // 未使用自定义背景图且样式非「纯色背景」时启用（与歌词背景分开控制，默认绚丽）
-                if (playerBackgroundStyle != BackgroundStyle.SOLID &&
+                // 仅「绚丽背景」样式时绘制；「取色背景」由下方根底色的 primaryContainer 承担，
+                // 「纯色背景」不画（与歌词背景分开控制，默认绚丽）
+                if (playerBackgroundStyle == BackgroundStyle.VIBRANT &&
                     !(customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank())
                 ) {
                     song?.albumArtUriString?.let { albumArtUri ->
