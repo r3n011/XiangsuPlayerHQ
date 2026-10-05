@@ -6,6 +6,7 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.kyant.taglib.TagLib
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
+import com.theveloper.pixelplay.utils.normalizeMetadataText
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
@@ -137,17 +138,19 @@ object AudioMetadataReader {
                 // Log ALL keys TagLib returned so we can diagnose mapping issues
                 if (VERBOSE) Log.w(TAG, "TagLib propertyMap keys for ${file.name}: ${propertyMap.keys}")
 
-                val title = propertyMap["TITLE"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                val artist = propertyMap["ARTIST"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                val albumArtist = propertyMap["ALBUMARTIST"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                    ?: propertyMap["ALBUM ARTIST"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                    ?: propertyMap["BAND"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                val album = propertyMap["ALBUM"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                val genre = propertyMap["GENRE"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                val composer = propertyMap["COMPOSER"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                    ?: propertyMap["TCOM"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                val lyrics = propertyMap["LYRICS"]?.firstOrNull()?.takeIf { it.isNotBlank() }
-                    ?: propertyMap["UNSYNCEDLYRICS"]?.firstOrNull()?.takeIf { it.isNotBlank() }
+                // Repair tags whose bytes are UTF-8/Shift_JIS but whose header declares
+                // Latin-1 — otherwise Japanese titles render as "ã□□" mojibake.
+                val title = propertyMap["TITLE"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                val artist = propertyMap["ARTIST"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                val albumArtist = propertyMap["ALBUMARTIST"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                    ?: propertyMap["ALBUM ARTIST"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                    ?: propertyMap["BAND"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                val album = propertyMap["ALBUM"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                val genre = propertyMap["GENRE"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                val composer = propertyMap["COMPOSER"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                    ?: propertyMap["TCOM"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                val lyrics = propertyMap["LYRICS"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+                    ?: propertyMap["UNSYNCEDLYRICS"]?.firstOrNull()?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
                 val trackString = propertyMap["TRACKNUMBER"]?.firstOrNull()?.takeIf { it.isNotBlank() }
                     ?: propertyMap["TRACK"]?.firstOrNull()?.takeIf { it.isNotBlank() }
                 val trackNumber = trackString?.substringBefore('/')?.toIntOrNull()
@@ -240,13 +243,13 @@ object AudioMetadataReader {
             if (VERBOSE) Log.w(TAG, "JAudioTagger: tag class=${tag?.javaClass?.simpleName}, " +
                     "header=${header?.format}, sampleRate=${header?.sampleRateAsNumber}")
 
-            val title = tag?.getFirst(FieldKey.TITLE)?.takeIf { it.isNotBlank() }
-            val artist = tag?.getFirst(FieldKey.ARTIST)?.takeIf { it.isNotBlank() }
-            val albumArtist = tag?.getFirst(FieldKey.ALBUM_ARTIST)?.takeIf { it.isNotBlank() }
-            val album = tag?.getFirst(FieldKey.ALBUM)?.takeIf { it.isNotBlank() }
-            val genre = tag?.getFirst(FieldKey.GENRE)?.takeIf { it.isNotBlank() }
-            val composer = tag?.getFirst(FieldKey.COMPOSER)?.takeIf { it.isNotBlank() }
-            val lyrics = tag?.getFirst(FieldKey.LYRICS)?.takeIf { it.isNotBlank() }
+            val title = tag?.getFirst(FieldKey.TITLE)?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+            val artist = tag?.getFirst(FieldKey.ARTIST)?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+            val albumArtist = tag?.getFirst(FieldKey.ALBUM_ARTIST)?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+            val album = tag?.getFirst(FieldKey.ALBUM)?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+            val genre = tag?.getFirst(FieldKey.GENRE)?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+            val composer = tag?.getFirst(FieldKey.COMPOSER)?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
+            val lyrics = tag?.getFirst(FieldKey.LYRICS)?.normalizeMetadataText()?.takeIf { it.isNotBlank() }
             val trackNumber = tag?.getFirst(FieldKey.TRACK)?.takeIf { it.isNotBlank() }
                 ?.substringBefore('/')?.toIntOrNull()
             val discNumber = tag?.getFirst(FieldKey.DISC_NO)?.takeIf { it.isNotBlank() }

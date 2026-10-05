@@ -2,42 +2,133 @@ package com.theveloper.pixelplay.utils
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
 import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
 import java.text.Normalizer
 
 private val WINDOWS_1252: Charset = Charset.forName("windows-1252")
+
+private val SHIFT_JIS: Charset? = runCatching { Charset.forName("Shift_JIS") }.getOrNull()
+
+/**
+ * Reverse mapping for the Windows-1252 punctuation that occupies the 0x80-0x9F
+ * byte range (curly quotes, dashes, ellipsis...). When UTF-8 bytes are misdecoded
+ * through Windows-1252 those bytes surface as these characters and must be mapped
+ * back before the text can be re-decoded. Built by round-tripping each byte
+ * through the charset so it always matches the platform's decoding table.
+ */
+private val CP1252_HIGH_BYTE_REVERSE: Map<Char, Byte> = buildMap {
+    val decoder = WINDOWS_1252.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+    for (b in 0x80..0x9F) {
+        val decoded = runCatching { decoder.decode(ByteBuffer.wrap(byteArrayOf(b.toByte()))) }
+            .getOrNull() ?: continue
+        if (decoded.length == 1) put(decoded[0], b.toByte())
+    }
+}
 
 fun Color.toHexString(): String {
     return String.format("#%08X", this.toArgb())
 }
 
 /**
- * Attempts to fix incorrectly encoded metadata strings that frequently appear when
- * tags are saved using Windows-1252/ISO-8859-1 but are later read as UTF-8. This results
- * in characters such as "Ã", "â" or replacement symbols appearing instead of expected
- * punctuation. The function re-encodes the text when those patterns are detected and
- * removes stray control characters while keeping the original text when no adjustment
- * is necessary.
+ * Attempts to fix incorrectly encoded metadata strings — most commonly tags whose
+ * bytes are UTF-8 (Japanese/Chinese/European text) but whose ID3 header declares
+ * ISO-8859-1/Windows-1252. Every misdecoded character then lives in the 0x80-0xFF
+ * range (e.g. "く" shows up as "ã□□"), which is exactly what the structural
+ * detection below looks for: map the characters back to bytes, re-decode strictly
+ * as UTF-8, and keep the result only when the bytes form valid multibyte UTF-8.
+ * Genuinely Latin text ("Café", "Don't") never survives that strict validation,
+ * so it is returned untouched. Falls back to a Shift_JIS re-decode for legacy
+ * Japanese tags, accepted only when the result contains kana/kanji.
  */
 fun String?.normalizeMetadataText(): String? {
     if (this == null) return null
-    val trimmed = this.trim()
-    if (trimmed.isEmpty()) return trimmed
+    var candidate = this.trim()
+    if (candidate.isEmpty()) return candidate
 
-    val suspiciousPatterns = listOf("Ã", "â", "�", "ð", "Ÿ")
-    val needsFix = suspiciousPatterns.any { trimmed.contains(it) }
-
-    val reencoded = if (needsFix) {
-        runCatching {
-            String(trimmed.toByteArray(WINDOWS_1252), Charsets.UTF_8).trim()
-        }.getOrNull()
-    } else null
-
-    val candidate = reencoded?.takeIf { it.isNotEmpty() } ?: trimmed
+    // UTF-8-as-Latin-1 mojibake may be nested (encoded twice); repair until stable.
+    repeat(2) {
+        val repaired = repairUtf8Mojibake(candidate) ?: return@repeat
+        candidate = repaired
+    }
+    if (candidate == this.trim()) {
+        repairShiftJisMojibake(candidate)?.let { candidate = it }
+    }
 
     val cleaned = candidate.replace("\u0000", "")
 
     return Normalizer.normalize(cleaned, Normalizer.Form.NFC)
+}
+
+/**
+ * Maps a suspicious string back to its original bytes. Chars in 0x00-0xFF map 1:1;
+ * Windows-1252 punctuation maps through [CP1252_HIGH_BYTE_REVERSE]. Any other char
+ * (real CJK text, emoji, U+FFFD...) proves the string is not Latin-1 mojibake.
+ */
+private fun String.toSuspectedLatin1Bytes(): ByteArray? {
+    val bytes = ByteArray(length)
+    for (i in indices) {
+        val code = this[i].code
+        bytes[i] = when {
+            code <= 0xFF -> code.toByte()
+            else -> CP1252_HIGH_BYTE_REVERSE[this[i]] ?: return null
+        }
+    }
+    return bytes
+}
+
+private fun decodeStrictly(charset: Charset, bytes: ByteArray): String? = try {
+    charset.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+        .decode(ByteBuffer.wrap(bytes))
+        .toString()
+} catch (_: CharacterCodingException) {
+    null
+}
+
+private fun repairUtf8Mojibake(text: String): String? {
+    if (text.none { it.code > 0x7F }) return null
+
+    val bytes = text.toSuspectedLatin1Bytes() ?: return null
+
+    // A genuine mojibake must contain at least one UTF-8 lead byte (0xC2-0xF4);
+    // continuation/control bytes alone cannot form text.
+    if (bytes.none { val u = it.toInt() and 0xFF; u in 0xC2..0xF4 }) return null
+
+    val decoded = decodeStrictly(Charsets.UTF_8, bytes) ?: return null
+    if (decoded == text) return null
+    // The repair must not leave C1 control junk (the visible boxes) behind.
+    if (decoded.any { it.code in 0x80..0x9F }) return null
+    return decoded
+}
+
+/**
+ * Legacy Japanese tags written in Shift_JIS misdecoded as Latin-1. Shift_JIS decodes
+ * almost anything, so the result is only accepted when the input is overwhelmingly
+ * high-byte (real misdecoded Japanese is ~100% high bytes) and the decoded text
+ * contains full-width kana or kanji — decorative Latin-1 strings ("°º¤ø,¸¸") and
+ * Latin text with a stray curly quote decode to half-width kana or garbage and are
+ * left untouched.
+ */
+private fun repairShiftJisMojibake(text: String): String? {
+    if (text.contains('\uFFFD')) return null
+    val bytes = text.toSuspectedLatin1Bytes() ?: return null
+    val highBytes = bytes.count { (it.toInt() and 0xFF) >= 0x80 }
+    if (highBytes * 100 < bytes.size * 35) return null
+    val decoded = SHIFT_JIS?.let { decodeStrictly(it, bytes) } ?: return null
+    if (decoded == text) return null
+    if (decoded.any { it.code in 0x80..0x9F || it == '\uFFFD' }) return null
+    val hasJapanese = decoded.any {
+        it.code in 0x3040..0x30FF || // kana
+            it.code in 0x3400..0x4DBF || // CJK ext A
+            it.code in 0x4E00..0x9FFF    // CJK ideographs
+    }
+    return if (hasJapanese) decoded else null
 }
 
 fun String?.normalizeMetadataTextOrEmpty(): String {
