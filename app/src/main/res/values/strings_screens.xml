@@ -167,6 +167,8 @@
     <string name="search_placeholder">Search…</string>
     <string name="cd_search_icon">Search</string>
     <string name="cd_clear_search_query">Clear search</string>
+    <string name="queue_search_hint">Search songs in this queue</string>
+    <string name="queue_search_result_count">%1$d matches</string>
     <string name="recent_searches">Recent searches</string>
     <string name="clear_all">Clear all</string>
     <string name="cd_search_history_icon">History</string>

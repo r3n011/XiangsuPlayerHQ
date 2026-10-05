@@ -910,16 +910,17 @@ fun LyricsSheet(
             } else if (backgroundActive) {
                 // ⚡ 绚丽背景生效时也要给歌词留一层「轻」遮罩：Isolation 流体背景虽然是
                 //    低频渐变，但亮部（尤其浅色封面）仍会顶掉歌词对比度。这里用远低于
-                //    纯色档的透明度（0.12 → 0.42）——压住亮部的同时不会把流体盖成纯色。
-                //    背景取色端也已整体压暗（OkLab L * 0.70），两层叠加后歌词才稳。
+                //    纯色档的透明度（0.08 → 0.36）——压住亮部的同时不会把流体盖成纯色。
+                //    背景取色端已整体调亮（OkLab L×0.78），遮罩相应比旧档（0.12→0.42）
+                //    再让一点，流体观感更透出来。
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    containerColor.copy(alpha = 0.12f),
-                                    containerColor.copy(alpha = 0.42f)
+                                    containerColor.copy(alpha = 0.08f),
+                                    containerColor.copy(alpha = 0.36f)
                                 )
                             )
                         )

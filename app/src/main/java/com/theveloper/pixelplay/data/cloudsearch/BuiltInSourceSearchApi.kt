@@ -101,6 +101,14 @@ class BuiltInSourceSearchApi @Inject constructor(
         /** 酷我官方直链接口（落雪 kw 音源同源，br 取 320kmp3/128kmp3/2000flac） */
         private const val KW_MOBI_URL = "http://mobi.kuwo.cn/mobi.s"
         private const val KW_APP_SOURCE = "kwplayer_ar_5.1.0.0_B_jiakong_vh.apk"
+        private const val KW_LYRIC_URL = "http://newlyric.kuwo.cn/newlyric.lrc"
+        /** 落雪 kw/lyric.js 同款 XOR 密钥（请求参数与响应体共用） */
+        private const val KW_LYRIC_XOR_KEY = "yeelion"
+        /** 酷我 lrcx 逐字时间轴标记，如 <120,300>（落雪 kw lrcTools.rxps.wordTimeAll） */
+        private val KW_WORD_TIME_REGEX = Regex("<(-?\\d+),(-?\\d+)(?:,-?\\d+)?>")
+        /** 咪咕 MRC 行时间轴 [startMs,durMs] 与逐字标记 (startMs,durMs) */
+        private val MG_MRC_LINE_REGEX = Regex("^\\[(\\d+),\\d+](.*)$")
+        private val MG_MRC_WORD_TIME_REGEX = Regex("\\(\\d+,\\d+\\)")
         private const val MG_IOS_UA =
             "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 " +
                 "(KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
@@ -116,8 +124,8 @@ class BuiltInSourceSearchApi @Inject constructor(
      * 内置源歌词获取（对齐落雪 musicSdk 的 lyric 实现）：
      * - tx：c.y.qq.com 官方歌词接口（base64，带翻译）
      * - kg：lyrics.kugou.com 两步（search → download，lrc 直接 base64 解码）
-     * - kw：m.kuwo.cn 歌词 JSON 接口（lrclist 直接拼 LRC）
-     * - 其他（mg 等）：返回失败，由上层走 LRCLIB 兜底
+     * - kw：newlyric.kuwo.cn 加密接口（yeelion XOR 参数 + zlib + GB18030，落雪同款）
+     * - mg：resourceinfo.do（songId 优先）+ mrc TEA 解密 → LRC 转换
      * @return 原始 LRC 文本（可能含翻译）
      */
     suspend fun getLyric(source: String, song: LxSongInfo): Result<String> = withContext(Dispatchers.IO) {
@@ -168,7 +176,7 @@ class BuiltInSourceSearchApi @Inject constructor(
         val hash = song.hash.ifBlank { song.id }
         if (name.isBlank() || hash.isBlank()) return null
         val searchUrl = "http://lyrics.kugou.com/search?ver=1&man=yes&client=pc" +
-            "&keyword=${URLEncoder.encode(name, "UTF-8")}&hash=$hash&timelength=${song.duration}&lrctxt=1"
+            "&keyword=${URLEncoder.encode(name, "UTF-8")}&hash=$hash&timelength=${song.duration * 1000}&lrctxt=1"
         val searchBody = httpGetKg(searchUrl) ?: return null
         val candidates = JSONObject(searchBody).optJSONArray("candidates") ?: return null
         if (candidates.length() == 0) return null
@@ -186,46 +194,91 @@ class BuiltInSourceSearchApi @Inject constructor(
         return if (Regex("\\[\\d{1,2}:\\d{1,2}").containsMatchIn(lrc)) lrc else null
     }
 
-    // ─── 酷我歌词（m.kuwo.cn JSON 接口）────────────────────────────────
+    // ─── 酷我歌词（newlyric.kuwo.cn 加密接口，落雪 kw/lyric.js 同款）──────────
 
     private suspend fun getKwLyric(song: LxSongInfo): String? {
         val id = song.songmid.ifBlank { song.id }
         if (id.isBlank()) return null
-        val url = "http://m.kuwo.cn/newh5/singles/songinfoandlrc?musicId=$id"
-        val body = httpGet(url) ?: return null
-        val data = JSONObject(body).optJSONObject("data") ?: return null
-        val lrcList = data.optJSONArray("lrclist") ?: return null
-        val sb = StringBuilder()
-        for (i in 0 until lrcList.length()) {
-            val item = lrcList.optJSONObject(i) ?: continue
-            val time = item.optString("time", "")
-            val text = item.optString("lineLyric", "")
-            if (time.isNotBlank()) {
-                // 酷我 lrclist.time 是秒（可带小数）格式，如 "0.0"、"65.43"，
-                // 转成标准 LRC 时间戳 [mm:ss.xx] 才能被 LyricsUtils 正确解析。
-                val lrcTimestamp = kwSecondsToLrcTimestamp(time) ?: continue
-                sb.append("[$lrcTimestamp]").append(text).append('\n')
-            }
-        }
-        return sb.toString().takeIf { it.isNotBlank() }
+        // ⚡ 旧接口 m.kuwo.cn/newh5/singles/songinfoandlrc 已废弃：任何 musicId 都返回
+        //   {"data":null,"msg":"音乐查询失败","status":301}（实测），酷我歌全部无歌词。
+        //   改用落雪 kw/lyric.js 的 newlyric.lrc 加密接口：参数按 "yeelion" 循环 XOR 后
+        //   Base64，响应为 tp=content 头 + zlib + (lrcx) Base64→XOR→GB18030。
+        val url = "$KW_LYRIC_URL?${buildKwLyricParams(id)}"
+        val raw = httpGetBytes(url) ?: return null
+        val text = decodeKwLyricResponse(raw) ?: return null
+        // lrcx 响应带 <offset,dur> 逐字标记，清洗成标准 LRC 交给 LyricsUtils
+        val cleaned = KW_WORD_TIME_REGEX.replace(text, "")
+        return cleaned.takeIf { Regex("\\[\\d{1,2}:\\d{1,2}").containsMatchIn(it) }
     }
 
-    /** 酷我秒格式（"0.0"、"65.43"）→ 标准 LRC 时间戳 "mm:ss.xx"；解析失败返回 null */
-    private fun kwSecondsToLrcTimestamp(time: String): String? {
-        val parts = time.split(".")
-        val totalSeconds = parts.firstOrNull()?.toIntOrNull() ?: return null
-        val frac = parts.getOrNull(1)?.take(2)?.padEnd(2, '0') ?: "00"
-        val mm = totalSeconds / 60
-        val ss = totalSeconds % 60
-        return String.format(java.util.Locale.US, "%02d:%02d.%s", mm, ss, frac)
+    /** 落雪 kw/lyric.js buildParams：明文参数按 "yeelion" 循环 XOR 后 Base64 */
+    private fun buildKwLyricParams(id: String): String {
+        val plain = "user=12345,web,web,web&requester=localhost&req=1&rid=MUSIC_$id&lrcx=1"
+        val key = KW_LYRIC_XOR_KEY.toByteArray(Charsets.ISO_8859_1)
+        val bytes = plain.toByteArray(Charsets.ISO_8859_1)
+        val out = ByteArray(bytes.size)
+        for (i in bytes.indices) {
+            out[i] = (bytes[i].toInt() xor key[i % key.size].toInt()).toByte()
+        }
+        return android.util.Base64.encodeToString(out, android.util.Base64.NO_WRAP)
+    }
+
+    /** 落雪 kw decodeLyric：校验 tp=content 头 → zlib inflate → Base64 解码 → XOR → GB18030 */
+    private fun decodeKwLyricResponse(raw: ByteArray): String? {
+        val head = String(raw, 0, minOf(10, raw.size), Charsets.ISO_8859_1)
+        if (head != "tp=content") return null
+        val separator = String(raw, Charsets.ISO_8859_1).indexOf("\r\n\r\n")
+        if (separator < 0) return null
+        val inflated = runCatching {
+            java.util.zip.InflaterInputStream(
+                java.io.ByteArrayInputStream(raw.copyOfRange(separator + 4, raw.size))
+            ).use { it.readBytes() }
+        }.getOrNull() ?: return null
+        // lrcx 响应 inflate 后是 Base64 文本，再解码 XOR；直接明文时退化为 GB18030 直读
+        val cipher = runCatching {
+            android.util.Base64.decode(String(inflated, Charsets.ISO_8859_1), android.util.Base64.DEFAULT)
+        }.getOrNull() ?: inflated
+        val key = KW_LYRIC_XOR_KEY.toByteArray(Charsets.ISO_8859_1)
+        val out = ByteArray(cipher.size)
+        for (i in cipher.indices) {
+            out[i] = (cipher[i].toInt() xor key[i % key.size].toInt()).toByte()
+        }
+        return String(out, charset("GB18030"))
     }
 
     // ─── 咪咕歌词（musicinfo 接口 + mrc TEA 解密，落雪同款）──────────────
 
     private suspend fun getMgLyric(song: LxSongInfo): String? {
-        // 优先 copyrightId（存入 hash 字段，落雪同款），其次 songId
-        val id = song.hash.ifBlank { song.id.ifBlank { song.songmid } }
-        if (id.isBlank()) return null
+        // ⚡ resourceinfo.do 实测只认 songId：传 copyrightId（旧实现优先使用，落雪同款）
+        //   返回 {"code":"000000","resource":[]}，咪咕歌全部无歌词。songId 优先，copyrightId 兜底。
+        val candidateIds = listOfNotNull(
+            song.songmid.ifBlank { song.id },
+            song.id,
+            song.hash
+        ).filter { it.isNotBlank() }.distinct()
+        if (candidateIds.isEmpty()) return null
+        val first = candidateIds.firstNotNullOfOrNull { fetchMgMusicInfo(it) } ?: return null
+        val mrcUrl = first.optString("mrcUrl")
+        val lrcUrl = first.optString("lrcUrl")
+        val trcUrl = first.optString("trcUrl")
+
+        var lrc: String? = null
+        if (mrcUrl.isNotBlank()) {
+            val mrcText = httpGetMg(mrcUrl)
+            if (!mrcText.isNullOrBlank()) lrc = mgMrcToLrc(mgDecryptMrc(mrcText))
+        }
+        if (lrc.isNullOrBlank() && lrcUrl.isNotBlank()) {
+            lrc = httpGetMg(lrcUrl)
+        }
+        if (lrc.isNullOrBlank()) return null
+        if (trcUrl.isNotBlank()) {
+            val trc = httpGetMg(trcUrl)
+            if (!trc.isNullOrBlank() && trc != lrc) lrc = "$lrc\n$trc"
+        }
+        return lrc
+    }
+
+    private suspend fun fetchMgMusicInfo(id: String): JSONObject? {
         val form = okhttp3.FormBody.Builder().add("resourceId", id).build()
         val request = Request.Builder()
             .url(MG_RESOURCE_INFO_URL)
@@ -246,25 +299,29 @@ class BuiltInSourceSearchApi @Inject constructor(
         if (root.optString("code") != "000000") return null
         val resource = root.optJSONArray("resource") ?: return null
         if (resource.length() == 0) return null
-        val first = resource.optJSONObject(0) ?: return null
-        val mrcUrl = first.optString("mrcUrl")
-        val lrcUrl = first.optString("lrcUrl")
-        val trcUrl = first.optString("trcUrl")
+        return resource.optJSONObject(0)
+    }
 
-        var lrc: String? = null
-        if (mrcUrl.isNotBlank()) {
-            val mrcText = httpGetMg(mrcUrl)
-            if (!mrcText.isNullOrBlank()) lrc = mgDecryptMrc(mrcText).takeIf { it.isNotBlank() }
+    /**
+     * 咪咕 MRC 逐字文本 → 标准 LRC（落雪 mg mrcTools.parseLyric 同思路）：
+     * 行时间轴 [startMs,durMs] → [mm:ss.mmm]，剥离 (startMs,durMs) 逐字标记。
+     * 无行时间轴的行（如 [ti:] 元数据）按落雪做法丢弃 —— MRC 原文若不转换，
+     * 会被 LyricsUtils 误判为酷狗逐字格式且把逐字标记混入歌词文本。
+     */
+    private fun mgMrcToLrc(mrc: String): String? {
+        val sb = StringBuilder()
+        for (raw in mrc.lines()) {
+            val m = MG_MRC_LINE_REGEX.find(raw.trim()) ?: continue
+            val startMs = m.groupValues[1].toLongOrNull() ?: continue
+            val text = m.groupValues[2].replace(MG_MRC_WORD_TIME_REGEX, "").trim()
+            if (text.isEmpty()) continue
+            val totalSec = startMs / 1000
+            val ms = startMs % 1000
+            sb.append(
+                String.format(java.util.Locale.US, "[%02d:%02d.%03d]", totalSec / 60, totalSec % 60, ms)
+            ).append(text).append('\n')
         }
-        if (lrc.isNullOrBlank() && lrcUrl.isNotBlank()) {
-            lrc = httpGetMg(lrcUrl)
-        }
-        if (lrc.isNullOrBlank()) return null
-        if (trcUrl.isNotBlank()) {
-            val trc = httpGetMg(trcUrl)
-            if (!trc.isNullOrBlank() && trc != lrc) lrc = "$lrc\n$trc"
-        }
-        return lrc
+        return sb.toString().takeIf { it.isNotBlank() }
     }
 
     /** 咪咕 MRC 解密（移植落雪 mg/utils/mrc.js） */
@@ -836,7 +893,7 @@ class BuiltInSourceSearchApi @Inject constructor(
                     LxSongInfo(
                         id = songId,
                         songmid = songId,
-                        // 咪咕歌词（musicinfo.do）需要 copyrightId，落雪同款
+                        // copyrightId 备用于咪咕歌词查询兜底（resourceinfo.do 现只认 songId）
                         hash = data.optString("copyrightId"),
                         name = name,
                         singer = singerNames.joinToString(" / "),
@@ -1548,6 +1605,19 @@ class BuiltInSourceSearchApi @Inject constructor(
                 .build()
             okHttpClient.newCall(request).execute().use { resp ->
                 if (resp.isSuccessful) resp.body?.string() else null
+            }
+        }.getOrNull()
+    }
+
+    /** GET 二进制响应（酷我 newlyric 加密歌词体需要保留原始字节） */
+    private suspend fun httpGetBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36")
+                .build()
+            okHttpClient.newCall(request).execute().use { resp ->
+                if (resp.isSuccessful) resp.body?.bytes() else null
             }
         }.getOrNull()
     }

@@ -16,9 +16,9 @@
 > Task :shared:compileReleaseJavaWithJavac NO-SOURCE
 > Task :shared:mergeReleaseGeneratedProguardFiles UP-TO-DATE
 > Task :shared:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :app:configureCMakeRelWithDebInfo[arm64-v8a]
 > Task :shared:bundleLibCompileToJarRelease UP-TO-DATE
 > Task :shared:bundleLibRuntimeToJarRelease UP-TO-DATE
-> Task :app:configureCMakeRelWithDebInfo[arm64-v8a]
 > Task :shared:writeReleaseAarMetadata UP-TO-DATE
 > Task :shared:extractDeepLinksRelease UP-TO-DATE
 > Task :shared:processReleaseManifest UP-TO-DATE
@@ -41,7 +41,7 @@
 > Task :app:mergeFullReleaseArtProfile UP-TO-DATE
 > Task :app:expandFullReleaseL8ArtProfileWildcards UP-TO-DATE
 > Task :app:checkFullReleaseDuplicateClasses UP-TO-DATE
-> Task :app:generateFullReleaseBuildConfig
+> Task :app:generateFullReleaseBuildConfig UP-TO-DATE
 > Task :app:generateFullReleaseResources
 > Task :app:packageFullReleaseResources
 > Task :app:processFullReleaseNavigationResources
@@ -51,14 +51,15 @@
 > Task :app:checkFullReleaseAarMetadata UP-TO-DATE
 > Task :app:mapFullReleaseSourceSetPaths
 > Task :app:compileFullReleaseNavigationResources UP-TO-DATE
-> Task :app:createFullReleaseCompatibleScreenManifests
+> Task :app:createFullReleaseCompatibleScreenManifests UP-TO-DATE
 > Task :app:extractDeepLinksFullRelease UP-TO-DATE
-> Task :app:mergeFullReleaseResources
-> Task :app:processFullReleaseMainManifest
-> Task :app:processFullReleaseManifest
+> Task :app:processFullReleaseMainManifest UP-TO-DATE
+> Task :app:processFullReleaseManifest UP-TO-DATE
+> Task :app:processFullReleaseManifestForPackage UP-TO-DATE
 > Task :app:extractProguardFiles UP-TO-DATE
 > Task :app:mergeFullReleaseStartupProfile UP-TO-DATE
 > Task :app:generateFullReleaseAssets UP-TO-DATE
+> Task :app:mergeFullReleaseResources
 > Task :app:mergeFullReleaseAssets UP-TO-DATE
 > Task :app:compressFullReleaseAssets UP-TO-DATE
 > Task :app:extractFullReleaseVersionControlInfo
@@ -76,332 +77,78 @@
 > Task :app:mergeLiteReleaseArtProfile UP-TO-DATE
 > Task :app:expandLiteReleaseL8ArtProfileWildcards UP-TO-DATE
 > Task :app:checkLiteReleaseDuplicateClasses UP-TO-DATE
-> Task :app:generateLiteReleaseBuildConfig
+> Task :app:generateLiteReleaseBuildConfig UP-TO-DATE
 > Task :app:generateLiteReleaseResources
 > Task :app:packageLiteReleaseResources
 > Task :app:processLiteReleaseNavigationResources
 > Task :app:parseLiteReleaseLocalResources
+> Task :app:generateLiteReleaseRFile
 > Task :app:javaPreCompileLiteRelease UP-TO-DATE
 > Task :app:checkLiteReleaseAarMetadata UP-TO-DATE
-> Task :app:generateLiteReleaseRFile
 > Task :app:mapLiteReleaseSourceSetPaths
 > Task :app:compileLiteReleaseNavigationResources UP-TO-DATE
 > Task :app:kspFullReleaseKotlin
-> Task :app:createLiteReleaseCompatibleScreenManifests
+> Task :app:processFullReleaseResources
+> Task :app:createLiteReleaseCompatibleScreenManifests UP-TO-DATE
 > Task :app:extractDeepLinksLiteRelease UP-TO-DATE
-> Task :app:processLiteReleaseMainManifest
-> Task :app:processLiteReleaseManifest
-> Task :app:processFullReleaseManifestForPackage
-> Task :app:mergeLiteReleaseResources
+> Task :app:processLiteReleaseMainManifest UP-TO-DATE
+> Task :app:processLiteReleaseManifest UP-TO-DATE
+> Task :app:processLiteReleaseManifestForPackage UP-TO-DATE
 > Task :app:mergeLiteReleaseStartupProfile UP-TO-DATE
 > Task :app:generateLiteReleaseAssets UP-TO-DATE
 > Task :app:mergeLiteReleaseAssets UP-TO-DATE
 > Task :app:compressLiteReleaseAssets UP-TO-DATE
 > Task :app:extractLiteReleaseVersionControlInfo
+> Task :app:mergeLiteReleaseResources
 > Task :app:collectLiteReleaseDependencies UP-TO-DATE
 > Task :app:sdkLiteReleaseDependencyData UP-TO-DATE
 > Task :app:validateSigningLiteRelease UP-TO-DATE
 > Task :app:writeLiteReleaseAppMetadata UP-TO-DATE
 > Task :app:writeLiteReleaseSigningConfigVersions UP-TO-DATE
-> Task :app:processLiteReleaseManifestForPackage
 > Task :app:kspLiteReleaseKotlin
-> Task :app:processFullReleaseResources
 > Task :app:processLiteReleaseResources
 > Task :app:compileFullReleaseKotlin
 > Task :app:compileLiteReleaseKotlin
 
 > Task :app:compileFullReleaseKotlin
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:264:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:265:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:266:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1153:122 'fun <reified VM : ViewModel> hiltViewModel(viewModelStoreOwner: ViewModelStoreOwner = ..., key: String? = ...): VM' is deprecated. Moved to package: androidx.hilt.lifecycle.viewmodel.compose.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1624:104 Redundant call of conversion method.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:2532:89 Experimental Haze Materials API
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/musicbrainz/MusicBrainzApi.kt:98:37 Unnecessary safe call on a non-null receiver of type 'ResponseBody'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/telegram/TelegramClientManager.kt:21:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/di/AppModule.kt:183:14 'fun fallbackToDestructiveMigrationOnDowngrade(): RoomDatabase.Builder<PixelPlayDatabase>' is deprecated. Replace by overloaded version with parameter to indicate if all tables should be dropped or not.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:473:66 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:484:75 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:567:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1062:51 Unnecessary safe call on a non-null receiver of type 'Lyrics'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1376:53 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:2355:37 Unnecessary safe call on a non-null receiver of type 'TextUnit'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/StreamingProviderSheet.kt:65:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/UpdateAvailableDialog.kt:528:58 Unnecessary safe call on a non-null receiver of type 'String'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:480:66 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:491:75 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:574:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1068:51 Unnecessary safe call on a non-null receiver of type 'Lyrics'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1382:53 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:2361:37 Unnecessary safe call on a non-null receiver of type 'TextUnit'.
 w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:304:38 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1451:25 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1993:34 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:5411:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:162:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1461:25 Unnecessary safe call on a non-null receiver of type 'Song'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:2003:34 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:5421:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
 
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:692:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:1903:9 'fun ClickableText(text: AnnotatedString, modifier: Modifier = ..., style: TextStyle = ..., softWrap: Boolean = ..., overflow: TextOverflow = ..., maxLines: Int = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., onClick: (Int) -> Unit): Unit' is deprecated. Use Text or BasicText and pass an AnnotatedString that contains a LinkAnnotation. Check LinkAnnotation's documentation for more details and samples.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3008:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3316:45 'static field FLAG_IGNORE_GLOBAL_SETTING: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:432:39 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:631:73 'val Icons.Rounded.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.OpenInNew.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:1738:76 'val Icons.Rounded.MergeType: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.MergeType.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:2711:72 'val Icons.Rounded.VolumeDown: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeDown.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4151:61 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4152:64 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4153:62 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4357:67 Unnecessary safe call on a non-null receiver of type 'PlaybackAudioMetadata'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6257:104 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6343:88 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6424:82 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlaylistViewModel.kt:82:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/SettingsViewModel.kt:323:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:264:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:265:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:266:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1153:122 'fun <reified VM : ViewModel> hiltViewModel(viewModelStoreOwner: ViewModelStoreOwner = ..., key: String? = ...): VM' is deprecated. Moved to package: androidx.hilt.lifecycle.viewmodel.compose.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1624:104 Redundant call of conversion method.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:2532:89 Experimental Haze Materials API
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/musicbrainz/MusicBrainzApi.kt:98:37 Unnecessary safe call on a non-null receiver of type 'ResponseBody'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/telegram/TelegramClientManager.kt:21:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/di/AppModule.kt:183:14 'fun fallbackToDestructiveMigrationOnDowngrade(): RoomDatabase.Builder<PixelPlayDatabase>' is deprecated. Replace by overloaded version with parameter to indicate if all tables should be dropped or not.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:473:66 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:484:75 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:567:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1062:51 Unnecessary safe call on a non-null receiver of type 'Lyrics'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1376:53 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:2355:37 Unnecessary safe call on a non-null receiver of type 'TextUnit'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/SettingsTipsCarousel.kt:112:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/StreamingProviderSheet.kt:65:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/UpdateAvailableDialog.kt:528:58 Unnecessary safe call on a non-null receiver of type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:304:38 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1451:25 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1993:34 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:5411:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:162:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:692:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:1903:9 'fun ClickableText(text: AnnotatedString, modifier: Modifier = ..., style: TextStyle = ..., softWrap: Boolean = ..., overflow: TextOverflow = ..., maxLines: Int = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., onClick: (Int) -> Unit): Unit' is deprecated. Use Text or BasicText and pass an AnnotatedString that contains a LinkAnnotation. Check LinkAnnotation's documentation for more details and samples.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/HomeScreen.kt:448:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/HomeScreen.kt:450:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3008:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3316:45 'static field FLAG_IGNORE_GLOBAL_SETTING: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:432:39 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:631:73 'val Icons.Rounded.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.OpenInNew.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:1738:76 'val Icons.Rounded.MergeType: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.MergeType.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:2711:72 'val Icons.Rounded.VolumeDown: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeDown.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4151:61 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4152:64 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4153:62 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4357:67 Unnecessary safe call on a non-null receiver of type 'PlaybackAudioMetadata'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6257:104 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6343:88 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6424:82 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlaylistViewModel.kt:82:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/SettingsViewModel.kt:323:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-
-> Task :app:compileLiteReleaseKotlin
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:264:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:265:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:266:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1153:122 'fun <reified VM : ViewModel> hiltViewModel(viewModelStoreOwner: ViewModelStoreOwner = ..., key: String? = ...): VM' is deprecated. Moved to package: androidx.hilt.lifecycle.viewmodel.compose.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1624:104 Redundant call of conversion method.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:2532:89 Experimental Haze Materials API
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/musicbrainz/MusicBrainzApi.kt:98:37 Unnecessary safe call on a non-null receiver of type 'ResponseBody'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/telegram/TelegramClientManager.kt:21:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/di/AppModule.kt:183:14 'fun fallbackToDestructiveMigrationOnDowngrade(): RoomDatabase.Builder<PixelPlayDatabase>' is deprecated. Replace by overloaded version with parameter to indicate if all tables should be dropped or not.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:473:66 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:484:75 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:567:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1062:51 Unnecessary safe call on a non-null receiver of type 'Lyrics'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1376:53 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:2355:37 Unnecessary safe call on a non-null receiver of type 'TextUnit'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/StreamingProviderSheet.kt:65:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/UpdateAvailableDialog.kt:528:58 Unnecessary safe call on a non-null receiver of type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:304:38 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1451:25 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1993:34 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:5411:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:162:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:692:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:1903:9 'fun ClickableText(text: AnnotatedString, modifier: Modifier = ..., style: TextStyle = ..., softWrap: Boolean = ..., overflow: TextOverflow = ..., maxLines: Int = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., onClick: (Int) -> Unit): Unit' is deprecated. Use Text or BasicText and pass an AnnotatedString that contains a LinkAnnotation. Check LinkAnnotation's documentation for more details and samples.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3008:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3316:45 'static field FLAG_IGNORE_GLOBAL_SETTING: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:432:39 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:631:73 'val Icons.Rounded.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.OpenInNew.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:1738:76 'val Icons.Rounded.MergeType: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.MergeType.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:2711:72 'val Icons.Rounded.VolumeDown: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeDown.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4151:61 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4152:64 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4153:62 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4357:67 Unnecessary safe call on a non-null receiver of type 'PlaybackAudioMetadata'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6257:104 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6343:88 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6424:82 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlaylistViewModel.kt:82:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/SettingsViewModel.kt:323:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:264:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:265:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:266:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1153:122 'fun <reified VM : ViewModel> hiltViewModel(viewModelStoreOwner: ViewModelStoreOwner = ..., key: String? = ...): VM' is deprecated. Moved to package: androidx.hilt.lifecycle.viewmodel.compose.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:1624:104 Redundant call of conversion method.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/MainActivity.kt:2532:89 Experimental Haze Materials API
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/musicbrainz/MusicBrainzApi.kt:98:37 Unnecessary safe call on a non-null receiver of type 'ResponseBody'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/data/telegram/TelegramClientManager.kt:21:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/di/AppModule.kt:183:14 'fun fallbackToDestructiveMigrationOnDowngrade(): RoomDatabase.Builder<PixelPlayDatabase>' is deprecated. Replace by overloaded version with parameter to indicate if all tables should be dropped or not.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:473:66 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:484:75 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:567:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1062:51 Unnecessary safe call on a non-null receiver of type 'Lyrics'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1376:53 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:2355:37 Unnecessary safe call on a non-null receiver of type 'TextUnit'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/SettingsTipsCarousel.kt:112:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/StreamingProviderSheet.kt:65:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/UpdateAvailableDialog.kt:528:58 Unnecessary safe call on a non-null receiver of type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:304:38 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1451:25 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1993:34 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:5411:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:162:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:692:30 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/AboutScreen.kt:1903:9 'fun ClickableText(text: AnnotatedString, modifier: Modifier = ..., style: TextStyle = ..., softWrap: Boolean = ..., overflow: TextOverflow = ..., maxLines: Int = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., onClick: (Int) -> Unit): Unit' is deprecated. Use Text or BasicText and pass an AnnotatedString that contains a LinkAnnotation. Check LinkAnnotation's documentation for more details and samples.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/HomeScreen.kt:448:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/HomeScreen.kt:450:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3008:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/LibraryScreen.kt:3316:45 'static field FLAG_IGNORE_GLOBAL_SETTING: Int' is deprecated. Deprecated in Java.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:432:39 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:631:73 'val Icons.Rounded.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.OpenInNew.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:1738:76 'val Icons.Rounded.MergeType: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.MergeType.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/screens/SettingsCategoryScreen.kt:2711:72 'val Icons.Rounded.VolumeDown: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeDown.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4151:61 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4152:64 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4153:62 Unnecessary safe call on a non-null receiver of type 'Song'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:4357:67 Unnecessary safe call on a non-null receiver of type 'PlaybackAudioMetadata'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6257:104 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6343:88 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlayerViewModel.kt:6424:82 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/PlaylistViewModel.kt:82:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/viewmodel/SettingsViewModel.kt:323:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
-- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
-- To keep applying to the value parameter only, use the '@param:' annotation target.
-
-See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
-
-> Task :app:compileFullReleaseJavaWithJavac
+> Task :app:compileFullReleaseJavaWithJavac UP-TO-DATE
 > Task :app:hiltSyncFullRelease
 > Task :app:hiltAggregateDepsFullRelease UP-TO-DATE
-> Task :app:hiltJavaCompileFullRelease
+
+> Task :app:compileLiteReleaseKotlin
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:480:66 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:491:75 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:574:26 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1068:51 Unnecessary safe call on a non-null receiver of type 'Lyrics'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:1382:53 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/LyricsSheet.kt:2361:37 Unnecessary safe call on a non-null receiver of type 'TextUnit'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:304:38 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:1461:25 Unnecessary safe call on a non-null receiver of type 'Song'.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:2003:34 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
+w: file:///E:/PixelPlayer-master/app/src/main/java/com/theveloper/pixelplay/presentation/components/player/FullPlayerContent.kt:5421:22 'fun rememberModalBottomSheetState(skipPartiallyExpanded: Boolean = ..., confirmValueChange: (SheetValue) -> Boolean = ...): SheetState' is deprecated. Use rememberBottomSheetState with Hidden initial value.
+
+> Task :app:hiltJavaCompileFullRelease UP-TO-DATE
 > Task :app:processFullReleaseJavaRes UP-TO-DATE
 > Task :app:mergeFullReleaseJavaResource UP-TO-DATE
-> Task :app:transformFullReleaseClassesWithAsm
-> Task :app:compileLiteReleaseJavaWithJavac
+> Task :app:compileLiteReleaseJavaWithJavac UP-TO-DATE
 > Task :app:hiltSyncLiteRelease
 > Task :app:hiltAggregateDepsLiteRelease UP-TO-DATE
-> Task :app:hiltJavaCompileLiteRelease
-> Task :app:transformLiteReleaseClassesWithAsm
+> Task :app:hiltJavaCompileLiteRelease UP-TO-DATE
+> Task :app:transformFullReleaseClassesWithAsm
 > Task :app:processLiteReleaseJavaRes UP-TO-DATE
 > Task :app:mergeLiteReleaseJavaResource UP-TO-DATE
+> Task :app:transformLiteReleaseClassesWithAsm
 > Task :app:mergeFullReleaseGeneratedProguardFiles UP-TO-DATE
 > Task :app:produceFullReleaseComposeMapping
 
@@ -416,9 +163,9 @@ warning: Failed to collect Compose mapping (Failed to parse androidx.constraintl
 warning: Failed to collect Compose mapping (Failed to parse androidx.constraintlayout.compose.ConstraintLayoutKt.ConstraintLayout(Landroidx/compose/ui/Modifier;IZLandroidx/compose/animation/core/AnimationSpec;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;II)V). Please report to Google through https://goo.gle/compose-feedback
 
 > Task :app:expandLiteReleaseArtProfileWildcards
+WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a83882366de8\transformed\common-9.9.10-runtime.jar: R8: Expected stack map table for method with non-linear control flow. In later version of R8, the method may be assumed not reachable.
 > Task :app:minifyFullReleaseWithR8
 
-WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a83882366de8\transformed\common-9.9.10-runtime.jar: R8: Expected stack map table for method with non-linear control flow. In later version of R8, the method may be assumed not reachable.
 WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a83882366de8\transformed\common-9.9.10-runtime.jar: R8: Expected stack map table for method with non-linear control flow. In later version of R8, the method may be assumed not reachable.
 WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a83882366de8\transformed\common-9.9.10-runtime.jar: R8: Expected stack map table for method with non-linear control flow. In later version of R8, the method may be assumed not reachable.
 WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a83882366de8\transformed\common-9.9.10-runtime.jar: R8: Expected stack map table for method with non-linear control flow. In later version of R8, the method may be assumed not reachable.
@@ -2112,10 +1859,10 @@ WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a838
 > Task :app:convertShrunkResourcesToBinaryFullRelease
 > Task :app:optimizeFullReleaseResources
 > Task :app:l8DexDesugarLibFullRelease
-> Task :app:compileFullReleaseArtProfile
 > Task :app:minifyLiteReleaseWithR8
+> Task :app:compileFullReleaseArtProfile
 > Task :app:packageFullRelease
-> Task :app:createFullReleaseApkListingFileRedirect
+> Task :app:createFullReleaseApkListingFileRedirect UP-TO-DATE
 > Task :app:assembleFullRelease
 WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a83882366de8\transformed\common-9.9.10-runtime.jar: R8: Expected stack map table for method with non-linear control flow. In later version of R8, the method may be assumed not reachable.
 WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a83882366de8\transformed\common-9.9.10-runtime.jar: R8: Expected stack map table for method with non-linear control flow. In later version of R8, the method may be assumed not reachable.
@@ -3816,6 +3563,6 @@ WARNING: C:\Users\Admin\.gradle\caches\9.5.0\transforms\3bc3e8b59ac242766612a838
 > Task :app:assembleLiteRelease
 > Task :app:assembleRelease
 
-BUILD SUCCESSFUL in 25m 32s
-136 actionable tasks: 66 executed, 70 up-to-date
+BUILD SUCCESSFUL in 21m 8s
+136 actionable tasks: 51 executed, 85 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.5.0/userguide/configuration_cache_enabling.html

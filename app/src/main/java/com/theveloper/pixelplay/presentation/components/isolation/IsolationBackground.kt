@@ -588,7 +588,7 @@ private fun AgslIsolationCanvas(
  * - 上层封面模糊图：复用取色管线解码好的位图（256px 放大 + Cloudy 模糊）。内容是静态的，
  *   只在换封面时算一次模糊 —— API 31+ 走硬件 RenderEffect，更低版本由 Cloudy 落到
  *   CPU 实现（https://github.com/skydoves/Cloudy），低版本也有真正意义上的「绚丽背景」。
- * - 轻微压暗与 AGSL 档的取色压暗（OkLab L*0.70）观感对齐，保证歌词 / 控件对比度。
+ * - 轻微压暗与 AGSL 档的取色压暗（OkLab L×0.78）观感对齐，保证歌词 / 控件对比度。
  */
 @Composable
 private fun FallbackIsolationBackground(

@@ -7,6 +7,8 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.LruCache
 import androidx.annotation.OptIn
@@ -1286,7 +1288,10 @@ class DualPlayerEngine @Inject constructor(
 
             val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(attributes)
-                .setOnAudioFocusChangeListener(focusChangeListener)
+                // 单参重载会把回调派发到「构建请求的线程」的 Looper；请求若在后台线程
+                // （如 work_thread）上构建，焦点回调就会在后台线程直接操作 ExoPlayer，
+                // 触发 "Player is accessed on the wrong thread"。必须显式指定主线程。
+                .setOnAudioFocusChangeListener(focusChangeListener, Handler(Looper.getMainLooper()))
                 // Let the system queue our request behind a transient holder instead of failing.
                 // Pairs with the AUDIOFOCUS_GAIN handler below: on DELAYED we pause and mark the
                 // pause as focus-driven so the eventual GAIN callback resumes playback.

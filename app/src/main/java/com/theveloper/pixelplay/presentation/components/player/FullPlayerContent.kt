@@ -1464,21 +1464,21 @@ fun FullPlayerContent(
                             modifier = Modifier.fillMaxSize(),
                             style = playerBackgroundStyle
                         )
-                        // ⚡ 可读性遮罩：绚丽背景是高饱和彩色流体，亮部会压低歌名/歌词/控制
-                        //    文字的对比度。叠一层黑色的垂直渐变（上浅下深）——顶部尽量
-                        //    保留背景观感，歌词与底部控制区压暗保证文字可读。
-                        //    配合 Isolation 取色端已经整体压暗（L*0.70），这里的强度按
-                        //    「中段歌词 / 底部控制」重点补，不再只靠底部一档。
+                        // ⚡ 可读性遮罩：绚丽背景是高饱和彩色流体，需要一层黑渐变保住文字
+                        //    对比度，但此前的强度（0.16→0.56）把流体压得太闷，「绚丽」看不出来。
+                        //    现按「可见性优先」重配：上中部基本让位给背景（封面区域最需要绚丽感），
+                        //    中下段歌词与底部控制区逐步加深，保证文字可读。配合取色端已整体
+                        //    调亮（OkLab L×0.78、上限 0.64），即使遮罩变浅背景也不会刺眼。
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
                                     Brush.verticalGradient(
                                         colorStops = arrayOf(
-                                            0.0f to Color.Black.copy(alpha = 0.16f),
-                                            0.40f to Color.Black.copy(alpha = 0.34f),
-                                            0.72f to Color.Black.copy(alpha = 0.46f),
-                                            1.0f to Color.Black.copy(alpha = 0.56f)
+                                            0.0f to Color.Black.copy(alpha = 0.05f),
+                                            0.40f to Color.Black.copy(alpha = 0.18f),
+                                            0.72f to Color.Black.copy(alpha = 0.38f),
+                                            1.0f to Color.Black.copy(alpha = 0.50f)
                                         )
                                     )
                                 )

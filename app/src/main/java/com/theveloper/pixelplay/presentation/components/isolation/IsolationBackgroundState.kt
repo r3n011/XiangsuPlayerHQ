@@ -348,11 +348,14 @@ internal class IsolationBackgroundState(
         meanL /= 4f
         val tBright = ((meanL - 0.50f) / 0.28f).coerceIn(0f, 1f)
         val tDark = ((0.26f - meanL) / 0.21f).coerceIn(0f, 1f)
-        val lFactor = 0.70f + 0.16f * tDark - 0.14f * tBright
+        // ⚡ 可见性再平衡：此前 L×0.70 + 亮部上限 0.56 + 彩度×0.9 的三重压暗太狠，
+        //    加上页面遮罩后流体几乎看不出「绚丽」。这里整体上调亮度与上限，
+        //    彩度不再衰减；亮封面的收敛幅度保留（避免整屏发白发灰），暗封面更亮。
+        val lFactor = 0.78f + 0.14f * tDark - 0.14f * tBright
         val lFloor = 0.045f + 0.075f * tDark
-        val lCap = 0.56f - 0.12f * tBright
+        val lCap = 0.64f - 0.14f * tBright
         // 兜底（Cloudy 模糊封面）层的遮罩强度跟随同一套自适应：亮封面多压、暗封面少压
-        fallbackScrimAlpha = 0.22f + 0.12f * tBright - 0.10f * tDark
+        fallbackScrimAlpha = 0.16f + 0.10f * tBright - 0.08f * tDark
 
         val next = FloatArray(12)
         for (i in 0 until 4) {
@@ -360,11 +363,9 @@ internal class IsolationBackgroundState(
             val lab = srgbToOkLab(floatArrayOf(rgb[0] / 255f, rgb[1] / 255f, rgb[2] / 255f))
             // ⚡ 取色压暗：AMLL 原版把封面主色直接铺满全屏，亮部太刺眼，
             //    歌词 / 按钮压在上面时对比度不够。这里把 OkLab 的 L 压到深色区间，
-            //    彩度略收一点（避免整屏糊成高饱和色块），并给暗部兜一个下限免得死黑。
+            //    彩度保持原值（绚丽感主要来自彩度），并给暗部兜一个下限免得死黑。
             //    压暗系数 / 上下限按封面明度自适应（见上方「智能亮度」）。
             lab[0] = (lab[0] * lFactor).coerceIn(lFloor, lCap)
-            lab[1] *= 0.90f
-            lab[2] *= 0.90f
             lab.copyInto(next, i * 3)
         }
         transitionTo(next)

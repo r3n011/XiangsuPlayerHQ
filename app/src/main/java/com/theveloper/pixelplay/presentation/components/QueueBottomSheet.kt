@@ -333,6 +333,27 @@ fun QueueBottomSheet(
     //   改用稳定身份的 State 持有该值，item 内以 derivedStateOf 惰性读取，只有状态真正翻转的行重组。
     val currentSongDisplayIndexState = rememberUpdatedState(currentSongDisplayIndex)
 
+    // ⚡ 列表内搜索：入口固定在列表顶部，按歌名 / 歌手**只过滤显示**、不改队列本身；
+    //    队列索引仍用稳定 key 映射回真实位置（播放 / 删除 / 拖拽语义全部不变）。
+    var queueSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    var queueSearchQuery by rememberSaveable { mutableStateOf("") }
+    val queueSearchTrimmed = queueSearchQuery.trim()
+    val queueSearchIndices = remember(queueSearchTrimmed, displaySongs) {
+        if (queueSearchTrimmed.isEmpty()) {
+            null
+        } else {
+            displaySongs.indices.filter { i ->
+                val song = displaySongs[i]
+                song.title.contains(queueSearchTrimmed, ignoreCase = true) ||
+                    song.displayArtist.contains(queueSearchTrimmed, ignoreCase = true)
+            }
+        }
+    }
+
+    /** 搜索过滤时：可见槽位 i → 实际显示索引；未搜索时恒等 */
+    fun queueShownDisplayIndexAt(slot: Int): Int =
+        queueSearchIndices?.getOrNull(slot) ?: slot
+
     val listState = rememberLazyListState()
     val queueCoroutineScope = rememberCoroutineScope()
     val displaySongCount = displaySongs.size
@@ -820,13 +841,17 @@ fun QueueBottomSheet(
                     onPlayPause = { viewModel.playPause() },
                     onNext = { viewModel.nextSong() },
                     onLocateCurrentSong = {
-                        if (currentSongDisplayIndex in 0..<displaySongCount) {
+                        // ⚡ 搜索过滤时，"定位当前歌曲"滚动到它在过滤后视图中的位置
+                        val locateTarget = queueSearchIndices?.indexOf(currentSongDisplayIndex)
+                            ?: currentSongDisplayIndex
+                        val shownCount = queueSearchIndices?.size ?: displaySongCount
+                        if (locateTarget in 0..<shownCount) {
                             queueCoroutineScope.launch {
                                 val firstVisible = listState.firstVisibleItemIndex
-                                if (abs(currentSongDisplayIndex - firstVisible) > 20) {
-                                    listState.scrollToItem(currentSongDisplayIndex)
+                                if (abs(locateTarget - firstVisible) > 20) {
+                                    listState.scrollToItem(locateTarget)
                                 } else {
-                                    listState.animateScrollToItem(currentSongDisplayIndex)
+                                    listState.animateScrollToItem(locateTarget)
                                 }
                             }
                         }
@@ -834,6 +859,16 @@ fun QueueBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(directSheetDragModifier)
+                )
+
+                // ⚡ 列表内搜索入口（固定在列表顶部）：点击展开输入框，按歌名 / 歌手过滤
+                QueueSearchBar(
+                    query = queueSearchQuery,
+                    onQueryChange = { queueSearchQuery = it },
+                    expanded = queueSearchExpanded,
+                    onExpandedChange = { queueSearchExpanded = it },
+                    resultCount = queueSearchIndices?.size,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 if (displaySongCount == 0) {
@@ -884,10 +919,11 @@ fun QueueBottomSheet(
                             }
 
                             items(
-                                count = displaySongCount,
-                                key = { index -> activeKeyAt(index) },
+                                count = queueSearchIndices?.size ?: displaySongCount,
+                                key = { slot -> activeKeyAt(queueShownDisplayIndexAt(slot)) },
                                 contentType = { "queue_song" }
-                            ) { index ->
+                            ) { slot ->
+                                val index = queueShownDisplayIndexAt(slot)
                                 val queueIndex = activeQueueIndexAt(index)
                                 if (queueIndex !in activeSongSource.indices) return@items
                                 val itemStableKey = activeKeyAt(index)
@@ -935,9 +971,11 @@ fun QueueBottomSheet(
                                         isDragging = isDragging,
                                         onRemoveClick = { onRemoveSong(song.id) },
                                         isReorderModeEnabled = false,
-                                        isDragHandleVisible = canReorder,
+                                        // ⚡ 搜索过滤时隐藏拖拽手柄并禁用滑动删除：
+                                        //   拖拽排序的预览机制基于完整显示顺序，过滤态下语义不成立
+                                        isDragHandleVisible = canReorder && queueSearchIndices == null,
                                         isRemoveButtonVisible = false,
-                                        enableSwipeToDismiss = canReorder,
+                                        enableSwipeToDismiss = canReorder && queueSearchIndices == null,
                                         swipeStateIdentity = itemStableKey,
                                         onDismissSong = { onRemoveSong(song.id) },
                                         isFromPlaylist = true,
@@ -1318,6 +1356,103 @@ private fun QueueToolbarMenuButton(
                 color = contentColor
             )
         }
+    }
+}
+
+/**
+ * 播放列表内搜索的顶部入口。
+ *
+ * 折叠态：一行「搜索播放列表内的歌曲」胶囊按钮，点击展开。
+ * 展开态：与「保存为歌单」弹窗同款的胶囊搜索框（CircleShape + Search 前导图标 +
+ * Clear 清空按钮 + surfaceContainerHigh 容器 + 透明描边），右侧多匹配数量与「取消」；
+ * 取消收起并清空查询。
+ */
+@Composable
+private fun QueueSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    resultCount: Int?,
+    modifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(expanded) {
+        if (expanded) focusRequester.requestFocus()
+    }
+    if (!expanded) {
+        Surface(
+            modifier = modifier
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .clickable { onExpandedChange(true) },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 1.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.queue_search_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+        }
+    } else {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text(stringResource(R.string.queue_search_hint)) },
+            leadingIcon = {
+                Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
+            },
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (query.isNotEmpty() && resultCount != null) {
+                        Text(
+                            text = stringResource(R.string.queue_search_result_count, resultCount),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Filled.Clear,
+                                contentDescription = stringResource(R.string.cd_clear_search)
+                            )
+                        }
+                    }
+                    TextButton(onClick = { onQueryChange(""); onExpandedChange(false) }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            },
+            modifier = modifier
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .focusRequester(focusRequester),
+            shape = CircleShape,
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            )
+        )
     }
 }
 
