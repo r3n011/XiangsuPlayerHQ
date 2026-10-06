@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ⚡ GMS 组件仅完整版（full）合并：lite（no-telegram）清单零 Google Play 入口。 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Wear OS Data Layer: receives playback/volume commands from the watch -->
+        <service
+            android:name=".data.service.wear.WearCommandReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/playback_command" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/volume_command" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/browse_request" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_request" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_cancel" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/transfer_progress" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/watch_library_state" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

@@ -22,12 +22,12 @@ class WearPhoneTransferSender @Inject constructor(
     private val transferStateStore: PhoneWatchTransferStateStore,
     private val transferCancellationStore: PhoneWatchTransferCancellationStore,
     private val directTransferCoordinator: PhoneDirectWatchTransferCoordinator,
-) {
+) : WearSongTransferPort {
     private val capabilityClient by lazy { Wearable.getCapabilityClient(application) }
     private val messageClient: MessageClient by lazy { Wearable.getMessageClient(application) }
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun isPixelPlayWatchAvailable(): Boolean {
+    override suspend fun isPixelPlayWatchAvailable(): Boolean {
         return runCatching {
             val capability = capabilityClient.getCapability(
                 WearCapabilities.PIXELPLAY_WEAR_APP,
@@ -42,7 +42,7 @@ class WearPhoneTransferSender @Inject constructor(
         }
     }
 
-    suspend fun refreshWatchLibraryState(): Result<Unit> {
+    override suspend fun refreshWatchLibraryState(): Result<Unit> {
         return runCatching {
             val capability = capabilityClient.getCapability(
                 WearCapabilities.PIXELPLAY_WEAR_APP,
@@ -64,7 +64,7 @@ class WearPhoneTransferSender @Inject constructor(
         }
     }
 
-    suspend fun requestSongTransfer(songId: String, songTitle: String = ""): Result<Int> {
+    override suspend fun requestSongTransfer(songId: String, songTitle: String): Result<Int> {
         var requestId: String? = null
         return runCatching {
             val capability = capabilityClient.getCapability(
@@ -113,7 +113,7 @@ class WearPhoneTransferSender @Inject constructor(
         }
     }
 
-    suspend fun cancelTransfer(requestId: String) {
+    override suspend fun cancelTransfer(requestId: String) {
         val transfer = transferStateStore.transfers.value[requestId]
         if (transfer == null) {
             Timber.tag(TAG).w("Ignoring cancel for unknown transfer requestId=%s", requestId)

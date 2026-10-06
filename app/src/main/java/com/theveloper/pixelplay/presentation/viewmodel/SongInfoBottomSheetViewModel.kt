@@ -19,7 +19,7 @@ import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.service.wear.PhoneWatchTransferState
 import com.theveloper.pixelplay.data.service.wear.PhoneWatchTransferStateStore
-import com.theveloper.pixelplay.data.service.wear.WearPhoneTransferSender
+import com.theveloper.pixelplay.data.service.wear.WearSongTransferPort
 import com.theveloper.pixelplay.shared.WearTransferProgress
 import com.theveloper.pixelplay.utils.AudioMeta
 import com.theveloper.pixelplay.utils.AudioMetaUtils
@@ -44,7 +44,7 @@ import kotlin.coroutines.resume
 
 @HiltViewModel
 class SongInfoBottomSheetViewModel @Inject constructor(
-    private val wearPhoneTransferSender: WearPhoneTransferSender,
+    private val wearSongTransferPort: WearSongTransferPort,
     private val transferStateStore: PhoneWatchTransferStateStore,
     private val musicDao: MusicDao,
     private val metadataAutoCompleter: com.theveloper.pixelplay.data.musicbrainz.MetadataAutoCompleter,
@@ -167,13 +167,13 @@ class SongInfoBottomSheetViewModel @Inject constructor(
 
         viewModelScope.launch {
             _isRefreshingWatchAvailability.value = true
-            val available = wearPhoneTransferSender.isPixelPlayWatchAvailable()
+            val available = wearSongTransferPort.isPixelPlayWatchAvailable()
             _isPixelPlayWatchAvailable.value = available
             _isWatchAvailabilityResolved.value = true
             _isRefreshingWatchAvailability.value = false
             if (available) {
                 viewModelScope.launch {
-                    wearPhoneTransferSender.refreshWatchLibraryState()
+                    wearSongTransferPort.refreshWatchLibraryState()
                 }
             }
         }
@@ -209,7 +209,7 @@ class SongInfoBottomSheetViewModel @Inject constructor(
             }
 
             _isRequestingToWatch.update { true }
-            val result = wearPhoneTransferSender.requestSongTransfer(song.id, song.title)
+            val result = wearSongTransferPort.requestSongTransfer(song.id, song.title)
             _isRequestingToWatch.update { false }
 
             if (result.isSuccess) {
@@ -250,7 +250,7 @@ class SongInfoBottomSheetViewModel @Inject constructor(
     fun cancelWatchTransfer(requestId: String) {
         if (requestId.isBlank()) return
         viewModelScope.launch {
-            wearPhoneTransferSender.cancelTransfer(requestId)
+            wearSongTransferPort.cancelTransfer(requestId)
         }
     }
 
