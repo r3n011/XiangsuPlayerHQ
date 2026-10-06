@@ -20,19 +20,6 @@ import timber.log.Timber
  * [MediaStatus]. Consumed by both the listening-stats sync and the widget/Wear
  * surfaces, so it lives at file scope rather than nested in [MusicService].
  */
-internal data class RemotePlaybackSnapshot(
-    val occurrenceId: String,
-    val songId: String?,
-    val title: String,
-    val artist: String,
-    val artworkUri: Uri?,
-    val isPlaying: Boolean,
-    val isActuallyPlaying: Boolean,
-    val currentPositionMs: Long,
-    val totalDurationMs: Long,
-    val repeatMode: Int,
-    val isShuffleEnabled: Boolean,
-)
 
 /**
  * Owns Cast remote-session synchronization, extracted from [MusicService] during
@@ -50,11 +37,16 @@ internal data class RemotePlaybackSnapshot(
  * refresh without depending on the widget pipeline directly. All Cast SDK access
  * is wrapped in [runCatching] to tolerate Play Services being unavailable.
  */
-internal class CastSyncCoordinator(
-    private val context: Context,
+internal class CastSyncCoordinator @javax.inject.Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
     private val listeningStatsTracker: ListeningStatsTracker,
-    private val requestWidgetUpdate: (force: Boolean) -> Unit,
-) {
+) : CastSyncPort {
+    @Volatile private var requestWidgetUpdate: (force: Boolean) -> Unit = {}
+
+    override fun attachWidgetUpdateCallback(callback: (force: Boolean) -> Unit) {
+        requestWidgetUpdate = callback
+    }
+
     private companion object {
         private const val TAG = "MusicService_PixelPlay"
     }
@@ -70,7 +62,21 @@ internal class CastSyncCoordinator(
     fun currentRemoteMediaClient(): RemoteMediaClient? =
         observedSession?.remoteMediaClient ?: sessionManager?.currentCastSession?.remoteMediaClient
 
-    fun start() {
+    /** 远端队列指纹：queueItems 的 songId tokens + currentItemId；无会话/空队列时 null。 */
+    override fun remoteQueueRevision(): Pair<List<String>, Int>? {
+        val client = currentRemoteMediaClient() ?: return null
+        val status = client.mediaStatus ?: return null
+        val items = status.queueItems.orEmpty()
+        if (items.isEmpty()) return null
+        val tokens = items.map { item ->
+            item.customData?.optString("songId")?.takeIf { it.isNotBlank() }
+                ?: item.media?.contentId
+                ?: item.itemId.toString()
+        }
+        return tokens to (status.currentItemId)
+    }
+
+    override fun start() {
         val manager = runCatching {
             CastContext.getSharedInstance(context).sessionManager
         }.getOrElse { error ->
@@ -159,7 +165,7 @@ internal class CastSyncCoordinator(
         requestWidgetUpdate(true)
     }
 
-    fun stop() {
+    override fun stop() {
         observedSession?.remoteMediaClient?.let { remoteClient ->
             remoteClientCallback?.let { callback ->
                 runCatching { remoteClient.unregisterCallback(callback) }
@@ -208,7 +214,7 @@ internal class CastSyncCoordinator(
         )
     }
 
-    fun resolveRemoteSnapshot(): RemotePlaybackSnapshot? {
+override     fun resolveRemoteSnapshot(): RemotePlaybackSnapshot? {
         val remoteClient = currentRemoteMediaClient() ?: return null
 
         val mediaStatus = remoteClient.mediaStatus ?: return null

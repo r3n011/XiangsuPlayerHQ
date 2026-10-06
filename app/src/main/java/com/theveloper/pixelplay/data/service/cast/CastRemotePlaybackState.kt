@@ -2,11 +2,6 @@ package com.theveloper.pixelplay.data.service.cast
 
 import com.google.android.gms.cast.MediaStatus
 
-internal data class CastRemotePlaybackProjection(
-    val isPlaying: Boolean,
-    val playWhenReady: Boolean,
-    val isBuffering: Boolean
-)
 
 internal object CastRemotePlaybackState {
     fun project(
@@ -51,3 +46,10 @@ internal object CastRemotePlaybackState {
         )
     }
 }
+
+
+internal data class CastRemotePlaybackProjection(
+    val isPlaying: Boolean,
+    val playWhenReady: Boolean,
+    val isBuffering: Boolean
+)

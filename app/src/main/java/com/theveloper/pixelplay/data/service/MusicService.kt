@@ -262,13 +262,8 @@ class MusicService : MediaLibraryService() {
     private var desiredPlaybackPitch: Float = 1f
     // Cast remote-session synchronization, extracted to a standalone coordinator.
     // Lazily built so the Hilt-injected listeningStatsTracker is ready before first use.
-    private val castSyncCoordinator by lazy {
-        CastSyncCoordinator(
-            context = this,
-            listeningStatsTracker = listeningStatsTracker,
-            requestWidgetUpdate = { force -> widgetUpdateManager.requestFullUpdate(force) },
-        )
-    }
+    @javax.inject.Inject
+    lateinit var castSyncCoordinator: CastSyncPort
     // Glance widget + Wear OS update pipeline, extracted to a standalone manager.
     // State assembly (buildPlayerInfo / resolveCurrentMediaIdForWear) stays here and
     // is supplied as callbacks; the manager owns debounce, diffing and rendering.
@@ -493,7 +488,8 @@ class MusicService : MediaLibraryService() {
         serviceScope.launch {
             delay(DEFERRED_SERVICE_STARTUP_WORK_DELAY_MS)
             if (!isPlaybackUnloadInProgress && mediaSession != null) {
-                castSyncCoordinator.start()
+                castSyncCoordinator.attachWidgetUpdateCallback { force -> widgetUpdateManager.requestFullUpdate(force) }
+            castSyncCoordinator.start()
             }
         }
         registerHeadsetReconnectMonitor()
@@ -2243,21 +2239,8 @@ class MusicService : MediaLibraryService() {
         currentIndex: Int,
         currentMediaId: String?,
     ): String {
-        val remoteClient = castSyncCoordinator.currentRemoteMediaClient()
-        val remoteStatus = remoteClient?.mediaStatus
-        val remoteQueueItems = remoteStatus?.queueItems.orEmpty()
-        if (remoteQueueItems.isNotEmpty()) {
-            val remoteCurrentIndex = remoteQueueItems.indexOfFirst {
-                it.itemId == remoteStatus?.currentItemId
-            }.takeIf { it >= 0 } ?: 0
-            val remoteTokens = remoteQueueItems.map { item ->
-                item.customData
-                    ?.optString("songId")
-                    ?.takeIf { it.isNotBlank() }
-                    ?: item.media?.contentId
-                    ?: item.itemId.toString()
-            }
-            return encodeWearQueueRevision(remoteTokens, remoteStatus?.currentItemId ?: 0)
+        castSyncCoordinator.remoteQueueRevision()?.let { (remoteTokens, remoteItemId) ->
+            return encodeWearQueueRevision(remoteTokens, remoteItemId)
         }
 
         if (timeline.isEmpty) {
