@@ -413,11 +413,15 @@ dependencies {
     add("fullImplementation", libs.googleid)
     implementation(libs.androidx.security.crypto)
     add("fullImplementation", libs.google.play.services.cast.framework)
-    add("liteCompileOnly", libs.play.services.wearable)
-    add("liteCompileOnly", libs.kotlinx.coroutines.play.services)
-    add("liteCompileOnly", libs.credentials.play.services.auth)
-    add("liteCompileOnly", libs.googleid)
-    add("liteCompileOnly", libs.google.play.services.cast.framework)
+    // ⚡ lite 以「运行时存在但零激活」策略带入 GMS 库：main 里保留的少量 GMS 类型引用
+    //    （签名/惰性分支）不再触发 NoClassDefFoundError（ART 方法验证期即解析 invoke 引用）；
+    //    功能层三重隔离不变——端口 NoOp（手表/投屏/同步全部 no-op）、GMS_ENABLED=false
+    //    门控（lite 下所有 GMS 读取返回 null）、manifest 零 GMS 组件。
+    add("liteImplementation", libs.play.services.wearable)
+    add("liteImplementation", libs.kotlinx.coroutines.play.services)
+    add("liteImplementation", libs.credentials.play.services.auth)
+    add("liteImplementation", libs.googleid)
+    add("liteImplementation", libs.google.play.services.cast.framework)
     implementation(libs.tdlib)
 
     // UI Utilities & Extra

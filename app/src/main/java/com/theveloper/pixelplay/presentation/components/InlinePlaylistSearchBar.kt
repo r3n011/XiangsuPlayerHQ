@@ -118,8 +118,11 @@ fun InlinePlaylistSearchBar(
                     }
                 }
             },
+            // ⚡ 固定 56dp 高度：输入后 Clear IconButton 出现会把 trailing 行撑高、
+            //    导致输入框高度跳变——固定高度后 48dp 的尾部按钮恒在预算内，不再跳动
             modifier = modifier
                 .padding(horizontal = 16.dp, vertical = 6.dp)
+                .height(56.dp)
                 .focusRequester(focusRequester),
             shape = CircleShape,
             singleLine = true,

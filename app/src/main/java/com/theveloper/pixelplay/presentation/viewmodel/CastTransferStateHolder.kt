@@ -161,12 +161,14 @@ class CastTransferStateHolder @Inject constructor(
     }
 
     private fun setupListeners() {
+        // ⚡ lite（no-gms）：内部注册 SessionManagerListener 并读 sessionManager（GMS 签名）→ 跳过
+        if (!com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) return
         remoteProgressListener = RemoteMediaClient.ProgressListener { progress, _ ->
             val isSeeking = castStateHolder.isRemotelySeeking.value
             if (!isSeeking) {
                 val pendingId = pendingRemoteSongId
                 if (pendingId != null && SystemClock.elapsedRealtime() - pendingRemoteSongMarkedAt < 4000) {
-                    val status = castStateHolder.castSession.value?.remoteMediaClient?.mediaStatus
+                    val status = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient?.mediaStatus
                     val activeId = status
                         ?.getQueueItemById(status.getCurrentItemId())
                         ?.customData
@@ -275,7 +277,7 @@ class CastTransferStateHolder @Inject constructor(
     }
 
     private fun handleRemoteStatusUpdate() {
-        val castSession = castStateHolder.castSession.value
+        val castSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
         val remoteMediaClient = castSession?.remoteMediaClient ?: return
         val mediaStatus = remoteMediaClient.mediaStatus ?: return
 
@@ -624,7 +626,7 @@ class CastTransferStateHolder @Inject constructor(
                             session.remoteMediaClient?.requestStatus()
                             scope?.launch {
                                 delay(450)
-                                if (castStateHolder.castSession.value === session &&
+                                if ((if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null) === session &&
                                     !castStateHolder.isRemotePlaybackActive.value
                                 ) {
                                     loadInitialQueueAttempt()
@@ -695,7 +697,7 @@ class CastTransferStateHolder @Inject constructor(
 
         remoteStatusRefreshJob = scope?.launch {
             while (true) {
-                val remoteClient = castStateHolder.castSession.value?.remoteMediaClient
+                val remoteClient = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient
                 if (remoteClient == null) {
                     delay(if (castStateHolder.isCastConnecting.value) 1000 else 2500)
                     continue
@@ -748,7 +750,7 @@ class CastTransferStateHolder @Inject constructor(
             )
             Log.w("PX_CAST_RECOVERY", "ending_session reason=$reason songId=$songId")
             emitCastError(message)
-            if (castStateHolder.castSession.value === session) {
+            if ((if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null) === session) {
                 sessionManager?.endCurrentSession(true)
             }
         }
@@ -1068,7 +1070,7 @@ class CastTransferStateHolder @Inject constructor(
         castStateHolder.setRemotelySeeking(false)
         val shouldSkipTransferBack = skipTransferBackOnNextSessionEnd
         skipTransferBackOnNextSessionEnd = false
-        val session = castStateHolder.castSession.value ?: return
+        val session = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null) ?: return
         val remoteMediaClient = session.remoteMediaClient
          
         // Cleanup callbacks
@@ -1202,13 +1204,15 @@ class CastTransferStateHolder @Inject constructor(
     }
 
     fun primeHttpServerStart() {
+        // ⚡ lite（no-gms）：本路径经 sessionManager getter（签名含 GMS 类型）→ 直接返回
+        if (!com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) return
         if (MediaFileHttpServerService.isServerRunning || MediaFileHttpServerService.isServerStarting) return
 
         MediaFileHttpServerService.lastFailureReason = null
         MediaFileHttpServerService.lastFailureMessage = null
 
         val castDeviceIpHint = resolveCastDeviceIp(
-            session = castStateHolder.castSession.value ?: sessionManager?.currentCastSession
+            session = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null) ?: sessionManager?.currentCastSession
         )
 
         val intent = Intent(context, MediaFileHttpServerService::class.java).apply {
@@ -1319,7 +1323,7 @@ class CastTransferStateHolder @Inject constructor(
         startSong: Song,
         isShuffleEnabled: Boolean
     ): Boolean {
-        val castDeviceIpHint = resolveCastDeviceIp(castStateHolder.castSession.value)
+        val castDeviceIpHint = resolveCastDeviceIp((if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null))
         if (!ensureHttpServerRunning(castDeviceIpHint)) return false
 
         val serverAddress = MediaFileHttpServerService.serverAddress ?: return false
@@ -1362,7 +1366,7 @@ class CastTransferStateHolder @Inject constructor(
                         lastPendingMismatchStatusRequestAt = 0L
                         pendingForceJumpAttempts = 0
                         lastPendingForceJumpAt = 0L
-                        val currentRemoteSongId = castStateHolder.castSession.value
+                        val currentRemoteSongId = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
                             ?.remoteMediaClient
                             ?.mediaStatus
                             ?.let { status ->
@@ -1394,7 +1398,7 @@ class CastTransferStateHolder @Inject constructor(
                         if (detailedMessage != null) {
                             emitCastError("Failed to load media on Cast device: $detailedMessage")
                         }
-                        castStateHolder.castSession.value?.remoteMediaClient?.requestStatus()
+                        (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient?.requestStatus()
                     } else {
                         lastRemoteQueue = songsToPlay
                         lastRemoteSongId = startSong.id
@@ -1404,7 +1408,7 @@ class CastTransferStateHolder @Inject constructor(
                         lastRemotePlaybackShouldResume = true
                         castStateHolder.setRemotePlaybackActive(true)
                         playbackStateHolder.startProgressUpdates()
-                        castStateHolder.castSession.value?.remoteMediaClient?.requestStatus()
+                        (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient?.requestStatus()
                         launchAlignToTarget(startSong.id)
                     }
                     completionDeferred.complete(success)
@@ -1464,7 +1468,7 @@ class CastTransferStateHolder @Inject constructor(
     }
 
     private suspend fun alignRemotePlaybackToSong(targetSongId: String) {
-        val remoteClient = castStateHolder.castSession.value?.remoteMediaClient ?: return
+        val remoteClient = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient ?: return
         var lastObservedSongId: String? = null
         repeat(2) { attempt ->
             if (attempt > 0) delay(350L)
@@ -1552,7 +1556,7 @@ class CastTransferStateHolder @Inject constructor(
         }
 
         // Unregister remote media client listeners from active session
-        val remoteClient = castStateHolder.castSession.value?.remoteMediaClient
+        val remoteClient = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient
         remoteProgressListener?.let { remoteClient?.removeProgressListener(it) }
         remoteMediaClientCallback?.let { remoteClient?.unregisterCallback(it) }
 

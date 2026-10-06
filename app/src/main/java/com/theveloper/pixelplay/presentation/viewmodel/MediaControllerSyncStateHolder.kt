@@ -236,7 +236,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
     fun applyPreferredRepeatMode(@Player.RepeatMode mode: Int) {
         playbackStateHolder.updateStablePlayerState { it.copy(repeatMode = mode) }
 
-        val castSession = castStateHolder.castSession.value
+        val castSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
         if (castSession != null && castSession.remoteMediaClient != null) {
             pendingRepeatMode = mode
             return
@@ -380,7 +380,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
     }
 
     private fun isRemoteSessionControllingPlayback(): Boolean {
-        val remoteClient = castStateHolder.castSession.value?.remoteMediaClient
+        val remoteClient = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient
         return remoteClient != null &&
                 (castStateHolder.isRemotePlaybackActive.value || castStateHolder.isCastConnecting.value)
     }

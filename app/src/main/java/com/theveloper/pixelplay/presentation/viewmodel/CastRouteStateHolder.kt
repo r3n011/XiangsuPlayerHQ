@@ -23,7 +23,8 @@ class CastRouteStateHolder @Inject constructor(
     ) {
         val selectedRouteId = castStateHolder.selectedRoute.value?.id
         val isCastRoute = castStateHolder.run { route.isCastRoute() } && !route.isDefault
-        val sessionManager = castStateHolder.sessionManager
+        // ⚡ lite（no-gms）：sessionManager getter 调用即类解析崩溃，门控为 null（后续全部 null-safe）
+        val sessionManager = if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.sessionManager else null
         if (isCastRoute && sessionManager == null) {
             castStateHolder.setPendingCastRouteId(null)
             castStateHolder.setCastConnecting(false)

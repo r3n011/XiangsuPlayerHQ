@@ -1431,7 +1431,7 @@ class PlayerViewModel @Inject constructor(
         cancelPendingDirectPlayback()
 
         // Cast 投屏需要一次性把完整队列交给远端，保留「先建队列再播放」的单阶段逻辑。
-        if (castStateHolder.castSession.value?.remoteMediaClient != null) {
+        if ((if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient != null) {
             val requestToken = fullQueuePlaybackToken
             fullQueuePlaybackJob = viewModelScope.launch {
                 try {
@@ -2748,10 +2748,14 @@ class PlayerViewModel @Inject constructor(
         }
 
         // Cast initialization if already connected
-        val currentSession = sessionManager?.currentCastSession
-        if (currentSession != null) {
-            castStateHolder.setCastPlayer(CastPlayer(currentSession, context.contentResolver))
-            castStateHolder.setRemotePlaybackActive(true)
+        // ⚡ lite（no-gms）：sessionManager getter 签名含 SessionManager，调用即触发类解析
+        //    NoClassDefFoundError（ART 在方法解析时校验签名），必须门控
+        if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) {
+            val currentSession = sessionManager?.currentCastSession
+            if (currentSession != null) {
+                castStateHolder.setCastPlayer(CastPlayer(currentSession, context.contentResolver))
+                castStateHolder.setRemotePlaybackActive(true)
+            }
         }
 
 
@@ -3008,7 +3012,7 @@ class PlayerViewModel @Inject constructor(
                 if (route != null && !route.isDefault && route.supportsControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)) {
                     castTransferStateHolder.primeHttpServerStart()
                 } else if (route?.isDefault == true) {
-                    val hasActiveRemoteSession = castStateHolder.castSession.value?.remoteMediaClient != null ||
+                    val hasActiveRemoteSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient != null ||
                             castStateHolder.isRemotePlaybackActive.value ||
                             castStateHolder.isCastConnecting.value
                     if (hasActiveRemoteSession) {
@@ -3531,7 +3535,7 @@ class PlayerViewModel @Inject constructor(
         }
         val playbackContext =
             if (contextSongs.any { it.id == song.id }) contextSongs else listOf(song)
-        val castSession = castStateHolder.castSession.value
+        val castSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
         if (castSession != null && castSession.remoteMediaClient != null) {
             val remoteMediaClient = castSession.remoteMediaClient!!
             val mediaStatus = remoteMediaClient.mediaStatus
@@ -3638,7 +3642,7 @@ class PlayerViewModel @Inject constructor(
 
     fun showAndPlaySong(song: Song) {
         Log.d("ShuffleDebug", "showAndPlaySong (single song overload) called for '${song.title}'")
-        val castSession = castStateHolder.castSession.value
+        val castSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
         val contextSongs = if (castSession != null && castSession.remoteMediaClient != null) {
             libraryStateHolder.allSongs.value.takeIf { songs ->
                 songs.isNotEmpty() && songs.any { it.id == song.id }
@@ -4094,7 +4098,7 @@ class PlayerViewModel @Inject constructor(
     private fun applyPreferredRepeatMode(@Player.RepeatMode mode: Int) {
         playbackStateHolder.updateStablePlayerState { it.copy(repeatMode = mode) }
 
-        val castSession = castStateHolder.castSession.value
+        val castSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
         if (castSession != null && castSession.remoteMediaClient != null) {
             pendingRepeatMode = mode
             return
@@ -4567,7 +4571,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun isRemoteSessionControllingPlayback(): Boolean {
-        val remoteClient = castStateHolder.castSession.value?.remoteMediaClient
+        val remoteClient = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)?.remoteMediaClient
         return remoteClient != null &&
                 (castStateHolder.isRemotePlaybackActive.value || castStateHolder.isCastConnecting.value)
     }
@@ -6144,7 +6148,7 @@ class PlayerViewModel @Inject constructor(
             appShortcutManager.updateLastPlaylistShortcut(playlistId, queueName)
         }
 
-        val castSession = castStateHolder.castSession.value
+        val castSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
         if (castSession != null && castSession.remoteMediaClient != null) {
             clearPreparingSongIfMatching()
             val remoteLoaded = castTransferStateHolder.playRemoteQueue(
@@ -7429,7 +7433,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun playPause() {
-        val castSession = castStateHolder.castSession.value
+        val castSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null)
         if (castSession != null && castSession.remoteMediaClient != null) {
             val remoteMediaClient = castSession.remoteMediaClient!!
             val remotePlayback = remoteMediaClient.mediaStatus?.let { mediaStatus ->
@@ -9478,7 +9482,7 @@ class PlayerViewModel @Inject constructor(
             getUiState = { _playerUiState.value },
             updateUiState = { mutation -> _playerUiState.update(mutation) },
             disconnectRemoteIfNeeded = {
-                val hasCastSession = castStateHolder.castSession.value != null
+                val hasCastSession = (if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) castStateHolder.castSession.value else null) != null
                 val shouldDisconnectRemote = hasCastSession ||
                     castStateHolder.isRemotePlaybackActive.value ||
                     castStateHolder.isCastConnecting.value
