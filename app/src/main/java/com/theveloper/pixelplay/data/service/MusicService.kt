@@ -78,7 +78,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.service.auto.AutoMediaBrowseTree
 import com.theveloper.pixelplay.data.service.wear.buildWearThemePalette
-import com.theveloper.pixelplay.data.service.wear.WearStatePublisher
+import com.theveloper.pixelplay.data.service.wear.WearStatePublisherPort
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
 import com.theveloper.pixelplay.shared.WearIntents
 import com.theveloper.pixelplay.utils.ArtworkTransportSanitizer
@@ -193,7 +193,7 @@ class MusicService : MediaLibraryService() {
     @Inject
     lateinit var autoMediaBrowseTree: AutoMediaBrowseTree
     @Inject
-    lateinit var wearStatePublisher: WearStatePublisher
+    lateinit var wearStatePublisher: WearStatePublisherPort
     @Inject
     lateinit var replayGainManager: com.theveloper.pixelplay.data.media.ReplayGainManager
     @Inject

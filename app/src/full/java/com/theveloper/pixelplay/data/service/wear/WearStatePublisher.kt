@@ -41,7 +41,7 @@ import javax.inject.Singleton
 @Singleton
 class WearStatePublisher @Inject constructor(
     private val application: Application,
-) {
+) : WearStatePublisherPort {
     private val dataClient by lazy { Wearable.getDataClient(application) }
     private val audioManager by lazy {
         application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -57,7 +57,7 @@ class WearStatePublisher @Inject constructor(
     /**
      * Clear the cached artwork assets.
      */
-    fun clearCache() {
+    override fun clearCache() {
         synchronized(artworkCacheLock) {
             lastArtworkUri = null
             lastRawBitmapData = null
@@ -78,7 +78,7 @@ class WearStatePublisher @Inject constructor(
      * @param songId The current media item's ID
      * @param playerInfo The full player info from MusicService
      */
-    fun publishState(songId: String?, playerInfo: PlayerInfo) {
+    override fun publishState(songId: String?, playerInfo: PlayerInfo) {
         scope.launch {
             try {
                 publishStateInternal(songId, playerInfo)
@@ -91,7 +91,7 @@ class WearStatePublisher @Inject constructor(
     /**
      * Clear state from the Data Layer (e.g. when service is destroyed).
      */
-    fun clearState() {
+    override fun clearState() {
         clearCache()
         scope.launch {
             try {

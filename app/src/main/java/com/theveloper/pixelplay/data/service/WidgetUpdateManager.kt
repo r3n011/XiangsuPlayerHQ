@@ -5,7 +5,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
 import com.theveloper.pixelplay.data.model.PlayerInfo
-import com.theveloper.pixelplay.data.service.wear.WearStatePublisher
+import com.theveloper.pixelplay.data.service.wear.WearStatePublisherPort
 import com.theveloper.pixelplay.ui.glancewidget.BarWidget4x1
 import com.theveloper.pixelplay.ui.glancewidget.ControlWidget4x2
 import com.theveloper.pixelplay.ui.glancewidget.GridWidget2x2
@@ -38,7 +38,7 @@ import kotlin.math.abs
 internal class WidgetUpdateManager(
     private val context: Context,
     private val scope: CoroutineScope,
-    private val wearStatePublisher: WearStatePublisher,
+    private val wearStatePublisher: WearStatePublisherPort,
     private val buildPlayerInfo: suspend () -> PlayerInfo,
     private val resolveCurrentMediaIdForWear: suspend () -> String?,
 ) {

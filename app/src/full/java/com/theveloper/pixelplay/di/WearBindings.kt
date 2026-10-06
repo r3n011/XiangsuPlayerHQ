@@ -1,6 +1,8 @@
 package com.theveloper.pixelplay.di
 
 import com.theveloper.pixelplay.data.service.wear.WearPhoneTransferSender
+import com.theveloper.pixelplay.data.service.wear.WearStatePublisher
+import com.theveloper.pixelplay.data.service.wear.WearStatePublisherPort
 import com.theveloper.pixelplay.data.service.wear.WearSongTransferPort
 import dagger.Binds
 import dagger.Module
@@ -15,4 +17,8 @@ internal abstract class WearBindingsModule {
     @Binds
     @Singleton
     internal abstract fun bindWearSongTransferPort(impl: WearPhoneTransferSender): WearSongTransferPort
+
+    @Binds
+    @Singleton
+    internal abstract fun bindWearStatePublisherPort(impl: WearStatePublisher): WearStatePublisherPort
 }
