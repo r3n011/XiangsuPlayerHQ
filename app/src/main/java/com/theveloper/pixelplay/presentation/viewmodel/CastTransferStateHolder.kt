@@ -84,7 +84,7 @@ class CastTransferStateHolder @Inject constructor(
     private val sessionManager: SessionManager? by lazy {
         try {
             CastContext.getSharedInstance(context).sessionManager
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Timber.tag(CAST_LOG_TAG).e(e, "Failed to get CastContext sharedInstance")
             null
         }
@@ -100,7 +100,8 @@ class CastTransferStateHolder @Inject constructor(
     var lastRemoteSongId: String? = null
         private set
     private var lastRemoteStreamPosition: Long = 0L
-    private var lastRemoteRepeatMode: Int = MediaStatus.REPEAT_MODE_REPEAT_OFF
+    // ⚡ 字面量 0 == MediaStatus.REPEAT_MODE_REPEAT_OFF（javap 实测）；避免 lite 构造期类加载
+    private var lastRemoteRepeatMode: Int = 0
     private var lastKnownRemoteIsPlaying: Boolean = false
     private var lastRemotePlaybackShouldResume: Boolean = false
     private var lastRemoteItemId: Int? = null

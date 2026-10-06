@@ -521,11 +521,13 @@ internal fun UnifiedPlayerCastLayer(
             typography = MaterialTheme.typography,
             shapes = MaterialTheme.shapes
         ) {
+            if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) {
             CastBottomSheet(
                 playerViewModel = playerViewModel,
                 onDismiss = onDismiss,
                 onExpansionChanged = onExpansionChanged
             )
+            }
         }
     }
 }

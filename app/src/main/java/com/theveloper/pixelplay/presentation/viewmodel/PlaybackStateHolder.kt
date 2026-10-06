@@ -32,7 +32,6 @@ import kotlinx.coroutines.withContext
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.service.cast.CastRemotePlaybackState
 import com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer
-import com.google.android.gms.cast.MediaStatus
 import timber.log.Timber
 import com.theveloper.pixelplay.presentation.components.PlayerProgressStyle
 import com.theveloper.pixelplay.utils.AudioDecoder
@@ -42,6 +41,13 @@ import com.theveloper.pixelplay.utils.TranscodeProgressManager
 import kotlin.math.abs
 
 @Singleton
+// ⚡ 与 play-services-cast MediaStatus.REPEAT_MODE_* 数值对齐（javap 实测 0/1/2/3）；
+// 本地常量化避免 lite（no-gms）下访问 MediaStatus 静态字段触发类加载（NoClassDefFoundError）。
+private const val CAST_REPEAT_OFF = 0
+private const val CAST_REPEAT_ALL = 1
+private const val CAST_REPEAT_SINGLE = 2
+private const val CAST_REPEAT_ALL_AND_SHUFFLE = 3
+
 class PlaybackStateHolder @Inject constructor(
     private val dualPlayerEngine: DualPlayerEngine,
     private val userPreferencesRepository: UserPreferencesRepository,
@@ -644,20 +650,20 @@ class PlaybackStateHolder @Inject constructor(
         val remoteMediaClient = castSession?.remoteMediaClient
 
         if (castSession != null && remoteMediaClient != null) {
-            val currentRepeatMode = remoteMediaClient.mediaStatus?.getQueueRepeatMode() ?: MediaStatus.REPEAT_MODE_REPEAT_OFF
+            val currentRepeatMode = remoteMediaClient.mediaStatus?.getQueueRepeatMode() ?: CAST_REPEAT_OFF
             val newMode = when (currentRepeatMode) {
-                MediaStatus.REPEAT_MODE_REPEAT_OFF -> MediaStatus.REPEAT_MODE_REPEAT_ALL
-                MediaStatus.REPEAT_MODE_REPEAT_ALL -> MediaStatus.REPEAT_MODE_REPEAT_SINGLE
-                MediaStatus.REPEAT_MODE_REPEAT_SINGLE -> MediaStatus.REPEAT_MODE_REPEAT_OFF
-                MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE -> MediaStatus.REPEAT_MODE_REPEAT_OFF
-                else -> MediaStatus.REPEAT_MODE_REPEAT_OFF
+                CAST_REPEAT_OFF -> CAST_REPEAT_ALL
+                CAST_REPEAT_ALL -> CAST_REPEAT_SINGLE
+                CAST_REPEAT_SINGLE -> CAST_REPEAT_OFF
+                CAST_REPEAT_ALL_AND_SHUFFLE -> CAST_REPEAT_OFF
+                else -> CAST_REPEAT_OFF
             }
             castStateHolder.castPlayer?.setRepeatMode(newMode)
             
             // Map remote mode back to local constant for persistence/UI
             val mappedLocalMode = when (newMode) {
-                MediaStatus.REPEAT_MODE_REPEAT_SINGLE -> Player.REPEAT_MODE_ONE
-                MediaStatus.REPEAT_MODE_REPEAT_ALL, MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE -> Player.REPEAT_MODE_ALL
+                CAST_REPEAT_SINGLE -> Player.REPEAT_MODE_ONE
+                CAST_REPEAT_ALL, CAST_REPEAT_ALL_AND_SHUFFLE -> Player.REPEAT_MODE_ALL
                 else -> Player.REPEAT_MODE_OFF
             }
             scope?.launch { userPreferencesRepository.setRepeatMode(mappedLocalMode) }
@@ -682,9 +688,9 @@ class PlaybackStateHolder @Inject constructor(
 
         if (castSession != null && remoteMediaClient != null) {
             val remoteMode = when (mode) {
-                Player.REPEAT_MODE_ONE -> MediaStatus.REPEAT_MODE_REPEAT_SINGLE
-                Player.REPEAT_MODE_ALL -> MediaStatus.REPEAT_MODE_REPEAT_ALL
-                else -> MediaStatus.REPEAT_MODE_REPEAT_OFF
+                Player.REPEAT_MODE_ONE -> CAST_REPEAT_SINGLE
+                Player.REPEAT_MODE_ALL -> CAST_REPEAT_ALL
+                else -> CAST_REPEAT_OFF
             }
             castStateHolder.castPlayer?.setRepeatMode(remoteMode)
         } else {
@@ -1130,10 +1136,10 @@ class PlaybackStateHolder @Inject constructor(
                 _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = true) }
                 try {
                     val remoteMediaClient = castSession.remoteMediaClient
-                    val newRepeatMode = if (remoteMediaClient?.mediaStatus?.getQueueRepeatMode() == MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE) {
-                        MediaStatus.REPEAT_MODE_REPEAT_ALL
+                    val newRepeatMode = if (remoteMediaClient?.mediaStatus?.getQueueRepeatMode() == CAST_REPEAT_ALL_AND_SHUFFLE) {
+                        CAST_REPEAT_ALL
                     } else {
-                        MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE
+                        CAST_REPEAT_ALL_AND_SHUFFLE
                     }
                     castStateHolder.castPlayer?.setRepeatMode(newRepeatMode)
                 } finally {

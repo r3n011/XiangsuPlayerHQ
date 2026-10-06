@@ -76,7 +76,9 @@ fun GDriveDashboardScreen(
                 },
                 actions = {
                     // Add folder button
-                    IconButton(onClick = {
+                    // ⚡ lite（no-gms）隐藏入口：googleid/credentials-play-services-auth
+                    //    不打包，打开登录页会在运行时触发 NoClassDefFoundError
+                    if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) IconButton(onClick = {
                         context.startActivity(Intent(context, GDriveLoginActivity::class.java))
                     }) {
                         Icon(

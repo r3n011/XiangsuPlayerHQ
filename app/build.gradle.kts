@@ -158,14 +158,17 @@ android {
     productFlavors {
         create("full") {
             dimension = "build"
-            // 完整版：包含 Telegram（TDLib 原生库 + 功能）
+            // 完整版：Telegram（TDLib）+ 全部 Google Play 服务
             buildConfigField("Boolean", "TELEGRAM_ENABLED", "true")
+            buildConfigField("Boolean", "GMS_ENABLED", "true")
         }
         create("lite") {
             dimension = "build"
-            // 精简版（no-telegram）：不打包 libtdjni.so，Telegram 功能运行时禁用，
-            // UI 入口由 BuildConfig.TELEGRAM_ENABLED=false 门控隐藏。
+            // 精简版（no-telegram + no-gms）：不打包 libtdjni.so 与任何 Google Play
+            // 服务；GMS 触碰类隔离在 src/full 或不打包（liteCompileOnly），UI 入口由
+            // BuildConfig.GMS_ENABLED=false 门控隐藏。
             buildConfigField("Boolean", "TELEGRAM_ENABLED", "false")
+            buildConfigField("Boolean", "GMS_ENABLED", "false")
         }
     }
 
@@ -399,13 +402,22 @@ dependencies {
 
     // Identity & Background
     implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.play.services.wearable)
-    implementation(libs.kotlinx.coroutines.play.services)
-    implementation(libs.credentials)
-    implementation(libs.credentials.play.services.auth)
-    implementation(libs.googleid)
+    // ⚡ GMS 依赖仅完整版（full）打包；lite 编译可见、不打包（liteCompileOnly）。
+    //    main 里 GMS 构造源头在 lite 下根对象恒 null（catch Throwable 容错
+    //    NoClassDefFoundError）→ 可空访问链天然死路；R8 折叠 GMS_ENABLED=false
+    //    门控并剥离不可达分支 → lite APK 零 Google Play 类。
+    add("fullImplementation", libs.play.services.wearable)
+    add("fullImplementation", libs.kotlinx.coroutines.play.services)
+    implementation(libs.credentials) // androidx.credentials 核心为 AOSP 实现，无 GMS
+    add("fullImplementation", libs.credentials.play.services.auth)
+    add("fullImplementation", libs.googleid)
     implementation(libs.androidx.security.crypto)
-    implementation(libs.google.play.services.cast.framework)
+    add("fullImplementation", libs.google.play.services.cast.framework)
+    add("liteCompileOnly", libs.play.services.wearable)
+    add("liteCompileOnly", libs.kotlinx.coroutines.play.services)
+    add("liteCompileOnly", libs.credentials.play.services.auth)
+    add("liteCompileOnly", libs.googleid)
+    add("liteCompileOnly", libs.google.play.services.cast.framework)
     implementation(libs.tdlib)
 
     // UI Utilities & Extra

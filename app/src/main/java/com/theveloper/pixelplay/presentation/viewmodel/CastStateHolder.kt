@@ -37,7 +37,7 @@ class CastStateHolder @Inject constructor(
     val sessionManager: SessionManager? by lazy {
         try {
             CastContext.getSharedInstance(context).sessionManager
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Timber.tag(CAST_STATE_TAG).e(e, "Failed to get CastContext sharedInstance")
             null
         }
@@ -92,26 +92,34 @@ class CastStateHolder @Inject constructor(
     val isRemotelySeeking: StateFlow<Boolean> = _isRemotelySeeking.asStateFlow()
     
     // Cast control category
-    private val castControlCategory = CastMediaControlIntent.categoryForCast(
-        CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID
-    )
+    // ⚡ lazy + GMS 门控：lite（no-gms）不打包 CastMediaControlIntent，构造期求值会
+    //    NoClassDefFoundError（闪退）；lite 返回 null，路由选择器退化为仅 remote playback。
+    private val castControlCategory: String? by lazy {
+        if (com.theveloper.pixelplay.BuildConfig.GMS_ENABLED) {
+            CastMediaControlIntent.categoryForCast(
+                CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID
+            )
+        } else {
+            null
+        }
+    }
     
     /**
      * Check if a route is a Cast route.
      */
     fun MediaRouter.RouteInfo.isCastRoute(): Boolean {
         return supportsControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK) ||
-            supportsControlCategory(castControlCategory)
+            (castControlCategory?.let { supportsControlCategory(it) } ?: false)
     }
     
     /**
      * Build a media route selector for Cast routes.
      */
     fun buildCastRouteSelector(): MediaRouteSelector {
-        return MediaRouteSelector.Builder()
+        val builder = MediaRouteSelector.Builder()
             .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
-            .addControlCategory(castControlCategory)
-            .build()
+        castControlCategory?.let { builder.addControlCategory(it) }
+        return builder.build()
     }
 
     // State setters

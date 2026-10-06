@@ -3,7 +3,7 @@ package com.theveloper.pixelplay.data.service.wear
 /**
  * lite（no-gms）兜底：手表传输端口恒不可用（lite 不打包 play-services-wearable）。
  */
-internal class NoOpWearSongTransferPort : WearSongTransferPort {
+internal class NoOpWearSongTransferPort @javax.inject.Inject constructor() : WearSongTransferPort {
     override suspend fun isPixelPlayWatchAvailable(): Boolean = false
 
     override suspend fun refreshWatchLibraryState(): Result<Unit> =
