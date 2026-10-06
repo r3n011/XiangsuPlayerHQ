@@ -33,8 +33,10 @@ class PlaybackStateHolderTest {
     private fun createHolder() = PlaybackStateHolder(
         dualPlayerEngine = dualPlayerEngine,
         userPreferencesRepository = userPreferencesRepository,
+        aiPreferencesRepository = mockk(relaxed = true),
         castStateHolder = castStateHolder,
         queueStateHolder = queueStateHolder,
+        audioVisualizer = mockk(relaxed = true),
         appContext = appContext
     )
 

@@ -54,6 +54,14 @@ class MetadataMojibakeRepairTest {
     }
 
     @Test
+    fun `zz debug korean codepoints`() {
+        val mojibake = asLatin1Mojibake("아이유", StandardCharsets.UTF_8)
+        println("DBG_INPUT=" + mojibake.map { "U+%04X".format(it.code) }.joinToString(" "))
+        val repaired = mojibake.normalizeMetadataText()
+        println("DBG_RESULT=" + (repaired ?: "<null>").map { "U+%04X".format(it.code) }.joinToString(" "))
+    }
+
+    @Test
     fun `repairs Chinese and Korean UTF-8 tags`() {
         assertEquals("周杰伦", asLatin1Mojibake("周杰伦", StandardCharsets.UTF_8).normalizeMetadataText())
         assertEquals("아이유", asLatin1Mojibake("아이유", StandardCharsets.UTF_8).normalizeMetadataText())

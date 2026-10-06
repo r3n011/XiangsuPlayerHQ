@@ -5,6 +5,7 @@ import kotlin.math.cbrt
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * AMLL Isolation 渲染器的取色管线，移植自
@@ -631,6 +632,76 @@ private fun createAutoPalette(
  * 从封面提取 [clusterCount] 个主色。同步执行：直方图按 64×64 统计，
  * 整个流程在主线程上也只有几毫秒，调用方仍建议放到后台线程。
  */
+/* ============================== 绚丽背景取色优化 ============================== */
+
+/**
+ * 绚丽背景的四色拉开：K-Means / 八叉树的簇心在主色单一的封面上会挤在一起
+ * （与播放按钮 / 取色按钮的取色同源），流体渐变四色近乎同色、观感撞色。
+ *
+ * 做法：把「过采样候选池」（2×clusterCount 的 K-Means 簇心 + 八叉树量化色 +
+ * 原结果）用**最远点采样**（max-min，Lab 空间感知距离）重选 clusterCount 个：
+ * 基色保留算法首选（延续封面主色氛围），之后每一步都选与已选颜色最小 Lab
+ * 距离最大的候选——四色色差有硬保证，且全部仍来自封面本身。
+ */
+private fun diversifyIsolationPalette(
+    result: PaletteResult,
+    sourceColors: List<ColorCount>,
+    clusterCount: Int,
+): PaletteResult {
+    if (clusterCount <= 1 || sourceColors.isEmpty()) return result
+    val candidatePool = LinkedHashMap<String, FloatArray>()
+    fun addCandidate(color: FloatArray) {
+        // /8 粒度去重：视觉上几乎同色的候选合并为一个
+        val key = (color[0].toInt() / 8).toString() + "," +
+            (color[1].toInt() / 8).toString() + "," +
+            (color[2].toInt() / 8).toString()
+        candidatePool.putIfAbsent(key, color)
+    }
+    val themeColor = runCatching { createThemeColor(sourceColors) }.getOrNull() ?: return result
+    runCatching {
+        createKMeansPalette(sourceColors, clusterCount * 2, themeColor, intent = "dominant")
+            .palette.forEach(::addCandidate)
+    }
+    runCatching {
+        createOctTreePalette(sourceColors, clusterCount * 2, themeColor, intent = "dominant")
+            .palette.forEach(::addCandidate)
+    }
+    result.palette.forEach(::addCandidate)
+    if (candidatePool.size <= clusterCount) return result
+
+    val candidates = candidatePool.values.toList()
+    val base = result.palette.first()
+    val picked = ArrayList<FloatArray>(clusterCount)
+    val pickedLab = ArrayList<FloatArray>(clusterCount)
+    picked.add(base)
+    pickedLab.add(rgbToLab(base))
+    while (picked.size < clusterCount) {
+        var bestColor: FloatArray? = null
+        var bestLab: FloatArray? = null
+        var bestScore = -1f
+        for (candidate in candidates) {
+            if (picked.any { it.contentEquals(candidate) }) continue
+            val lab = rgbToLab(candidate)
+            var minDistanceSq = Float.MAX_VALUE
+            for (chosen in pickedLab) {
+                val distance = distanceSquared(lab, chosen)
+                if (distance < minDistanceSq) minDistanceSq = distance
+            }
+            val score = sqrt(minDistanceSq)
+            if (score > bestScore) {
+                bestScore = score
+                bestColor = candidate
+                bestLab = lab
+            }
+        }
+        val chosenColor = bestColor ?: break
+        picked.add(chosenColor)
+        pickedLab.add(bestLab!!)
+    }
+    if (picked.size < clusterCount) return result
+    return PaletteResult(picked, result.paletteIsDark, result.algo + "+分散")
+}
+
 internal fun extractIsolationPalette(
     source: Bitmap,
     clusterCount: Int = 4,
@@ -644,7 +715,7 @@ internal fun extractIsolationPalette(
             algo = "空直方图",
         )
     }
-    return when (algorithm) {
+    val chosen = when (algorithm) {
         "kmeans" -> createKMeansPalette(
             entries, clusterCount, createThemeColor(entries), intent = "dominant",
         )
@@ -653,4 +724,6 @@ internal fun extractIsolationPalette(
         )
         else -> createAutoPalette(entries, clusterCount, intent = "dominant")
     }
+    // ⚡ 绚丽背景取色优化：簇心常挤在主色附近（与播放按钮取色同源），四色拉开色差
+    return diversifyIsolationPalette(chosen, entries, clusterCount)
 }

@@ -36,7 +36,7 @@ class ArtistImageRepositoryTest {
     fun `cancelled prefetch does not mark artist as failed for the session`() = runTest {
         val deezerApiService = mockk<DeezerApiService>()
         val musicDao = mockk<MusicDao>()
-        val repository = ArtistImageRepository(deezerApiService, musicDao)
+        val repository = ArtistImageRepository(deezerApiService, musicDao, mockk(relaxed = true))
         val firstAttemptStarted = CompletableDeferred<Unit>()
         val searchAttempts = AtomicInteger(0)
         val rawUrl = "https://cdn-images.dzcdn.net/images/artist/250x250-000000-80-0-0.jpg"

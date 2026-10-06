@@ -90,7 +90,9 @@ internal fun UnifiedPlayerQueueLayer(
     onQueueDrag: (Float) -> Unit,
     onQueueRelease: (Float, Float) -> Unit,
     queuePredictiveBackProgress: Animatable<Float, AnimationVector1D>,
-    queuePredictiveBackSwipeEdge: State<Int?>
+    queuePredictiveBackSwipeEdge: State<Int?>,
+    queueSearchExpanded: Boolean,
+    onQueueSearchExpandedChange: (Boolean) -> Unit
 ) {
     if (!shouldRenderLayer) return
 
@@ -171,6 +173,8 @@ internal fun UnifiedPlayerQueueLayer(
                     onQueueRelease = onQueueRelease,
                     predictiveBackProgress = queuePredictiveBackProgress,
                     predictiveBackSwipeEdge = queuePredictiveBackSwipeEdge,
+                    queueSearchExpanded = queueSearchExpanded,
+                    onQueueSearchExpandedChange = onQueueSearchExpandedChange,
                     queueSheetOffset = queueSheetOffset
                 )
             }
@@ -322,7 +326,9 @@ internal fun UnifiedPlayerQueueAndSongInfoHost(
     onNavigateToGenre: (Song) -> Unit,
     onOpenNeteaseArtistHomepage: (Song) -> Unit = {},
     queuePredictiveBackProgress: Animatable<Float, AnimationVector1D>,
-    queuePredictiveBackSwipeEdge: State<Int?>
+    queuePredictiveBackSwipeEdge: State<Int?>,
+    queueSearchExpanded: Boolean,
+    onQueueSearchExpandedChange: (Boolean) -> Unit
 ) {
     if (!shouldRenderHost) return
 
@@ -455,7 +461,9 @@ internal fun UnifiedPlayerQueueAndSongInfoHost(
                 onQueueDrag = onQueueDrag,
                 onQueueRelease = onQueueRelease,
                 queuePredictiveBackProgress = queuePredictiveBackProgress,
-                queuePredictiveBackSwipeEdge = queuePredictiveBackSwipeEdge
+                queuePredictiveBackSwipeEdge = queuePredictiveBackSwipeEdge,
+                queueSearchExpanded = queueSearchExpanded,
+                onQueueSearchExpandedChange = onQueueSearchExpandedChange
             )
 
             UnifiedPlayerSongInfoLayer(

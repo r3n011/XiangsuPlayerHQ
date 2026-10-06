@@ -55,6 +55,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -90,6 +91,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,6 +130,7 @@ import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.QueuePlaylistSongItem
 import com.theveloper.pixelplay.presentation.components.SongPickerBottomSheet
 import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
+import com.theveloper.pixelplay.presentation.components.InlinePlaylistSearchBar
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
@@ -297,6 +300,24 @@ fun PlaylistDetailScreen(
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
     var showPlaylistBottomSheet by remember { mutableStateOf(false) }
     var localReorderableSongs by remember(songsInPlaylist) { mutableStateOf(songsInPlaylist) }
+
+    // ⚡ 歌单内搜索：与队列弹窗同一套「胶囊搜索栏 + 只过滤显示」逻辑；
+    //    过滤态下隐藏拖拽手柄（按索引重排在过滤视图里语义不成立），
+    //    播放 / 随机 / 移除仍作用于完整歌单（按 id 操作，天然过滤安全）。
+    var playlistSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    var playlistSearchQuery by rememberSaveable { mutableStateOf("") }
+    val playlistSearchTrimmed = playlistSearchQuery.trim()
+    val displayedPlaylistSongs = remember(playlistSearchTrimmed, localReorderableSongs) {
+        if (playlistSearchTrimmed.isEmpty()) {
+            localReorderableSongs
+        } else {
+            localReorderableSongs.filter { song ->
+                song.title.contains(playlistSearchTrimmed, ignoreCase = true) ||
+                    song.artist.contains(playlistSearchTrimmed, ignoreCase = true)
+            }
+        }
+    }
+    val isPlaylistSearchFiltering = playlistSearchTrimmed.isNotEmpty()
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -826,6 +847,24 @@ fun PlaylistDetailScreen(
                     }
                 }
 
+                // ⚡ 歌单内搜索入口（固定在列表上方）：与队列弹窗同一套胶囊搜索栏；
+                //    空歌单没有可搜的内容，不显示入口
+                if (localReorderableSongs.isNotEmpty()) {
+                    InlinePlaylistSearchBar(
+                        query = playlistSearchQuery,
+                        onQueryChange = { playlistSearchQuery = it },
+                        expanded = playlistSearchExpanded,
+                        onExpandedChange = { playlistSearchExpanded = it },
+                        resultCountText = if (isPlaylistSearchFiltering) {
+                            stringResource(R.string.playlist_search_result_count, displayedPlaylistSongs.size)
+                        } else null,
+                        hintText = stringResource(R.string.playlist_search_hint),
+                        clearSearchContentDescription = stringResource(R.string.cd_clear_search),
+                        cancelText = stringResource(R.string.cancel),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 if (localReorderableSongs.isEmpty()) {
                     Box(Modifier
                         .fillMaxSize()
@@ -840,6 +879,28 @@ fun PlaylistDetailScreen(
                                 playlistEmptyAddHint
                             }
                             Text(emptyMessage, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else if (isPlaylistSearchFiltering && displayedPlaylistSongs.isEmpty()) {
+                    // ⚡ 搜索无匹配：列表区域显示空态，不打断页面结构
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Rounded.SearchOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                stringResource(R.string.search_no_results_found),
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                     }
                 } else {
@@ -890,7 +951,7 @@ fun PlaylistDetailScreen(
                             }
 
                             itemsIndexed(
-                                localReorderableSongs,
+                                displayedPlaylistSongs,
                                 key = { _, item -> item.id },
                                 contentType = { _, _ -> "playlist_song" }) { _, song ->
                                 ReorderableItem(
@@ -931,7 +992,7 @@ fun PlaylistDetailScreen(
                                         },
                                         isFromPlaylist = true,
                                         isReorderModeEnabled = isReorderModeEnabled,
-                                        isDragHandleVisible = isReorderModeEnabled,
+                                        isDragHandleVisible = isReorderModeEnabled && !isPlaylistSearchFiltering,
                                         isRemoveButtonVisible = isRemoveModeEnabled,
                                         onMoreOptionsClick = stableOnMoreOptionsClick,
                                         dragHandle = {

@@ -42,7 +42,11 @@ class LyricsRepositoryImplTest {
             lrcLibApiService = mockk<LrcLibApiService>(relaxed = true),
             lyricsDao = mockk<LyricsDao>(relaxed = true),
             okHttpClient = mockk<OkHttpClient>(relaxed = true),
-            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true)
+            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            kugouAudiobookApi = mockk<com.theveloper.pixelplay.data.kugou.KugouAudiobookApi>(relaxed = true),
+            builtInSourceSearchApi = mockk<com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi>(relaxed = true),
+            bilibiliSearchApi = mockk<com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi>(relaxed = true),
+            apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
         )
         val song = Song(
             id = "12",
@@ -77,7 +81,11 @@ class LyricsRepositoryImplTest {
             lrcLibApiService = apiService,
             lyricsDao = mockk<LyricsDao>(relaxed = true),
             okHttpClient = mockk<OkHttpClient>(relaxed = true),
-            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true)
+            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            kugouAudiobookApi = mockk<com.theveloper.pixelplay.data.kugou.KugouAudiobookApi>(relaxed = true),
+            builtInSourceSearchApi = mockk<com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi>(relaxed = true),
+            bilibiliSearchApi = mockk<com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi>(relaxed = true),
+            apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
         )
         val song = Song(
             id = "45",
@@ -120,7 +128,11 @@ class LyricsRepositoryImplTest {
             lrcLibApiService = apiService,
             lyricsDao = lyricsDao,
             okHttpClient = mockk<OkHttpClient>(relaxed = true),
-            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true)
+            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            kugouAudiobookApi = mockk<com.theveloper.pixelplay.data.kugou.KugouAudiobookApi>(relaxed = true),
+            builtInSourceSearchApi = mockk<com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi>(relaxed = true),
+            bilibiliSearchApi = mockk<com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi>(relaxed = true),
+            apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
         )
         val song = Song(
             id = "77",
@@ -169,7 +181,11 @@ class LyricsRepositoryImplTest {
             lrcLibApiService = apiService,
             lyricsDao = lyricsDao,
             okHttpClient = mockk<OkHttpClient>(relaxed = true),
-            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true)
+            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            kugouAudiobookApi = mockk<com.theveloper.pixelplay.data.kugou.KugouAudiobookApi>(relaxed = true),
+            builtInSourceSearchApi = mockk<com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi>(relaxed = true),
+            bilibiliSearchApi = mockk<com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi>(relaxed = true),
+            apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
         )
         val song = testSong(
             id = "101",
@@ -202,7 +218,11 @@ class LyricsRepositoryImplTest {
             lrcLibApiService = apiService,
             lyricsDao = lyricsDao,
             okHttpClient = mockk<OkHttpClient>(relaxed = true),
-            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true)
+            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            kugouAudiobookApi = mockk<com.theveloper.pixelplay.data.kugou.KugouAudiobookApi>(relaxed = true),
+            builtInSourceSearchApi = mockk<com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi>(relaxed = true),
+            bilibiliSearchApi = mockk<com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi>(relaxed = true),
+            apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
         )
         val song = testSong(
             id = "102",
@@ -235,7 +255,11 @@ class LyricsRepositoryImplTest {
             lrcLibApiService = apiService,
             lyricsDao = lyricsDao,
             okHttpClient = mockk<OkHttpClient>(relaxed = true),
-            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true)
+            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            kugouAudiobookApi = mockk<com.theveloper.pixelplay.data.kugou.KugouAudiobookApi>(relaxed = true),
+            builtInSourceSearchApi = mockk<com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi>(relaxed = true),
+            bilibiliSearchApi = mockk<com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi>(relaxed = true),
+            apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
         )
         val song = testSong(
             id = "103",
@@ -269,7 +293,11 @@ class LyricsRepositoryImplTest {
             lrcLibApiService = apiService,
             lyricsDao = lyricsDao,
             okHttpClient = mockk<OkHttpClient>(relaxed = true),
-            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true)
+            lxSearchApi = mockk<com.theveloper.pixelplay.data.lx.LxSearchApi>(relaxed = true),
+            kugouAudiobookApi = mockk<com.theveloper.pixelplay.data.kugou.KugouAudiobookApi>(relaxed = true),
+            builtInSourceSearchApi = mockk<com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi>(relaxed = true),
+            bilibiliSearchApi = mockk<com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi>(relaxed = true),
+            apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
         )
         val song = testSong(
             id = "104",

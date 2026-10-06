@@ -101,5 +101,7 @@ class LyricsStateHolderTest {
         override fun onLoadingStarted(songId: String) = Unit
 
         override fun onLyricsLoaded(songId: String, lyrics: Lyrics?) = Unit
+
+        override fun onLyricsLoadFinished(songId: String, lyrics: Lyrics?) = Unit
     }
 }

@@ -255,6 +255,11 @@ fun QueueBottomSheet(
     predictiveBackProgress: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     predictiveBackSwipeEdge: androidx.compose.runtime.State<Int?>,
     queueSheetOffset: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    // ⚡ 队列内搜索的展开状态由宿主（UnifiedPlayerSheetV2）提升持有：
+    //    键盘弹出时宿主按「键盘可见即撤下队列宿主」的旧门控工作，
+    //    必须知道搜索框是否展开，否则点搜索框→键盘弹出→整个队列被卸载（闪一下且无法输入）。
+    queueSearchExpanded: Boolean,
+    onQueueSearchExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     tonalElevation: Dp = 10.dp,
     shape: RoundedCornerShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -335,7 +340,7 @@ fun QueueBottomSheet(
 
     // ⚡ 列表内搜索：入口固定在列表顶部，按歌名 / 歌手**只过滤显示**、不改队列本身；
     //    队列索引仍用稳定 key 映射回真实位置（播放 / 删除 / 拖拽语义全部不变）。
-    var queueSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    //    展开状态由宿主提升（见类注释），查询文本仍留在本地。
     var queueSearchQuery by rememberSaveable { mutableStateOf("") }
     val queueSearchTrimmed = queueSearchQuery.trim()
     val queueSearchIndices = remember(queueSearchTrimmed, displaySongs) {
@@ -862,12 +867,17 @@ fun QueueBottomSheet(
                 )
 
                 // ⚡ 列表内搜索入口（固定在列表顶部）：点击展开输入框，按歌名 / 歌手过滤
-                QueueSearchBar(
+                InlinePlaylistSearchBar(
                     query = queueSearchQuery,
                     onQueryChange = { queueSearchQuery = it },
                     expanded = queueSearchExpanded,
-                    onExpandedChange = { queueSearchExpanded = it },
-                    resultCount = queueSearchIndices?.size,
+                    onExpandedChange = onQueueSearchExpandedChange,
+                    resultCountText = if (queueSearchIndices != null) {
+                        stringResource(R.string.queue_search_result_count, queueSearchIndices.size)
+                    } else null,
+                    hintText = stringResource(R.string.queue_search_hint),
+                    clearSearchContentDescription = stringResource(R.string.cd_clear_search),
+                    cancelText = stringResource(R.string.cancel),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -1356,103 +1366,6 @@ private fun QueueToolbarMenuButton(
                 color = contentColor
             )
         }
-    }
-}
-
-/**
- * 播放列表内搜索的顶部入口。
- *
- * 折叠态：一行「搜索播放列表内的歌曲」胶囊按钮，点击展开。
- * 展开态：与「保存为歌单」弹窗同款的胶囊搜索框（CircleShape + Search 前导图标 +
- * Clear 清空按钮 + surfaceContainerHigh 容器 + 透明描边），右侧多匹配数量与「取消」；
- * 取消收起并清空查询。
- */
-@Composable
-private fun QueueSearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    resultCount: Int?,
-    modifier: Modifier = Modifier,
-) {
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(expanded) {
-        if (expanded) focusRequester.requestFocus()
-    }
-    if (!expanded) {
-        Surface(
-            modifier = modifier
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-                .clickable { onExpandedChange(true) },
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.queue_search_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-        }
-    } else {
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            placeholder = { Text(stringResource(R.string.queue_search_hint)) },
-            leadingIcon = {
-                Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
-            },
-            trailingIcon = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (query.isNotEmpty() && resultCount != null) {
-                        Text(
-                            text = stringResource(R.string.queue_search_result_count, resultCount),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { onQueryChange("") }) {
-                            Icon(
-                                imageVector = Icons.Filled.Clear,
-                                contentDescription = stringResource(R.string.cd_clear_search)
-                            )
-                        }
-                    }
-                    TextButton(onClick = { onQueryChange(""); onExpandedChange(false) }) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                }
-            },
-            modifier = modifier
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-                .focusRequester(focusRequester),
-            shape = CircleShape,
-            singleLine = true,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            )
-        )
     }
 }
 

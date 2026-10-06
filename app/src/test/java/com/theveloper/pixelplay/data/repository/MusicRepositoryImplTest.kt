@@ -115,7 +115,9 @@ class MusicRepositoryImplTest {
 
             favoritesDao = mockFavoritesDao,
             artistImageRepository = mockArtistImageRepository,
-            folderTreeBuilder = mockk(relaxed = true)
+            folderTreeBuilder = mockk(relaxed = true),
+            musicBrainzRepository = mockk(relaxed = true),
+            metadataAutoCompleter = mockk(relaxed = true)
         )
     }
 

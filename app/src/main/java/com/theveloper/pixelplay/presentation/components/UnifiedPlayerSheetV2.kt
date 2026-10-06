@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -568,11 +569,23 @@ fun UnifiedPlayerSheetV2(
     val isQueueVisible = sheetOverlayState.isQueueVisible
     val bottomSheetOpenFraction = sheetOverlayState.bottomSheetOpenFraction
     val queueScrimAlpha = sheetOverlayState.queueScrimAlpha
-    val shouldRenderQueueHost by remember(internalIsKeyboardVisible, selectedSongForInfo) {
-        derivedStateOf {
-            !internalIsKeyboardVisible || selectedSongForInfo != null
+    // ⚡ 队列内搜索框的展开状态由本层持有（而非 QueueBottomSheet 内部）：
+    //    键盘弹出时宿主按「键盘可见即撤下队列宿主」的门控工作（见下），
+    //    必须知道搜索框是否展开——否则点搜索框→键盘弹出→整个队列被卸载（闪一下且无法输入）。
+    var queueSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    // ⚡ 粘性豁免：点「取消」后搜索框立即收起，但键盘收起动画期间
+    //    internalIsKeyboardVisible 仍为 true——若立刻放开豁免，宿主会在键盘收起动画
+    //    中途被误撤再闪一次。保持豁免直到键盘真正消失才复位。
+    var queueSearchKeyboardHold by remember { mutableStateOf(false) }
+    LaunchedEffect(queueSearchExpanded, internalIsKeyboardVisible) {
+        when {
+            queueSearchExpanded -> queueSearchKeyboardHold = true
+            !internalIsKeyboardVisible -> queueSearchKeyboardHold = false
         }
     }
+    val shouldRenderQueueHost = !internalIsKeyboardVisible ||
+        selectedSongForInfo != null ||
+        queueSearchKeyboardHold
     val isQueueTelemetryActive = showQueueSheet
 
     LaunchedEffect(showQueueSheet) {
@@ -948,7 +961,9 @@ fun UnifiedPlayerSheetV2(
                 onNavigateToGenre = sheetActionHandlers.onNavigateToGenre,
                 onOpenNeteaseArtistHomepage = sheetActionHandlers.onOpenNeteaseArtistHomepage,
                 queuePredictiveBackProgress = queuePredictiveBackProgress,
-                queuePredictiveBackSwipeEdge = queuePredictiveBackSwipeEdgeState
+                queuePredictiveBackSwipeEdge = queuePredictiveBackSwipeEdgeState,
+                queueSearchExpanded = queueSearchExpanded,
+                onQueueSearchExpandedChange = { queueSearchExpanded = it }
             )
         }
     }
