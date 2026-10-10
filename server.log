@@ -1,0 +1,17 @@
+127.0.0.1 - - [10/Oct/2026 23:44:51] "GET /website/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:44:51] "GET /app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:45:02] "GET /app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:46:27] "GET /assets/screenshot1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:46:27] "GET /assets/screenshot4.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:46:27] "GET /assets/screenshot3.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:46:27] "GET /assets/screenshot2.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:47:05] "GET /website/index.html?theme=light HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:48:28] "GET /website/index.html?theme=light HTTP/1.1" 304 -
+127.0.0.1 - - [10/Oct/2026 23:51:05] "GET /website/pixelplay.html?theme=light HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:51:19] "GET /website/pixelplay.html?theme=dark HTTP/1.1" 200 -
+127.0.0.1 - - [10/Oct/2026 23:52:18] "GET /website/pixelplay.html?theme=dark&debug HTTP/1.1" 200 -
+127.0.0.1 - - [11/Oct/2026 00:02:29] "GET /website/pixelplay.html?theme=dark&debug HTTP/1.1" 200 -
+127.0.0.1 - - [11/Oct/2026 00:03:00] "GET /website/index.html?theme=light HTTP/1.1" 200 -
+127.0.0.1 - - [11/Oct/2026 00:03:21] "GET /website/pixelplay.html?theme=light HTTP/1.1" 200 -
+127.0.0.1 - - [11/Oct/2026 00:03:37] "GET /website/pixelplay.html?theme=dark&debug HTTP/1.1" 304 -
+127.0.0.1 - - [11/Oct/2026 00:04:33] "GET /website/index.html HTTP/1.1" 200 -

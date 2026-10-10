@@ -1,0 +1,228 @@
+/* ══════════════════════════════════════════════════════════════════
+   像素播放器 PixelPlay · 官网样式
+   布局与规则完全对齐参考模板(X 高仿官网):
+   · 毛玻璃吸顶导航 + 90vh 90vh 大图区块 + 双列宣传卡片 + 轮播 + 页脚
+   · SF Pro Display(本地字体);小米橙仅点缀
+   ══════════════════════════════════════════════════════════════════ */
+*,
+*::after,
+*::before {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+@font-face {
+  font-family: 'Xhb';
+  src: url(../fonts/Alisabela Brushley.ttf);
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url(../fonts/SFPRODISPLAYREGULAR.OTF);
+}
+
+@font-face {
+  font-family: 'SF Pro Display B';
+  src: url(../fonts/SFPRODISPLAYBOLD.OTF);
+}
+
+:root {
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --text-dark: #1d1d1f;
+  --text-light: #f5f5f7;
+  --bg-light: #fff;
+  --bg-off-white: #fafafa;
+  --bg-grey: #f5f5f7;
+  --text-grey: #6e6e73;
+}
+
+body {
+  font-family: 'SF Pro Display',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  width: 100%;
+  background-color: var(--bg-light);
+  color: var(--text-dark);
+}
+
+/* ---------- 通用 ---------- */
+
+h1 {
+  color: var(--text-dark);
+}
+
+h2 {
+  color: var(--text-light);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #d2d2d7;
+  margin: 1.5rem 0;
+}
+
+/* ---------- 顶栏(毛玻璃) ---------- */
+
+.nav-container {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 0.7rem 1rem;
+}
+
+nav a {
+  text-decoration: none;
+  color: var(--text-dark);
+  transition: 0.3s ease;
+}
+
+nav a:hover {
+  color: rgba(0, 0, 0, 0.73);
+}
+
+.nav-icons a i,
+nav>a>i {
+  font-size: 1.2rem;
+  vertical-align: middle;
+}
+
+nav>a>img {
+  height: 1.15rem;
+  width: auto;
+  vertical-align: middle;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2.8rem;
+}
+
+.nav-link {
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.nav-links .nav-link {
+  color: var(--text-muted, var(--text-dark));
+}
+
+.nav-links a.nav-link {
+  color: var(--text-link, #1d1d1f);
+}
+
+.nav-links a.nav-close-btn {
+  color: var(--text-close, #1d1d1f);
+}
+
+.nav-links.mobile-nav-open a.nav-link {
+  color: var(--text-nav, #1d1d1f);
+}
+
+.nav-icons {
+  display: flex;
+  align-items: center;
+  gap: 2.8rem;
+}
+
+#menu-toggle,
+.nav-close-btn {
+  display: none;
+}
+
+/* ---------- 通用大区块(高度 100svh) ---------- */
+
+.hero-section,
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  height: 100svh;
+  min-height: 620px;
+  padding: 3.2rem 1.5rem 0 1.5rem;
+}
+
+.hero-section .hero-copy,
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hero-copy h1 {
+  font-size: clamp(2.6rem, 5vw, 4rem);
+  letter-spacing: -0.02em;
+  color: var(--text-strong, var(--text-dark));
+}
+
+.hero-copy p {
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
+  color: var(--text-soft, var(--text-gray, var(--text-grey)));
+}
+
+.hero-media {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.hero-media img {
+  display: block;
+  width: auto;
+  height: 78vh;
+  max-width: 86vw;
+  object-fit: contain;
+  border-radius: 22px;
+  box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.55);
+}
+
+/* 主题变体:深底/浅底 */
+
+.hero-bottom {
+  color: var(--text-on-dark, #f5f5f7);
+  background-color: #000;
+}
+
+.hero-bottom .hero-copy .kicker {
+  color: var(--text-accent, #2997ff);
+}
+
+.hero-light {
+  background-color: var(--bg-grey);
+}
+
+.hero-brand-dark {
+  background-color: #101014;
+  background-image:
+    radial-gradient(60% 55% at 50% 0%, rgba(64, 132, 255, 0.16), transparent 70%);
+}
+
+.hero-note {
+  font-size: 0.72rem;
+  color: var(--text-faint, var(--text-muted, var(--text-grey)));
+  margin-top: 0.4rem;
+}

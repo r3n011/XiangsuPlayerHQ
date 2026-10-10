@@ -9,35 +9,167 @@
 <meta property="og:description" content="一款美观且功能丰富的 Android 音乐播放器。">
 <meta property="og:image" content="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp">
 <link rel="icon" href="../app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp">
+<meta name="theme-color" content="#F7F7F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Azeret+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!-- MIUI X（miuix 组件库）设计语言：MiSans 字体 + miuix 默认色令牌 -->
+<link href="https://cdn.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSans-Heavy.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>
+// ?theme=dark / ?theme=light 手动覆盖系统配色（预览/调试用）
+(function(){
+  var t = new URLSearchParams(location.search).get('theme');
+  if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+})();
+</script>
 
 <style>
 /* ══════════════════════════════════════════════════════════════════
-   配色取自应用主题 app/.../ui/theme/Color.kt，让站点与应用同源：
-     PixelPlayPurpleDark    #0F1827  ← 页面底色
-     PixelPlayPurplePrimary #5C9CFF  ← 主色，界面上只做点缀
-     PixelPlayLightPurple   #B8D4F5  ← 次级文字
-
-   刻意保留的克制：应用主题里的 #F06292 / #FF8A65 / #4DD0E1 不直接上屏。
-   M3E 强调 tonal 配色 —— 颜色只暗示、不抢戏，界面主体是明度层次而非色相。
+   设计语言：miuix（compose-miuix-ui，MIUI/HyperOS 风格 KMP 组件库）
+   色令牌取自 miuix 默认 lightColorScheme()/darkColorScheme()：
+     primary #3482FF / #277AF7   background #F7F7F7 / #242424
+     卡片白 / 深灰容器，16dp 圆角扁平；填充 #E6E6E6 / #505050
+     分隔线 #E0E0E0 / #393939    文字 黑 / #F2F2F2   次级 #959595 / #737373
+   深色模式恢复 WebGL「绚丽背景」画布（着色器改为中性深底 + MIUI 蓝），
+   浅色模式用柔和晕染兜底；深色差异全部收敛为 CSS 变量。
    ══════════════════════════════════════════════════════════════════ */
 :root{
-  --bg:#0F1827;
-  --surface:#162236;
-  --line:rgba(140,170,220,.14);
-  --line-hi:rgba(92,156,255,.45);
-  --text:#E8EEF9;
-  --muted:#9DB0CC;
-  --faint:#5E7092;
-  --blue:#5C9CFF;
-  --lavender:#B8D4F5;
+  --bg:#F7F7F7;
+  --surface:#FFFFFF;
+  --surface-2:#F0F0F0;
+  --fill:#E6E6E6;
+  --line:rgba(0,0,0,.10);
+  --line-hi:rgba(52,130,255,.45);
+  --text:#0A0A0A;
+  --muted:#6B6B6B;
+  --faint:#959595;
+  --blue:#3482FF;
+  --blue-soft:rgba(52,130,255,.10);
+  --pink:#FF6FA5;
+  --orange:#FF6900;
+  --cyan:#22B4C8;
+  --lavender:#6B6B6B;
 
-  --font-cn:'Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
-  --font-mono:'Azeret Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --glass:rgba(255,255,255,.78);
+  --glass-stuck:rgba(255,255,255,.9);
+
+  --font-cn:'MiSans VF','MiSans','Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
   --pad:clamp(20px,5vw,72px);
   --maxw:1200px;
+
+  /* 组件层的主题差异也全部走变量 */
+  --body-bg:
+    radial-gradient(52vw 52vw at 12% 8%, rgba(52,130,255,.09), transparent 60%),
+    radial-gradient(44vw 44vw at 78% 42%, rgba(255,111,165,.06), transparent 62%),
+    radial-gradient(40vw 40vw at 22% 78%, rgba(255,105,0,.04), transparent 62%),
+    var(--bg);
+  --dots-color:rgba(0,0,0,.045);
+  --grain-opacity:.06;
+  --veil-display:none;
+  --gl-display:none;
+  --h1-grad:linear-gradient(165deg,#14161C 8%,#1E5BD6 44%,#3482FF 74%,#6FA5FF 100%);
+  --h1-shadow:none;
+  --btn-main-fg:#FFFFFF;
+  --btn-ghost-bg:var(--fill);
+  --card-border:transparent;
+  --card-shadow:none;
+  --pill-bg:var(--surface);
+  --pill-shadow:none;
+  --cta-card-bg:var(--surface);
+  --cta-card-border:transparent;
+}
+
+:root[data-theme="dark"]{
+  --bg:#171717;
+  --surface:#242424;
+  --surface-2:#2D2D2D;
+  --fill:#3A3A3A;
+  --line:rgba(255,255,255,.09);
+  --line-hi:rgba(77,154,255,.50);
+  --text:#F2F2F2;
+  --muted:#A6A6A6;
+  --faint:#737373;
+  --blue:#4D9AFF;
+  --blue-soft:rgba(52,130,255,.16);
+  --pink:#FF7BA0;
+  --orange:#FF8A3C;
+  --cyan:#4DD0E1;
+  --lavender:#C9DCF7;
+
+  --glass:rgba(16,16,16,.55);
+  --glass-stuck:rgba(12,12,12,.72);
+
+  --body-bg:
+    radial-gradient(52vw 52vw at 12% 8%, rgba(52,130,255,.13), transparent 60%),
+    radial-gradient(44vw 44vw at 78% 42%, rgba(255,111,165,.07), transparent 62%),
+    radial-gradient(40vw 40vw at 22% 78%, rgba(255,138,101,.06), transparent 62%),
+    var(--bg);
+  --dots-color:rgba(255,255,255,.04);
+  --grain-opacity:.10;
+  --veil-display:block;
+  --gl-display:block;
+  --h1-grad:linear-gradient(168deg,#FFFFFF 6%,#C9DCF7 46%,#4D9AFF 100%);
+  --h1-shadow:0 0 68px rgba(52,130,255,.16);
+  --btn-main-fg:#FFFFFF;
+  --btn-ghost-bg:#3A3A3A;
+  --card-border:transparent;
+  --card-shadow:none;
+  --pill-bg:#2D2D2D;
+  --pill-shadow:none;
+  --cta-card-bg:
+    radial-gradient(80% 130% at 0% 0%, rgba(52,130,255,.12), transparent 58%),
+    radial-gradient(70% 120% at 100% 100%, rgba(255,111,165,.06), transparent 58%),
+    #242424;
+  --cta-card-border:transparent;
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#171717;
+    --surface:#242424;
+    --surface-2:#2D2D2D;
+    --fill:#3A3A3A;
+    --line:rgba(255,255,255,.09);
+    --line-hi:rgba(77,154,255,.50);
+    --text:#F2F2F2;
+    --muted:#A6A6A6;
+    --faint:#737373;
+    --blue:#4D9AFF;
+    --blue-soft:rgba(52,130,255,.16);
+    --pink:#FF7BA0;
+    --orange:#FF8A3C;
+    --cyan:#4DD0E1;
+    --lavender:#C9DCF7;
+
+    --glass:rgba(16,16,16,.55);
+    --glass-stuck:rgba(12,12,12,.72);
+
+    --body-bg:
+      radial-gradient(52vw 52vw at 12% 8%, rgba(52,130,255,.13), transparent 60%),
+      radial-gradient(44vw 44vw at 78% 42%, rgba(255,111,165,.07), transparent 62%),
+      radial-gradient(40vw 40vw at 22% 78%, rgba(255,138,101,.06), transparent 62%),
+      var(--bg);
+    --dots-color:rgba(255,255,255,.04);
+    --grain-opacity:.10;
+    --veil-display:block;
+    --gl-display:block;
+    --h1-grad:linear-gradient(168deg,#FFFFFF 6%,#C9DCF7 46%,#4D9AFF 100%);
+    --h1-shadow:0 0 68px rgba(52,130,255,.16);
+    --btn-main-fg:#FFFFFF;
+    --btn-ghost-bg:#3A3A3A;
+    --card-border:transparent;
+    --card-shadow:none;
+    --pill-bg:#2D2D2D;
+    --pill-shadow:none;
+    --cta-card-bg:
+      radial-gradient(80% 130% at 0% 0%, rgba(52,130,255,.12), transparent 58%),
+      radial-gradient(70% 120% at 100% 100%, rgba(255,111,165,.06), transparent 58%),
+      #242424;
+    --cta-card-border:transparent;
+  }
 }
 
 *,*::before,*::after{ box-sizing:border-box }
@@ -45,45 +177,42 @@ html{ scroll-behavior:smooth; -webkit-text-size-adjust:100% }
 
 body{
   margin:0;
-  background:var(--bg);
+  background:var(--body-bg);
   color:var(--text);
   font-family:var(--font-cn);
-  font-weight:300;
-  line-height:1.78;
+  font-weight:400;
+  line-height:1.8;
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
 }
 
-/* WebGL 画布：固定在底层，正文浮于其上。降级时用 CSS 渐变兜底。 */
+::selection{ background:var(--blue); color:#fff }
+
+/* WebGL 画布：仅深色模式展示；浅色/降级用 CSS 晕染兜底 */
 #gl{
   position:fixed; inset:0; width:100%; height:100%;
-  z-index:0; pointer-events:none; display:block;
+  z-index:0; pointer-events:none; display:var(--gl-display);
 }
 body.no-webgl #gl{ display:none }
-body.no-webgl{
-  background:
-    radial-gradient(52vw 52vw at 12% 8%, rgba(92,156,255,.20), transparent 60%),
-    radial-gradient(44vw 44vw at 78% 42%, rgba(240,98,146,.11), transparent 62%),
-    radial-gradient(40vw 40vw at 22% 78%, rgba(255,138,101,.09), transparent 62%),
-    var(--bg);
-}
 
 /* 细颗粒 + 像素点阵，叠在画布之上压住塑料感 */
 .fx{ position:fixed; inset:0; z-index:1; pointer-events:none }
 .fx-dots{
-  background-image:radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+  background-image:radial-gradient(var(--dots-color) 1px, transparent 1px);
   background-size:24px 24px;
   -webkit-mask-image:radial-gradient(ellipse 92% 72% at 50% 0%, #000 18%, transparent 76%);
   mask-image:radial-gradient(ellipse 92% 72% at 50% 0%, #000 18%, transparent 76%);
 }
 .fx-grain{
-  opacity:.15; mix-blend-mode:overlay;
+  opacity:var(--grain-opacity); mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-/* 让正文区域始终有足够对比度 */
+
+/* 深色模式下压暗画布保证正文可读 */
 .veil{
   position:fixed; inset:0; z-index:1; pointer-events:none;
-  background:linear-gradient(180deg, rgba(15,24,39,0) 0%, rgba(15,24,39,.55) 34%, rgba(15,24,39,.72) 100%);
+  display:var(--veil-display);
+  background:linear-gradient(180deg, rgba(23,23,23,0) 0%, rgba(23,23,23,.55) 34%, rgba(23,23,23,.72) 100%);
 }
 
 .shell{
@@ -92,26 +221,26 @@ body.no-webgl{
   padding:0 var(--pad);
 }
 
-/* ───────────────────────────── 顶栏 ───────────────────────────── */
+/* ───────────────────────────── 顶栏：毛玻璃 ───────────────────────────── */
 .nav{
   position:fixed; top:0; left:0; right:0; z-index:20;
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  background:rgba(15,24,39,.42);
+  backdrop-filter:blur(24px) saturate(1.8); -webkit-backdrop-filter:blur(24px) saturate(1.8);
+  background:var(--glass);
   border-bottom:1px solid transparent;
   transition:border-color .35s, background .35s;
 }
-.nav.stuck{ border-bottom-color:var(--line); background:rgba(15,24,39,.74) }
+.nav.stuck{ border-bottom-color:var(--line); background:var(--glass-stuck) }
 .nav .inner{
   max-width:var(--maxw); margin:0 auto;
   padding:14px var(--pad);
   display:flex; align-items:center; justify-content:space-between; gap:18px;
 }
 .brand{ display:flex; align-items:center; gap:11px; text-decoration:none; color:var(--text) }
-.brand img{ width:28px; height:28px; border-radius:8px }
-.brand span{ font-weight:500; letter-spacing:-.01em; font-size:.98rem }
+.brand img{ width:30px; height:30px; border-radius:9px }
+.brand span{ font-weight:700; letter-spacing:-.01em; font-size:1rem }
 .nav-links{ display:flex; gap:clamp(14px,2.2vw,28px); align-items:center }
 .nav-links a{
-  color:var(--muted); text-decoration:none; font-size:.83rem;
+  color:var(--muted); text-decoration:none; font-size:.9rem; font-weight:500;
   transition:color .25s; white-space:nowrap;
 }
 .nav-links a:hover{ color:var(--text) }
@@ -124,39 +253,40 @@ body.no-webgl{
   padding:clamp(96px,15vh,150px) 0 clamp(56px,10vh,110px);
 }
 .eyebrow{
-  display:inline-flex; align-items:center; gap:10px; align-self:flex-start;
-  font-family:var(--font-mono); font-size:11px; font-weight:400;
-  letter-spacing:.22em; text-transform:uppercase; color:var(--faint);
+  display:inline-flex; align-items:center; gap:9px; align-self:flex-start;
+  padding:8px 16px; border-radius:999px;
+  background:var(--blue-soft); color:var(--blue);
+  font-size:12.5px; font-weight:500; letter-spacing:.04em;
   margin-bottom:clamp(18px,3vh,30px);
 }
-.eyebrow::before{ content:''; width:26px; height:1px; background:var(--line-hi) }
+.eyebrow::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--blue) }
 
 h1{
   margin:0;
-  font-size:clamp(3.2rem,12vw,8rem);
-  font-weight:900; line-height:.94; letter-spacing:-.035em;
-  background:linear-gradient(168deg,#FFFFFF 6%,#B8D4F5 46%,#5C9CFF 100%);
+  font-size:clamp(3.2rem,11vw,7.4rem);
+  font-weight:900; line-height:1.04; letter-spacing:-.02em;
+  background:var(--h1-grad);
   -webkit-background-clip:text; background-clip:text; color:transparent;
-  text-shadow:0 0 68px rgba(92,156,255,.16);
+  -webkit-text-fill-color:transparent;
+  text-shadow:var(--h1-shadow);
 }
 h1 .en{
   display:block;
-  font-family:var(--font-mono);
-  font-size:clamp(.7rem,2.1vw,.95rem);
-  font-weight:400; letter-spacing:.42em; text-transform:uppercase;
+  font-size:clamp(.78rem,2.1vw,.95rem);
+  font-weight:700; letter-spacing:.34em; text-transform:uppercase;
   color:var(--faint);
   -webkit-text-fill-color:var(--faint);
   margin-bottom:.5em;
 }
 
 /* 像素方块：呼应「像素播放器」这个名字 */
-.pixels{ display:flex; gap:5px; margin:clamp(16px,2.6vh,26px) 0 }
-.pixels i{ width:9px; height:9px; background:var(--blue); animation:px 2.6s ease-in-out infinite }
-.pixels i:nth-child(2){ background:#9FB8DE; animation-delay:.13s }
-.pixels i:nth-child(3){ background:#D391A8; animation-delay:.26s }
-.pixels i:nth-child(4){ background:#C99A86; animation-delay:.39s }
+.pixels{ display:flex; gap:6px; margin:clamp(16px,2.6vh,26px) 0 }
+.pixels i{ width:9px; height:9px; border-radius:3px; background:var(--blue); animation:px 2.6s ease-in-out infinite }
+.pixels i:nth-child(2){ background:var(--cyan); animation-delay:.13s }
+.pixels i:nth-child(3){ background:var(--pink); animation-delay:.26s }
+.pixels i:nth-child(4){ background:var(--orange); animation-delay:.39s }
 .pixels i:nth-child(5){ background:var(--lavender); animation-delay:.52s }
-@keyframes px{ 0%,100%{ opacity:.2; transform:translateY(0) } 50%{ opacity:1; transform:translateY(-5px) } }
+@keyframes px{ 0%,100%{ opacity:.25; transform:translateY(0) } 50%{ opacity:1; transform:translateY(-5px) } }
 
 .lede{
   max-width:48ch;
@@ -164,21 +294,21 @@ h1 .en{
   color:var(--muted);
   margin:0 0 clamp(28px,4.5vh,42px);
 }
-.lede b{ color:var(--text); font-weight:500 }
+.lede b{ color:var(--text); font-weight:700 }
 
 .cta{ display:flex; flex-wrap:wrap; gap:12px }
 .btn{
   display:inline-flex; align-items:center; gap:9px;
-  padding:14px 26px; border-radius:999px;
-  font-family:var(--font-mono); font-size:12.5px; font-weight:600; letter-spacing:.06em;
+  padding:13px 26px; border-radius:999px;
+  font-size:15px; font-weight:500; letter-spacing:.01em;
   text-decoration:none; cursor:pointer; border:1px solid transparent;
-  transition:transform .28s cubic-bezier(.2,.8,.3,1), box-shadow .28s, background .28s, border-color .28s, color .28s;
+  transition:transform .28s cubic-bezier(.32,1.36,.48,1), box-shadow .28s, background .28s, border-color .28s, color .28s;
 }
-.btn-main{ background:var(--blue); color:#04101F; box-shadow:0 12px 36px -14px var(--blue) }
-.btn-main:hover{ transform:translateY(-2px); box-shadow:0 18px 44px -14px var(--blue) }
-.btn-ghost{ color:var(--text); border-color:var(--line); background:rgba(255,255,255,.025); backdrop-filter:blur(8px) }
-.btn-ghost:hover{ border-color:var(--line-hi); transform:translateY(-2px) }
-.btn:active{ transform:translateY(0) }
+.btn-main{ background:var(--blue); color:var(--btn-main-fg); box-shadow:0 10px 26px -10px rgba(52,130,255,.5) }
+.btn-main:hover{ transform:translateY(-2px) }
+.btn-ghost{ color:var(--text); background:var(--btn-ghost-bg) }
+.btn-ghost:hover{ background:var(--surface-2); transform:translateY(-2px) }
+.btn:active{ transform:scale(.96) }
 
 .stats{
   display:flex; flex-wrap:wrap; gap:clamp(22px,5vw,58px);
@@ -186,19 +316,20 @@ h1 .en{
   border-top:1px solid var(--line);
 }
 .stat dt{
-  font-family:var(--font-mono); font-size:clamp(1.35rem,3.6vw,2rem);
-  font-weight:600; line-height:1; color:var(--text);
+  font-size:clamp(1.6rem,4vw,2.2rem);
+  font-weight:900; line-height:1.1; color:var(--text);
+  letter-spacing:-.01em;
 }
-.stat dd{ margin:8px 0 0; font-size:11.5px; color:var(--faint); letter-spacing:.1em; font-family:var(--font-mono); text-transform:uppercase }
+.stat dd{ margin:6px 0 0; font-size:12.5px; color:var(--faint); letter-spacing:.05em; font-weight:500 }
 
 .scroll-hint{
   margin-top:clamp(28px,5vh,48px);
-  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.2em;
-  text-transform:uppercase; color:var(--faint);
+  font-size:12px; letter-spacing:.14em; font-weight:500;
+  color:var(--faint);
   display:flex; align-items:center; gap:10px;
 }
 .scroll-hint::after{
-  content:''; width:38px; height:1px;
+  content:''; width:38px; height:2px; border-radius:1px;
   background:linear-gradient(90deg,var(--line-hi),transparent);
   animation:sweep 2.4s ease-in-out infinite;
 }
@@ -207,69 +338,75 @@ h1 .en{
 /* ───────────────────────────── 通用 section ───────────────────────────── */
 section{ padding:clamp(60px,10vh,116px) 0 }
 .head{ margin-bottom:clamp(30px,4.5vh,50px) }
+/* SmallTitle 风格：小号灰字 + 主色短横 */
 .head .idx{
-  display:block; margin-bottom:13px;
-  font-family:var(--font-mono); font-size:11px; letter-spacing:.22em; color:var(--blue);
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:12.5px; letter-spacing:.06em; font-weight:600; color:var(--faint);
+  margin-bottom:14px;
+}
+.head .idx::before{
+  content:''; width:18px; height:3px; border-radius:2px; background:var(--blue);
 }
 .head h2{
   margin:0 0 12px;
   font-size:clamp(1.6rem,4.4vw,2.6rem);
-  font-weight:700; letter-spacing:-.022em; line-height:1.2;
+  font-weight:900; letter-spacing:-.02em; line-height:1.25;
 }
-.head p{ margin:0; color:var(--muted); max-width:54ch; font-size:.96rem }
+.head p{ margin:0; color:var(--muted); max-width:54ch; font-size:1rem }
 
-/* 功能卡片：玻璃态 + 悬停描边亮起 */
-.grid{ display:grid; gap:1px; grid-template-columns:repeat(auto-fit,minmax(272px,1fr));
-  background:var(--line); border:1px solid var(--line); border-radius:18px; overflow:hidden }
+/* 功能卡片：miuix Card（16px 圆角扁平）+ 磁贴序号 */
+.grid{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(272px,1fr)) }
 .card{
-  position:relative; padding:clamp(24px,3.2vw,34px);
-  background:rgba(22,34,54,.62); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  transition:background .3s;
+  position:relative; padding:22px;
+  background:var(--surface); border:1px solid var(--card-border);
+  border-radius:16px;
+  box-shadow:var(--card-shadow);
+  transition:transform .25s cubic-bezier(.32,1.36,.48,1);
 }
-.card::after{
-  content:''; position:absolute; inset:0; border:1px solid transparent;
-  transition:border-color .3s, box-shadow .3s; pointer-events:none;
+.card:hover{ transform:translateY(-3px) }
+.card .n{
+  width:40px; height:40px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14.5px; font-weight:700;
+  color:var(--c,var(--blue));
+  background:color-mix(in srgb, var(--c,var(--blue)) 12%, transparent);
+  margin-bottom:14px;
 }
-.card:hover{ background:rgba(28,44,70,.82) }
-.card:hover::after{ border-color:var(--line-hi); box-shadow:inset 0 0 44px -14px var(--c,var(--blue)) }
-.card .n{ display:block; margin-bottom:15px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.18em; color:var(--faint) }
-.card h3{ margin:0 0 9px; font-size:1.04rem; font-weight:500; letter-spacing:-.01em }
-.card p{ margin:0; font-size:.875rem; color:var(--muted); line-height:1.72 }
+.card h3{ margin:0 0 9px; font-size:1.05rem; font-weight:700; letter-spacing:-.01em }
+.card p{ margin:0; font-size:.88rem; color:var(--muted); line-height:1.75 }
 .card .dot{
-  position:absolute; top:clamp(24px,3.2vw,34px); right:clamp(24px,3.2vw,34px);
-  width:6px; height:6px; border-radius:50%; background:var(--c,var(--blue)); opacity:.5;
-  transition:opacity .3s, box-shadow .3s;
+  position:absolute; top:22px; right:22px;
+  width:6px; height:6px; border-radius:50%; background:var(--c,var(--blue)); opacity:.6;
 }
-.card:hover .dot{ opacity:1; box-shadow:0 0 12px var(--c,var(--blue)) }
 
 /* 音源标签墙 */
-.chips{ display:flex; flex-wrap:wrap; gap:9px }
+.chips{ display:flex; flex-wrap:wrap; gap:10px }
 .chip{
   display:inline-flex; align-items:center; gap:9px;
-  padding:10px 17px; border-radius:999px;
-  border:1px solid var(--line); background:rgba(22,34,54,.6);
-  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-  font-size:.83rem; color:var(--muted);
-  transition:color .25s, border-color .25s, transform .25s, background .25s;
+  padding:10px 18px; border-radius:999px;
+  border:1px solid transparent; background:var(--pill-bg);
+  box-shadow:var(--pill-shadow);
+  font-size:.88rem; font-weight:500; color:var(--muted);
+  transition:color .25s, background .25s, transform .25s;
 }
-.chip:hover{ color:var(--text); border-color:var(--line-hi); transform:translateY(-2px); background:rgba(30,46,72,.85) }
-.chip i{ width:5px; height:5px; border-radius:50%; background:var(--c,var(--blue)); box-shadow:0 0 5px var(--c,var(--blue)); opacity:.85 }
+.chip:hover{ color:var(--blue); transform:translateY(-2px) }
+.chip i{ width:6px; height:6px; border-radius:50%; background:var(--c,var(--blue)); opacity:.9 }
 
-/* 技术规格表 */
+/* 技术规格表：miuix 分组列表（分组容器 + dividerLine 行分隔） */
 .specs{
-  border:1px solid var(--line); border-radius:18px; overflow:hidden;
-  background:rgba(22,34,54,.5); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border:1px solid transparent; border-radius:16px; overflow:hidden;
+  background:var(--surface);
 }
 .specs div{
   display:grid; grid-template-columns:minmax(120px,180px) 1fr; gap:18px;
-  padding:clamp(15px,2vw,20px) clamp(18px,2.6vw,28px);
+  padding:clamp(15px,2vw,19px) clamp(18px,2.6vw,26px);
   border-bottom:1px solid var(--line);
-  font-size:.875rem;
+  font-size:.9rem;
 }
 .specs div:last-child{ border-bottom:0 }
-.specs dt{ font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); padding-top:3px }
+.specs dt{ font-size:12.5px; letter-spacing:.03em; font-weight:700; color:var(--faint); padding-top:3px }
 .specs dd{ margin:0; color:var(--muted) }
-.specs dd b{ color:var(--text); font-weight:500 }
+.specs dd b{ color:var(--text); font-weight:700 }
 @media (max-width:560px){ .specs div{ grid-template-columns:1fr; gap:6px } }
 
 /* 3D 轮播区：这一段给画布留出高度 */
@@ -278,37 +415,34 @@ section{ padding:clamp(60px,10vh,116px) 0 }
 .stage-fallback{ display:none; gap:14px }
 body.no-webgl .stage{ display:none }
 body.no-webgl .stage-fallback{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)) }
-.stage-fallback figure{ margin:0; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--surface) }
+.stage-fallback figure{ margin:0; border:1px solid transparent; border-radius:16px; overflow:hidden; background:var(--surface) }
 .stage-fallback img{ display:block; width:100%; height:auto }
-.stage-fallback figcaption{ padding:10px 14px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint) }
+.stage-fallback figcaption{ padding:10px 14px; font-size:11.5px; letter-spacing:.06em; font-weight:500; text-transform:uppercase; color:var(--faint) }
 .stage-hint{
   text-align:center; margin-top:clamp(14px,3vh,26px);
-  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--faint);
+  font-size:12px; letter-spacing:.14em; font-weight:500;
+  color:var(--faint);
 }
 
-/* 下载 CTA */
+/* 下载 CTA：大圆角卡片 */
 .cta-card{
-  border:1px solid var(--line-hi); border-radius:22px;
+  border:1px solid var(--cta-card-border); border-radius:24px;
   padding:clamp(30px,5vw,56px);
-  background:
-    radial-gradient(80% 130% at 0% 0%, rgba(92,156,255,.13), transparent 58%),
-    radial-gradient(70% 120% at 100% 100%, rgba(240,98,146,.08), transparent 58%),
-    rgba(22,34,54,.66);
-  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  background:var(--cta-card-bg);
   text-align:center;
 }
-.cta-card h2{ margin:0 0 12px; font-size:clamp(1.5rem,4vw,2.3rem); font-weight:700; letter-spacing:-.022em }
-.cta-card p{ margin:0 auto clamp(24px,4vh,34px); max-width:52ch; color:var(--muted); font-size:.95rem }
+.cta-card h2{ margin:0 0 12px; font-size:clamp(1.5rem,4vw,2.3rem); font-weight:900; letter-spacing:-.02em }
+.cta-card p{ margin:0 auto clamp(24px,4vh,34px); max-width:52ch; color:var(--muted); font-size:1rem }
 .cta-card .cta{ justify-content:center }
-.cta-note{ margin:clamp(20px,3.4vh,28px) 0 0; font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; color:var(--faint) }
+.cta-note{ margin:clamp(20px,3.4vh,28px) 0 0; font-size:12.5px; letter-spacing:.03em; color:var(--faint); font-weight:400 }
 
 /* ───────────────────────────── 页脚 ───────────────────────────── */
 footer{ border-top:1px solid var(--line); padding:clamp(34px,6vh,56px) 0 clamp(44px,8vh,70px); margin-top:clamp(36px,6vh,72px) }
-.foot{ display:flex; flex-wrap:wrap; gap:16px; align-items:baseline; justify-content:space-between }
+.foot{ display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between }
 .foot .brand{ display:flex; align-items:center; gap:12px }
-.foot .brand img{ width:30px; height:30px; border-radius:8px }
-.foot .brand span{ font-weight:500 }
-.meta{ margin:0; font-family:var(--font-mono); font-size:11px; letter-spacing:.09em; color:var(--faint) }
+.foot .brand img{ width:32px; height:32px; border-radius:9px }
+.foot .brand span{ font-weight:700 }
+.meta{ margin:0; font-size:12.5px; letter-spacing:.03em; color:var(--faint); font-weight:400 }
 .meta a{ color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line) }
 .meta a:hover{ color:var(--blue); border-color:var(--blue) }
 
@@ -387,55 +521,55 @@ footer{ border-top:1px solid var(--line); padding:clamp(34px,6vh,56px) 0 clamp(4
     </div>
 
     <div class="grid rise">
-      <article class="card" style="--c:#6E9BE0">
+      <article class="card" style="--c:#3482FF">
         <span class="dot"></span><span class="n">01</span>
         <h3>绚丽背景</h3>
-        <p>把封面纹理揉进双三次 Hermite 网格，随时间缓慢旋转、跟低频鼓点呼吸。你现在看到的这个页面背景，就是同一套算法。</p>
+        <p>把封面纹理揉进双三次 Hermite 网格，随时间缓慢旋转、跟低频鼓点呼吸。深色模式下你看到的这个页面背景，就是同一套算法。</p>
       </article>
 
-      <article class="card" style="--c:#86A9C8">
+      <article class="card" style="--c:#22B4C8">
         <span class="dot"></span><span class="n">02</span>
         <h3>高保真解码</h3>
         <p>Media3 ExoPlayer + FFmpeg，配合经 JNI 接入的 miniaudio。原生播放 DSD64 / DFF，支持外置 USB DAC 与 ReplayGain 音量归一化。</p>
       </article>
 
-      <article class="card" style="--c:#D391A8">
+      <article class="card" style="--c:#FF6FA5">
         <span class="dot"></span><span class="n">03</span>
         <h3>逐字歌词</h3>
         <p>网易云、AMLL、LRCLIB 多源可配优先级，日语罗马音引擎按需下载；可拖拽、可贴边收起的悬浮歌词，支持翻译与本地歌词。</p>
       </article>
 
-      <article class="card" style="--c:#C99A86">
+      <article class="card" style="--c:#FF6900">
         <span class="dot"></span><span class="n">04</span>
         <h3>无缝与交叉淡入</h3>
         <p>完整的 Gapless 曲目间平滑过渡，交叉淡入淡出时长可自定义 —— 古典与 DJ 专辑里，这一条比什么都重要。</p>
       </article>
 
-      <article class="card" style="--c:#6E9BE0">
+      <article class="card" style="--c:#3482FF">
         <span class="dot"></span><span class="n">05</span>
         <h3>云端打通</h3>
         <p>QQ 音乐、网易云、酷狗、Bilibili、Jellyfin、Navidrome、Telegram、Google Drive —— 统一收敛成同一个媒体库和同一条播放队列。</p>
       </article>
 
-      <article class="card" style="--c:#86A9C8">
+      <article class="card" style="--c:#22B4C8">
         <span class="dot"></span><span class="n">06</span>
         <h3>AI 助手</h3>
         <p>AI 歌单生成、元数据补全、播放列表质量评分。Gemini、DeepSeek、OpenAI、Groq、OpenRouter 都能接，并统计 token 花费。</p>
       </article>
 
-      <article class="card" style="--c:#D391A8">
+      <article class="card" style="--c:#FF6FA5">
         <span class="dot"></span><span class="n">07</span>
         <h3>媒体库管理</h3>
         <p>按歌曲、专辑、艺术家、流派、文件夹与播放列表浏览；智能解析多艺术家，TagLib / Jaudiotagger 直接改写标签。</p>
       </article>
 
-      <article class="card" style="--c:#C99A86">
+      <article class="card" style="--c:#FF6900">
         <span class="dot"></span><span class="n">08</span>
         <h3>AutoEq 均衡器</h3>
         <p>完整参数化 EQ，自动读取耳机内参曲线生成补偿预设，另有摇滚、流行、古典等风格预设与自定义方案。</p>
       </article>
 
-      <article class="card" style="--c:#6E9BE0">
+      <article class="card" style="--c:#3482FF">
         <span class="dot"></span><span class="n">09</span>
         <h3>连接性</h3>
         <p>Chromecast 推流、Android Auto、车机、Glance 桌面小组件与 Wear OS 手表；内置 Ktor 服务，浏览器打开网页即可遥控。</p>
@@ -452,17 +586,17 @@ footer{ border-top:1px solid var(--line); padding:clamp(34px,6vh,56px) 0 clamp(4
     </div>
 
     <div class="chips rise">
-      <span class="chip" style="--c:#6E9BE0"><i></i>网易云音乐</span>
-      <span class="chip" style="--c:#7FB6DE"><i></i>QQ 音乐</span>
-      <span class="chip" style="--c:#D391A8"><i></i>酷狗音乐</span>
-      <span class="chip" style="--c:#D9A0B4"><i></i>Bilibili</span>
-      <span class="chip" style="--c:#9FB8DE"><i></i>Jellyfin</span>
-      <span class="chip" style="--c:#7FA9D8"><i></i>Navidrome</span>
-      <span class="chip" style="--c:#A8C4E4"><i></i>Subsonic</span>
-      <span class="chip" style="--c:#86A9C8"><i></i>Telegram</span>
-      <span class="chip" style="--c:#9FC0B4"><i></i>Google Drive</span>
-      <span class="chip" style="--c:#8CA6C8"><i></i>像素音源市场</span>
-      <span class="chip" style="--c:#8296B4"><i></i>本地媒体库</span>
+      <span class="chip" style="--c:#3482FF"><i></i>网易云音乐</span>
+      <span class="chip" style="--c:#22B4C8"><i></i>QQ 音乐</span>
+      <span class="chip" style="--c:#FF6FA5"><i></i>酷狗音乐</span>
+      <span class="chip" style="--c:#FF7BA0"><i></i>Bilibili</span>
+      <span class="chip" style="--c:#4D9AFF"><i></i>Jellyfin</span>
+      <span class="chip" style="--c:#3482FF"><i></i>Navidrome</span>
+      <span class="chip" style="--c:#22B4C8"><i></i>Subsonic</span>
+      <span class="chip" style="--c:#FF6FA5"><i></i>Telegram</span>
+      <span class="chip" style="--c:#FF6900"><i></i>Google Drive</span>
+      <span class="chip" style="--c:#959595"><i></i>像素音源市场</span>
+      <span class="chip" style="--c:#959595"><i></i>本地媒体库</span>
     </div>
   </section>
 
@@ -573,7 +707,7 @@ import * as THREE from 'three';
    1. 背景着色器 —— 复刻应用「绚丽背景」的做法
       把封面/画布纹理揉进 GRID×GRID 的控制点网格，双三次 Hermite
       插值出平滑渐变；控制点自身随时间旋转与呼吸，叠高频纹理与
-      像素网格线。配色与 Color.kt 一致。
+      像素网格线。画布仅在深色模式展示，底色为中性深灰 + MIUI 蓝。
    ══════════════════════════════════════════════════════════════════ */
 
 const VERT = /* glsl */`
@@ -620,11 +754,10 @@ const FRAG = /* glsl */`
     return s;
   }
 
-  // M3E 的配色是"tonal"的：主色占主导，surface 沉下去，
-  // 颜色只做暗示。这里给的是低彩度色带，而不是五个色相轮转。
-  const vec3 SURFACE   = vec3(0.059, 0.094, 0.153);  // #0F1827 PixelPlayPurpleDark
-  const vec3 PRIMARY   = vec3(0.361, 0.612, 1.000);  // #5C9CFF
-  const vec3 SECONDARY = vec3(0.941, 0.384, 0.573);  // #F06292
+  // miuix 的深色基调是中性灰：surface 沉底，主色只做暗示。
+  const vec3 SURFACE   = vec3(0.090, 0.090, 0.098);  // #171719 中性深灰（页面底色）
+  const vec3 PRIMARY   = vec3(0.204, 0.510, 1.000);  // #3482FF MIUI 蓝
+  const vec3 SECONDARY = vec3(1.000, 0.455, 0.647);  // #FF74A5 粉色点缀
 
   // 单个控制点：低频起伏的明度 + 极少量 secondary
   vec3 cell(vec2 c, float t){
@@ -638,7 +771,7 @@ const FRAG = /* glsl */`
     float accent = smoothstep(0.80, 1.0, n) * (0.5 + 0.5 * sin(t * 0.23 + n2 * TAU));
     vec3 col = mix(PRIMARY, SECONDARY, accent * 0.35);
 
-    // 压低彩度 —— 这是 M3E 和"彩虹渐变"最大的区别
+    // 压低彩度 —— 这是 MIUI 和"彩虹渐变"最大的区别
     float pulse = 0.5 + 0.5 * sin(t * 1.2 + n * TAU);
     float chroma = 0.20 + 0.16 * uEnergy * pulse;
     float lum = dot(col, vec3(0.299, 0.587, 0.114));
@@ -689,7 +822,7 @@ const FRAG = /* glsl */`
     float line = smoothstep(0.44, 0.5, max(g.x, g.y));
     col += vec3(0.016, 0.019, 0.025) * line * 0.30;
 
-    // tonal spot：M3 那种压在内容后面的一团柔光（近中性，只微冷）
+    // tonal spot：压在内容后面的一团柔光（近中性，只微冷）
     col += vec3(0.050, 0.058, 0.072) * exp(-2.4 * length(p - vec2(0.0, -0.10)));
 
     // 指针光晕，同样保持低彩度
@@ -706,7 +839,7 @@ const FRAG = /* glsl */`
     col *= uSettle;
 
     // 颜色按显示空间（sRGB）直接输出，不走 tone mapping / colorspace 转换，
-    // 这样 CSS 里那套 #5C9CFF / #F06292 能和画布对得上。
+    // 这样 CSS 里那套 #3482FF / #FF6900 能和画布对得上。
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
   }
 `;
@@ -732,15 +865,15 @@ if (!renderer || !renderer.getContext()) {
 }
 
 // 粒子与手机辉光也走同一套低彩度点缀色
-const PALETTE = ['#6E9BE0', '#9FB8DE', '#D391A8', '#86A9C8'];
+const PALETTE = ['#3482FF', '#4D9AFF', '#FF8A3C', '#8A9BB4'];
 const SHOTS = [
-  { file: '../assets/screenshot1.jpg', label: 'Now Playing', c: '#6E9BE0' },
-  { file: '../assets/screenshot2.jpg', label: 'Lyrics',      c: '#9FB8DE' },
-  { file: '../assets/screenshot3.jpg', label: 'Library',     c: '#D391A8' },
-  { file: '../assets/screenshot4.jpg', label: 'Settings',    c: '#86A9C8' },
+  { file: '../assets/screenshot1.jpg', label: 'Now Playing', c: '#3482FF' },
+  { file: '../assets/screenshot2.jpg', label: 'Lyrics',      c: '#4D9AFF' },
+  { file: '../assets/screenshot3.jpg', label: 'Library',     c: '#FF8A3C' },
+  { file: '../assets/screenshot4.jpg', label: 'Settings',    c: '#8A9BB4' },
 ];
 
-/* 手机截图纹���：把圆角机身 + 边框 + 截图 + 高光一次性画进 canvas，
+/* 手机截图纹理：把圆角机身 + 边框 + 截图 + 高光一次性画进 canvas，
    免去圆角几何与手动 UV 的麻烦。 */
 function phoneTexture(img, label, accent) {
   const Wd = 560, Ht = 1180, R = 62, pad = 20;
@@ -753,16 +886,16 @@ function phoneTexture(img, label, accent) {
 
   // 外壳
   const shell = g.createLinearGradient(0, 0, Wd, Ht);
-  shell.addColorStop(0, '#2A3B57');
-  shell.addColorStop(0.5, '#162236');
-  shell.addColorStop(1, '#0D1524');
+  shell.addColorStop(0, '#3A3A42');
+  shell.addColorStop(0.5, '#242428');
+  shell.addColorStop(1, '#161618');
   rr(0, 0, Wd, Ht, R);
   g.fillStyle = shell;
   g.fill();
 
   // 屏幕底色
   rr(pad, pad, Wd - pad * 2, Ht - pad * 2, R - 14);
-  g.fillStyle = '#0F1827';
+  g.fillStyle = '#17171A';
   g.fill();
 
   // 截图（object-fit: cover 裁切）
@@ -776,8 +909,8 @@ function phoneTexture(img, label, accent) {
     g.drawImage(img, (sw - dw) / 2, (sh - dh) / 2, dw, dh);
     // 顶部渐隐，模拟状态栏压暗
     const fade = g.createLinearGradient(0, pad, 0, pad + sh * 0.18);
-    fade.addColorStop(0, 'rgba(15,24,39,.5)');
-    fade.addColorStop(1, 'rgba(15,24,39,0)');
+    fade.addColorStop(0, 'rgba(23,23,26,.5)');
+    fade.addColorStop(1, 'rgba(23,23,26,0)');
     g.fillStyle = fade;
     g.fillRect(pad, pad, sw, sh * 0.18);
     g.restore();
@@ -785,7 +918,7 @@ function phoneTexture(img, label, accent) {
     // 图片没加载出来时的兜底渐变
     const ph = g.createLinearGradient(pad, pad, Wd, Ht);
     ph.addColorStop(0, accent);
-    ph.addColorStop(1, '#162236');
+    ph.addColorStop(1, '#242428');
     rr(pad, pad, Wd - pad * 2, Ht - pad * 2, R - 14);
     g.fillStyle = ph; g.fill();
   }
@@ -804,7 +937,7 @@ function phoneTexture(img, label, accent) {
 
   // 屏幕描边 + 主题色边光
   rr(pad + 1, pad + 1, Wd - pad * 2 - 2, Ht - pad * 2 - 2, R - 14);
-  g.strokeStyle = 'rgba(184,212,245,.22)';
+  g.strokeStyle = 'rgba(201,220,247,.22)';
   g.lineWidth = 2;
   g.stroke();
 
@@ -814,8 +947,8 @@ function phoneTexture(img, label, accent) {
   g.stroke();
 
   // 标签条
-  g.font = '600 30px "Azeret Mono", monospace';
-  g.fillStyle = 'rgba(15,24,39,.62)';
+  g.font = '600 30px "MiSans VF", "Noto Sans SC", monospace';
+  g.fillStyle = 'rgba(23,23,26,.62)';
   g.beginPath(); g.roundRect(24, Ht - 92, g.measureText(label).width + 46, 52, 26); g.fill();
   g.fillStyle = accent;
   g.textBaseline = 'middle';
@@ -857,7 +990,10 @@ function buildPhones() {
 
     loader.load(
       s.file,
-      (img) => { const t = phoneTexture(img, s.label, s.c); if (t) mat.map = t; mat.needsUpdate = true; },
+      // 注意：onLoad 收到的是 THREE.Texture，不是图片元素 —— 纹理要取 .image
+      // （直接把 Texture 传给 phoneTexture 的话 img.width 为 undefined，
+      //   所有手机屏都会走"兜底渐变"分支，永远贴不上真截图）
+      (tex) => { const t = phoneTexture(tex.image ?? tex, s.label, s.c); if (t) mat.map = t; mat.needsUpdate = true; },
       undefined,
       () => { const t = phoneTexture(null, s.label, s.c); if (t) mat.map = t; mat.needsUpdate = true; }
     );
@@ -989,6 +1125,10 @@ let clock = 0;
 function tick() {
   requestAnimationFrame(tick);
   if (!renderer) return;
+
+  // 浅色模式下画布被 CSS 隐藏（display:none），跳过整个渲染循环省 GPU
+  if (getComputedStyle(canvas).display === 'none') return;
+
   clock += 1 / 60;
 
   // 缓动跟随指针
@@ -1060,6 +1200,7 @@ function updatePhones() {
 function tickStatic() {
   // prefers-reduced-motion：只画一帧静态画面
   if (!renderer) return;
+  if (getComputedStyle(canvas).display === 'none') return;
   bgMat.uniforms.uTime.value = 6.5;
   bgMat.uniforms.uSettle.value = 1;
   bgMat.uniforms.uEnergy.value = 0.3;
