@@ -169,6 +169,9 @@ android {
             // BuildConfig.GMS_ENABLED=false 门控隐藏。
             buildConfigField("Boolean", "TELEGRAM_ENABLED", "false")
             buildConfigField("Boolean", "GMS_ENABLED", "false")
+            // ⚡ lite 专属 keep：防止 R8 常量折叠后把门控死分支引用的 GMS 类剥掉
+            //    （运行时残余引用会 NoClassDefFoundError，见 proguard-lite.pro 注释）
+            proguardFile("proguard-lite.pro")
         }
     }
 
