@@ -3,10 +3,14 @@ package com.theveloper.pixelplay.presentation.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -21,12 +25,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,6 +51,9 @@ fun ToggleSegmentButton(
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
     inactiveContentColor: Color = LocalMaterialTheme.current.onSurfaceVariant,
     activeCornerRadius: Dp = 8.dp,
+    // ⚡ 玻璃按钮点击光效（按下水波纹高光）
+    pressGlow: Boolean = false,
+    glowColor: Color = Color.White,
     onClick: () -> Unit,
     iconId: Int,
     contentDesc: String,
@@ -60,6 +69,8 @@ fun ToggleSegmentButton(
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
+        pressGlow = pressGlow,
+        glowColor = glowColor,
         onClick = onClick,
         progressFill = progressFill,
         progressFillColor = progressFillColor
@@ -83,6 +94,9 @@ fun ToggleSegmentButton(
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
     inactiveContentColor: Color = LocalMaterialTheme.current.onSurfaceVariant,
     activeCornerRadius: Dp = 8.dp,
+    // ⚡ 玻璃按钮点击光效（按下水波纹高光）
+    pressGlow: Boolean = false,
+    glowColor: Color = Color.White,
     onClick: () -> Unit,
     imageVector: ImageVector,
     contentDesc: String
@@ -94,6 +108,8 @@ fun ToggleSegmentButton(
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
+        pressGlow = pressGlow,
+        glowColor = glowColor,
         onClick = onClick
     ) {
         Icon(
@@ -115,6 +131,9 @@ fun ToggleSegmentButton(
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
     inactiveContentColor: Color = LocalMaterialTheme.current.primary,
     activeCornerRadius: Dp = 8.dp,
+    // ⚡ 玻璃按钮点击光效（按下水波纹高光）
+    pressGlow: Boolean = false,
+    glowColor: Color = Color.White,
     onClick: () -> Unit,
     text: String,
     onLongClick: (() -> Unit)? = null
@@ -126,6 +145,8 @@ fun ToggleSegmentButton(
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
+        pressGlow = pressGlow,
+        glowColor = glowColor,
         onClick = onClick,
         onLongClick = onLongClick
     ) {
@@ -150,6 +171,9 @@ fun ToggleSegmentButton(
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
     inactiveContentColor: Color = LocalMaterialTheme.current.onSurfaceVariant,
     activeCornerRadius: Dp = 8.dp,
+    // ⚡ 玻璃按钮点击光效（按下水波纹高光）
+    pressGlow: Boolean = false,
+    glowColor: Color = Color.White,
     onClick: () -> Unit,
     text: String,
     imageVector: ImageVector
@@ -161,6 +185,8 @@ fun ToggleSegmentButton(
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
+        pressGlow = pressGlow,
+        glowColor = glowColor,
         onClick = onClick
     ) {
         Row(
@@ -198,6 +224,9 @@ private fun ToggleSegmentButtonContainer(
     onLongClick: (() -> Unit)? = null,
     progressFill: Float = 0f,
     progressFillColor: Color = Color.Transparent,
+    // ⚡ 玻璃按钮点击光效：按下时按钮发出「水波纹」式高光（配合玻璃模糊质感）
+    pressGlow: Boolean = false,
+    glowColor: Color = Color.White,
     content: @Composable () -> Unit
 ) {
     val targetBgColor = if (active) activeColor else inactiveColor
@@ -210,6 +239,15 @@ private fun ToggleSegmentButtonContainer(
         targetValue = if (active) activeCornerRadius else 8.dp,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = ""
+    )
+
+    // ⚡ 按压光效：按下快速亮起、松开缓慢收掉（水波纹观感）
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val glowProgress by animateFloatAsState(
+        targetValue = if (isPressed && pressGlow) 1f else 0f,
+        animationSpec = if (isPressed && pressGlow) tween(durationMillis = 140) else tween(durationMillis = 420),
+        label = "segmentPressGlow"
     )
 
     Box(
@@ -229,10 +267,30 @@ private fun ToggleSegmentButtonContainer(
                             size = Size(size.width * fraction, size.height)
                         )
                     }
+                    // ⚡ 按压水波纹高光：径向高光从按钮中心扩散
+                    if (glowProgress > 0f) {
+                        val glowCenter = Offset(size.width / 2f, size.height / 2f)
+                        val glowRadius = maxOf(size.width, size.height) * 0.78f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    glowColor.copy(alpha = 0.45f * glowProgress),
+                                    glowColor.copy(alpha = 0.18f * glowProgress),
+                                    Color.Transparent
+                                ),
+                                center = glowCenter,
+                                radius = glowRadius
+                            ),
+                            radius = glowRadius,
+                            center = glowCenter
+                        )
+                    }
                 }
             }
             .combinedClickable(
                 enabled = enabled,
+                interactionSource = interactionSource,
+                indication = if (pressGlow) null else LocalIndication.current,
                 onClick = onClick,
                 onLongClick = onLongClick
             ),

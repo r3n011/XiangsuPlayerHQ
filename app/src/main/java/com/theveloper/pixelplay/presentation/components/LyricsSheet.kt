@@ -622,8 +622,15 @@ fun LyricsSheet(
         else -> 20.sp
     }
 
+    // ⚡「歌词界面自动沉浸时不放大歌词字体」开关（设置 → 外观 → 播放器与歌词外观 → 歌词界面）。
+    //    键与 UserPreferencesRepository.PreferencesKeys.IMMERSIVE_LYRICS_KEEP_FONT_SIZE 一致。
+    //    默认 false = 沿用现状（沉浸时字号放大到 1.25 倍）；开启后沉浸只隐藏控件，字号不动。
+    val immersiveKeepFontSize by context.dataStore.data
+        .map { prefs -> prefs[booleanPreferencesKey("immersive_lyrics_keep_font_size")] ?: false }
+        .collectAsStateWithLifecycle(initialValue = false)
+
     val fontScale by animateFloatAsState(
-        targetValue = if (immersiveMode) 1.25f else 1f,
+        targetValue = if (immersiveMode && !immersiveKeepFontSize) 1.25f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "fontScale"
     )

@@ -142,8 +142,18 @@ import com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboar
 import com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashboardViewModel
 import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardViewModel
 import com.theveloper.pixelplay.presentation.components.DailyMixSection
+import com.theveloper.pixelplay.presentation.components.MostListenedSection
 import com.theveloper.pixelplay.presentation.components.FavoriteArtistsSection
 import com.theveloper.pixelplay.presentation.components.HomeGradientTopBar
+import com.theveloper.pixelplay.presentation.components.HeroWithRowListSection
+import com.theveloper.pixelplay.presentation.components.HomeFeedAllTracksSheet
+import com.theveloper.pixelplay.presentation.components.HomeSectionTracks
+import com.theveloper.pixelplay.presentation.components.ForYouCarouselSection
+import com.theveloper.pixelplay.presentation.components.TrendingRankSection
+import com.theveloper.pixelplay.presentation.components.TodayHotGridSection
+import com.theveloper.pixelplay.presentation.components.startOfTodayMillis
+import com.theveloper.pixelplay.data.netease.toHomeFeedTrack
+import com.theveloper.pixelplay.presentation.viewmodel.DailyRecommendUiState
 import com.theveloper.pixelplay.presentation.components.HomeOptionsBottomSheet
 import com.theveloper.pixelplay.presentation.components.HomeCardOrderSheet
 import com.theveloper.pixelplay.presentation.components.HomeCardOrderEntry
@@ -451,10 +461,48 @@ fun HomeScreen(
 
     val homeStatsOverview by statsViewModel.homeOverview.collectAsStateWithLifecycle()
 
+    // ⚡ 网易云每日推荐（复用 PlayerViewModel 既有链路，未登录时为 Hidden）
+    val dailyRecommendState by playerViewModel.dailyRecommendState.collectAsStateWithLifecycle()
+    // ⚡ 主页在线推荐卡片（为你推荐 / 今日云村热播 / 今日热门），匿名可用
+    val homeFeedSections by playerViewModel.homeFeedSections.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        // 两者都有「当天缓存」保护，重复调用是安全的
+        playerViewModel.refreshDailyRecommend()
+        playerViewModel.refreshHomeFeed()
+    }
+
+    // ⚡ 「查看全部」：某张推荐卡片的全部歌曲弹窗（每日推荐 / 为你推荐 / 云村热播 / 今日热门共用）
+    var allTracksSheet by remember { mutableStateOf<HomeSectionTracks?>(null) }
+    val dailyRecommendCardTitle = stringResource(R.string.home_card_daily_recommend)
+    val forYouCardTitle = stringResource(R.string.home_card_for_you)
+    val trendingCardTitle = stringResource(R.string.home_card_today_trending)
+    val hotCardTitle = stringResource(R.string.home_card_today_hot)
+    allTracksSheet?.let { sheet ->
+        HomeFeedAllTracksSheet(
+            title = sheet.title,
+            tracks = sheet.tracks,
+            onDismiss = { allTracksSheet = null },
+            onTrackClick = { index ->
+                allTracksSheet = null
+                if (sheet.isDaily) {
+                    playerViewModel.playDailyRecommend(startIndex = index)
+                } else {
+                    playerViewModel.playHomeFeedTracks(
+                        tracks = sheet.tracks,
+                        startIndex = index,
+                        queueName = sheet.queueName
+                    )
+                }
+            }
+        )
+    }
+
     // 首页内容卡片顺序（默认顺序；用户自定义顺序里缺失的卡片按默认顺序追加尾部）
     val homeCardOrder by settingsViewModel.homeCardOrder.collectAsStateWithLifecycle()
     val defaultHomeCardOrder = listOf(
-        "discover", "ai_recommendation", "daily_mix", "favorite_artists", "recently_played", "stats"
+        "discover", "daily_recommend", "for_you", "today_trending", "today_hot",
+        "ai_recommendation", "daily_mix", "favorite_artists", "recently_played", "stats",
+        "most_listened"
     )
     val homeCardsInOrder = remember(homeCardOrder) {
         if (homeCardOrder.isEmpty()) {
@@ -471,11 +519,16 @@ fun HomeScreen(
         homeCardsInOrder.mapNotNull { cardId ->
             val titleRes = when (cardId) {
                 "discover" -> R.string.nav_bar_discover
+                "daily_recommend" -> R.string.home_card_daily_recommend
+                "for_you" -> R.string.home_card_for_you
+                "today_trending" -> R.string.home_card_today_trending
+                "today_hot" -> R.string.home_card_today_hot
                 "ai_recommendation" -> R.string.home_card_ai_recommendation
                 "daily_mix" -> R.string.presentation_batch_g_daily_mix_heading
                 "favorite_artists" -> R.string.home_favorite_artists_title
                 "recently_played" -> R.string.presentation_batch_g_recently_played_title
                 "stats" -> R.string.presentation_batch_g_stats_overview_title
+                "most_listened" -> R.string.home_most_listened_title
                 else -> null
             }
             titleRes?.let { HomeCardOrderEntry(cardId, context.getString(it)) }
@@ -574,11 +627,20 @@ fun HomeScreen(
     /** 卡片当前是否具备渲染条件（数据/开关），双列分组与单列共用。 */
     fun isHomeCardVisibleNow(cardId: String): Boolean = when (cardId) {
         "discover" -> !isCarModeEnabled
+        // ⚡ 主页新增的网易云推荐卡片：只在有数据时渲染（未登录/接口失败自动隐藏）
+        "daily_recommend" ->
+            !isCarModeEnabled &&
+                (dailyRecommendState as? DailyRecommendUiState.Ready)
+                    ?.songs?.isNotEmpty() == true
+        "for_you" -> !isCarModeEnabled && homeFeedSections?.forYou?.isNotEmpty() == true
+        "today_trending" -> !isCarModeEnabled && homeFeedSections?.todayTrending?.isNotEmpty() == true
+        "today_hot" -> !isCarModeEnabled && homeFeedSections?.todayHot?.isNotEmpty() == true
         "ai_recommendation" -> isAiRecommendationCardEnabled && !isCarModeEnabled
         "daily_mix" -> dailyMixSongs.isNotEmpty()
         "favorite_artists" -> favoriteArtists.isNotEmpty()
         "recently_played" -> recentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow
         "stats" -> homeStatsOverview != null && !isCarModeEnabled
+        "most_listened" -> homeStatsOverview != null && !isCarModeEnabled
         else -> false
     }
 
@@ -655,6 +717,93 @@ fun HomeScreen(
                         navController.navigateSafely(Screen.Accounts.route)
                     }
                 }
+            )
+
+            // ⚡ 主页新增：网易云推荐卡片（Hero 卡 + 行列表，模仿参考 UI）
+            "daily_recommend" -> {
+                val tracks = remember(dailyRecommendState) {
+                    (dailyRecommendState as? DailyRecommendUiState.Ready)
+                        ?.songs
+                        ?.map { it.toHomeFeedTrack(addedAtMs = startOfTodayMillis()) }
+                        .orEmpty()
+                }
+                HeroWithRowListSection(
+                    title = dailyRecommendCardTitle,
+                    tracks = tracks,
+                    onTrackClick = { index -> playerViewModel.playDailyRecommend(startIndex = index) },
+                    onSeeAll = {
+                        allTracksSheet = HomeSectionTracks(
+                            title = dailyRecommendCardTitle,
+                            tracks = tracks,
+                            queueName = "每日推荐",
+                            isDaily = true
+                        )
+                    },
+                    modifier = cardModifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            // ⚡ 为你推荐：M3E 多浏览轮播（个性化 = 横向探索）
+            "for_you" -> ForYouCarouselSection(
+                title = forYouCardTitle,
+                tracks = homeFeedSections?.forYou.orEmpty(),
+                onTrackClick = { index ->
+                    playerViewModel.playHomeFeedTracks(
+                        tracks = homeFeedSections?.forYou.orEmpty(),
+                        startIndex = index,
+                        queueName = "为你推荐"
+                    )
+                },
+                onSeeAll = {
+                    allTracksSheet = HomeSectionTracks(
+                        title = forYouCardTitle,
+                        tracks = homeFeedSections?.forYou.orEmpty(),
+                        queueName = "为你推荐"
+                    )
+                },
+                modifier = cardModifier
+            )
+
+            // ⚡ 今日云村热播：带序号的榜单列表（热播 = 榜单语义）
+            "today_trending" -> TrendingRankSection(
+                title = trendingCardTitle,
+                tracks = homeFeedSections?.todayTrending.orEmpty(),
+                onTrackClick = { index ->
+                    playerViewModel.playHomeFeedTracks(
+                        tracks = homeFeedSections?.todayTrending.orEmpty(),
+                        startIndex = index,
+                        queueName = "今日云村热播"
+                    )
+                },
+                onSeeAll = {
+                    allTracksSheet = HomeSectionTracks(
+                        title = trendingCardTitle,
+                        tracks = homeFeedSections?.todayTrending.orEmpty(),
+                        queueName = "今日云村热播"
+                    )
+                },
+                modifier = cardModifier.padding(horizontal = 16.dp)
+            )
+
+            // ⚡ 今日热门：2 列封面网格（全站热度 = 看图逛）
+            "today_hot" -> TodayHotGridSection(
+                title = hotCardTitle,
+                tracks = homeFeedSections?.todayHot.orEmpty(),
+                onTrackClick = { index ->
+                    playerViewModel.playHomeFeedTracks(
+                        tracks = homeFeedSections?.todayHot.orEmpty(),
+                        startIndex = index,
+                        queueName = "今日热门"
+                    )
+                },
+                onSeeAll = {
+                    allTracksSheet = HomeSectionTracks(
+                        title = hotCardTitle,
+                        tracks = homeFeedSections?.todayHot.orEmpty(),
+                        queueName = "今日热门"
+                    )
+                },
+                modifier = cardModifier.padding(horizontal = 16.dp)
             )
 
             "ai_recommendation" -> AiRecommendationCard(
@@ -737,6 +886,26 @@ fun HomeScreen(
                 summary = homeStatsOverview ?: return,
                 onClick = { navController.navigateSafely(Screen.Stats.route) }
             )
+            // ⚡ 最多播放：分段 Songs/Albums/Artists + 两张排行卡；点开复用已有统计页
+            "most_listened" -> homeStatsOverview?.let { summary ->
+                MostListenedSection(
+                    summary = summary,
+                    onSeeAll = { navController.navigateSafely(Screen.Stats.route) },
+                    // ⚡ 按分段做对应动作：歌曲→播放；专辑→进专辑页；歌手→进歌手页
+                    onPlaySong = { songId -> playerViewModel.playSongById(songId) },
+                    onOpenAlbum = { albumName ->
+                        playerViewModel.resolveAlbumIdByName(albumName) { albumId ->
+                            navController.navigateSafely(Screen.AlbumDetail.createRoute(albumId))
+                        }
+                    },
+                    onOpenArtist = { artistName ->
+                        playerViewModel.resolveArtistIdByName(artistName) { artistId ->
+                            navController.navigateSafely(Screen.ArtistDetail.createRoute(artistId))
+                        }
+                    },
+                    modifier = cardModifier.padding(horizontal = 16.dp)
+                )
+            }
         }
     }
 
@@ -1140,6 +1309,116 @@ fun HomeScreen(
                                         }
                                     }
 
+                                    // ⚡ 主页新增：网易云推荐卡片（横屏同款）
+                                    "daily_recommend" -> {
+                                        val tracks = (dailyRecommendState as? DailyRecommendUiState.Ready)
+                                            ?.songs
+                                            ?.map { it.toHomeFeedTrack(addedAtMs = startOfTodayMillis()) }
+                                            .orEmpty()
+                                        if (tracks.isNotEmpty()) {
+                                            item(key = "card_daily_recommend", contentType = "card") {
+                                                Card(
+                                                    modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                    shape = RoundedCornerShape(24.dp),
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                                    ),
+                                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                                ) {
+                                                    HeroWithRowListSection(
+                                                        title = stringResource(R.string.home_card_daily_recommend),
+                                                        tracks = tracks,
+                                                        onTrackClick = { index ->
+                                                            playerViewModel.playDailyRecommend(startIndex = index)
+                                                        },
+                                                        modifier = Modifier.fillMaxSize().padding(12.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    "for_you" -> homeFeedSections?.forYou.orEmpty().let { tracks ->
+                                        if (tracks.isEmpty()) return@let
+                                        item(key = "card_for_you", contentType = "card") {
+                                            Card(
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                shape = RoundedCornerShape(24.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                                ),
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                            ) {
+                                                ForYouCarouselSection(
+                                                    title = stringResource(R.string.home_card_for_you),
+                                                    tracks = tracks,
+                                                    onTrackClick = { index ->
+                                                        playerViewModel.playHomeFeedTracks(
+                                                            tracks = tracks,
+                                                            startIndex = index,
+                                                            queueName = "为你推荐"
+                                                        )
+                                                    },
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    "today_trending" -> homeFeedSections?.todayTrending.orEmpty().let { tracks ->
+                                        if (tracks.isEmpty()) return@let
+                                        item(key = "card_today_trending", contentType = "card") {
+                                            Card(
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                shape = RoundedCornerShape(24.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                                ),
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                            ) {
+                                                TrendingRankSection(
+                                                    title = stringResource(R.string.home_card_today_trending),
+                                                    tracks = tracks,
+                                                    onTrackClick = { index ->
+                                                        playerViewModel.playHomeFeedTracks(
+                                                            tracks = tracks,
+                                                            startIndex = index,
+                                                            queueName = "今日云村热播"
+                                                        )
+                                                    },
+                                                    modifier = Modifier.fillMaxSize().padding(12.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    "today_hot" -> homeFeedSections?.todayHot.orEmpty().let { tracks ->
+                                        if (tracks.isEmpty()) return@let
+                                        item(key = "card_today_hot", contentType = "card") {
+                                            Card(
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                                                shape = RoundedCornerShape(24.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                                ),
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                            ) {
+                                                TodayHotGridSection(
+                                                    title = stringResource(R.string.home_card_today_hot),
+                                                    tracks = tracks,
+                                                    onTrackClick = { index ->
+                                                        playerViewModel.playHomeFeedTracks(
+                                                            tracks = tracks,
+                                                            startIndex = index,
+                                                            queueName = "今日热门"
+                                                        )
+                                                    },
+                                                    modifier = Modifier.fillMaxSize().padding(12.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     "ai_recommendation" -> if (isAiRecommendationCardEnabled && !isCarModeEnabled) {
                                         item(key = "card_ai_recommendation", contentType = "card") {
                                             Card(
@@ -1261,6 +1540,27 @@ fun HomeScreen(
                                                 modifier = Modifier.width(cardWidth).fillMaxHeight(),
                                                 summary = homeStatsOverview,
                                                 onClick = { navController.navigateSafely(Screen.Stats.route) }
+                                            )
+                                        }
+                                    }
+
+                                    "most_listened" -> homeStatsOverview?.let { summary ->
+                                        item(key = "card_most_listened", contentType = "card") {
+                                            MostListenedSection(
+                                                summary = summary,
+                                                onSeeAll = { navController.navigateSafely(Screen.Stats.route) },
+                                                onPlaySong = { songId -> playerViewModel.playSongById(songId) },
+                                                onOpenAlbum = { albumName ->
+                                                    playerViewModel.resolveAlbumIdByName(albumName) { albumId ->
+                                                        navController.navigateSafely(Screen.AlbumDetail.createRoute(albumId))
+                                                    }
+                                                },
+                                                onOpenArtist = { artistName ->
+                                                    playerViewModel.resolveArtistIdByName(artistName) { artistId ->
+                                                        navController.navigateSafely(Screen.ArtistDetail.createRoute(artistId))
+                                                    }
+                                                },
+                                                modifier = Modifier.width(cardWidth).fillMaxHeight()
                                             )
                                         }
                                     }

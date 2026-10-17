@@ -1530,7 +1530,7 @@ private const val WECHAT_DONATION_URL = "wxp://f2f06CRtHwY4kHMWOVdYXKe4tKimtoMWP
 private const val WECHAT_PACKAGE = "com.tencent.mm"
 
 /** 感谢名单：按捐赠时间倒序，展示与收款记录一致的脱敏昵称 */
-private val DonationSupporters = listOf("Emerson", "刘琦先生", "盘旋在古城上的白色乌鸦", "**涛", "**烽", "**棣")
+private val DonationSupporters = listOf("A*K", "Emerson", "刘琦先生", "盘旋在古城上的白色乌鸦", "**涛", "**烽", "**棣")
 
 /**
  * 一键打开支付宝捐赠：

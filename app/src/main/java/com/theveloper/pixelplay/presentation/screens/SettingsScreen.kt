@@ -1095,6 +1095,13 @@ private fun TabletSettingsScreen(
                         onBackClick = { detailNavController.popBackStack() }
                     )
                 }
+                composable(Screen.PlayerLyricsAppearance.route) {
+                    PlayerLyricsAppearanceScreen(
+                        navController = detailNavController,
+                        playerViewModel = playerViewModel,
+                        onBackClick = { detailNavController.popBackStack() }
+                    )
+                }
                 composable(Screen.EasterEgg.route) {
                     EasterEggScreen(
                         viewModel = playerViewModel,

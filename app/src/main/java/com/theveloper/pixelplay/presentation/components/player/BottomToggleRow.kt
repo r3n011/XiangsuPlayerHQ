@@ -32,7 +32,12 @@ fun BottomToggleRow(
     onActiveColorTertiary: Color = MaterialTheme.colorScheme.onTertiary,
     inactiveColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
     inactiveContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    // ⚡ 玻璃按钮点击光效（按下水波纹高光）
+    pressGlow: Boolean = false,
+    glowColor: Color = Color.White,
+    // ⚡ 玻璃质感：外部注入的背景模糊（hazeEffect）
+    containerModifier: Modifier = Modifier
 ) {
     val isFavorite = isFavoriteProvider()
     val rowCorners = 60.dp
@@ -50,7 +55,7 @@ fun BottomToggleRow(
                 cornerRadiusTR = rowCorners,
                 smoothnessAsPercentTL = 60
             )
-        )
+        ).then(containerModifier)
     ) {
         Row(
             modifier = Modifier
@@ -82,6 +87,8 @@ fun BottomToggleRow(
                 activeContentColor = onActiveColorMain,
                 inactiveColor = inactiveColor,
                 inactiveContentColor = inactiveContentColor,
+                pressGlow = pressGlow,
+                glowColor = glowColor,
                 onClick = onShuffleToggle,
                 iconId = R.drawable.rounded_shuffle_24,
                 contentDesc = "Shuffle"
@@ -100,6 +107,8 @@ fun BottomToggleRow(
                 activeContentColor = onActiveColorSecondary,
                 inactiveColor = inactiveColor,
                 inactiveContentColor = inactiveContentColor,
+                pressGlow = pressGlow,
+                glowColor = glowColor,
                 onClick = onRepeatToggle,
                 iconId = repeatIcon,
                 contentDesc = "Repeat"
@@ -112,6 +121,8 @@ fun BottomToggleRow(
                 activeContentColor = onActiveColorTertiary,
                 inactiveColor = inactiveColor,
                 inactiveContentColor = inactiveContentColor,
+                pressGlow = pressGlow,
+                glowColor = glowColor,
                 onClick = onFavoriteToggle,
                 iconId = if (isFavorite) R.drawable.round_favorite_24 else R.drawable.rounded_favorite_24,
                 contentDesc = "Favorite"

@@ -129,12 +129,14 @@ class AudiobookViewModel @Inject constructor(
             val r = rank.await()
             val w = week.await()
             val v = vip.await()
+            // ⚡ 酷狗分区接口偶尔会返回**重复专辑**；同一分区内 id 重复会让 LazyRow 的
+            //    key 撞车直接崩溃（`Key "RANK_xxx" was already used`），这里先去重。
             _home.value = AudiobookHomeUiState(
                 loading = false,
-                daily = d,
-                rank = r,
-                week = w,
-                vip = v,
+                daily = d.distinctBy { it.id },
+                rank = r.distinctBy { it.id },
+                week = w.distinctBy { it.id },
+                vip = v.distinctBy { it.id },
                 // 四个分区全空 → 视为加载失败 / 无数据（UI 给重试）
                 error = d.isEmpty() && r.isEmpty() && w.isEmpty() && v.isEmpty(),
             )
@@ -208,7 +210,13 @@ class AudiobookViewModel @Inject constructor(
                 pageSize = LIBRARY_PAGE_SIZE,
             ).onSuccess { result ->
                 _library.update {
-                    it.copy(loading = false, albums = result.albums, page = 1, hasMore = result.hasMore)
+                    it.copy(
+                        loading = false,
+                        // 同 loadMore：首屏也要去重，重复 id 会让 LazyColumn key 撞车崩溃
+                        albums = result.albums.distinctBy { album -> album.id },
+                        page = 1,
+                        hasMore = result.hasMore
+                    )
                 }
             }.onFailure {
                 _library.update { it.copy(loading = false, hasMore = if (clearExisting) false else it.hasMore) }
@@ -231,9 +239,12 @@ class AudiobookViewModel @Inject constructor(
                 pageSize = LIBRARY_PAGE_SIZE,
             ).onSuccess { result ->
                 _library.update {
+                    // ⚡ 分页追加时按 id 去重：接口翻页偶发重叠，重复 id 会让 LazyColumn
+                    //    的 key 撞车直接崩溃（`Key ... was already used`）。
+                    val merged = (it.albums + result.albums).distinctBy { album -> album.id }
                     it.copy(
                         loadingMore = false,
-                        albums = it.albums + result.albums,
+                        albums = merged,
                         page = it.page + 1,
                         hasMore = result.hasMore,
                     )

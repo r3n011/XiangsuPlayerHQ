@@ -385,7 +385,9 @@ class BluetoothLyricsManager @Inject constructor(
                 //    每轮没有变化时不写 player，开销只有一次二分 + 字符串比较。
                 while (shouldPollNow()) {
                     pushNowInternal(checkPlayerRequired = true, forceRestoreOriginal = false)
-                    delay(POLL_INTERVAL_MS)
+                    // ⚡ 省电：暂停时降频轮询（3s）—— 暂停期间标题极少变化，
+                    //    300ms 轮询纯属空转；播放时保持 300ms 保证逐行同步
+                    delay(if (isPlaying) POLL_INTERVAL_MS else PAUSED_POLL_INTERVAL_MS)
                 }
             }
         } else if (!shouldRun) {
@@ -631,5 +633,8 @@ class BluetoothLyricsManager @Inject constructor(
          * 才会真正写 player；调短是为了让被改回的标题更快自愈（500ms 时肉眼可见闪烁）。
          */
         private const val POLL_INTERVAL_MS = 300L
+
+        /** ⚡ 省电：暂停时的降频轮询间隔（暂停期间标题几乎不变）。 */
+        private const val PAUSED_POLL_INTERVAL_MS = 3_000L
     }
 }

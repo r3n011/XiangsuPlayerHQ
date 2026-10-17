@@ -221,6 +221,96 @@ class QqMusicApiService @Inject constructor(
         makePostRequest("https://u6.y.qq.com/cgi-bin/musics.fcg", payload)
     }
 
+    /**
+     * ⚡ 取歌曲的 media_mid（`file.media_mid`）——
+     *    QQ 的直链文件名必须是 `${档位前缀}${media_mid}${后缀}`
+     *    （对齐 lx-music）；用 songmid 拼会大面积失败。
+     *    这里用与 lx-music 相同的免签名 POST（music.pf_song_detail_svr）。
+     */
+    suspend fun getSongMediaMid(songMid: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val payload = JSONObject(
+                mapOf(
+                    "comm" to mapOf("ct" to "19", "cv" to "1859", "uin" to "0"),
+                    "req" to mapOf(
+                        "module" to "music.pf_song_detail_svr",
+                        "method" to "get_song_detail_yqq",
+                        "param" to mapOf("song_type" to 0, "song_mid" to songMid)
+                    )
+                )
+            )
+            val raw = makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
+            JSONObject(raw)
+                .optJSONObject("req")
+                ?.optJSONObject("data")
+                ?.optJSONObject("track_info")
+                ?.optJSONObject("file")
+                ?.optString("media_mid")
+                ?.takeIf { it.isNotBlank() }
+        }.onFailure { Timber.w(it, "QqMusicApiService: getSongMediaMid failed songMid=$songMid") }.getOrNull()
+    }
+
+    /**
+     * ⚡ 免签名 vkey 取链（对齐 lx-music 的 tx 源实现）：
+     *    GET `https://u.y.qq.com/cgi-bin/musicu.fcg?format=json&data=...`，
+     *    module `vkey.GetVkeyServer` / method `CgiGetVkey`，headers `channel`/`uid`。
+     *    与旧的 `music.vkey.GetEVkey`（需 WebView 签名 + ag-1 加密）相比：
+     *    无需签名、未登录也能拿到免费曲目的 purl，是 QQ 在线播放最稳定的链路。
+     *
+     *    ⚡ 参数对齐参照实现（见 [vkeyUin] 的说明）：
+     *      顶层只有 `comm` + `req_0`（**不发 `loginUin`**）；
+     *      `param.uin` 与 `comm.uin` 同值（匿名恒为 "0"）；
+     *      `guid="10000"`、`ct=24`、`cv=0`、`loginflag=1`、`platform="20"` 与参照一致。
+     *
+     * @param filenames 形如 `M500{media_mid}.mp3` / `M800{media_mid}.mp3` / `F000{media_mid}.flac`
+     */
+    suspend fun getVkeyUrlUnsigned(songMid: String, filenames: List<String>): String = withContext(Dispatchers.IO) {
+        val uin = vkeyUin()
+        val payload = JSONObject(
+            mapOf(
+                "req_0" to mapOf(
+                    "module" to "vkey.GetVkeyServer",
+                    "method" to "CgiGetVkey",
+                    "param" to mapOf(
+                        "filename" to filenames,
+                        "guid" to "10000",
+                        "songmid" to listOf(songMid),
+                        "songtype" to listOf(0),
+                        "uin" to uin,
+                        "loginflag" to 1,
+                        "platform" to "20"
+                    )
+                ),
+                "comm" to mapOf(
+                    "uin" to uin,
+                    "format" to "json",
+                    "ct" to 24,
+                    "cv" to 0
+                )
+            )
+        )
+        val url = "https://u.y.qq.com/cgi-bin/musicu.fcg?format=json&data=" +
+            java.net.URLEncoder.encode(payload.toString(), "UTF-8")
+        val builder = Request.Builder()
+            .url(url)
+            .header("Referer", "https://y.qq.com/")
+            .header("Origin", "https://y.qq.com")
+            .header("channel", "0146951")
+            .header("uid", "1234")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+        buildPersistedCookieHeader()?.let { builder.header("Cookie", it) }
+        okHttpClient.newCall(builder.get().build()).execute().use { response ->
+            val bodyBytes = response.body.bytes()
+            if (!response.isSuccessful) {
+                Timber.w("QqMusicApiService unsigned vkey GET failed: HTTP ${response.code}")
+            }
+            decompressIfNeeded(bodyBytes)
+        }
+    }
+
     // ─── Helper Methods ────────────────────────────────────────────────
 
     private fun extractUin(): String {
@@ -231,6 +321,32 @@ class QqMusicApiService @Inject constructor(
             ?: "0"
         return uinStr.replace(Regex("[^0-9]"), "").ifBlank { "0" }
     }
+
+    /**
+     * ⚡ 是否持有可用的播放凭据（`qm_keyst` = QQ 音乐 web 登录的 authst）。
+     *
+     * 免签名 vkey 链路不需要它；但**签名链路 `music.vkey.GetEVkey` 的 `comm.authst`
+     * 就取这个值**，为空时服务端必然拒绝。所以匿名态应该直接跳过签名链路，
+     * 而不是发一个注定失败的请求、白占一次全局节流。
+     */
+    fun hasPlaybackCredential(): Boolean = extractKeyst().isNotBlank()
+
+    /**
+     * ⚡ vkey 请求里要用的 uin（对齐参照实现的「匿名链路」语义）。
+     *
+     * 参照实现（lx-music 的 tx 源 `musicUrl`）把 `param.uin` 与 `comm.uin` **固定写死为 "0"**，
+     * 登录凭据只通过 Cookie（`qm_keyst`）传递。
+     *
+     * 以前这里直接透传 cookie 里的 `uin`：只要本地残留过一个 uin（登录过再退出、
+     * 网页登录过程留下的 `uin`/`p_uin`/`luin` 都算），就会带上
+     * 「真实 uin + `loginflag=1` 但**没有有效 authst**」去请求，服务端按「登录态但凭据无效」
+     * 处理 → 大面积回空 purl，表现就是 QQ 歌曲取不到直链、被迫落到兜底音源。
+     *
+     * 因此：只有确实持有登录凭据时才透传真实 uin（这样已登录用户仍能拿到 VIP/无损档），
+     * 否则一律用 "0"。若要与参照实现**完全一致**（永远 "0"），把下面这行改成 `"0"` 即可。
+     */
+    private fun vkeyUin(): String =
+        if (hasPlaybackCredential()) extractUin() else "0"
 
     private fun extractKeyst(): String {
         return persistedCookies["qm_keyst"] ?: ""

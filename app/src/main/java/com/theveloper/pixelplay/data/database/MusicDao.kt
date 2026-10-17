@@ -41,44 +41,81 @@ private fun buildSongSearchMatchQuery(query: String): String {
     return tokens.joinToString(separator = " AND ") { "${it}*" }
 }
 
+// ─── CursorWindow 防护（2MB/窗口，见 SongPayloadGuard）────────────────────────
+//
+// Android 把整段结果（或窗口）放进 2MB 的 CursorWindow。单行放不下时，SQLiteCursor 的
+// onMove() 依然无条件返回 true，紧接着的 getLong()/getString() 才抛
+// IllegalStateException("Couldn't read row N, col 0 from CursorWindow")，于是 songs 表的
+// 任何宽查询都会崩（线上报告：MusicDao_Impl.getAllSongs 第 600 行）。
+// 因此下面所有 TEXT 列一律 substr() 截断到安全长度，保证单行远小于窗口预算；
+// 被截断的值本来就是解析异常的脏数据（损坏的 ID3 标签、误写入的 base64 等）。
+// 列名保持 AS 别名不变，Room 的实体映射按列名取值，不受影响。
+// 截断上限（字符数）：元数据 1024 / genre 256 / mime 128 / URI 与路径 4096 /
+// artists_json 16384 / lyrics 262144（正常 LRC 远低于此，超限即为脏数据）。
 private const val SONG_DETAIL_PROJECTION = """
     songs.id AS id,
-    songs.title AS title,
-    songs.artist_name AS artist_name,
+    substr(songs.title, 1, 1024) AS title,
+    substr(songs.artist_name, 1, 1024) AS artist_name,
     songs.artist_id AS artist_id,
-    songs.album_artist AS album_artist,
-    songs.album_name AS album_name,
+    substr(songs.album_artist, 1, 1024) AS album_artist,
+    substr(songs.album_name, 1, 1024) AS album_name,
     songs.album_id AS album_id,
-    songs.content_uri_string AS content_uri_string,
-    songs.album_art_uri_string AS album_art_uri_string,
+    substr(songs.content_uri_string, 1, 4096) AS content_uri_string,
+    substr(songs.album_art_uri_string, 1, 4096) AS album_art_uri_string,
     songs.duration AS duration,
-    songs.genre AS genre,
-    songs.file_path AS file_path,
-    songs.parent_directory_path AS parent_directory_path,
+    substr(songs.genre, 1, 256) AS genre,
+    substr(songs.file_path, 1, 4096) AS file_path,
+    substr(songs.parent_directory_path, 1, 4096) AS parent_directory_path,
     songs.is_favorite AS is_favorite,
-    COALESCE(song_lyrics.content, songs.lyrics) AS lyrics,
+    substr(COALESCE(song_lyrics.content, songs.lyrics), 1, 262144) AS lyrics,
     songs.track_number AS track_number,
     songs.disc_number AS disc_number,
     songs.year AS year,
     songs.date_added AS date_added,
     songs.date_modified AS date_modified,
-    songs.mime_type AS mime_type,
+    substr(songs.mime_type, 1, 128) AS mime_type,
     songs.bitrate AS bitrate,
     songs.sample_rate AS sample_rate,
     songs.telegram_chat_id AS telegram_chat_id,
     songs.telegram_file_id AS telegram_file_id,
-    songs.artists_json AS artists_json,
+    substr(songs.artists_json, 1, 16384) AS artists_json,
     songs.source_type AS source_type
 """
 
 // Projection for list queries: excludes lyrics to prevent CursorWindow overflow (2MB limit)
 // when loading large libraries. Lyrics are only needed for the Now Playing screen (getSongById).
+//
+// 每个 TEXT 列再加 substr() 上限（截断上限与 SongPayloadGuard 保持同一量级）：
+// 单行永远装得进 CursorWindow，线上崩溃 MusicDao_Impl.getAllSongs "Couldn't read row 600"
+// 即由超长单行（多为损坏元数据）触发。列名用 AS 保持不变，Room 实体映射不受影响。
 private const val SONG_LIST_PROJECTION = """
-    id, title, artist_name, artist_id, album_artist, album_name, album_id,
-    content_uri_string, album_art_uri_string, duration, genre, file_path,
-    parent_directory_path, is_favorite, NULL AS lyrics, track_number, disc_number,
-    year, date_added, date_modified, mime_type, bitrate, sample_rate, telegram_chat_id,
-    telegram_file_id, artists_json, source_type
+    id,
+    substr(title, 1, 1024) AS title,
+    substr(artist_name, 1, 1024) AS artist_name,
+    artist_id,
+    substr(album_artist, 1, 1024) AS album_artist,
+    substr(album_name, 1, 1024) AS album_name,
+    album_id,
+    substr(content_uri_string, 1, 4096) AS content_uri_string,
+    substr(album_art_uri_string, 1, 4096) AS album_art_uri_string,
+    duration,
+    substr(genre, 1, 256) AS genre,
+    substr(file_path, 1, 4096) AS file_path,
+    substr(parent_directory_path, 1, 4096) AS parent_directory_path,
+    is_favorite,
+    NULL AS lyrics,
+    track_number,
+    disc_number,
+    year,
+    date_added,
+    date_modified,
+    substr(mime_type, 1, 128) AS mime_type,
+    bitrate,
+    sample_rate,
+    telegram_chat_id,
+    telegram_file_id,
+    substr(artists_json, 1, 16384) AS artists_json,
+    source_type
 """
 
 data class DeviceCapabilitySongRow(
@@ -672,6 +709,24 @@ interface MusicDao {
         allowedParentDirs: List<String> = emptyList(),
         applyDirectoryFilter: Boolean = false
     ): Flow<List<SongEntity>>
+
+    /**
+     * 仅取 id 的全库读取（与 [getAllSongs] 同一套目录过滤与顺序）。
+     *
+     * 用途：把「整库一次性读出」降级成「先拿 id、再分批取行」的兜底通道。id 列的窗口体积极小
+     * （万行也只有几十 KB），绝不会触发 CursorWindow 溢出；拿到 id 后按 [SONG_BATCH_SIZE]
+     * 分批取行，保证任何一次查询的单窗口负载都在预算内。ORDER BY id 与 [getAllSongs]
+     * 无 ORDER BY 时的 rowid 顺序一致。
+     */
+    @Query("""
+        SELECT id FROM songs
+        WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
+        ORDER BY id ASC
+    """)
+    suspend fun getAllSongIdsForRead(
+        allowedParentDirs: List<String>,
+        applyDirectoryFilter: Boolean
+    ): List<Long>
 
     @Query("""
         SELECT """ + SONG_LIST_PROJECTION + """
@@ -1688,6 +1743,12 @@ interface MusicDao {
 
     // --- Combined Queries (Potentially useful for more complex scenarios) ---
     // E.g., Get all album art URIs from songs (could be useful for theme preloading from SSoT)
+    /**
+     * ⚡ 按专辑名取专辑 id（最多播放卡片点击专辑跳转用）。
+     */
+    @Query("SELECT album_id FROM songs WHERE album_name = :albumName ORDER BY id ASC LIMIT 1")
+    suspend fun getAlbumIdByName(albumName: String): Long?
+
     @Query("SELECT DISTINCT album_art_uri_string FROM songs WHERE album_art_uri_string IS NOT NULL")
     fun getAllUniqueAlbumArtUrisFromSongs(): Flow<List<String>>
 

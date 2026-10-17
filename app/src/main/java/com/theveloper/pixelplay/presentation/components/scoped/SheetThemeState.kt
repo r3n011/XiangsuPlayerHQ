@@ -72,7 +72,8 @@ internal fun rememberSheetThemeState(
     playerContentExpansionFraction: Animatable<Float, AnimationVector1D>
 ): SheetThemeState {
     val isThemedTheme = playerThemePreference == ThemePreference.ALBUM_ART ||
-            playerThemePreference == ThemePreference.CUSTOM_PALETTE
+            playerThemePreference == ThemePreference.CUSTOM_PALETTE ||
+            playerThemePreference == ThemePreference.IMMERSIVE
     val hasAlbumArt = !currentSong?.albumArtUriString.isNullOrBlank()
 
     // ⚡ 从 activePlayerSchemePair 派生颜色方案（根据亮色/暗色主题）

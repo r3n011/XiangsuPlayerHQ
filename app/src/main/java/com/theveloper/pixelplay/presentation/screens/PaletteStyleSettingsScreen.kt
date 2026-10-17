@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -65,6 +66,7 @@ import androidx.media3.common.util.UnstableApi
 import com.theveloper.pixelplay.data.preferences.AlbumArtColorAccuracy
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.OptimizedAlbumArt
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
@@ -333,24 +335,31 @@ private fun PaletteStyleHeader(
 }
 
 @Composable
-private fun MiniFullPlayerSkeletonPreview(
+internal fun MiniFullPlayerSkeletonPreview(
     scheme: ColorScheme,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // ⚡ 「播放器与歌词外观」子页以更小尺寸复用同一骨架：缩放系数与卡片宽度可调
+    sizeFactor: Float = 0.7f,
+    cardWidthFraction: Float = 0.72f,
+    /** 非空时骨架所有占位色改用该色调（如沉浸式封面背景上的白色调），卡片自身透明 */
+    contentTint: Color? = null,
+    albumArtUri: String? = null,
+    title: String? = null,
+    artist: String? = null,
 ) {
-    val sizeFactor = 0.7f
     fun scaled(dp: Dp): Dp = (dp.value * sizeFactor).dp
-    val cardWidthFraction = 0.72f * sizeFactor
 
-    val placeholderColor = scheme.onPrimaryContainer.copy(alpha = 0.1f)
-    val placeholderOnColor = scheme.onPrimaryContainer.copy(alpha = 0.2f)
-    val chipColor = scheme.onPrimary.copy(alpha = 0.8f)
-    val topBarButtonColor = scheme.onPrimary.copy(alpha = 0.7f)
-    val inactiveTrackColor = scheme.onPrimaryContainer.copy(alpha = 0.2f)
-    val toggleRowColor = scheme.surfaceContainerLowest.copy(alpha = 0.7f)
+    val placeholderColor = contentTint?.copy(alpha = 0.14f) ?: scheme.onPrimaryContainer.copy(alpha = 0.1f)
+    val placeholderOnColor = contentTint?.copy(alpha = 0.24f) ?: scheme.onPrimaryContainer.copy(alpha = 0.2f)
+    val chipColor = contentTint?.copy(alpha = 0.8f) ?: scheme.onPrimary.copy(alpha = 0.8f)
+    val topBarButtonColor = contentTint?.copy(alpha = 0.7f) ?: scheme.onPrimary.copy(alpha = 0.7f)
+    val inactiveTrackColor = contentTint?.copy(alpha = 0.2f) ?: scheme.onPrimaryContainer.copy(alpha = 0.2f)
+    val toggleRowColor = contentTint?.copy(alpha = 0.16f) ?: scheme.surfaceContainerLowest.copy(alpha = 0.7f)
+    val onTint = contentTint ?: scheme.onPrimaryContainer
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Surface(
-            color = scheme.primaryContainer,
+            color = if (contentTint != null) Color.Transparent else scheme.primaryContainer,
             shape = RoundedCornerShape(scaled(34.dp)),
             modifier = Modifier.fillMaxWidth(cardWidthFraction)
         ) {
@@ -394,7 +403,15 @@ private fun MiniFullPlayerSkeletonPreview(
                         .height(scaled(190.dp))
                         .clip(RoundedCornerShape(scaled(22.dp)))
                         .background(placeholderColor)
-                )
+                ) {
+                    if (albumArtUri != null) {
+                        OptimizedAlbumArt(
+                            uri = albumArtUri,
+                            title = title ?: "",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -405,20 +422,40 @@ private fun MiniFullPlayerSkeletonPreview(
                         verticalArrangement = Arrangement.spacedBy(scaled(8.dp)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.78f)
-                                .height(scaled(18.dp))
-                                .clip(RoundedCornerShape(scaled(6.dp)))
-                                .background(placeholderColor)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.46f)
-                                .height(scaled(12.dp))
-                                .clip(RoundedCornerShape(scaled(6.dp)))
-                                .background(placeholderOnColor)
-                        )
+                        if (title != null) {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = onTint,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.78f)
+                                    .height(scaled(18.dp))
+                                    .clip(RoundedCornerShape(scaled(6.dp)))
+                                    .background(placeholderColor)
+                            )
+                        }
+                        if (artist != null) {
+                            Text(
+                                text = artist,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = onTint.copy(alpha = 0.75f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.46f)
+                                    .height(scaled(12.dp))
+                                    .clip(RoundedCornerShape(scaled(6.dp)))
+                                    .background(placeholderOnColor)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(scaled(12.dp)))
                     Box(

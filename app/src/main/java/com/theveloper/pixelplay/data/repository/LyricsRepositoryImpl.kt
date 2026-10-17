@@ -349,7 +349,7 @@ class LyricsRepositoryImpl @Inject constructor(
         forceRefresh: Boolean
     ): Lyrics? = withContext(Dispatchers.IO) {
         val cacheKey = generateCacheKey(song)
-        val isNeteaseTrack = isNeteaseSong(song)
+        val isNeteaseTrack = isTrueNeteaseSong(song)
         // B 站视频：歌词必须实时从视频字幕拉取（"就用 b 站的字幕"），
         // 若走缓存会命中之前普通歌词（LRCLIB 等），字幕永远不会显示
         val isBilibiliTrack = isBilibiliSong(song)
@@ -488,10 +488,36 @@ class LyricsRepositoryImpl @Inject constructor(
      * 失败返回 null，由上层走 Netease API / LRCLIB 兜底。
      */
     private suspend fun fetchLyricsFromBuiltInSource(song: Song): Lyrics? {
+        // ⚡ 专用 QQ URI（qqmusic://{mid}）：按 tx 内建源取词，不再回落网易云
+        if (song.contentUriString.startsWith("qqmusic://", ignoreCase = true)) {
+            val mid = song.qqMusicMid
+                ?: song.contentUriString.substringAfter("qqmusic://").takeIf { it.isNotBlank() }
+                ?: return null
+            return fetchBuiltInLyrics(
+                "tx",
+                LxSongInfo(
+                    id = mid,
+                    songmid = mid,
+                    hash = "",
+                    name = song.title,
+                    singer = song.displayArtist,
+                    albumName = song.album,
+                    duration = song.duration,
+                    pic = "",
+                    source = "tx"
+                )
+            )
+        }
+
         val source = parseCloudLxSource(song) ?: return null
         if (!builtInSourceSearchApi.isSupported(source)) return null
 
         val songInfo = parseCloudLxSongInfo(song) ?: return null
+        return fetchBuiltInLyrics(source, songInfo)
+    }
+
+    /** 统一的内建源取词入口：请求 → 解析 → 校验 */
+    private suspend fun fetchBuiltInLyrics(source: String, songInfo: LxSongInfo): Lyrics? {
         val raw = builtInSourceSearchApi.getLyric(source, songInfo).getOrNull() ?: return null
         val parsed = LyricsUtils.parseLyrics(raw)
         return parsed.takeIf { it.isValid() }?.copy(areFromRemote = true)
@@ -526,7 +552,8 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     private fun builtInSourceTag(song: Song): String =
-        parseCloudLxSource(song) ?: "unknown"
+        if (song.contentUriString.startsWith("qqmusic://", ignoreCase = true)) "tx"
+        else parseCloudLxSource(song) ?: "unknown"
 
     /**
      * 提取酷狗 hash：听书章节 `kgaudio://{urlEncodedJson}` 与酷狗在线歌 `cloud://lx/{json}`（source=kg）。
@@ -581,9 +608,12 @@ class LyricsRepositoryImpl @Inject constructor(
     private suspend fun fetchLyricsFromAPI(song: Song): Lyrics? = withContext(Dispatchers.IO) {
         // ⚡ 用户可配置的在线歌词来源开关与优先级（设置 → API 管理）
         val api = apiProviderPreferences.current()
-        val isNetease = isNeteaseSong(song)
         val isCloudLx = song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
-        val usedNeteaseSpecific = isNetease || isCloudLx
+        // ⚡ 对齐 lx-music：在线歌歌词只走歌曲自己的源 —— cloud://lx 内嵌 source（wy/tx/kg/mg/kw）
+        //   决定归属：仅 wy/空 才视为网易云走网易/AMLL；tx/kg/mg/kw 由内建源直查，
+        //   不再先空耗 16s 网易时间片（默认顺序下内置源永远轮不到的根因）
+        val isNetease = isTrueNeteaseSong(song)
+        val usedNeteaseSpecific = isNetease
 
         // B 站视频：优先使用视频字幕作为歌词（对齐 PiliPlus vttSubtitles 思路）
         val bilibiliBvid = resolveBilibiliBvid(song)
@@ -612,7 +642,9 @@ class LyricsRepositoryImpl @Inject constructor(
         }
 
         // 内置源（酷我/QQ/酷狗/咪咕）歌词：对齐落雪 musicSdk 的 lyric 实现
-        val builtInStep: Pair<String, suspend () -> Lyrics?>? = if (isCloudLx && api.builtInLyricsEnabled) {
+        // ⚡ cloud://lx（内嵌 source）与专用 QQ URI（qqmusic://{mid}）都可走内建源
+        val builtInEligible = isCloudLx || song.contentUriString.startsWith("qqmusic://", ignoreCase = true)
+        val builtInStep: Pair<String, suspend () -> Lyrics?>? = if (builtInEligible && api.builtInLyricsEnabled) {
             val step: suspend () -> Lyrics? = {
                 fetchLyricsFromBuiltInSource(song)?.also {
                     Log.d(TAG, "===== LOADED LYRICS FROM BUILT-IN SOURCE (${builtInSourceTag(song)}) =====")
@@ -1087,6 +1119,21 @@ class LyricsRepositoryImpl @Inject constructor(
         song.neteaseId != null ||
         song.contentUriString.startsWith("netease://") ||
         song.contentUriString.startsWith("cloud://lx/")
+
+    /**
+     * ⚡ 对齐 lx-music 的按源取词：只有「真正的网易云歌」才走网易/AMLL ——
+     *   - netease://{id} 或 neteaseId → 网易云
+     *   - cloud://lx/{json}：内嵌 source=wy（或空）→ 网易云；tx/kg/mg/kw → 各自内建源
+     * 此前 cloud://lx 一律按网易云处理，QQ/酷狗/咪咕/酷我的歌会先空耗 16s 网易时间片。
+     */
+    private fun isTrueNeteaseSong(song: Song): Boolean {
+        if (song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)) {
+            val source = parseCloudLxSource(song)
+            return source.isNullOrEmpty() || source.equals("wy", ignoreCase = true)
+        }
+        return song.neteaseId != null ||
+            song.contentUriString.startsWith("netease://", ignoreCase = true)
+    }
 
     /** B 站视频歌曲（bilibili:// 协议或带 bilibiliBvid），歌词应优先走视频字幕。 */
     private fun isBilibiliSong(song: Song): Boolean =
@@ -1625,7 +1672,7 @@ class LyricsRepositoryImpl @Inject constructor(
 
             val cacheKey = generateCacheKey(song)
             // 网易云歌曲：跳过本地存储，始终从 API 获取，避免缓存错歌歌词
-            if (!isNeteaseSong(song)) {
+            if (!isTrueNeteaseSong(song)) {
                 loadStoredLyrics(song, cacheKey, includeMemoryCache = true)?.let { stored ->
                     lyricsCache.put(cacheKey, stored.first)
                     LogUtils.d(
@@ -1648,8 +1695,9 @@ class LyricsRepositoryImpl @Inject constructor(
                 }
             }
 
-            // 优先使用网易云镜像（btwoa）的歌词接口，匹配 netease 源以及 lx 在线源。
-            val isCloudSource = isNeteaseSong(song)
+            // 优先使用网易云镜像（btwoa）的歌词接口：仅真正的网易云源（wy/netease://）；
+            // tx/kg/mg/kw 已由上方内建源分支处理，不再回落到网易
+            val isCloudSource = isTrueNeteaseSong(song)
             if (isCloudSource) {
                 val ncmLyrics = fetchFromNeteaseApi(song)
                 if (ncmLyrics != null) {

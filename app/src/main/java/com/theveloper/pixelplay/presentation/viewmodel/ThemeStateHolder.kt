@@ -102,6 +102,8 @@ class ThemeStateHolder @Inject constructor(
             ThemePreference.ALBUM_ART -> _albumArtThemeState.value.colorSchemePair
             // 旧版兼容：播放器已不再提供自定义调色盘选项，旧值视为封面取色
             ThemePreference.CUSTOM_PALETTE -> _albumArtThemeState.value.colorSchemePair
+            // ⚡ 沉浸式封面：同样使用封面取色方案（背景与控件颜色都随封面走）
+            ThemePreference.IMMERSIVE -> _albumArtThemeState.value.colorSchemePair
             else -> null
         }
     }

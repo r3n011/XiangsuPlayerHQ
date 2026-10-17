@@ -141,6 +141,12 @@ data class SettingsUiState(
     val hapticsEnabled: Boolean = true,
     val immersiveLyricsEnabled: Boolean = false,
     val immersiveLyricsTimeout: Long = 4000L,
+    // ⚡ 歌词界面自动沉浸后不放大歌词字体（默认关闭 = 沉浸时仍 ×1.25）
+    val immersiveLyricsKeepFontSize: Boolean = false,
+    // ⚡ Apple Music 动态封面（Canvas）：默认开启（会产生少量在线请求）
+    val appleCanvasEnabled: Boolean = true,
+    // ⚡ 控制按钮玻璃模糊背景（默认关闭）
+    val playerGlassControls: Boolean = false,
     val useAnimatedLyrics: Boolean = true,
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 1f,
@@ -284,6 +290,9 @@ private sealed interface SettingsUiUpdate {
         val hapticsEnabled: Boolean,
         val immersiveLyricsEnabled: Boolean,
         val immersiveLyricsTimeout: Long,
+        val immersiveLyricsKeepFontSize: Boolean,
+        val appleCanvasEnabled: Boolean,
+        val playerGlassControls: Boolean,
         val animatedLyricsBlurEnabled: Boolean,
         val animatedLyricsBlurStrength: Float,
         val disableBlurAllOver: Boolean,
@@ -693,7 +702,10 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.focusPauseOnPermanentLossFlow,
                 userPreferencesRepository.focusResumeAfterGainFlow,
                 userPreferencesRepository.focusDuckOnTransientLossFlow,
-                userPreferencesRepository.focusResumeAfterCallFlow
+                userPreferencesRepository.focusResumeAfterCallFlow,
+                userPreferencesRepository.immersiveLyricsKeepFontSizeFlow,
+                userPreferencesRepository.appleCanvasEnabledFlow,
+                userPreferencesRepository.playerGlassControlsFlow
             ) { values ->
                 SettingsUiUpdate.Group2(
                     keepPlayingInBackground = values[0] as Boolean,
@@ -731,7 +743,10 @@ class SettingsViewModel @Inject constructor(
                     focusPauseOnPermanentLoss = values[32] as Boolean,
                     focusResumeAfterGain = values[33] as Boolean,
                     focusDuckOnTransientLoss = values[34] as Boolean,
-                    focusResumeAfterCall = values[35] as Boolean
+                    focusResumeAfterCall = values[35] as Boolean,
+                    immersiveLyricsKeepFontSize = values[36] as Boolean,
+                    appleCanvasEnabled = values[37] as Boolean,
+                    playerGlassControls = values[38] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -771,7 +786,10 @@ class SettingsViewModel @Inject constructor(
                         focusPauseOnPermanentLoss = update.focusPauseOnPermanentLoss,
                         focusResumeAfterGain = update.focusResumeAfterGain,
                         focusDuckOnTransientLoss = update.focusDuckOnTransientLoss,
-                        focusResumeAfterCall = update.focusResumeAfterCall
+                        focusResumeAfterCall = update.focusResumeAfterCall,
+                        immersiveLyricsKeepFontSize = update.immersiveLyricsKeepFontSize,
+                        appleCanvasEnabled = update.appleCanvasEnabled,
+                        playerGlassControls = update.playerGlassControls
                     )
                 }
             }
@@ -2044,6 +2062,27 @@ class SettingsViewModel @Inject constructor(
     fun setImmersiveLyricsTimeout(timeout: Long) {
         viewModelScope.launch {
             userPreferencesRepository.setImmersiveLyricsTimeout(timeout)
+        }
+    }
+
+    /** 歌词界面自动沉浸后是否**不**放大歌词字体（默认 false = 沉浸时仍放大 25%）。 */
+    fun setImmersiveLyricsKeepFontSize(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setImmersiveLyricsKeepFontSize(enabled)
+        }
+    }
+
+    /** ⚡ Apple Music 动态封面（Canvas）开关（默认关闭：会产生少量在线请求）。 */
+    fun setAppleCanvasEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAppleCanvasEnabled(enabled)
+        }
+    }
+
+    /** ⚡ 控制按钮玻璃模糊背景开关（默认关闭）。 */
+    fun setPlayerGlassControls(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerGlassControls(enabled)
         }
     }
 

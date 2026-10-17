@@ -1405,6 +1405,14 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                     installFavoriteSyncTriggers(db)
                     installSongsSearchSyncTriggers(db)
                 }
+
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    // 清理/审计 songs 表里的超长行，防止 CursorWindow 读取崩溃
+                    // （MusicDao_Impl.getAllSongs "Couldn't read row N, col 0"）。
+                    // 内部自带 once-per-process 与 try/catch，失败不影响正常读写。
+                    SongPayloadGuard.runOnce(db)
+                }
             }
         }
 

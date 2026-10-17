@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,18 +72,32 @@ fun PlayerMoreSheet(
     onShare: () -> Unit,
     onStartListenTogether: () -> Unit,
     onViewArtist: () -> Unit,
-    onViewAlbum: () -> Unit
+    onViewAlbum: () -> Unit,
+    /**
+     * ⚡ 取色方案：播放器里传「封面派生配色」（`LocalMaterialTheme`），
+     *    让这张菜单（含里面每一行子卡片）跟随**播放器取色**而不是 App 主题色。
+     *    默认回退到 App 主题，便于其它入口复用。
+     */
+    scheme: ColorScheme = MaterialTheme.colorScheme
 ) {
     // ⚡ 必须跳过「半展开」状态：默认的半展开会让 sheet 自身的展开手势与内容滚动
     //    争抢竖直拖动，上滑一次之后所有条目都点不动了。直接全展开 + 内容自己滚动
     //    （与 LyricsMoreBottomSheet 同款做法）。
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 4.dp
+    // ⚡ 整张菜单（含里面每一行子卡片）统一使用**播放器取色**：
+    //    只覆盖 colorScheme，typography / shapes 沿用当前主题，
+    //    避免字体与圆角被 M3 默认值替换掉。
+    MaterialTheme(
+        colorScheme = scheme,
+        typography = MaterialTheme.typography,
+        shapes = MaterialTheme.shapes
     ) {
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            containerColor = scheme.surfaceContainerLow,
+            tonalElevation = 0.dp
+        ) {
         // ⚡ 禁用内容列表的 stretch overscroll：material3（1.5.0-alpha）弹窗里，列表滚到顶部后
         //    继续下拉的位移会先被系统拉伸效果吃掉（列表先"拉丝"），剩下的才交给 sheet 移动，
         //    两个动画互相争抢就是「下拉关闭时抽搐」的来源。关掉 overscroll 后下拉位移
@@ -124,7 +139,7 @@ fun PlayerMoreSheet(
                         style = MaterialTheme.typography.titleMedium,
                         fontFamily = GoogleSansRounded,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = scheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -132,7 +147,7 @@ fun PlayerMoreSheet(
                         text = song.displayArtist,
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = GoogleSansRounded,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = scheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -181,6 +196,7 @@ fun PlayerMoreSheet(
                 label = stringResource(R.string.player_more_view_album),
                 onClick = onViewAlbum
             )
+        }
         }
         }
     }

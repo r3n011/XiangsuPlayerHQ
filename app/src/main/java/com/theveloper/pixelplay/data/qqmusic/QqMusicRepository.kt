@@ -299,40 +299,40 @@ class QqMusicRepository @Inject constructor(
 
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                // Step 1: 不带 filename 请求，拿默认直链（通常为 C400 128k m4a），并从中还原 media_mid。
-                val defaultPurl = requestPurl(songMid)
-
-                if (defaultPurl.isBlank()) {
-                    throw IllegalStateException("No playable URL for songMid=$songMid (empty purl)")
-                }
-
-                val defaultUrl = normalizePurl(defaultPurl)
-                val defaultCode = purlCode(defaultPurl)
-
-                val mediaMid = extractMediaMid(defaultPurl)
-                if (mediaMid.isBlank()) {
-                    Timber.w("QQ Music: media_mid not found in purl, using default URL for songMid=$songMid")
-                    return@runCatching defaultUrl
-                }
-
                 val candidates = qqQualityCandidates(qualityPreference)
 
-                // 默认直链本身已达到目标档位（或更高）时，无需再探测，避免反向降级。
-                if (qualityRank(defaultCode) <= qualityRank(candidates.first().code)) {
-                    Timber.d("QQ Music: default quality $defaultCode already satisfies request for songMid=$songMid")
-                    return@runCatching defaultUrl
+                // ⚡ Step 1（对齐 lx-music）：先取 media_mid —— QQ 直链文件名是
+                //    `${档位前缀}${media_mid}${后缀}`（如 M500{media_mid}.mp3 / F000{media_mid}.flac），
+                //    以前用 songmid 拼 → 绝大多数歌曲拿不到 purl，这是「QQ 全部报错」的主因。
+                val mediaMid = api.getSongMediaMid(songMid)?.takeIf { it.isNotBlank() } ?: songMid
+
+                // ⚡ Step 2：一次请求探测整条候选链（免签名 vkey 优先，失败自动回退旧签名链路）
+                val filenames = candidates.map { "${it.code}$mediaMid${it.ext}" }
+                val hit = pickPurl(requestPurls(songMid, filenames, candidates.first().code), filenames)
+                if (hit != null) {
+                    Timber.d("QQ Music: resolved ${purlCode(hit)} for songMid=$songMid (mediaMid=$mediaMid)")
+                    return@runCatching normalizePurl(hit)
                 }
 
-                // Step 2: 一次请求探测整条候选链，取第一个真实可用（有权限）的更高音质直链。
-                val higherPurl = resolveHigherQualityPurl(songMid, mediaMid, candidates)
-                if (higherPurl != null) {
-                    Timber.d("QQ Music: resolved ${purlCode(higherPurl)} for songMid=$songMid")
-                    return@runCatching normalizePurl(higherPurl)
+                // ⚡ Step 3：候选链全空时回退旧链路（默认档 purl + 从中还原 media_mid 再试一次）
+                val defaultPurl = requestPurlLegacy(songMid)
+                if (defaultPurl.isBlank()) {
+                    throw IllegalStateException("No playable URL for songMid=$songMid (all qualities empty)")
                 }
-
-                // Step 3: 无更高音质权限时回退默认直链。
-                Timber.d("QQ Music: no higher quality available for songMid=$songMid, falling back to $defaultCode")
-                defaultUrl
+                val fallbackMediaMid = extractMediaMid(defaultPurl)
+                if (fallbackMediaMid.isNotBlank() && fallbackMediaMid != mediaMid) {
+                    val retryNames = candidates.map { "${it.code}$fallbackMediaMid${it.ext}" }
+                    val retryHit = pickPurl(
+                        requestPurls(songMid, retryNames, candidates.first().code),
+                        retryNames
+                    )
+                    if (retryHit != null) {
+                        Timber.d("QQ Music: resolved ${purlCode(retryHit)} via fallback media_mid for songMid=$songMid")
+                        return@runCatching normalizePurl(retryHit)
+                    }
+                }
+                Timber.d("QQ Music: falling back to default purl (${purlCode(defaultPurl)}) for songMid=$songMid")
+                normalizePurl(defaultPurl)
             }
         }
 
@@ -341,8 +341,24 @@ class QqMusicRepository @Inject constructor(
         return result
     }
 
+    /** 在响应里挑出第一个「真实返回的非空 purl」（优先文件名精确匹配，其次按位置）。 */
+    private fun pickPurl(purls: List<QqPurl>, filenames: List<String>): String? =
+        filenames.indices.firstNotNullOfOrNull { index ->
+            val purl = purls.firstOrNull { it.filename == filenames[index] }?.purl
+                ?: purls.getOrNull(index)?.purl.orEmpty()
+            purl.takeIf { it.isNotBlank() }
+        }
+
     /** 一条 vkey 响应中的文件名与直链（purl）配对。 */
     private data class QqPurl(val filename: String, val purl: String)
+
+    /**
+     * ⚡ 供落雪 JS 源取流用：取歌曲 media_mid（`file.media_mid`）。
+     *    lx 的 tx 源签名是 `musicUrl({ songmid, strMediaMid }, quality)`，
+     *    缺了 strMediaMid 大多数歌曲会失败。
+     */
+    suspend fun getMediaMid(songMid: String): String? =
+        runCatching { api.getSongMediaMid(songMid) }.getOrNull()
 
     /** 全局请求节流，避免高频 vkey 请求触发风控。 */
     private suspend fun throttleSongUrlRequest() {
@@ -355,21 +371,43 @@ class QqMusicRepository @Inject constructor(
     }
 
     /**
-     * Make a single vkey request and return the purl string (empty if unavailable).
-     * Respects the global rate-limit mutex.
+     * ⚡ 免签名 vkey（对齐 lx-music）：拿不到就返回空列表，由调用方回退旧签名链路。
+     * 旧链路需要 WebView 签名 + ag-1 加密，签名不可用/被风控时整条链路都会失败。
      */
-    private suspend fun requestPurl(songMid: String, filename: String? = null): String {
+    private suspend fun requestPurlsUnsigned(songMid: String, filenames: List<String>): List<QqPurl> {
+        if (filenames.isEmpty()) return emptyList()
         throttleSongUrlRequest()
-        val raw = api.getSongDownloadUrl(songMid, filenames = filename?.let { listOf(it) })
+        return runCatching { parsePurls(api.getVkeyUrlUnsigned(songMid, filenames)) }
+            .onFailure { Timber.w(it, "QQ Music: unsigned vkey failed songMid=$songMid") }
+            .getOrDefault(emptyList())
+    }
+
+    /**
+     * 舊签名链路（music.vkey.GetEVkey）：仅作为免签名链路的兜底。
+     *
+     * ⚡ 匿名态（无 `qm_keyst`）直接放弃：该接口的 `comm.authst` 就是 `qm_keyst`，
+     *    为空时服务端必然拒绝，发了也是白发，还会白占一次全局节流。
+     */
+    private suspend fun requestPurlLegacy(songMid: String): String {
+        if (!api.hasPlaybackCredential()) return ""
+        throttleSongUrlRequest()
+        val raw = api.getSongDownloadUrl(songMid)
         return parsePurls(raw).firstOrNull()?.purl.orEmpty()
     }
 
     /**
-     * 一次请求多个候选 filename，按响应顺序返回 purl 列表。
+     * 一次请求多个候选 filename：免签名 vkey 优先，全空时回退签名链路。
      * 无权限的档位在响应中表现为空 purl。
      */
     private suspend fun requestPurls(songMid: String, filenames: List<String>, quality: String?): List<QqPurl> {
         if (filenames.isEmpty()) return emptyList()
+        val unsigned = requestPurlsUnsigned(songMid, filenames)
+        if (unsigned.any { it.purl.isNotBlank() }) return unsigned
+        // ⚡ 匿名态跳过签名链路（同 requestPurlLegacy 的理由）
+        if (!api.hasPlaybackCredential()) {
+            Timber.d("QQ Music: 无播放凭据，跳过签名 vkey 链路 songMid=$songMid")
+            return unsigned
+        }
         throttleSongUrlRequest()
         val raw = api.getSongDownloadUrl(songMid, filenames = filenames, quality = quality)
         return parsePurls(raw)

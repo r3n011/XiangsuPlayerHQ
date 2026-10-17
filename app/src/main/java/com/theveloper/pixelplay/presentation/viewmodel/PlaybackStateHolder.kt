@@ -87,6 +87,9 @@ class PlaybackStateHolder @Inject constructor(
         private const val SLIDER_TICK_MS = 250L
         private const val MINIPLAYER_TICK_MS = 1000L
         private const val BACKGROUND_TICK_MS = 1000L
+
+        /** ⚡ 省电：暂停时位置不会自行变化，降频采样（播放恢复自动回到高精度档）。 */
+        private const val PAUSED_TICK_MS = 2000L
         /**
          * Threshold above which we skip per-item moveMediaItem calls and use
          * a single setMediaItems call instead. moveMediaItem triggers an IPC
@@ -947,6 +950,9 @@ class PlaybackStateHolder @Inject constructor(
 
     private fun currentProgressTickMs(): Long {
         if (!powerManager.isInteractive) return BACKGROUND_TICK_MS
+        // ⚡ 省电：暂停时位置不会自行变化 → 2s 低频采样（代替 250ms/1s 常转）。
+        //    播放恢复后自动回到高精度档位；seek 修正最迟 2s 内可见。
+        if (!_stablePlayerState.value.isPlaying) return PAUSED_TICK_MS
         // Interactive but the slider isn't mounted (mini-player / lock-screen
         // notification only) — second-level precision is enough.
         return if (_sliderUiMounted.value) SLIDER_TICK_MS else MINIPLAYER_TICK_MS

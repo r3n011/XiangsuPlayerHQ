@@ -1005,4 +1005,24 @@
     <string name="setcat_lyrics_mono_colors_desc">开启后歌词界面的按钮和文字强制为纯黑 / 纯白（暗色主题白、亮色主题黑）；关闭时与当前一致。</string>
     <string name="setcat_player_mono_colors_title">播放器按钮与文字黑白</string>
     <string name="setcat_player_mono_colors_desc">开启后播放器的按钮和文字强制为纯黑 / 纯白（暗色主题白、亮色主题黑）；关闭时与当前一致。</string>
+
+    <!-- 播放器与歌词外观（独立子页 + 实时预览） -->
+    <string name="setcat_player_lyrics_appearance_title">播放器与歌词外观</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">顶部固定实时预览，下方每个选项改动都会立即体现</string>
+    <string name="setcat_player_lyrics_preview_label">实时预览</string>
+    <string name="setcat_player_lyrics_preview_track">示例歌曲</string>
+    <string name="setcat_player_lyrics_preview_artist">示例歌手</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24bit · 44.1 kHz</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">窗外的夜色还很长</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">这一行是正在播放的歌词</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">而整座城市已经入睡</string>
+    <string name="setcat_immersive_keep_font_size_title">沉浸时保持歌词字号</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">歌词界面自动沉浸后不放大歌词字体，只隐藏控件（默认仍会放大）</string>
+    <string name="setcat_immersive_scale_hint">沉浸预览：字号放大 1.25 倍</string>
+    <string name="setcat_immersive_keep_size_hint">沉浸预览：字号保持不变</string>
+    <string name="setcat_player_theme_immersive">沉浸式封面</string>
+    <string name="setcat_apple_canvas_title">动态封面（Apple Music）</string>
+    <string name="setcat_apple_canvas_subtitle">在线获取当前歌曲的动态视频封面，命中后渐变切换显示；未命中或关闭时保持现有封面方案。会产生少量网络流量。</string>
+    <string name="setcat_player_glass_controls_title">控制按钮玻璃模糊背景</string>
+    <string name="setcat_player_glass_controls_subtitle">中性控件（上一/下一曲、收藏、底部功能胶囊、控制卡片）改为半透明 + 真实背景模糊（播放/暂停键保留强调色，布局不变），可与任意主题、背景样式自由组合。</string>
 </resources>

@@ -22,11 +22,17 @@ fun AppleMusicRotatingBackground(
     modifier: Modifier = Modifier,
     style: BackgroundStyle = BackgroundStyle.VIBRANT,
     @Suppress("UNUSED_PARAMETER") blurRadius: Dp = 64.dp,
+    /** ⚡ 省电门控：透传给 IsolationBackground（不可见时冻结帧循环）。 */
+    shouldRender: () -> Boolean = { true },
+    /** ⚡ 是否需要流动（正在播放 → true；暂停冻结省电）。 */
+    shouldAnimate: () -> Boolean = { true },
 ) {
     when (style) {
         BackgroundStyle.VIBRANT -> IsolationBackground(
             albumArtUri = albumArtUri,
             modifier = modifier,
+            shouldRender = shouldRender,
+            shouldAnimate = shouldAnimate,
         )
         // 取色背景：由调用方的根底色换用封面配色的 primaryContainer 承担
         // （对齐原版 SheetThemeState.playerAreaBackground = miniPlayerScheme.primaryContainer），

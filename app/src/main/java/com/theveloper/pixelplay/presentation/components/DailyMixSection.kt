@@ -238,6 +238,7 @@ private fun DailyMixCard(
 @Composable
 fun DailyMixHeader(thumbnails: ImmutableList<Song>) {
     val titleStyle = rememberDailyMixTitleStyle()
+    val scheme = MaterialTheme.colorScheme
 
     fun shapeConditionalModifier(index: Int): Modifier {
         if (index == 0){
@@ -250,24 +251,16 @@ fun DailyMixHeader(thumbnails: ImmutableList<Song>) {
         }
     }
 
+    // ⚡ 只去掉整块渐变色（标题 / 副标题改用表面色）；右上角封面样式保持原样（三张异形缩略图）
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
-            .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary, //.copy(alpha = 0.7f),
-                        MaterialTheme.colorScheme.tertiary //.copy(alpha = 0.7f)
-                    )
-                )
-            ),
+            .padding(start = 22.dp, end = 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 22.dp, end = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Absolute.SpaceBetween
         ) {
@@ -275,14 +268,14 @@ fun DailyMixHeader(thumbnails: ImmutableList<Song>) {
                 Text(
                     text = stringResource(R.string.presentation_batch_g_daily_mix_heading),
                     style = titleStyle,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = scheme.onSurface
                 )
                 Text(
                     modifier = Modifier.padding(start = 1.dp),
                     text = stringResource(R.string.presentation_batch_g_daily_mix_based_on_history),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                    color = scheme.onSurfaceVariant
                 )
             }
             Row(
@@ -293,7 +286,6 @@ fun DailyMixHeader(thumbnails: ImmutableList<Song>) {
                     val modifier = shapeConditionalModifier(index)
                     Box(
                         modifier = modifier
-                            //.size(48.dp)
                             .clip(threeShapeSwitch(index))
                             .border(2.dp, MaterialTheme.colorScheme.surface, threeShapeSwitch(index))
                     ) {
@@ -343,7 +335,8 @@ private fun DailyMixSongList(
 ) {
     val dailyMixQueueName = stringResource(R.string.presentation_batch_g_daily_mix_queue_name)
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
-    val itemContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    // ⚡ 对齐参考样式：行底色比卡片略亮、圆角更大（当前播放行仍由 EnhancedSongListItem 高亮）
+    val itemContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
 
     Column(
         modifier = Modifier
@@ -359,7 +352,7 @@ private fun DailyMixSongList(
                 isPlaying = stablePlayerState.isPlaying && stablePlayerState.currentSong?.id == song.id,
                 containerColorOverride = itemContainerColor,
                 onMoreOptionsClick = onMoreOptionsClick,
-                customShape = RoundedCornerShape(10.dp),
+                customShape = RoundedCornerShape(16.dp),
                 showAlbumArt = false,
                 onClick = {
                     playerViewModel.showAndPlaySong(

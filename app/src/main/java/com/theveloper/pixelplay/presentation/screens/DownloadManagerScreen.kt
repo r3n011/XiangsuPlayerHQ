@@ -1,5 +1,13 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -167,6 +175,16 @@ fun DownloadManagerScreen(
             items(ordered, key = { it.songId }) { info ->
                 DownloadTaskCard(
                     info = info,
+                    // ⚡ 任务状态变化会改变排序（进行中 → … → 已完成）：animateItem 让卡片
+                    //    自身位移 + 下方歌曲上移都走动画，避免整列「闪现」跳位
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = tween(durationMillis = 220),
+                        fadeOutSpec = tween(durationMillis = 180),
+                        placementSpec = spring(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioNoBouncy
+                        )
+                    ),
                     onPause = { playerViewModel.pauseDownload(info.songId) },
                     onResume = { playerViewModel.resumeDownload(info.songId) },
                     onCancel = { playerViewModel.cancelDownload(info.songId) },
@@ -180,13 +198,14 @@ fun DownloadManagerScreen(
 @Composable
 private fun DownloadTaskCard(
     info: MusicDownloadService.DownloadInfo,
+    modifier: Modifier = Modifier,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
     onRetry: () -> Unit,
 ) {
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -279,12 +298,19 @@ private fun DownloadTaskCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (info.status == MusicDownloadService.DownloadStatus.Running) {
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    progress = { (info.progress / 100f).coerceIn(0f, 1f) }
-                )
+            // ⚡ 完成时进度条收合也走动画（否则卡片高度突变 + 整列跳位，观感就是「闪现」）
+            AnimatedVisibility(
+                visible = info.status == MusicDownloadService.DownloadStatus.Running,
+                enter = expandVertically(animationSpec = tween(durationMillis = 220)) + fadeIn(tween(180)),
+                exit = shrinkVertically(animationSpec = tween(durationMillis = 220)) + fadeOut(tween(140))
+            ) {
+                Column {
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        progress = { (info.progress / 100f).coerceIn(0f, 1f) }
+                    )
+                }
             }
         }
     }

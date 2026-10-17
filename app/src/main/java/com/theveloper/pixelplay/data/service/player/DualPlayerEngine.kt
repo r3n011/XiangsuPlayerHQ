@@ -237,6 +237,8 @@ class DualPlayerEngine @Inject constructor(
     private val musicRepository: MusicRepository,
     private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
     private val builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
+    // ⚡ QQ：提供 media_mid 给落雪 JS tx 源（与网易云一样：JS 取流优先）
+    private val qqMusicRepository: com.theveloper.pixelplay.data.qqmusic.QqMusicRepository,
     private val kugouAudiobookApi: com.theveloper.pixelplay.data.kugou.KugouAudiobookApi,
     private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
     private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
@@ -2641,7 +2643,8 @@ class DualPlayerEngine @Inject constructor(
      *    ⚠️ 代理只负责生成 127.0.0.1 地址、并不校验上游，因此必须先探测上游能否
      *    解析出真实直链；否则会先返回一个必然 404 的代理地址，后面的兜底永远不可达。
      * 2. 落雪 JS 引擎 `tx` 源（已安装音源插件时可用，音质更高）。
-     * 3. 内置源官方接口（溯音酷我，按"歌名 歌手"精确搜索，无需 QQ 登录）。
+     * 3. 内置源官方接口：按 `songMid` 再走一次官方免签名 vkey 取链
+     *    （插件不可用时纯离线兜底，不再跨平台换酷我试听流）。
      */
     private suspend fun resolveQqMusicUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
         if (!connectivityStateHolder.isOnline.value) {
@@ -2652,7 +2655,76 @@ class DualPlayerEngine @Inject constructor(
         val songMid = (midUri.host ?: midUri.path?.removePrefix("/"))?.trim().orEmpty()
         if (songMid.isBlank()) return@withContext null
 
-        // ① 官方链路（代理 + vkey）
+        // ① 落雪 JS 引擎 tx 源（与网易云对齐：**JS 取流优先**）。
+        //    ⚡ 必须带上 `strMediaMid`（file.media_mid）—— tx 源的直链文件名是
+        //    `${档位}${strMediaMid}${后缀}`，缺了它绝大多数歌曲都会取不到直链。
+        if (lxJsEngine.awaitReady(10_000)) {
+            val mediaMid = runCatching { qqMusicRepository.getMediaMid(songMid) }.getOrNull()
+            val songMap = mapOf<String, Any?>(
+                "id" to songMid,
+                "vid" to songMid,
+                "songmid" to songMid,
+                "hash" to songMid,
+                "strMediaMid" to (mediaMid ?: songMid),
+                "source" to "tx"
+            )
+            val chain = (
+                MusicQualityCatalog.resolveChain(
+                    target = musicQualityLxValue,
+                    available = availableQualitiesFor("tx")
+                ) + listOf("320k", "128k")
+                ).distinct()
+            // ⚡ ① 要用内置官方 vkey 兜底，需要歌曲元信息（歌名/歌手/时长）；
+            //    与 ③ 共用同一份，避免重复查库。
+            val txSong = loadSongByContentUri("qqmusic://$songMid")
+            val txSongInfo = com.theveloper.pixelplay.data.lx.LxSongInfo(
+                id = songMid,
+                songmid = songMid,
+                hash = songMid,
+                name = txSong?.title.orEmpty(),
+                singer = txSong?.artist.orEmpty(),
+                duration = txSong?.duration ?: 0L,
+                pic = txSong?.albumArtUriString.orEmpty(),
+                source = "tx",
+            )
+            for (q in chain) {
+                val lxUrl = runCatching { lxJsEngine.getPlayUrl("tx", songMap, q) }.getOrNull()
+                val lxUsable = !lxUrl.isNullOrBlank() &&
+                    !isEncryptedLxStream(lxUrl) &&
+                    !isForeignPlaceholderStream("tx", lxUrl)
+                if (lxUsable) {
+                    android.util.Log.d(
+                        "DualPlayerEngine",
+                        "resolveQqMusicUri: lx tx 命中 songMid=$songMid mediaMid=$mediaMid quality=$q"
+                    )
+                    return@withContext Uri.parse(lxUrl)
+                }
+                // ⚡ 插件没拿到 / 只拿到 .mflac 这类**不可播**直链时，必须用内置官方 vkey
+                //    试**同一档位**（官方返回可播的 .flac / .mp3），而不是直接跳到下一档。
+                val builtIn = builtInSourceSearchApi.resolvePlayUrl("tx", txSongInfo, q)
+                if (!builtIn.isNullOrBlank() && !isEncryptedLxStream(builtIn)) {
+                    android.util.Log.d(
+                        "DualPlayerEngine",
+                        "resolveQqMusicUri: 内置官方 vkey 命中 songMid=$songMid quality=$q"
+                    )
+                    return@withContext Uri.parse(builtIn)
+                }
+                if (!lxUrl.isNullOrBlank()) {
+                    android.util.Log.w(
+                        "DualPlayerEngine",
+                        "resolveQqMusicUri: 丢弃不可播直链 quality=$q ${lxUrl.take(90)}"
+                    )
+                }
+            }
+            android.util.Log.w(
+                "DualPlayerEngine",
+                "resolveQqMusicUri: lx tx 未命中 songMid=$songMid -> 官方 vkey 兜底"
+            )
+        } else {
+            android.util.Log.w("DualPlayerEngine", "resolveQqMusicUri: 落雪引擎未就绪，跳过 lx tx 源")
+        }
+
+        // ② 官方链路（代理 + vkey）兜底
         if (qqMusicStreamProxy.ensureReady(5_000L) &&
             !qqMusicStreamProxy.resolveAndCacheStreamUrl(songMid).isNullOrBlank()
         ) {
@@ -2662,31 +2734,8 @@ class DualPlayerEngine @Inject constructor(
         }
         android.util.Log.w(
             "DualPlayerEngine",
-            "resolveQqMusicUri: 官方 vkey 不可用 (songMid=$songMid) -> 走落雪/内置源兜底"
+            "resolveQqMusicUri: 官方 vkey 也不可用 (songMid=$songMid) -> 走内置源兜底"
         )
-
-        // ② 落雪 JS 引擎 tx 源（无须歌名/歌手，只需 songmid）。
-        //    超时给 5s：只为兜住"首次播放时引擎还在初始化"，未安装插件时不至于
-        //    在兜底前白等太久（awaitReady 未就绪会一直等到超时）。
-        if (lxJsEngine.awaitReady(5_000)) {
-            val songMap = mapOf<String, Any?>(
-                "id" to songMid,
-                "vid" to songMid,
-                "songmid" to songMid,
-                "hash" to songMid,
-                "source" to "tx"
-            )
-            val chain = MusicQualityCatalog.resolveChain(
-                target = musicQualityLxValue,
-                available = availableQualitiesFor("tx")
-            )
-            for (q in chain) {
-                val lxUrl = runCatching { lxJsEngine.getPlayUrl("tx", songMap, q) }.getOrNull()
-                if (!lxUrl.isNullOrBlank()) return@withContext Uri.parse(lxUrl)
-            }
-        } else {
-            android.util.Log.w("DualPlayerEngine", "resolveQqMusicUri: 落雪引擎未就绪，跳过 lx tx 源")
-        }
 
         // ③ 内置源官方接口（溯音酷我）：需要"歌名 + 歌手"，从媒体库按 contentUri 反查
         val song = loadSongByContentUri("qqmusic://$songMid")
@@ -2707,7 +2756,9 @@ class DualPlayerEngine @Inject constructor(
             )
             for (q in chain) {
                 val url = builtInSourceSearchApi.resolvePlayUrl("tx", lxSongInfo, q)
-                if (!url.isNullOrBlank()) {
+                // ⚡ 同样必须在链内校验：flac 档返回的 .mflac 是加密容器，不可播，
+                //    丢弃后继续降到 320k/128k mp3。
+                if (!url.isNullOrBlank() && !isEncryptedLxStream(url)) {
                     android.util.Log.d(
                         "DualPlayerEngine",
                         "resolveQqMusicUri: 内置源兜底命中 songMid=$songMid quality=$q"
@@ -2718,6 +2769,40 @@ class DualPlayerEngine @Inject constructor(
         }
         android.util.Log.w("DualPlayerEngine", "resolveQqMusicUri: 所有链路均失败 songMid=$songMid")
         null
+    }
+
+    /**
+     * ⚡ QQ 加密直链识别：`.mflac/.mflac0/.mgg/.mgg0/.mgg1/.mggl/.mmp4` 是
+     *    QQ 的加密容器（需客户端解密），直接丢给 ExoPlayer 会
+     *    报 errorCode 3003（容器解析失败）。遇到就丢弃并继续尝试
+     *    下一档音质（通常能落到未加密的 mp3 直链）。
+     */
+    private val encryptedLxExtensions = listOf(
+        ".mflac", ".mflac0", ".mflac2", ".mgg", ".mgg0", ".mgg1", ".mggl", ".mmp4"
+    )
+
+    private fun isEncryptedLxStream(url: String): Boolean {
+        val path = url.substringBefore('?').substringBefore('#').lowercase()
+        return encryptedLxExtensions.any { path.endsWith(it) }
+    }
+
+    /**
+     * ⚡ 跨平台「占位流」识别（对齐内置源 `BuiltInSourceSearchApi` 的既有策略）：
+     *
+     * 用户导入的 JS 音源插件普遍内置多平台 fallback 链；当 QQ(tx)/酷狗(kg)/咪咕(mg)
+     * 等取不到本方直链时，它们会**换到酷我**再取一条链。而酷我非会员账号拿到的是
+     * **带「酷我音乐已为您开启免费听歌权限」语音的试听流**，且跨平台替换还可能直接
+     * 播成翻唱/Live —— 表现就是「QQ 音源放出来是酷我占位音频 / 播错歌」。
+     *
+     * 因此对**非酷我音源**丢弃酷我域名的直链，交给后续官方链路（如 QQ 免签名 vkey）
+     * 兜底；只有 `kw` 本源的歌才允许用酷我直链。
+     */
+    private fun isForeignPlaceholderStream(source: String, url: String): Boolean {
+        if (source == "kw") return false
+        val host = runCatching { Uri.parse(url).host }.getOrNull()?.lowercase().orEmpty()
+        if (host.isEmpty()) return false
+        return host == "kuwo.cn" || host.endsWith(".kuwo.cn") ||
+            host == "kuwo.com" || host.endsWith(".kuwo.com")
     }
 
     /** 按 contentUriString 反查媒体库中的歌曲（用于给 QQ 歌曲做"歌名+歌手"兜底解析） */
@@ -2796,11 +2881,29 @@ class DualPlayerEngine @Inject constructor(
             val availableSources = runCatching {
                 lxJsEngine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
             }.getOrDefault(emptyList())
+            // ⚡ 只用自己的音源取链：**不能**把本源的 songmid/hash 丢给别的平台
+            //    （那是"换到酷我占位试听流 / 播错歌"的根因）。
+            //    真正的跨源切换在下面走「按元信息重新搜索」的候选链（移植落雪 findMusic）。
             val targetSources = if (savedSource.isNotBlank()) {
-                // 优先用收藏时成功的音源，失败后再尝试其他注册过的音源
-                listOf(savedSource) + availableSources.filter { it != savedSource }
+                listOf(savedSource)
             } else {
                 availableSources.ifEmpty { listOf("wy", "tx") }
+            }
+
+            // ⚡ tx（QQ）必须带 `strMediaMid`（= file.media_mid）：
+            //    lx-music 的 tx 歌曲对象永远携带它（musicInfo.js → track_info.file.media_mid），
+            //    官方 tx 音源拼直链文件名是 `${档位前缀}${strMediaMid}${后缀}`。
+            //    而 `cloud://lx/` 占位 JSON 里没有 media_mid → 传进去是空的 →
+            //    tx 取不到直链 → 聚合音源插件内部会换到酷我拿一条**占位试听流**
+            //    （表现就是"QQ 歌曲放出来是酷我占位音频"）。
+            //    这里按 songmid 现取一次，与 resolveQqMusicUriAsync 的做法保持一致。
+            if (targetSources.contains("tx")) {
+                val txMid = songMap["songmid"]?.toString()?.takeIf { it.isNotBlank() }
+                    ?: songMap["id"]?.toString().orEmpty()
+                runCatching { qqMusicRepository.getMediaMid(txMid) }
+                    .getOrNull()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { songMap["strMediaMid"] = it }
             }
             android.util.Log.d(
                 "DualPlayerEngine",
@@ -2838,10 +2941,12 @@ class DualPlayerEngine @Inject constructor(
             for (source in targetSources) {
                 if (url != null) break
                 // 按该音源脚本注册的 qualitys 动态生成降级链（不再硬编码 320k/128k）
-                val chain = MusicQualityCatalog.resolveChain(
-                    target = musicQualityLxValue,
-                    available = availableQualitiesFor(source)
-                )
+                val chain = (
+                    MusicQualityCatalog.resolveChain(
+                        target = musicQualityLxValue,
+                        available = availableQualitiesFor(source)
+                    ) + listOf("320k", "128k")
+                    ).distinct()
                 url = if (builtInSourceSearchApi.isSupported(source)) {
                     val lxSongInfo = com.theveloper.pixelplay.data.lx.LxSongInfo(
                         id = songMap["id"]?.toString() ?: "",
@@ -2855,37 +2960,169 @@ class DualPlayerEngine @Inject constructor(
                         source = source
                     )
                     var resolved: String? = null
+                    // ⚡ 一旦发现"插件对这个音源只吐加密容器"，同一后端换档位也一样是容器
+                    //    （实测 tx：flac→.mflac、320k→.mgg，每档要等 ~7 秒），
+                    //    没必要再逐档白等 —— 后续档位直接交给内置官方接口与换源。
+                    var pluginProvenUnusable = false
                     for (q in chain) {
                         if (resolved != null) break
-                        // ★ 用户导入的 JS 音源插件优先：全豆要 v9.x 等插件内部自带
-                        //   多源 fallback 链（星海/Huibq/溯音/聆川/长青/念心 SVIP）并对
-                        //   结果做校验，比内置第三方聚合稳得多。
-                        // 说明：此前把内置源排在插件前面，插件形同虚设；而内置第三方
-                        //   聚合返回的酷我签名直链部分已失效 → HTTP 410 Gone →
-                        //   ExoPlayer errorCode 2004。仅当插件未安装/未就绪或全部失败时，
-                        //   才回落到内置官方接口（tx/mg/kw 走酷我官方直链兜底）。
-                        // ⚡ 插件优先、内置官方接口兜底（与 LxMusicViewModel.resolvePlayableSong 一致）。
-                        //   注意 Kotlin 优先级：`if (a) x else null ?: y` 会解析成
-                        //   `if (a) x else (null ?: y)`——插件就绪但解析失败时内置兜底
-                        //   永远不执行，队列占位歌曲（整单入队/搜索排队）会全部解析失败，
-                        //   必须给 if 表达式加括号后再走 elvis。
-                        resolved = (if (lxReady) lxJsEngine.getPlayUrl(source, songMap, q) else null)
-                            // 引擎未就绪时不再调用 lx：getPlayUrl 内部 awaitReady 会阻塞
-                            // 15s/次，未装插件时整条音质链会被卡住数十秒。
-                            ?: builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, q)
+                        // ① 插件优先（已被证明只吐容器时跳过）
+                        val pluginUrl = if (lxReady && !pluginProvenUnusable) {
+                            lxJsEngine.getPlayUrl(source, songMap, q)
+                        } else {
+                            null
+                        }
+                        if (!pluginUrl.isNullOrBlank() && isEncryptedLxStream(pluginUrl)) {
+                            pluginProvenUnusable = true
+                            android.util.Log.w(
+                                "DualPlayerEngine",
+                                "resolveCloudLxUri: 插件只给加密容器，跳过其余档位 ($source) ${pluginUrl.take(70)}"
+                            )
+                        }
+                        // ② 插件没拿到、或拿到的是**不可播**直链（QQ 的 .mflac/.mgg 加密容器、
+                        //    跨平台占位流）时，必须继续用**内置官方接口试同一档位**。
+                        //
+                        // ⚡ 这就是「QQ 一直解析不出播放地址」的根因：以前这里写的是
+                        //    `plugin ?: builtIn`，插件返回非空的 .mflac 会让 elvis **短路**，
+                        //    内置官方 vkey 一次都轮不到；而 lx-music 之所以能播，是因为它
+                        //    自带 QQ 加密容器解密器（ExoPlayer 没有），所以我们必须改走
+                        //    官方 vkey —— 它返回的是可播的 .flac / .mp3。
+                        val builtInUrl = if (pluginUrl.isNullOrBlank() ||
+                            isEncryptedLxStream(pluginUrl) ||
+                            isForeignPlaceholderStream(source, pluginUrl)
+                        ) {
+                            builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, q)
+                        } else {
+                            null
+                        }
+
+                        val pick = listOfNotNull(pluginUrl, builtInUrl).firstOrNull {
+                            it.isNotBlank() &&
+                                !isEncryptedLxStream(it) &&
+                                !isForeignPlaceholderStream(source, it)
+                        }
+                        if (pick != null) {
+                            if (pick == builtInUrl && !pluginUrl.isNullOrBlank()) {
+                                android.util.Log.d(
+                                    "DualPlayerEngine",
+                                    "resolveCloudLxUri: 插件直链不可播，改用内置官方接口 ($source/$q)"
+                                )
+                            }
+                            resolved = pick
+                        } else {
+                            val rejected = pluginUrl ?: builtInUrl
+                            if (!rejected.isNullOrBlank()) {
+                                android.util.Log.w(
+                                    "DualPlayerEngine",
+                                    "resolveCloudLxUri: 丢弃不可播直链 ($source/$q) ${rejected.take(90)}"
+                                )
+                            }
+                        }
                     }
                     resolved
                 } else if (lxReady) {
                     var resolved: String? = null
                     for (q in chain) {
                         if (resolved != null) break
-                        resolved = lxJsEngine.getPlayUrl(source, songMap, q)
+                        val tryUrl = lxJsEngine.getPlayUrl(source, songMap, q)
+                        if (!tryUrl.isNullOrBlank() &&
+                            !isEncryptedLxStream(tryUrl) &&
+                            !isForeignPlaceholderStream(source, tryUrl)
+                        ) {
+                            resolved = tryUrl
+                        } else if (!tryUrl.isNullOrBlank()) {
+                            android.util.Log.w(
+                                "DualPlayerEngine",
+                                "resolveCloudLxUri: 丢弃不可播直链 ($source/$q) ${tryUrl.take(90)}"
+                            )
+                        }
                     }
                     resolved
                 } else null
+                // ⚡ 加密容器（.mflac/.mgg/.mmp4）直链无法播放：丢弃并继续下一档/下一源
+                if (url != null && isEncryptedLxStream(url)) {
+                    android.util.Log.w(
+                        "DualPlayerEngine",
+                        "resolveCloudLxUri: 跳过加密直链 ($source) ${url.take(90)}"
+                    )
+                    url = null
+                }
+                // ⚡ 跨平台占位流（插件内部换到酷我取到的试听流）：丢弃并继续其它源
+                if (url != null && isForeignPlaceholderStream(source, url)) {
+                    android.util.Log.w(
+                        "DualPlayerEngine",
+                        "resolveCloudLxUri: 丢弃跨平台占位流 ($source) ${url.take(90)}"
+                    )
+                    url = null
+                }
                 if (url != null) {
                     android.util.Log.d("DualPlayerEngine", "resolveCloudLxUri: got url from source=$source")
                     break
+                }
+            }
+
+            // ⚡ 换源兜底（移植落雪 findMusic）：用「歌名 + 歌手 + 专辑 + 时长」到其它平台
+            //    **重新搜同一首歌**，拿到目标平台自己的 id 再取链。
+            //    这一步取代了以前"把本源 songmid 喂给别的平台"的错误做法。
+            if (url == null) {
+                val candidates = runCatching {
+                    builtInSourceSearchApi.findOtherSourceCandidates(
+                        name = songMap["name"]?.toString().orEmpty(),
+                        singer = songMap["singer"]?.toString().orEmpty(),
+                        albumName = songMap["albumName"]?.toString().orEmpty(),
+                        durationMs = (songMap["duration"] as? Number)?.toLong() ?: 0L,
+                        excludeSource = savedSource,
+                    )
+                }.getOrDefault(emptyList())
+
+                for (candidate in candidates) {
+                    if (url != null) break
+                    val candidateId = candidate.songmid.ifBlank { candidate.id }
+                    val candidateMap = mutableMapOf<String, Any?>(
+                        "id" to candidateId,
+                        "vid" to candidateId,
+                        "songmid" to candidate.songmid,
+                        "hash" to candidate.hash,
+                        "name" to candidate.name,
+                        "singer" to candidate.singer,
+                        "album" to candidate.albumName,
+                        "albumName" to candidate.albumName,
+                        "pic" to candidate.pic,
+                        "cover" to candidate.pic,
+                        "duration" to candidate.duration,
+                        "source" to candidate.source,
+                    )
+                    // tx 的直链文件名是 `${档位}${strMediaMid}${后缀}`，必须补上
+                    if (candidate.source == "tx" && candidateId.isNotBlank()) {
+                        runCatching { qqMusicRepository.getMediaMid(candidateId) }
+                            .getOrNull()
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { candidateMap["strMediaMid"] = it }
+                    }
+                    candidateMap["artists"] = candidate.singer
+                        .split(", ")
+                        .map { mapOf("id" to "", "name" to it) }
+
+                    val candidateChain = MusicQualityCatalog.resolveChain(
+                        target = musicQualityLxValue,
+                        available = availableQualitiesFor(candidate.source),
+                    )
+                    for (q in candidateChain) {
+                        if (url != null) break
+                        val resolvedCandidate =
+                            (if (lxReady) lxJsEngine.getPlayUrl(candidate.source, candidateMap, q) else null)
+                                ?: builtInSourceSearchApi.resolvePlayUrl(candidate.source, candidate, q)
+                        if (!resolvedCandidate.isNullOrBlank() &&
+                            !isEncryptedLxStream(resolvedCandidate) &&
+                            !isForeignPlaceholderStream(candidate.source, resolvedCandidate)
+                        ) {
+                            android.util.Log.d(
+                                "DualPlayerEngine",
+                                "resolveCloudLxUri: 换源命中 source=${candidate.source} song=${candidate.name}",
+                            )
+                            url = resolvedCandidate
+                        }
+                    }
                 }
             }
 

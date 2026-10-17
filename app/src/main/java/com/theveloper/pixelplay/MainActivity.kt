@@ -1230,7 +1230,9 @@ class MainActivity : ComponentActivity() {
                 // ⚡ 酷狗账号面板：与网易云服务页一致，隐藏底部导航栏
                 Screen.KugouDashboard.route,
                 // ⚡ 下载管理页：整屏任务列表页，隐藏底部导航栏（否则遮住最后一条任务）
-                Screen.DownloadManager.route
+                Screen.DownloadManager.route,
+                // ⚡ 播放器与歌词外观子页：整屏设置页，隐藏导航栏（平板上同时隐藏左侧导航栏）
+                Screen.PlayerLyricsAppearance.route
             )
         }
         val isPlayerExpanded by remember {
@@ -1262,9 +1264,10 @@ class MainActivity : ComponentActivity() {
             }
         }
         // 平板 NavigationRail：始终保持在平板模式下可见（不因搜索激活而隐藏）
-        val shouldHideNavigationRail by remember(isSearchActive, isTabletShell) {
+        // ⚡ 例外：播放器与歌词外观子页是整屏设置页，平板上也隐藏左侧导航栏，避免压缩内容宽度
+        val shouldHideNavigationRail by remember(isSearchActive, isTabletShell, currentRoute) {
             derivedStateOf {
-                false
+                currentRoute == Screen.PlayerLyricsAppearance.route
             }
         }
 

@@ -205,7 +205,11 @@ fun AudiobookAlbumScreen(
                         }
                     }
                 }
-                itemsIndexed(chapters, key = { _, chapter -> chapter.hash }) { index, chapter ->
+                itemsIndexed(
+                    items = chapters,
+                    // ⚡ key 加索引兜底：章节 hash 可能为空或重复，重复 key 会直接崩
+                    key = { index, chapter -> "${chapter.hash}_$index" },
+                ) { index, chapter ->
                     AudiobookChapterRow(
                         index = index + 1,
                         chapter = chapter,

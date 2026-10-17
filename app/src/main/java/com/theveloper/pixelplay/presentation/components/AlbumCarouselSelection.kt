@@ -20,7 +20,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import coil.size.Size
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.canvas.CanvasArtwork
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
+import com.theveloper.pixelplay.presentation.components.player.CanvasArtworkPlayer
 import com.theveloper.pixelplay.presentation.components.scoped.PrefetchAlbumNeighbors
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.first
@@ -51,7 +53,10 @@ fun AlbumCarouselSection(
     modifier: Modifier = Modifier,
     carouselStyle: String = CarouselStyle.NO_PEEK,
     itemSpacing: Dp = 8.dp,
-    albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM
+    albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM,
+    // ⚡ 动态封面（Apple Music Canvas）：当前歌曲命中动态视频封面时覆盖显示
+    canvasArtwork: CanvasArtwork? = null,
+    canvasIsPlaying: () -> Boolean = { true }
 ) {
     if (queue.isEmpty()) return
 
@@ -229,6 +234,20 @@ fun AlbumCarouselSection(
                              "${song.albumArtUriString}?quality=thumb"
                         } else null
                     )
+                    // ⚡ 动态封面（Apple Music Canvas）：当前页拿到动态视频封面时，
+                    //   在静态封面上方淡入循环静音播放（跟随播放/暂停；失败自动切备用 URL）。
+                    //   未命中 / 未开启 / 播放失败都保持静态封面 —— 本地封面方案始终优先。
+                    if (isFocusedItem) {
+                        val canvas = canvasArtwork
+                        if (canvas?.preferredAnimationUrl != null) {
+                            CanvasArtworkPlayer(
+                                primaryUrl = canvas.animated,
+                                fallbackUrl = canvas.videoUrl,
+                                isPlaying = canvasIsPlaying(),
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
                 }
             }
         )

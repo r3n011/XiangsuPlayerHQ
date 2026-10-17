@@ -75,6 +75,8 @@ fun AnimatedPlaybackControls(
     tintNextIcon: Color = tintOtherIcons,
     playPauseIconSize: Dp = 36.dp,
     iconSize: Dp = 32.dp,
+    /** ⚡ 玻璃质感：外部注入的背景模糊（hazeEffect），叠加在容器底色之上 */
+    containerModifier: Modifier = Modifier,
 ) {
     val isPlaying = isPlayingProvider()
     var lastClicked by remember { mutableStateOf<PlaybackButtonType?>(null) }
@@ -153,6 +155,7 @@ fun AnimatedPlaybackControls(
                     .fillMaxHeight()
                     .clip(CircleShape)
                     .background(colorPreviousButton)
+                    .then(containerModifier)
                     .clickable {
                         lastClicked = PlaybackButtonType.PREVIOUS
                         clickTrigger++
@@ -199,6 +202,7 @@ fun AnimatedPlaybackControls(
                         )
                     }
                     .background(colorPlayPause)
+                    .then(containerModifier)
                     .clickable {
                         lastClicked = PlaybackButtonType.PLAY_PAUSE
                         clickTrigger++
@@ -226,6 +230,7 @@ fun AnimatedPlaybackControls(
                     .fillMaxHeight()
                     .clip(CircleShape)
                     .background(colorNextButton)
+                    .then(containerModifier)
                     .clickable {
                         lastClicked = PlaybackButtonType.NEXT
                         clickTrigger++

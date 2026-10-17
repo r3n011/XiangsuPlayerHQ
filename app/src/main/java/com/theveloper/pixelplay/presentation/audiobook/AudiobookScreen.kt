@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -147,7 +148,13 @@ fun AudiobookScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                items(albums, key = { "${kind.name}_${it.id}" }) { album ->
+                                itemsIndexed(
+                                    items = albums,
+                                    // ⚡ key 必须唯一：分区接口可能返回重复专辑（见 ViewModel 去重），
+                                    //    这里再用索引兜底，保证任何数据都不会触发
+                                    //    `Key "RANK_xxx" was already used` 崩溃。
+                                    key = { index, album -> "${kind.name}_${album.id}_$index" },
+                                ) { _, album ->
                                     AudiobookAlbumCard(
                                         album = album,
                                         onClick = { onOpenAlbum(album) },

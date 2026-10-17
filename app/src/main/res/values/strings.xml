@@ -491,4 +491,14 @@
     <string name="download_queue_chip_progress">Downloaded %1$d / %2$d</string>
     <string name="download_queue_chip_done">Downloaded %1$d</string>
     <string name="download_queue_chip_failed">Some downloads failed — tap to view</string>
+    <string name="home_most_listened_title">Most listened</string>
+    <string name="home_card_daily_recommend">Daily recommend</string>
+    <string name="home_card_for_you">For you</string>
+    <string name="home_card_today_trending">Trending on NetEase today</string>
+    <string name="home_card_today_hot">Today\'s hot</string>
+    <string name="home_card_see_all">See all</string>
+    <string name="home_most_listened_songs">Songs</string>
+    <string name="home_most_listened_albums">Albums</string>
+    <string name="home_most_listened_artists">Artists</string>
+    <string name="home_most_listened_plays">%1$d plays</string>
 </resources>

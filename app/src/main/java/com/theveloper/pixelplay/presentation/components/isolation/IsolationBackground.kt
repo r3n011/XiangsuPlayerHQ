@@ -61,6 +61,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** 流动速度，AMLL Playground 的默认值。 */
@@ -87,6 +88,12 @@ private const val FALLBACK_BLUR_RADIUS = 24
 
 /** 音频电平多久没更新就视为"没有在播放"（可视化约 60Hz 发布）。 */
 private const val PLAYBACK_IDLE_NANOS = 700_000_000L
+
+/** ⚡ 省电：暂停超过该时长（5s）后完全冻结流动画面（不再驱动帧循环），恢复播放自动续播。 */
+private const val PLAYBACK_IDLE_FREEZE_NANOS = 5_000_000_000L
+
+/** ⚡ 省电：冻结期间（不可见 / 暂停冻结）帧循环的待命轮询间隔。 */
+private const val FROZEN_POLL_INTERVAL_MS = 250L
 
 /* ========================= 渲染档位与优雅降级 ========================= */
 
@@ -291,6 +298,18 @@ internal fun IsolationBackground(
      * false = 绚丽背景：流体渐变（低版本 / 着色器不可用时自动降级为 Cloudy 模糊封面）。
      */
     staticPalette: Boolean = false,
+    /**
+     * ⚡ 省电门控：画面是否可见（如播放器已收起 → false）。
+     * 不可见时帧循环完全冻结（低频待命），恢复可见自动续播。
+     */
+    shouldRender: () -> Boolean = { true },
+    /**
+     * ⚡ 是否需要流动（例：正在播放。暂停时冻结省电）。
+     * 与 [shouldRender] 取与：不可见或暂停都不驱动帧循环。
+     * （旧实现用「音频电平是否陈旧」推断播放状态，
+     *   可视化器未发布时会误判 → 正在播放也被冻结，“背景不流动、没律动”就是这个原因）
+     */
+    shouldAnimate: () -> Boolean = { true },
 ) {
     val state = remember { IsolationBackgroundState(lightWave = lightWave, dithering = dithering) }
 
@@ -390,14 +409,18 @@ internal fun IsolationBackground(
             coverBitmap = coverBitmap,
             isLowPower = isLowPower,
             lastActivityNanos = lastActivity,
+            shouldRender = shouldRender,
+            shouldAnimate = shouldAnimate,
             onRendererFailed = onAgsFailed,
         )
-        RENDERER_STATIC_PALETTE -> SolidIsolationCanvas(state, modifier)
+        RENDERER_STATIC_PALETTE -> SolidIsolationCanvas(state, modifier, shouldRender, shouldAnimate)
         else -> FallbackIsolationBackground(
             state = state,
             albumArtUri = albumArtUri,
             coverBitmap = coverBitmap,
             modifier = modifier,
+            shouldRender = shouldRender,
+            shouldAnimate = shouldAnimate,
         )
     }
 }
@@ -447,6 +470,10 @@ private class IsolationFrameDriver(
     private val isLowPower: () -> Boolean,
     /** 最近一次收到音频电平的时间（System.nanoTime）；没有音频在播时自然变"旧"。 */
     private val lastActivityNanos: () -> Long,
+    /** ⚡ 省电门控：画面是否可见（不可见 → 帧循环冻结，低频待命）。 */
+    private val shouldRender: () -> Boolean,
+    /** ⚡ 是否需要流动（暂停 → 冻结）。 */
+    private val shouldAnimate: () -> Boolean,
 ) {
     var timeSec = 0f
         private set
@@ -465,6 +492,16 @@ private class IsolationFrameDriver(
         var lastFrameNanos = -1L
         var lastTickNanos = -1L
         while (true) {
+            // ⚡ 省电门控：
+            //   - 画面不可见（播放器收起 / 歌词页关闭）→ 帧循环冻结，低频待命；
+            //   - 暂停超过阈值（5s）→ 同样冻结（短间隙仍按 30fps 降档流动，过渡不跳变）。
+            //   冻结期间只以 FROZEN_POLL_INTERVAL_MS 轮询状态，恢复可见/播放自动续播。
+            if (!shouldRender() || !shouldAnimate()) {
+                lastFrameNanos = -1L
+                lastTickNanos = -1L
+                delay(FROZEN_POLL_INTERVAL_MS)
+                continue
+            }
             withFrameNanos { nowNanos ->
                 if (lastFrameNanos < 0) {
                     lastFrameNanos = nowNanos
@@ -498,12 +535,14 @@ private fun rememberIsolationFrameDriver(
     lowPowerFpsCap: Int,
     isLowPower: () -> Boolean,
     lastActivityNanos: () -> Long,
+    shouldRender: () -> Boolean,
+    shouldAnimate: () -> Boolean,
     onFrame: (frameDeltaMs: Float) -> Float,
 ): IsolationFrameDriver {
     // ⚠️ 只在基础档位变化时重建 driver：重建会把流动时间归零，画面会跳一下。
     //    动态档位由 driver 每帧自己读，不触发重建。
     val driver = remember(baseFpsCap, lowPowerFpsCap) {
-        IsolationFrameDriver(baseFpsCap, lowPowerFpsCap, isLowPower, lastActivityNanos)
+        IsolationFrameDriver(baseFpsCap, lowPowerFpsCap, isLowPower, lastActivityNanos, shouldRender, shouldAnimate)
     }
     val currentOnFrame by rememberUpdatedState(onFrame)
     LaunchedEffect(driver) {
@@ -525,12 +564,14 @@ private fun AgslIsolationCanvas(
     coverBitmap: Bitmap?,
     isLowPower: () -> Boolean,
     lastActivityNanos: () -> Long,
+    shouldRender: () -> Boolean,
+    shouldAnimate: () -> Boolean,
     onRendererFailed: () -> Unit,
 ) {
     // 着色器连创建都失败（驱动不支持 AGSL）：先画兜底，下一帧起永久降档。
     val shader = remember { runCatching { RuntimeShader(ISOLATION_SHADER_SRC) }.getOrNull() }
     if (shader == null) {
-        FallbackIsolationBackground(state, albumArtUri, coverBitmap, modifier)
+        FallbackIsolationBackground(state, albumArtUri, coverBitmap, modifier, shouldRender, shouldAnimate)
         LaunchedEffect(Unit) { onRendererFailed() }
         return
     }
@@ -540,6 +581,8 @@ private fun AgslIsolationCanvas(
         lowPowerFpsCap = AGSL_LOW_POWER_FPS_CAP,
         isLowPower = isLowPower,
         lastActivityNanos = lastActivityNanos,
+        shouldRender = shouldRender,
+        shouldAnimate = shouldAnimate,
     ) { delta ->
         state.updateColorBuffer(delta)
         state.tickBass(delta)
@@ -596,9 +639,11 @@ private fun FallbackIsolationBackground(
     albumArtUri: String?,
     coverBitmap: Bitmap?,
     modifier: Modifier,
+    shouldRender: () -> Boolean,
+    shouldAnimate: () -> Boolean,
 ) {
     Box(modifier) {
-        SolidIsolationCanvas(state, Modifier.fillMaxSize())
+        SolidIsolationCanvas(state, Modifier.fillMaxSize(), shouldRender, shouldAnimate)
         if (coverBitmap != null && !albumArtUri.isNullOrBlank()) {
             Image(
                 bitmap = coverBitmap.asImageBitmap(),
@@ -635,12 +680,16 @@ private fun FallbackIsolationBackground(
 private fun SolidIsolationCanvas(
     state: IsolationBackgroundState,
     modifier: Modifier,
+    shouldRender: () -> Boolean,
+    shouldAnimate: () -> Boolean,
 ) {
     val driver = rememberIsolationFrameDriver(
         baseFpsCap = SOLID_FPS_CAP,
         lowPowerFpsCap = SOLID_LOW_POWER_FPS_CAP,
         isLowPower = { false },
         lastActivityNanos = { System.nanoTime() },
+        shouldRender = shouldRender,
+        shouldAnimate = shouldAnimate,
     ) { delta ->
         // 只推进 OkLab 调色板过渡（换歌时的 1s 渐变），不喂低频能量
         state.updateColorBuffer(delta)

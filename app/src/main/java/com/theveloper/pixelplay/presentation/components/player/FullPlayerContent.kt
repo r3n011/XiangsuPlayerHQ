@@ -56,9 +56,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -115,6 +120,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -122,6 +130,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -184,6 +195,12 @@ import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
 import com.theveloper.pixelplay.data.preferences.BackgroundStyle
+import com.theveloper.pixelplay.MainActivity
+import com.theveloper.pixelplay.data.canvas.AppleMusicCanvasProvider
+import com.theveloper.pixelplay.data.canvas.CanvasArtwork
+import com.theveloper.pixelplay.data.preferences.ThemePreference
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.PlayerBackgroundMode
@@ -421,6 +438,29 @@ fun FullPlayerContent(
     // ⚡ 背景样式三选一（绚丽 / 取色 / 纯色），播放器与歌词页分开控制
     val playerBackgroundStyle by playerViewModel.playerBackgroundStyle.collectAsStateWithLifecycle()
     val lyricsBackgroundStyle by playerViewModel.lyricsBackgroundStyle.collectAsStateWithLifecycle()
+    // ⚡ 播放器主题偏好（default/dynamic/album_art/immersive…）
+    val playerThemePreference by playerViewModel.playerThemePreference.collectAsStateWithLifecycle()
+    // ⚡ Apple Music 动态封面（Canvas）开关
+    val appleCanvasEnabled by playerViewModel.appleCanvasEnabled.collectAsStateWithLifecycle()
+    // ⚡ 沉浸式封面展开/收回的驱动状态：播放 → 展开；暂停 → 收回
+    val fullPlayerStableState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+    // ⚡ 控制按钮玻璃模糊背景开关
+    val playerGlassControls = false
+
+    // ⚡ 动态封面（Apple Music Canvas）：开关开启时按 歌名+歌手(+专辑) 在线检索动态视频封面。
+    //    本地封面方案始终优先 —— 未开启 / 未命中 / 加载失败都保持现有静态封面；
+    //    命中后由封面槽交叉淡入循环静音播放（跟随播放/暂停），检索结果带 24h 进程内缓存。
+    var canvasArtwork by remember(currentSong?.id) { mutableStateOf<CanvasArtwork?>(null) }
+    LaunchedEffect(currentSong?.id, appleCanvasEnabled) {
+        canvasArtwork = null
+        val target = currentSong ?: return@LaunchedEffect
+        if (!appleCanvasEnabled) return@LaunchedEffect
+        canvasArtwork = AppleMusicCanvasProvider.getBySongArtist(
+            song = target.title,
+            artist = target.displayArtist,
+            album = target.album
+        )
+    }
     // ⚡ 歌词界面按钮 / 文字强制黑白开关
     val lyricsMonoContentColors by playerViewModel.lyricsMonoContentColors.collectAsStateWithLifecycle()
     val albumArtQuality = fullPlayerSlice.albumArtQuality
@@ -593,6 +633,16 @@ fun FullPlayerContent(
     val isDarkPlayerSurface = LocalMaterialTheme.current.surface.luminance() < 0.5f
     val monoPlayerColor = if (isDarkPlayerSurface) Color.White else Color.Black
     val monoPlayerInverseColor = if (isDarkPlayerSurface) Color.Black else Color.White
+    // ⚡ 沉浸式封面：播放时展开（清晰封面铺满上半屏 + 下方主题色 + 中间模糊过渡），
+    //    暂停时平滑收回普通封面显示（650ms 缓动，展开/收回共用同一进度）。
+    //    下半区为 primaryContainer —— 前景用主题角色色（onPrimaryContainer 标准配对）。
+    val isImmersiveCover = playerThemePreference == ThemePreference.IMMERSIVE
+    val immersiveActive = isImmersiveCover && fullPlayerStableState.isPlaying
+    val immersiveFraction by animateFloatAsState(
+        targetValue = if (immersiveActive) 1f else 0f,
+        animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+        label = "immersiveFraction"
+    )
     val playerOnBaseColor =
         if (monoPlayerContent) monoPlayerColor else LocalMaterialTheme.current.onPrimaryContainer
     val playerAccentColor =
@@ -896,6 +946,10 @@ fun FullPlayerContent(
             currentPlaybackQueue = currentPlaybackQueue,
             currentMediaItemIndex = currentQueueIndex ?: currentMediaItemIndex,
             carouselStyle = carouselStyle,
+            // ⚡ 沉浸式封面展开时，普通封面卡片淡出并轻微缩小（收回观感的一部分）
+            immersiveCoverDim = immersiveFraction,
+            canvasArtwork = canvasArtwork,
+            canvasIsPlaying = isPlayingProvider,
             loadingTweaks = loadingTweaks,
             isSheetDragGestureActive = isSheetDragGestureActive,
             expansionFractionProvider = expansionFractionProvider,
@@ -1026,6 +1080,7 @@ fun FullPlayerContent(
             transportPlayPauseColors = transportPlayPauseColors,
             transportSkipColors = transportSkipButtonColors,
             transportFlatStyle = transportFlatStyle,
+            playerGlassControls = playerGlassControls,
             isShuffleEnabledProvider = isShuffleEnabledProvider,
             shuffleTransitionInProgress = shuffleTransitionInProgress,
             repeatModeProvider = repeatModeProvider,
@@ -1462,7 +1517,11 @@ fun FullPlayerContent(
                         AppleMusicRotatingBackground(
                             albumArtUri = albumArtUri,
                             modifier = Modifier.fillMaxSize(),
-                            style = playerBackgroundStyle
+                            style = playerBackgroundStyle,
+                            // ⚡ 省电：播放器收起后背景帧循环冻结（原来 30fps 常驻）
+                            shouldRender = { expansionFractionProvider() > 0.02f },
+                            // ⚡ 律动：只有正在播放时才流动；暂停冻结（避免用「音频电平陈旧」误判导致播放中也不流动）
+                            shouldAnimate = { fullPlayerStableState.isPlaying }
                         )
                         // ⚡ 可读性遮罩：绚丽背景是高饱和彩色流体，需要一层黑渐变保住文字
                         //    对比度，但此前的强度（0.16→0.56）把流体压得太闷，「绚丽」看不出来。
@@ -1485,6 +1544,29 @@ fun FullPlayerContent(
                         )
                     }
                 }
+                // ⚡ 沉浸式封面（播放中）：清晰封面层铺满上半屏（底部溶解进模糊延伸层）+
+                //    下方主题色；暂停时随 immersiveFraction 平滑收回（清晰层收起 + 整体淡出），
+                //    露出普通封面卡片 —— 即「播放展开 / 暂停收回」的连续动画。
+                //    用户显式选择了自定义背景图时让位。
+                if (isImmersiveCover &&
+                    !(customPlayerBackgroundEnabled && !customPlayerBackgroundUri.isNullOrBlank()) &&
+                    immersiveFraction > 0.01f
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = immersiveFraction }
+                    ) {
+                        ImmersiveCoverBackdrop(
+                            albumArtUri = song?.albumArtUriString,
+                            scheme = LocalMaterialTheme.current,
+                            modifier = Modifier.fillMaxSize(),
+                            contentFraction = immersiveFraction
+                        )
+                    }
+                }
+                // 说明：背景**不**跟随 Apple Music 动态封面（保持取色 / 绚丽 / 沉浸式
+                // 背景原样）；动态封面只在封面上播放。
             }
             // ⚡ 播放器不透明度：背景之外的所有元素（封面、元信息、进度、控制）统一淡化
             Box(
@@ -1545,6 +1627,7 @@ fun FullPlayerContent(
                         onArtistClick = onSongMetadataArtistClick,
                         transportFlatStyle = transportFlatStyle,
                         playerAccentBackground = playerAccentBackground,
+                        playerGlassControls = playerGlassControls,
                         playerMergeControls = playerMergeControls,
                         playerOnBaseColor = playerOnBaseColor,
                         playerAccentColor = playerAccentColor,
@@ -1875,7 +1958,9 @@ fun FullPlayerContent(
             onViewAlbum = {
                 showPlayerMoreSheet = false
                 playerViewModel.triggerAlbumNavigationFromPlayer(song.albumId)
-            }
+            },
+            // ⚡ 菜单跟随「播放器取色」（封面派生配色），而不是 App 主题色
+            scheme = LocalMaterialTheme.current
         )
     }
 
@@ -2108,7 +2193,12 @@ private fun FullPlayerAlbumCoverSection(
     requestedScrollIndex: Int?,
     onSongSelected: (Song, Int) -> Unit,
     onAlbumClick: (Song) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // ⚡ 动态封面（Apple Music Canvas）：命中时由轮播当前页覆盖显示
+    canvasArtwork: CanvasArtwork? = null,
+    canvasIsPlaying: () -> Boolean = { true },
+    // ⚡ 沉浸式封面展开进度（1 = 完全展开）：普通封面卡片按其淡出 + 轻微缩小
+    immersiveCoverDim: Float = 0f
 ) {
     val shouldDelay = loadingTweaks.delayAll || loadingTweaks.delayAlbumCarousel
     val shouldApplyPausedScale = !isPlayingProvider() && !playWhenReadyProvider()
@@ -2124,8 +2214,7 @@ private fun FullPlayerAlbumCoverSection(
     )
 
     BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         // 计算基础尺寸
@@ -2147,6 +2236,20 @@ private fun FullPlayerAlbumCoverSection(
             .widthIn(max = carouselHeight)
             .height(carouselHeight)
 
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    alpha = 1f - immersiveCoverDim
+                    val s = 1f - 0.06f * immersiveCoverDim
+                    scaleX = s
+                    scaleY = s
+                },
+            // ⚡ 封面槽是正方形（边长 = carouselHeight），而这里是整宽容器：
+            //    必须显式居中，否则 Box 默认 TopStart 会把整个封面贴到左边
+            //    （表现为「封面靠左、右侧多出一块空白」）。
+            contentAlignment = Alignment.Center
+        ) {
         DelayedContent(
             shouldDelay = shouldDelay,
             showPlaceholders = loadingTweaks.showPlaceholders,
@@ -2200,8 +2303,11 @@ private fun FullPlayerAlbumCoverSection(
                         scaleX = albumArtScale
                         scaleY = albumArtScale
                     },
-                albumArtQuality = albumArtQuality
+                albumArtQuality = albumArtQuality,
+                canvasArtwork = canvasArtwork,
+                canvasIsPlaying = canvasIsPlaying
             )
+        }
         }
     }
 }
@@ -2220,6 +2326,8 @@ private fun FullPlayerControlsSection(
     onNext: () -> Unit,
     transportPlayPauseColors: TransportButtonColors,
     transportSkipColors: TransportButtonColors,
+    /** ⚡ 玻璃模糊控制按钮（中性容器半透明 + 背景模糊 + 点击水波纹高光） */
+    playerGlassControls: Boolean = false,
     isShuffleEnabledProvider: () -> Boolean,
     shuffleTransitionInProgress: Boolean,
     repeatModeProvider: () -> Int,
@@ -2291,6 +2399,22 @@ private fun FullPlayerControlsSection(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
+            // ⚡ 玻璃模糊控制按钮：中性容器半透明 + 真实背景模糊（播放/暂停键保留强调色）
+            val glassModifier = if (playerGlassControls) {
+                Modifier.hazeEffect(
+                    state = MainActivity.LocalHazeState.current,
+                    style = HazeMaterials.ultraThin()
+                ) {
+                    blurRadius = 30.dp
+                }
+            } else {
+                Modifier
+            }
+            val glassSkipContainer = if (playerGlassControls) {
+                onSurface.copy(alpha = 0.12f)
+            } else {
+                transportSkipColors.container
+            }
             // 广播电台实时流：播放/暂停按钮已移到底部行的收藏按钮右侧
             if (!isRadioPlayback) {
                 AnimatedPlaybackControls(
@@ -2304,14 +2428,15 @@ private fun FullPlayerControlsSection(
                     height = 72.dp,
                     pressAnimationSpec = controlSpatialSpec,
                     releaseDelay = 220L,
-                    colorOtherButtons = transportSkipColors.container,
+                    colorOtherButtons = glassSkipContainer,
                     colorPlayPause = transportPlayPauseColors.container,
                     tintPlayPauseIcon = transportPlayPauseColors.content,
                     tintOtherIcons = transportSkipColors.content,
-                    colorPreviousButton = transportSkipColors.container,
-                    colorNextButton = transportSkipColors.container,
+                    colorPreviousButton = glassSkipContainer,
+                    colorNextButton = glassSkipContainer,
                     tintPreviousIcon = transportSkipColors.content,
-                    tintNextIcon = transportSkipColors.content
+                    tintNextIcon = transportSkipColors.content,
+                    containerModifier = glassModifier
                 )
             }
 
@@ -2320,6 +2445,14 @@ private fun FullPlayerControlsSection(
                     .fillMaxWidth()
                     .height(56.dp)
                     .padding(horizontal = 26.dp),
+                containerColor = if (playerGlassControls) {
+                    surfaceContainerLowest.copy(alpha = 0.42f)
+                } else {
+                    surfaceContainerLowest.copy(alpha = 0.7f)
+                },
+                containerModifier = glassModifier,
+                pressGlow = playerGlassControls,
+                glowColor = onSurface,
                 isShuffleEnabled = isShuffleEnabledProvider(),
                 isShuffleTransitionInProgress = shuffleTransitionInProgress,
                 repeatMode = repeatModeProvider(),
@@ -2765,6 +2898,8 @@ private fun FullPlayerExpressiveContent(
     onArtistClick: () -> Unit,
     transportFlatStyle: Boolean,
     playerAccentBackground: Boolean,
+    /** ⚡ 控制按钮玻璃模糊背景（中性容器半透明 + Haze 背景模糊） */
+    playerGlassControls: Boolean = false,
     playerMergeControls: Boolean,
     playerOnBaseColor: Color,
     playerAccentColor: Color,
@@ -2845,6 +2980,21 @@ private fun FullPlayerExpressiveContent(
         playerOnBaseColor.copy(alpha = 0.08f)
     }
 
+    // ⚡ 玻璃控制按钮（设置项）：中性容器改半透明 + 真实背景模糊（Haze，模糊的是播放器
+    //    背景本身）—— 播放/暂停键仍保留强调色，与任意主题 / 背景样式自由组合。
+    val glassModifier = if (playerGlassControls) {
+        Modifier.hazeEffect(
+            state = MainActivity.LocalHazeState.current,
+            style = HazeMaterials.ultraThin()
+        ) {
+            blurRadius = 30.dp
+        }
+    } else {
+        Modifier
+    }
+    val effectiveSkipContainer = if (playerGlassControls) playerOnBaseColor.copy(alpha = 0.12f) else skipContainer
+    val effectiveCardColor = if (playerGlassControls) playerOnBaseColor.copy(alpha = 0.10f) else cardColor
+
     // 底部功能胶囊内容（收藏/随机/循环/歌词/下载/评论）：独立胶囊与合并进控制卡两种形态复用
     val functionPillRow: @Composable () -> Unit = {
         Row(
@@ -2884,7 +3034,12 @@ private fun FullPlayerExpressiveContent(
                     )
                 }
             }
-            IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(44.dp)) {
+            GlassPillIconButton(
+                onClick = onFavoriteToggle,
+                glowEnabled = playerGlassControls,
+                glowColor = playerOnBaseColor,
+                modifier = Modifier.size(44.dp)
+            ) {
                 Icon(
                     imageVector = if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = stringResource(R.string.cd_favorite),
@@ -2893,7 +3048,12 @@ private fun FullPlayerExpressiveContent(
                 )
             }
             if (!isRadioPlayback) {
-                IconButton(onClick = onShuffleToggle, modifier = Modifier.size(44.dp)) {
+                GlassPillIconButton(
+                    onClick = onShuffleToggle,
+                    glowEnabled = playerGlassControls,
+                    glowColor = playerOnBaseColor,
+                    modifier = Modifier.size(44.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Rounded.Shuffle,
                         contentDescription = stringResource(R.string.queue_cd_toggle_shuffle_action),
@@ -2901,7 +3061,12 @@ private fun FullPlayerExpressiveContent(
                         modifier = Modifier.size(22.dp)
                     )
                 }
-                IconButton(onClick = onRepeatToggle, modifier = Modifier.size(44.dp)) {
+                GlassPillIconButton(
+                    onClick = onRepeatToggle,
+                    glowEnabled = playerGlassControls,
+                    glowColor = playerOnBaseColor,
+                    modifier = Modifier.size(44.dp)
+                ) {
                     val repeatMode = repeatModeProvider()
                     Icon(
                         imageVector = if (repeatMode == 1) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
@@ -2912,7 +3077,12 @@ private fun FullPlayerExpressiveContent(
                 }
             }
             if (showLyricsButton) {
-                IconButton(onClick = onLyricsClick, modifier = Modifier.size(44.dp)) {
+                GlassPillIconButton(
+                    onClick = onLyricsClick,
+                    glowEnabled = playerGlassControls,
+                    glowColor = playerOnBaseColor,
+                    modifier = Modifier.size(44.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Rounded.Subtitles,
                         contentDescription = stringResource(R.string.lyrics),
@@ -2925,7 +3095,12 @@ private fun FullPlayerExpressiveContent(
             // ⚡ 评论入口已移到「省略号」菜单里（不再单独占位）
             // ⚡ 右下角省略号：打开歌曲操作菜单
             if (!isRadioPlayback) {
-                IconButton(onClick = onShowSongInfo, modifier = Modifier.size(44.dp)) {
+                GlassPillIconButton(
+                    onClick = onShowSongInfo,
+                    glowEnabled = playerGlassControls,
+                    glowColor = playerOnBaseColor,
+                    modifier = Modifier.size(44.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Filled.MoreVert,
                         contentDescription = stringResource(R.string.player_cd_song_info),
@@ -3088,8 +3263,10 @@ private fun FullPlayerExpressiveContent(
                 // 控制卡片（Rhythm：圆角 32dp Surface，播放+下一曲 / 上一曲+进度 两行）
                 Surface(
                     shape = RoundedCornerShape(32.dp),
-                    color = cardColor,
-                    modifier = Modifier.fillMaxWidth()
+                    color = effectiveCardColor,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(glassModifier)
                 ) {
                     Column(
                         modifier = Modifier
@@ -3136,7 +3313,8 @@ private fun FullPlayerExpressiveContent(
                                     modifier = Modifier
                                         .size(controlButtonSize)
                                         .clip(CircleShape)
-                                        .background(skipContainer)
+                                        .background(effectiveSkipContainer)
+                                        .then(glassModifier)
                                         .clickable(onClick = onNext),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -3164,7 +3342,8 @@ private fun FullPlayerExpressiveContent(
                                     modifier = Modifier
                                         .size(controlButtonSize)
                                         .clip(CircleShape)
-                                        .background(skipContainer)
+                                        .background(effectiveSkipContainer)
+                                        .then(glassModifier)
                                         .clickable(onClick = onPrevious),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -3197,8 +3376,10 @@ private fun FullPlayerExpressiveContent(
                     // 底部功能胶囊（Rhythm：grouped pill）
                     Surface(
                         shape = RoundedCornerShape(24.dp),
-                        color = cardColor,
-                        modifier = Modifier.fillMaxWidth()
+                        color = effectiveCardColor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(glassModifier)
                     ) {
                         functionPillRow()
                     }
@@ -3216,6 +3397,60 @@ private fun FullPlayerExpressiveContent(
             onPitchFollowSpeedToggle = onPitchFollowSpeedToggle,
             onDismiss = { showSpeedSheet = false }
         )
+    }
+}
+
+/**
+ * ⚡ 玻璃质感图标按钮：开启玻璃时无默认涟漪，改为按下从中心扩散的「水波纹」高光；
+ * 未开启时保持与 IconButton 一致（默认涟漪）。
+ */
+@Composable
+private fun GlassPillIconButton(
+    onClick: () -> Unit,
+    glowEnabled: Boolean,
+    glowColor: Color,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val glow by animateFloatAsState(
+        targetValue = if (isPressed && glowEnabled) 1f else 0f,
+        animationSpec = if (isPressed && glowEnabled) tween(durationMillis = 140) else tween(durationMillis = 420),
+        label = "pillPressGlow"
+    )
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .drawWithCache {
+                onDrawBehind {
+                    if (glow > 0f) {
+                        val glowCenter = Offset(size.width / 2f, size.height / 2f)
+                        val glowRadius = maxOf(size.width, size.height) * 0.78f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    glowColor.copy(alpha = 0.45f * glow),
+                                    glowColor.copy(alpha = 0.18f * glow),
+                                    Color.Transparent
+                                ),
+                                center = glowCenter,
+                                radius = glowRadius
+                            ),
+                            radius = glowRadius,
+                            center = glowCenter
+                        )
+                    }
+                }
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = if (glowEnabled) null else LocalIndication.current,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
     }
 }
 
@@ -4700,6 +4935,11 @@ private fun BottomToggleRow(
     // ⚡ 倍速变调：开启后音高随倍速自动变调
     pitchFollowSpeed: Boolean = true,
     onPitchFollowSpeedToggle: (Boolean) -> Unit = {},
+    // ⚡ 玻璃质感：容器底色 / 背景模糊（hazeEffect） / 点击水波纹高光
+    containerColor: Color = surfaceContainerLowest.copy(alpha = 0.7f),
+    containerModifier: Modifier = Modifier,
+    pressGlow: Boolean = false,
+    glowColor: Color = Color.White,
 ) {
     val isFavorite = isFavoriteProvider()
     val rowCorners = 60.dp
@@ -4711,7 +4951,7 @@ private fun BottomToggleRow(
 
     Box(
         modifier = modifier.background(
-            color = surfaceContainerLowest.copy(alpha = 0.7f),
+            color = containerColor,
             shape = AbsoluteSmoothCornerShape(
                 cornerRadiusBL = rowCorners,
                 smoothnessAsPercentTR = 60,
@@ -4793,6 +5033,8 @@ private fun BottomToggleRow(
                     activeContentColor = onPrimaryFixed,
                     inactiveColor = inactiveBg,
                     inactiveContentColor = inactiveContentColor,
+                    pressGlow = pressGlow,
+                    glowColor = glowColor,
                     onClick = onShuffleToggle,
                     iconId = R.drawable.rounded_shuffle_24,
                     contentDesc = "Aleatorio"
@@ -4811,6 +5053,8 @@ private fun BottomToggleRow(
                     activeContentColor = onSecondaryFixed,
                     inactiveColor = inactiveBg,
                     inactiveContentColor = inactiveContentColor,
+                    pressGlow = pressGlow,
+                    glowColor = glowColor,
                     onClick = onRepeatToggle,
                     iconId = repeatIcon,
                     contentDesc = "Repetir"
@@ -4825,6 +5069,8 @@ private fun BottomToggleRow(
                 activeContentColor = onTertiaryFixed,
                 inactiveColor = inactiveBg,
                 inactiveContentColor = inactiveContentColor,
+                pressGlow = pressGlow,
+                glowColor = glowColor,
                 onClick = onFavoriteToggle,
                 iconId = if (isFavorite) R.drawable.round_favorite_24 else R.drawable.rounded_favorite_24,
                 contentDesc = "Favorito"

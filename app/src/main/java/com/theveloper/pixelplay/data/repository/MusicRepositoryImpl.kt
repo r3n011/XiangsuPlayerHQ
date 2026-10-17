@@ -26,6 +26,7 @@ import com.theveloper.pixelplay.data.database.FavoritesDao
 import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.database.SearchHistoryDao
 import com.theveloper.pixelplay.data.database.SearchHistoryEntity
+import com.theveloper.pixelplay.data.database.SongEntity
 import com.theveloper.pixelplay.data.database.TelegramChannelEntity
 import com.theveloper.pixelplay.data.database.TelegramDao
 import com.theveloper.pixelplay.data.database.toAlbum
@@ -58,10 +59,13 @@ import com.theveloper.pixelplay.utils.StorageUtils
 import com.theveloper.pixelplay.utils.toHexString
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -202,7 +206,15 @@ class MusicRepositoryImpl @Inject constructor(
                     musicDao.getAllSongs(
                         allowedParentDirs = allowedParentDirs,
                         applyDirectoryFilter = applyDirectoryFilter
-                    )
+                    ).catch { error ->
+                        // 取消必须照常向上传播，不能被当成读取失败降级
+                        if (error is CancellationException) throw error
+                        // CursorWindow 兜底：单行超过 2MB 窗口时 Room 的读取会抛
+                        // IllegalStateException("Couldn't read row N, col 0 from CursorWindow")，
+                        // 这里降级为「先取 id、再分批取行」，让曲库照常加载而不是整 App 崩掉。
+                        Log.e("MusicRepo", "getAllSongs failed; falling back to chunked read", error)
+                        emitAll(readSongsChunkedFlow(allowedParentDirs, applyDirectoryFilter))
+                    }
                 )
             }.flatMapLatest { it }
         }.map { entities ->
@@ -527,6 +539,10 @@ class MusicRepositoryImpl @Inject constructor(
         musicDao.getArtistIdByName(name)
     }
 
+    override suspend fun getAlbumIdByName(albumName: String): Long? = withContext(Dispatchers.IO) {
+        musicDao.getAlbumIdByName(albumName)
+    }
+
     override fun getArtistsForSong(songId: Long): Flow<List<Artist>> {
         return musicDao.getArtistsForSong(songId)
             .map { entities -> entities.map { it.toArtist() } }
@@ -764,10 +780,56 @@ class MusicRepositoryImpl @Inject constructor(
         val blockedDirs = userPreferencesRepository.blockedDirectoriesFlow.first()
         val (allowedParentDirs, applyDirectoryFilter) =
             computeAllowedDirs(allowedDirs, blockedDirs)
-        musicDao.getAllSongs(
+        runCatching {
+            musicDao.getAllSongs(
+                allowedParentDirs = allowedParentDirs,
+                applyDirectoryFilter = applyDirectoryFilter
+            ).first().map { it.toSong() }
+        }.getOrElse { error ->
+            // runCatching 会连取消一起吞掉，取消必须照常传播
+            if (error is CancellationException) throw error
+            // 同 [getAudioFiles]：单行超过 CursorWindow 时降级为分块读取，避免崩溃。
+            Log.e("MusicRepo", "getAllSongsOnce failed; falling back to chunked read", error)
+            readSongsChunked(allowedParentDirs, applyDirectoryFilter).map { it.toSong() }
+        }
+    }
+
+    /**
+     * CursorWindow 兜底读取的 Flow 形式（见 [com.theveloper.pixelplay.data.database.SongPayloadGuard]）。
+     */
+    private fun readSongsChunkedFlow(
+        allowedParentDirs: List<String>,
+        applyDirectoryFilter: Boolean
+    ): Flow<List<SongEntity>> = flow {
+        emit(readSongsChunked(allowedParentDirs, applyDirectoryFilter))
+    }
+
+    /**
+     * 分块读取整库：先只取 id（单列窗口体积极小，绝不会溢出），再按 [MusicDao.SONG_BATCH_SIZE]
+     * 分批取行，保证任何一次查询的单窗口负载都在预算内。
+     *
+     * 顺序与 [MusicDao.getAllSongs]（无 ORDER BY → rowid 顺序）保持一致：ids 查询按 id 升序，
+     * 每批再按 id 在本批中的位置排回原顺序（DAO 的 `IN (:ids)` 查询没有 ORDER BY）。
+     */
+    private suspend fun readSongsChunked(
+        allowedParentDirs: List<String>,
+        applyDirectoryFilter: Boolean
+    ): List<SongEntity> {
+        val ids = musicDao.getAllSongIdsForRead(
             allowedParentDirs = allowedParentDirs,
             applyDirectoryFilter = applyDirectoryFilter
-        ).first().map { it.toSong() }
+        )
+        if (ids.isEmpty()) return emptyList()
+
+        val result = ArrayList<SongEntity>(ids.size)
+        for (chunkIds in ids.chunked(MusicDao.SONG_BATCH_SIZE)) {
+            val positionById = HashMap<Long, Int>(chunkIds.size)
+            chunkIds.forEachIndexed { index, id -> positionById[id] = index }
+            musicDao.getSongsByIdsListSimple(chunkIds)
+                .sortedBy { positionById[it.id] ?: Int.MAX_VALUE }
+                .forEach { result += it }
+        }
+        return result
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

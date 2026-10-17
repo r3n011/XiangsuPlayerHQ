@@ -44,6 +44,8 @@ object ThemePreference {
     const val ALBUM_ART = "album_art"
     const val GLOBAL = "global"
     const val CUSTOM_PALETTE = "custom_palette"
+    // ⚡ 沉浸式封面：封面延伸模糊 + 封面主题色深色渐变（使用封面取色方案）
+    const val IMMERSIVE = "immersive"
 }
 
 object AppThemeMode {
@@ -432,6 +434,12 @@ class UserPreferencesRepository @Inject constructor(
             longPreferencesKey("advanced_performance_diagnostics_expires_at_epoch_ms")
         val IMMERSIVE_LYRICS_ENABLED = booleanPreferencesKey("immersive_lyrics_enabled")
         val IMMERSIVE_LYRICS_TIMEOUT = longPreferencesKey("immersive_lyrics_timeout")
+        // ⚡ 歌词界面自动沉浸后「不放大歌词字体」开关：默认 false = 沿用现状（沉浸时字号 ×1.25）
+        val IMMERSIVE_LYRICS_KEEP_FONT_SIZE = booleanPreferencesKey("immersive_lyrics_keep_font_size")
+        // ⚡ Apple Music 动态封面（Canvas）：默认关闭（会产生少量在线请求）
+        val APPLE_CANVAS_ENABLED = booleanPreferencesKey("apple_canvas_enabled")
+        // ⚡ 控制按钮玻璃模糊背景（半透明 + 背景模糊，可与任意主题/背景组合）
+        val PLAYER_GLASS_CONTROLS = booleanPreferencesKey("player_glass_controls")
         val USE_ANIMATED_LYRICS = booleanPreferencesKey("use_animated_lyrics")
         val ANIMATED_LYRICS_BLUR_ENABLED = booleanPreferencesKey("animated_lyrics_blur_enabled")
         val ANIMATED_LYRICS_BLUR_STRENGTH = androidx.datastore.preferences.core.floatPreferencesKey("animated_lyrics_blur_strength")
@@ -992,6 +1000,24 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setPlayerStyle(style: PlayerStyle) {
         dataStore.edit { it[PreferencesKeys.PLAYER_STYLE] = style.storageKey }
+    }
+
+    // ⚡ Apple Music 动态封面（Canvas）：开启后按 歌名+歌手(+专辑) 在线检索动态视频封面；
+    //    本地封面方案始终优先 —— 未命中 / 关闭时保持现有静态封面
+    val appleCanvasEnabledFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.APPLE_CANVAS_ENABLED] ?: true }
+
+    suspend fun setAppleCanvasEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.APPLE_CANVAS_ENABLED] = enabled }
+    }
+
+    // ⚡ 控制按钮玻璃模糊背景：中性控件容器改半透明 + 背景模糊（Haze），
+    //    播放 / 暂停键仍保留强调色 —— 与任意主题、背景样式自由组合
+    val playerGlassControlsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.PLAYER_GLASS_CONTROLS] ?: false }
+
+    suspend fun setPlayerGlassControls(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.PLAYER_GLASS_CONTROLS] = enabled }
     }
 
     // ─── Expressive player options（移植自 Rhythm 的样式专属设置项） ──────────
@@ -1809,6 +1835,18 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setImmersiveLyricsTimeout(timeout: Long) {
         dataStore.edit { it[PreferencesKeys.IMMERSIVE_LYRICS_TIMEOUT] = timeout }
+    }
+
+    /**
+     * 歌词界面自动沉浸后**不**放大歌词字体。
+     * 默认 false = 保持现状（沉浸时字号动画放大到 1.25 倍）；
+     * 置 true 后沉浸只隐藏控件，字号保持用户所选档位不变。
+     */
+    val immersiveLyricsKeepFontSizeFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.IMMERSIVE_LYRICS_KEEP_FONT_SIZE] ?: false }
+
+    suspend fun setImmersiveLyricsKeepFontSize(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.IMMERSIVE_LYRICS_KEEP_FONT_SIZE] = enabled }
     }
 
     val useAnimatedLyricsFlow: Flow<Boolean> =

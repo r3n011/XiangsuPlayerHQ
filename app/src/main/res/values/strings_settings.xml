@@ -1103,4 +1103,24 @@
     <string name="setcat_lyrics_mono_colors_desc">Force lyrics buttons and text to pure black / white (white in dark theme, black in light theme). Off keeps the current look.</string>
     <string name="setcat_player_mono_colors_title">Monochrome player buttons &amp; text</string>
     <string name="setcat_player_mono_colors_desc">Force player buttons and text to pure black / white (white in dark theme, black in light theme). Off keeps the current look.</string>
+
+    <!-- 播放器与歌词外观（独立子页 + 实时预览） -->
+    <string name="setcat_player_lyrics_appearance_title">Player &amp; lyrics appearance</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">Live preview pinned on top, every option below updates it instantly</string>
+    <string name="setcat_player_lyrics_preview_label">Live preview</string>
+    <string name="setcat_player_lyrics_preview_track">Sample track</string>
+    <string name="setcat_player_lyrics_preview_artist">Sample artist</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24bit · 44.1 kHz</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">and the night goes on</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">This line is playing now</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">while the city sleeps</string>
+    <string name="setcat_immersive_keep_font_size_title">Keep lyrics font size when immersive</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">When the lyrics screen auto-immerses, only hide the controls instead of enlarging the text (default enlarges it)</string>
+    <string name="setcat_immersive_scale_hint">Immersive preview: text enlarged x1.25</string>
+    <string name="setcat_immersive_keep_size_hint">Immersive preview: text kept as is</string>
+    <string name="setcat_player_theme_immersive">Immersive cover (blur extend)</string>
+    <string name="setcat_apple_canvas_title">Dynamic cover (Apple Music)</string>
+    <string name="setcat_apple_canvas_subtitle">Fetch an animated cover for the current song online and crossfade to it when found. Local artwork stays the fallback; adds some network traffic.</string>
+    <string name="setcat_player_glass_controls_title">Frosted-glass control buttons</string>
+    <string name="setcat_player_glass_controls_subtitle">Make neutral control buttons (skip / favorite / bottom pill / control cards) translucent with a real background blur. The play/pause button keeps its accent color and layout is unchanged; combines with any theme and background.</string>
 </resources>

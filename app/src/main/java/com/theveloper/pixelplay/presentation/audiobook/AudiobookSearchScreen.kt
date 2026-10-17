@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -122,7 +123,12 @@ fun AudiobookSearchScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        items(search.results, key = { it.id }) { album ->
+                        itemsIndexed(
+                            items = search.results,
+                            // ⚡ key 加索引兜底：搜索接口可能返回重复 id，
+                            //    重复 key 会让 LazyColumn 直接崩（`Key ... was already used`）。
+                            key = { index, album -> "${album.id}_$index" },
+                        ) { _, album ->
                             AudiobookAlbumRow(
                                 album = album,
                                 onClick = { onOpenAlbum(album) },

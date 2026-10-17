@@ -68,6 +68,7 @@ import com.theveloper.pixelplay.presentation.screens.RadioScreen
 import com.theveloper.pixelplay.presentation.screens.AboutScreen
 import com.theveloper.pixelplay.presentation.screens.StatsScreen
 import com.theveloper.pixelplay.presentation.screens.SettingsCategoryScreen
+import com.theveloper.pixelplay.presentation.screens.PlayerLyricsAppearanceScreen
 import com.theveloper.pixelplay.presentation.screens.ToplistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.EqualizerScreen
 import com.theveloper.pixelplay.presentation.screens.LxMusicScreen
@@ -531,6 +532,18 @@ fun AppNavigation(
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     PlayerProgressStyleSettingsScreen(
+                        playerViewModel = playerViewModel,
+                        settingsViewModel = hiltViewModel(),
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.PlayerLyricsAppearance.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    PlayerLyricsAppearanceScreen(
+                        navController = navController,
                         playerViewModel = playerViewModel,
                         settingsViewModel = hiltViewModel(),
                         onBackClick = { navController.popBackStack() }

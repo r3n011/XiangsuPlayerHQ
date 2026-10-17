@@ -317,6 +317,11 @@ interface MusicRepository {
     fun getSong(songId: String): Flow<Song?>
     fun getArtistById(artistId: Long): Flow<Artist?>
     suspend fun getArtistIdByName(name: String): Long?
+
+    /**
+     * ⚡ 按专辑名解析专辑 id（最多播放卡片点击专辑跳转用）。
+     */
+    suspend fun getAlbumIdByName(albumName: String): Long?
     fun getArtistsForSong(songId: Long): Flow<List<Artist>>
 
     /**

@@ -1318,6 +1318,15 @@ class LxMusicViewModel @Inject constructor(
         for (q in chain) {
             val url = engine.getPlayUrl(source, songMap, q)
             if (!url.isNullOrBlank()) {
+                // ⚡ 加密容器（.mflac/.mgg/.mmp4）无法播放：丢弃后继续下一档
+                val encrypted = url.substringBefore('?').substringBefore('#').lowercase().let { path ->
+                    listOf(".mflac", ".mflac0", ".mflac2", ".mgg", ".mgg0", ".mgg1", ".mggl", ".mmp4")
+                        .any { path.endsWith(it) }
+                }
+                if (encrypted) {
+                    android.util.Log.w("LxPlaySong", "skip encrypted stream: $source/$q ${url.take(80)}")
+                    continue
+                }
                 android.util.Log.d("LxPlaySong", "quality chain hit: $source/$q")
                 return url
             }

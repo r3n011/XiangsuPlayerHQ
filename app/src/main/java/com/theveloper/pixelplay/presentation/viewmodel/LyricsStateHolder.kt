@@ -266,11 +266,24 @@ class LyricsStateHolder @Inject constructor(
     
     /**
      * 判断是否为网易云歌曲
+     * ⚡ 对齐 lx-music：cloud://lx 内嵌 source=wy（或空）才算网易云；
+     *   tx/kg/mg/kw 的在线歌走各自内建源，不再一律按网易自动兜底
      */
-    private fun isNeteaseSong(song: Song): Boolean =
-        song.neteaseId != null ||
-        song.contentUriString.startsWith("netease://", ignoreCase = true) ||
-        song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)
+    private fun isNeteaseSong(song: Song): Boolean {
+        if (song.contentUriString.startsWith("cloud://lx/", ignoreCase = true)) {
+            val source = runCatching {
+                org.json.JSONObject(
+                    java.net.URLDecoder.decode(
+                        song.contentUriString.substringAfter("cloud://lx/"),
+                        "UTF-8"
+                    )
+                ).optString("source", "")
+            }.getOrNull().orEmpty()
+            return source.isBlank() || source.equals("wy", ignoreCase = true)
+        }
+        return song.neteaseId != null ||
+            song.contentUriString.startsWith("netease://", ignoreCase = true)
+    }
     
     /**
      * 自动触发歌词搜索，用于非网易云歌曲歌词加载失败时

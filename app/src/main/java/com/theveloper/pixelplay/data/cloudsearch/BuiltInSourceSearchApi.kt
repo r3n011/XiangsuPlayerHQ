@@ -5,6 +5,9 @@ import com.theveloper.pixelplay.data.lx.LxPlaylistSearchResult
 import com.theveloper.pixelplay.data.lx.LxSearchResult
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -32,6 +35,8 @@ import javax.inject.Singleton
 class BuiltInSourceSearchApi @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val kugouRepository: com.theveloper.pixelplay.data.kugou.KugouRepository,
+    // ⚡ QQ 直链：免签名 vkey 取链（对齐 lx-music）
+    private val qqMusicRepository: com.theveloper.pixelplay.data.qqmusic.QqMusicRepository,
 ) {
     /**
      * ⚡ 已登录酷狗账号时给**酷狗域名**带上 Cookie（token/userid/vip_token）：
@@ -399,6 +404,129 @@ class BuiltInSourceSearchApi @Inject constructor(
         }
     }
 
+    // ─── 换源：用元信息在其它平台重新搜同一首歌（移植落雪 findMusic）──────────
+    //
+    // 关键点：**换源必须换成目标平台自己的歌曲标识**。
+    // 把本源的 songmid/hash 硬喂给别的平台去查是错的（查不到 → 聚合音源内部
+    // 换到酷我 → 拿到「占位试听流」；或直接返回无关歌曲）。
+    // 落雪的做法是：拿「歌名 + 歌手 + 专辑 + 时长」到其它平台**重新搜索**，
+    // 再做归一化比对挑出同一首歌，然后用它自己的 id 取链。
+
+    private val matchStripRegex = Regex("[\\s'.,，&\"、()（）`~\\-<>|/\\[\\]!！]")
+    private val singerSplitRegex = Regex("[、&;；/,，|]")
+
+    private fun stripForMatch(value: String?): String =
+        (value ?: "").replace(matchStripRegex, "").lowercase()
+
+    /** 歌手名归一化：多歌手先排序再比较，避免「A、B」与「B、A」被判成不同。 */
+    private fun sortSinger(value: String?): String {
+        val raw = value ?: return ""
+        val parts = raw.split(singerSplitRegex).map { it.trim() }.filter { it.isNotEmpty() }
+        return if (parts.size > 1) parts.sorted().joinToString("、") else raw
+    }
+
+    /**
+     * 换源候选：除 [excludeSource] 外，各平台并行用「歌名 + 歌手」搜索，
+     * 再按落雪 `findMusic` 的规则挑出最像的同一首歌。
+     *
+     * @return 候选列表，每项都带**它自己平台的** `songmid`/`hash`，可直接用于取链
+     */
+    suspend fun findOtherSourceCandidates(
+        name: String,
+        singer: String,
+        albumName: String = "",
+        durationMs: Long = 0L,
+        excludeSource: String = "",
+        perSourceLimit: Int = 25,
+    ): List<LxSongInfo> = withContext(Dispatchers.IO) {
+        if (name.isBlank()) return@withContext emptyList()
+        val keyword = "$name $singer".trim()
+        val sources = SUPPORTED_SOURCES.split(",").filter { it.isNotBlank() && it != excludeSource }
+        if (sources.isEmpty()) return@withContext emptyList()
+
+        val perSourceLists = coroutineScope {
+            sources.map { source ->
+                async {
+                    runCatching { search(source, keyword, 1, perSourceLimit) }
+                        .getOrNull()
+                        ?.list
+                        .orEmpty()
+                        .map { it.copy(source = source) }
+                }
+            }.awaitAll()
+        }
+
+        val fName = stripForMatch(name)
+        val fSinger = stripForMatch(sortSinger(singer))
+        val fAlbum = stripForMatch(albumName)
+
+        // 时长校验：±5 秒内才算同一首（防翻唱/Live）。任一侧没有时长则不校验。
+        // ⚡ 必须兼容"秒/毫秒"两种单位：接口来源不同，有的给秒有的给毫秒，
+        //    直接比会把所有候选都剃掉（换源候选恒为空）。
+        fun sameDuration(ms: Long): Boolean {
+            if (durationMs <= 0L || ms <= 0L) return true
+            val a = if (durationMs >= 10_000L) durationMs else durationMs * 1000L
+            val b = if (ms >= 10_000L) ms else ms * 1000L
+            return kotlin.math.abs(a - b) < 5_000L
+        }
+
+        fun singerMatches(candidateSingers: String): Boolean {
+            if (fSinger.isEmpty()) return true
+            val f = stripForMatch(sortSinger(candidateSingers))
+            return f.isNotEmpty() && (fSinger.contains(f) || f.contains(fSinger))
+        }
+
+        fun nameMatches(candidateName: String): Boolean {
+            val f = stripForMatch(candidateName)
+            return f.isNotEmpty() && (fName.contains(f) || f.contains(fName))
+        }
+
+        // 每个平台先各自挑「第一条命中」，三级匹配从严到宽（与落雪一致）
+        val perSource = perSourceLists.mapNotNull { list ->
+            val usable = list.filter { sameDuration(it.duration) }
+            if (usable.isEmpty()) return@mapNotNull null
+            usable.firstOrNull { stripForMatch(it.name) == fName && singerMatches(it.singer) }
+                ?: usable.firstOrNull {
+                    fSinger.isNotEmpty() && stripForMatch(sortSinger(it.singer)) == fSinger &&
+                        nameMatches(it.name)
+                }
+                ?: usable.firstOrNull {
+                    fAlbum.isNotEmpty() && stripForMatch(it.albumName) == fAlbum &&
+                        singerMatches(it.singer) && nameMatches(it.name)
+                }
+        }
+
+        // 全局 9 档排序：越像的越靠前（对齐落雪 sortMusic 的档位顺序）
+        val tiers: List<(LxSongInfo) -> Boolean> = listOf(
+            { stripForMatch(sortSinger(it.singer)) == fSinger && stripForMatch(it.name) == fName && durationMs > 0L && it.duration == durationMs },
+            { stripForMatch(it.name) == fName && stripForMatch(sortSinger(it.singer)) == fSinger && fAlbum.isNotEmpty() && stripForMatch(it.albumName) == fAlbum },
+            { stripForMatch(sortSinger(it.singer)) == fSinger && stripForMatch(it.name) == fName },
+            { stripForMatch(it.name) == fName && durationMs > 0L && it.duration == durationMs },
+            { stripForMatch(sortSinger(it.singer)) == fSinger && durationMs > 0L && it.duration == durationMs },
+            { durationMs > 0L && it.duration == durationMs },
+            { stripForMatch(it.name) == fName },
+            { stripForMatch(sortSinger(it.singer)) == fSinger },
+            { fAlbum.isNotEmpty() && stripForMatch(it.albumName) == fAlbum },
+        )
+        val picked = mutableListOf<LxSongInfo>()
+        val remaining = perSource.toMutableList()
+        tiers.forEach { predicate ->
+            val iterator = remaining.iterator()
+            while (iterator.hasNext()) {
+                val item = iterator.next()
+                if (predicate(item)) {
+                    picked += item
+                    iterator.remove()
+                }
+            }
+        }
+        picked += remaining
+
+        val deduped = picked.distinctBy { "${it.source}_${it.songmid.ifBlank { it.id }}" }
+        Timber.d("$TAG: 换源候选 '$name' -> ${deduped.joinToString { it.source }}")
+        deduped
+    }
+
     /**
      * 播放 URL 解析：
      * - kg：酷狗官方 hash → URL（按音质传 br；付费/无版权时 url 为空，继续走酷我）
@@ -420,6 +548,24 @@ class BuiltInSourceSearchApi @Inject constructor(
                     return@withContext official
                 }
             }
+            // ⚡ QQ（tx）：走官方免签名 vkey 取链（对齐 lx-music），
+            //    不再跳过去拿酷我试听流；失败则如实返回 null
+            if (source == "tx") {
+                val songMid = song.songmid.takeIf { it.isNotBlank() }
+                    ?: song.id.takeIf { it.isNotBlank() && !it.startsWith("pl.") }
+                if (songMid.isNullOrBlank()) {
+                    Timber.d("$TAG: tx songmid missing for '${song.name}'")
+                    return@withContext null
+                }
+                val url = qqMusicRepository.getSongUrl(songMid, quality).getOrNull()
+                if (!url.isNullOrBlank()) {
+                    Timber.d("$TAG: tx vkey URL ok for '${song.name}' (quality=$quality)")
+                    return@withContext url
+                }
+                Timber.d("$TAG: tx vkey URL failed for '${song.name}' songMid=$songMid")
+                return@withContext null
+            }
+
             // ⚡ 只有酷我自己的歌才走酷我直链。
             //    此前 tx / mg（以及 kg 官方链失败时）会用「歌名 + 歌手」去酷我搜一首再取酷我直链兜底，
             //    而非会员账号拿到的是**带「酷我音乐已为您开启免费听歌权限」语音的试听流**——

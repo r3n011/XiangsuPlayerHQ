@@ -313,6 +313,7 @@ class PlayerViewModel @Inject constructor(
     private val kugouFmApi: com.theveloper.pixelplay.data.kugou.KugouFmApi,
     private val builtInSourceSearchApi: com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi,
     private val neteaseRecommendApi: com.theveloper.pixelplay.data.netease.NeteaseRecommendApi,
+    private val homeFeedRepository: com.theveloper.pixelplay.data.netease.HomeFeedRepository,
     private val bluetoothLyricsManager: com.theveloper.pixelplay.data.service.bluetooth.BluetoothLyricsManager,
     private val dotImageRepositoryProvider: Lazy<com.theveloper.pixelplay.data.repository.DotImageRepository>,
     private val neteaseDownloadService: com.theveloper.pixelplay.data.service.http.NeteaseDownloadService,
@@ -1114,6 +1115,22 @@ class PlayerViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = PlayerStyle.CLASSIC
+        )
+
+    // ⚡ Apple Music 动态封面（Canvas）开关
+    val appleCanvasEnabled: StateFlow<Boolean> = userPreferencesRepository.appleCanvasEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    // ⚡ 控制按钮玻璃模糊背景开关
+    val playerGlassControls: StateFlow<Boolean> = userPreferencesRepository.playerGlassControlsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
         )
 
     fun setPlayerStyle(style: PlayerStyle) {
@@ -3507,6 +3524,35 @@ class PlayerViewModel @Inject constructor(
             com.theveloper.pixelplay.data.model.StorageFilter.OFFLINE -> com.theveloper.pixelplay.data.model.StorageFilter.ALL
         }
         setStorageFilter(next)
+    }
+
+    /**
+     * ⚡ 主页「最多播放」卡片：按歌曲 id 直接播放（先查库再播）。
+     */
+    fun playSongById(songId: String) {
+        viewModelScope.launch {
+            val song = runCatching { musicRepository.getSong(songId).first() }.getOrNull() ?: return@launch
+            showAndPlaySong(
+                song = song,
+                contextSongs = listOf(song),
+                queueName = "Most listened",
+                isVoluntaryPlay = true
+            )
+        }
+    }
+
+    /** ⚡ 主页「最多播放」卡片：按专辑名解析 id 后回调（用于跳转专辑页）。 */
+    fun resolveAlbumIdByName(albumName: String, onResolved: (Long) -> Unit) {
+        viewModelScope.launch {
+            runCatching { musicRepository.getAlbumIdByName(albumName) }.getOrNull()?.let(onResolved)
+        }
+    }
+
+    /** ⚡ 主页「最多播放」卡片：按歌手名解析 id 后回调（用于跳转歌手页）。 */
+    fun resolveArtistIdByName(artistName: String, onResolved: (Long) -> Unit) {
+        viewModelScope.launch {
+            runCatching { musicRepository.getArtistIdByName(artistName) }.getOrNull()?.let(onResolved)
+        }
     }
 
     fun showAndPlaySong(
@@ -7796,9 +7842,67 @@ class PlayerViewModel @Inject constructor(
      * 播放每日推荐歌曲：解析每首歌的播放地址（落雪音源优先、网易云官方兜底），
      * 过滤无地址的歌曲后按推荐顺序入队播放，并打开全屏播放器。
      */
+    // ─── 主页推荐卡片（为你推荐 / 今日云村热播 / 今日热门）──────────────────
+
+    private val _homeFeedSections =
+        MutableStateFlow<com.theveloper.pixelplay.data.netease.HomeFeedSections?>(null)
+    val homeFeedSections: StateFlow<com.theveloper.pixelplay.data.netease.HomeFeedSections?> =
+        _homeFeedSections.asStateFlow()
+
+    /**
+     * 拉取主页在线推荐卡片的数据。
+     *
+     * 与每日推荐不同：这些接口**匿名也能用**（只有 server blocks 的个性化栏目需要登录），
+     * 所以未登录也会走一遍，让「为你推荐 / 今日热门」仍然有内容。
+     * 仓库内部按天缓存，[force] 为 true 时忽略缓存（下拉刷新）。
+     */
+    fun refreshHomeFeed(force: Boolean = false) {
+        viewModelScope.launch {
+            runCatching {
+                homeFeedRepository.loadSections(forceRefresh = force, area = "全部")
+            }.onSuccess { sections ->
+                _homeFeedSections.value = sections
+            }.onFailure { error ->
+                Timber.w(error, "homeFeed: refresh failed")
+            }
+        }
+    }
+
+    /**
+     * 播放主页推荐卡片里的第 [startIndex] 首。
+     * 复用每日推荐的「占位入队 + 播到哪首解析哪首」链路。
+     */
+    fun playHomeFeedTracks(
+        tracks: List<com.theveloper.pixelplay.data.netease.HomeFeedTrack>,
+        startIndex: Int = 0,
+        queueName: String = "在线推荐",
+    ) {
+        val entries = tracks.asSequence()
+            .filter { it.isPlayable }
+            .map { DailyRecommendSong(song = it.toPersonalFmDetail(), reason = it.reason.orEmpty()) }
+            .toList()
+        if (entries.isEmpty()) return
+        playOnlineRecommendQueue(entries, startIndex = startIndex, shuffled = false, queueName = queueName)
+    }
+
     fun playDailyRecommend(startIndex: Int = 0, shuffled: Boolean = false) {
         val state = _dailyRecommendState.value
         val dailySongs = (state as? DailyRecommendUiState.Ready)?.songs ?: return
+        playOnlineRecommendQueue(dailySongs, startIndex, shuffled, queueName = "每日推荐")
+    }
+
+    /**
+     * 播放一组「网易云在线歌曲」：**占位入队 + 播到哪首解析哪首**。
+     *
+     * 每日推荐与主页的推荐卡片（为你推荐 / 今日云村热播 / 今日热门）共用这条链路；
+     * 原来是 `playDailyRecommend` 的内联实现，抽出来避免复制一份解析/队列逻辑。
+     */
+    fun playOnlineRecommendQueue(
+        dailySongs: List<DailyRecommendSong>,
+        startIndex: Int = 0,
+        shuffled: Boolean = false,
+        queueName: String = "在线推荐",
+    ) {
         if (dailySongs.isEmpty()) return
 
         viewModelScope.launch {
@@ -7880,7 +7984,7 @@ class PlayerViewModel @Inject constructor(
             _playerUiState.update {
                 it.copy(
                     currentPlaybackQueue = songsToPlay.toPlaybackQueue(),
-                    currentQueueSourceName = "每日推荐",
+                    currentQueueSourceName = queueName,
                     isLoadingInitialSongs = false
                 )
             }
@@ -7911,7 +8015,7 @@ class PlayerViewModel @Inject constructor(
             preloadNextDailySong(resolvedStartIndex, songsToPlay)
 
             _isSheetVisible.value = true
-            _toastEvents.emit("正在播放每日推荐（${songsToPlay.size} 首）")
+            _toastEvents.emit("正在播放$queueName（${songsToPlay.size} 首）")
         }
     }
 
