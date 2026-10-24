@@ -142,43 +142,52 @@ class FloatingLyricsController @Inject constructor(
      * 这条链路不依赖 PlayerViewModel / PlaybackStateHolder，后台播放也可靠。
      */
     fun setLyrics(lyrics: Lyrics?) {
-        Timber.tag("FloatingLyrics").d(
-            "setLyrics synced=%d plain=%d",
-            lyrics?.synced?.size ?: 0,
-            lyrics?.plain?.size ?: 0,
-        )
-        currentLyrics = lyrics
-        currentLineIndex = -1
-        _uiState.update { it.copy(hasLyrics = hasAnyLyrics(lyrics)) }
-        refreshLines(fallbackPlayer?.currentPosition ?: playbackStateHolder.currentPosition.value)
-        updateVisibility()
+        // MusicService 的歌词加载在 Dispatchers.IO 上完成；Media3 的 Player
+        // 只允许在创建它的主线程访问，WindowManager 操作也必须在主线程。
+        // 这里统一切回 scope（Main.immediate），避免跨线程读取 currentPosition 崩溃。
+        scope.launch {
+            Timber.tag("FloatingLyrics").d(
+                "setLyrics synced=%d plain=%d",
+                lyrics?.synced?.size ?: 0,
+                lyrics?.plain?.size ?: 0,
+            )
+            currentLyrics = lyrics
+            currentLineIndex = -1
+            _uiState.update { it.copy(hasLyrics = hasAnyLyrics(lyrics)) }
+            refreshLines(fallbackPlayer?.currentPosition ?: playbackStateHolder.currentPosition.value)
+            updateVisibility()
+        }
     }
 
     /** MusicService 创建/切换 MediaSession player 时调用。 */
     fun attachPlayer(player: Player?) {
-        if (fallbackPlayer === player) return
-        fallbackPlayer?.removeListener(fallbackPlayerListener)
-        fallbackPlayer = player
-        player?.addListener(fallbackPlayerListener)
-        syncFromFallbackPlayer()
+        scope.launch {
+            if (fallbackPlayer === player) return@launch
+            fallbackPlayer?.removeListener(fallbackPlayerListener)
+            fallbackPlayer = player
+            player?.addListener(fallbackPlayerListener)
+            syncFromFallbackPlayer()
+        }
     }
 
     private fun syncFromFallbackPlayer() {
-        val player = fallbackPlayer ?: return
-        val item = player.currentMediaItem
-        if (item != null) {
-            hasSong = true
-            val metadata = item.mediaMetadata
-            _uiState.update {
-                it.copy(
-                    isPlaying = player.isPlaying,
-                    hasLyrics = hasAnyLyrics(currentLyrics),
-                    songTitle = metadata.title?.toString().orEmpty(),
-                    songArtist = metadata.artist?.toString().orEmpty(),
-                )
+        scope.launch {
+            val player = fallbackPlayer ?: return@launch
+            val item = player.currentMediaItem
+            if (item != null) {
+                hasSong = true
+                val metadata = item.mediaMetadata
+                _uiState.update {
+                    it.copy(
+                        isPlaying = player.isPlaying,
+                        hasLyrics = hasAnyLyrics(currentLyrics),
+                        songTitle = metadata.title?.toString().orEmpty(),
+                        songArtist = metadata.artist?.toString().orEmpty(),
+                    )
+                }
+                refreshLines(player.currentPosition)
+                updateVisibility()
             }
-            refreshLines(player.currentPosition)
-            updateVisibility()
         }
     }
 

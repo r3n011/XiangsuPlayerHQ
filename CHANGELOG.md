@@ -1,5 +1,10 @@
 # 更新日志
 
+## v1.7.3 (2026-10-24)
+
+### 修复
+- **悬浮歌词切歌崩溃**：`MusicService` 在 `Dispatchers.IO` 加载歌词后会直接回调悬浮歌词控制器，控制器同步读取 Media3 `Player.currentPosition`，触发 `Player is accessed on the wrong thread`。现在歌词更新、Player 绑定/同步、悬浮窗显隐统一切回主线程执行，后台切歌不再崩溃。
+
 ## v1.7.2 (2026-10-24)
 
 ### 新增
