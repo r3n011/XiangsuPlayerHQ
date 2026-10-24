@@ -149,7 +149,7 @@
 <p align="center">
    安卓版 ⬇️
    <br>
-   <a href="https://github.com/r3n011/PixelPlayerHQ/release/latest">
+   <a href="https://github.com/r3n011/XiangsuPlayerHQ/releases">
       <img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Get it on GitHub" height="60">
    </a>
 
