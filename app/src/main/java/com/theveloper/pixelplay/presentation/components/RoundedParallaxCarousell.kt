@@ -142,6 +142,8 @@ fun RoundedHorizontalMultiBrowseCarousel(
         CarouselStyle.NO_PEEK -> 0
         CarouselStyle.ONE_PEEK -> 1
         CarouselStyle.TWO_PEEK -> 2
+        // 主页「为你推荐」：3 张完整 + 右侧 1 张预览
+        CarouselStyle.THREE_ITEMS_PREVIEW -> 3
         // 预览轮播与原版「单侧预览」一致：大图 + 右侧一张预览
         CarouselStyle.PREVIEW -> 1
         else -> 1 // Default to one peek
@@ -208,6 +210,19 @@ fun RoundedHorizontalMultiBrowseCarousel(
                         add(smallSize) // Next peek
                     }
                 }
+                CarouselStyle.THREE_ITEMS_PREVIEW -> multiBrowseKeylineList(
+                    density = density,
+                    carouselMainAxisSize = carouselWidthPx,
+                    // 一屏 3 张完整卡 + 右侧一张小预览；preferredItemSize 只是目标值，
+                    // multiBrowseKeylineList 会按可用宽度重新均分。
+                    preferredItemSize = carouselWidthPx / 3.35f,
+                    itemSpacing = spacingPx,
+                    itemCount = itemCount,
+                    alignment = CarouselAlignment.Start,
+                    largeCounts = intArrayOf(3),
+                    mediumCounts = intArrayOf(0),
+                    smallCounts = intArrayOf(1)
+                )
                 CarouselStyle.PREVIEW -> multiBrowseKeylineList(
                     // ⚡ 预览轮播 = 原版「单侧预览」：大图 80% 宽、右侧露出下一张缩略图，
                     //    封面本身仍是正方形（尺寸与无预览一致，只是让出 20% 给预览）。

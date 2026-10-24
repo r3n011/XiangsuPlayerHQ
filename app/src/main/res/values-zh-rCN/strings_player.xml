@@ -214,5 +214,12 @@
     <string name="together_invite_dialog_ignore">忽略</string>
     <string name="player_more_view_artist">查看歌手</string>
     <string name="player_more_view_album">查看专辑</string>
+    <string name="player_more_refresh_source">重新解析音源</string>
+    <string name="player_more_choose_source">选择音源</string>
+    <string name="player_refresh_source_started">正在重新解析音源…</string>
+    <string name="player_refresh_source_failed">所有音源都无法解析这首歌</string>
+    <string name="player_source_picker_title">选择音源</string>
+    <string name="player_source_unavailable">不可用（未安装脚本）</string>
+    <string name="player_source_current">当前</string>
     <string name="player_hifi_suspended_by_speed">倍速下已暂停 Hi-Fi，恢复 1.0x 后自动开启</string>
 </resources>

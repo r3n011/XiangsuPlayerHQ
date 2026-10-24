@@ -985,15 +985,19 @@ object LyricsUtils {
             val sortedSyncedLines = syncedLines.sortedBy { it.time }
             val pairedLines = pairTranslationLines(sortedSyncedLines).map { line ->
 
-                val romanized = when {
-                    MultiLangRomanizer.isJapanese(line.line, entireLyricsHasKana) -> MultiLangRomanizer.romanizeJapanese(line.line)
-                    MultiLangRomanizer.isChinese(line.line) -> MultiLangRomanizer.romanizeChinese(line.line)
-                    MultiLangRomanizer.isKorean(line.line) -> MultiLangRomanizer.romanizeKorean(line.line)
-                    MultiLangRomanizer.isHindi(line.line) -> MultiLangRomanizer.romanizeHindi(line.line)
-                    MultiLangRomanizer.isPunjabi(line.line) -> MultiLangRomanizer.romanizePunjabi(line.line)
-                    MultiLangRomanizer.isCyrillic(line.line) -> MultiLangRomanizer.romanizeCyrillic(line.line)
-                    else -> null
-                }?.capitalizeFirstLetter()?.trim()
+                // 注音引擎依赖 Application Context（Kuromoji）；单测/极早期启动时
+                // 上下文可能不可用，注音失败不应让整首歌词解析崩溃。
+                val romanized = runCatching {
+                    when {
+                        MultiLangRomanizer.isJapanese(line.line, entireLyricsHasKana) -> MultiLangRomanizer.romanizeJapanese(line.line)
+                        MultiLangRomanizer.isChinese(line.line) -> MultiLangRomanizer.romanizeChinese(line.line)
+                        MultiLangRomanizer.isKorean(line.line) -> MultiLangRomanizer.romanizeKorean(line.line)
+                        MultiLangRomanizer.isHindi(line.line) -> MultiLangRomanizer.romanizeHindi(line.line)
+                        MultiLangRomanizer.isPunjabi(line.line) -> MultiLangRomanizer.romanizePunjabi(line.line)
+                        MultiLangRomanizer.isCyrillic(line.line) -> MultiLangRomanizer.romanizeCyrillic(line.line)
+                        else -> null
+                    }
+                }.getOrNull()?.capitalizeFirstLetter()?.trim()
 
                 line.copy(romanization = romanized)
             }
@@ -1134,42 +1138,30 @@ object LyricsUtils {
         while (i < lines.size) {
             val current = lines[i]
             val next = lines.getOrNull(i + 1)
-            if (next != null && next.time == current.time && current.translation == null && current.line.isNotBlank() && next.line.isNotBlank()) {
-                // Check if there's a third line at the same timestamp (original, romanization, translation pattern)
-                val third = lines.getOrNull(i + 2)
-                val hasThirdLineAtSameTime = third != null && third.time == current.time && third.line.isNotBlank()
-
-                if (hasThirdLineAtSameTime) {
-                    // Find the last line at the same timestamp
-                    val lastSameTimeIndex = run {
-                        var idx = i + 2
-                        while (idx < lines.size && lines[idx].time == current.time) idx++
-                        idx - 1
-                    }
-                    // When exactly 3 lines: second is romanization (skip), third is translation
-                    // When 4+ lines: join all non-first lines as translation
-                    val translationParts = if (lastSameTimeIndex == i + 2) {
-                        // Exactly 3 lines: skip middle (romanization), use last as translation
-                        mutableListOf(lines[lastSameTimeIndex].line)
-                    } else {
-                        // 4+ lines: join all non-first lines
-                        (i + 1..lastSameTimeIndex).map { lines[it].line }.toMutableList()
-                    }
-                    result.add(current.copy(translation = translationParts.joinToString("\n")))
-                    i = lastSameTimeIndex + 1
-                } else {
-                    // 2 lines at same timestamp: second is translation
-                    val translationParts = mutableListOf(next.line)
-                    var consumed = 2
-                    while (true) {
-                        val trailing = lines.getOrNull(i + consumed) ?: break
-                        if (trailing.time != current.time || !isTranslationCreditLine(trailing.line)) break
-                        translationParts.add(trailing.line)
-                        consumed++
-                    }
-                    result.add(current.copy(translation = translationParts.joinToString("\n")))
-                    i += consumed
+            if (next != null && next.time == current.time &&
+                current.translation == null &&
+                current.line.isNotBlank() &&
+                next.line.isNotBlank()
+            ) {
+                // 同一时间戳的第一条作为原文，第二条作为翻译；
+                // 后续同时间戳行只有在“翻译署名/制作信息”时才并入翻译，
+                // 否则保留为独立歌词行（例如原词、音译、翻译三行的情况）。
+                val translationParts = mutableListOf(next.line)
+                var cursor = i + 2
+                while (cursor < lines.size &&
+                    lines[cursor].time == current.time &&
+                    isTranslationCreditLine(lines[cursor].line)
+                ) {
+                    translationParts.add(lines[cursor].line)
+                    cursor++
                 }
+                result.add(current.copy(translation = translationParts.joinToString("\n")))
+                // 同时间戳的剩余非署名行保留为独立行，避免丢歌词。
+                while (cursor < lines.size && lines[cursor].time == current.time) {
+                    result.add(lines[cursor])
+                    cursor++
+                }
+                i = cursor
             } else {
                 result.add(current)
                 i++

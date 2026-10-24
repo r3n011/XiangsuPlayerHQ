@@ -13,6 +13,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import org.junit.Test
 
@@ -71,7 +72,17 @@ class LyricsStateHolderTest {
             forcePickResults = false,
             sourcePreference = com.theveloper.pixelplay.data.model.LyricsSourcePreference.API_FIRST
         ) { "Lyrics already available" }
-        scope.advanceUntilIdle()
+        scope.testScheduler.runCurrent()
+        // getStoredLyrics 内部走 Dispatchers.IO，TestScope 的虚拟时间不会自动等待真实 IO。
+        // 轮询真实时间，同时只 runCurrent（不推进虚拟时间，避免触发 20s withTimeout）。
+        kotlinx.coroutines.runBlocking {
+            kotlinx.coroutines.withTimeout(3_000L) {
+                while (holder.searchUiState.value is LyricsSearchUiState.Loading) {
+                    kotlinx.coroutines.delay(10L)
+                    scope.testScheduler.runCurrent()
+                }
+            }
+        }
 
         assertThat(holder.searchUiState.value).isEqualTo(LyricsSearchUiState.Success(storedLyrics))
         coVerify(exactly = 1) { musicRepository.getStoredLyrics(song) }

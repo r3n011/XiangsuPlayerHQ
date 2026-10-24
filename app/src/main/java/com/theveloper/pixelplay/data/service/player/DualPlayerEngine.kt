@@ -244,6 +244,8 @@ class DualPlayerEngine @Inject constructor(
     private val audioEngineSettings: com.theveloper.pixelplay.data.service.audioengine.AudioEngineSettings,
     private val audioProcessorProvider: AudioProcessorProvider,
     private val audioVisualizer: com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer,
+    private val onlineSourceResolver: com.theveloper.pixelplay.data.playback.OnlineSourceResolver,
+    private val playbackUrlCache: com.theveloper.pixelplay.data.playback.PlaybackUrlCache,
 ) {
     private companion object {
         private const val AUDIO_OFFLOAD_STALL_FALLBACK_MS = 4_000L
@@ -262,6 +264,15 @@ class DualPlayerEngine @Inject constructor(
         // Subset of REMOTE_MEDIA_SCHEMES: schemes that need proxy resolution.
         // http/https resolve directly and must NOT enter the resolvedUriCache lookup path.
         private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive", "cloud", "kgaudio", "bilibili")
+
+        /** 落雪音源标识（含网易云），用于识别 JS 脚本注册的可用音源。 */
+        private val LX_KNOWN_SOURCES = setOf("wy", "tx", "kw", "kg", "mg", "qsvip")
+        /**
+         * 无 `source` 字段时的兜底音源优先级。
+         * 插件源会排在前面（见 resolveCloudLxUriAsync），这里只列内置官方接口能处理的源。
+         * wy 放最后：没有 JS 时它会落到 neteaseStreamProxy，避免抢在其它源前面白等。
+         */
+        private val BUILT_IN_SOURCE_PRIORITY = listOf("tx", "kg", "kw", "mg", "wy")
     }
 
     data class TransitionTarget(
@@ -2541,9 +2552,27 @@ class DualPlayerEngine @Inject constructor(
     private fun availableQualitiesFor(source: String): List<String> =
         lxJsEngine.getSources()[source]?.qualitys.orEmpty()
 
-    suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
+    /**
+     * 手动“换源/重新解析”时清掉所有解析缓存，强制下一次 [resolveCloudUri] 重新走
+     * JS 音源 / 内置源 / 换源候选链，而不是复用已过期的直链或代理 URL。
+     */
+    fun invalidateResolvedCaches() {
+        clearAllResolvedCache()
+        invalidateProxyStreamCaches()
+        playbackUrlCache.clear()
+        lastKnownNeteasePort = 0
+        lastKnownQqMusicPort = 0
+        lastKnownNavidromePort = 0
+        lastKnownJellyfinPort = 0
+        lastKnownGDrivePort = 0
+        lastKnownTelegramPort = 0
+    }
+
+    suspend fun resolveCloudUri(uri: Uri, preferredSource: String? = null): Uri = withContext(Dispatchers.IO) {
         val uriString = uri.toString()
-        getFreshResolvedUri(uriString)?.let { return@withContext it }
+        if (preferredSource.isNullOrBlank()) {
+            getFreshResolvedUri(uriString)?.let { return@withContext it }
+        }
 
         val resolved: Uri? = when (uri.scheme) {
             "telegram" -> resolveTelegramUriAsync(uri, uriString)
@@ -2552,7 +2581,7 @@ class DualPlayerEngine @Inject constructor(
             "navidrome" -> resolveNavidromeUriAsync(uriString)
             "jellyfin" -> resolveJellyfinUriAsync(uriString)
             "gdrive" -> resolveGDriveUriAsync(uriString)
-            "cloud" -> resolveCloudLxUriAsync(uriString)
+            "cloud" -> resolveCloudLxUriAsync(uriString, preferredSource)
             "kgaudio" -> resolveKugouAudioUriAsync(uriString)
             "bilibili" -> resolveBilibiliUri(uri)
             else -> null
@@ -2834,7 +2863,14 @@ class DualPlayerEngine @Inject constructor(
         gdriveStreamProxy.resolveGDriveUri(uriString)?.toUri()
     }
 
-    private suspend fun resolveCloudLxUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
+    /**
+     * 在线歌曲解析入口。重试/限流退避统一由 [OnlineSourceResolver] 负责，
+     * 这里不再额外重试，避免“外层两次 × 内层两次”把首播拖到十几秒。
+     */
+    private suspend fun resolveCloudLxUriAsync(uriString: String, preferredSource: String? = null): Uri? =
+        resolveCloudLxUriOnce(uriString, preferredSource)
+
+    private suspend fun resolveCloudLxUriOnce(uriString: String, preferredSource: String? = null): Uri? = withContext(Dispatchers.IO) {
         if (!connectivityStateHolder.isOnline.value) {
             connectivityStateHolder.triggerOfflineBlockedEvent()
             return@withContext null
@@ -2876,276 +2912,44 @@ class DualPlayerEngine @Inject constructor(
                 songMap["duration"] = json.getLong("duration")
             }
             // 从收藏时记录的信息中获取音源；
-            // 如果没有记录，则优先用 JS 引擎注册过的音源。
+            // 如果没有记录，则优先用 JS 引擎注册过的音源，**再遍历所有内置源**。
+            // ⚡ 之前无 source 时只退到 wy/tx，导致 kg/kw/mg 的歌在 JSON 丢 source 后
+            //    连自己的官方接口都不会试，直接解析失败。这里补全为完整音源集合。
             val savedSource = json.optString("source", "").trim()
-            val availableSources = runCatching {
-                lxJsEngine.getSources().keys.filter { it in listOf("wy", "tx", "kw", "kg", "mg", "qsvip") }
-            }.getOrDefault(emptyList())
-            // ⚡ 只用自己的音源取链：**不能**把本源的 songmid/hash 丢给别的平台
-            //    （那是"换到酷我占位试听流 / 播错歌"的根因）。
-            //    真正的跨源切换在下面走「按元信息重新搜索」的候选链（移植落雪 findMusic）。
-            val targetSources = if (savedSource.isNotBlank()) {
-                listOf(savedSource)
-            } else {
-                availableSources.ifEmpty { listOf("wy", "tx") }
-            }
-
-            // ⚡ tx（QQ）必须带 `strMediaMid`（= file.media_mid）：
-            //    lx-music 的 tx 歌曲对象永远携带它（musicInfo.js → track_info.file.media_mid），
-            //    官方 tx 音源拼直链文件名是 `${档位前缀}${strMediaMid}${后缀}`。
-            //    而 `cloud://lx/` 占位 JSON 里没有 media_mid → 传进去是空的 →
-            //    tx 取不到直链 → 聚合音源插件内部会换到酷我拿一条**占位试听流**
-            //    （表现就是"QQ 歌曲放出来是酷我占位音频"）。
-            //    这里按 songmid 现取一次，与 resolveQqMusicUriAsync 的做法保持一致。
-            if (targetSources.contains("tx")) {
-                val txMid = songMap["songmid"]?.toString()?.takeIf { it.isNotBlank() }
-                    ?: songMap["id"]?.toString().orEmpty()
-                runCatching { qqMusicRepository.getMediaMid(txMid) }
-                    .getOrNull()
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let { songMap["strMediaMid"] = it }
-            }
-            android.util.Log.d(
-                "DualPlayerEngine",
-                "resolveCloudLxUri: savedSource=$savedSource targetSources=$targetSources song=${songMap["name"]}"
+            val lxSong = com.theveloper.pixelplay.data.lx.LxSongInfo(
+                id = songMap["id"]?.toString().orEmpty(),
+                songmid = songMap["songmid"]?.toString().orEmpty(),
+                hash = songMap["hash"]?.toString().orEmpty(),
+                name = songMap["name"]?.toString().orEmpty(),
+                singer = songMap["singer"]?.toString().orEmpty(),
+                artistIds = (songMap["artistIds"] as? List<*>)?.joinToString(",") { it.toString() }.orEmpty(),
+                albumName = songMap["albumName"]?.toString().orEmpty(),
+                duration = (songMap["duration"] as? Number)?.toLong() ?: 0L,
+                pic = songMap["pic"]?.toString().orEmpty(),
+                source = savedSource,
             )
-
-            // 等待落雪引擎就绪（首次播放引擎可能还在初始化，多等几秒避免直接失败）。
-            // ★ 引擎未就绪时不能直接返回 null：内置源（tx/kg/mg/kw）由
-            //   builtInSourceSearchApi 官方接口兜底，无需安装 JS 插件即可播放
-            //   （排行榜歌曲在未安装音源插件时正是靠这条链路）。
-            // ⚡ 插件优先：只要用户导入的 JS 音源注册了目标音源，就等待引擎就绪。
-            //   否则冷启动瞬间 isReady()=false，会退化成内置源 → 仍可能出现 410。
-            val pluginSources = lxJsEngine.getSources().keys
-            val needsLxEngine = targetSources.any { it in pluginSources } ||
-                targetSources.any { !builtInSourceSearchApi.isSupported(it) }
-            val lxReady = if (needsLxEngine) lxJsEngine.awaitReady(15_000) else lxJsEngine.isReady()
-            if (!lxReady) {
-                android.util.Log.w(
-                    "DualPlayerEngine",
-                    "resolveCloudLxUri: 落雪引擎未就绪，改走内置源官方接口兜底 (targetSources=$targetSources)"
+            // Unified online source resolver: plugin -> built-in -> cross-source -> netease proxy.
+            val outcome = onlineSourceResolver.resolve(
+                com.theveloper.pixelplay.data.playback.OnlineSourceResolver.Request(
+                    song = lxSong,
+                    jsSongInfo = songMap,
+                    quality = musicQualityLxValue,
+                    preferredSource = preferredSource,
+                    forceRefresh = !preferredSource.isNullOrBlank(),
+                    cacheKey = lxSong.id.ifBlank { lxSong.name + "|" + lxSong.singer },
                 )
-            }
-
-            // ★: 网易云歌曲（纯数字 id + source=wy）落雪引擎优先（音质更高），
-            // 官方 neteaseStreamProxy 仅在落雪全部失败后兜底。
-            val rawId = songMap["id"]?.toString() ?: ""
-            val neteaseSongId = rawId.toLongOrNull()
-            val isNeteaseSource = neteaseSongId != null && neteaseSongId > 0 &&
-                    (savedSource == "" || savedSource == "wy")
-
-            // 按音源优先级 + 音质优先级 尝试获取播放链接（落雪优先）
-            // 内置源（tx/kg/mg/kw）走官方播放接口并遵守音质设置；
-            // 其余源（含 wy）走 Lx JS 引擎，同样优先使用用户选择的音质。
-            var url: String? = null
-            for (source in targetSources) {
-                if (url != null) break
-                // 按该音源脚本注册的 qualitys 动态生成降级链（不再硬编码 320k/128k）
-                val chain = (
-                    MusicQualityCatalog.resolveChain(
-                        target = musicQualityLxValue,
-                        available = availableQualitiesFor(source)
-                    ) + listOf("320k", "128k")
-                    ).distinct()
-                url = if (builtInSourceSearchApi.isSupported(source)) {
-                    val lxSongInfo = com.theveloper.pixelplay.data.lx.LxSongInfo(
-                        id = songMap["id"]?.toString() ?: "",
-                        songmid = songMap["songmid"]?.toString() ?: "",
-                        hash = songMap["hash"]?.toString() ?: "",
-                        name = songMap["name"]?.toString() ?: "",
-                        singer = songMap["singer"]?.toString() ?: "",
-                        albumName = songMap["albumName"]?.toString() ?: "",
-                        duration = (songMap["duration"] as? Number)?.toLong() ?: 0L,
-                        pic = songMap["pic"]?.toString() ?: "",
-                        source = source
-                    )
-                    var resolved: String? = null
-                    // ⚡ 一旦发现"插件对这个音源只吐加密容器"，同一后端换档位也一样是容器
-                    //    （实测 tx：flac→.mflac、320k→.mgg，每档要等 ~7 秒），
-                    //    没必要再逐档白等 —— 后续档位直接交给内置官方接口与换源。
-                    var pluginProvenUnusable = false
-                    for (q in chain) {
-                        if (resolved != null) break
-                        // ① 插件优先（已被证明只吐容器时跳过）
-                        val pluginUrl = if (lxReady && !pluginProvenUnusable) {
-                            lxJsEngine.getPlayUrl(source, songMap, q)
-                        } else {
-                            null
-                        }
-                        if (!pluginUrl.isNullOrBlank() && isEncryptedLxStream(pluginUrl)) {
-                            pluginProvenUnusable = true
-                            android.util.Log.w(
-                                "DualPlayerEngine",
-                                "resolveCloudLxUri: 插件只给加密容器，跳过其余档位 ($source) ${pluginUrl.take(70)}"
-                            )
-                        }
-                        // ② 插件没拿到、或拿到的是**不可播**直链（QQ 的 .mflac/.mgg 加密容器、
-                        //    跨平台占位流）时，必须继续用**内置官方接口试同一档位**。
-                        //
-                        // ⚡ 这就是「QQ 一直解析不出播放地址」的根因：以前这里写的是
-                        //    `plugin ?: builtIn`，插件返回非空的 .mflac 会让 elvis **短路**，
-                        //    内置官方 vkey 一次都轮不到；而 lx-music 之所以能播，是因为它
-                        //    自带 QQ 加密容器解密器（ExoPlayer 没有），所以我们必须改走
-                        //    官方 vkey —— 它返回的是可播的 .flac / .mp3。
-                        val builtInUrl = if (pluginUrl.isNullOrBlank() ||
-                            isEncryptedLxStream(pluginUrl) ||
-                            isForeignPlaceholderStream(source, pluginUrl)
-                        ) {
-                            builtInSourceSearchApi.resolvePlayUrl(source, lxSongInfo, q)
-                        } else {
-                            null
-                        }
-
-                        val pick = listOfNotNull(pluginUrl, builtInUrl).firstOrNull {
-                            it.isNotBlank() &&
-                                !isEncryptedLxStream(it) &&
-                                !isForeignPlaceholderStream(source, it)
-                        }
-                        if (pick != null) {
-                            if (pick == builtInUrl && !pluginUrl.isNullOrBlank()) {
-                                android.util.Log.d(
-                                    "DualPlayerEngine",
-                                    "resolveCloudLxUri: 插件直链不可播，改用内置官方接口 ($source/$q)"
-                                )
-                            }
-                            resolved = pick
-                        } else {
-                            val rejected = pluginUrl ?: builtInUrl
-                            if (!rejected.isNullOrBlank()) {
-                                android.util.Log.w(
-                                    "DualPlayerEngine",
-                                    "resolveCloudLxUri: 丢弃不可播直链 ($source/$q) ${rejected.take(90)}"
-                                )
-                            }
-                        }
-                    }
-                    resolved
-                } else if (lxReady) {
-                    var resolved: String? = null
-                    for (q in chain) {
-                        if (resolved != null) break
-                        val tryUrl = lxJsEngine.getPlayUrl(source, songMap, q)
-                        if (!tryUrl.isNullOrBlank() &&
-                            !isEncryptedLxStream(tryUrl) &&
-                            !isForeignPlaceholderStream(source, tryUrl)
-                        ) {
-                            resolved = tryUrl
-                        } else if (!tryUrl.isNullOrBlank()) {
-                            android.util.Log.w(
-                                "DualPlayerEngine",
-                                "resolveCloudLxUri: 丢弃不可播直链 ($source/$q) ${tryUrl.take(90)}"
-                            )
-                        }
-                    }
-                    resolved
-                } else null
-                // ⚡ 加密容器（.mflac/.mgg/.mmp4）直链无法播放：丢弃并继续下一档/下一源
-                if (url != null && isEncryptedLxStream(url)) {
+            )
+            return@withContext when (outcome) {
+                is com.theveloper.pixelplay.data.playback.OnlineSourceResolver.Outcome.Success -> outcome.url.toUri()
+                is com.theveloper.pixelplay.data.playback.OnlineSourceResolver.Outcome.Failure -> {
                     android.util.Log.w(
                         "DualPlayerEngine",
-                        "resolveCloudLxUri: 跳过加密直链 ($source) ${url.take(90)}"
+                        "resolveCloudLxUri failed: ${outcome.kind} ${outcome.message} song=${lxSong.name}"
                     )
-                    url = null
-                }
-                // ⚡ 跨平台占位流（插件内部换到酷我取到的试听流）：丢弃并继续其它源
-                if (url != null && isForeignPlaceholderStream(source, url)) {
-                    android.util.Log.w(
-                        "DualPlayerEngine",
-                        "resolveCloudLxUri: 丢弃跨平台占位流 ($source) ${url.take(90)}"
-                    )
-                    url = null
-                }
-                if (url != null) {
-                    android.util.Log.d("DualPlayerEngine", "resolveCloudLxUri: got url from source=$source")
-                    break
+                    null
                 }
             }
 
-            // ⚡ 换源兜底（移植落雪 findMusic）：用「歌名 + 歌手 + 专辑 + 时长」到其它平台
-            //    **重新搜同一首歌**，拿到目标平台自己的 id 再取链。
-            //    这一步取代了以前"把本源 songmid 喂给别的平台"的错误做法。
-            if (url == null) {
-                val candidates = runCatching {
-                    builtInSourceSearchApi.findOtherSourceCandidates(
-                        name = songMap["name"]?.toString().orEmpty(),
-                        singer = songMap["singer"]?.toString().orEmpty(),
-                        albumName = songMap["albumName"]?.toString().orEmpty(),
-                        durationMs = (songMap["duration"] as? Number)?.toLong() ?: 0L,
-                        excludeSource = savedSource,
-                    )
-                }.getOrDefault(emptyList())
-
-                for (candidate in candidates) {
-                    if (url != null) break
-                    val candidateId = candidate.songmid.ifBlank { candidate.id }
-                    val candidateMap = mutableMapOf<String, Any?>(
-                        "id" to candidateId,
-                        "vid" to candidateId,
-                        "songmid" to candidate.songmid,
-                        "hash" to candidate.hash,
-                        "name" to candidate.name,
-                        "singer" to candidate.singer,
-                        "album" to candidate.albumName,
-                        "albumName" to candidate.albumName,
-                        "pic" to candidate.pic,
-                        "cover" to candidate.pic,
-                        "duration" to candidate.duration,
-                        "source" to candidate.source,
-                    )
-                    // tx 的直链文件名是 `${档位}${strMediaMid}${后缀}`，必须补上
-                    if (candidate.source == "tx" && candidateId.isNotBlank()) {
-                        runCatching { qqMusicRepository.getMediaMid(candidateId) }
-                            .getOrNull()
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { candidateMap["strMediaMid"] = it }
-                    }
-                    candidateMap["artists"] = candidate.singer
-                        .split(", ")
-                        .map { mapOf("id" to "", "name" to it) }
-
-                    val candidateChain = MusicQualityCatalog.resolveChain(
-                        target = musicQualityLxValue,
-                        available = availableQualitiesFor(candidate.source),
-                    )
-                    for (q in candidateChain) {
-                        if (url != null) break
-                        val resolvedCandidate =
-                            (if (lxReady) lxJsEngine.getPlayUrl(candidate.source, candidateMap, q) else null)
-                                ?: builtInSourceSearchApi.resolvePlayUrl(candidate.source, candidate, q)
-                        if (!resolvedCandidate.isNullOrBlank() &&
-                            !isEncryptedLxStream(resolvedCandidate) &&
-                            !isForeignPlaceholderStream(candidate.source, resolvedCandidate)
-                        ) {
-                            android.util.Log.d(
-                                "DualPlayerEngine",
-                                "resolveCloudLxUri: 换源命中 source=${candidate.source} song=${candidate.name}",
-                            )
-                            url = resolvedCandidate
-                        }
-                    }
-                }
-            }
-
-            // 落雪全失败且为网易云歌曲 → 官方 neteaseStreamProxy 兜底
-            if (url == null && isNeteaseSource && neteaseSongId != null) {
-                if (neteaseStreamProxy.ensureReady(5_000L)) {
-                    val proxyUrl = neteaseStreamProxy.resolveNeteaseUri("netease://$neteaseSongId")
-                    if (!proxyUrl.isNullOrBlank()) {
-                        android.util.Log.d(
-                            "DualPlayerEngine",
-                            "resolveCloudLxUri: resolved via neteaseStreamProxy fallback for song $neteaseSongId"
-                        )
-                        url = proxyUrl
-                    }
-                } else {
-                    android.util.Log.w(
-                        "DualPlayerEngine",
-                        "resolveCloudLxUri: neteaseStreamProxy unavailable for fallback"
-                    )
-                }
-            }
-
-            if (url != null) Uri.parse(url) else null
         } catch (e: Exception) {
             android.util.Log.e("DualPlayerEngine", "Failed to resolve cloud URI: ${e.message}", e)
             null
@@ -3225,13 +3029,13 @@ class DualPlayerEngine @Inject constructor(
         Uri.parse(url)
     }
 
-    suspend fun resolveMediaItem(mediaItem: MediaItem): MediaItem {
+    suspend fun resolveMediaItem(mediaItem: MediaItem, preferredSource: String? = null): MediaItem {
         val uri = mediaItem.localConfiguration?.uri ?: return mediaItem
         val scheme = uri.scheme
         // Use CLOUD_PROXY_SCHEMES: http/https resolve directly via ExoPlayer and never
         // reach resolveCloudUri, so checking them wastes an IO dispatch.
         if (scheme !in CLOUD_PROXY_SCHEMES) return mediaItem
-        val resolvedUri = resolveCloudUri(uri)
+        val resolvedUri = resolveCloudUri(uri, preferredSource)
         return if (resolvedUri == uri) mediaItem else mediaItem.buildUpon().setUri(resolvedUri).build()
     }
 

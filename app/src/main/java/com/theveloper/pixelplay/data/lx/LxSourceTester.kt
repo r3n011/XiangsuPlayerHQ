@@ -47,7 +47,7 @@ class LxSourceTester @Inject constructor(
 
     companion object {
         /** Kotlin 内置源（无需安装 JS 脚本） */
-        val BUILT_IN_SOURCES = listOf("tx", "kg", "kw", "mg")
+        val BUILT_IN_SOURCES = listOf("wy", "tx", "kg", "kw", "mg")
 
         /** 测试用的固定搜索词（流行度高，各平台都有结果） */
         private const val TEST_KEYWORD = "周杰伦"

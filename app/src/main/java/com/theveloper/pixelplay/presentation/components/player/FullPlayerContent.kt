@@ -409,6 +409,8 @@ fun FullPlayerContent(
     var showCommentSheet by remember { mutableStateOf(false) }
     // ⚡ 省略号打开的歌曲操作菜单（歌曲信息 / 评论 / 下载）
     var showPlayerMoreSheet by remember { mutableStateOf(false) }
+    // ⚡ 手动选择音源（换源）
+    var showSourcePickerSheet by remember { mutableStateOf(false) }
     // ⚡ B 站源评论：入口与网易云一致（CD 页评论按钮），点击后全屏打开该视频的评论
     var showBilibiliCommentSheet by remember { mutableStateOf(false) }
     var bilibiliCommentBvid by remember { mutableStateOf("") }
@@ -1261,12 +1263,21 @@ fun FullPlayerContent(
                                     // ⚡ 漫游模式下顶栏「播放中」改为「漫游模式」（原歌曲信息旁的漫游标签已移除）
                                     val isRoamingMode by playerViewModel.isRoamingMode
                                         .collectAsStateWithLifecycle(initialValue = false)
+                                    val sourceStatus by playerViewModel.playbackSourceStatus
+                                        .collectAsStateWithLifecycle()
                                     Text(
                                         modifier = Modifier.padding(start = 18.dp),
-                                        text = if (isRoamingMode) {
-                                            stringResource(R.string.player_roaming_mode_title)
-                                        } else {
-                                            stringResource(R.string.setcat_now_playing)
+                                        text = when (sourceStatus.phase) {
+                                            com.theveloper.pixelplay.data.playback.SourceResolvePhase.RESOLVING,
+                                            com.theveloper.pixelplay.data.playback.SourceResolvePhase.SWITCHED,
+                                            com.theveloper.pixelplay.data.playback.SourceResolvePhase.FAILED ->
+                                                sourceStatus.message ?: stringResource(R.string.setcat_now_playing)
+                                            com.theveloper.pixelplay.data.playback.SourceResolvePhase.IDLE ->
+                                                if (isRoamingMode) {
+                                                    stringResource(R.string.player_roaming_mode_title)
+                                                } else {
+                                                    stringResource(R.string.setcat_now_playing)
+                                                }
                                         },
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -1931,6 +1942,22 @@ fun FullPlayerContent(
                 showPlayerMoreSheet = false
                 onCommentClick()
             },
+            onRefreshSource = if (playerViewModel.isOnlineSong(song)) {
+                {
+                    showPlayerMoreSheet = false
+                    playerViewModel.refreshCurrentSongSource()
+                }
+            } else {
+                null
+            },
+            onChooseSource = if (playerViewModel.isOnlineSong(song)) {
+                {
+                    showPlayerMoreSheet = false
+                    showSourcePickerSheet = true
+                }
+            } else {
+                null
+            },
             onDownload = {
                 showPlayerMoreSheet = false
                 onDownloadClick()
@@ -1961,6 +1988,21 @@ fun FullPlayerContent(
             },
             // ⚡ 菜单跟随「播放器取色」（封面派生配色），而不是 App 主题色
             scheme = LocalMaterialTheme.current
+        )
+    }
+
+    if (showSourcePickerSheet) {
+        val sourceOptions = remember(showSourcePickerSheet, song.id) {
+            playerViewModel.availableOnlineSources()
+        }
+        SourcePickerSheet(
+            sources = sourceOptions,
+            onDismiss = { showSourcePickerSheet = false },
+            onSelect = { source ->
+                showSourcePickerSheet = false
+                playerViewModel.switchCurrentSongSource(source)
+            },
+            scheme = LocalMaterialTheme.current,
         )
     }
 
@@ -2231,7 +2273,7 @@ private fun FullPlayerAlbumCoverSection(
         // 竖屏模式：封面应该是正方形，取宽度的最小值
         // 横屏模式：使用外部高度约束或宽度计算高度的较小值
         val carouselHeight = minOf(externalHeightConstraint, widthBasedHeight)
-        // 与原版一致：封面槽始终是正方形（预览通过 keyline 在槽内让出右侧空间）
+        // 封面槽保持正方形；预览功能已移除，固定走旧版单张布局。
         val coverSlotModifier = Modifier
             .widthIn(max = carouselHeight)
             .height(carouselHeight)

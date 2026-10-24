@@ -214,5 +214,12 @@
     <string name="together_invite_dialog_ignore">Ignore</string>
     <string name="player_more_view_artist">View artist</string>
     <string name="player_more_view_album">View album</string>
+    <string name="player_more_refresh_source">Re-resolve source</string>
+    <string name="player_more_choose_source">Choose source</string>
+    <string name="player_refresh_source_started">Re-resolving audio source…</string>
+    <string name="player_refresh_source_failed">Couldn\'t resolve this song on any source</string>
+    <string name="player_source_picker_title">Choose audio source</string>
+    <string name="player_source_unavailable">Unavailable (script not installed)</string>
+    <string name="player_source_current">Current</string>
     <string name="player_hifi_suspended_by_speed">Hi-Fi paused while playback speed is not 1.0x</string>
 </resources>

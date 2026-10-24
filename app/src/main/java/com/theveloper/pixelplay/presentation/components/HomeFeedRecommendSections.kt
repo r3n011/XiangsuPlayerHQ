@@ -4,11 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -30,7 +32,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.netease.HomeFeedTrack
+import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 /**
@@ -167,52 +169,57 @@ fun ForYouCarouselSection(
     Column(modifier = modifier.fillMaxWidth()) {
         HomeSectionHeader(title, onSeeAll = onSeeAll)
         Spacer(Modifier.height(10.dp))
-        val carouselState = rememberCarouselState { tracks.size }
-        HorizontalMultiBrowseCarousel(
-            state = carouselState,
-            preferredItemWidth = preferredItemWidth,
-            itemSpacing = 12.dp,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            minSmallItemWidth = 44.dp,
-            maxSmallItemWidth = 120.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) { page ->
-            val track = tracks.getOrNull(page) ?: return@HorizontalMultiBrowseCarousel
-            val shape = AbsoluteSmoothCornerShape(20.dp, 60)
-            Card(
-                onClick = { onTrackClick(page) },
-                shape = shape,
-                colors = CardDefaults.cardColors(
-                    // ⚡ 配色派生的彩色卡（同 MostListenedRankCard 的处理）
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
-                ),
-                modifier = Modifier.fillMaxWidth().aspectRatio(0.82f)
-            ) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    SmartImage(
-                        model = track.artworkUrl,
-                        contentDescription = track.title,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                        shape = AbsoluteSmoothCornerShape(20.dp, 60),
-                        targetSize = SmartImageListTargetSize
-                    )
-                }
-                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                    Text(
-                        text = track.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+        // ⚡ 用项目自带的 RoundedHorizontalMultiBrowseCarousel：
+        //    - 标准 M3 carousel 会把两侧 peek 卡片画到列外，并被父布局裁成直角；
+        //    - 这个版本按 maskRect 做真正的圆角裁剪，且 ONE_PEEK 不会向左溢出。
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val carouselWidth = maxWidth
+            val carouselState = rememberCarouselState { tracks.size }
+            RoundedHorizontalMultiBrowseCarousel(
+                state = carouselState,
+                carouselStyle = CarouselStyle.THREE_ITEMS_PREVIEW,
+                carouselWidth = carouselWidth,
+                itemSpacing = 8.dp,
+                itemCornerRadius = 20.dp,
+                modifier = Modifier.fillMaxWidth(),
+            ) { page ->
+                val track = tracks.getOrNull(page) ?: return@RoundedHorizontalMultiBrowseCarousel
+                val shape = AbsoluteSmoothCornerShape(20.dp, 60)
+                Card(
+                    onClick = { onTrackClick(page) },
+                    shape = shape,
+                    colors = CardDefaults.cardColors(
+                        // ⚡ 配色派生的彩色卡（同 MostListenedRankCard 的处理）
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+                    ),
+                    modifier = Modifier.fillMaxWidth().aspectRatio(0.82f)
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        SmartImage(
+                            model = track.artworkUrl,
+                            contentDescription = track.title,
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                            shape = AbsoluteSmoothCornerShape(20.dp, 60),
+                            targetSize = SmartImageListTargetSize
+                        )
+                    }
+                    Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                        Text(
+                            text = track.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = track.artist,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

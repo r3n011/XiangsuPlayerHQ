@@ -25,8 +25,10 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import dagger.Lazy
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -100,6 +102,9 @@ class PlayerViewModelTest {
     private val mockMultiSelectionStateHolder: MultiSelectionStateHolder = mockk(relaxed = true)
     private val mockPlaylistSelectionStateHolder: PlaylistSelectionStateHolder = mockk(relaxed = true)
     private lateinit var mockMediaControllerFactory: com.theveloper.pixelplay.data.media.MediaControllerFactory
+    private lateinit var mockMusicDownloadServiceProvider: Lazy<com.theveloper.pixelplay.data.service.http.MusicDownloadService>
+    private lateinit var mockMusicDownloadService: com.theveloper.pixelplay.data.service.http.MusicDownloadService
+    private lateinit var mockListenTogetherCoordinator: com.theveloper.pixelplay.data.listentogether.ListenTogetherCoordinator
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -166,6 +171,7 @@ class PlayerViewModelTest {
         every { mockLibraryStateHolder.currentFolderSortOption } returns MutableStateFlow<SortOption>(SortOption.FolderNameAZ)
         every { mockLibraryStateHolder.currentFavoriteSortOption } returns MutableStateFlow<SortOption>(SortOption.LikedSongTitleAZ)
         every { mockLibraryStateHolder.currentStorageFilter } returns MutableStateFlow(StorageFilter.ALL)
+        every { mockLibraryStateHolder.allSongsById } returns MutableStateFlow(emptyMap())
 
         every { mockSearchStateHolder.searchHistory } returns _searchHistoryFlow
         every { mockSearchStateHolder.searchResults } returns _searchResultsFlow
@@ -193,6 +199,7 @@ class PlayerViewModelTest {
         _favoriteIdsFlow.value = emptySet()
         stablePlayerStateFlow = MutableStateFlow(StablePlayerState(currentSong = null))
         every { mockPlaybackStateHolder.stablePlayerState } returns stablePlayerStateFlow
+        every { mockPlaybackStateHolder.currentPosition } returns MutableStateFlow(0L)
         every { mockPlaybackStateHolder.setMediaController(any()) } just runs // Added missing mock
 
         every { mockSleepTimerStateHolder.initialize(any(), any(), any(), any(), any()) } just runs // Added missing mock
@@ -243,6 +250,16 @@ class PlayerViewModelTest {
             runnable.run()
         }
         every { mockMediaControllerFactory.create(any(), any(), any()) } returns mockFuture
+
+        mockMusicDownloadService = mockk(relaxed = true)
+        every { mockMusicDownloadService.downloads } returns MutableStateFlow(emptyList())
+        mockMusicDownloadServiceProvider = mockk(relaxed = true)
+        every { mockMusicDownloadServiceProvider.get() } returns mockMusicDownloadService
+        mockListenTogetherCoordinator = mockk(relaxed = true)
+        every { mockListenTogetherCoordinator.messageEvents } returns MutableSharedFlow()
+        every { mockListenTogetherCoordinator.state } returns MutableStateFlow(
+            com.theveloper.pixelplay.data.listentogether.ListenTogetherState()
+        )
         
         // Ensure manual executor for main thread to prevent RejectedExecutionException
         // We already mocked ContextCompat.getMainExecutor above.
@@ -293,14 +310,17 @@ class PlayerViewModelTest {
             kugouFmApi = mockk(relaxed = true),
             builtInSourceSearchApi = mockk(relaxed = true),
             neteaseRecommendApi = mockk(relaxed = true),
+            homeFeedRepository = mockk(relaxed = true),
             bluetoothLyricsManager = mockk(relaxed = true),
             dotImageRepositoryProvider = mockk<Lazy<com.theveloper.pixelplay.data.repository.DotImageRepository>>(relaxed = true),
             neteaseDownloadService = mockk(relaxed = true),
-            musicDownloadServiceProvider = mockk<Lazy<com.theveloper.pixelplay.data.service.http.MusicDownloadService>>(relaxed = true),
-            listenTogetherCoordinator = mockk(relaxed = true),
+            musicDownloadServiceProvider = mockMusicDownloadServiceProvider,
+            listenTogetherCoordinator = mockListenTogetherCoordinator,
             aiCompanionManager = mockk(relaxed = true),
             glyphMatrixController = mockk(relaxed = true),
-            audioVisualizer = mockk(relaxed = true)
+            audioVisualizer = mockk(relaxed = true),
+            playbackSourceStatusHolder = com.theveloper.pixelplay.data.playback.PlaybackSourceStatusHolder(),
+            onlineSourceResolver = mockk(relaxed = true)
         )
     }
 
@@ -583,11 +603,13 @@ class PlayerViewModelTest {
             _allSongsFlow.value = songs.toImmutableList()
             // The tile pulls a bounded random sample from the repository; stub it so the
             // "already loaded" path returns immediately without going through a sync retry.
-            coEvery { mockMusicRepository.getRandomSongs(500) } returns songs
+            coEvery { mockMusicRepository.getRandomSongs(any()) } returns songs
             stubShuffledPlayback(songs, "All Songs (Shuffled)", startSong = song1)
 
             playerViewModel.triggerShuffleAllFromTile()
-            advanceUntilIdle()
+            // 只推进到 prepareShuffledQueueSuspending 被调用即可；后续 internalPlaySongs
+            // 会启动长时间播放任务，不需要在本单测里跑完。
+            testDispatcher.scheduler.runCurrent()
 
             coVerify {
                 mockQueueStateHolder.prepareShuffledQueueSuspending(
@@ -596,6 +618,7 @@ class PlayerViewModelTest {
                     true
                 )
             }
+            playerViewModel.viewModelScope.cancel()
         }
     }
 

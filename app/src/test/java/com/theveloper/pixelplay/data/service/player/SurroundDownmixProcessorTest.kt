@@ -22,8 +22,9 @@ class SurroundDownmixProcessorTest {
 
         assertThat(processor.isActive()).isTrue()
         assertThat(outputFormat.channelCount).isEqualTo(2)
+        // 5.1 下混会按系数绝对值之和归一化，避免多声道叠加削顶。
         assertThat(readShorts(processor.getOutput()))
-            .containsExactly(9_484, 11_191)
+            .containsExactly(3_038, 3_585)
             .inOrder()
     }
 
@@ -43,8 +44,9 @@ class SurroundDownmixProcessorTest {
 
         val output = readFloats(processor.getOutput())
         assertThat(output).hasSize(2)
-        assertThat(output[0]).isWithin(1e-6f).of(1f.coerceAtMost(0.1f + 0.707f * 0.3f + 0.707f * 0.5f + 0.707f * 0.7f + 0.707f * 0.4f))
-        assertThat(output[1]).isWithin(1e-6f).of(1f.coerceAtMost(0.2f + 0.707f * 0.3f + 0.707f * 0.6f + 0.707f * 0.8f + 0.707f * 0.4f))
+        // 7.1 同样做归一化（系数绝对值之和），不会把叠加结果硬钳到 1.0。
+        assertThat(output[0]).isWithin(1e-6f).of(0.37703762f)
+        assertThat(output[1]).isWithin(1e-6f).of(0.44009927f)
     }
 
     private fun shortBufferOf(vararg samples: Int): ByteBuffer {

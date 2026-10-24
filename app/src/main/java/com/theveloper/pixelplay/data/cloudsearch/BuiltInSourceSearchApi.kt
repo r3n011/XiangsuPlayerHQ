@@ -37,6 +37,10 @@ class BuiltInSourceSearchApi @Inject constructor(
     private val kugouRepository: com.theveloper.pixelplay.data.kugou.KugouRepository,
     // ⚡ QQ 直链：免签名 vkey 取链（对齐 lx-music）
     private val qqMusicRepository: com.theveloper.pixelplay.data.qqmusic.QqMusicRepository,
+    // ⚡ 网易云内置搜索：复用已有的 NCM 搜索（LxSearchApi），换源候选/内置 wy 都走它
+    private val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi,
+    // ⚡ 网易云取链：官方 eapi + Lx 引擎兜底，内置 wy 源直接复用
+    private val neteaseRepository: com.theveloper.pixelplay.data.netease.NeteaseRepository,
 ) {
     /**
      * ⚡ 已登录酷狗账号时给**酷狗域名**带上 Cookie（token/userid/vip_token）：
@@ -88,7 +92,7 @@ class BuiltInSourceSearchApi @Inject constructor(
         )
         private const val MG_TEA_DELTA = 2654435769L
 
-        private const val SUPPORTED_SOURCES = "tx,kg,mg,kw"
+        private const val SUPPORTED_SOURCES = "wy,tx,kg,mg,kw"
 
         // ─── 歌单详情（对齐落雪 musicSdk.*.songList.getListDetail）───
         private const val KG_PLAYLIST_PAGE = "http://www2.kugou.kugou.com/yueku/v9/special/single/"
@@ -391,6 +395,7 @@ class BuiltInSourceSearchApi @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 when (source) {
+                    "wy" -> searchWy(keyword, page, pageSize)
                     "kg" -> searchKg(keyword, page, pageSize)
                     "tx" -> searchTx(keyword, page, pageSize)
                     "mg" -> searchMg(keyword, page, pageSize)
@@ -438,20 +443,42 @@ class BuiltInSourceSearchApi @Inject constructor(
         durationMs: Long = 0L,
         excludeSource: String = "",
         perSourceLimit: Int = 25,
+        /**
+         * 额外参与换源搜索的音源（例如用户导入的落雪 JS 脚本注册的源）。
+         * 这些源不经过 [search] 的内置实现，而是交给 [extraSearch]。
+         */
+        extraSources: Collection<String> = emptyList(),
+        /**
+         * 额外音源的搜索实现。返回结果应尽量带上目标平台自己的 id/songmid/hash。
+         * 传 null 时忽略 [extraSources]。
+         */
+        extraSearch: (suspend (source: String, keyword: String, limit: Int) -> List<LxSongInfo>)? = null,
     ): List<LxSongInfo> = withContext(Dispatchers.IO) {
         if (name.isBlank()) return@withContext emptyList()
         val keyword = "$name $singer".trim()
-        val sources = SUPPORTED_SOURCES.split(",").filter { it.isNotBlank() && it != excludeSource }
+        val builtInSources = SUPPORTED_SOURCES.split(",").filter { it.isNotBlank() }
+        val sources = (extraSources + builtInSources)
+            .distinct()
+            .filter { it.isNotBlank() && it != excludeSource }
         if (sources.isEmpty()) return@withContext emptyList()
 
         val perSourceLists = coroutineScope {
             sources.map { source ->
                 async {
-                    runCatching { search(source, keyword, 1, perSourceLimit) }
-                        .getOrNull()
-                        ?.list
-                        .orEmpty()
-                        .map { it.copy(source = source) }
+                    if (source in builtInSources) {
+                        runCatching { search(source, keyword, 1, perSourceLimit) }
+                            .getOrNull()
+                            ?.list
+                            .orEmpty()
+                            .map { it.copy(source = source) }
+                    } else if (extraSearch != null) {
+                        runCatching { extraSearch.invoke(source, keyword, perSourceLimit) }
+                            .getOrNull()
+                            .orEmpty()
+                            .map { it.copy(source = source) }
+                    } else {
+                        emptyList()
+                    }
                 }
             }.awaitAll()
         }
@@ -541,6 +568,21 @@ class BuiltInSourceSearchApi @Inject constructor(
      */
     suspend fun resolvePlayUrl(source: String, song: LxSongInfo, quality: String = "320k"): String? = withContext(Dispatchers.IO) {
         try {
+            if (source == "wy") {
+                val neteaseId = song.id.toLongOrNull()
+                    ?: song.songmid.toLongOrNull()
+                    ?: return@withContext null
+                if (neteaseId <= 0) return@withContext null
+                val level = com.theveloper.pixelplay.data.preferences.MusicQualityCatalog
+                    .neteaseLevelFor(quality)
+                val url = neteaseRepository.getSongUrl(neteaseId, level).getOrNull()
+                if (!url.isNullOrBlank()) {
+                    Timber.d("$TAG: wy official/JS URL ok for '${song.name}' (quality=$quality)")
+                    return@withContext url
+                }
+                return@withContext null
+            }
+
             if (source == "kg" && song.hash.isNotBlank()) {
                 val official = getKgPlayUrl(song.hash, qualityToKgBr(quality))
                 if (!official.isNullOrBlank() && isPlayable(official)) {
@@ -694,6 +736,22 @@ class BuiltInSourceSearchApi @Inject constructor(
         "flac", "24bit", "lossless", "hires" -> 999000
         "128k", "128" -> 128000
         else -> 320000
+    }
+
+    // ─── 网易云（复用 LxSearchApi 的 NCM 搜索，作为内置 wy 源）────────────
+
+    private suspend fun searchWy(keyword: String, page: Int, pageSize: Int): LxSearchResult {
+        return runCatching {
+            lxSearchApi.search(keyword, page = page, pageSize = pageSize)
+                .let { result ->
+                    result.copy(
+                        list = result.list.map { it.copy(source = "wy") }
+                    )
+                }
+        }.getOrElse {
+            Timber.w(it, "$TAG: searchWy failed for '$keyword'")
+            LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        }
     }
 
     // ─── 酷我（官方 search.kuwo.cn，落雪同款接口）──────────────────────

@@ -98,27 +98,36 @@ class HomeFeedRepository @Inject constructor(
         fun blockOf(kind: HomeBlockKind): List<HomeFeedTrack> =
             blocks.firstOrNull { it.kind == kind }?.tracks.orEmpty()
 
-        // ② 为你推荐：个性化新歌（登录/匿名都可用）
+        // ② 匿名/无个性化时也准备一份「全部今日热门」池子：
+        //    personalized/newsong 与 v1/discovery/new/songs 都是完整歌曲对象，
+        //    解析修复后这里通常都能拿到数据；两个卡片用不同切片，避免完全重复。
+        val discoveryPool = runCatching {
+            api.fetchDiscoveryNewSongs(
+                areaId = 0,
+                limit = SECTION_LIMIT + HOT_LIMIT,
+                cookie = cookie,
+            ).getOrThrow()
+        }.getOrDefault(emptyList())
+
+        // ③ 为你推荐：个性化新歌优先；接口无数据时用今日热门池兜底，保证卡片不消失
         val forYou = runCatching {
             api.fetchPersonalizedNewSongs(areaId = areaId, limit = SECTION_LIMIT, cookie = cookie).getOrThrow()
         }.getOrDefault(emptyList())
+            .ifEmpty { discoveryPool.take(SECTION_LIMIT) }
 
-        // ③ 今日云村热播：server block 优先，兜底「今日热门(全部)」
+        // ④ 今日云村热播：server block 优先，兜底今日热门(全部)前 12 首
         val blockTrending = blockOf(HomeBlockKind.RECENTLY_TRENDING)
-        val fallbackTrendingUsed = blockTrending.isEmpty()
         val todayTrending = blockTrending.ifEmpty {
-            runCatching {
-                api.fetchDiscoveryNewSongs(areaId = 0, limit = SECTION_LIMIT, cookie = cookie).getOrThrow()
-            }.getOrDefault(emptyList())
+            discoveryPool.take(SECTION_LIMIT)
         }
 
-        // ④ 全部今日热门：server block 优先；兜底与上面同源，做去重保护
+        // ⑤ 全部今日热门：server block 优先；兜底使用同一个池子的后续条目，
+        //    不足时退回首段（宁可内容有重叠，也不要卡片永远不显示）。
         val blockHot = blockOf(HomeBlockKind.REGIONAL_SONGS)
         val todayHot = blockHot.ifEmpty {
-            // 只有当「云村热播」没有消耗掉兜底、或地区不同（内容确实不同）时才再请求
-            if (fallbackTrendingUsed && areaId == 0) {
-                Timber.d("$TAG: 跳过今日热门兜底（与云村热播同源，避免重复卡片）")
-                emptyList()
+            if (areaId == 0) {
+                discoveryPool.drop(SECTION_LIMIT).take(HOT_LIMIT)
+                    .ifEmpty { discoveryPool.take(HOT_LIMIT) }
             } else {
                 runCatching {
                     api.fetchDiscoveryNewSongs(areaId = areaId, limit = HOT_LIMIT, cookie = cookie).getOrThrow()

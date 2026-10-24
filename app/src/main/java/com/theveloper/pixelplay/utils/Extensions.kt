@@ -47,7 +47,10 @@ fun Color.toHexString(): String {
  */
 fun String?.normalizeMetadataText(): String? {
     if (this == null) return null
-    var candidate = this.trim()
+    // ⚡ 不能用 Kotlin 默认 trim()：它会把 U+00A0 等 Latin-1 高位字符当空白删掉，
+    // 而 UTF-8 韩文/日文 misdecode 后的最后一个字节经常正好是 0xA0。
+    // 只裁掉真正的 ASCII 控制/空白，保留 0x80-0xFF 的原始字节信息供 mojibake 修复。
+    var candidate = this.trim { it <= ' ' }
     if (candidate.isEmpty()) return candidate
 
     // UTF-8-as-Latin-1 mojibake may be nested (encoded twice); repair until stable.
@@ -55,7 +58,7 @@ fun String?.normalizeMetadataText(): String? {
         val repaired = repairUtf8Mojibake(candidate) ?: return@repeat
         candidate = repaired
     }
-    if (candidate == this.trim()) {
+    if (candidate == this.trim { it <= ' ' }) {
         repairShiftJisMojibake(candidate)?.let { candidate = it }
     }
 

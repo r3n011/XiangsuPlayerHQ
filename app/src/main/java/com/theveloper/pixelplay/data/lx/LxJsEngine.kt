@@ -100,6 +100,28 @@ class LxJsEngine @Inject constructor(
     @Volatile var lastError: String? = null
         private set
 
+    // 供统一解析器做“限流/网络错误”分类的轻量信号。
+    @Volatile private var lastRateLimitedAtMs: Long = 0L
+    @Volatile private var lastNetworkErrorAtMs: Long = 0L
+    @Volatile private var lastCallTimeoutAtMs: Long = 0L
+
+    fun wasRateLimitedRecently(windowMs: Long = 30_000L): Boolean =
+        System.currentTimeMillis() - lastRateLimitedAtMs <= windowMs
+
+    fun wasNetworkErrorRecently(windowMs: Long = 30_000L): Boolean =
+        System.currentTimeMillis() - lastNetworkErrorAtMs <= windowMs
+
+    fun wasCallTimeoutRecently(windowMs: Long = 30_000L): Boolean =
+        System.currentTimeMillis() - lastCallTimeoutAtMs <= windowMs
+
+    private fun recordHttpResult(response: LxHttpResponse) {
+        val now = System.currentTimeMillis()
+        when {
+            response.statusCode == 429 || response.statusCode == 503 -> lastRateLimitedAtMs = now
+            response.statusCode == 0 || response.error != null -> lastNetworkErrorAtMs = now
+        }
+    }
+
     private val callCounter = AtomicLong(0)
 
     // ── 生命周期 ──────────────────────────────────────────────────────────
@@ -355,6 +377,83 @@ class LxJsEngine @Inject constructor(
         return null
     }
 
+    /**
+     * 调用 JS 音源的 lyric 动作（lx userApi 的 `action: 'lyric'`）。
+     *
+     * 大多数落雪音源脚本只实现 `musicUrl`，所以这里始终按“尽力而为”处理：
+     * 脚本未声明 lyric / 返回失败时返回 null，由内置源/LRCLIB 继续兜底。
+     */
+    suspend fun getLyric(
+        source: String,
+        songInfo: Map<String, Any?>,
+        quality: String = "128k",
+    ): LxLyricInfo? {
+        if (!awaitReady() || !isSourceEnabled(source)) return null
+        val info = mapOf("musicInfo" to songInfo, "type" to quality)
+        val targets = sourceIndex[source] ?: return null
+        for (fileName in targets) {
+            val inst = instances[fileName] ?: continue
+            val raw = runCatching {
+                withContext(qjsDispatcher) {
+                    callJs(inst, "lyric", source, info, timeoutMs = 15_000)
+                }
+            }.getOrNull() ?: continue
+            val lyric = processLyricResult(raw)
+            if (lyric != null && lyric.isUsable()) return lyric
+        }
+        return null
+    }
+
+    /**
+     * 调用 JS 音源的 pic 动作（lx userApi 的 `action: 'pic'`）。
+     * 返回的 URL 只接受 http/https，避免把脚本里的相对路径直接交给图片加载器。
+     */
+    suspend fun getPic(
+        source: String,
+        songInfo: Map<String, Any?>,
+        quality: String = "128k",
+    ): String? {
+        if (!awaitReady() || !isSourceEnabled(source)) return null
+        val info = mapOf("musicInfo" to songInfo, "type" to quality)
+        val targets = sourceIndex[source] ?: return null
+        for (fileName in targets) {
+            val inst = instances[fileName] ?: continue
+            val raw = runCatching {
+                withContext(qjsDispatcher) {
+                    callJs(inst, "pic", source, info, timeoutMs = 15_000)
+                }
+            }.getOrNull() ?: continue
+            val pic = processUrlResult(raw)
+            if (!pic.isNullOrBlank()) return pic
+        }
+        return null
+    }
+
+    private fun processLyricResult(raw: Any?): LxLyricInfo? {
+        if (raw == null) return null
+        val obj: JSONObject = when (raw) {
+            is JSONObject -> raw
+            is String -> {
+                val s = raw.trim()
+                when {
+                    s.startsWith("{") -> runCatching { JSONObject(s) }.getOrNull() ?: return null
+                    s.startsWith("\"") && s.endsWith("\"") && s.length >= 2 ->
+                        return LxLyricInfo(lyric = s.substring(1, s.length - 1))
+                    s.isNotBlank() -> return LxLyricInfo(lyric = s)
+                    else -> return null
+                }
+            }
+            else -> return null
+        }
+        val lyric = obj.optString("lyric").takeIf { it.isNotBlank() } ?: return null
+        return LxLyricInfo(
+            lyric = lyric,
+            tlyric = obj.optString("tlyric").takeIf { it.isNotBlank() },
+            rlyric = obj.optString("rlyric").takeIf { it.isNotBlank() },
+            lxlyric = obj.optString("lxlyric").takeIf { it.isNotBlank() },
+        )
+    }
+
     // ── 引擎调用（非阻塞：evaluate 触发后挂起等待，JS 线程空闲可处理其它请求） ──
 
     private suspend fun callJs(
@@ -382,6 +481,7 @@ class LxJsEngine @Inject constructor(
             val raw = try {
                 withTimeout(timeoutMs) { deferred.await() }
             } catch (e: TimeoutCancellationException) {
+                lastCallTimeoutAtMs = System.currentTimeMillis()
                 Log.w(TAG, "callJs $action/$source timeout after ${timeoutMs}ms")
                 null
             }
@@ -620,6 +720,7 @@ class LxJsEngine @Inject constructor(
                     form = form,
                     timeoutMs = if (timeout > 0) timeout else 15000L
                 )
+                recordHttpResult(resp)
                 deliverScriptResponse(c, requestKey, resp, binary)
             } catch (t: Throwable) {
                 deliverScriptError(c, requestKey, t.message ?: t.javaClass.simpleName)

@@ -9,8 +9,8 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.mockk
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -36,7 +36,10 @@ class ArtistImageRepositoryTest {
     fun `cancelled prefetch does not mark artist as failed for the session`() = runTest {
         val deezerApiService = mockk<DeezerApiService>()
         val musicDao = mockk<MusicDao>()
-        val repository = ArtistImageRepository(deezerApiService, musicDao, mockk(relaxed = true))
+        val apiProviderPreferences = mockk<com.theveloper.pixelplay.data.preferences.ApiProviderPreferences>(relaxed = true)
+        coEvery { apiProviderPreferences.current() } returns
+            com.theveloper.pixelplay.data.preferences.ApiProviderSnapshot(deezerArtistEnabled = true)
+        val repository = ArtistImageRepository(deezerApiService, musicDao, apiProviderPreferences)
         val firstAttemptStarted = CompletableDeferred<Unit>()
         val searchAttempts = AtomicInteger(0)
         val rawUrl = "https://cdn-images.dzcdn.net/images/artist/250x250-000000-80-0-0.jpg"
@@ -50,7 +53,9 @@ class ArtistImageRepositoryTest {
             when (searchAttempts.incrementAndGet()) {
                 1 -> {
                     firstAttemptStarted.complete(Unit)
-                    awaitCancellation()
+                    // 模拟请求进行中被取消，避免 awaitCancellation 在 runTest 下
+                    // 因真实 IO 调度导致测试体无法收敛。
+                    throw CancellationException("prefetch cancelled")
                 }
 
                 else -> DeezerSearchResponse(

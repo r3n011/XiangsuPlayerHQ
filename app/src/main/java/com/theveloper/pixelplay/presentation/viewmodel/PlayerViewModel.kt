@@ -42,6 +42,8 @@ import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.netease.PersonalFmApi
 import com.theveloper.pixelplay.data.netease.PersonalFmSongDetail
 import com.theveloper.pixelplay.data.lx.LxSongInfo
+import com.theveloper.pixelplay.data.lx.toLxMusicInfoMap
+import com.theveloper.pixelplay.data.playback.OnlineSourceOption
 import com.theveloper.pixelplay.data.kugou.KugouAudiobookChapter
 import com.theveloper.pixelplay.data.kugou.toKugouAudioUri
 import androidx.media3.session.SessionCommand
@@ -322,6 +324,8 @@ class PlayerViewModel @Inject constructor(
     private val aiCompanionManager: com.theveloper.pixelplay.data.ai.AiCompanionManager,
     private val glyphMatrixController: com.theveloper.pixelplay.data.service.glyph.GlyphMatrixController,
     private val audioVisualizer: com.theveloper.pixelplay.data.service.visualizer.AudioVisualizer,
+    private val playbackSourceStatusHolder: com.theveloper.pixelplay.data.playback.PlaybackSourceStatusHolder,
+    private val onlineSourceResolver: com.theveloper.pixelplay.data.playback.OnlineSourceResolver,
 ) : ViewModel() {
 
     // ─── 网易云账户相关 ────────────────────────────────────────────────────
@@ -376,6 +380,43 @@ class PlayerViewModel @Inject constructor(
 
     fun isOnlineSong(song: Song): Boolean {
         return musicDownloadServiceProvider.get().isOnlineSong(song)
+    }
+
+    /** 换源/解析状态（UI 可订阅显示“正在获取播放链接/已切换音源”）。 */
+    val playbackSourceStatus = playbackSourceStatusHolder.status
+
+    /**
+     * 手动换源可选音源列表：内置官方源 + 已安装 JS 脚本注册的源。
+     * 内置源即使没装 JS 也可用；仅 JS 提供的源在脚本未加载时显示为不可用。
+     */
+    fun availableOnlineSources(): List<OnlineSourceOption> {
+        val pluginSources = runCatching { lxJsEngine.getSources() }.getOrDefault(emptyMap())
+        val currentSource = playbackStateHolder.stablePlayerState.value.currentSong
+            ?.contentUriString
+            ?.let { decodeLxSongInfoFromPlaceholderUri(it)?.source }
+            ?.takeIf { it.isNotBlank() }
+
+        val ids = (listOf("wy", "tx", "kg", "kw", "mg") + pluginSources.keys)
+            .distinct()
+            .filter { it.isNotBlank() }
+        return ids.map { id ->
+            OnlineSourceOption(
+                id = id,
+                displayName = sourceDisplayName(id),
+                available = builtInSourceSearchApi.isSupported(id) || pluginSources.containsKey(id),
+                isCurrent = id == currentSource,
+            )
+        }
+    }
+
+    private fun sourceDisplayName(id: String): String = when (id) {
+        "wy" -> "网易云音乐"
+        "tx" -> "QQ 音乐"
+        "kg" -> "酷狗音乐"
+        "kw" -> "酷我音乐"
+        "mg" -> "咪咕音乐"
+        "qsvip" -> "QQ 音乐 SVIP"
+        else -> id
     }
 
     // ─── 漫游模式 VIP 歌曲检测 ──────────────────────────────────────────────
@@ -905,12 +946,6 @@ class PlayerViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = CarouselStyle.NO_PEEK
-        )
-
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = com.theveloper.pixelplay.data.preferences.PLAYER_COVER_STYLE_DEFAULT
         )
 
     val playerProgressStyle: StateFlow<String> = userPreferencesRepository.playerProgressStyleFlow
@@ -1768,9 +1803,36 @@ class PlayerViewModel @Inject constructor(
         )
         themeStateHolder.initialize(viewModelScope)
 
-        // 日语注音引擎：启动时只做一次完整性自检（不触发下载），并监听引擎就绪后补算罗马音
-        KuromojiEngine.verifyInstalledAsync()
-        observeKuromojiEngineForRomanization()
+        // 换源状态提示：与 lx-music 的 setStatusText 对齐，解析/换源/失败都通过 Toast 告知用户
+        viewModelScope.launch {
+            playbackSourceStatusHolder.status.collect { status ->
+                val message = status.message ?: return@collect
+                when (status.phase) {
+                    // “正在获取播放链接…”只保留播放器顶栏状态，不再弹系统底部 Toast，
+                    // 否则每次解析/预解析都会频繁弹出。
+                    com.theveloper.pixelplay.data.playback.SourceResolvePhase.RESOLVING -> Unit
+                    com.theveloper.pixelplay.data.playback.SourceResolvePhase.SWITCHED,
+                    com.theveloper.pixelplay.data.playback.SourceResolvePhase.FAILED -> {
+                        _toastEvents.emit(message)
+                    }
+                    com.theveloper.pixelplay.data.playback.SourceResolvePhase.IDLE -> Unit
+                }
+                // 成功/失败状态只保留几秒，避免顶栏一直停留在“已切换音源”。
+                if (status.phase == com.theveloper.pixelplay.data.playback.SourceResolvePhase.SWITCHED ||
+                    status.phase == com.theveloper.pixelplay.data.playback.SourceResolvePhase.FAILED
+                ) {
+                    delay(4_000)
+                    if (playbackSourceStatusHolder.status.value.updatedAtMs == status.updatedAtMs) {
+                        playbackSourceStatusHolder.clear()
+                    }
+                }
+            }
+        }
+
+        // 日语注音引擎：启动时只做一次完整性自检（不触发下载），并监听引擎就绪后补算罗马音。
+        // 单元测试环境没有 Application 实例，这里做保护，避免 ViewModel 构造直接崩溃。
+        runCatching { KuromojiEngine.verifyInstalledAsync() }
+        runCatching { observeKuromojiEngineForRomanization() }
 
         // On cold start, the MediaController connects asynchronously, leaving stablePlayerState.currentSong
         // null until that happens. Pre-load the palette from the persisted snapshot so the mini player
@@ -2614,13 +2676,11 @@ class PlayerViewModel @Inject constructor(
             }
         }
 
-        if (mediaController == null) {
-            Timber.d("[TileDebug] mediaController null, queuing as pendingPlaybackAction")
-            pendingPlaybackAction = action
-        } else {
-            Timber.d("[TileDebug] mediaController ready, calling action immediately")
-            action()
-        }
+        // ⚡ 不依赖 MediaController 是否已连接：取随机歌曲 + 构建队列由 action 自己完成，
+        //    internalPlaySongs 内部会直接走 DualPlayerEngine（Controller 未就绪时会自行排队）。
+        //    这样磁贴冷启动时不会因为 Controller 还没连上就丢掉整个随机播放请求。
+        Timber.d("[TileDebug] calling action immediately (mediaController=${mediaController != null})")
+        action()
     }
 
     fun playRandomSong() =
@@ -6350,7 +6410,7 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    private suspend fun buildResolvedPlaybackMediaItem(song: Song): MediaItem {
+    private suspend fun buildResolvedPlaybackMediaItem(song: Song, preferredSource: String? = null): MediaItem {
         // ⚡ 已下载歌曲优先播放本地文件：下载完成后数据库里 path 不会自动更新，
         // 若仍按网络源解析，URL 过期/下架/限流时会出现"下载后无法播放"。
         // 命中已下载记录时直接用本地文件 URI 播放（含 SAF content:// 路径），绕过网络解析。
@@ -6361,7 +6421,36 @@ class PlayerViewModel @Inject constructor(
         }
 
         val mediaItem = MediaItemBuilder.build(song)
-        val originalUri = mediaItem.localConfiguration?.uri ?: return mediaItem
+        val builtUri = mediaItem.localConfiguration?.uri ?: return mediaItem
+        // 手动选源时，netease://、qqmusic:// 专用 URI 也要能强制走指定音源：
+        // 转成 cloud://lx 占位，让统一解析器按 preferredSource 重新解析。
+        val originalUri = if (!preferredSource.isNullOrBlank() &&
+            (builtUri.scheme == "netease" || builtUri.scheme == "qqmusic")
+        ) {
+            val rawId = when (builtUri.scheme) {
+                "netease" -> builtUri.toString().removePrefix("netease://").substringBefore('?')
+                "qqmusic" -> builtUri.toString().removePrefix("qqmusic://").substringBefore('?')
+                else -> ""
+            }
+            if (rawId.isBlank()) {
+                builtUri
+            } else {
+                val lxInfo = LxSongInfo(
+                    id = rawId,
+                    songmid = rawId,
+                    hash = rawId,
+                    name = song.title,
+                    singer = song.displayArtist,
+                    albumName = song.album,
+                    duration = song.duration,
+                    pic = song.albumArtUriString.orEmpty(),
+                    source = preferredSource,
+                )
+                Uri.parse(lxInfo.toLxPlaceholderUri(preferredSource))
+            }
+        } else {
+            builtUri
+        }
         val scheme = originalUri.scheme
         if (
             scheme != "telegram" &&
@@ -6381,7 +6470,7 @@ class PlayerViewModel @Inject constructor(
             ensureTelegramPlaybackObserversStarted()
         }
 
-        val resolvedUri = dualPlayerEngine.resolveCloudUri(originalUri)
+        val resolvedUri = dualPlayerEngine.resolveCloudUri(originalUri, preferredSource)
         val resolvedStr = resolvedUri.toString().trim()
 
         if (resolvedUri == originalUri || resolvedStr.isBlank()) {
@@ -6421,6 +6510,63 @@ class PlayerViewModel @Inject constructor(
         if (wasPlaying) controller.play()
     }
 
+
+    /**
+     * 手动「换源 / 重新解析」当前在线歌曲。
+     *
+     * 清掉 DualPlayerEngine 的解析缓存后重新走完整链路：
+     * 当前源 JS 插件 → 内置官方接口 → 按元信息跨源搜索候选 → 网易云代理兜底。
+     * 解析成功后用 [MediaController.replaceMediaItem] 原地替换，保留播放队列和进度。
+     */
+    fun refreshCurrentSongSource(preferredSource: String? = null) {
+        val song = playbackStateHolder.stablePlayerState.value.currentSong ?: return
+        val controller = mediaController ?: return
+        if (!isOnlineSong(song)) return
+        if (controller.currentMediaItem?.mediaId != song.id) return
+
+        viewModelScope.launch {
+            _toastEvents.emit(context.getString(R.string.player_refresh_source_started))
+            val position = controller.currentPosition.coerceAtLeast(0L)
+            val wasPlaying = controller.isPlaying || controller.playWhenReady
+            dualPlayerEngine.invalidateResolvedCaches()
+
+            val mediaItem = try {
+                buildResolvedPlaybackMediaItem(song, preferredSource)
+            } catch (t: Throwable) {
+                Timber.w(t, "refreshCurrentSongSource failed for '${song.title}'")
+                _toastEvents.emit(context.getString(R.string.player_refresh_source_failed))
+                return@launch
+            }
+
+            val resolvedUri = mediaItem.localConfiguration?.uri
+            val stillNeedsResolution = resolvedUri == null || resolvedUri.scheme in setOf(
+                "cloud", "netease", "qqmusic", "telegram", "navidrome",
+                "jellyfin", "gdrive", "kgaudio", "bilibili"
+            )
+            if (stillNeedsResolution) {
+                _toastEvents.emit(context.getString(R.string.player_refresh_source_failed))
+                return@launch
+            }
+            if (controller.currentMediaItem?.mediaId != song.id) return@launch
+
+            try {
+                beginSongTransitionLock()
+                controller.replaceMediaItem(controller.currentMediaItemIndex, mediaItem)
+                controller.seekTo(position)
+                controller.prepare()
+                if (wasPlaying) controller.play()
+            } catch (t: Throwable) {
+                Timber.w(t, "refreshCurrentSongSource apply failed for '${song.title}'")
+                _toastEvents.emit(context.getString(R.string.player_refresh_source_failed))
+            }
+        }
+    }
+
+    /** 手动选择一个音源并重新解析当前歌曲。 */
+    fun switchCurrentSongSource(source: String) {
+        if (source.isBlank()) return
+        refreshCurrentSongSource(preferredSource = source)
+    }
 
     private fun loadAndPlaySong(song: Song) {
         cancelPendingFullQueuePlayback()
@@ -9225,7 +9371,7 @@ class PlayerViewModel @Inject constructor(
 
     fun observeSongs(songIds: List<String>): Flow<List<Song>> {
         return musicRepository.getSongsByIds(songIds)
-            .map { songs -> fillMissingNeteaseCovers(songs) }
+            .map { songs -> fillMissingCloudCovers(fillMissingNeteaseCovers(songs)) }
     }
 
     // 已尝试过补全封面的网易云 song id（避免每次 observe 都重复请求歌曲详情）
@@ -9255,6 +9401,39 @@ class PlayerViewModel @Inject constructor(
             if (id != null && song.albumArtUriString.isNullOrBlank() && covers.containsKey(id)) {
                 song.copy(albumArtUriString = covers[id])
             } else song
+        }
+    }
+
+    private val cloudCoverFillAttempted = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * 非网易云的 cloud://lx 歌曲封面兜底：走 JS 音源的 `pic` 动作。
+     * 网易云已经在 [fillMissingNeteaseCovers] 里用 NCM 详情接口补过，这里跳过 wy。
+     */
+    private suspend fun fillMissingCloudCovers(songs: List<Song>): List<Song> = withContext(Dispatchers.IO) {
+        if (songs.isEmpty() || !lxJsEngine.isReady()) return@withContext songs
+        val missing = songs.filter { song ->
+            song.albumArtUriString.isNullOrBlank() &&
+                song.contentUriString.startsWith("cloud://lx/", ignoreCase = true) &&
+                song.id !in cloudCoverFillAttempted
+        }
+        if (missing.isEmpty()) return@withContext songs
+
+        val resolved = LinkedHashMap<String, String>()
+        for (song in missing) {
+            cloudCoverFillAttempted.add(song.id)
+            val info = decodeLxSongInfoFromPlaceholderUri(song.contentUriString) ?: continue
+            val source = info.source
+            if (source.isBlank() || source.equals("wy", ignoreCase = true)) continue
+            if (!lxJsEngine.getSources().containsKey(source)) continue
+            val pic = runCatching {
+                lxJsEngine.getPic(source, info.toLxMusicInfoMap())
+            }.getOrNull()
+            if (!pic.isNullOrBlank()) resolved[song.id] = pic
+        }
+        if (resolved.isEmpty()) return@withContext songs
+        songs.map { song ->
+            resolved[song.id]?.let { song.copy(albumArtUriString = it) } ?: song
         }
     }
 

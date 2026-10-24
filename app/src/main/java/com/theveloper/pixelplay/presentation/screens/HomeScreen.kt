@@ -761,7 +761,8 @@ fun HomeScreen(
                         queueName = "为你推荐"
                     )
                 },
-                modifier = cardModifier
+                // 与每日推荐/今日热门等卡片统一左右 16dp 外边距，避免比同列卡片宽出一截
+                modifier = cardModifier.padding(horizontal = 16.dp)
             )
 
             // ⚡ 今日云村热播：带序号的榜单列表（热播 = 榜单语义）

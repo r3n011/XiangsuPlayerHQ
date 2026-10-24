@@ -24,7 +24,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -68,6 +70,10 @@ fun PlayerMoreSheet(
     onDismiss: () -> Unit,
     onShowSongInfo: () -> Unit,
     onShowComments: () -> Unit,
+    /** 在线歌曲重新解析/换源；本地歌曲可传 null 隐藏该入口 */
+    onRefreshSource: (() -> Unit)? = null,
+    /** 手动选择音源；本地歌曲可传 null 隐藏该入口 */
+    onChooseSource: (() -> Unit)? = null,
     onDownload: () -> Unit,
     onShare: () -> Unit,
     onStartListenTogether: () -> Unit,
@@ -161,6 +167,20 @@ fun PlayerMoreSheet(
                 label = stringResource(R.string.player_cd_song_info),
                 onClick = onShowSongInfo
             )
+            if (onRefreshSource != null) {
+                MoreActionRow(
+                    iconVector = Icons.Rounded.Refresh,
+                    label = stringResource(R.string.player_more_refresh_source),
+                    onClick = onRefreshSource
+                )
+            }
+            if (onChooseSource != null) {
+                MoreActionRow(
+                    iconVector = Icons.Rounded.SwapHoriz,
+                    label = stringResource(R.string.player_more_choose_source),
+                    onClick = onChooseSource
+                )
+            }
             if (canShowComments) {
                 MoreActionRow(
                     iconPainter = painterResource(R.drawable.rounded_mode_comment_24),

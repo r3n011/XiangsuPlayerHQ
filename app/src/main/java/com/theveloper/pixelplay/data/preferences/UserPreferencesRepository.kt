@@ -1590,10 +1590,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
     }
 
     /**
-     * 播放器封面轮播样式。
-     *
-     * ⚡ 该设置项已下线：播放器固定使用「旧版（无预览）」。这里直接返回 NO_PEEK，
-     *    不再读取已存的值（旧值保留在磁盘上、不做迁移，回滚版本也不会丢用户选择）。
+     * 播放器封面轮播样式：封面预览功能已移除，固定使用旧版单张封面。
      */
     val carouselStyleFlow: Flow<String> =
         pref { CarouselStyle.NO_PEEK }

@@ -818,8 +818,7 @@ fun PlayerLyricsAppearanceScreen(
                         trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                         onClick = { navController.navigateSafely(Screen.PlayerProgressStyle.route) }
                     )
-                    // ⚡ 播放器封面轮播样式设置已下线：播放器固定使用「旧版（无预览）」。
-                    //    该项不再显示（保留上面的进度条样式入口）。
+                    // ⚡ 播放器封面固定使用旧版单张模式，不再提供预览轮播开关。
                 }
 
                 // ⚡ 悬浮歌词（桌面歌词）：系统级悬浮窗，必须先拿到「显示在其他应用上层」权限。

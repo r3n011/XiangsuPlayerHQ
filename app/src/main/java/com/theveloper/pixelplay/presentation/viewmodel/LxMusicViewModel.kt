@@ -86,6 +86,7 @@ class LxMusicViewModel @Inject constructor(
     private val userPreferencesRepository: com.theveloper.pixelplay.data.preferences.UserPreferencesRepository,
     private val playlistPreferencesRepository: com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository,
     private val sourceTester: LxSourceTester,
+    private val onlineSourceResolver: com.theveloper.pixelplay.data.playback.OnlineSourceResolver,
 ) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(LxUiState())
@@ -793,25 +794,35 @@ class LxMusicViewModel @Inject constructor(
      * 搜索 API 不返回 picUrl，需通过歌曲详情 API 补全。
      */
     private fun fillMissingCovers(songs: List<LxSongInfo>) {
-        val missing = songs.filter { it.pic.isBlank() && it.id.all { c -> c.isDigit() } }
+        val missing = songs.filter { it.pic.isBlank() }
         if (missing.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            // 每批最多 50 首，避免 URL 过长
-            missing.chunked(50).forEach { batch ->
-                val covers = runCatching {
-                    searchApi.batchGetSongCovers(batch.map { it.id })
-                }.getOrDefault(emptyMap())
-                if (covers.isEmpty()) return@forEach
-                // 更新 UI 状态中的结果列表
-                val currentResults = _uiState.value.results
-                val updated = currentResults.map { existing ->
-                    if (existing.pic.isBlank() && covers.containsKey(existing.id)) {
-                        existing.copy(pic = covers[existing.id]!!)
-                    } else existing
-                }
-                if (updated != currentResults) {
-                    _uiState.value = _uiState.value.copy(results = updated)
-                }
+            // 网易云：批量详情接口；其它源：JS 音源 pic 动作（尽力而为）
+            val neteaseMissing = missing.filter { it.source == "wy" && it.id.all { c -> c.isDigit() } }
+            val jsMissing = missing.filter { it.source != "wy" && engine.getSources().containsKey(it.source) }
+
+            val covers = mutableMapOf<String, String>()
+            neteaseMissing.chunked(50).forEach { batch ->
+                runCatching { searchApi.batchGetSongCovers(batch.map { it.id }) }
+                    .getOrDefault(emptyMap())
+                    .forEach { (id, url) -> covers[id] = url }
+            }
+            jsMissing.take(30).forEach { song ->
+                runCatching { engine.getPic(song.source, song.toInfoMap()) }
+                    .getOrNull()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { covers[song.id] = it }
+            }
+            if (covers.isEmpty()) return@launch
+
+            val currentResults = _uiState.value.results
+            val updated = currentResults.map { existing ->
+                if (existing.pic.isBlank() && covers.containsKey(existing.id)) {
+                    existing.copy(pic = covers[existing.id]!!)
+                } else existing
+            }
+            if (updated != currentResults) {
+                _uiState.value = _uiState.value.copy(results = updated)
             }
         }
     }
@@ -900,51 +911,31 @@ class LxMusicViewModel @Inject constructor(
 
         val preferredQuality = runCatching { userPreferencesRepository.musicQualityValueFlow.first() }
             .getOrDefault(MusicQuality.HIGH.lxValue)
-        val url = if (targetSource == "wy" && song.id.all { it.isDigit() }) {
-            // 网易云直接走落雪 JS 引擎播放，不经网易云 API 取试听 URL
-            android.util.Log.d("LxPlaySong", "wy: playing directly via LxJsEngine (quality=$preferredQuality)")
-            resolvePlayUrlWithQualityChain("wy", songMap, preferredQuality)
-        } else if (builtInSourceSearchApi.isSupported(targetSource)) {
-            // ★ 插件优先、内置源兜底（与媒体库播放 DualPlayerEngine 保持一致）：
-            //   内置源 tx/mg/kw 会落到酷我官方直链，部分歌曲的试听流带
-            //   "酷我音乐已为您开启免费听歌权限"语音；用户导入的 JS 插件
-            //   （全豆要 v9.x 等，内部自带星海/溯音多源 fallback）返回的直链无此问题。
-            val pluginUrl = if (lxReady) {
-                resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality)
-            } else null
-            if (pluginUrl != null) {
-                android.util.Log.d("LxPlaySong", "Built-in source $targetSource resolved via LxJsEngine (plugin first)")
-                pluginUrl
-            } else {
-                android.util.Log.d("LxPlaySong", "Built-in source $targetSource, fallback to builtIn (quality=$preferredQuality)")
-                builtInSourceSearchApi.resolvePlayUrl(targetSource, song, preferredQuality)
-            }
-        } else {
-            resolvePlayUrlWithQualityChain(targetSource, songMap, preferredQuality)
-        }
 
-        // ⚡ 换源（对齐 lx-music 的 getOtherSource）：当前音源解析不出来时，
-        //   用「歌名 + 歌手」去其它音源搜索**同一首歌**，用那个音源自己的解析能力重新取链。
-        //   既不会退化成"拿酷我试听流播 QQ 歌"，也不会让歌曲直接没声。
-        var effectiveSong = song.copy(source = targetSource)
-        var playUrl = url
-        if (playUrl == null) {
-            val switched = resolveViaOtherSource(
-                song = song,
-                quality = preferredQuality,
-                availableSources = availableSources,
-                excludeSource = targetSource
-            )
-            if (switched != null) {
-                effectiveSong = switched.song
-                playUrl = switched.url
-                android.util.Log.d(
-                    "LxPlaySong",
-                    "Switched source: $targetSource → ${switched.song.source} (${switched.song.name})"
-                )
-            }
+        // 统一解析核心：插件优先 → 内置官方 → 跨源搜索 → 网易云代理。
+        // 目标音源：歌曲自身 source > 用户当前选中的源；"all" 时交给 resolver 自动排序。
+        val preferredSource = when {
+            song.source.isNotBlank() -> song.source
+            selectedSource != "all" -> selectedSource
+            else -> null
         }
-        if (playUrl == null) return null
+        val outcome = onlineSourceResolver.resolve(
+            com.theveloper.pixelplay.data.playback.OnlineSourceResolver.Request(
+                song = song.copy(source = preferredSource.orEmpty()),
+                jsSongInfo = songMap,
+                quality = preferredQuality,
+                preferredSource = preferredSource,
+                forceRefresh = false,
+                cacheKey = getStableSongId(song),
+            )
+        )
+        val success = outcome as? com.theveloper.pixelplay.data.playback.OnlineSourceResolver.Outcome.Success
+            ?: run {
+                android.util.Log.w("LxPlaySong", "All sources failed for '${song.name}'")
+                return null
+            }
+        var effectiveSong = song.copy(source = success.source)
+        val playUrl = success.url
 
         // ── 是否写入统一媒体库
         // 点播（persist=true）：保存歌曲到数据库，使用返回的真实 song id；

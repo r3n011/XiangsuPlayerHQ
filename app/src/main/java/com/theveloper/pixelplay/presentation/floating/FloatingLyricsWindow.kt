@@ -10,6 +10,7 @@ import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import timber.log.Timber
 import kotlin.math.roundToInt
 
 /**
@@ -64,8 +65,13 @@ internal class FloatingLyricsWindow(
     val isShowing: Boolean get() = rootView != null
     val isEdgeHidden: Boolean get() = rootView?.isEdgeHidden() == true
 
-    fun show(view: FloatingLyricsView, x: Int, y: Int) {
-        if (rootView != null || windowManager == null) return
+    fun show(view: FloatingLyricsView, x: Int, y: Int): Boolean {
+        if (rootView != null) return true
+        val manager = windowManager
+        if (manager == null) {
+            Timber.tag("FloatingLyrics").e("show failed: WindowManager unavailable")
+            return false
+        }
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -80,13 +86,16 @@ internal class FloatingLyricsWindow(
             this.x = x
             this.y = y
         }
-        runCatching { windowManager?.addView(view, params) }
-            .onSuccess {
-                rootView = view
-                layoutParams = params
-                visibleX = x
-                view.addOnLayoutChangeListener(centerAnchorListener)
-            }
+        return runCatching {
+            manager.addView(view, params)
+            rootView = view
+            layoutParams = params
+            visibleX = x
+            view.addOnLayoutChangeListener(centerAnchorListener)
+            true
+        }.onFailure {
+            Timber.tag("FloatingLyrics").e(it, "addView failed (overlay permission/OEM restriction?)")
+        }.getOrDefault(false)
     }
 
     fun remove() {

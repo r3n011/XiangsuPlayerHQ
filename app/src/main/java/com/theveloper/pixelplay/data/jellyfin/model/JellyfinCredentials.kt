@@ -55,10 +55,15 @@ data class JellyfinCredentials(
 
         // Warn about cleartext HTTP on public hosts
         if (!parsed.isHttps) {
-            val host = parsed.host
+            val host = parsed.host.lowercase()
             val isPrivate = host == "localhost" ||
                     host == "127.0.0.1" ||
+                    host == "::1" ||
                     host.endsWith(".local") ||
+                    host.endsWith(".lan") ||
+                    host.endsWith(".home.arpa") ||
+                    // 单标签主机名（如 mynas）通常是局域网内的 NAS/主机名
+                    !host.contains('.') ||
                     CloudStreamSecurity.isPrivateIpv4Literal(host)
             if (!isPrivate) {
                 return "Use https:// for remote Jellyfin servers. HTTP is only allowed for local network addresses."

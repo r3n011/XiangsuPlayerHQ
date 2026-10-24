@@ -3195,10 +3195,13 @@ internal fun resolveFolderNavigationDirection(initialPath: String?, targetPath: 
     }
 
 private fun isDescendantFolderPath(ancestorPath: String, candidatePath: String): Boolean {
-    val normalizedAncestor = ancestorPath.trimEnd(File.separatorChar)
-    val normalizedCandidate = candidatePath.trimEnd(File.separatorChar)
+    // 路径可能来自 Android('/')，也可能在 JVM 单测里是 Windows('\')。
+    // 统一按两种分隔符判断，避免测试/桌面环境方向判断失效。
+    val normalizedAncestor = ancestorPath.trimEnd('/', '\\')
+    val normalizedCandidate = candidatePath.trimEnd('/', '\\')
     if (normalizedAncestor == normalizedCandidate) return false
-    return normalizedCandidate.startsWith("$normalizedAncestor${File.separatorChar}")
+    return normalizedCandidate.startsWith("$normalizedAncestor/") ||
+        normalizedCandidate.startsWith("$normalizedAncestor\\")
 }
 
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3ExpressiveApi::class)

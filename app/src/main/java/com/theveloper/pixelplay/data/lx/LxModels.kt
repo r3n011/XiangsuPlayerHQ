@@ -27,6 +27,16 @@ data class LxSearchResult(
     val total: Int = 0
 )
 
+/** 落雪 userApi 的 lyric 返回结构（对齐 lx-music user-api-preload.js 的 verifyLyricInfo）。 */
+data class LxLyricInfo(
+    val lyric: String = "",
+    val tlyric: String? = null,
+    val rlyric: String? = null,
+    val lxlyric: String? = null,
+) {
+    fun isUsable(): Boolean = lyric.isNotBlank()
+}
+
 /**
  * 网易云歌手搜索结果（/search?type=100）。
  */

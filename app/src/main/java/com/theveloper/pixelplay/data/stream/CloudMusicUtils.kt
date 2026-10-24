@@ -26,10 +26,20 @@ object CloudMusicUtils {
         return result
     }
 
-    /** Split a raw artist string like "A, B & C" into individual names. */
+    /**
+     * Split a raw artist string into individual names.
+     *
+     * 只按**明确的**多歌手分隔符拆分（分号/顿号/竖线，以及带空格的 " / "）。
+     * 不拆 `&`、`,`、无空格 `/`、`+`，避免把 "W&W"、"AC/DC"、
+     * "Black Country, New Road" 这类真实乐队名拆坏。
+     */
     fun parseArtistNames(rawArtist: String): List<String> {
         if (rawArtist.isBlank()) return listOf("Unknown Artist")
-        val parsed = rawArtist.split(Regex("\\s*[,/&;+、]\\s*"))
+        var parts = rawArtist.split(Regex("\\s*[;；、|]\\s*"))
+        if (parts.size == 1) {
+            parts = rawArtist.split(Regex("\\s+/\\s+"))
+        }
+        val parsed = parts
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinct()

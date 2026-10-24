@@ -993,6 +993,10 @@ class MusicService : MediaLibraryService() {
             .setBitmapLoader(CoilBitmapLoader(this, serviceScope))
             .build()
 
+        // 悬浮歌词：直接绑定播放器，UI 进程/ViewModel 停止更新时仍能拿到当前歌曲与进度
+        floatingLyricsController.attachPlayer(engine.masterPlayer)
+        engine.addPlayerSwapListener { floatingLyricsController.attachPlayer(it) }
+
         // 蓝牙歌词：绑定 MediaSession 并读取用户偏好
         bluetoothLyricsManager.attachMediaSession(mediaSession)
         serviceScope.launch {
@@ -1635,12 +1639,15 @@ class MusicService : MediaLibraryService() {
                     // 歌词会晚到覆盖新歌，设备端就会"弹回之前的歌词"。
                     if (bluetoothLyricsManager.currentMediaItemId != songId) return@launch
                     bluetoothLyricsManager.setLyrics(lyrics)
+                    // 悬浮歌词复用同一份歌词，避免只依赖 UI 侧状态而显示“暂无歌词”
+                    floatingLyricsController.setLyrics(lyrics)
                     bluetoothLyricsManager.updatePlaybackState(posMs, playing)
                     bluetoothLyricsManager.pushNow()
                 }
             } else {
                 bluetoothLyricsManager.setCurrentMediaItem(mediaItem)
                 bluetoothLyricsManager.setLyrics(null)
+                floatingLyricsController.setLyrics(null)
             }
         }
 

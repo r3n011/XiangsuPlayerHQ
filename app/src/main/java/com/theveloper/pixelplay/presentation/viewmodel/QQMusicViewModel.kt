@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
 import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.lx.LxSongInfo
+import com.theveloper.pixelplay.data.lx.toLxMusicInfoMap
 import com.theveloper.pixelplay.data.qq.QQSearchApi
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +44,7 @@ class QQMusicViewModel @Inject constructor(
     private val lxJsEngine: LxJsEngine,
     private val builtInSourceSearchApi: BuiltInSourceSearchApi,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val onlineSourceResolver: com.theveloper.pixelplay.data.playback.OnlineSourceResolver,
 ) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(QQSearchUiState())
@@ -207,47 +209,30 @@ class QQMusicViewModel @Inject constructor(
         } catch (_: Exception) {
             "320k"
         }
-        val brs = when (quality) {
-            "24bit", "flac24bit", "hires", "flac" -> listOf(1, 5, 7) // FLAC → 320k → 128k
-            "320k" -> listOf(5, 7)
-            "128k" -> listOf(7)
-            else -> listOf(5, 7)
-        }
-        Timber.d("QQMusic playSong: quality=$quality brChain=$brs")
-
-        var playUrl: String? = null
-
-        // 1. 官方 QQ 音源（落雪 tx 多代理竞速）
-        if (song.songmid.isNotBlank()) {
-            playUrl = lxTxPlayUrl(song, quality)
-            Timber.d("QQMusic playSong: tx result=${playUrl?.take(80)}")
-        }
-
-        // 2. 兜底：oiapi 酷我
-        if (playUrl.isNullOrEmpty()) {
-            for (br in brs) {
-                val result = qqSearchApi.getPlayUrl(song, br)
-                if (result.isSuccess) {
-                    val u = result.getOrDefault("")
-                    if (u.isNotEmpty()) {
-                        playUrl = u
-                        Timber.d("QQMusic playSong: got url br=$br len=${u.length}")
-                        break
-                    }
-                } else {
-                    Timber.d("QQMusic playSong: br=$br failed: ${result.exceptionOrNull()?.message}")
-                }
-            }
-        }
-
-        // 3. 兜底：落雪 kw 音源
-        if (playUrl.isNullOrEmpty()) {
-            // 兜底：落雪 kw 音源（仅引擎已加载时尝试，避免空引擎白白等待）
-            Timber.d("QQMusic playSong: all above failed, fallback to lx kw")
-            playUrl = lxFallbackPlayUrl(song, quality)
-        }
-
-        return playUrl
+        val source = if (song.songmid.isNotBlank()) "tx" else "kw"
+        val lxSong = LxSongInfo(
+            id = if (source == "tx") song.songmid else song.id.toString(),
+            songmid = if (source == "tx") song.songmid else song.id.toString(),
+            hash = if (source == "tx") song.songmid else song.rid.ifBlank { song.id.toString() },
+            name = song.title,
+            singer = song.singer,
+            albumName = song.album,
+            duration = song.durationSec.toLong(),
+            pic = song.cover,
+            source = source,
+        )
+        val outcome = onlineSourceResolver.resolve(
+            com.theveloper.pixelplay.data.playback.OnlineSourceResolver.Request(
+                song = lxSong,
+                jsSongInfo = lxSong.toLxMusicInfoMap(),
+                quality = quality,
+                preferredSource = source,
+                cacheKey = getStableSongId(song),
+            )
+        )
+        val url = (outcome as? com.theveloper.pixelplay.data.playback.OnlineSourceResolver.Outcome.Success)?.url
+        Timber.d("QQMusic playSong: source=$source quality=$quality result=${url?.take(80)}")
+        return url
     }
 
     /**

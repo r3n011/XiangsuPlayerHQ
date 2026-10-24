@@ -4,11 +4,13 @@ import android.content.Context
 import android.content.res.Configuration
 import android.provider.Settings
 import android.widget.Toast
+import androidx.media3.common.Player
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.SyncedLine
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.presentation.viewmodel.LyricsSearchUiState
 import com.theveloper.pixelplay.presentation.viewmodel.LyricsStateHolder
 import com.theveloper.pixelplay.presentation.viewmodel.PlaybackStateHolder
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,7 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToInt
@@ -91,13 +95,90 @@ class FloatingLyricsController @Inject constructor(
     private var currentLyrics: Lyrics? = null
     private var currentLineIndex = -1
     private var collapseJob: Job? = null
+    private var lastOverlayHintAtMs = 0L
+
+    /**
+     * 后台播放兜底：UI 的 PlayerViewModel 被销毁后，PlaybackStateHolder 不再更新，
+     * 悬浮歌词会拿到 hasSong=false。直接监听 MediaSession 的 Player 可以继续拿到
+     * 当前媒体项、播放态和进度，保证悬浮窗在后台仍然可见。
+     */
+    private var fallbackPlayer: Player? = null
+    private val fallbackPlayerListener = object : Player.Listener {
+        override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+            syncFromFallbackPlayer()
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            syncFromFallbackPlayer()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            syncFromFallbackPlayer()
+        }
+    }
 
     init {
         observePreferences()
         observePlayback()
+        observeLyrics()
         // 状态 → 视图：集中在这一处刷新，避免散落在各分支里漏更新
         scope.launch {
             uiState.collect { state -> contentView?.applyState(state) }
+        }
+        // 播放服务仍在跑、UI 状态却停止更新时，用 Player 自身的位置继续驱动歌词。
+        scope.launch {
+            while (isActive) {
+                delay(500L)
+                fallbackPlayer?.let { player ->
+                    refreshLines(player.currentPosition)
+                    if (player.currentMediaItem != null && !hasSong) syncFromFallbackPlayer()
+                }
+            }
+        }
+    }
+
+    /**
+     * MusicService 加载完当前歌曲歌词后直接喂给悬浮歌词。
+     * 这条链路不依赖 PlayerViewModel / PlaybackStateHolder，后台播放也可靠。
+     */
+    fun setLyrics(lyrics: Lyrics?) {
+        Timber.tag("FloatingLyrics").d(
+            "setLyrics synced=%d plain=%d",
+            lyrics?.synced?.size ?: 0,
+            lyrics?.plain?.size ?: 0,
+        )
+        currentLyrics = lyrics
+        currentLineIndex = -1
+        _uiState.update { it.copy(hasLyrics = hasAnyLyrics(lyrics)) }
+        refreshLines(fallbackPlayer?.currentPosition ?: playbackStateHolder.currentPosition.value)
+        updateVisibility()
+    }
+
+    /** MusicService 创建/切换 MediaSession player 时调用。 */
+    fun attachPlayer(player: Player?) {
+        if (fallbackPlayer === player) return
+        fallbackPlayer?.removeListener(fallbackPlayerListener)
+        fallbackPlayer = player
+        player?.addListener(fallbackPlayerListener)
+        syncFromFallbackPlayer()
+    }
+
+    private fun syncFromFallbackPlayer() {
+        val player = fallbackPlayer ?: return
+        val item = player.currentMediaItem
+        if (item != null) {
+            hasSong = true
+            val metadata = item.mediaMetadata
+            _uiState.update {
+                it.copy(
+                    isPlaying = player.isPlaying,
+                    hasLyrics = hasAnyLyrics(currentLyrics),
+                    songTitle = metadata.title?.toString().orEmpty(),
+                    songArtist = metadata.artist?.toString().orEmpty(),
+                )
+            }
+            refreshLines(player.currentPosition)
+            updateVisibility()
         }
     }
 
@@ -170,15 +251,17 @@ class FloatingLyricsController @Inject constructor(
     private fun observePlayback() {
         scope.launch {
             playbackStateHolder.stablePlayerState.collect { state ->
-                currentLyrics = state.lyrics
-                hasSong = state.currentSong != null
-                val synced = state.lyrics?.synced
+                // UI 侧歌词/歌曲状态优先；UI 停止更新时用 MediaSession player 兜底。
+                state.lyrics?.let { currentLyrics = it }
+                hasSong = state.currentSong != null || fallbackPlayer?.currentMediaItem != null
                 _uiState.update {
                     it.copy(
                         isPlaying = state.isPlaying,
-                        hasLyrics = !synced.isNullOrEmpty(),
-                        songTitle = state.currentSong?.title.orEmpty(),
-                        songArtist = state.currentSong?.artist.orEmpty()
+                        hasLyrics = hasAnyLyrics(currentLyrics),
+                        songTitle = state.currentSong?.title
+                            ?: fallbackPlayer?.currentMediaItem?.mediaMetadata?.title?.toString().orEmpty(),
+                        songArtist = state.currentSong?.artist
+                            ?: fallbackPlayer?.currentMediaItem?.mediaMetadata?.artist?.toString().orEmpty()
                     )
                 }
                 refreshLines(playbackStateHolder.currentPosition.value)
@@ -191,13 +274,57 @@ class FloatingLyricsController @Inject constructor(
     }
 
     /**
+     * 歌词不一定写回 PlaybackStateHolder（后台/ViewModel 销毁时尤其如此），
+     * 这里直接监听 LyricsStateHolder 的加载结果，作为悬浮歌词的独立歌词源。
+     */
+    private fun observeLyrics() {
+        scope.launch {
+            lyricsStateHolder.searchUiState.collect { state ->
+                if (state is LyricsSearchUiState.Success) {
+                    currentLyrics = state.lyrics
+                    currentLineIndex = -1
+                    _uiState.update {
+                        it.copy(hasLyrics = hasAnyLyrics(state.lyrics))
+                    }
+                    refreshLines(fallbackPlayer?.currentPosition ?: playbackStateHolder.currentPosition.value)
+                    updateVisibility()
+                }
+            }
+        }
+        scope.launch {
+            lyricsStateHolder.songUpdates.collect { (_, lyrics) ->
+                if (lyrics != null) {
+                    currentLyrics = lyrics
+                    currentLineIndex = -1
+                    _uiState.update { it.copy(hasLyrics = hasAnyLyrics(lyrics)) }
+                    refreshLines(fallbackPlayer?.currentPosition ?: playbackStateHolder.currentPosition.value)
+                    updateVisibility()
+                }
+            }
+        }
+    }
+
+    /**
      * 按播放进度定位当前行，只在**行发生变化**时更新状态——
      * 悬浮窗更新走的是 WindowManager，绝不能跟着进度每帧刷新。
      */
     private fun refreshLines(positionMs: Long) {
         val lines = currentLyrics?.synced.orEmpty()
         if (lines.isEmpty()) {
-            if (currentLineIndex != -1) {
+            // 没有逐行时间轴时，至少把纯文本歌词的前几行显示出来，而不是直接“暂无歌词”。
+            val plain = currentLyrics?.plain.orEmpty()
+            if (plain.isNotEmpty()) {
+                if (currentLineIndex != -2) {
+                    currentLineIndex = -2
+                    _uiState.update {
+                        it.copy(
+                            prevLine = "",
+                            currentLine = plain.getOrNull(0).orEmpty(),
+                            nextLine = plain.getOrNull(1).orEmpty(),
+                        )
+                    }
+                }
+            } else if (currentLineIndex != -1) {
                 currentLineIndex = -1
                 _uiState.update { it.copy(prevLine = "", currentLine = "", nextLine = "") }
             }
@@ -215,6 +342,9 @@ class FloatingLyricsController @Inject constructor(
             )
         }
     }
+
+    private fun hasAnyLyrics(lyrics: Lyrics?): Boolean =
+        !lyrics?.synced.isNullOrEmpty() || !lyrics?.plain.isNullOrEmpty()
 
     /** lines 按时间有序：二分找最后一个 time <= positionMs 的行（早于首句时取首句）。 */
     private fun lineIndexAt(lines: List<SyncedLine>, positionMs: Long): Int {
@@ -238,7 +368,28 @@ class FloatingLyricsController @Inject constructor(
     /* ---------------------------------------------------------------------- */
 
     private fun updateVisibility() {
-        if (enabled && hasSong && canDrawOverlays()) showWindow() else hideWindow()
+        val overlays = canDrawOverlays()
+        Timber.tag("FloatingLyrics").d(
+            "updateVisibility enabled=%s hasSong=%s canDrawOverlays=%s showing=%s",
+            enabled, hasSong, overlays, window?.isShowing == true
+        )
+        if (enabled && hasSong && overlays) {
+            showWindow()
+        } else {
+            if (enabled && hasSong && !overlays) {
+                // 开关开着、有歌，但没有悬浮窗权限：给一次明确提示，避免“点了没反应”。
+                val now = System.currentTimeMillis()
+                if (now - lastOverlayHintAtMs > 15_000L) {
+                    lastOverlayHintAtMs = now
+                    Toast.makeText(
+                        context,
+                        "悬浮歌词需要「显示在其他应用上层」权限，请到设置中授予",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+            hideWindow()
+        }
     }
 
     private fun showWindow() {
@@ -256,7 +407,18 @@ class FloatingLyricsController @Inject constructor(
             applyThemeToView()
         }
         val (x, y) = resolveInitialPosition()
-        floatingWindow.show(view, x, y)
+        val shown = floatingWindow.show(view, x, y)
+        if (shown) {
+            // 首次布局完成后夹回屏幕内：旧版本保存的坐标可能来自其它分辨率/方向，
+            // 直接使用会让窗口落在屏幕外，看起来就是“打开了但没显示”。
+            view.post { floatingWindow.clampToScreen() }
+        }
+        if (!shown) {
+            Timber.tag("FloatingLyrics").e("showWindow failed: overlay addView returned false")
+            if (canDrawOverlays()) {
+                Toast.makeText(context, "悬浮歌词窗口创建失败，请检查系统悬浮窗限制", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun createContentView(): FloatingLyricsView =
@@ -320,15 +482,19 @@ class FloatingLyricsController @Inject constructor(
     }
 
     private fun resolveInitialPosition(): Pair<Int, Int> {
+        val metrics = context.resources.displayMetrics
+        // 旧坐标可能来自横竖屏切换/其它分辨率，先夹到当前屏幕内，
+        // 避免窗口被放到屏幕外导致“开关开了但看不见”。
+        val maxX = (metrics.widthPixels - 80).coerceAtLeast(0)
+        val maxY = (metrics.heightPixels - 80).coerceAtLeast(0)
         if (savedX != UserPreferencesRepository.FLOATING_LYRICS_POS_UNSET &&
             savedY != UserPreferencesRepository.FLOATING_LYRICS_POS_UNSET
         ) {
-            return savedX to savedY
+            return savedX.coerceIn(0, maxX) to savedY.coerceIn(0, maxY)
         }
         // 默认落在偏下位置：不挡视线，又不至于贴到系统导航区
-        val metrics = context.resources.displayMetrics
-        return (metrics.widthPixels * 0.09f).roundToInt() to
-            (metrics.heightPixels * 0.72f).roundToInt()
+        return (metrics.widthPixels * 0.09f).roundToInt().coerceIn(0, maxX) to
+            (metrics.heightPixels * 0.72f).roundToInt().coerceIn(0, maxY)
     }
 
     /* ---------------------------------------------------------------------- */

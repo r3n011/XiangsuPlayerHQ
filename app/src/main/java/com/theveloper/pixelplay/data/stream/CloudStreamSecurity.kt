@@ -184,6 +184,8 @@ object CloudStreamSecurity {
         return first == 0 ||
             first == 10 ||
             first == 127 ||
+            // Carrier-grade NAT / Tailscale 等覆盖网络常用段
+            (first == 100 && second in 64..127) ||
             (first == 169 && second == 254) ||
             (first == 172 && second in 16..31) ||
             (first == 192 && second == 168)

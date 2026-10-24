@@ -14,6 +14,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
 import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.lx.LxSongInfo
+import com.theveloper.pixelplay.data.lx.toLxMusicInfoMap
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.SyncedLine
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
@@ -127,6 +128,7 @@ class LyricsRepositoryImpl @Inject constructor(
     private val lyricsDao: com.theveloper.pixelplay.data.database.LyricsDao,
     private val okHttpClient: OkHttpClient,
     private val lxSearchApi: com.theveloper.pixelplay.data.lx.LxSearchApi,
+    private val lxJsEngine: com.theveloper.pixelplay.data.lx.LxJsEngine,
     private val builtInSourceSearchApi: BuiltInSourceSearchApi,
     private val bilibiliSearchApi: com.theveloper.pixelplay.data.bilibili.BilibiliSearchApi,
     private val apiProviderPreferences: com.theveloper.pixelplay.data.preferences.ApiProviderPreferences
@@ -509,10 +511,27 @@ class LyricsRepositoryImpl @Inject constructor(
             )
         }
 
-        val source = parseCloudLxSource(song) ?: return null
-        if (!builtInSourceSearchApi.isSupported(source)) return null
-
         val songInfo = parseCloudLxSongInfo(song) ?: return null
+        val source = songInfo.source.takeIf { it.isNotBlank() } ?: parseCloudLxSource(song) ?: return null
+
+        // ① 用户 JS 音源优先：lx userApi 的 lyric 动作（大多数脚本不实现，失败就继续内置源）
+        runCatching {
+            lxJsEngine.getLyric(source, songInfo.toLxMusicInfoMap())
+        }.getOrNull()?.let { lxLyric ->
+            val raw = buildString {
+                append(lxLyric.lyric)
+                lxLyric.tlyric?.takeIf { it.isNotBlank() }?.let { append('\n').append(it) }
+                lxLyric.rlyric?.takeIf { it.isNotBlank() }?.let { append('\n').append(it) }
+                lxLyric.lxlyric?.takeIf { it.isNotBlank() }?.let { append('\n').append(it) }
+            }
+            val parsed = LyricsUtils.parseLyrics(raw)
+            if (parsed.isValid()) {
+                return parsed.copy(areFromRemote = true)
+            }
+        }
+
+        // ② 内置源（酷我/QQ/酷狗/咪咕/网易云）兜底
+        if (!builtInSourceSearchApi.isSupported(source)) return null
         return fetchBuiltInLyrics(source, songInfo)
     }
 

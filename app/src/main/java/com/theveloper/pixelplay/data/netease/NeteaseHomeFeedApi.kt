@@ -110,6 +110,7 @@ class NeteaseHomeFeedApi @Inject constructor() {
         areaId: Int,
         limit: Int,
         cookie: String?,
+        offset: Int = 0,
     ): Result<List<HomeFeedTrack>> = withContext(Dispatchers.IO) {
         runCatching {
             syncCookieToSession(cookie)
@@ -124,6 +125,7 @@ class NeteaseHomeFeedApi @Inject constructor() {
             val data = root.optJSONArray("data") ?: return@runCatching emptyList()
             (0 until data.length())
                 .mapNotNull { index -> parseSongObject(data.optJSONObject(index)) }
+                .drop(offset.coerceAtLeast(0))
                 .take(limit.coerceIn(1, 100))
         }.onFailure { Timber.w(it, "$TAG: fetchDiscoveryNewSongs failed") }
     }
@@ -213,6 +215,17 @@ class NeteaseHomeFeedApi @Inject constructor() {
      */
     private fun parseSongObject(raw: JSONObject?): HomeFeedTrack? {
         if (raw == null) return null
+
+        // ⚡ personalized/newsong 与 v1/discovery/new/songs 返回的是**完整歌曲对象**
+        //    （id/name/ar/al/dt），没有 resourceType/resourceExtInfo。
+        //    之前只走下面的 block 解析分支，导致这两个接口解析结果恒为空 →
+        //    「为你推荐」「全部今日热门」卡片永远不显示。
+        if (raw.optLong("id", 0L) > 0L &&
+            (raw.has("ar") || raw.has("al") || raw.has("artists") ||
+                raw.has("album") || raw.has("dt") || raw.has("duration"))
+        ) {
+            return parseFullSong(raw)
+        }
 
         val ext = raw.optJSONObject("resourceExtInfo")
         val full = ext?.optJSONObject("songData") ?: ext?.optJSONObject("song")
