@@ -1,57 +1,57 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <!-- Equalizer preset dialogs -->
-    <string name="equalizer_error_name_empty">Name cannot be empty</string>
-    <string name="equalizer_action_rename">Rename</string>
+    <string name="equalizer_error_name_empty">이름을 비울 수 없습니다</string>
+    <string name="equalizer_action_rename">이름 변경</string>
 
     <!-- EqualizerScreen -->
-    <string name="equalizer_change_view_mode_cd">Change view mode</string>
-    <string name="equalizer_disable_cd">Disable equalizer</string>
-    <string name="equalizer_enable_cd">Enable equalizer</string>
+    <string name="equalizer_change_view_mode_cd">보기 모드 변경</string>
+    <string name="equalizer_disable_cd">이퀄라이저 비활성화</string>
+    <string name="equalizer_enable_cd">이퀄라이저 활성화</string>
     <string name="equalizer_edit_tab_title">Edit</string>
-    <string name="equalizer_edit_presets_cd">Edit presets</string>
-    <string name="equalizer_custom_preset_cd">Custom preset</string>
-    <string name="equalizer_presets_cd">Presets</string>
-    <string name="equalizer_action_update">Update</string>
-    <string name="equalizer_bass_boost">Bass Boost</string>
-    <string name="equalizer_virtualizer">Virtualizer</string>
-    <string name="equalizer_loudness">Loudness</string>
-    <string name="equalizer_effect_not_supported">Not supported</string>
-    <string name="equalizer_effect_not_supported_device">Not supported on this device</string>
-    <string name="equalizer_volume">Volume</string>
-    <string name="equalizer_frequency_response">Frequency Response</string>
+    <string name="equalizer_edit_presets_cd">프리셋 편집</string>
+    <string name="equalizer_custom_preset_cd">사용자 지정 프리셋</string>
+    <string name="equalizer_presets_cd">프리셋</string>
+    <string name="equalizer_action_update">업데이트</string>
+    <string name="equalizer_bass_boost">베이스 부스트</string>
+    <string name="equalizer_virtualizer">가상화</string>
+    <string name="equalizer_loudness">라우드니스</string>
+    <string name="equalizer_effect_not_supported">지원되지 않음</string>
+    <string name="equalizer_effect_not_supported_device">이 기기에서 지원되지 않음</string>
+    <string name="equalizer_volume">볼륨</string>
+    <string name="equalizer_frequency_response">주파수 응답</string>
     <string name="equalizer_unit_hz">Hz</string>
     <string name="equalizer_band_bass">Bass</string>
-    <string name="equalizer_band_low_mids">Low Mids</string>
-    <string name="equalizer_band_high_mids">High Mids</string>
-    <string name="equalizer_band_treble">Treble</string>
-    <string name="equalizer_band_bass_low">Bass / Low</string>
-    <string name="equalizer_band_mid_high">Mid / High</string>
-    <string name="equalizer_page_n">Page %1$d</string>
-    <string name="equalizer_reset_duration_cd">Reset duration</string>
-    <string name="equalizer_action_save_new">Save New</string>
+    <string name="equalizer_band_low_mids">저중음</string>
+    <string name="equalizer_band_high_mids">고중음</string>
+    <string name="equalizer_band_treble">고음</string>
+    <string name="equalizer_band_bass_low">베이스 / 저음</string>
+    <string name="equalizer_band_mid_high">중음 / 고음</string>
+    <string name="equalizer_page_n">%1$d페이지</string>
+    <string name="equalizer_reset_duration_cd">길이 초기화</string>
+    <string name="equalizer_action_save_new">새로 저장</string>
 
     <!-- CustomPresetsSheet -->
-    <string name="equalizer_presets_saved_title">Saved Presets</string>
-    <string name="equalizer_presets_empty">No custom presets saved yet.</string>
-    <string name="equalizer_presets_cd_unpin">Unpin</string>
+    <string name="equalizer_presets_saved_title">저장된 프리셋</string>
+    <string name="equalizer_presets_empty">저장된 사용자 지정 프리셋이 없습니다.</string>
+    <string name="equalizer_presets_cd_unpin">고정 해제</string>
     <string name="equalizer_presets_cd_pin">Pin</string>
-    <string name="equalizer_presets_cd_rename">Rename</string>
-    <string name="equalizer_presets_cd_delete">Delete</string>
+    <string name="equalizer_presets_cd_rename">이름 변경</string>
+    <string name="equalizer_presets_cd_delete">삭제</string>
 
     <!-- SavePresetDialog -->
-    <string name="equalizer_presets_save_custom_title">Save custom preset</string>
-    <string name="equalizer_presets_save_custom_body">Enter a name for your custom equalizer preset.</string>
-    <string name="equalizer_preset_name_placeholder">Preset name</string>
-    <string name="equalizer_presets_rename_title">Rename preset</string>
+    <string name="equalizer_presets_save_custom_title">사용자 지정 프리셋 저장</string>
+    <string name="equalizer_presets_save_custom_body">사용자 지정 이퀄라이저 프리셋의 이름을 입력하세요.</string>
+    <string name="equalizer_preset_name_placeholder">프리셋 이름</string>
+    <string name="equalizer_presets_rename_title">프리셋 이름 변경</string>
 
     <!-- ReorderPresetsSheet -->
-    <string name="equalizer_manage_presets_title">Manage presets</string>
-    <string name="equalizer_presets_drag_hint">Drag to reorder • Tap the eye to show or hide</string>
-    <string name="equalizer_cd_reorder">Reorder</string>
-    <string name="equalizer_reset_presets_title">Reset presets</string>
-    <string name="equalizer_reset_presets_message">This will restore the default preset order and visibility. Continue?</string>
-    <string name="equalizer_cd_reset_presets_default">Reset to default</string>
-    <string name="equalizer_cd_visible">Visible</string>
-    <string name="equalizer_cd_hidden">Hidden</string>
+    <string name="equalizer_manage_presets_title">프리셋 관리</string>
+    <string name="equalizer_presets_drag_hint">드래그하여 순서 변경 • 눈 아이콘을 눌러 표시/숨김</string>
+    <string name="equalizer_cd_reorder">순서 변경</string>
+    <string name="equalizer_reset_presets_title">프리셋 초기화</string>
+    <string name="equalizer_reset_presets_message">기본 프리셋 순서와 표시 상태로 복원합니다. 계속할까요?</string>
+    <string name="equalizer_cd_reset_presets_default">기본값으로 초기화</string>
+    <string name="equalizer_cd_visible">표시</string>
+    <string name="equalizer_cd_hidden">숨김</string>
 </resources>

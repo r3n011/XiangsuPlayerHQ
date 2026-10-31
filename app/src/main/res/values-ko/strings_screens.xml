@@ -62,12 +62,12 @@
     <string name="setup_all_set_body">이제 음악을 즐길 준비가 되었습니다.</string>
     <string name="setup_restore_backup_title">백업 복구</string>
     <string name="setup_restore_backup_subtitle">설정을 마치기 전에 가져올 항목을 검토하세요.</string>
-    <string name="setup_modules_selected_format">%2$개 중 %1$개 모듈 선택됨</string>
+    <string name="setup_modules_selected_format">%2$d개 중 %1$d개 모듈 선택됨</string>
     <string name="setup_backup_created_format">생성일: %1$s</string>
     <string name="setup_backup_from_version">버전 %1$s의 백업</string>
     <string name="unknown_version">알 수 없는 버전</string>
     <string name="setup_lets_go">시작하기!</string>
-    <string name="setup_step_format">%2$단계 중 %1$단계</string>
+    <string name="setup_step_format">%2$d단계 중 %1$d단계</string>
     <string name="setup_app_navigation_title">앱 내비게이션</string>
     <string name="setup_app_navigation_subtitle">하단 내비게이션 바의 스타일을 선택하세요.</string>
     <string name="setup_navbar_default_style">기본 스타일</string>
@@ -236,23 +236,23 @@
     <string name="toast_added_to_queue">대기열에 추가됨</string>
     <string name="toast_playing_next">다음에 재생됨</string>
     <string name="error_share_song_format">곡을 공유할 수 없습니다: %1$s</string>
-    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    <string name="about_acknowledgements_blur_desc">이 프로젝트에서 적용한 블러 효과</string>
     
-    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
+    <string name="about_acknowledgements_folia_desc">가사 시각 효과 디자인은 Folia Major(AGPL-3.0)에서 영감을 받았습니다</string>
     
-    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_lanzou_desc">업데이트 연동은 LanzouAPI 제공</string>
     
-    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    <string name="about_acknowledgements_miniaudio_desc">오디오 재생은 miniaudio 기반</string>
     
-    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_acknowledgements_title">감사의 말</string>
     
     <string name="cd_back">Back</string>
     
-    <string name="cd_favorite_artist">Favorite artist</string>
+    <string name="cd_favorite_artist">아티스트 즐겨찾기</string>
     
-    <string name="cd_radio_open">Radio</string>
+    <string name="cd_radio_open">라디오</string>
 
-    <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    <string name="cd_unfavorite_artist">아티스트 즐겨찾기 해제</string>
     
     <string name="content_description_exit">Exit</string>
     
@@ -260,121 +260,352 @@
 
     
     
-    <string name="content_description_play_pause">Play/Pause</string>
+    <string name="content_description_play_pause">재생/일시정지</string>
     
-    <string name="content_description_previous">Previous</string>
+    <string name="content_description_previous">이전</string>
     
-    <string name="dash_status_fetching_albums">Fetching album list…</string>
+    <string name="dash_status_fetching_albums">앨범 목록 가져오는 중…</string>
     
-    <string name="dash_status_fetching_playlists">Fetching playlists…</string>
+    <string name="dash_status_fetching_playlists">플레이리스트 가져오는 중…</string>
     
-    <string name="dash_status_fetching_songs_from_format">Fetching songs from %1$s…</string>
+    <string name="dash_status_fetching_songs_from_format">%1$s에서 곡 가져오는 중…</string>
     
-    <string name="dash_status_library_sync_complete">Library sync complete</string>
+    <string name="dash_status_library_sync_complete">라이브러리 동기화 완료</string>
     
-    <string name="dash_status_no_songs_found">No library songs found</string>
+    <string name="dash_status_no_songs_found">라이브러리 곡을 찾을 수 없습니다</string>
     
-    <string name="dash_status_saving_songs_format">Saving %1$d songs to database…</string>
+    <string name="dash_status_saving_songs_format">곡 %1$d개를 데이터베이스에 저장 중…</string>
     
-    <string name="dash_status_sync_complete">Sync complete</string>
+    <string name="dash_status_sync_complete">동기화 완료</string>
     
-    <string name="dash_status_syncing_library">Syncing library…</string>
+    <string name="dash_status_syncing_library">라이브러리 동기화 중…</string>
     
-    <string name="dash_status_syncing_playlist_format">Syncing playlist: %1$s</string>
+    <string name="dash_status_syncing_playlist_format">플레이리스트 동기화 중: %1$s</string>
     
-    <string name="dash_status_updating_local">Updating local library…</string>
+    <string name="dash_status_updating_local">로컬 라이브러리 업데이트 중…</string>
     
-    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    <string name="discover_ai_subtitle">스마트 플레이리스트, 가사 번역 및 인사이트</string>
     
-    <string name="discover_ai_title">AI Assistant</string>
+    <string name="discover_ai_title">AI 어시스턴트</string>
     
-    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    <string name="discover_multi_selected_desc">%1$s — 발견 버튼을 누르면 선택 창이 표시됩니다</string>
     
-    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    <string name="discover_none_selected_desc">선택 없음 — 발견 버튼이 숨겨집니다</string>
     
-    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
+    <string name="discover_options_dialog_desc">하단 중앙의 발견 버튼에 표시할 항목을 선택하세요. 아무것도 선택하지 않으면 버튼이 숨겨지고, 하나만 선택하면 바로 열리며, 여러 개를 선택하면 선택 창이 열립니다.</string>
     
-    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    <string name="discover_radio_subtitle">전 세계 인터넷 라디오 방송 청취</string>
     
-    <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
+    <string name="discover_roaming_subtitle">맞춤 추천이 포함된 NetEase Cloud Music 로밍</string>
     
-    <string name="discover_sheet_title">Discover</string>
+    <string name="discover_sheet_title">발견</string>
     
-    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    <string name="discover_show_item_subtitle">발견 팝업에 이 옵션 표시</string>
     
-    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    <string name="discover_single_selected_desc">%1$s만 — 버튼을 누르면 바로 열립니다</string>
     
-    <string name="home_card_ai_recommendation">AI Mix</string>
+    <string name="home_card_ai_recommendation">AI 믹스</string>
 
     
     
-    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    <string name="home_card_order_reset_dialog_body">기본 홈 카드 순서로 복원합니다.</string>
     
-    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    <string name="home_card_order_reset_dialog_title">카드 순서를 초기화할까요?</string>
     
-    <string name="home_card_order_sheet_title">Customize home</string>
+    <string name="home_card_order_sheet_title">홈 화면 맞춤 설정</string>
     
-    <string name="home_edit_card_order">Edit home cards</string>
+    <string name="home_edit_card_order">홈 카드 편집</string>
     
-    <string name="home_empty_placeholder_refresh">Refresh</string>
+    <string name="home_empty_placeholder_refresh">새로고침</string>
     
-    <string name="home_empty_placeholder_subtitle">Your mix will appear here when XiangsuPlayer finds songs or syncs a source.</string>
+    <string name="home_empty_placeholder_subtitle">XiangsuPlayer가 곡을 찾거나 소스를 동기화하면 여기에 믹스가 표시됩니다.</string>
     
-    <string name="home_empty_placeholder_title">No data to show yet</string>
+    <string name="home_empty_placeholder_title">아직 표시할 데이터가 없습니다</string>
     
-    <string name="home_favorite_artists_title">Favorite Artists</string>
+    <string name="home_favorite_artists_title">즐겨찾는 아티스트</string>
     
-    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    <string name="open_source_licenses_screen_title">오픈 소스 라이선스</string>
     
     <string name="radio_all">All</string>
     
-    <string name="radio_country_picker_title">Select country</string>
+    <string name="radio_country_picker_title">국가 선택</string>
     
-    <string name="radio_favorite">Add to favorites</string>
+    <string name="radio_favorite">즐겨찾기에 추가</string>
     
-    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    <string name="radio_favorite_confirm">이 방송국을 즐겨찾기에 추가할까요?</string>
     
     <string name="radio_live_badge">LIVE</string>
     
     <string name="radio_more_countries">More</string>
     
-    <string name="radio_no_results">No stations found</string>
+    <string name="radio_no_results">방송국을 찾을 수 없습니다</string>
     
-    <string name="radio_recommendations">Popular stations</string>
+    <string name="radio_recommendations">인기 방송국</string>
     
-    <string name="radio_retry">Retry</string>
+    <string name="radio_retry">다시 시도</string>
     
-    <string name="radio_search">Search</string>
+    <string name="radio_search">검색</string>
     
-    <string name="radio_search_hint">Search stations, countries or tags</string>
+    <string name="radio_search_hint">방송국, 국가 또는 태그 검색</string>
     
-    <string name="radio_title">Radio</string>
+    <string name="radio_title">라디오</string>
     
     <string name="radio_top">Top</string>
     
-    <string name="radio_unfavorite">Remove from favorites</string>
+    <string name="radio_unfavorite">즐겨찾기에서 제거</string>
     
-    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
+    <string name="radio_unfavorite_confirm">이 방송국을 즐겨찾기에서 제거할까요?</string>
     
-    <string name="tab_folders">Folders</string>
+    <string name="tab_folders">폴더</string>
     
-    <string name="tab_history">History</string>
+    <string name="tab_history">기록</string>
     
-    <string name="tab_liked">Liked</string>
+    <string name="tab_liked">좋아요</string>
     
-    <string name="tab_playlists">Playlists</string>
+    <string name="tab_playlists">플레이리스트</string>
     
-    <string name="third_party_notices_action">Notices</string>
+    <string name="third_party_notices_action">고지 사항</string>
     
-    <string name="third_party_notices_close">Close</string>
+    <string name="third_party_notices_close">닫기</string>
     
     
-    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    <string name="third_party_notices_load_error">타사 고지 사항을 불러오지 못했습니다.</string>
     
-    <string name="third_party_notices_title">Third-Party Notices</string>
+    <string name="third_party_notices_title">타사 고지 사항</string>
     
-    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+    <string name="update_install_permission_required">앱을 업데이트하려면 설치 권한이 필요합니다.</string>
 
     
     
+    <string name="about_acknowledgements_mineradio_desc">웹 리모컨 “Glass” 스타일 인터페이스 참고(MineRadio)</string>
+    <string name="about_acknowledgements_reactor_desc">웹 리모컨 “Reactor” 스타일 및 핵심 시각화 참고(Reactor Audio Visualizer)</string>
+    <string name="about_acknowledgements_rhythm_desc">특별 감사: 창작 지원 및 일부 UI 참고(Rhythm)</string>
+    <string name="about_donation_button">Alipay로 후원</string>
+    <string name="about_donation_button_alipay">Alipay로 후원</string>
+    <string name="about_donation_button_wechat">WeChat으로 후원</string>
+    <string name="about_donation_channel_alipay">Alipay</string>
+    <string name="about_donation_channel_wechat">WeChat Pay</string>
+    <string name="about_donation_no_app">이 기기에서 후원 링크를 열 수 있는 앱이 없습니다</string>
+    <string name="about_donation_no_wechat">WeChat이 설치되어 있지 않습니다. 위의 QR 코드를 스캔해 주세요.</string>
+    <string name="about_donation_qr_hint">Alipay로 스캔하거나 아래 버튼을 사용하세요</string>
+    <string name="about_donation_qr_hint_both">Alipay 또는 WeChat으로 스캔하거나 아래 버튼을 사용하세요</string>
+    <string name="about_donation_qr_hint_wechat">WeChat으로 스캔하거나 아래 버튼을 사용하세요</string>
+    <string name="about_donation_subtitle">XiangsuPlayer가 도움이 되었다면 개발자에게 커피 한 잔의 후원을 고려해 주세요. 여러분의 지원이 업데이트를 이어갑니다.</string>
+    <string name="about_donation_thanks_note">목록은 계속 업데이트됩니다. 누락된 내용이 있으면 개발자에게 문의해 주세요.</string>
+    <string name="about_donation_thanks_subtitle">이 프로젝트를 지원해 주신 모든 분께 감사드립니다</string>
+    <string name="about_donation_thanks_title">감사 명단</string>
+    <string name="about_donation_title">개발 후원</string>
+    <string name="about_donation_wechat_opened">WeChat이 열렸습니다. 위의 QR 코드를 스캔해 후원해 주세요.</string>
+    <string name="about_supporters_surprise_hint">여기를 탭하세요. 전하고 싶은 말이 있습니다</string>
+    <string name="about_supporters_surprise_message">그리고 XiangsuPlayer를 선택해 주셔서 감사합니다. 사랑하는 모든 노래가 계속 흘러가길 바랍니다.</string>
+    <string name="audiobook_chapter_count">챕터 %1$d개</string>
+    <string name="audiobook_chapters_short">챕터 %1$d개</string>
+    <string name="audiobook_filter_all">전체</string>
+    <string name="audiobook_filter_gender">대상</string>
+    <string name="audiobook_filter_sort">정렬</string>
+    <string name="audiobook_filter_status">상태</string>
+    <string name="audiobook_free_library">무료 오디오북 라이브러리</string>
+    <string name="audiobook_free_library_desc">장르 · 정렬 · 대상 · 상태</string>
+    <string name="audiobook_gender_all">전체</string>
+    <string name="audiobook_gender_female">여성</string>
+    <string name="audiobook_gender_male">남성</string>
+    <string name="audiobook_home_empty">아직 오디오북 데이터가 없습니다</string>
+    <string name="audiobook_intro_collapse">접기</string>
+    <string name="audiobook_intro_expand">펼치기</string>
+    <string name="audiobook_library_empty">이 필터에 해당하는 무료 오디오북이 없습니다</string>
+    <string name="audiobook_load_failed">불러오지 못했습니다. 네트워크를 확인하고 다시 시도하세요</string>
+    <string name="audiobook_loading_chapters">모든 챕터 불러오는 중…</string>
+    <string name="audiobook_no_chapters">재생 가능한 챕터가 없습니다</string>
+    <string name="audiobook_play_all">모두 재생</string>
+    <string name="audiobook_queue_name">오디오북 · %1$s</string>
+    <string name="audiobook_retry">다시 시도</string>
+    <string name="audiobook_search_cd">오디오북 검색</string>
+    <string name="audiobook_search_clear">지우기</string>
+    <string name="audiobook_search_empty">“%1$s”에 대한 오디오북을 찾을 수 없습니다</string>
+    <string name="audiobook_search_hint">제목, 저자 또는 낭독자로 검색</string>
+    <string name="audiobook_search_initial">키워드를 입력해 오디오북을 검색하세요</string>
+    <string name="audiobook_search_title">오디오북 검색</string>
+    <string name="audiobook_section_daily">오늘의 추천</string>
+    <string name="audiobook_section_rank">랭킹 추천</string>
+    <string name="audiobook_section_vip">VIP 추천</string>
+    <string name="audiobook_section_week">주간 추천</string>
+    <string name="audiobook_shuffle_play">셔플</string>
+    <string name="audiobook_sort_default">기본</string>
+    <string name="audiobook_sort_plays">재생 수</string>
+    <string name="audiobook_sort_update">업데이트순</string>
+    <string name="audiobook_status_all">전체</string>
+    <string name="audiobook_status_done">완결</string>
+    <string name="audiobook_status_serial">연재 중</string>
+    <string name="audiobook_title">오디오북</string>
+    <string name="audiobook_unknown_author">알 수 없는 저자</string>
+    <string name="cd_donation_qr">Alipay 후원 QR 코드</string>
+    <string name="cd_donation_qr_wechat">WeChat Pay 후원 QR 코드</string>
+    <string name="chat_action_new_chat">대화할 사람 찾기</string>
+    <string name="chat_cd_messages">메시지</string>
+    <string name="chat_empty_conversations">아직 대화가 없습니다. 오른쪽 상단 버튼을 눌러 사람을 찾아보세요.</string>
+    <string name="chat_empty_friends">아직 초대할 친구가 없습니다. 먼저 몇 명의 사용자를 팔로우하세요.</string>
+    <string name="chat_empty_search">닉네임을 입력해 NetEase 사용자를 검색하세요</string>
+    <string name="chat_follow">팔로우</string>
+    <string name="chat_followed">팔로잉</string>
+    <string name="chat_go_login">로그인</string>
+    <string name="chat_input_hint">메시지 보내기…</string>
+    <string name="chat_invite_friend">NetEase 친구 초대</string>
+    <string name="chat_invite_sent">전송됨</string>
+    <string name="chat_join_together">함께 듣기 참여</string>
+    <string name="chat_need_login">메시지를 사용하려면 NetEase 계정으로 로그인하세요</string>
+    <string name="chat_no_results">일치하는 사용자가 없습니다</string>
+    <string name="chat_playlist_empty_hint">이 플레이리스트에 재생 가능한 곡이 없습니다</string>
+    <string name="chat_search_hint">NetEase 사용자 검색</string>
+    <string name="chat_send">보내기</string>
+    <string name="chat_send_invite">초대 보내기</string>
+    <string name="chat_send_message">메시지 보내기</string>
+    <string name="chat_tab_conversations">채팅</string>
+    <string name="chat_tab_search">사람 찾기</string>
+    <string name="chat_title">메시지</string>
+    <string name="chat_unfollow">팔로우 취소</string>
+    <string name="home_card_hide">카드 숨기기</string>
+    <string name="home_card_order_at_least_one_visible">카드를 하나 이상 표시해야 합니다</string>
+    <string name="home_card_order_sheet_visibility_hint">드래그하여 순서 변경 · 눈 아이콘을 눌러 카드 표시/숨김</string>
+    <string name="home_card_show">카드 표시</string>
+    <string name="home_discover_audiobook">오디오북</string>
+    <string name="home_discover_card_desc">로밍 · 하트 · 유사 · 인식 · 라디오 · AI</string>
+    <string name="home_discover_heart_mode">하트 모드</string>
+    <string name="home_discover_kugou_fm">개인 FM</string>
+    <string name="home_discover_listen_together">함께 듣기</string>
+    <string name="home_discover_recognition">노래 인식</string>
+    <string name="home_discover_similar_songs">유사한 곡</string>
+    <string name="home_featured_quality_hires">Hi-Res</string>
+    <string name="home_featured_quality_hq">HQ</string>
+    <string name="home_featured_quality_lossless">무손실</string>
+    <string name="kugou_dashboard_account_id">계정 ID: %1$s</string>
+    <string name="kugou_dashboard_quality_hint">로그인됨: 내장 Kugou 제공업체가 VIP / 무손실 음질을 가져올 수 있습니다</string>
+    <string name="kugou_dashboard_refresh_cd">계정 정보 새로고침</string>
+    <string name="kugou_dashboard_sync_done">동기화 완료: 플레이리스트 %1$d개</string>
+    <string name="kugou_dashboard_sync_failed">동기화 실패 — 네트워크를 확인하고 다시 시도하세요</string>
+    <string name="kugou_dashboard_syncing">동기화 중…</string>
+    <string name="kugou_login_account_pick_hint">이 전화번호는 여러 Kugou 계정에 연결되어 있습니다 — 로그인할 계정을 선택하세요</string>
+    <string name="kugou_login_account_pick_title">계정 선택</string>
+    <string name="kugou_login_code_label">인증 코드</string>
+    <string name="kugou_login_code_placeholder">SMS 코드 입력</string>
+    <string name="kugou_login_code_required">먼저 인증 코드를 입력하세요</string>
+    <string name="kugou_login_code_resend">%1$d초 후 재전송</string>
+    <string name="kugou_login_code_send">코드 전송</string>
+    <string name="kugou_login_code_sent">인증 코드를 전송했습니다</string>
+    <string name="kugou_login_edit_phone">전화번호 변경</string>
+    <string name="kugou_login_fetching_info">로그인됨, 계정 정보 불러오는 중…</string>
+    <string name="kugou_login_hint">Kugou 앱으로 QR 코드를 스캔하세요. 로그인하면 내장 Kugou 제공업체의 무손실/VIP 음질을 사용할 수 있습니다</string>
+    <string name="kugou_login_phone_invalid">유효한 11자리 전화번호를 입력하세요</string>
+    <string name="kugou_login_phone_label">전화번호</string>
+    <string name="kugou_login_phone_placeholder">전화번호 입력</string>
+    <string name="kugou_login_phone_submit">로그인</string>
+    <string name="kugou_login_qr_cd">Kugou 로그인 QR 코드</string>
+    <string name="kugou_login_qr_refresh">QR 코드 새로고침</string>
+    <string name="kugou_login_required_toast">개인 FM을 사용하려면 먼저 Kugou에 로그인하세요</string>
+    <string name="kugou_login_status_confirmed">로그인됨</string>
+    <string name="kugou_login_status_expired">QR 코드 만료, 새로고침 중…</string>
+    <string name="kugou_login_status_scanned">스캔됨 — 휴대폰에서 확인하세요</string>
+    <string name="kugou_login_status_waiting">스캔 대기 중…</string>
+    <string name="kugou_login_subtitle">로그인하면 내장 Kugou 제공업체의 무손실/VIP 음질을 사용할 수 있고 Kugou 플레이리스트가 동기화됩니다</string>
+    <string name="kugou_login_success">로그인되었습니다!</string>
+    <string name="kugou_login_switch_to_phone">전화번호 사용</string>
+    <string name="kugou_login_switch_to_qr">QR 코드 사용</string>
+    <string name="kugou_login_tab_phone">전화번호</string>
+    <string name="kugou_login_tab_qr">QR 코드</string>
+    <string name="kugou_login_title">Kugou 로그인</string>
+    <string name="kugou_service_name">Kugou Music</string>
+    <string name="kugou_sync_none">아직 동기화된 플레이리스트가 없습니다</string>
+    <string name="kugou_sync_playlists_count">플레이리스트 %1$d개 동기화됨</string>
+    <string name="listen_together_cd_avatar">%1$s의 아바타</string>
+    <string name="listen_together_clipboard_detected">클립보드에서 초대 링크를 감지했습니다</string>
+    <string name="listen_together_create">방 만들기</string>
+    <string name="listen_together_create_from_current">함께 듣기 시작</string>
+    <string name="listen_together_create_from_current_hint">현재 재생 대기열을 사용합니다(NetEase 곡만) — 플레이리스트를 선택할 필요가 없습니다</string>
+    <string name="listen_together_create_hint">동기화된 NetEase 플레이리스트를 방 대기열로 선택하세요</string>
+    <string name="listen_together_desc">NetEase 계정으로 친구와 재생을 동기화합니다. 사용 중에는 NetEase 곡만 재생할 수 있습니다.</string>
+    <string name="listen_together_end">세션 종료</string>
+    <string name="listen_together_host_badge">호스트</string>
+    <string name="listen_together_host_left">호스트가 방을 떠났습니다. 호스트가 돌아오면 재생이 재개됩니다.</string>
+    <string name="listen_together_invite_all_friends">모든 친구 초대</string>
+    <string name="listen_together_invite_invalid">유효하지 않은 초대 링크</string>
+    <string name="listen_together_join">참여</string>
+    <string name="listen_together_join_hint">여기에 초대 링크 붙여넣기</string>
+    <string name="listen_together_leave">나가기</string>
+    <string name="listen_together_leave_to_play">이 곡을 재생하려면 함께 듣기를 나가세요</string>
+    <string name="listen_together_me">나</string>
+    <string name="listen_together_member_count">함께 듣기 · %1$d</string>
+    <string name="listen_together_members">멤버</string>
+    <string name="listen_together_netease_only">함께 듣기는 NetEase 곡만 지원합니다</string>
+    <string name="listen_together_open_dashboard">NetEase 대시보드를 열어 플레이리스트 동기화</string>
+    <string name="listen_together_partner">함께 듣는 중</string>
+    <string name="listen_together_paste_link_placeholder">초대 링크나 공유된 텍스트를 붙여넣으세요</string>
+    <string name="listen_together_pick_playlist">플레이리스트 선택</string>
+    <string name="listen_together_resolving_link">초대 링크 확인 중…</string>
+    <string name="listen_together_roaming">로밍 추천으로 시작</string>
+    <string name="listen_together_share">초대 공유</string>
+    <string name="listen_together_share_done">친구 %1$d명에게 공유했습니다</string>
+    <string name="listen_together_share_failed">친구를 불러오지 못했습니다: %1$s</string>
+    <string name="listen_together_share_no_friends">아직 공유할 친구가 없습니다</string>
+    <string name="listen_together_share_no_invite">먼저 방을 만들거나 참여하세요</string>
+    <string name="listen_together_share_partial">친구 %1$d명에게 공유했고 %2$d명은 실패했습니다</string>
+    <string name="listen_together_share_progress">%1$d/%2$d 공유 중…</string>
+    <string name="listen_together_share_to_friends">친구 메시지로 공유</string>
+    <string name="listen_together_share_to_friends_hint">모든 NetEase 친구(팔로잉 + 최근 채팅)에게 초대를 보냅니다</string>
+    <string name="listen_together_status_connected">동기화됨</string>
+    <string name="listen_together_status_connecting">연결 중…</string>
+    <string name="listen_together_status_reconnecting">다시 연결 중…</string>
+    <string name="listen_together_title">함께 듣기</string>
+    <string name="listen_together_view_members">함께 듣기 멤버 보기</string>
+    <string name="listen_together_waiting_host">호스트를 기다리는 중…</string>
+    <string name="listen_together_with">%1$s와(과) 함께 듣는 중</string>
+    <string name="lyric_share_generating">생성 중…</string>
+    <string name="lyric_share_image">이미지 생성</string>
+    <string name="lyric_share_select_all">모두 선택</string>
+    <string name="lyric_share_selected_count">%1$d줄 선택됨</string>
+    <string name="lyric_share_text">텍스트로 공유</string>
+    <string name="lyric_share_title">가사 공유</string>
+    <string name="lyrics_more_vibrant_folia">Folia</string>
+    <string name="lyrics_more_vibrant_glass">Glass 무대</string>
+    <string name="lyrics_more_vibrant_off">끔</string>
+    <string name="market_downloading">다운로드 중… %1$d%%</string>
+    <string name="market_install">설치</string>
+    <string name="market_installed">설치됨</string>
+    <string name="market_installed_count">소스 %1$d개 설치됨</string>
+    <string name="market_no_sources">아직 테스트할 소스가 없습니다 — 먼저 소스 스크립트를 설치하세요</string>
+    <string name="market_parsing">스크립트 분석 중…</string>
+    <string name="market_refresh">새로고침</string>
+    <string name="market_source_builtin">내장</string>
+    <string name="market_source_plugin">플러그인</string>
+    <string name="market_source_test_desc">소스별로 실제 검색을 실행하며, JS 소스는 재생 URL도 가져옵니다</string>
+    <string name="market_source_test_title">소스 연결 테스트</string>
+    <string name="market_subtitle">GitHub에서 커뮤니티 소스 스크립트를 다운로드하고 설치하세요</string>
+    <string name="market_tap_expand">탭하여 스크립트를 다운로드하고 살펴보기</string>
+    <string name="market_test">테스트</string>
+    <string name="market_test_all">모두 테스트</string>
+    <string name="market_test_failed">사용 불가</string>
+    <string name="market_test_search_only">검색 정상</string>
+    <string name="market_test_success">사용 가능</string>
+    <string name="market_testing">테스트 중…</string>
+    <string name="market_title">Pixel 소스 마켓</string>
+    <string name="player_cd_song_info">곡 정보</string>
+    <string name="player_more_comments">댓글 보기</string>
+    <string name="player_more_download">곡 다운로드</string>
+    <string name="playlist_search_hint">이 플레이리스트에서 곡 검색</string>
+    <string name="playlist_search_result_count">곡 %1$d개</string>
+    <string name="queue_search_hint">이 대기열에서 곡 검색</string>
+    <string name="queue_search_result_count">%1$d개 일치</string>
+    <string name="roaming_mode_explore">탐색</string>
+    <string name="roaming_mode_explore_desc">아직 듣지 않은 곡 쪽으로 기울임</string>
+    <string name="roaming_mode_familiar">익숙함</string>
+    <string name="roaming_mode_familiar_desc">이미 듣던 곡 쪽으로 기울임</string>
+    <string name="roaming_mode_title">로밍 모드</string>
+    <string name="song_recognition_hint">휴대폰이 주변에서 재생 중인 음악을 듣게 하고(약 6초) 곡을 찾습니다</string>
+    <string name="song_recognition_listening">듣는 중…</string>
+    <string name="song_recognition_mic_denied">마이크 권한이 필요합니다 — 시스템 설정에서 허용해 주세요</string>
+    <string name="song_recognition_result_title">일치하는 곡을 찾았습니다</string>
+    <string name="song_recognition_retry">다시 시도</string>
+    <string name="song_recognition_start">듣기 시작</string>
+    <string name="song_recognition_title">노래 인식</string>
+    <string name="source_badge_kugou">Kugou</string>
+    <string name="source_badge_netease">NetEase</string>
+    <string name="startup_preparing">준비 중…</string>
 </resources>

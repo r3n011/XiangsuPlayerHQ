@@ -16,7 +16,7 @@
     <string name="presentation_batch_e_queue_source_fallback">Antrean</string>
     <string name="presentation_batch_e_cd_toggle_shuffle">Alihkan acak</string>
     <string name="presentation_batch_e_cd_toggle_repeat">Alihkan ulangi</string>
-    <string name="presentation_batch_e_cd_sleep_timer">Sleep timer</string>
+    <string name="presentation_batch_e_cd_sleep_timer">Timer tidur</string>
     <string name="presentation_batch_e_save_as_playlist_sheet_title">Simpan sebagai playlist</string>
     <string name="presentation_batch_e_deselect_all">Batalkan pilihan semua</string>
     <string name="presentation_batch_e_playlist_name_label">Nama playlist</string>
@@ -53,7 +53,7 @@
 
     <!-- AI playlist lab -->
     <string name="presentation_batch_e_ai_playlist_lab_title">Lab Playlist AI</string>
-    <string name="presentation_batch_e_ai_reset">Reset</string>
+    <string name="presentation_batch_e_ai_reset">Atur ulang</string>
     <string name="presentation_batch_e_ai_generating">Menghasilkan…</string>
     <string name="presentation_batch_e_ai_generate">Hasilkan</string>
     <string name="presentation_batch_e_ai_section_intent">Tujuan</string>
@@ -149,156 +149,156 @@
     <string name="presentation_batch_e_daily_mix_cost_hint">Kami menggunakan sampel kecil untuk menjaga biaya tetap rendah</string>
     <string name="presentation_batch_e_daily_mix_updating">Memperbarui…</string>
     <string name="presentation_batch_e_daily_mix_update">Perbarui Daily Mix</string>
-    <string name="presentation_batch_e_ai_afternoon_subtitle">Keep productive</string>
+    <string name="presentation_batch_e_ai_afternoon_subtitle">Tetap produktif</string>
     
-    <string name="presentation_batch_e_ai_afternoon_title">AI Afternoon Drive</string>
+    <string name="presentation_batch_e_ai_afternoon_title">AI Sore Produktif</string>
     
-    <string name="presentation_batch_e_ai_desc_1">Based on your recent listening, I think you\'ll love these picks!</string>
+    <string name="presentation_batch_e_ai_desc_1">Berdasarkan pendengaran terbaru Anda, saya rasa Anda akan menyukai pilihan ini!</string>
     
-    <string name="presentation_batch_e_ai_desc_2">Curated just for you - discover new music that fits your vibe.</string>
+    <string name="presentation_batch_e_ai_desc_2">Dikurasi khusus untuk Anda - temukan musik baru yang sesuai dengan suasana Anda.</string>
     
-    <string name="presentation_batch_e_ai_desc_3">Your taste is amazing! Here are some tracks you shouldn\'t miss.</string>
+    <string name="presentation_batch_e_ai_desc_3">Selera Anda luar biasa! Berikut beberapa trek yang tidak boleh Anda lewatkan.</string>
     
-    <string name="presentation_batch_e_ai_desc_4">Perfect for this moment - let the music guide your mood.</string>
+    <string name="presentation_batch_e_ai_desc_4">Sempurna untuk momen ini - biarkan musik memandu suasana hati Anda.</string>
     
-    <string name="presentation_batch_e_ai_desc_5">Mixing your favorites with fresh finds - enjoy your personalized playlist!</string>
+    <string name="presentation_batch_e_ai_desc_5">Mencampur favorit Anda dengan temuan baru - nikmati playlist personal Anda!</string>
 
     
     
-    <string name="presentation_batch_e_ai_eval_cohesion">Cohesion</string>
+    <string name="presentation_batch_e_ai_eval_cohesion">Kohesi</string>
     
-    <string name="presentation_batch_e_ai_eval_diversity">Diversity</string>
+    <string name="presentation_batch_e_ai_eval_diversity">Keragaman</string>
     
-    <string name="presentation_batch_e_ai_eval_energy_flow">Energy Flow</string>
+    <string name="presentation_batch_e_ai_eval_energy_flow">Alur Energi</string>
     
-    <string name="presentation_batch_e_ai_eval_suggestions">Suggestions</string>
+    <string name="presentation_batch_e_ai_eval_suggestions">Saran</string>
     
-    <string name="presentation_batch_e_ai_eval_title">AI Evaluation</string>
+    <string name="presentation_batch_e_ai_eval_title">Evaluasi AI</string>
     
-    <string name="presentation_batch_e_ai_evaluate_playlist">AI Evaluate Playlist</string>
+    <string name="presentation_batch_e_ai_evaluate_playlist">Evaluasi Playlist dengan AI</string>
     
-    <string name="presentation_batch_e_ai_evaluating">Evaluating playlist…</string>
+    <string name="presentation_batch_e_ai_evaluating">Mengevaluasi playlist…</string>
     
-    <string name="presentation_batch_e_ai_evening_subtitle">Unwind after a long day</string>
+    <string name="presentation_batch_e_ai_evening_subtitle">Bersantai setelah hari yang panjang</string>
     
-    <string name="presentation_batch_e_ai_evening_title">AI Evening Wind Down</string>
+    <string name="presentation_batch_e_ai_evening_title">AI Relaksasi Malam</string>
     
-    <string name="presentation_batch_e_ai_holiday_april_fools">April Fools</string>
+    <string name="presentation_batch_e_ai_holiday_april_fools">April Mop</string>
     
     <string name="presentation_batch_e_ai_holiday_april_fools_tag">Fun</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_christmas">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas">Natal</string>
     
-    <string name="presentation_batch_e_ai_holiday_christmas_tag">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas_tag">Natal</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_fathers">Father\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_fathers">Hari Ayah</string>
     
-    <string name="presentation_batch_e_ai_holiday_fathers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_fathers_tag">Keluarga</string>
     
     
     <string name="presentation_batch_e_ai_holiday_halloween">Halloween</string>
     
-    <string name="presentation_batch_e_ai_holiday_halloween_tag">Spooky</string>
+    <string name="presentation_batch_e_ai_holiday_halloween_tag">Seram</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_independence">Independence Day</string>
+    <string name="presentation_batch_e_ai_holiday_independence">Hari Kemerdekaan</string>
     
-    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotic</string>
+    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotik</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_labor">Labor Day</string>
+    <string name="presentation_batch_e_ai_holiday_labor">Hari Buruh</string>
     
     <string name="presentation_batch_e_ai_holiday_labor_tag">Work</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_mothers">Mother\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_mothers">Hari Ibu</string>
     
-    <string name="presentation_batch_e_ai_holiday_mothers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_mothers_tag">Keluarga</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year">Tahun Baru</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve">New Year\'s Eve</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve">Malam Tahun Baru</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Party</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Pesta</string>
 
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year_tag">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_tag">Tahun Baru</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick">St. Patrick\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick">Hari St. Patrick</string>
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irish</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving">Thanksgiving</string>
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Gratitude</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irlandia</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_valentine">Valentine\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_thanksgiving">Hari Syukur</string>
+    
+    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Rasa Syukur</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_valentine">Hari Valentine</string>
     
     <string name="presentation_batch_e_ai_holiday_valentine_tag">Love</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_veterans">Veterans Day</string>
+    <string name="presentation_batch_e_ai_holiday_veterans">Hari Veteran</string>
     
-    <string name="presentation_batch_e_ai_holiday_veterans_tag">Tribute</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_womens">Women\'s Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_womens_tag">Celebrate</string>
+    <string name="presentation_batch_e_ai_holiday_veterans_tag">Penghormatan</string>
     
     
-    <string name="presentation_batch_e_ai_late_night_subtitle">Deep and mellow</string>
+    <string name="presentation_batch_e_ai_holiday_womens">Hari Perempuan</string>
     
-    <string name="presentation_batch_e_ai_late_night_title">AI Late Night</string>
-    
-    <string name="presentation_batch_e_ai_lunch_subtitle">Relax and recharge</string>
-    
-    <string name="presentation_batch_e_ai_lunch_title">AI Lunch Break</string>
-    
-    <string name="presentation_batch_e_ai_midday_subtitle">Keep the momentum going</string>
-    
-    <string name="presentation_batch_e_ai_midday_title">AI Midday Flow</string>
-    
-    <string name="presentation_batch_e_ai_morning_subtitle">Start your day with energy</string>
-    
-    <string name="presentation_batch_e_ai_morning_title">AI Morning Boost</string>
-    
-    <string name="presentation_batch_e_ai_night_subtitle">Perfect for late nights</string>
-    
-    <string name="presentation_batch_e_ai_night_title">AI Night Vibes</string>
-    
-    <string name="presentation_batch_e_ai_recommendation_success">AI recommendation generated!</string>
-    
-    <string name="presentation_batch_e_ai_tag_chill">Chill</string>
+    <string name="presentation_batch_e_ai_holiday_womens_tag">Rayakan</string>
     
     
-    <string name="presentation_batch_e_ai_tag_focus">Focus</string>
+    <string name="presentation_batch_e_ai_late_night_subtitle">Dalam dan mellow</string>
+    
+    <string name="presentation_batch_e_ai_late_night_title">AI Malam Larut</string>
+    
+    <string name="presentation_batch_e_ai_lunch_subtitle">Bersantai dan isi ulang energi</string>
+    
+    <string name="presentation_batch_e_ai_lunch_title">AI Istirahat Siang</string>
+    
+    <string name="presentation_batch_e_ai_midday_subtitle">Jaga momentum</string>
+    
+    <string name="presentation_batch_e_ai_midday_title">AI Alur Siang</string>
+    
+    <string name="presentation_batch_e_ai_morning_subtitle">Mulai hari Anda dengan energi</string>
+    
+    <string name="presentation_batch_e_ai_morning_title">AI Semangat Pagi</string>
+    
+    <string name="presentation_batch_e_ai_night_subtitle">Sempurna untuk malam larut</string>
+    
+    <string name="presentation_batch_e_ai_night_title">AI Suasana Malam</string>
+    
+    <string name="presentation_batch_e_ai_recommendation_success">Rekomendasi AI dibuat!</string>
+    
+    <string name="presentation_batch_e_ai_tag_chill">Santai</string>
     
     
-    <string name="presentation_batch_e_ai_tag_morning">Morning</string>
+    <string name="presentation_batch_e_ai_tag_focus">Fokus</string>
     
     
-    <string name="presentation_batch_e_ai_tag_night">Night</string>
+    <string name="presentation_batch_e_ai_tag_morning">Pagi</string>
     
     
-    <string name="presentation_batch_e_ai_tag_relax">Relax</string>
+    <string name="presentation_batch_e_ai_tag_night">Malam</string>
     
     
-    <string name="presentation_batch_e_ai_tag_sleep">Sleep</string>
+    <string name="presentation_batch_e_ai_tag_relax">Relaksasi</string>
+    
+    
+    <string name="presentation_batch_e_ai_tag_sleep">Tidur</string>
     
     
     
     <string name="presentation_batch_e_ai_tag_work">Work</string>
     
     
-    <string name="presentation_batch_e_ai_view_all_mix">View All AI Mix</string>
+    <string name="presentation_batch_e_ai_view_all_mix">Lihat Semua AI Mix</string>
     
     
     

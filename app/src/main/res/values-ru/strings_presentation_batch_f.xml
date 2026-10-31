@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- SettingsComponents -->
     <string name="presentation_batch_f_cd_selected">Выбрано</string>
@@ -89,10 +89,10 @@
     <string name="presentation_batch_f_palette_style_vibrant_desc">Насыщенные акценты.</string>
     <string name="presentation_batch_f_palette_style_expressive_desc">Смелые сдвиги оттенков и контраст.</string>
     <string name="presentation_batch_f_palette_style_fruit_salad_desc">Игривые сменяющиеся акценты.</string>
-    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal Spot</string>
-    <string name="presentation_batch_f_palette_label_vibrant">Vibrant</string>
-    <string name="presentation_batch_f_palette_label_expressive">Expressive</string>
-    <string name="presentation_batch_f_palette_label_fruit_salad">Fruit Salad</string>
+    <string name="presentation_batch_f_palette_label_tonal_spot">Тональное пятно</string>
+    <string name="presentation_batch_f_palette_label_vibrant">Яркая</string>
+    <string name="presentation_batch_f_palette_label_expressive">Выразительная</string>
+    <string name="presentation_batch_f_palette_label_fruit_salad">Фруктовый салат</string>
     <string name="presentation_batch_f_color_accuracy_title">Точность цвета</string>
     <string name="presentation_batch_f_color_accuracy_subtitle">0 — текущая настройка. Высокие значения ближе к основному цвету обложки.</string>
     <string name="presentation_batch_f_accuracy_current">Текущая</string>
@@ -131,7 +131,7 @@
     <string name="presentation_batch_f_exp_trigger_mode_locked">Включите хотя бы одну задержку, чтобы разблокировать этот выбор.</string>
     <string name="presentation_batch_f_exp_threshold_title">Порог (Threshold)</string>
     <string name="presentation_batch_f_exp_threshold_subtitle">Использует процент развертывания.</string>
-    <string name="presentation_batch_f_exp_drag_release_title">Drag release</string>
+    <string name="presentation_batch_f_exp_drag_release_title">Отпускание при перетаскивании</string>
     <string name="presentation_batch_f_exp_drag_release_subtitle">Переключение только после отпускания жеста.</string>
     <string name="presentation_batch_f_exp_expand_threshold_title">Порог развертывания</string>
     <string name="presentation_batch_f_exp_expand_threshold_subtitle">Насколько должна быть развернута панель, чтобы появился контент.</string>
@@ -236,14 +236,49 @@
     <string name="presentation_batch_f_remove_channel_confirm_title">Удалить канал?</string>
     <string name="presentation_batch_f_remove_channel_confirm_body">%1$s перестанет синхронизироваться, и все кэшированные треки этого канала будут удалены.</string>
     <string name="presentation_batch_f_remove_channel_confirm_action">Удалить</string>
-    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    <string name="presentation_batch_f_adjust_cover_hint">Масштабируйте и перетаскивайте, чтобы выбрать идеальный кадр</string>
     
-    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    <string name="presentation_batch_f_adjust_cover_title">Настройте обложку</string>
     
-    <string name="presentation_batch_f_change">Change</string>
+    <string name="presentation_batch_f_change">Изменить</string>
     
-    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    <string name="presentation_batch_f_edit_cover_title">Изменить обложку</string>
     
-    <string name="presentation_batch_f_remove">Remove</string>
+    <string name="presentation_batch_f_remove">Удалить</string>
     
+    <string name="presentation_batch_f_progress_rotate_subtitle">Постоянно вращать ползунок во время воспроизведения.</string>
+    <string name="presentation_batch_f_progress_rotate_title">Вращение при воспроизведении</string>
+    <string name="presentation_batch_f_progress_style_dots">Точки</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">Индикаторы-точки.</string>
+    <string name="presentation_batch_f_progress_style_gradient">Градиент</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">Многоцветная градиентная заливка.</string>
+    <string name="presentation_batch_f_progress_style_normal">Обычный</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">Стандартная полоса прогресса.</string>
+    <string name="presentation_batch_f_progress_style_rounded">Скругленный</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">Прогресс в форме таблетки.</string>
+    <string name="presentation_batch_f_progress_style_segmented">Сегментированный</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">Сегментированные блоки.</string>
+    <string name="presentation_batch_f_progress_style_thick">Толстый</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">Жирная толстая полоса.</string>
+    <string name="presentation_batch_f_progress_style_thin">Тонкий</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">Тонкая изящная линия.</string>
+    <string name="presentation_batch_f_progress_style_waveform">Волновая форма</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">Полосы амплитуды в стиле аудио.</string>
+    <string name="presentation_batch_f_progress_style_wavy">Волнистый</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">Анимированная волнистая линия.</string>
+    <string name="presentation_batch_f_progress_thumb_circle">Круг</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">Печенье</string>
+    <string name="presentation_batch_f_progress_thumb_default">По умолчанию</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">Ромб</string>
+    <string name="presentation_batch_f_progress_thumb_flower">Цветок</string>
+    <string name="presentation_batch_f_progress_thumb_heading">Стиль ползунка</string>
+    <string name="presentation_batch_f_progress_thumb_heart">Сердце</string>
+    <string name="presentation_batch_f_progress_thumb_none">Нет</string>
+    <string name="presentation_batch_f_progress_thumb_pill">Таблетка</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">Объемный</string>
+    <string name="presentation_batch_f_progress_thumb_square">Квадрат</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">Выберите ползунок для перемотки песни.</string>
+    <string name="presentation_batch_f_progress_title">Полоса прогресса</string>
+    <string name="presentation_batch_f_progress_track_heading">Стиль дорожки</string>
+    <string name="presentation_batch_f_progress_track_subtitle">Выберите, как рисуется полоса прогресса воспроизведения.</string>
 </resources>

@@ -146,158 +146,158 @@
     <string name="presentation_batch_e_daily_mix_cost_hint">비용을 낮게 유지하기 위해 작은 샘플을 사용합니다</string>
     <string name="presentation_batch_e_daily_mix_updating">업데이트 중…</string>
     <string name="presentation_batch_e_daily_mix_update">Daily Mix 업데이트</string>
-    <string name="presentation_batch_e_action_locate_current_song">Locate current song</string>
+    <string name="presentation_batch_e_action_locate_current_song">현재 곡 찾기</string>
     
-    <string name="presentation_batch_e_ai_afternoon_subtitle">Keep productive</string>
+    <string name="presentation_batch_e_ai_afternoon_subtitle">생산성 유지</string>
     
-    <string name="presentation_batch_e_ai_afternoon_title">AI Afternoon Drive</string>
+    <string name="presentation_batch_e_ai_afternoon_title">AI 오후 드라이브</string>
     
-    <string name="presentation_batch_e_ai_desc_1">Based on your recent listening, I think you\'ll love these picks!</string>
+    <string name="presentation_batch_e_ai_desc_1">최근 청취 기록을 바탕으로 이 곡들을 좋아하실 것 같아요!</string>
     
-    <string name="presentation_batch_e_ai_desc_2">Curated just for you - discover new music that fits your vibe.</string>
+    <string name="presentation_batch_e_ai_desc_2">당신만을 위해 큐레이션했습니다 - 취향에 맞는 새로운 음악을 발견해 보세요.</string>
     
-    <string name="presentation_batch_e_ai_desc_3">Your taste is amazing! Here are some tracks you shouldn\'t miss.</string>
+    <string name="presentation_batch_e_ai_desc_3">당신의 취향은 훌륭합니다! 놓치면 안 될 트랙을 모았습니다.</string>
     
-    <string name="presentation_batch_e_ai_desc_4">Perfect for this moment - let the music guide your mood.</string>
+    <string name="presentation_batch_e_ai_desc_4">지금 이 순간에 딱 맞습니다 - 음악이 기분을 이끌게 하세요.</string>
     
-    <string name="presentation_batch_e_ai_desc_5">Mixing your favorites with fresh finds - enjoy your personalized playlist!</string>
+    <string name="presentation_batch_e_ai_desc_5">즐겨찾기와 새로운 발견을 섞었습니다 - 맞춤 플레이리스트를 즐겨보세요!</string>
 
     
     
-    <string name="presentation_batch_e_ai_eval_cohesion">Cohesion</string>
+    <string name="presentation_batch_e_ai_eval_cohesion">응집력</string>
     
-    <string name="presentation_batch_e_ai_eval_diversity">Diversity</string>
+    <string name="presentation_batch_e_ai_eval_diversity">다양성</string>
     
-    <string name="presentation_batch_e_ai_eval_energy_flow">Energy Flow</string>
+    <string name="presentation_batch_e_ai_eval_energy_flow">에너지 흐름</string>
     
-    <string name="presentation_batch_e_ai_eval_suggestions">Suggestions</string>
+    <string name="presentation_batch_e_ai_eval_suggestions">제안</string>
     
-    <string name="presentation_batch_e_ai_eval_title">AI Evaluation</string>
+    <string name="presentation_batch_e_ai_eval_title">AI 평가</string>
     
-    <string name="presentation_batch_e_ai_evaluate_playlist">AI Evaluate Playlist</string>
+    <string name="presentation_batch_e_ai_evaluate_playlist">AI로 플레이리스트 평가</string>
     
-    <string name="presentation_batch_e_ai_evaluating">Evaluating playlist…</string>
+    <string name="presentation_batch_e_ai_evaluating">플레이리스트 평가 중…</string>
     
-    <string name="presentation_batch_e_ai_evening_subtitle">Unwind after a long day</string>
+    <string name="presentation_batch_e_ai_evening_subtitle">긴 하루 끝에 휴식</string>
     
-    <string name="presentation_batch_e_ai_evening_title">AI Evening Wind Down</string>
+    <string name="presentation_batch_e_ai_evening_title">AI 저녁 휴식</string>
     
-    <string name="presentation_batch_e_ai_holiday_april_fools">April Fools</string>
+    <string name="presentation_batch_e_ai_holiday_april_fools">만우절</string>
     
     <string name="presentation_batch_e_ai_holiday_april_fools_tag">Fun</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_christmas">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas">크리스마스</string>
     
-    <string name="presentation_batch_e_ai_holiday_christmas_tag">Christmas</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_fathers">Father\'s Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_fathers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_christmas_tag">크리스마스</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_halloween">Halloween</string>
+    <string name="presentation_batch_e_ai_holiday_fathers">아버지의 날</string>
     
-    <string name="presentation_batch_e_ai_holiday_halloween_tag">Spooky</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_independence">Independence Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotic</string>
+    <string name="presentation_batch_e_ai_holiday_fathers_tag">가족</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_labor">Labor Day</string>
+    <string name="presentation_batch_e_ai_holiday_halloween">할로윈</string>
+    
+    <string name="presentation_batch_e_ai_holiday_halloween_tag">으스스한</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_independence">독립기념일</string>
+    
+    <string name="presentation_batch_e_ai_holiday_independence_tag">애국</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_labor">노동절</string>
     
     <string name="presentation_batch_e_ai_holiday_labor_tag">Work</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_mothers">Mother\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_mothers">어머니의 날</string>
     
-    <string name="presentation_batch_e_ai_holiday_mothers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_mothers_tag">가족</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year">새해</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve">New Year\'s Eve</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve">새해 전야</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Party</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">파티</string>
 
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year_tag">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_tag">새해</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick">St. Patrick\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick">성 패트릭의 날</string>
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irish</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving">Thanksgiving</string>
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Gratitude</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">아일랜드</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_valentine">Valentine\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_thanksgiving">추수감사절</string>
+    
+    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">감사</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_valentine">발렌타인데이</string>
     
     <string name="presentation_batch_e_ai_holiday_valentine_tag">Love</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_veterans">Veterans Day</string>
+    <string name="presentation_batch_e_ai_holiday_veterans">재향군인의 날</string>
     
-    <string name="presentation_batch_e_ai_holiday_veterans_tag">Tribute</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_womens">Women\'s Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_womens_tag">Celebrate</string>
+    <string name="presentation_batch_e_ai_holiday_veterans_tag">추모</string>
     
     
-    <string name="presentation_batch_e_ai_late_night_subtitle">Deep and mellow</string>
+    <string name="presentation_batch_e_ai_holiday_womens">세계 여성의 날</string>
     
-    <string name="presentation_batch_e_ai_late_night_title">AI Late Night</string>
-    
-    <string name="presentation_batch_e_ai_lunch_subtitle">Relax and recharge</string>
-    
-    <string name="presentation_batch_e_ai_lunch_title">AI Lunch Break</string>
-    
-    <string name="presentation_batch_e_ai_midday_subtitle">Keep the momentum going</string>
-    
-    <string name="presentation_batch_e_ai_midday_title">AI Midday Flow</string>
-    
-    <string name="presentation_batch_e_ai_morning_subtitle">Start your day with energy</string>
-    
-    <string name="presentation_batch_e_ai_morning_title">AI Morning Boost</string>
-    
-    <string name="presentation_batch_e_ai_night_subtitle">Perfect for late nights</string>
-    
-    <string name="presentation_batch_e_ai_night_title">AI Night Vibes</string>
-    
-    <string name="presentation_batch_e_ai_recommendation_success">AI recommendation generated!</string>
-    
-    <string name="presentation_batch_e_ai_tag_chill">Chill</string>
+    <string name="presentation_batch_e_ai_holiday_womens_tag">축하</string>
     
     
-    <string name="presentation_batch_e_ai_tag_focus">Focus</string>
+    <string name="presentation_batch_e_ai_late_night_subtitle">깊고 부드러운</string>
+    
+    <string name="presentation_batch_e_ai_late_night_title">AI 심야</string>
+    
+    <string name="presentation_batch_e_ai_lunch_subtitle">휴식과 재충전</string>
+    
+    <string name="presentation_batch_e_ai_lunch_title">AI 점심시간</string>
+    
+    <string name="presentation_batch_e_ai_midday_subtitle">흐름을 이어가세요</string>
+    
+    <string name="presentation_batch_e_ai_midday_title">AI 한낮의 흐름</string>
+    
+    <string name="presentation_batch_e_ai_morning_subtitle">활기차게 하루를 시작하세요</string>
+    
+    <string name="presentation_batch_e_ai_morning_title">AI 모닝 부스트</string>
+    
+    <string name="presentation_batch_e_ai_night_subtitle">늦은 밤에 딱 맞는</string>
+    
+    <string name="presentation_batch_e_ai_night_title">AI 밤 분위기</string>
+    
+    <string name="presentation_batch_e_ai_recommendation_success">AI 추천이 생성되었습니다!</string>
+    
+    <string name="presentation_batch_e_ai_tag_chill">여유</string>
     
     
-    <string name="presentation_batch_e_ai_tag_morning">Morning</string>
+    <string name="presentation_batch_e_ai_tag_focus">집중</string>
     
     
-    <string name="presentation_batch_e_ai_tag_night">Night</string>
+    <string name="presentation_batch_e_ai_tag_morning">아침</string>
     
     
-    <string name="presentation_batch_e_ai_tag_relax">Relax</string>
+    <string name="presentation_batch_e_ai_tag_night">밤</string>
     
     
-    <string name="presentation_batch_e_ai_tag_sleep">Sleep</string>
+    <string name="presentation_batch_e_ai_tag_relax">휴식</string>
+    
+    
+    <string name="presentation_batch_e_ai_tag_sleep">수면</string>
     
     
     
     <string name="presentation_batch_e_ai_tag_work">Work</string>
     
     
-    <string name="presentation_batch_e_ai_view_all_mix">View All AI Mix</string>
+    <string name="presentation_batch_e_ai_view_all_mix">모든 AI 믹스 보기</string>
     
     
     

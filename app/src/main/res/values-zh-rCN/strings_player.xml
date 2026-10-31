@@ -63,7 +63,7 @@
     <string name="cast_server_channel_name">投屏媒体服务器</string>
     <string name="cast_server_notification_title">正在投屏到设备</string>
     <string name="cast_server_notification_text">正在向投屏设备提供媒体</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
+    <string name="cast_server_foreground_error">%1$s：%2$s</string>
     <string name="cast_seek_unavailable_for_format">此音频格式暂不支持在投屏中快进，因为可能导致投屏会话崩溃。</string>
 
     <!-- Sleep Timer -->
@@ -192,7 +192,7 @@
     <string name="lyrics_custom_search_field_title">歌曲标题</string>
     <string name="lyrics_custom_search_field_artist">歌手（可选）</string>
     <string name="lyrics_found_n_matches_format">找到 %d 个匹配结果</string>
-    <string name="lyrics_synced_badge">SYNCED</string>
+    <string name="lyrics_synced_badge">已同步</string>
     <string name="lyrics_artist_album_line">%1$s • %2$s</string>
     <string name="lyrics_provided_by">歌词由</string>
     <string name="lyrics_lrclib_uri">https://lrclib.net/</string>

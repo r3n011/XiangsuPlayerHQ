@@ -72,4 +72,30 @@
     <string name="auth_error_qq_login_incomplete">Innlogging ikke fullført.</string>
     <string name="auth_navidrome_пароль_hint">App password also works if your server supports it.</string>
     
+    <string name="auth_captcha_invalid">Skriv inn SMS-bekreftelseskoden</string>
+    <string name="auth_captcha_label">SMS-kode</string>
+    <string name="auth_captcha_resend_seconds">Send på nytt om %1$ds</string>
+    <string name="auth_phone_invalid">Skriv inn et gyldig telefonnummer</string>
+    <string name="auth_phone_login_action">Logg inn</string>
+    <string name="auth_phone_login_subtitle">Logg inn med SMS-koden som er sendt til telefonnummeret som er knyttet til NetEase.</string>
+    <string name="auth_phone_login_use_web">Har du problemer? Bruk nettinnlogging i stedet</string>
+    <string name="auth_phone_number_label">Telefonnummer</string>
+    <string name="auth_send_captcha">Send kode</string>
+    <string name="netease_login_required_toast">Logg inn på NetEase Cloud Music først</string>
+    <string name="qq_login_brand_subtitle">Logg inn for å synkronisere QQ Music-spillelistene dine og spille dem i appen</string>
+    <string name="qq_login_brand_title">Koble til QQ Music</string>
+    <string name="qq_login_edit_phone">Rediger telefonnummer</string>
+    <string name="qq_login_loading">Vent litt…</string>
+    <string name="qq_login_loading_sending">Sender kode…</string>
+    <string name="qq_login_loading_signing_in">Logger inn på QQ Music…</string>
+    <string name="qq_login_mode_phone">Telefoninnlogging</string>
+    <string name="qq_login_mode_web">Nettinnlogging</string>
+    <string name="qq_login_phone_hint">QQ Music-spillelistene dine synkroniseres automatisk etter innlogging</string>
+    <string name="qq_login_phone_note">Telefoninnlogging støtter bare numre fra fastlands-Kina, og SMS-koden sendes av QQ Music. Hvis det kreves en sikkerhetskontroll, fullfører du den i appen via inngangen nedenfor og ber deretter om koden på nytt.</string>
+    <string name="qq_login_security_body">QQ Music ber om en sikkerhetskontroll først. Trykk på «Bekreft» for å fullføre den i vinduet – koden sendes automatisk på nytt.</string>
+    <string name="qq_login_security_ignore">Senere</string>
+    <string name="qq_login_security_open">Bekreft</string>
+    <string name="qq_login_security_title">Sikkerhetskontroll kreves</string>
+    <string name="qq_login_step_code_subtitle">Skriv inn SMS-koden du mottok</string>
+    <string name="qq_login_step_phone_subtitle">Skriv inn telefonnummeret som er knyttet til QQ Music-kontoen din, så sendes koden dit</string>
 </resources>

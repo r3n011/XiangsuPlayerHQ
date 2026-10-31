@@ -1,570 +1,548 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <!-- Library Screen -->
-    <string name="library_screen_title">Library</string>
-    <string name="library_tabs_sheet_title">Library tabs</string>
-    <string name="library_tabs_sheet_subtitle">Jump directly to any tab or reorder them.</string>
-    <string name="library_reorder_tabs_label">Reorder tabs</string>
+    <string name="library_screen_title">라이브러리</string>
+    <string name="library_tabs_sheet_title">라이브러리 탭</string>
+    <string name="library_tabs_sheet_subtitle">원하는 탭으로 바로 이동하거나 순서를 바꾸세요.</string>
+    <string name="library_reorder_tabs_label">탭 순서 변경</string>
 
     <!-- Library Tab Names -->
-    <string name="library_tab_songs">Songs</string>
-    <string name="library_tab_albums">Albums</string>
-    <string name="library_tab_artists">Artists</string>
-    <string name="library_tab_playlists">Playlists</string>
-    <string name="library_tab_folders">Folders</string>
-    <string name="library_tab_liked">Liked</string>
+    <string name="library_tab_songs">곡</string>
+    <string name="library_tab_albums">앨범</string>
+    <string name="library_tab_artists">아티스트</string>
+    <string name="library_tab_playlists">플레이리스트</string>
+    <string name="library_tab_folders">폴더</string>
+    <string name="library_tab_liked">좋아요</string>
 
     <!-- Library Toasts -->
-    <string name="library_toast_playlist_created">Playlist created successfully</string>
-    <string name="library_toast_set_ai_provider_api_key_first">Set your AI provider API key first</string>
-    <string name="library_toast_set_gemini_api_key_first">Set your Gemini API key first</string>
-    <string name="library_toast_added_to_queue">Added to queue</string>
-    <string name="library_toast_playing_next">Playing next</string>
+    <string name="library_toast_playlist_created">플레이리스트를 만들었습니다</string>
+    <string name="library_toast_set_ai_provider_api_key_first">먼저 AI 제공업체 API 키를 설정하세요</string>
+    <string name="library_toast_set_gemini_api_key_first">먼저 Gemini API 키를 설정하세요</string>
+    <string name="library_toast_added_to_queue">대기열에 추가됨</string>
+    <string name="library_toast_playing_next">다음 재생</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Watch transfer</string>
-    <string name="library_cd_open_settings">Settings</string>
+    <string name="library_cd_watch_transfer">워치 전송</string>
+    <string name="library_cd_open_settings">설정</string>
     <string name="library_tab_edit">Edit</string>
-    <string name="library_cd_reorder_tabs">Reorder tabs</string>
-    <string name="library_cd_expand_tab_menu">Expand menu</string>
+    <string name="library_cd_reorder_tabs">탭 순서 변경</string>
+    <string name="library_cd_expand_tab_menu">메뉴 펼치기</string>
 
     <!-- Library Multi-Selection & Folders -->
-    <string name="library_toast_max_albums_selection">You can select up to %1$d albums</string>
-    <string name="library_folder_name_fallback">Folder</string>
-    <string name="library_cd_folder">Folder</string>
+    <string name="library_toast_max_albums_selection">앨범은 최대 %1$d개까지 선택할 수 있습니다</string>
+    <string name="library_folder_name_fallback">폴더</string>
+    <string name="library_cd_folder">폴더</string>
 
     <!-- Library Sort & View Bottom Sheet -->
-    <string name="library_sort_by_title">Sort by</string>
+    <string name="library_sort_by_title">정렬 기준</string>
     <string name="library_sort_section_view">View</string>
-    <string name="library_sort_toggle_playlist_view">Playlist View</string>
+    <string name="library_sort_toggle_playlist_view">플레이리스트 보기</string>
     <string name="library_view_mode_grid">Grid</string>
     <string name="library_view_mode_list">List</string>
-    <string name="library_storage_internal">Internal</string>
-    <string name="library_storage_sd_card">SD Card</string>
-    <string name="library_storage_sd_card_unavailable">SD card is not available right now.</string>
-    <string name="library_sort_section_cloud">Cloud</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram Cloud Channels</string>
-    <string name="library_telegram_topics_display_title">Topics Display</string>
-    <string name="library_telegram_topic_mode_channels">Channels</string>
-    <string name="library_telegram_topic_mode_topics">Topics</string>
+    <string name="library_storage_internal">내부 저장소</string>
+    <string name="library_storage_sd_card">SD 카드</string>
+    <string name="library_storage_sd_card_unavailable">지금은 SD 카드를 사용할 수 없습니다.</string>
+    <string name="library_sort_section_cloud">클라우드</string>
+    <string name="library_sort_toggle_telegram_channels">Telegram 클라우드 채널</string>
+    <string name="library_telegram_topics_display_title">토픽 표시</string>
+    <string name="library_telegram_topic_mode_channels">채널</string>
+    <string name="library_telegram_topic_mode_topics">토픽</string>
     <string name="library_telegram_topic_mode_both">Both</string>
-    <string name="library_cloud_sources_heading">Cloud</string>
-    <string name="library_cloud_only_label">Cloud Only</string>
+    <string name="library_cloud_sources_heading">클라우드</string>
+    <string name="library_cloud_only_label">클라우드만</string>
 
     <!-- Library AI Metadata Processing -->
-    <string name="library_generating_ai_metadata">Generating metadata with AI…</string>
+    <string name="library_generating_ai_metadata">AI로 메타데이터 생성 중…</string>
 
     <!-- Library list errors -->
-    <string name="library_error_loading_songs">Error loading songs</string>
-    <string name="library_album_detail_error_loading_albums">Error loading albums</string>
-    <string name="library_artist_error_loading_artists">Error loading artists</string>
-    <string name="library_action_retry">Retry</string>
+    <string name="library_error_loading_songs">곡을 불러오는 중 오류 발생</string>
+    <string name="library_album_detail_error_loading_albums">앨범을 불러오는 중 오류 발생</string>
+    <string name="library_artist_error_loading_artists">아티스트를 불러오는 중 오류 발생</string>
+    <string name="library_action_retry">다시 시도</string>
 
     <!-- Library empty (paginated) -->
-    <string name="library_no_songs_in_library_message">No songs found in your library.</string>
-    <string name="library_no_songs_rescan_hint">Try rescanning your library in settings if you have music on your device.</string>
-    <string name="library_cd_no_songs_in_library">No songs found</string>
+    <string name="library_no_songs_in_library_message">라이브러리에서 곡을 찾을 수 없습니다.</string>
+    <string name="library_no_songs_rescan_hint">기기에 음악이 있다면 설정에서 라이브러리를 다시 스캔해 보세요.</string>
+    <string name="library_cd_no_songs_in_library">곡을 찾을 수 없음</string>
 
     <!-- Library action row -->
     <string name="library_action_new">New</string>
-    <string name="library_cd_create_new_playlist">Create new playlist</string>
-    <string name="library_cd_import_m3u_playlist">Import M3U playlist</string>
-    <string name="library_cd_locate_current_song">Locate current song</string>
-    <string name="library_storage_filter_all_songs">All songs</string>
-    <string name="library_storage_filter_online">CLOUD</string>
-    <string name="library_storage_filter_offline">LOCAL</string>
-    <string name="library_cd_sort_options">Sort options</string>
+    <string name="library_cd_create_new_playlist">새 플레이리스트 만들기</string>
+    <string name="library_cd_import_m3u_playlist">M3U 플레이리스트 가져오기</string>
+    <string name="library_cd_locate_current_song">현재 곡 찾기</string>
+    <string name="library_storage_filter_all_songs">모든 곡</string>
+    <string name="library_storage_filter_online">클라우드</string>
+    <string name="library_storage_filter_offline">로컬</string>
+    <string name="library_cd_sort_options">정렬 옵션</string>
 
     <!-- Library selection action row -->
     <string name="library_selection_all">All</string>
-    <string name="library_selection_deselect">Deselect</string>
-    <string name="library_selection_more_options">More options</string>
+    <string name="library_selection_deselect">선택 해제</string>
+    <string name="library_selection_more_options">추가 옵션</string>
 
     <!-- Library Syncing -->
-    <string name="library_sync_scanning">Scanning music files…</string>
-    <string name="library_sync_processing">Processing files…</string>
-    <string name="library_sync_files_progress">%1$d of %2$d files</string>
-    <string name="library_sync_in_progress">Syncing library…</string>
-    <string name="library_sync_complete">Sync complete</string>
-    <string name="library_sync_pending">Waiting…</string>
-    <string name="library_syncing">Syncing library…</string>
-    <string name="library_sync_cache">Cleaning album art cache…</string>
-    <string name="library_sync_cloud">Syncing cloud sources…</string>
-    <string name="library_sync_lyrics">Scanning lyrics…</string>
+    <string name="library_sync_scanning">음악 파일 스캔 중…</string>
+    <string name="library_sync_processing">파일 처리 중…</string>
+    <string name="library_sync_files_progress">파일 %1$d / %2$d</string>
+    <string name="library_sync_in_progress">라이브러리 동기화 중…</string>
+    <string name="library_sync_complete">동기화 완료</string>
+    <string name="library_sync_pending">대기 중…</string>
+    <string name="library_syncing">라이브러리 동기화 중…</string>
+    <string name="library_sync_cache">앨범 아트 캐시 정리 중…</string>
+    <string name="library_sync_cloud">클라우드 소스 동기화 중…</string>
+    <string name="library_sync_lyrics">가사 스캔 중…</string>
 
     <!-- Library Empty State -->
-    <string name="library_empty_songs_all_title">No songs yet</string>
-    <string name="library_empty_songs_all_subtitle">Add music to your device or sync a cloud source to start listening.</string>
-    <string name="library_empty_songs_offline_title">No local songs found</string>
-    <string name="library_empty_songs_offline_subtitle">Try another source filter or rescan your device library.</string>
-    <string name="library_empty_songs_online_title">No cloud songs found</string>
-    <string name="library_empty_songs_online_subtitle">Sync Telegram or NetEase songs, or switch to local source.</string>
-    <string name="library_empty_albums_all_title">No albums available</string>
-    <string name="library_empty_albums_all_subtitle">Albums will appear here as soon as your library has grouped tracks.</string>
-    <string name="library_empty_albums_offline_title">No local albums found</string>
-    <string name="library_empty_albums_offline_subtitle">Local songs are required to build local album groups.</string>
-    <string name="library_empty_albums_online_title">No cloud albums found</string>
-    <string name="library_empty_albums_online_subtitle">Cloud songs with album data will appear here after sync.</string>
-    <string name="library_empty_artists_all_title">No artists available</string>
-    <string name="library_empty_artists_all_subtitle">Artists are shown after songs are indexed from any source.</string>
-    <string name="library_empty_artists_offline_title">No local artists found</string>
-    <string name="library_empty_artists_offline_subtitle">No artist metadata is available for local songs right now.</string>
-    <string name="library_empty_artists_online_title">No cloud artists found</string>
-    <string name="library_empty_artists_online_subtitle">Cloud artist entries appear when remote songs are synced.</string>
-    <string name="library_empty_liked_all_title">No liked songs yet</string>
-    <string name="library_empty_liked_all_subtitle">Tap the heart icon while playing a song to save it here.</string>
-    <string name="library_empty_liked_offline_title">No liked local songs</string>
-    <string name="library_empty_liked_offline_subtitle">Switch source filter or like songs from your device.</string>
-    <string name="library_empty_liked_online_title">No liked cloud songs</string>
-    <string name="library_empty_liked_online_subtitle">Like Telegram or NetEase tracks to see them in this view.</string>
-    <string name="library_empty_folders_title">No folders found</string>
-    <string name="library_empty_folders_subtitle">Internal storage folders with music will appear here.</string>
-    <string name="library_empty_playlists_title">No playlists yet</string>
-    <string name="library_empty_playlists_subtitle">Create your first playlist to organize your library.</string>
+    <string name="library_empty_songs_all_title">아직 곡이 없습니다</string>
+    <string name="library_empty_songs_all_subtitle">기기에 음악을 추가하거나 클라우드 소스를 동기화해 재생을 시작하세요.</string>
+    <string name="library_empty_songs_offline_title">로컬 곡을 찾을 수 없습니다</string>
+    <string name="library_empty_songs_offline_subtitle">다른 소스 필터를 사용하거나 기기 라이브러리를 다시 스캔해 보세요.</string>
+    <string name="library_empty_songs_online_title">클라우드 곡을 찾을 수 없습니다</string>
+    <string name="library_empty_songs_online_subtitle">Telegram 또는 NetEase 곡을 동기화하거나 로컬 소스로 전환하세요.</string>
+    <string name="library_empty_albums_all_title">사용 가능한 앨범이 없습니다</string>
+    <string name="library_empty_albums_all_subtitle">라이브러리에 트랙이 그룹화되면 여기에 앨범이 표시됩니다.</string>
+    <string name="library_empty_albums_offline_title">로컬 앨범을 찾을 수 없습니다</string>
+    <string name="library_empty_albums_offline_subtitle">로컬 앨범 그룹을 만들려면 로컬 곡이 필요합니다.</string>
+    <string name="library_empty_albums_online_title">클라우드 앨범을 찾을 수 없습니다</string>
+    <string name="library_empty_albums_online_subtitle">앨범 데이터가 있는 클라우드 곡이 동기화 후 여기에 표시됩니다.</string>
+    <string name="library_empty_artists_all_title">사용 가능한 아티스트가 없습니다</string>
+    <string name="library_empty_artists_all_subtitle">모든 소스에서 곡이 인덱싱되면 아티스트가 표시됩니다.</string>
+    <string name="library_empty_artists_offline_title">로컬 아티스트를 찾을 수 없습니다</string>
+    <string name="library_empty_artists_offline_subtitle">현재 로컬 곡에 사용할 수 있는 아티스트 메타데이터가 없습니다.</string>
+    <string name="library_empty_artists_online_title">클라우드 아티스트를 찾을 수 없습니다</string>
+    <string name="library_empty_artists_online_subtitle">원격 곡이 동기화되면 클라우드 아티스트 항목이 표시됩니다.</string>
+    <string name="library_empty_liked_all_title">아직 좋아하는 곡이 없습니다</string>
+    <string name="library_empty_liked_all_subtitle">곡을 재생할 때 하트 아이콘을 눌러 여기에 저장하세요.</string>
+    <string name="library_empty_liked_offline_title">좋아하는 로컬 곡이 없습니다</string>
+    <string name="library_empty_liked_offline_subtitle">소스 필터를 전환하거나 기기의 곡을 좋아요하세요.</string>
+    <string name="library_empty_liked_online_title">좋아하는 클라우드 곡이 없습니다</string>
+    <string name="library_empty_liked_online_subtitle">Telegram 또는 NetEase 트랙을 좋아요하면 이 보기에 표시됩니다.</string>
+    <string name="library_empty_folders_title">폴더를 찾을 수 없습니다</string>
+    <string name="library_empty_folders_subtitle">음악이 있는 내부 저장소 폴더가 여기에 표시됩니다.</string>
+    <string name="library_empty_playlists_title">아직 플레이리스트가 없습니다</string>
+    <string name="library_empty_playlists_subtitle">첫 플레이리스트를 만들어 라이브러리를 정리해 보세요.</string>
 
     <!-- SongInfoBottomSheet, MultiSelectionBottomSheet, PlaylistMultiSelectionBottomSheet -->
-    <string name="song_info_cd_edit_metadata">Edit song metadata</string>
+    <string name="song_info_cd_edit_metadata">곡 메타데이터 편집</string>
     <string name="song_info_action_play">Play</string>
-    <string name="song_info_cd_play">Play song</string>
-    <string name="song_info_action_play_all">Play all</string>
-    <string name="song_info_cd_play_all">Play all</string>
-    <string name="song_info_cd_add_to_favorites">Add to favorites</string>
-    <string name="song_info_cd_add_to_favorites_all">Add all to favorites</string>
-    <string name="song_info_cd_remove_from_favorites">Remove from favorites</string>
-    <string name="song_info_cd_remove_from_favorites_all">Remove all from favorites</string>
-    <string name="song_info_share_chooser_title">Share song file via</string>
-    <string name="song_info_cd_share_song_file">Share song file</string>
-    <string name="song_info_cd_share_all_as_zip">Share all as ZIP</string>
-    <string name="song_info_error_share_song">Could not share song: %1$s</string>
-    <string name="song_info_action_add_to_queue">Add to queue</string>
-    <string name="song_info_cd_add_to_queue">Add to queue</string>
+    <string name="song_info_cd_play">곡 재생</string>
+    <string name="song_info_action_play_all">모두 재생</string>
+    <string name="song_info_cd_play_all">모두 재생</string>
+    <string name="song_info_cd_add_to_favorites">즐겨찾기에 추가</string>
+    <string name="song_info_cd_add_to_favorites_all">모두 즐겨찾기에 추가</string>
+    <string name="song_info_cd_remove_from_favorites">즐겨찾기에서 제거</string>
+    <string name="song_info_cd_remove_from_favorites_all">모두 즐겨찾기에서 제거</string>
+    <string name="song_info_share_chooser_title">곡 파일 공유 방법</string>
+    <string name="song_info_cd_share_song_file">곡 파일 공유</string>
+    <string name="song_info_cd_share_all_as_zip">모두 ZIP으로 공유</string>
+    <string name="song_info_error_share_song">곡을 공유할 수 없습니다: %1$s</string>
+    <string name="song_info_action_add_to_queue">대기열에 추가</string>
+    <string name="song_info_cd_add_to_queue">대기열에 추가</string>
     <string name="song_info_action_queue_next">Next</string>
-    <string name="song_info_cd_queue_next">Play next in queue</string>
-    <string name="song_info_cd_add_to_playlist">Add to playlist</string>
-    <string name="song_info_action_delete">Delete</string>
-    <string name="song_info_action_delete_all">Delete all</string>
-    <string name="song_info_checking_watch">Checking watch</string>
-    <string name="song_info_transferring_percent">Transferring %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Transferring to watch</string>
-    <string name="song_info_transfer_in_progress">Transfer in progress</string>
-    <string name="song_info_send_to_watch">Send to watch</string>
-    <string name="song_info_watch_unavailable">Watch unavailable</string>
-    <string name="song_info_cd_send_to_watch">Send song to watch</string>
-    <string name="song_info_cd_watch_unavailable">Watch unavailable</string>
-    <string name="song_info_set_sound_as_short">Set as</string>
-    <string name="song_info_set_sound_as_long">Set as sound</string>
-    <string name="song_info_cd_set_sound_as">Choose how to use this song as a system sound</string>
-    <string name="song_info_tone_picker_title">Use this song as</string>
-    <string name="song_info_tone_picker_body">Choose where XiangsuPlayer should install this sound.</string>
-    <string name="song_info_tone_ringtone_title">Phone ringtone</string>
-    <string name="song_info_tone_ringtone_subtitle">Incoming calls</string>
-    <string name="song_info_tone_notification_title">Notification sound</string>
-    <string name="song_info_tone_notification_subtitle">Messages and app alerts</string>
-    <string name="song_info_tone_alarm_title">Alarm sound</string>
-    <string name="song_info_tone_alarm_subtitle">Clock alarms</string>
-    <string name="song_info_tone_confirm_title">Confirm sound change</string>
-    <string name="song_info_tone_confirm_body">Set \"%1$s\" as your %2$s?</string>
-    <string name="song_info_tone_confirm_action">Set sound</string>
-    <string name="song_info_tone_success">Set \"%1$s\" as your %2$s</string>
-    <string name="song_info_tone_ringtone_label">ringtone</string>
-    <string name="song_info_tone_notification_label">notification sound</string>
-    <string name="song_info_tone_alarm_label">alarm sound</string>
-    <string name="song_info_ringtone_permission_prompt">Enable Modify system settings, then return to XiangsuPlayer to finish automatically.</string>
-    <string name="song_info_ringtone_permission_missing">Modify system settings was not enabled.</string>
-    <string name="song_info_ringtone_success">Set \"%1$s\" as your ringtone</string>
-    <string name="song_info_ringtone_local_only">Only local songs can be used as ringtones.</string>
-    <string name="song_info_ringtone_missing_file">Couldn\'t prepare this audio file for ringtone.</string>
-    <string name="song_info_ringtone_failed">Couldn\'t set ringtone: %1$s</string>
-    <string name="song_info_tab_options">Options</string>
-    <string name="song_info_tab_options_badge">OPTIONS</string>
+    <string name="song_info_cd_queue_next">대기열에서 다음 재생</string>
+    <string name="song_info_cd_add_to_playlist">플레이리스트에 추가</string>
+    <string name="song_info_action_delete">삭제</string>
+    <string name="song_info_action_delete_all">모두 삭제</string>
+    <string name="song_info_checking_watch">워치 확인 중</string>
+    <string name="song_info_transferring_percent">%1$d%% 전송 중</string>
+    <string name="song_info_transferring_to_watch">워치로 전송 중</string>
+    <string name="song_info_transfer_in_progress">전송 진행 중</string>
+    <string name="song_info_send_to_watch">워치로 전송</string>
+    <string name="song_info_watch_unavailable">워치 사용 불가</string>
+    <string name="song_info_cd_send_to_watch">워치로 곡 전송</string>
+    <string name="song_info_cd_watch_unavailable">워치 사용 불가</string>
+    <string name="song_info_set_sound_as_short">다음으로 설정</string>
+    <string name="song_info_set_sound_as_long">사운드로 설정</string>
+    <string name="song_info_cd_set_sound_as">이 곡을 시스템 사운드로 사용할 방법 선택</string>
+    <string name="song_info_tone_picker_title">이 곡을 다음으로 사용</string>
+    <string name="song_info_tone_picker_body">XiangsuPlayer가 이 소리를 설치할 위치를 선택하세요.</string>
+    <string name="song_info_tone_ringtone_title">휴대폰 벨소리</string>
+    <string name="song_info_tone_ringtone_subtitle">수신 전화</string>
+    <string name="song_info_tone_notification_title">알림음</string>
+    <string name="song_info_tone_notification_subtitle">메시지 및 앱 알림</string>
+    <string name="song_info_tone_alarm_title">알람 소리</string>
+    <string name="song_info_tone_alarm_subtitle">시계 알람</string>
+    <string name="song_info_tone_confirm_title">소리 변경 확인</string>
+    <string name="song_info_tone_confirm_body">“%1$s”을(를) %2$s(으)로 설정할까요?</string>
+    <string name="song_info_tone_confirm_action">소리 설정</string>
+    <string name="song_info_tone_success">“%1$s”을(를) %2$s(으)로 설정했습니다</string>
+    <string name="song_info_tone_ringtone_label">벨소리</string>
+    <string name="song_info_tone_notification_label">알림음</string>
+    <string name="song_info_tone_alarm_label">알람 소리</string>
+    <string name="song_info_ringtone_permission_prompt">시스템 설정 수정을 활성화한 후 XiangsuPlayer로 돌아오면 자동으로 마무리됩니다.</string>
+    <string name="song_info_ringtone_permission_missing">시스템 설정 수정이 활성화되지 않았습니다.</string>
+    <string name="song_info_ringtone_success">“%1$s”을(를) 벨소리로 설정했습니다</string>
+    <string name="song_info_ringtone_local_only">로컬 곡만 벨소리로 사용할 수 있습니다.</string>
+    <string name="song_info_ringtone_missing_file">이 오디오 파일을 벨소리로 준비할 수 없습니다.</string>
+    <string name="song_info_ringtone_failed">벨소리를 설정할 수 없습니다: %1$s</string>
+    <string name="song_info_tab_options">옵션</string>
+    <string name="song_info_tab_options_badge">옵션</string>
     <string name="song_info_tab_info">Info</string>
     <string name="song_info_tab_info_badge">INFO</string>
-    <string name="song_info_duration_label">Duration</string>
-    <string name="song_info_genre_label">Genre</string>
-    <string name="song_info_album_label">Album</string>
-    <string name="song_info_artist_label">Artist</string>
-    <string name="song_info_audio_format_label">Song info</string>
-    <string name="song_info_cd_provider">Provider</string>
+    <string name="song_info_duration_label">길이</string>
+    <string name="song_info_genre_label">장르</string>
+    <string name="song_info_album_label">앨범</string>
+    <string name="song_info_artist_label">아티스트</string>
+    <string name="song_info_audio_format_label">곡 정보</string>
+    <string name="song_info_cd_provider">제공업체</string>
     <string name="song_info_cd_file">File</string>
-    <string name="song_info_download">Download</string>
-    <string name="song_info_downloading_progress">Downloading %1$d%%</string>
-    <string name="song_info_downloaded">Downloaded</string>
-    <string name="song_info_download_failed">Download failed</string>
-    <string name="multi_selection_songs_count_upper">%1$d SONGS</string>
-    <string name="multi_selection_songs_selected">selected</string>
-    <string name="multi_selection_playlists_count_upper">%1$d PLAYLISTS</string>
-    <string name="multi_selection_albums_count_upper">%1$d ALBUMS</string>
-    <string name="multi_selection_albums_selected">selected</string>
-    <string name="multi_selection_albums_selected_limit">Limit: %1$d albums per selection.</string>
-    <string name="multi_selection_albums_queue_hint">Queue + play respects your selection order.</string>
-    <string name="multi_selection_genres_count_upper">%1$d GENRES</string>
-    <string name="multi_selection_genres_selected">selected</string>
-    <string name="multi_selection_genres_queue_hint">Perform batch operations on all songs within these genres.</string>
+    <string name="song_info_download">다운로드</string>
+    <string name="song_info_downloading_progress">%1$d%% 다운로드 중</string>
+    <string name="song_info_downloaded">다운로드됨</string>
+    <string name="song_info_download_failed">다운로드 실패</string>
+    <string name="multi_selection_songs_count_upper">곡 %1$d개</string>
+    <string name="multi_selection_songs_selected">선택됨</string>
+    <string name="multi_selection_playlists_count_upper">플레이리스트 %1$d개</string>
+    <string name="multi_selection_albums_count_upper">앨범 %1$d개</string>
+    <string name="multi_selection_albums_selected">선택됨</string>
+    <string name="multi_selection_albums_selected_limit">제한: 선택당 앨범 %1$d개.</string>
+    <string name="multi_selection_albums_queue_hint">대기열 + 재생은 선택한 순서를 따릅니다.</string>
+    <string name="multi_selection_genres_count_upper">장르 %1$d개</string>
+    <string name="multi_selection_genres_selected">선택됨</string>
+    <string name="multi_selection_genres_queue_hint">이 장르의 모든 곡에 일괄 작업을 수행합니다.</string>
 
     <!-- Sort Option Display Names -->
-    <string name="sort_display_default_order">Default Order</string>
-    <string name="sort_display_title_az">Title (A-Z)</string>
-    <string name="sort_display_title_za">Title (Z-A)</string>
-    <string name="sort_display_artist">Artist</string>
-    <string name="sort_display_artist_za">Artist (Z-A)</string>
-    <string name="sort_display_album">Album</string>
-    <string name="sort_display_album_za">Album (Z-A)</string>
-    <string name="sort_display_date_added">Date Added</string>
-    <string name="sort_display_date_added_oldest">Date Added (Oldest First)</string>
-    <string name="sort_display_duration">Duration</string>
-    <string name="sort_display_duration_shortest">Duration (Shortest First)</string>
-    <string name="sort_display_release_year">Release Year</string>
-    <string name="sort_display_release_year_oldest">Release Year (Oldest First)</string>
-    <string name="sort_display_fewest_songs">Fewest Songs</string>
-    <string name="sort_display_most_songs">Most Songs</string>
-    <string name="sort_display_name_az">Name (A-Z)</string>
-    <string name="sort_display_name_za">Name (Z-A)</string>
-    <string name="sort_display_num_songs_most">Number of Songs (Most)</string>
-    <string name="sort_display_num_songs_fewest">Number of Songs (Fewest)</string>
-    <string name="sort_display_date_created">Date Created</string>
-    <string name="sort_display_date_created_oldest">Date Created (Oldest First)</string>
-    <string name="sort_display_date_liked">Date Liked</string>
-    <string name="sort_display_date_liked_oldest">Date Liked (Oldest First)</string>
-    <string name="sort_display_fewest_subfolders">Fewest Subfolders</string>
-    <string name="sort_display_most_subfolders">Most Subfolders</string>
+    <string name="sort_display_default_order">기본 순서</string>
+    <string name="sort_display_title_az">제목(A-Z)</string>
+    <string name="sort_display_title_za">제목(Z-A)</string>
+    <string name="sort_display_artist">아티스트</string>
+    <string name="sort_display_artist_za">아티스트(Z-A)</string>
+    <string name="sort_display_album">앨범</string>
+    <string name="sort_display_album_za">앨범(Z-A)</string>
+    <string name="sort_display_date_added">추가한 날짜</string>
+    <string name="sort_display_date_added_oldest">추가한 날짜(오래된 순)</string>
+    <string name="sort_display_duration">길이</string>
+    <string name="sort_display_duration_shortest">길이(짧은 순)</string>
+    <string name="sort_display_release_year">출시 연도</string>
+    <string name="sort_display_release_year_oldest">출시 연도(오래된 순)</string>
+    <string name="sort_display_fewest_songs">곡 적은 순</string>
+    <string name="sort_display_most_songs">곡 많은 순</string>
+    <string name="sort_display_name_az">이름(A-Z)</string>
+    <string name="sort_display_name_za">이름(Z-A)</string>
+    <string name="sort_display_num_songs_most">곡 수(많은 순)</string>
+    <string name="sort_display_num_songs_fewest">곡 수(적은 순)</string>
+    <string name="sort_display_date_created">만든 날짜</string>
+    <string name="sort_display_date_created_oldest">만든 날짜(오래된 순)</string>
+    <string name="sort_display_date_liked">좋아요한 날짜</string>
+    <string name="sort_display_date_liked_oldest">좋아요한 날짜(오래된 순)</string>
+    <string name="sort_display_fewest_subfolders">하위 폴더 적은 순</string>
+    <string name="sort_display_most_subfolders">하위 폴더 많은 순</string>
 
     <!-- Sort Option Method Labels -->
-    <string name="sort_method_title">Title</string>
-    <string name="sort_method_artist">Artist</string>
-    <string name="sort_method_album">Album</string>
-    <string name="sort_method_date_added">Date Added</string>
-    <string name="sort_method_duration">Duration</string>
-    <string name="sort_method_release_year">Release Year</string>
-    <string name="sort_method_song_count">Song Count</string>
+    <string name="sort_method_title">제목</string>
+    <string name="sort_method_artist">아티스트</string>
+    <string name="sort_method_album">앨범</string>
+    <string name="sort_method_date_added">추가한 날짜</string>
+    <string name="sort_method_duration">길이</string>
+    <string name="sort_method_release_year">출시 연도</string>
+    <string name="sort_method_song_count">곡 수</string>
     <string name="sort_method_name">Name</string>
-    <string name="sort_method_num_songs">Number of Songs</string>
-    <string name="sort_method_date_created">Date Created</string>
-    <string name="sort_method_date_liked">Date Liked</string>
-    <string name="sort_method_subfolder_count">Subfolder Count</string>
+    <string name="sort_method_num_songs">곡 수</string>
+    <string name="sort_method_date_created">만든 날짜</string>
+    <string name="sort_method_date_liked">좋아요한 날짜</string>
+    <string name="sort_method_subfolder_count">하위 폴더 수</string>
 
     <!-- LibrarySortBottomSheet-->
-    <string name="library_sort_source">Source</string>
-    <string name="library_sort_order">Order</string>
-    <string name="library_sort_descending">Descending</string>
-    <string name="library_sort_ascending">Ascending</string>
-    <string name="library_sort_original_order">Original Order</string>
-    <string name="library_sort_tap_ascending">Tap to switch to ascending</string>
-    <string name="library_sort_tap_descending">Tap to switch to descending</string>
-    <string name="library_sort_keeps_order">This sort keeps its original order</string>
-    <string name="library_sort_cd_switch_on">Switch is on</string>
+    <string name="library_sort_source">소스</string>
+    <string name="library_sort_order">순서</string>
+    <string name="library_sort_descending">내림차순</string>
+    <string name="library_sort_ascending">오름차순</string>
+    <string name="library_sort_original_order">원래 순서</string>
+    <string name="library_sort_tap_ascending">탭하여 오름차순으로 전환</string>
+    <string name="library_sort_tap_descending">탭하여 내림차순으로 전환</string>
+    <string name="library_sort_keeps_order">이 정렬은 원래 순서를 유지합니다</string>
+    <string name="library_sort_cd_switch_on">스위치 켜짐</string>
 
     <!-- ReorderTabsSheet-->
-    <string name="reorder_tabs_sheet_title">Reorder library tabs</string>
-    <string name="reorder_tabs_reset_dialog_title">Reset order</string>
-    <string name="reorder_tabs_reset_dialog_body">Reset tab order to the default?</string>
-    <string name="reorder_tabs_reordering">Reordering tabs…</string>
-    <string name="reorder_tabs_cd_drag_handle">Drag handle</string>
+    <string name="reorder_tabs_sheet_title">라이브러리 탭 순서 변경</string>
+    <string name="reorder_tabs_reset_dialog_title">순서 초기화</string>
+    <string name="reorder_tabs_reset_dialog_body">탭 순서를 기본값으로 초기화할까요?</string>
+    <string name="reorder_tabs_reordering">탭 순서 변경 중…</string>
+    <string name="reorder_tabs_cd_drag_handle">드래그 핸들</string>
 
     <!-- PlayerArtistPickerBottomSheet -->
-    <string name="artist_picker_title">Pick an Artist</string>
-    <string name="artist_picker_count_single">1 artist</string>
-    <string name="artist_picker_count_multiple">%1$d artists</string>
-    <string name="artist_picker_primary_label">Primary artist</string>
-    <string name="artist_picker_shortcut_label">Artist page</string>
+    <string name="artist_picker_title">아티스트 선택</string>
+    <string name="artist_picker_count_single">아티스트 1명</string>
+    <string name="artist_picker_count_multiple">아티스트 %1$d명</string>
+    <string name="artist_picker_primary_label">기본 아티스트</string>
+    <string name="artist_picker_shortcut_label">아티스트 페이지</string>
 
     <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Cancel transfer</string>
+    <string name="watch_transfer_action_cancel">전송 취소</string>
     <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Shows live progress for phone-to-watch music transfers</string>
-    <string name="watch_transfer_channel_name">Watch transfers</string>
-    <string name="watch_transfer_dialog_title">Sending to Watch</string>
-    <string name="watch_transfer_status_cancelled">Cancelled</string>
-    <string name="watch_transfer_status_cancelled_service">Transfer cancelled</string>
-    <string name="watch_transfer_status_complete_service">Transfer complete</string>
-    <string name="watch_transfer_status_completed">Completed</string>
-    <string name="watch_transfer_status_failed">Failed</string>
-    <string name="watch_transfer_status_failed_service">Transfer failed</string>
-    <string name="watch_transfer_status_multiple_active">Multiple active transfers</string>
+    <string name="watch_transfer_channel_description">휴대폰에서 워치로의 음악 전송 진행 상황을 실시간으로 표시합니다</string>
+    <string name="watch_transfer_channel_name">워치 전송</string>
+    <string name="watch_transfer_dialog_title">워치로 전송 중</string>
+    <string name="watch_transfer_status_cancelled">취소됨</string>
+    <string name="watch_transfer_status_cancelled_service">전송이 취소되었습니다</string>
+    <string name="watch_transfer_status_complete_service">전송 완료</string>
+    <string name="watch_transfer_status_completed">완료됨</string>
+    <string name="watch_transfer_status_failed">실패</string>
+    <string name="watch_transfer_status_failed_service">전송 실패</string>
+    <string name="watch_transfer_status_multiple_active">여러 전송 활성</string>
     <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Preparing</string>
-    <string name="watch_transfer_status_preparing_service">Preparing watch transfer</string>
-    <string name="watch_transfer_status_preparing_transfer">Preparing transfer…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Sending %1$d songs to watch</string>
-    <string name="watch_transfer_status_sending_to_watch">Sending to watch</string>
-    <string name="watch_transfer_status_starting">Starting transfer…</string>
-    <string name="watch_transfer_status_starting_short">Starting</string>
-    <string name="watch_transfer_status_transferring">Transferring</string>
-    <string name="watch_transfer_summary_n">%1$d transfers</string>
+    <string name="watch_transfer_status_preparing">준비 중</string>
+    <string name="watch_transfer_status_preparing_service">워치 전송 준비 중</string>
+    <string name="watch_transfer_status_preparing_transfer">전송 준비 중…</string>
+    <string name="watch_transfer_status_sending_n_to_watch">워치로 곡 %1$d개 전송 중</string>
+    <string name="watch_transfer_status_sending_to_watch">워치로 전송 중</string>
+    <string name="watch_transfer_status_starting">전송 시작 중…</string>
+    <string name="watch_transfer_status_starting_short">시작 중</string>
+    <string name="watch_transfer_status_transferring">전송 중</string>
+    <string name="watch_transfer_summary_n">전송 %1$d개</string>
 
     <!-- EditSongSheet -->
-    <string name="edit_song_toolbar_title">Edit song</string>
-    <string name="edit_song_cd_show_metadata_info">Show information</string>
-    <string name="edit_song_dialog_title">Editing song metadata</string>
-    <string name="edit_song_dialog_body">Editing a song\'s metadata can affect how it\'s displayed and organized in your library. Changes are permanent and may not be reversible.</string>
-    <string name="edit_song_dialog_got_it">Got it</string>
-    <string name="edit_song_cd_info_icon">Information</string>
-    <string name="edit_song_cover_art_heading">Cover art</string>
-    <string name="edit_song_cover_art_hint">Select a square image and fine-tune it so your cover art looks great across the app.</string>
-    <string name="edit_song_action_change_cover">Change cover art</string>
-    <string name="edit_song_action_delete_cover">Delete cover art</string>
-    <string name="edit_song_field_title">Title</string>
-    <string name="edit_song_field_artist">Artist</string>
-    <string name="edit_song_field_album">Album</string>
-    <string name="edit_song_field_album_artist">Album artist</string>
-    <string name="edit_song_field_genre">Genre</string>
-    <string name="edit_song_field_composer">Composer</string>
-    <string name="edit_song_field_track_number">Track number</string>
-    <string name="edit_song_field_disc_number">Disc number</string>
-    <string name="edit_song_field_replaygain_track">ReplayGain track (dB)</string>
-    <string name="edit_song_field_replaygain_album">ReplayGain album (dB)</string>
+    <string name="edit_song_toolbar_title">곡 편집</string>
+    <string name="edit_song_cd_show_metadata_info">정보 표시</string>
+    <string name="edit_song_dialog_title">곡 메타데이터 편집</string>
+    <string name="edit_song_dialog_body">곡 메타데이터를 편집하면 라이브러리에서 표시되고 정리되는 방식이 달라질 수 있습니다. 변경 사항은 영구적이며 되돌릴 수 없을 수 있습니다.</string>
+    <string name="edit_song_dialog_got_it">확인</string>
+    <string name="edit_song_cd_info_icon">정보</string>
+    <string name="edit_song_cover_art_heading">앨범 아트</string>
+    <string name="edit_song_cover_art_hint">정사각형 이미지를 선택하고 세밀하게 조정하면 앱 전체에서 앨범 아트가 멋지게 보입니다.</string>
+    <string name="edit_song_action_change_cover">앨범 아트 변경</string>
+    <string name="edit_song_action_delete_cover">앨범 아트 삭제</string>
+    <string name="edit_song_field_title">제목</string>
+    <string name="edit_song_field_artist">아티스트</string>
+    <string name="edit_song_field_album">앨범</string>
+    <string name="edit_song_field_album_artist">앨범 아티스트</string>
+    <string name="edit_song_field_genre">장르</string>
+    <string name="edit_song_field_composer">작곡가</string>
+    <string name="edit_song_field_track_number">트랙 번호</string>
+    <string name="edit_song_field_disc_number">디스크 번호</string>
+    <string name="edit_song_field_replaygain_track">ReplayGain 트랙(dB)</string>
+    <string name="edit_song_field_replaygain_album">ReplayGain 앨범(dB)</string>
     <string name="edit_song_replaygain_track_placeholder">-6.50</string>
     <string name="edit_song_replaygain_album_placeholder">-8.20</string>
-    <string name="edit_song_cd_cover_preview">Preview of the new cover art</string>
-    <string name="edit_song_cd_current_cover">Current song cover art</string>
-    <string name="edit_song_crop_dialog_title">Adjust your cover art</string>
-    <string name="edit_song_crop_dialog_hint">Use pinch and drag gestures to find the perfect framing.</string>
-    <string name="edit_song_action_apply_cover">Apply cover art</string>
-    <string name="edit_song_unable_to_load_image">Unable to load the selected image</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Search lyrics on lrclib.net</string>
+    <string name="edit_song_cd_cover_preview">새 앨범 아트 미리보기</string>
+    <string name="edit_song_cd_current_cover">현재 곡 앨범 아트</string>
+    <string name="edit_song_crop_dialog_title">앨범 아트 조정</string>
+    <string name="edit_song_crop_dialog_hint">핀치와 드래그 제스처로 최적의 구도를 맞추세요.</string>
+    <string name="edit_song_action_apply_cover">앨범 아트 적용</string>
+    <string name="edit_song_unable_to_load_image">선택한 이미지를 불러올 수 없습니다</string>
+    <string name="edit_song_cd_search_lyrics_lrclib">lrclib.net에서 가사 검색</string>
 
     <!-- EditMultipleSongsSheet -->
-    <string name="batch_edit_toolbar_title">Edit %d Songs</string>
-    <string name="batch_edit_info_message">Only modified fields will be updated. Leave fields empty to keep existing values.</string>
-    <string name="batch_edit_mixed_values">(Mixed values)</string>
-    <string name="batch_edit_optional">(Optional - leave empty to skip)</string>
-    <string name="batch_edit_success">Successfully updated %d songs</string>
-    <string name="batch_edit_partial_success">Updated %1$d of %2$d songs. Some files could not be edited.</string>
-    <string name="batch_edit_failed">Failed to update songs</string>
-    <string name="batch_edit_cover_art_heading">Batch Cover Art</string>
-    <string name="batch_edit_cover_art_hint">This will replace the cover art for all %d selected songs</string>
-    <string name="batch_edit_set_cover_art">Set Cover Art for All</string>
-    <string name="batch_edit_remove_all_art">Remove All Cover Art</string>
-    <string name="batch_edit_multiple_covers">(Multiple different covers)</string>
+    <string name="batch_edit_toolbar_title">곡 %d개 편집</string>
+    <string name="batch_edit_info_message">수정된 필드만 업데이트됩니다. 기존 값을 유지하려면 필드를 비워 두세요.</string>
+    <string name="batch_edit_mixed_values">(혼합된 값)</string>
+    <string name="batch_edit_optional">(선택 사항 - 건너뛰려면 비워 두세요)</string>
+    <string name="batch_edit_success">%d곡을 업데이트했습니다</string>
+    <string name="batch_edit_partial_success">%2$d곡 중 %1$d곡을 업데이트했습니다. 일부 파일은 편집할 수 없습니다.</string>
+    <string name="batch_edit_failed">곡을 업데이트하지 못했습니다</string>
+    <string name="batch_edit_cover_art_heading">앨범 아트 일괄 편집</string>
+    <string name="batch_edit_cover_art_hint">선택한 %d곡의 앨범 아트가 모두 교체됩니다</string>
+    <string name="batch_edit_set_cover_art">모두 앨범 아트 설정</string>
+    <string name="batch_edit_remove_all_art">모든 앨범 아트 제거</string>
+    <string name="batch_edit_multiple_covers">(서로 다른 여러 커버)</string>
 
     <!-- Playlist dismissed message -->
-    <string name="playlist_dismissed_message">Playlist dismissed</string>
+    <string name="playlist_dismissed_message">플레이리스트를 닫았습니다</string>
 
     <!-- PlaylistCreationDialogs -->
-    <string name="playlist_creation_create_playlist_title">Create playlist</string>
-    <string name="playlist_creation_create_playlist_subtitle">Choose the creation flow.</string>
-    <string name="playlist_creation_mode_manual_title">Manual</string>
-    <string name="playlist_creation_mode_manual_subtitle">Design artwork, icon, shape and pick songs yourself.</string>
-    <string name="playlist_creation_mode_ai_title">With AI</string>
-    <string name="playlist_creation_mode_ai_subtitle_enabled">Generate a curated playlist with advanced controls.</string>
-    <string name="playlist_creation_mode_ai_subtitle_disabled">Requires a Gemini API key configured in settings.</string>
-    <string name="playlist_creation_setup_api_key">Set up API key</string>
+    <string name="playlist_creation_create_playlist_title">플레이리스트 만들기</string>
+    <string name="playlist_creation_create_playlist_subtitle">생성 방식을 선택하세요.</string>
+    <string name="playlist_creation_mode_manual_title">수동</string>
+    <string name="playlist_creation_mode_manual_subtitle">아트워크, 아이콘, 모양을 직접 디자인하고 곡을 선택하세요.</string>
+    <string name="playlist_creation_mode_ai_title">AI로 만들기</string>
+    <string name="playlist_creation_mode_ai_subtitle_enabled">고급 컨트롤로 큐레이션된 플레이리스트를 생성합니다.</string>
+    <string name="playlist_creation_mode_ai_subtitle_disabled">설정에서 Gemini API 키를 구성해야 합니다.</string>
+    <string name="playlist_creation_setup_api_key">API 키 설정</string>
 
     <!-- AI playlist lab -->
-    <string name="playlist_creation_ai_lab_title">AI Playlist Lab</string>
-    <string name="playlist_creation_ai_reset">Reset</string>
-    <string name="playlist_creation_ai_generating">Generating…</string>
-    <string name="playlist_creation_ai_generate">Generate</string>
-    <string name="playlist_creation_ai_section_intent">Intent</string>
-    <string name="playlist_creation_ai_name_optional">Playlist name (optional)</string>
-    <string name="playlist_creation_ai_feel_label">What should this playlist feel like?</string>
-    <string name="playlist_creation_ai_feel_placeholder">Example: sunset drive with warm synths</string>
-    <string name="playlist_creation_ai_section_direction">Direction</string>
+    <string name="playlist_creation_ai_lab_title">AI 플레이리스트 랩</string>
+    <string name="playlist_creation_ai_reset">초기화</string>
+    <string name="playlist_creation_ai_generating">생성 중…</string>
+    <string name="playlist_creation_ai_generate">생성</string>
+    <string name="playlist_creation_ai_section_intent">의도</string>
+    <string name="playlist_creation_ai_name_optional">플레이리스트 이름(선택 사항)</string>
+    <string name="playlist_creation_ai_feel_label">이 플레이리스트는 어떤 느낌이어야 하나요?</string>
+    <string name="playlist_creation_ai_feel_placeholder">예: 따뜻한 신스가 흐르는 노을 드라이브</string>
+    <string name="playlist_creation_ai_section_direction">방향</string>
     <string name="playlist_creation_ai_mood_label">Mood</string>
-    <string name="playlist_creation_ai_activity_label">Activity</string>
+    <string name="playlist_creation_ai_activity_label">활동</string>
     <string name="playlist_creation_ai_era_label">Era</string>
-    <string name="playlist_creation_ai_section_curation">Curation engine</string>
-    <string name="playlist_creation_ai_energy_label">Energy</string>
-    <string name="playlist_creation_ai_energy_desc">Controls the intensity and tempo of songs. 1 = calm/slow, 5 = high-energy/fast.</string>
-    <string name="playlist_creation_ai_discovery_label">Discovery</string>
-    <string name="playlist_creation_ai_discovery_desc">Controls how familiar the selections are. 1 = your most played favorites, 5 = rarely played deep cuts.</string>
-    <string name="playlist_creation_ai_min_songs">Min songs</string>
-    <string name="playlist_creation_ai_max_songs">Max songs</string>
-    <string name="playlist_creation_ai_section_filters">Filters</string>
-    <string name="playlist_creation_ai_prioritize_genres">Prioritize genres (optional)</string>
-    <string name="playlist_creation_ai_prioritize_genres_placeholder">e.g. synthwave, indie pop</string>
-    <string name="playlist_creation_ai_avoid_genres">Avoid genres (optional)</string>
-    <string name="playlist_creation_ai_avoid_genres_placeholder">e.g. metal, hard trap</string>
-    <string name="playlist_creation_ai_preferred_language">Preferred language (optional)</string>
-    <string name="playlist_creation_ai_preferred_language_placeholder">e.g. English, Spanish, instrumental</string>
-    <string name="playlist_creation_ai_prioritize_favorites">Prioritize favorites</string>
-    <string name="playlist_creation_ai_avoid_explicit">Avoid explicit lyrics</string>
-    <string name="playlist_creation_ai_section_prompt_preview">Prompt preview</string>
-    <string name="playlist_creation_ai_prompt_preview_empty">Your final prompt will appear here once you add preferences.</string>
-    <string name="playlist_creation_ai_hero_title">Curate with precision</string>
-    <string name="playlist_creation_ai_hero_subtitle">Define mood, activity, constraints and depth.</string>
-    <string name="playlist_creation_ai_hero_library_note">The AI will only use songs from your local library.</string>
-    <string name="playlist_creation_ai_error_add_instruction">Add at least one instruction for AI.</string>
-    <string name="playlist_creation_ai_error_song_range">Set a valid song range.</string>
+    <string name="playlist_creation_ai_section_curation">큐레이션 엔진</string>
+    <string name="playlist_creation_ai_energy_label">에너지</string>
+    <string name="playlist_creation_ai_energy_desc">곡의 강도와 템포를 조절합니다. 1 = 차분함/느림, 5 = 고에너지/빠름.</string>
+    <string name="playlist_creation_ai_discovery_label">발견</string>
+    <string name="playlist_creation_ai_discovery_desc">선곡의 익숙함을 조절합니다. 1 = 가장 많이 들은 즐겨찾기, 5 = 거의 듣지 않은 숨은 곡.</string>
+    <string name="playlist_creation_ai_min_songs">최소 곡 수</string>
+    <string name="playlist_creation_ai_max_songs">최대 곡 수</string>
+    <string name="playlist_creation_ai_section_filters">필터</string>
+    <string name="playlist_creation_ai_prioritize_genres">우선할 장르(선택 사항)</string>
+    <string name="playlist_creation_ai_prioritize_genres_placeholder">예: 신스웨이브, 인디 팝</string>
+    <string name="playlist_creation_ai_avoid_genres">제외할 장르(선택 사항)</string>
+    <string name="playlist_creation_ai_avoid_genres_placeholder">예: 메탈, 하드 트랩</string>
+    <string name="playlist_creation_ai_preferred_language">선호 언어(선택 사항)</string>
+    <string name="playlist_creation_ai_preferred_language_placeholder">예: 영어, 스페인어, 연주곡</string>
+    <string name="playlist_creation_ai_prioritize_favorites">즐겨찾기 우선</string>
+    <string name="playlist_creation_ai_avoid_explicit">선정적인 가사 제외</string>
+    <string name="playlist_creation_ai_section_prompt_preview">프롬프트 미리보기</string>
+    <string name="playlist_creation_ai_prompt_preview_empty">환경 설정을 추가하면 최종 프롬프트가 여기에 표시됩니다.</string>
+    <string name="playlist_creation_ai_hero_title">정밀하게 큐레이션</string>
+    <string name="playlist_creation_ai_hero_subtitle">분위기, 활동, 제약 조건, 깊이를 정의하세요.</string>
+    <string name="playlist_creation_ai_hero_library_note">AI는 로컬 라이브러리의 곡만 사용합니다.</string>
+    <string name="playlist_creation_ai_error_add_instruction">AI에게 최소 하나의 지시 사항을 추가하세요.</string>
+    <string name="playlist_creation_ai_error_song_range">유효한 곡 범위를 설정하세요.</string>
     <string name="playlist_creation_ai_level_out_of_five">%1$d/5</string>
-    <string name="playlist_creation_ai_custom_chip">Custom…</string>
-    <string name="playlist_creation_ai_enter_custom_title">Enter custom value</string>
-    <string name="playlist_creation_ai_enter_custom_label">Enter your custom value</string>
+    <string name="playlist_creation_ai_custom_chip">사용자 지정…</string>
+    <string name="playlist_creation_ai_enter_custom_title">사용자 지정 값 입력</string>
+    <string name="playlist_creation_ai_enter_custom_label">사용자 지정 값 입력</string>
 
     <!-- AI prompt -->
-    <string name="playlist_creation_ai_era_any">Any era</string>
-    <string name="playlist_creation_ai_prompt_core_request">Core request: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_mood">Mood target: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_activity">Activity context: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_era">Era focus: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_prioritize_genres">Prioritize genres: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_avoid_genres">Avoid genres: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_preferred_language">Preferred language: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_energy">Energy level target: %1$d/5.</string>
-    <string name="playlist_creation_ai_prompt_discovery">Discovery target: %1$d/5 where 1 is familiar and 5 is deep cuts.</string>
-    <string name="playlist_creation_ai_prompt_prioritize_favorites">Prioritize songs closer to listener favorites when possible.</string>
-    <string name="playlist_creation_ai_prompt_avoid_explicit">Avoid explicit lyrics whenever alternatives exist.</string>
-    <string name="playlist_creation_ai_prompt_smooth_transitions">Keep transitions smooth and avoid repetitive artist clustering.</string>
+    <string name="playlist_creation_ai_era_any">모든 시대</string>
+    <string name="playlist_creation_ai_prompt_core_request">핵심 요청: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_mood">분위기 목표: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_activity">활동 맥락: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_era">시대 중심: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_prioritize_genres">우선할 장르: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_avoid_genres">제외할 장르: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_preferred_language">선호 언어: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_energy">에너지 수준 목표: %1$d/5.</string>
+    <string name="playlist_creation_ai_prompt_discovery">발견 목표: %1$d/5, 1은 익숙함, 5는 숨은 곡.</string>
+    <string name="playlist_creation_ai_prompt_prioritize_favorites">가능하면 청취자의 즐겨찾기에 가까운 곡을 우선하세요.</string>
+    <string name="playlist_creation_ai_prompt_avoid_explicit">대안이 있으면 선정적인 가사를 피하세요.</string>
+    <string name="playlist_creation_ai_prompt_smooth_transitions">전환을 부드럽게 유지하고 같은 아티스트가 몰리지 않게 하세요.</string>
     <string-array name="playlist_creation_ai_mood_options">
-        <item>Chill</item>
-        <item>Energetic</item>
-        <item>Happy</item>
-        <item>Dark</item>
-        <item>Romantic</item>
-        <item>Melancholic</item>
+        <item>여유</item>
+        <item>활기찬</item>
+        <item>행복</item>
+        <item>어두움</item>
+        <item>로맨틱</item>
+        <item>우울</item>
     </string-array>
     <string-array name="playlist_creation_ai_activity_options">
-        <item>Workout</item>
-        <item>Focus</item>
-        <item>Road trip</item>
-        <item>Party</item>
-        <item>Study</item>
-        <item>Late night</item>
+        <item>운동</item>
+        <item>집중</item>
+        <item>드라이브</item>
+        <item>파티</item>
+        <item>공부</item>
+        <item>심야</item>
     </string-array>
     <string-array name="playlist_creation_ai_era_options">
         <item>@string/playlist_creation_ai_era_any</item>
         <item>70s</item>
         <item>80s</item>
         <item>90s</item>
-        <item>2000s</item>
-        <item>2010s</item>
-        <item>2020s</item>
+        <item>2000년대</item>
+        <item>2010년대</item>
+        <item>2020년대</item>
     </string-array>
 
     <!-- PlaylistContainer -->
-    <string name="playlist_container_no_playlist_created">No playlist has been created.</string>
-    <string name="playlist_container_new_playlist_hint">Touch the \'New Playlist\' button to start.</string>
-    <string name="playlist_container_create_playlist_title">New playlist</string>
-    <string name="playlist_container_create_playlist_name_label">Playlist name</string>
-    <string name="playlist_container_create_playlist_name_placeholder">My playlist</string>
+    <string name="playlist_container_no_playlist_created">생성된 플레이리스트가 없습니다.</string>
+    <string name="playlist_container_new_playlist_hint">시작하려면 ‘새 플레이리스트’ 버튼을 누르세요.</string>
+    <string name="playlist_container_create_playlist_title">새 플레이리스트</string>
+    <string name="playlist_container_create_playlist_name_label">플레이리스트 이름</string>
+    <string name="playlist_container_create_playlist_name_placeholder">내 플레이리스트</string>
 
     <!-- PlaylistBottomSheet -->
-    <string name="playlist_sheet_add_songs_title">Add %1$d songs to…</string>
-    <string name="playlist_sheet_select_playlists">Select playlists</string>
-    <string name="playlist_sheet_search_playlists_hint">Search for playlists…</string>
-    <string name="playlist_sheet_song_added_to_playlists">Songs added to playlists</string>
-    <string name="playlist_sheet_created_and_songs_added">Playlist created and songs added</string>
-    <string name="playlist_sheet_internal_storage">Internal Storage</string>
+    <string name="playlist_sheet_add_songs_title">곡 %1$d개를 다음에 추가…</string>
+    <string name="playlist_sheet_select_playlists">플레이리스트 선택</string>
+    <string name="playlist_sheet_search_playlists_hint">플레이리스트 검색…</string>
+    <string name="playlist_sheet_song_added_to_playlists">플레이리스트에 곡을 추가했습니다</string>
+    <string name="playlist_sheet_created_and_songs_added">플레이리스트를 만들고 곡을 추가했습니다</string>
+    <string name="playlist_sheet_internal_storage">내부 저장소</string>
 
     <!-- SongPickerBottomSheet -->
-    <string name="song_picker_title">Add songs</string>
-    <string name="song_picker_cd_confirm_add_songs">Add selected songs</string>
+    <string name="song_picker_title">곡 추가</string>
+    <string name="song_picker_cd_confirm_add_songs">선택한 곡 추가</string>
     <string name="song_picker_action_add">Add</string>
-    <string name="song_picker_search_label">Search or filter songs…</string>
-    <string name="song_picker_filter_favorites">Liked</string>
-    <string name="song_picker_error_load_failed">Failed to load songs</string>
-    <string name="song_picker_load_more">Load more</string>
+    <string name="song_picker_search_label">곡 검색 또는 필터…</string>
+    <string name="song_picker_filter_favorites">좋아요</string>
+    <string name="song_picker_error_load_failed">곡을 불러오지 못했습니다</string>
+    <string name="song_picker_load_more">더 불러오기</string>
 
     <!-- Merge Playlists Dialog -->
-    <string name="merge_playlists_dialog_title">Merge Playlists</string>
-    <string name="merge_playlists_dialog_prompt">Enter a name for the merged playlist:</string>
-    <string name="merge_playlists_dialog_placeholder">Merged Playlist</string>
-    <string name="merge_playlists_dialog_body">This will merge %1$d selected playlists into one.</string>
+    <string name="merge_playlists_dialog_title">플레이리스트 병합</string>
+    <string name="merge_playlists_dialog_prompt">병합된 플레이리스트의 이름을 입력하세요:</string>
+    <string name="merge_playlists_dialog_placeholder">병합된 플레이리스트</string>
+    <string name="merge_playlists_dialog_body">선택한 플레이리스트 %1$d개를 하나로 병합합니다.</string>
 
     <!-- PlayerViewModel -->
-    <string name="player_view_model_no_valid_songs">No valid songs found to play</string>
-    <string name="player_view_model_song_not_found_in_list">Song not found in current list</string>
-    <string name="player_view_model_could_not_locate_song">Could not locate song</string>
-    <string name="player_view_model_no_songs_in_library_toast">No songs found in library</string>
-    <string name="player_view_model_playback_stopped_eot">Playback stopped: %1$s finished (End of Track).</string>
-    <string name="player_view_model_default_track_title">Track</string>
-    <string name="player_view_model_no_songs_to_shuffle">No songs to shuffle.</string>
-    <string name="player_view_model_queue_name_selected_albums">Selected Albums</string>
-    <string name="player_view_model_no_playable_songs_in_albums">No playable songs found in selected albums</string>
-    <string name="player_view_model_no_playable_songs_in_genres">No playable songs found in selected genres</string>
-    <string name="player_view_model_only_first_n_albums_queued">Only the first %1$d albums were queued</string>
-    <string name="player_view_model_albums_queued_format">%1$d albums queued (%2$d songs)</string>
-    <string name="player_view_model_could_not_queue_albums">Could not queue selected albums</string>
-    <string name="player_view_model_all_songs_already_in_favorites">All songs already in favorites</string>
-    <string name="player_view_model_no_songs_were_in_favorites">No songs were in favorites</string>
-    <string name="player_view_model_creating_zip">Creating ZIP file…</string>
-    <string name="player_view_model_share_zip_failed_format">Failed to share: %1$s</string>
-    <plurals name="player_view_model_n_songs_added_to_queue">
-        <item quantity="one">%d song added to queue</item>
-        <item quantity="other">%d songs added to queue</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_will_play_next">
-        <item quantity="one">%d song will play next</item>
-        <item quantity="other">%d songs will play next</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_added_to_favorites">
-        <item quantity="one">%d song added to favorites</item>
-        <item quantity="other">%d songs added to favorites</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_removed_from_favorites">
-        <item quantity="one">%d song removed from favorites</item>
-        <item quantity="other">%d songs removed from favorites</item>
-    </plurals>
+    <string name="player_view_model_no_valid_songs">재생할 유효한 곡이 없습니다</string>
+    <string name="player_view_model_song_not_found_in_list">현재 목록에서 곡을 찾을 수 없습니다</string>
+    <string name="player_view_model_could_not_locate_song">곡을 찾을 수 없습니다</string>
+    <string name="player_view_model_no_songs_in_library_toast">라이브러리에서 곡을 찾을 수 없습니다</string>
+    <string name="player_view_model_playback_stopped_eot">재생 중지됨: %1$s 완료(트랙 끝).</string>
+    <string name="player_view_model_default_track_title">트랙</string>
+    <string name="player_view_model_no_songs_to_shuffle">셔플할 곡이 없습니다.</string>
+    <string name="player_view_model_queue_name_selected_albums">선택한 앨범</string>
+    <string name="player_view_model_no_playable_songs_in_albums">선택한 앨범에 재생 가능한 곡이 없습니다</string>
+    <string name="player_view_model_no_playable_songs_in_genres">선택한 장르에 재생 가능한 곡이 없습니다</string>
+    <string name="player_view_model_only_first_n_albums_queued">처음 %1$d개의 앨범만 대기열에 추가되었습니다</string>
+    <string name="player_view_model_albums_queued_format">앨범 %1$d개 대기열 추가(곡 %2$d개)</string>
+    <string name="player_view_model_could_not_queue_albums">선택한 앨범을 대기열에 추가할 수 없습니다</string>
+    <string name="player_view_model_all_songs_already_in_favorites">모든 곡이 이미 즐겨찾기에 있습니다</string>
+    <string name="player_view_model_no_songs_were_in_favorites">즐겨찾기에 곡이 없습니다</string>
+    <string name="player_view_model_creating_zip">ZIP 파일 생성 중…</string>
+    <string name="player_view_model_share_zip_failed_format">공유 실패: %1$s</string>
+    <plurals name="player_view_model_n_songs_added_to_queue">        <item quantity="other">곡 %d개가 대기열에 추가되었습니다</item></plurals>
+    <plurals name="player_view_model_n_songs_will_play_next">        <item quantity="other">곡 %d개가 다음에 재생됩니다</item></plurals>
+    <plurals name="player_view_model_n_songs_added_to_favorites">        <item quantity="other">곡 %d개가 즐겨찾기에 추가되었습니다</item></plurals>
+    <plurals name="player_view_model_n_songs_removed_from_favorites">        <item quantity="other">곡 %d개가 즐겨찾기에서 제거되었습니다</item></plurals>
 
     <!-- PlaylistViewModel -->
-    <string name="playlist_view_model_none_to_share">No playlists to share</string>
-    <string name="playlist_view_model_share_chooser_title">Share playlists</string>
-    <string name="playlist_view_model_share_failed">Share failed: %1$s</string>
-    <string name="playlist_view_model_none_to_export">No playlists to export</string>
-    <string name="playlist_view_model_export_failed">Export failed: %1$s</string>
+    <string name="playlist_view_model_none_to_share">공유할 플레이리스트가 없습니다</string>
+    <string name="playlist_view_model_share_chooser_title">플레이리스트 공유</string>
+    <string name="playlist_view_model_share_failed">공유 실패: %1$s</string>
+    <string name="playlist_view_model_none_to_export">내보낼 플레이리스트가 없습니다</string>
+    <string name="playlist_view_model_export_failed">내보내기 실패: %1$s</string>
     <string name="playlist_view_model_export_folder_display">Music/XiangsuPlayer Exports</string>
-    <string name="playlist_view_model_ai_gemini_key_required">Please configure your Gemini API key in Settings.</string>
-    <string name="playlist_view_model_restored_toast">Playlist restored</string>
-    <plurals name="playlist_view_model_sharing_message">
-        <item quantity="one">Sharing %d playlist</item>
-        <item quantity="other">Sharing %d playlists</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">Exported %1$d playlist to %2$s</item>
-        <item quantity="other">Exported %1$d playlists to %2$s</item>
-    </plurals>
+    <string name="playlist_view_model_ai_gemini_key_required">설정에서 Gemini API 키를 구성해 주세요.</string>
+    <string name="playlist_view_model_restored_toast">플레이리스트 복구됨</string>
+    <plurals name="playlist_view_model_sharing_message">        <item quantity="other">플레이리스트 %d개 공유 중</item></plurals>
+    <plurals name="playlist_view_model_exported_message">        <item quantity="other">플레이리스트 %1$d개를 %2$s(으)로 내보냈습니다</item></plurals>
 
     <!-- AlbumDetailViewModel -->
-    <string name="album_detail_invalid_id">Invalid album ID</string>
-    <string name="album_detail_id_not_found">Album ID not found</string>
-    <string name="album_detail_error_loading_album">Error loading album data: %s</string>
-    <string name="album_detail_not_found">Album not found</string>
+    <string name="album_detail_invalid_id">유효하지 않은 앨범 ID</string>
+    <string name="album_detail_id_not_found">앨범 ID를 찾을 수 없음</string>
+    <string name="album_detail_error_loading_album">앨범 데이터 로드 오류: %s</string>
+    <string name="album_detail_not_found">앨범을 찾을 수 없음</string>
 
     <!-- ArtistDetailViewModel -->
-    <string name="artist_detail_invalid_id">Invalid artist ID</string>
-    <string name="artist_detail_id_not_found">Artist ID not found</string>
-    <string name="artist_error_loading_artist">Error loading artist data: %s</string>
-    <string name="artist_detail_not_found">Could not find the artist</string>
+    <string name="artist_detail_invalid_id">유효하지 않은 아티스트 ID</string>
+    <string name="artist_detail_id_not_found">아티스트 ID를 찾을 수 없음</string>
+    <string name="artist_error_loading_artist">아티스트 데이터 로드 오류: %s</string>
+    <string name="artist_detail_not_found">아티스트를 찾을 수 없음</string>
 
     <!-- SongRemovalStateHolder -->
-    <string name="song_removal_cannot_delete_currently_playing">Cannot delete currently playing song</string>
-    <string name="song_removal_batch_delete_files_deleted_skipped_format">%1$d files deleted (%2$d skipped - playing)</string>
-    <string name="song_removal_batch_delete_partial_format">%1$d of %2$d files deleted</string>
-    <string name="song_removal_delete_files_failed">Failed to delete files</string>
-    <string name="song_removal_file_deleted">File deleted</string>
-    <string name="song_removal_delete_file_not_found">Can\'t delete the file or file not found</string>
-    <string name="song_removal_deletion_cancelled">Deletion cancelled</string>
-    <string name="song_removal_dialog_delete_song_title">Delete song?</string>
-    <string name="song_removal_dialog_delete_song_message">\"%1$s\" by %2$s\n\nThis song will be permanently deleted from your device and cannot be recovered.</string>
-    <string name="song_removal_delete_songs_permanent_message">These songs will be permanently deleted from your device and cannot be recovered.</string>
-    <plurals name="song_removal_n_files_deleted">
-        <item quantity="one">%d file deleted</item>
-        <item quantity="other">%d files deleted</item>
-    </plurals>
-    <plurals name="song_removal_delete_songs_confirmation_title">
-        <item quantity="one">Delete %d song?</item>
-        <item quantity="other">Delete %d songs?</item>
-    </plurals>
+    <string name="song_removal_cannot_delete_currently_playing">현재 재생 중인 곡은 삭제할 수 없습니다</string>
+    <string name="song_removal_batch_delete_files_deleted_skipped_format">파일 %1$d개 삭제됨(%2$d개 건너뜀 - 재생 중)</string>
+    <string name="song_removal_batch_delete_partial_format">%2$d개 중 %1$d개 파일 삭제됨</string>
+    <string name="song_removal_delete_files_failed">파일 삭제 실패</string>
+    <string name="song_removal_file_deleted">파일 삭제됨</string>
+    <string name="song_removal_delete_file_not_found">파일을 삭제할 수 없거나 파일을 찾을 수 없습니다</string>
+    <string name="song_removal_deletion_cancelled">삭제 취소됨</string>
+    <string name="song_removal_dialog_delete_song_title">곡을 삭제할까요?</string>
+    <string name="song_removal_dialog_delete_song_message">%2$s의 “%1$s”\n\n이 곡은 기기에서 영구적으로 삭제되며 복구할 수 없습니다.</string>
+    <string name="song_removal_delete_songs_permanent_message">이 곡들은 기기에서 영구적으로 삭제되며 복구할 수 없습니다.</string>
+    <plurals name="song_removal_n_files_deleted">        <item quantity="other">파일 %d개 삭제됨</item></plurals>
+    <plurals name="song_removal_delete_songs_confirmation_title">        <item quantity="other">곡 %d개를 삭제하시겠습니까?</item></plurals>
 
     <!-- MetadataEditStateHolder -->
-    <string name="metadata_edit_updated_successfully">Metadata updated successfully</string>
-    <string name="metadata_edit_updating_n_songs">Updating %1$d songs…</string>
-    <string name="metadata_edit_batch_genre_updated_all">Successfully updated %1$d songs!</string>
-    <string name="metadata_edit_batch_genre_updated_partial">Updated %1$d songs. Failed: %2$d</string>
-    <string name="metadata_edit_lyrics_saved_successfully">Lyrics saved successfully</string>
-    <string name="metadata_edit_lyrics_save_failed">Failed to save lyrics</string>
-    <string name="metadata_edit_lyrics_none_to_save">No lyrics available to save</string>
-    <string name="metadata_edit_permission_denied_edit_files">Permission denied – cannot edit files</string>
-    <string name="metadata_edit_permission_denied_save_lyrics">Permission denied – cannot save lyrics</string>
-    <string name="metadata_edit_permission_denied_edit_this_file">Permission denied – cannot edit this file</string>
+    <string name="metadata_edit_updated_successfully">메타데이터를 업데이트했습니다</string>
+    <string name="metadata_edit_updating_n_songs">곡 %1$d개 업데이트 중…</string>
+    <string name="metadata_edit_batch_genre_updated_all">곡 %1$d개를 업데이트했습니다!</string>
+    <string name="metadata_edit_batch_genre_updated_partial">곡 %1$d개를 업데이트했습니다. 실패: %2$d</string>
+    <string name="metadata_edit_lyrics_saved_successfully">가사를 저장했습니다</string>
+    <string name="metadata_edit_lyrics_save_failed">가사 저장 실패</string>
+    <string name="metadata_edit_lyrics_none_to_save">저장할 가사가 없습니다</string>
+    <string name="metadata_edit_permission_denied_edit_files">권한 거부됨 – 파일을 편집할 수 없습니다</string>
+    <string name="metadata_edit_permission_denied_save_lyrics">권한 거부됨 – 가사를 저장할 수 없습니다</string>
+    <string name="metadata_edit_permission_denied_edit_this_file">권한 거부됨 – 이 파일을 편집할 수 없습니다</string>
 
     <!-- AiStateHolder -->
-    <string name="ai_state_error_api_key">Please configure a valid API key for the selected AI provider in Settings.</string>
-    <string name="ai_state_error_generic">AI Error: %s</string>
-    <string name="ai_state_error_quota">The selected AI provider rejected the request because the account has no credits or available quota.</string>
-    <string name="ai_state_error_model_unavailable">The selected AI model is no longer available. XiangsuPlayer tried to switch to a supported model automatically.</string>
-    <string name="ai_state_no_songs_found">AI couldn\'t find any songs for your prompt.</string>
-    <string name="ai_state_prompt_empty">Write an idea for your Daily Mix</string>
-    <string name="ai_state_daily_mix_updated">Daily Mix updated with AI</string>
-    <string name="ai_state_could_not_update">Could not update: %s</string>
-    <string name="ai_state_no_songs_for_mix">AI couldn\'t find songs for this mix</string>
+    <string name="ai_state_error_api_key">설정에서 선택한 AI 제공업체의 유효한 API 키를 구성해 주세요.</string>
+    <string name="ai_state_error_generic">AI 오류: %s</string>
+    <string name="ai_state_error_quota">선택한 AI 제공업체가 계정에 크레딧이나 사용 가능한 할당량이 없어 요청을 거부했습니다.</string>
+    <string name="ai_state_error_model_unavailable">선택한 AI 모델을 더 이상 사용할 수 없습니다. XiangsuPlayer가 지원되는 모델로 자동 전환을 시도했습니다.</string>
+    <string name="ai_state_no_songs_found">AI가 프롬프트에 맞는 노래를 찾지 못했습니다.</string>
+    <string name="ai_state_prompt_empty">데일리 믹스에 대한 아이디어를 작성해 보세요</string>
+    <string name="ai_state_daily_mix_updated">AI로 데일리 믹스가 업데이트되었습니다</string>
+    <string name="ai_state_could_not_update">업데이트할 수 없음: %s</string>
+    <string name="ai_state_no_songs_for_mix">AI가 이 믹스에 맞는 노래를 찾지 못했습니다</string>
+    <string name="library_scroll_to_top">맨 위로</string>
+    <string name="song_info_download_paused">일시정지됨, 탭하여 재개</string>
 </resources>

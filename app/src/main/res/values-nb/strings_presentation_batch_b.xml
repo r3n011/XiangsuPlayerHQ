@@ -42,7 +42,7 @@
     <string name="presentation_batch_b_new_name">Nytt navn</string>
 
     <!-- DailyMixScreen -->
-    <string name="presentation_batch_b_daily_mix_title">Daily Mix</string>
+    <string name="presentation_batch_b_daily_mix_title">Daglig miks</string>
 
     <!-- QuickFillScreen -->
     <string name="presentation_batch_b_quick_fill_select_songs">Velg sanger</string>
@@ -52,7 +52,7 @@
     <string name="presentation_batch_b_clear">Tøm</string>
     <string name="presentation_batch_b_genre_label_format">Sjanger: %1$s</string>
     <string name="presentation_batch_b_select_a_genre">Velg en sjanger</string>
-    <string name="presentation_batch_b_quick_fill">Quick Fill</string>
+    <string name="presentation_batch_b_quick_fill">Hurtigutfylling</string>
     <string name="presentation_batch_b_add_custom_genre">Legg til egendefinert</string>
     <string name="presentation_batch_b_new_genre">Ny sjanger</string>
     <string name="presentation_batch_b_add_custom_genre_title">Legg til egendefinert sjanger</string>
@@ -81,10 +81,10 @@
         <item quantity="one">%1$d sang • %2$s</item>
         <item quantity="other">%1$d sanger • %2$s</item>
     </plurals>
-    <string name="presentation_batch_b_ai_mix_empty">Generating your AI playlist...</string>
+    <string name="presentation_batch_b_ai_mix_empty">Genererer AI-spillelisten din...</string>
 
     
     
-    <string name="presentation_batch_b_ai_mix_title">AI Mix</string>
+    <string name="presentation_batch_b_ai_mix_title">AI-miks</string>
     
 </resources>

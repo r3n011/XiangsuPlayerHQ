@@ -472,28 +472,28 @@
     <string name="setcat_ai_api_key_subtitle">从 %1$s 获取</string>
     <string
         name="setcat_ai_source_gemini"
-    >Google AI Studio (aistudio.google.com)</string>
+    >Google AI Studio（aistudio.google.com）</string>
     <string
         name="setcat_ai_source_deepseek"
-    >DeepSeek Platform (api.deepseek.com)</string>
+    >DeepSeek 平台（api.deepseek.com）</string>
     <string
         name="setcat_ai_source_groq"
-    >Groq Console (console.groq.com)</string>
+    >Groq 控制台（console.groq.com）</string>
     <string
         name="setcat_ai_source_mistral"
-    >Mistral AI Platform (console.mistral.ai)</string>
+    >Mistral AI 平台（console.mistral.ai）</string>
     <string
         name="setcat_ai_source_nvidia"
-    >NVIDIA Build (build.nvidia.com)</string>
+    >NVIDIA Build（build.nvidia.com）</string>
     <string
         name="setcat_ai_source_kimi"
-    >Moonshot AI Platform (platform.moonshot.cn)</string>
+    >Moonshot AI 平台（platform.moonshot.cn）</string>
     <string
         name="setcat_ai_source_glm"
-    >Zhipu AI Open Platform (bigmodel.cn)</string>
+    >智谱 AI 开放平台（bigmodel.cn）</string>
     <string
         name="setcat_ai_source_openai"
-    >OpenAI Platform (platform.openai.com)</string>
+    >OpenAI 平台（platform.openai.com）</string>
     <string name="setcat_model_selection">模型选择</string>
     <string name="setcat_loading_models">正在加载可用模型………</string>
     <string name="setcat_ai_model_label">AI 模型</string>
@@ -1025,4 +1025,17 @@
     <string name="setcat_apple_canvas_subtitle">在线获取当前歌曲的动态视频封面，命中后渐变切换显示；未命中或关闭时保持现有封面方案。会产生少量网络流量。</string>
     <string name="setcat_player_glass_controls_title">控制按钮玻璃模糊背景</string>
     <string name="setcat_player_glass_controls_subtitle">中性控件（上一/下一曲、收藏、底部功能胶囊、控制卡片）改为半透明 + 真实背景模糊（播放/暂停键保留强调色，布局不变），可与任意主题、背景样式自由组合。</string>
+    <string name="dot_device_api_key_hint">输入你的 Dot API 密钥</string>
+    <string name="dot_device_api_key_label">API 密钥</string>
+    <string name="dot_device_auto_push_description">歌曲切换时自动将专辑封面推送到墨水屏</string>
+    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
+    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏</string>
+    <string name="dot_device_header_title">Dot 墨水屏设备</string>
+    <string name="dot_device_id_hint">输入设备 ID</string>
+    <string name="dot_device_id_label">设备 ID</string>
+    <string name="dot_device_save">保存设置</string>
+    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
+    <string name="dot_device_test_connection">测试连接</string>
+    <string name="dot_device_testing">正在测试……</string>
 </resources>

@@ -52,7 +52,7 @@
     <string name="presentation_batch_b_clear">Löschen</string>
     <string name="presentation_batch_b_genre_label_format">Genre: %1$s</string>
     <string name="presentation_batch_b_select_a_genre">Genre auswählen</string>
-    <string name="presentation_batch_b_quick_fill">Quick Fill</string>
+    <string name="presentation_batch_b_quick_fill">Schnell füllen</string>
     <string name="presentation_batch_b_add_custom_genre">Eigenes hinzufügen</string>
     <string name="presentation_batch_b_new_genre">Neues Genre</string>
     <string name="presentation_batch_b_add_custom_genre_title">Eigenes Genre hinzufügen</string>
@@ -75,16 +75,14 @@
     <string name="presentation_batch_b_corner_dp_format">%1$d dp</string>
 
     <!-- GenreDetailScreen -->
-    <string name="presentation_batch_b_genre_shuffle_label">%1$s Shuffle</string>
+    <string name="presentation_batch_b_genre_shuffle_label">%1$s-Zufallswiedergabe</string>
 
-    <plurals name="presentation_batch_b_songs_dot_duration">
-        <item quantity="one">%1$d Song • %2$s</item>
-        <item quantity="other">%1$d Songs • %2$s</item>
-    </plurals>
-    <string name="presentation_batch_b_ai_mix_empty">Generating your AI playlist...</string>
+    <plurals name="presentation_batch_b_songs_dot_duration">        <item quantity="one">%1$d Song • %2$s</item>
+        <item quantity="other">%1$d Songs • %2$s</item></plurals>
+    <string name="presentation_batch_b_ai_mix_empty">Deine KI-Playlist wird erstellt…</string>
 
     
     
-    <string name="presentation_batch_b_ai_mix_title">AI Mix</string>
+    <string name="presentation_batch_b_ai_mix_title">KI-Mix</string>
     
 </resources>

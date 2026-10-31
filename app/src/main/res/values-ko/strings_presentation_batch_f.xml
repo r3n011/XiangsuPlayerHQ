@@ -89,10 +89,10 @@
     <string name="presentation_batch_f_palette_style_vibrant_desc">높은 채도의 강조색.</string>
     <string name="presentation_batch_f_palette_style_expressive_desc">대담한 색조 변화와 대비.</string>
     <string name="presentation_batch_f_palette_style_fruit_salad_desc">장난스러운 회전 강조색.</string>
-    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal Spot</string>
-    <string name="presentation_batch_f_palette_label_vibrant">Vibrant</string>
-    <string name="presentation_batch_f_palette_label_expressive">Expressive</string>
-    <string name="presentation_batch_f_palette_label_fruit_salad">Fruit Salad</string>
+    <string name="presentation_batch_f_palette_label_tonal_spot">톤 스팟</string>
+    <string name="presentation_batch_f_palette_label_vibrant">생동감</string>
+    <string name="presentation_batch_f_palette_label_expressive">표현력 풍부</string>
+    <string name="presentation_batch_f_palette_label_fruit_salad">과일 샐러드</string>
     <string name="presentation_batch_f_color_accuracy_title">색상 정확도</string>
     <string name="presentation_batch_f_color_accuracy_subtitle">0은 현재 조정을 유지합니다. 값이 높을수록 앨범 아트의 지배적인 색상에 더 가깝게 유지됩니다.</string>
     <string name="presentation_batch_f_accuracy_current">현재</string>
@@ -226,20 +226,55 @@
     <plurals name="presentation_batch_f_n_topics">
         <item quantity="other">주제 %d개</item>
     </plurals>
-    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    <string name="presentation_batch_f_adjust_cover_hint">핀치와 드래그 제스처로 최적의 구도를 맞추세요</string>
     
-    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    <string name="presentation_batch_f_adjust_cover_title">앨범 아트 조정</string>
     
-    <string name="presentation_batch_f_change">Change</string>
+    <string name="presentation_batch_f_change">변경</string>
     
-    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    <string name="presentation_batch_f_edit_cover_title">커버 편집</string>
     
-    <string name="presentation_batch_f_remove">Remove</string>
+    <string name="presentation_batch_f_remove">제거</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_action">Remove</string>
+    <string name="presentation_batch_f_remove_channel_confirm_action">제거</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s will stop syncing and all cached songs from this channel will be removed.</string>
+    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s의 동기화가 중지되고 이 채널의 캐시된 모든 곡이 삭제됩니다.</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_title">Remove channel?</string>
+    <string name="presentation_batch_f_remove_channel_confirm_title">채널을 제거할까요?</string>
     
+    <string name="presentation_batch_f_progress_rotate_subtitle">재생 중 손잡이가 계속 회전합니다.</string>
+    <string name="presentation_batch_f_progress_rotate_title">재생 중 회전</string>
+    <string name="presentation_batch_f_progress_style_dots">점</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">점 표시.</string>
+    <string name="presentation_batch_f_progress_style_gradient">그라데이션</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">다색 그라데이션 채우기.</string>
+    <string name="presentation_batch_f_progress_style_normal">기본</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">표준 진행 표시줄.</string>
+    <string name="presentation_batch_f_progress_style_rounded">둥근</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">알약 모양 진행 표시.</string>
+    <string name="presentation_batch_f_progress_style_segmented">분할</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">분할된 블록.</string>
+    <string name="presentation_batch_f_progress_style_thick">두꺼움</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">굵고 두꺼운 막대.</string>
+    <string name="presentation_batch_f_progress_style_thin">얇음</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">얇고 우아한 선.</string>
+    <string name="presentation_batch_f_progress_style_waveform">파형</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">오디오 스타일 진폭 막대.</string>
+    <string name="presentation_batch_f_progress_style_wavy">물결</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">움직이는 물결 선.</string>
+    <string name="presentation_batch_f_progress_thumb_circle">원</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">쿠키</string>
+    <string name="presentation_batch_f_progress_thumb_default">기본</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">다이아몬드</string>
+    <string name="presentation_batch_f_progress_thumb_flower">꽃</string>
+    <string name="presentation_batch_f_progress_thumb_heading">손잡이 스타일</string>
+    <string name="presentation_batch_f_progress_thumb_heart">하트</string>
+    <string name="presentation_batch_f_progress_thumb_none">없음</string>
+    <string name="presentation_batch_f_progress_thumb_pill">알약</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">푹신한</string>
+    <string name="presentation_batch_f_progress_thumb_square">사각형</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">곡을 탐색할 때 사용할 손잡이를 선택하세요.</string>
+    <string name="presentation_batch_f_progress_title">진행 표시줄</string>
+    <string name="presentation_batch_f_progress_track_heading">트랙 스타일</string>
+    <string name="presentation_batch_f_progress_track_subtitle">재생 진행 표시줄의 그리기 방식을 선택하세요.</string>
 </resources>

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="glance_widget_description">Responsive widget that adapts to its size</string>
-    <string name="widget_bar_4x1_desc">Compact player bar</string>
-    <string name="widget_control_4x2_desc">Full controls with shuffle and repeat</string>
-    <string name="widget_grid_2x2_desc">Minimalist square player</string>
+    <string name="glance_widget_description">Widget responsif yang menyesuaikan ukurannya</string>
+    <string name="widget_bar_4x1_desc">Bilah pemutar ringkas</string>
+    <string name="widget_control_4x2_desc">Kontrol lengkap dengan acak dan ulangi</string>
+    <string name="widget_grid_2x2_desc">Pemutar persegi minimalis</string>
 
-    <string name="widget_tap_to_open">Tap to open</string>
-    <string name="widget_album_art">Album art</string>
-    <string name="widget_album_art_placeholder">Album art placeholder</string>
+    <string name="widget_tap_to_open">Ketuk untuk membuka</string>
+    <string name="widget_album_art">Sampul album</string>
+    <string name="widget_album_art_placeholder">Placeholder sampul album</string>
 
-    <string name="widget_tap_to_play">Tap to play</string>
-    <string name="widget_preview_song_title">Song title</string>
-    <string name="widget_preview_artist">Artist</string>
+    <string name="widget_tap_to_play">Ketuk untuk memutar</string>
+    <string name="widget_preview_song_title">Judul lagu</string>
+    <string name="widget_preview_artist">Artis</string>
 
-    <string name="widget_wavy_progress_bar_desc">Progress bar, %1$d percent</string>
+    <string name="widget_wavy_progress_bar_desc">Bilah progres, %1$d persen</string>
 </resources>

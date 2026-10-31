@@ -550,83 +550,83 @@
     <string
         name="backup_history_modules_line"
     >Модулей: %1$d · v%2$s · схема v%3$d</string>
-    <string name="setcat_download_complete">Download complete</string>
-    <string name="setcat_download_failed">Download failed</string>
+    <string name="setcat_download_complete">Загрузка завершена</string>
+    <string name="setcat_download_failed">Загрузка не удалась</string>
     <string name="setcat_download_progress_format">%1$.0f%%</string>
-    <string name="setcat_download_progress_title">Download progress</string>
-    <string name="ai_auto_disabled">AI auto-trigger is disabled</string>
+    <string name="setcat_download_progress_title">Прогресс загрузки</string>
+    <string name="ai_auto_disabled">Автозапуск ИИ отключен</string>
     
-    <string name="backup_format_external_desc">Compatible with other XiangsuPlayer versions</string>
+    <string name="backup_format_external_desc">Совместим с другими версиями XiangsuPlayer</string>
     
-    <string name="backup_format_external_title">External (.pxpbak)</string>
+    <string name="backup_format_external_title">Внешний (.pxpbak)</string>
     
-    <string name="backup_format_pxpl_desc">Original format with all data types</string>
+    <string name="backup_format_pxpl_desc">Исходный формат со всеми типами данных</string>
     
     <string name="backup_format_pxpl_title">PixelPlay (.pxpl)</string>
     
-    <string name="backup_format_select_prompt">Choose backup format:</string>
+    <string name="backup_format_select_prompt">Выберите формат бэкапа:</string>
     
-    <string name="car_mode_action_library">Library</string>
+    <string name="car_mode_action_library">Фонотека</string>
     
-    <string name="car_mode_action_library_desc">Your music</string>
+    <string name="car_mode_action_library_desc">Ваша музыка</string>
     
-    <string name="car_mode_action_roaming">Roaming</string>
+    <string name="car_mode_action_roaming">Роуминг</string>
     
-    <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
+    <string name="car_mode_action_roaming_desc">Роуминг NetEase Cloud Music</string>
     
-    <string name="car_mode_action_search">Search</string>
+    <string name="car_mode_action_search">Поиск</string>
     
-    <string name="car_mode_action_search_desc">Find songs</string>
+    <string name="car_mode_action_search_desc">Поиск песен</string>
     
-    <string name="car_mode_action_settings">Settings</string>
+    <string name="car_mode_action_settings">Настройки</string>
     
-    <string name="car_mode_action_settings_desc">App settings</string>
+    <string name="car_mode_action_settings_desc">Настройки приложения</string>
 
     
     
-    <string name="car_mode_quick_actions_title">Quick Actions</string>
+    <string name="car_mode_quick_actions_title">Быстрые действия</string>
     
-    <string name="dot_device_api_key_hint">输入你的 Dot API Key</string>
+    <string name="dot_device_api_key_hint">Введите API-ключ Dot</string>
     
-    <string name="dot_device_api_key_label">API Key</string>
+    <string name="dot_device_api_key_label">API-ключ</string>
     
-    <string name="dot_device_auto_push_description">切换歌曲时自动推送专辑封面到墨水屏</string>
+    <string name="dot_device_auto_push_description">Автоматически отправлять обложку на e-ink дисплей при смене песни</string>
     
-    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
+    <string name="dot_device_auto_push_title">Автоотправка обложек альбомов</string>
     
-    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_clear">Очистить настройки</string>
 
     
     
-    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏设备显示</string>
+    <string name="dot_device_header_description">Отправлять обложку текущей песни на e-ink дисплей</string>
     
-    <string name="dot_device_header_title">Dot 墨水屏设备</string>
+    <string name="dot_device_header_title">Устройство с e-ink дисплеем Dot</string>
     
-    <string name="dot_device_id_hint">输入设备 ID</string>
+    <string name="dot_device_id_hint">Введите ID устройства</string>
     
-    <string name="dot_device_id_label">Device ID</string>
+    <string name="dot_device_id_label">ID устройства</string>
     
-    <string name="dot_device_save">保存设置</string>
+    <string name="dot_device_save">Сохранить настройки</string>
     
-    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
+    <string name="dot_device_settings_title">Настройки e-ink дисплея Dot</string>
     
-    <string name="dot_device_test_connection">测试连接</string>
+    <string name="dot_device_test_connection">Проверить подключение</string>
     
-    <string name="dot_device_testing">测试中...</string>
+    <string name="dot_device_testing">Проверка…</string>
     
-    <string name="equalizer_preset_bass_boost">Bass Boost</string>
+    <string name="equalizer_preset_bass_boost">Усиление баса</string>
     
-    <string name="equalizer_preset_classical">Classical</string>
+    <string name="equalizer_preset_classical">Классика</string>
     
-    <string name="equalizer_preset_custom">Custom</string>
+    <string name="equalizer_preset_custom">Свой</string>
 
     
     
-    <string name="equalizer_preset_electronic">Electronic</string>
+    <string name="equalizer_preset_electronic">Электроника</string>
     
     <string name="equalizer_preset_flat">Flat</string>
     
-    <string name="equalizer_preset_hip_hop">Hip Hop</string>
+    <string name="equalizer_preset_hip_hop">Хип-хоп</string>
     
     <string name="equalizer_preset_jazz">Jazz</string>
     
@@ -634,515 +634,717 @@
     
     <string name="equalizer_preset_rock">Rock</string>
     
-    <string name="equalizer_preset_treble_boost">Treble Boost</string>
+    <string name="equalizer_preset_treble_boost">Усиление высоких</string>
     
-    <string name="equalizer_preset_vocal">Vocal</string>
+    <string name="equalizer_preset_vocal">Вокал</string>
     
-    <string name="music_quality_flac">Lossless (FLAC)</string>
+    <string name="music_quality_flac">Без потерь (FLAC)</string>
     
-    <string name="music_quality_high">High (320kbps)</string>
+    <string name="music_quality_high">Высокое (320 кбит/с)</string>
     
-    <string name="music_quality_hires">Hi-Res (24bit)</string>
+    <string name="music_quality_hires">Hi-Res (24 бит)</string>
     
-    <string name="music_quality_standard">Standard (128kbps)</string>
+    <string name="music_quality_standard">Стандартное (128 кбит/с)</string>
     
-    <string name="music_quality_subtitle">Preferred quality for streaming music. Higher quality uses more bandwidth.</string>
+    <string name="music_quality_subtitle">Предпочитаемое качество стриминга. Более высокое качество расходует больше трафика.</string>
     
-    <string name="music_quality_title">Music Quality</string>
+    <string name="music_quality_title">Качество музыки</string>
     
-    <string name="setcat_aaudio_subtitle_off">Default system audio backend (AudioTrack). Enable AAudio for higher quality output.</string>
+    <string name="setcat_aaudio_subtitle_off">Системный аудиобэкенд по умолчанию (AudioTrack). Включите AAudio для вывода более высокого качества.</string>
     
-    <string name="setcat_aaudio_subtitle_on">Using AAudio for improved audio fidelity and lower latency.</string>
+    <string name="setcat_aaudio_subtitle_on">Используется AAudio для лучшей точности звука и меньшей задержки.</string>
     
-    <string name="setcat_aaudio_title">AAudio Low-Latency Backend</string>
+    <string name="setcat_aaudio_title">Низколатентный бэкенд AAudio</string>
     
-    <string name="setcat_ai_api_key_title_simple">API Key</string>
+    <string name="setcat_ai_api_key_title_simple">API-ключ</string>
     
-    <string name="setcat_ai_auto_daily_mix_subtitle">Automatically enhance Daily Mix with AI</string>
-    
-    
-    <string name="setcat_ai_auto_daily_mix_title">Daily Mix AI Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_metadata_subtitle">Automatically fetch AI-generated metadata</string>
-    
-    <string name="setcat_ai_auto_metadata_title">AI Metadata Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Automatically evaluate playlists with AI</string>
+    <string name="setcat_ai_auto_daily_mix_subtitle">Автоматически улучшать Daily Mix с помощью ИИ</string>
     
     
-    <string name="setcat_ai_auto_playlist_evaluation_title">AI Playlist Evaluation Auto-Trigger</string>
+    <string name="setcat_ai_auto_daily_mix_title">Автозапуск ИИ для Daily Mix</string>
     
-    <string name="setcat_ai_auto_playlist_subtitle">Automatically generate AI playlists when triggered</string>
+    <string name="setcat_ai_auto_metadata_subtitle">Автоматически получать метаданные, созданные ИИ</string>
     
-    <string name="setcat_ai_auto_playlist_title">AI Playlist Auto-Trigger</string>
+    <string name="setcat_ai_auto_metadata_title">Автозапуск ИИ для метаданных</string>
     
-    <string name="setcat_ai_auto_trigger_section">Auto-Trigger Settings</string>
+    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Автоматически оценивать плейлисты с помощью ИИ</string>
     
-    <string name="setcat_ai_lyrics_explanation_subtitle">Show AI-powered lyrics explanation card in the lyrics view (off by default; can be enabled per-session from the lyrics menu)</string>
+    
+    <string name="setcat_ai_auto_playlist_evaluation_title">Автозапуск оценки плейлистов ИИ</string>
+    
+    <string name="setcat_ai_auto_playlist_subtitle">Автоматически создавать плейлисты ИИ при запуске</string>
+    
+    <string name="setcat_ai_auto_playlist_title">Автозапуск ИИ для плейлистов</string>
+    
+    <string name="setcat_ai_auto_trigger_section">Настройки автозапуска</string>
+    
+    <string name="setcat_ai_lyrics_explanation_subtitle">Показывать карточку объяснения текста с помощью ИИ в режиме текста (по умолчанию выключено; можно включить для сеанса из меню текста)</string>
 
     
-    <string name="setcat_ai_lyrics_explanation_title">AI Lyrics Insight Card</string>
+    <string name="setcat_ai_lyrics_explanation_title">Карточка разбора текста ИИ</string>
     
-    <string name="setcat_ai_recommendation_card_subtitle">Display AI recommendation card on home screen</string>
+    <string name="setcat_ai_recommendation_card_subtitle">Показывать карточку рекомендаций ИИ на Главной</string>
     
-    <string name="setcat_ai_recommendation_card_title">Show AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_card_title">Показывать карточку рекомендаций ИИ</string>
     
-    <string name="setcat_ai_recommendation_manual_subtitle">Click to generate recommendation (prevents automatic token usage)</string>
+    <string name="setcat_ai_recommendation_manual_subtitle">Нажмите, чтобы создать рекомендацию (предотвращает автоматический расход токенов)</string>
 
     
-    <string name="setcat_ai_recommendation_manual_title">Manual Generation Only</string>
+    <string name="setcat_ai_recommendation_manual_title">Только ручное создание</string>
     
-    <string name="setcat_ai_recommendation_section">AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_section">Карточка рекомендаций ИИ</string>
     
-    <string name="setcat_bluetooth_lyrics">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics">Текст по Bluetooth</string>
     
-    <string name="setcat_bluetooth_lyrics_subtitle">Push the currently playing song lyrics to compatible Bluetooth A2DP display devices.</string>
+    <string name="setcat_bluetooth_lyrics_subtitle">Передавать текст текущей песни на совместимые Bluetooth A2DP-устройства отображения.</string>
     
-    <string name="setcat_bluetooth_lyrics_title">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics_title">Текст по Bluetooth</string>
     
-    <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <string name="setcat_car_mode_subtitle">Оптимизировано для вождения: крупные элементы управления, меньше анимаций и выше производительность.</string>
     
     
     
-    <string name="setcat_car_mode_title">Car Mode</string>
+    <string name="setcat_car_mode_title">Автомобильный режим</string>
     
-    <string name="setcat_center_nav_discover">Discover</string>
+    <string name="setcat_center_nav_discover">Обзор</string>
     
-    <string name="setcat_center_nav_none">Don\'t show</string>
+    <string name="setcat_center_nav_none">Не показывать</string>
     
-    <string name="setcat_center_nav_radio">Radio</string>
+    <string name="setcat_center_nav_radio">Радио</string>
     
-    <string name="setcat_center_nav_roaming">Roaming</string>
+    <string name="setcat_center_nav_roaming">Роуминг</string>
     
-    <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
+    <string name="setcat_center_nav_subtitle">Выберите действие центральной кнопки навигации.</string>
     
-    <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_center_nav_title">Центральная кнопка</string>
     
-    <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">Космический вихрь</string>
     
-    <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">Соты</string>
     
-    <string name="setcat_collage_pattern_pixel_mosaic">Pixel Mosaic</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">Пиксельная мозаика</string>
     
-    <string name="setcat_collage_pattern_stardust_scatter">Stardust Scatter</string>
+    <string name="setcat_collage_pattern_stardust_scatter">Звездная пыль</string>
     
-    <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
+    <string name="setcat_collage_pattern_vinyl_stack">Стопка винила</string>
     
-    <string name="setcat_custom_palette_enabled_subtitle">When off, the app follows wallpaper colors. When on, custom colors are used. The player keeps its own album-art colors.</string>
+    <string name="setcat_custom_palette_enabled_subtitle">Если выключено, приложение использует цвета обоев. Если включено, используются свои цвета. Плеер сохраняет свои цвета обложки.</string>
     
-    <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
+    <string name="setcat_custom_palette_enabled_title">Включить палитру приложения</string>
     
     <string name="setcat_custom_player_background_blur_off">Off</string>
     
-    <string name="setcat_custom_player_background_blur_title">Background Blur</string>
+    <string name="setcat_custom_player_background_blur_title">Размытие фона</string>
     
-    <string name="setcat_custom_player_background_change">Change background image</string>
+    <string name="setcat_custom_player_background_change">Изменить фоновое изображение</string>
     
     <string name="setcat_custom_player_background_mode_cover">Fill</string>
     
-    <string name="setcat_custom_player_background_mode_stretch">Stretch</string>
+    <string name="setcat_custom_player_background_mode_stretch">Растянуть</string>
     
-    <string name="setcat_custom_player_background_mode_title">Display Mode</string>
+    <string name="setcat_custom_player_background_mode_title">Режим отображения</string>
     
-    <string name="setcat_custom_player_background_pick">Choose background image</string>
+    <string name="setcat_custom_player_background_pick">Выберите фоновое изображение</string>
     
-    <string name="setcat_custom_player_background_remove">Remove background</string>
+    <string name="setcat_custom_player_background_remove">Удалить фон</string>
     
-    <string name="setcat_custom_player_background_subtitle">Use a custom image as the background of the player and lyrics screens. When enabled, it takes precedence over the dynamic album-art background below.</string>
+    <string name="setcat_custom_player_background_subtitle">Использовать свое изображение как фон плеера и экрана текста. Если включено, оно имеет приоритет над динамическим фоном из обложки ниже.</string>
     
-    <string name="setcat_custom_player_background_title">Custom Player Background</string>
+    <string name="setcat_custom_player_background_title">Свой фон плеера</string>
     
-    <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
+    <string name="setcat_custom_player_controls_opacity_desc">Применяется ко всем элементам, кроме фона (обложка, метаданные, прогресс, элементы управления), на экранах плеера и текста.</string>
     
-    <string name="setcat_custom_player_controls_opacity_title">Player Opacity</string>
+    <string name="setcat_custom_player_controls_opacity_title">Непрозрачность плеера</string>
     
-    <string name="setcat_disable_blur_all_over_subtitle">Turn off blur effects across the app to save battery and resources.</string>
+    <string name="setcat_disable_blur_all_over_subtitle">Отключите эффекты размытия во всем приложении, чтобы экономить батарею и ресурсы.</string>
     
-    <string name="setcat_disable_blur_all_over_title">Disable Blur Effects</string>
+    <string name="setcat_disable_blur_all_over_title">Отключить эффекты размытия</string>
     
-    <string name="setcat_download_path_title">Download Path</string>
+    <string name="setcat_download_path_title">Путь загрузки</string>
     
     
     
     <string name="setcat_download_settings">Download Settings</string>
     
-    <string name="setcat_external_lyrics_broadcast_subtitle">When enabled, the system media title updates to the current lyric line in real time, showing lyrics outside the app (notification, lock screen, Bluetooth devices). When disabled, the original song title is restored.</string>
+    <string name="setcat_external_lyrics_broadcast_subtitle">Если включено, заголовок в системных медиа обновляется текущей строкой текста в реальном времени, показывая текст вне приложения (уведомление, экран блокировки, Bluetooth-устройства). Если выключено, восстанавливается исходное название песни.</string>
 
     
     
-    <string name="setcat_external_lyrics_broadcast_title">Broadcast Lyrics Externally</string>
+    <string name="setcat_external_lyrics_broadcast_title">Передавать текст во внешние интерфейсы</string>
     
-    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix is a programmable LED display on the back of Nothing Phone (3) featuring 625 individual LEDs arranged in a 25×25 grid. When you play music, PixelPlayer can animate the matrix to create stunning visual effects that sync with your music.</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix — программируемый LED-дисплей на задней панели Nothing Phone (3) с 625 отдельными светодиодами в сетке 25×25. Когда вы слушаете музыку, PixelPlayer может анимировать матрицу, создавая эффектные визуальные эффекты в такт музыке.</string>
 
     
     
-    <string name="setcat_glyph_matrix_about_title">About Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_title">О Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_enable_subtitle">Show music visualization on Nothing Phone LED matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">Показывать визуализацию музыки на светодиодной матрице Nothing Phone</string>
     
-    <string name="setcat_glyph_matrix_enable_title">Enable Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">Включить Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_mode_artwork">Album Cover</string>
+    <string name="setcat_glyph_matrix_mode_artwork">Обложка альбома</string>
     
-    <string name="setcat_glyph_matrix_mode_desc">Choose what to display on the Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_mode_desc">Выберите, что показывать на Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">Сейчас играет</string>
     
-    <string name="setcat_glyph_matrix_mode_progress">Playback Progress</string>
+    <string name="setcat_glyph_matrix_mode_progress">Прогресс воспроизведения</string>
     
-    <string name="setcat_glyph_matrix_mode_pulse">Beat Pulse</string>
+    <string name="setcat_glyph_matrix_mode_pulse">Пульс ритма</string>
     
-    <string name="setcat_glyph_matrix_mode_ring">Music Ring</string>
+    <string name="setcat_glyph_matrix_mode_ring">Музыкальное кольцо</string>
     
-    <string name="setcat_glyph_matrix_mode_scroll_title">Scrolling Title</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">Прокручиваемое название</string>
     
-    <string name="setcat_glyph_matrix_mode_title">Display Mode</string>
+    <string name="setcat_glyph_matrix_mode_title">Режим отображения</string>
     
-    <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">Аудиовизуализатор</string>
     
-    <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_mode_waveform">Волновая форма</string>
     
-    <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
+    <string name="setcat_glyph_matrix_not_available">Для этой функции нужен Nothing Phone с Glyph Matrix. Эффекты ниже можно посмотреть и сейчас.</string>
     
-    <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
+    <string name="setcat_glyph_matrix_not_available_title">Недоступно на этом устройстве</string>
     
-    <string name="setcat_glyph_matrix_preview_desc">This is how it will look on the Nothing Phone LED matrix (25×25)</string>
+    <string name="setcat_glyph_matrix_preview_desc">Так это будет выглядеть на светодиодной матрице Nothing Phone (25×25)</string>
     
-    <string name="setcat_glyph_matrix_preview_title">Preview</string>
+    <string name="setcat_glyph_matrix_preview_title">Предпросмотр</string>
     
     <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
     
-    <string name="setcat_home_top_whitespace_subtitle">Adjust the blank space above the Home content.</string>
+    <string name="setcat_home_top_whitespace_subtitle">Настройте пустое пространство над содержимым Главной.</string>
     
-    <string name="setcat_home_top_whitespace_title">Home Top Whitespace</string>
+    <string name="setcat_home_top_whitespace_title">Отступ сверху на Главной</string>
     
-    <string name="setcat_home_top_whitespace_value">Current whitespace: %1$d dp</string>
+    <string name="setcat_home_top_whitespace_value">Текущий отступ: %1$d dp</string>
     
-    <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">Показывать мягкий градиент вверху и внизу экрана текста для лучшей читаемости.</string>
     
-    <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
+    <string name="setcat_lyrics_gradient_overlay_title">Градиентная накладка текста</string>
     
-    <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
+    <string name="setcat_lyrics_solid_overlay_desc">Настройте непрозрачность сплошной накладки на экране текста, чтобы затемнить фон.</string>
     
-    <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
+    <string name="setcat_lyrics_solid_overlay_title">Сплошная накладка текста</string>
     
-    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">Показывать вращающийся размытый фон из обложки за текстом.</string>
     
-    <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
+    <string name="setcat_lyrics_vibrant_bg_title">Яркий фон текста</string>
     
-    <string name="setcat_navbar_style_floating">Floating</string>
+    <string name="setcat_navbar_style_floating">Плавающая</string>
     
-    <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
+    <string name="setcat_netease_quality_title">Предпочитаемое качество NetEase</string>
 
     
     
-    <string name="setcat_palette_brightness">Brightness</string>
+    <string name="setcat_palette_brightness">Яркость</string>
     
-    <string name="setcat_palette_cancel">Cancel</string>
+    <string name="setcat_palette_cancel">Отмена</string>
     
-    <string name="setcat_palette_confirm">Confirm</string>
+    <string name="setcat_palette_confirm">Подтвердить</string>
     
-    <string name="setcat_palette_custom_title">Custom Color</string>
+    <string name="setcat_palette_custom_title">Свой цвет</string>
     
     <string name="setcat_palette_hue">Hue</string>
     
-    <string name="setcat_palette_live_hint">Live preview</string>
+    <string name="setcat_palette_live_hint">Живой предпросмотр</string>
     
-    <string name="setcat_palette_preview_label">Color Scheme Preview</string>
+    <string name="setcat_palette_preview_label">Предпросмотр цветовой схемы</string>
     
-    <string name="setcat_palette_saturation">Saturation</string>
+    <string name="setcat_palette_saturation">Насыщенность</string>
     
-    <string name="setcat_player_theme_custom_palette">Custom Palette</string>
+    <string name="setcat_player_theme_custom_palette">Своя палитра</string>
     
-    <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
+    <string name="setcat_player_vibrant_bg_desc">Показывать вращающийся размытый фон из обложки в плеере, если не задано свое фоновое изображение. Свой фон плеера имеет приоритет.</string>
     
-    <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
+    <string name="setcat_player_vibrant_bg_title">Яркий фон плеера</string>
     
-    <string name="setcat_show_lyrics_track_info_subtitle">Show song title and artist in a pill-shaped bar at the top of lyrics view.</string>
+    <string name="setcat_show_lyrics_track_info_subtitle">Показывать название песни и исполнителя в панели-таблетке вверху экрана текста.</string>
 
     
     
-    <string name="setcat_show_lyrics_track_info_title">Show lyrics track info</string>
+    <string name="setcat_show_lyrics_track_info_title">Показывать данные трека в тексте</string>
     
-    <string name="setcat_show_scrollbar_subtitle">Display lateral scrollbar on music lists for quick scrolling</string>
+    <string name="setcat_show_scrollbar_subtitle">Показывать боковую полосу прокрутки в списках музыки для быстрой прокрутки</string>
     
-    <string name="setcat_show_scrollbar_title">Show Scrollbar</string>
+    <string name="setcat_show_scrollbar_title">Показывать полосу прокрутки</string>
     
-    <string name="setcat_show_speed_button_subtitle">Show the speed (1x) button in the player control bar. Disable to hide it and manually adjust speed from the player.</string>
+    <string name="setcat_show_speed_button_subtitle">Показывать кнопку скорости (1x) на панели управления плеера. Отключите, чтобы скрыть ее и менять скорость вручную из плеера.</string>
     
-    <string name="setcat_show_speed_button_title">Show playback speed button</string>
+    <string name="setcat_show_speed_button_title">Показывать кнопку скорости воспроизведения</string>
     
-    <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
+    <string name="setcat_tablet_layout_parallel">Параллельно (плеер + текст)</string>
     
-    <string name="setcat_tablet_layout_vertical">Vertical</string>
+    <string name="setcat_tablet_layout_vertical">Вертикально</string>
     
-    <string name="setcat_tablet_player_layout_desc">Choose the layout for the player on tablets.</string>
+    <string name="setcat_tablet_player_layout_desc">Выберите макет плеера на планшетах.</string>
     
-    <string name="setcat_tablet_player_layout_label">Tablet Player Layout</string>
+    <string name="setcat_tablet_player_layout_label">Макет плеера на планшете</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, widely compatible)</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16 бит (стандарт, широкая совместимость)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (high-resolution, recommended)</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24 бита (высокое разрешение, рекомендуется)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (highest fidelity, USB DAC only)</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32 бита (максимальная точность, только USB ЦАП)</string>
     
-    <string name="setcat_usb_bit_depth_title">USB Output Bit Depth</string>
+    <string name="setcat_usb_bit_depth_title">Разрядность USB-вывода</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_connected">Route audio to USB device: %s</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_connected">Выводить звук на USB-устройство: %s</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">No USB audio device detected. Connect a USB DAC to use this feature.</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">USB-аудиоустройство не обнаружено. Подключите USB ЦАП, чтобы использовать эту функцию.</string>
     
-    <string name="setcat_usb_exclusive_mode_title">USB Exclusive Mode</string>
+    <string name="setcat_usb_exclusive_mode_title">Монопольный режим USB</string>
     
-    <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
+    <string name="setcat_vibrant_bg_requires_newer">Этот эффект требует аппаратного размытия Android 11 или новее и отключен на этом устройстве.</string>
     
-    <string name="setcat_web_remote_audio_device_phone">Phone</string>
+    <string name="setcat_web_remote_audio_device_phone">Телефон</string>
     
-    <string name="setcat_web_remote_audio_device_subtitle">When web connected: play on phone or web browser</string>
+    <string name="setcat_web_remote_audio_device_subtitle">При подключении из браузера: воспроизведение на телефоне или в браузере</string>
     
-    <string name="setcat_web_remote_audio_device_title">Playback Device</string>
+    <string name="setcat_web_remote_audio_device_title">Устройство воспроизведения</string>
     
-    <string name="setcat_web_remote_audio_device_web">Web Browser</string>
+    <string name="setcat_web_remote_audio_device_web">Веб-браузер</string>
     
-    <string name="setcat_web_remote_enabled_subtitle">Access PixelPlay from any browser on your network</string>
+    <string name="setcat_web_remote_enabled_subtitle">Доступ к PixelPlay из любого браузера в вашей сети</string>
     
-    <string name="setcat_web_remote_enabled_title">Enable Web Remote</string>
+    <string name="setcat_web_remote_enabled_title">Включить веб-пульт</string>
     
-    <string name="setcat_web_remote_pin">PIN Code</string>
+    <string name="setcat_web_remote_pin">PIN-код</string>
     
-    <string name="setcat_web_remote_port_subtitle">Port number for the web server (default: 8081)</string>
+    <string name="setcat_web_remote_port_subtitle">Номер порта для веб-сервера (по умолчанию: 8081)</string>
     
-    <string name="setcat_web_remote_port_title">Server Port</string>
+    <string name="setcat_web_remote_port_title">Порт сервера</string>
     
-    <string name="setcat_web_remote_section">Web Remote</string>
+    <string name="setcat_web_remote_section">Веб-пульт</string>
     
-    <string name="setcat_web_remote_server_address">Server Address</string>
+    <string name="setcat_web_remote_server_address">Адрес сервера</string>
     
-    <string name="setcat_web_remote_server_running">Running</string>
+    <string name="setcat_web_remote_server_running">Работает</string>
     
-    <string name="setcat_web_remote_server_status">Server Status</string>
+    <string name="setcat_web_remote_server_status">Статус сервера</string>
     
-    <string name="setcat_web_remote_server_stopped">Stopped</string>
+    <string name="setcat_web_remote_server_stopped">Остановлен</string>
     
-    <string name="setcat_web_remote_start_button">Start Server</string>
+    <string name="setcat_web_remote_start_button">Запустить сервер</string>
     
-    <string name="setcat_web_remote_stop_button">Stop Server</string>
+    <string name="setcat_web_remote_stop_button">Остановить сервер</string>
     
     
-    <string name="setcat_web_remote_sync_subtitle">Web controls phone playback</string>
+    <string name="setcat_web_remote_sync_subtitle">Веб-интерфейс управляет воспроизведением на телефоне</string>
     
-    <string name="setcat_web_remote_sync_title">Sync Mode</string>
+    <string name="setcat_web_remote_sync_title">Режим синхронизации</string>
     
-    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED matrix display integration</string>
+    <string name="settings_category_glyph_matrix_subtitle">Интеграция со светодиодной матрицей Nothing Phone</string>
     
     <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
     
-    <string name="settings_category_web_remote_subtitle">Control playback from other devices on your network</string>
+    <string name="settings_category_web_remote_subtitle">Управляйте воспроизведением с других устройств в вашей сети</string>
     
-    <string name="settings_category_web_remote_title">Web Remote</string>
+    <string name="settings_category_web_remote_title">Веб-пульт</string>
     
-    <string name="settings_search_category_about">About</string>
+    <string name="settings_search_category_about">О приложении</string>
     
-    <string name="settings_search_category_ai_integration">AI Integration</string>
+    <string name="settings_search_category_ai_integration">Интеграция ИИ</string>
     
-    <string name="settings_search_category_appearance">Appearance</string>
+    <string name="settings_search_category_appearance">Внешний вид</string>
     
-    <string name="settings_search_category_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_search_category_backup_restore">Бэкап и восстановление</string>
     
-    <string name="settings_search_category_behavior">Behavior</string>
+    <string name="settings_search_category_behavior">Поведение</string>
     
-    <string name="settings_search_category_developer">Developer</string>
+    <string name="settings_search_category_developer">Разработчик</string>
     
-    <string name="settings_search_category_device_capabilities">Device Capabilities</string>
+    <string name="settings_search_category_device_capabilities">Возможности устройства</string>
     
-    <string name="settings_search_category_equalizer">Equalizer</string>
+    <string name="settings_search_category_equalizer">Эквалайзер</string>
     
-    <string name="settings_search_category_library">Music Library</string>
+    <string name="settings_search_category_library">Фонотека</string>
     
-    <string name="settings_search_category_playback">Playback</string>
+    <string name="settings_search_category_playback">Воспроизведение</string>
     
-    <string name="settings_search_category_settings_format">%1$s settings</string>
+    <string name="settings_search_category_settings_format">Настройки: %1$s</string>
     
     
     
-    <string name="settings_search_category_subtitle">Settings category</string>
+    <string name="settings_search_category_subtitle">Категория настроек</string>
     
     <string name="settings_search_keyword_aaudio">AAudio</string>
     
-    <string name="settings_search_keyword_about">About</string>
+    <string name="settings_search_keyword_about">О приложении</string>
     
-    <string name="settings_search_keyword_account">Account</string>
+    <string name="settings_search_keyword_account">Аккаунт</string>
     
     <string name="settings_search_keyword_ai">AI</string>
     
-    <string name="settings_search_keyword_album">Album</string>
+    <string name="settings_search_keyword_album">Альбом</string>
     
-    <string name="settings_search_keyword_album_art">Album art</string>
+    <string name="settings_search_keyword_album_art">Обложка альбома</string>
     
-    <string name="settings_search_keyword_appearance">Appearance</string>
+    <string name="settings_search_keyword_appearance">Внешний вид</string>
     
-    <string name="settings_search_keyword_artist">Artist</string>
+    <string name="settings_search_keyword_artist">Исполнитель</string>
     
-    <string name="settings_search_keyword_auto_hide">Auto-hide</string>
+    <string name="settings_search_keyword_auto_hide">Автоскрытие</string>
     
-    <string name="settings_search_keyword_background">Background playback</string>
+    <string name="settings_search_keyword_background">Фоновое воспроизведение</string>
     
-    <string name="settings_search_keyword_background_image">Background image, wallpaper</string>
+    <string name="settings_search_keyword_background_image">Фоновое изображение, обои</string>
     
-    <string name="settings_search_keyword_backup">Backup</string>
+    <string name="settings_search_keyword_backup">Бэкап</string>
     
-    <string name="settings_search_keyword_battery">Battery</string>
+    <string name="settings_search_keyword_battery">Батарея</string>
     
     <string name="settings_search_keyword_bluetooth">Bluetooth</string>
     
     <string name="settings_search_keyword_blur">Blur</string>
     
-    <string name="settings_search_keyword_cache">Cache</string>
+    <string name="settings_search_keyword_cache">Кэш</string>
     
-    <string name="settings_search_keyword_car_mode">Car mode</string>
+    <string name="settings_search_keyword_car_mode">Автомобильный режим</string>
     
     <string name="settings_search_keyword_cast">Cast</string>
     
-    <string name="settings_search_keyword_collage">Collage</string>
+    <string name="settings_search_keyword_collage">Коллаж</string>
     
-    <string name="settings_search_keyword_color">Color</string>
+    <string name="settings_search_keyword_color">Цвет</string>
     
-    <string name="settings_search_keyword_compact">Compact</string>
+    <string name="settings_search_keyword_compact">Компактный</string>
     
-    <string name="settings_search_keyword_corner_radius">Corner radius</string>
+    <string name="settings_search_keyword_corner_radius">Радиус углов</string>
     
-    <string name="settings_search_keyword_crossfade">Crossfade</string>
+    <string name="settings_search_keyword_crossfade">Плавное переключение</string>
     
-    <string name="settings_search_keyword_daily_mix">Daily mix</string>
+    <string name="settings_search_keyword_daily_mix">Daily Mix</string>
     
-    <string name="settings_search_keyword_developer">Developer</string>
+    <string name="settings_search_keyword_developer">Разработчик</string>
     
-    <string name="settings_search_keyword_device">Device</string>
+    <string name="settings_search_keyword_device">Устройство</string>
     
-    <string name="settings_search_keyword_diagnostics">Diagnostics</string>
+    <string name="settings_search_keyword_diagnostics">Диагностика</string>
     
-    <string name="settings_search_keyword_download">Download</string>
+    <string name="settings_search_keyword_download">Загрузка</string>
     
-    <string name="settings_search_keyword_dynamic_background">Dynamic background, ambient</string>
+    <string name="settings_search_keyword_dynamic_background">Динамический фон, окружение</string>
     
     
     
-    <string name="settings_search_keyword_equalizer">Equalizer</string>
+    <string name="settings_search_keyword_equalizer">Эквалайзер</string>
     
-    <string name="settings_search_keyword_excluded">Excluded folders</string>
+    <string name="settings_search_keyword_excluded">Исключенные папки</string>
     
-    <string name="settings_search_keyword_export">Export</string>
+    <string name="settings_search_keyword_export">Экспорт</string>
     
-    <string name="settings_search_keyword_filter">Filter</string>
+    <string name="settings_search_keyword_filter">Фильтр</string>
     
-    <string name="settings_search_keyword_folder">Folder</string>
+    <string name="settings_search_keyword_folder">Папка</string>
     
-    <string name="settings_search_keyword_gesture">Gesture</string>
+    <string name="settings_search_keyword_gesture">Жест</string>
     
-    <string name="settings_search_keyword_haptics">Haptics</string>
+    <string name="settings_search_keyword_haptics">Тактильный отклик</string>
     
-    <string name="settings_search_keyword_headphones">Headphones</string>
+    <string name="settings_search_keyword_headphones">Наушники</string>
     
     <string name="settings_search_keyword_hifi">HiFi</string>
     
-    <string name="settings_search_keyword_immersive_lyrics">Immersive lyrics</string>
+    <string name="settings_search_keyword_immersive_lyrics">Иммерсивный текст</string>
     
-    <string name="settings_search_keyword_import">Import</string>
+    <string name="settings_search_keyword_import">Импорт</string>
     
-    <string name="settings_search_keyword_language">Language</string>
+    <string name="settings_search_keyword_language">Язык</string>
     
-    <string name="settings_search_keyword_lyrics">Lyrics</string>
+    <string name="settings_search_keyword_lyrics">Текст песни</string>
     
-    <string name="settings_search_keyword_maintenance">Maintenance</string>
+    <string name="settings_search_keyword_maintenance">Обслуживание</string>
     
-    <string name="settings_search_keyword_min_duration">Minimum duration</string>
+    <string name="settings_search_keyword_min_duration">Минимальная длительность</string>
     
-    <string name="settings_search_keyword_mixer">Mixer</string>
+    <string name="settings_search_keyword_mixer">Микшер</string>
     
-    <string name="settings_search_keyword_model">Model</string>
+    <string name="settings_search_keyword_model">Модель</string>
     
-    <string name="settings_search_keyword_navigation">Navigation</string>
+    <string name="settings_search_keyword_navigation">Навигация</string>
     
-    <string name="settings_search_keyword_now_playing">Now playing</string>
+    <string name="settings_search_keyword_now_playing">Сейчас играет</string>
     
-    <string name="settings_search_keyword_online_source">Online source</string>
+    <string name="settings_search_keyword_online_source">Онлайн-источник</string>
     
-    <string name="settings_search_keyword_palette">Palette</string>
+    <string name="settings_search_keyword_palette">Палитра</string>
     
-    <string name="settings_search_keyword_playback">Playback</string>
+    <string name="settings_search_keyword_playback">Воспроизведение</string>
     
-    <string name="settings_search_keyword_player">Player</string>
+    <string name="settings_search_keyword_player">Плеер</string>
     
-    <string name="settings_search_keyword_queue">Queue</string>
+    <string name="settings_search_keyword_queue">Очередь</string>
     
-    <string name="settings_search_keyword_recommendation">Recommendation</string>
+    <string name="settings_search_keyword_recommendation">Рекомендация</string>
     
-    <string name="settings_search_keyword_remote">Remote</string>
+    <string name="settings_search_keyword_remote">Пульт</string>
     
     <string name="settings_search_keyword_replaygain">ReplayGain</string>
     
-    <string name="settings_search_keyword_restore">Restore</string>
+    <string name="settings_search_keyword_restore">Восстановление</string>
     
     <string name="settings_search_keyword_scan">Scan</string>
     
-    <string name="settings_search_keyword_scroll">Scroll</string>
+    <string name="settings_search_keyword_scroll">Прокрутка</string>
     
-    <string name="settings_search_keyword_shuffle">Shuffle</string>
+    <string name="settings_search_keyword_shuffle">Перемешивание</string>
     
-    <string name="settings_search_keyword_speed">Speed, playback rate</string>
+    <string name="settings_search_keyword_speed">Скорость, темп воспроизведения</string>
     
-    <string name="settings_search_keyword_stats">Statistics</string>
+    <string name="settings_search_keyword_stats">Статистика</string>
     
     <string name="settings_search_keyword_sync">Sync</string>
     
-    <string name="settings_search_keyword_theme">Theme</string>
+    <string name="settings_search_keyword_theme">Тема</string>
     
-    <string name="settings_search_keyword_token">Token</string>
+    <string name="settings_search_keyword_token">Токен</string>
     
-    <string name="settings_search_keyword_transcode">Transcode</string>
+    <string name="settings_search_keyword_transcode">Транскодирование</string>
     
     <string name="settings_search_keyword_usb">USB</string>
     
-    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_no_results">Настройки не найдены</string>
     
-    <string name="settings_search_placeholder">Search settings</string>
+    <string name="settings_search_placeholder">Поиск настроек</string>
     
-    <string name="settings_search_results_count_format">%1$d results</string>
+    <string name="settings_search_results_count_format">Результатов: %1$d</string>
     
-    <string name="usb_bit_depth_16">16-bit</string>
+    <string name="usb_bit_depth_16">16 бит</string>
     
-    <string name="usb_bit_depth_24">24-bit</string>
+    <string name="usb_bit_depth_24">24 бита</string>
     
-    <string name="usb_bit_depth_32">32-bit</string>
+    <string name="usb_bit_depth_32">32 бита</string>
     
-    <string name="usb_device_selector_connect_message">This will enable exclusive access to the USB DAC for bit-perfect audio. The system audio will be routed through the DAC directly.</string>
+    <string name="usb_device_selector_connect_message">Это включит монопольный доступ к USB ЦАП для бит-в-бит звука. Системный звук будет выводиться напрямую через ЦАП.</string>
     
-    <string name="usb_device_selector_connect_title">USB Exclusive Mode</string>
+    <string name="usb_device_selector_connect_title">Монопольный режим USB</string>
     
-    <string name="usb_device_selector_connected_to">Connected to: %s</string>
+    <string name="usb_device_selector_connected_to">Подключено к: %s</string>
     
-    <string name="usb_device_selector_connecting">Connecting to USB DAC…</string>
+    <string name="usb_device_selector_connecting">Подключение к USB ЦАП…</string>
     
-    <string name="usb_device_selector_connection_failed">Failed to connect to USB DAC</string>
+    <string name="usb_device_selector_connection_failed">Не удалось подключиться к USB ЦАП</string>
     
-    <string name="usb_device_selector_hint">Connect a USB DAC and enable USB exclusive mode for bit-perfect audio output.</string>
+    <string name="usb_device_selector_hint">Подключите USB ЦАП и включите монопольный режим USB для бит-в-бит вывода.</string>
     
-    <string name="usb_device_selector_no_devices">No USB audio devices found</string>
+    <string name="usb_device_selector_no_devices">USB-аудиоустройства не найдены</string>
     
-    <string name="usb_device_selector_permission_message">XiangsuPlayer needs access to your USB DAC to enable exclusive mode.</string>
+    <string name="usb_device_selector_permission_message">XiangsuPlayer нужен доступ к вашему USB ЦАП, чтобы включить монопольный режим.</string>
     
-    <string name="usb_device_selector_permission_required">USB permission required</string>
+    <string name="usb_device_selector_permission_required">Требуется разрешение USB</string>
     
-    <string name="usb_device_selector_refresh">Refresh</string>
+    <string name="usb_device_selector_refresh">Обновить</string>
     
-    <string name="usb_device_selector_scanning">Scanning for USB devices…</string>
+    <string name="usb_device_selector_scanning">Сканирование USB-устройств…</string>
     
-    <string name="usb_device_selector_select_device">Select USB DAC device</string>
+    <string name="usb_device_selector_select_device">Выберите USB ЦАП</string>
     
-    <string name="usb_device_selector_title">Select USB DAC</string>
+    <string name="usb_device_selector_title">Выбрать USB ЦАП</string>
     
-    <string name="usb_exclusive_toast_activate_failed">Failed to activate USB exclusive mode. Check device permission and try again.</string>
+    <string name="usb_exclusive_toast_activate_failed">Не удалось включить монопольный режим USB. Проверьте разрешение устройства и повторите попытку.</string>
     
-    <string name="usb_exclusive_toast_activated">USB exclusive activated: %s</string>
+    <string name="usb_exclusive_toast_activated">Монопольный режим USB включен: %s</string>
     
+    <string name="car_mode_action_radio">Радио</string>
+    <string name="car_mode_action_radio_desc">Онлайн-радио</string>
+    <string name="download_manager_cancel">Отмена</string>
+    <string name="download_manager_clear_completed">Очистить завершенные</string>
+    <string name="download_manager_empty">Загрузок пока нет</string>
+    <string name="download_manager_pause">Пауза</string>
+    <string name="download_manager_resume">Продолжить</string>
+    <string name="download_manager_retry">Повторить</string>
+    <string name="download_manager_title">Загрузки</string>
+    <string name="download_manager_waiting">Ожидание</string>
+    <string name="setcat_api_lyrics_amll_subtitle">Только песни NetEase; обеспечивает караоке-синхронизацию.</string>
+    <string name="setcat_api_lyrics_amll_title">Пословный текст AMLLDB</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">Использовать субтитры видео Bilibili как текст.</string>
+    <string name="setcat_api_lyrics_bilibili_title">Текст из субтитров Bilibili</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ Music / Kugou / Kuwo / Migu — для песен встроенных источников.</string>
+    <string name="setcat_api_lyrics_builtin_title">Текст встроенных источников</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">Зарубежный сервис, часто недоступен в ограниченных сетях.</string>
+    <string name="setcat_api_lyrics_lrclib_title">Текст LRCLIB</string>
+    <string name="setcat_api_lyrics_netease_subtitle">Официальный API, предпочтительный источник для песен NetEase и облачных песен.</string>
+    <string name="setcat_api_lyrics_netease_title">Текст NetEase</string>
+    <string name="setcat_api_lyrics_online_title">Онлайн-источники текстов</string>
+    <string name="setcat_api_lyrics_priority_action">Настроить</string>
+    <string name="setcat_api_lyrics_priority_desc">Источники пробуются сверху вниз; меняйте порядок стрелками.</string>
+    <string name="setcat_api_lyrics_priority_label">Приоритет онлайн-текстов</string>
+    <string name="setcat_api_metadata_deezer_subtitle">Ищет и кэширует изображения исполнителей онлайн; зарубежный сервис.</string>
+    <string name="setcat_api_metadata_deezer_title">Изображения исполнителей Deezer</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">Дополняет название / исполнителя / альбом / жанр и обложку; зарубежный сервис.</string>
+    <string name="setcat_api_metadata_musicbrainz_title">Метаданные MusicBrainz</string>
+    <string name="setcat_api_metadata_title">Дополнение данных о песне</string>
+    <string name="setcat_api_note">Отключение недоступных сервисов ускоряет загрузку текстов и обложек, пропуская их тайм-ауты. Существующий локальный кэш сохраняется.</string>
+    <string name="setcat_api_priority_builtin">Сначала встроенные</string>
+    <string name="setcat_api_priority_lrclib">Сначала LRCLIB</string>
+    <string name="setcat_api_priority_move_down">Переместить вниз</string>
+    <string name="setcat_api_priority_move_up">Переместить вверх</string>
+    <string name="setcat_api_priority_netease">Сначала NetEase</string>
+    <string name="setcat_api_priority_reset">Сбросить порядок</string>
+    <string name="setcat_appearance_miniplayer_section">Мини-плеер</string>
+    <string name="setcat_appearance_startup_section">Анимация запуска</string>
+    <string name="setcat_apple_canvas_subtitle">Загружать анимированную обложку текущей песни из интернета и плавно переключаться на нее. Локальная обложка остается запасным вариантом; немного увеличивает трафик.</string>
+    <string name="setcat_apple_canvas_title">Динамическая обложка (Apple Music)</string>
+    <string name="setcat_audio_focus">Аудиофокус</string>
+    <string name="setcat_audio_focus_duck_subtitle">Позволять снижать громкость при кратковременной смене аудиофокуса. Эта опция переопределяется настройками аудиовыхода.</string>
+    <string name="setcat_audio_focus_duck_title">Снижать громкость</string>
+    <string name="setcat_audio_focus_gain_subtitle">Возобновлять воспроизведение после возврата фокуса. Если выключено, плеер остается на паузе.</string>
+    <string name="setcat_audio_focus_gain_title">Возобновлять при возврате фокуса</string>
+    <string name="setcat_audio_focus_hint_bg">На Android 8 и выше система завершает плеер, пока он на паузе. Чтобы избежать этого, используйте опцию «Всегда показывать уведомление».</string>
+    <string name="setcat_audio_focus_hint_cast">Вывод через Chromecast может полностью игнорировать вызовы и кратковременные изменения аудиофокуса.</string>
+    <string name="setcat_audio_focus_permanent_subtitle">Ставить на паузу при длительном изменении аудиофокуса (например, другой плеер или игра воспроизводит музыку).</string>
+    <string name="setcat_audio_focus_permanent_title">Постоянное изменение аудиофокуса</string>
+    <string name="setcat_audio_focus_reset">Восстановить по умолчанию</string>
+    <string name="setcat_audio_focus_resume_call_subtitle">Возобновлять воспроизведение после окончания звонка (если оно было приостановлено входящим звонком).</string>
+    <string name="setcat_audio_focus_resume_call_title">Возобновлять воспроизведение после звонка</string>
+    <string name="setcat_audio_focus_transient_subtitle">Ставить на паузу при кратковременном изменении аудиофокуса (например, звонок, уведомление, навигация).</string>
+    <string name="setcat_audio_focus_transient_title">Кратковременное изменение аудиофокуса / звонок</string>
+    <string name="setcat_bg_style_palette">Палитра</string>
+    <string name="setcat_bg_style_solid">Однотонный</string>
+    <string name="setcat_bg_style_vibrant">Яркий</string>
+    <string name="setcat_carousel_style_classic">Классическая (без предпросмотра краев)</string>
+    <string name="setcat_carousel_style_preview">Карусель с предпросмотром</string>
+    <string name="setcat_download_embed_cover_subtitle">Записывать обложку в теги аудиофайла (локальная обложка тоже встраивается).</string>
+    <string name="setcat_download_embed_cover_title">Встроить обложку</string>
+    <string name="setcat_download_embed_lyrics_subtitle">Записывать текст в теги аудиофайла, чтобы плееры могли его читать.</string>
+    <string name="setcat_download_embed_lyrics_title">Встроить текст</string>
+    <string name="setcat_download_file_name_artist_title">Исполнитель - Название</string>
+    <string name="setcat_download_file_name_desc">Как называются скачанные файлы.</string>
+    <string name="setcat_download_file_name_label">Имя файла загрузки</string>
+    <string name="setcat_download_file_name_title_artist">Название - Исполнитель</string>
+    <string name="setcat_download_file_name_title_only">Только название</string>
+    <string name="setcat_download_manager_subtitle">Просмотр очереди загрузок, текущих и завершенных.</string>
+    <string name="setcat_download_quality_desc">Качество, используемое при скачивании песен; может совпадать с качеством воспроизведения.</string>
+    <string name="setcat_download_quality_follow">Как при воспроизведении</string>
+    <string name="setcat_download_quality_label">Качество загрузки</string>
+    <string name="setcat_download_skip_existing_subtitle">Пропускать, если файл с таким же именем уже есть в целевой папке.</string>
+    <string name="setcat_download_skip_existing_title">Пропускать существующие файлы</string>
+    <string name="setcat_download_write_lrc_subtitle">Создавать соответствующий .lrc рядом со скачанным аудиофайлом.</string>
+    <string name="setcat_download_write_lrc_title">Также сохранять файл .lrc</string>
+    <string name="setcat_expressive_accent_desc">Окрашивать карточку управления и кнопки-переключатели в акцентный цвет обложки.</string>
+    <string name="setcat_expressive_accent_title">Акцентный фон</string>
+    <string name="setcat_expressive_group_title">Выразительный плеер</string>
+    <string name="setcat_expressive_merge_desc">Объединить кнопки избранного, перемешивания, повтора, текста и очереди в карточке управления.</string>
+    <string name="setcat_expressive_merge_title">Объединить элементы управления</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">Анимировать раскрытие элементов управления и изменение размера; выключите, чтобы переключаться мгновенно.</string>
+    <string name="setcat_floating_lyrics_animation_title">Анимации переходов</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">Непрозрачность фона</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">Сдвиньте текст за левый или правый край и отпустите — он свернется, оставив маленькую стрелку. Нажмите на стрелку, чтобы вернуть его.</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">Сворачивать к краю экрана</string>
+    <string name="setcat_floating_lyrics_lines_double">Текущая + следующая</string>
+    <string name="setcat_floating_lyrics_lines_multi">Три строки</string>
+    <string name="setcat_floating_lyrics_lines_single">Одна</string>
+    <string name="setcat_floating_lyrics_lines_title">Показывать строк</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">Когда позиция закреплена, перетаскивание больше не перемещает окно (долгое нажатие на текст переключает режим).</string>
+    <string name="setcat_floating_lyrics_lock_title">Закрепить позицию</string>
+    <string name="setcat_floating_lyrics_scale_title">Общий размер</string>
+    <string name="setcat_floating_lyrics_section">Плавающий текст</string>
+    <string name="setcat_floating_lyrics_subtitle">Показывать текст поверх других приложений. Требуется разрешение «Поверх других приложений».</string>
+    <string name="setcat_floating_lyrics_title">Плавающий текст (рабочий стол)</string>
+    <string name="setcat_floating_lyrics_usage">Как пользоваться: перетаскивайте для перемещения, нажимайте, чтобы показать предыдущую / пуск-пауза / следующую, долгое нажатие закрепляет позицию. Сдвиньте текст за левый или правый край, чтобы свернуть его в маленькую стрелку — нажмите на стрелку, чтобы вернуть. Окно появляется только во время воспроизведения песни.</string>
+    <string name="setcat_force_software_blur_subtitle">Принудительно использовать программное / растровое размытие, как на Android ниже 12, чтобы проверить его на новых устройствах</string>
+    <string name="setcat_force_software_blur_title">Принудительно старое размытие (тест)</string>
+    <string name="setcat_force_tablet_layout_subtitle">Использовать макет для планшетов (боковая панель навигации + широкий контент) даже в портретном режиме. Отлично подходит для крупных телефонов и складных устройств.</string>
+    <string name="setcat_force_tablet_layout_title">Принудительно планшетный макет в портретном режиме</string>
+    <string name="setcat_home_top_style_collage">Стена коллажа</string>
+    <string name="setcat_home_top_style_desc">Показывать в верхней части Главной стену коллажа или карусель избранного.</string>
+    <string name="setcat_home_top_style_featured">Карусель избранного</string>
+    <string name="setcat_home_top_style_label">Стиль верхней части Главной</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">Когда экран текста автоматически переходит в иммерсивный режим, скрывать только элементы управления, не увеличивая текст (по умолчанию текст увеличивается)</string>
+    <string name="setcat_immersive_keep_font_size_title">Сохранять размер шрифта текста в иммерсивном режиме</string>
+    <string name="setcat_immersive_keep_size_hint">Иммерсивный предпросмотр: текст без изменений</string>
+    <string name="setcat_immersive_scale_hint">Иммерсивный предпросмотр: текст увеличен x1.25</string>
+    <string name="setcat_lanzou_test_close">Закрыть</string>
+    <string name="setcat_lanzou_test_dialog_title">Тест загрузки через Lanzou</string>
+    <string name="setcat_lanzou_test_open_browser">Открыть первую прямую ссылку в браузере</string>
+    <string name="setcat_lanzou_test_running">Обработка ссылки общего доступа…</string>
+    <string name="setcat_lanzou_test_subtitle">Обработать ссылку общего доступа обновления и показать файлы, найденные версии и прямые URL (проверяет канал обновлений в приложении).</string>
+    <string name="setcat_lanzou_test_title">Проверить загрузку через Lanzou</string>
+    <string name="setcat_lyrics_bg_style_desc">Стиль фона текста: яркий градиент, цвет из палитры обложки или обычный цвет темы.</string>
+    <string name="setcat_lyrics_bg_style_title">Фон текста</string>
+    <string name="setcat_lyrics_mono_colors_desc">Принудительно делать кнопки и текст белыми или черными (белые в темной теме, черные в светлой). Если выключено, сохраняется текущий вид.</string>
+    <string name="setcat_lyrics_mono_colors_title">Монохромные кнопки и текст</string>
+    <string name="setcat_miniplayer_corner_radius">Радиус углов мини-плеера</string>
+    <string name="setcat_miniplayer_style_capsule">Капсула</string>
+    <string name="setcat_miniplayer_style_classic">Классический</string>
+    <string name="setcat_miniplayer_style_desc">Внешний вид нижнего мини-плеера. Material — скругленная обложка и кнопки назад/пуск/вперед на карточке; Expressive — целая таблетка со сплошной заливкой прогресса, квадратной обложкой и одной большой кнопкой воспроизведения.</string>
+    <string name="setcat_miniplayer_style_expressive">Выразительный</string>
+    <string name="setcat_miniplayer_style_label">Стиль</string>
+    <string name="setcat_miniplayer_style_material">Material</string>
+    <string name="setcat_miniplayer_style_rhythm">Rhythm</string>
+    <string name="setcat_navrail_style_desc">Выберите внешний вид левой панели на планшетах и в горизонтальной ориентации.</string>
+    <string name="setcat_navrail_style_docked">Закрепленная</string>
+    <string name="setcat_navrail_style_floating">Плавающая</string>
+    <string name="setcat_navrail_style_label">Панель навигации планшета</string>
+    <string name="setcat_new_top_bar_subtitle">Верхние панели используют прогрессивную маску размытия со свернутой капсулой заголовка. Выключите, чтобы везде использовать обычную сплошную верхнюю панель.</string>
+    <string name="setcat_new_top_bar_title">Новый стиль верхней панели</string>
+    <string name="setcat_player_bg_style_desc">Стиль фона плеера: яркий градиент, цвет из палитры обложки или обычный цвет темы.</string>
+    <string name="setcat_player_bg_style_title">Фон плеера</string>
+    <string name="setcat_player_controls_group">Элементы управления плеера</string>
+    <string name="setcat_player_cover_style_default">Стандартная карусель</string>
+    <string name="setcat_player_cover_style_desc">Как отображается обложка плеера (карточка Rhythm).</string>
+    <string name="setcat_player_cover_style_featured">Карусель с карточкой избранного</string>
+    <string name="setcat_player_cover_style_label">Стиль обложки</string>
+    <string name="setcat_player_glass_controls_subtitle">Сделать нейтральные кнопки управления (переключение / избранное / нижняя панель / карточки управления) полупрозрачными с настоящим размытием фона. Кнопка пуск/пауза сохраняет акцентный цвет, макет не меняется; сочетается с любой темой и фоном.</string>
+    <string name="setcat_player_glass_controls_title">Кнопки управления из матового стекла</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">Живой предпросмотр закреплен сверху, каждая опция ниже сразу его обновляет</string>
+    <string name="setcat_player_lyrics_appearance_title">Внешний вид плеера и текста</string>
+    <string name="setcat_player_lyrics_preview_artist">Пример исполнителя</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24 бит · 44,1 кГц</string>
+    <string name="setcat_player_lyrics_preview_label">Живой предпросмотр</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">Эта строка играет сейчас</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">пока город спит</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">и ночь продолжается</string>
+    <string name="setcat_player_lyrics_preview_track">Пример трека</string>
+    <string name="setcat_player_mono_colors_desc">Принудительно делать кнопки и текст плеера белыми или черными (белые в темной теме, черные в светлой). Если выключено, сохраняется текущий вид.</string>
+    <string name="setcat_player_mono_colors_title">Монохромные кнопки и текст плеера</string>
+    <string name="setcat_player_progress_bar_subtitle">Текущий: %1$s. Выберите стиль дорожки, ползунка и вращение.</string>
+    <string name="setcat_player_progress_bar_title">Полоса прогресса воспроизведения</string>
+    <string name="setcat_player_style_classic">Классический</string>
+    <string name="setcat_player_style_desc">Переключать полноэкранный плеер между классическим макетом и выразительным (перенесен из Rhythm).</string>
+    <string name="setcat_player_style_expressive">Выразительный</string>
+    <string name="setcat_player_style_label">Стиль плеера</string>
+    <string name="setcat_player_theme_immersive">Иммерсивная обложка (расширение размытия)</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">Сдвигать панель навигации вниз и смещать мини-плеер при прокрутке вверх; они вернутся при обратной прокрутке</string>
+    <string name="setcat_scroll_hide_chrome_title">Скрывать при прокрутке</string>
+    <string name="setcat_startup_animation_desc">Переход при входе на главный экран после запуска.</string>
+    <string name="setcat_startup_animation_label">Анимация входа</string>
+    <string name="setcat_startup_style_emerge">Появление</string>
+    <string name="setcat_startup_style_none">Выкл</string>
+    <string name="setcat_startup_style_scale">Масштабирование</string>
+    <string name="setcat_transport_flat_style_subtitle">Показывать предыдущую / воспроизведение / следующую как простые иконки без цветных фонов</string>
+    <string name="setcat_transport_flat_style_title">Плоские кнопки управления</string>
+    <string name="setcat_ui_scale_section">Масштаб интерфейса</string>
+    <string name="setcat_ui_scale_title">Масштаб интерфейса (только приложение)</string>
+    <string name="setcat_updates_auto_check_subtitle">Проверять новые версии в фоне</string>
+    <string name="setcat_updates_auto_check_title">Автоматическая проверка обновлений</string>
+    <string name="setcat_updates_auto_title">Автоматические обновления</string>
+    <string name="setcat_updates_bg_download_subtitle">Автоматически скачивать APK новой версии</string>
+    <string name="setcat_updates_bg_download_title">Скачивать обновления в фоне</string>
+    <string name="setcat_updates_download_title">Фоновая загрузка</string>
+    <string name="setcat_updates_frequency_daily">Ежедневно</string>
+    <string name="setcat_updates_frequency_title">Частота проверки</string>
+    <string name="setcat_updates_frequency_weekly">Еженедельно</string>
+    <string name="setcat_updates_wifi_charging_subtitle">Скачивать только при подключении к Wi-Fi и зарядке</string>
+    <string name="setcat_updates_wifi_charging_title">Только Wi-Fi + зарядка</string>
+    <string name="setcat_vibrant_bg_warning_message">Ваша версия Android ниже Android 11. Этот эффект может работать не так, как ожидается. Все равно включить?</string>
+    <string name="setcat_vibrant_bg_warning_title">Слишком старая версия Android</string>
+    <string name="settings_category_api_subtitle">Включайте службы дополнения текстов и метаданных</string>
+    <string name="settings_category_api_title">Управление API</string>
+    <string name="settings_category_download_subtitle">Очередь, качество, папка, имена файлов и встраивание тегов</string>
+    <string name="settings_category_download_title">Загрузки</string>
+    <string name="settings_category_updates_subtitle">Частота автопроверки, фоновая загрузка, Wi-Fi + зарядка</string>
+    <string name="settings_category_updates_title">Обновления и загрузки</string>
+    <string name="settings_category_usb_exclusive_subtitle">Бит-в-бит вывод на внешний USB ЦАП: разрядность, устройство и статус</string>
+    <string name="settings_category_usb_exclusive_title">Монопольный USB</string>
+    <string name="settings_search_keyword_audio_focus">Аудиофокус</string>
+    <string name="settings_search_keyword_update">Обновление</string>
+    <string name="usb_status_active">Монопольный режим активен — звук минует системный микшер</string>
+    <string name="usb_status_found">Найдено USB-аудиоустройств: %1$d</string>
+    <string name="usb_status_inactive">Монопольный режим неактивен (вывод через системный микшер)</string>
+    <string name="usb_status_no_device">USB-аудиоустройство не обнаружено — подключите ЦАП, и он будет найден автоматически</string>
+    <string name="usb_status_none_found">USB-аудиоустройство не найдено</string>
+    <string name="usb_status_rescan">Пересканировать</string>
+    <string name="usb_status_section">Статус устройства</string>
+    <string name="usb_status_switch_device">Сменить устройство</string>
 </resources>

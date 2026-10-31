@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="glance_widget_description">Responsive widget that adapts to its size</string>
-    <string name="widget_bar_4x1_desc">Compact player bar</string>
-    <string name="widget_control_4x2_desc">Full controls with shuffle and repeat</string>
-    <string name="widget_grid_2x2_desc">Minimalist square player</string>
+    <string name="glance_widget_description">Boyutuna uyum sağlayan duyarlı widget</string>
+    <string name="widget_bar_4x1_desc">Kompakt oynatıcı çubuğu</string>
+    <string name="widget_control_4x2_desc">Karıştır ve tekrarla ile tam kontroller</string>
+    <string name="widget_grid_2x2_desc">Minimalist kare oynatıcı</string>
 
-    <string name="widget_tap_to_open">Tap to open</string>
-    <string name="widget_album_art">Album art</string>
-    <string name="widget_album_art_placeholder">Album art placeholder</string>
+    <string name="widget_tap_to_open">Açmak için dokun</string>
+    <string name="widget_album_art">Albüm kapağı</string>
+    <string name="widget_album_art_placeholder">Albüm kapağı yer tutucusu</string>
 
-    <string name="widget_tap_to_play">Tap to play</string>
-    <string name="widget_preview_song_title">Song title</string>
-    <string name="widget_preview_artist">Artist</string>
+    <string name="widget_tap_to_play">Çalmak için dokun</string>
+    <string name="widget_preview_song_title">Şarkı başlığı</string>
+    <string name="widget_preview_artist">Sanatçı</string>
 
-    <string name="widget_wavy_progress_bar_desc">Progress bar, %1$d percent</string>
+    <string name="widget_wavy_progress_bar_desc">İlerleme çubuğu, %1$d yüzde</string>
 </resources>

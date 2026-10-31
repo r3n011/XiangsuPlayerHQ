@@ -145,7 +145,7 @@
     <string name="device_capabilities_format_unsupported">Декодер не найден</string>
     <string name="device_capabilities_format_hardware">HW декодер</string>
     <string name="device_capabilities_format_software">SW декодер</string>
-    <string name="device_capabilities_format_offload">Offload</string>
+    <string name="device_capabilities_format_offload">Разгрузка</string>
     <string name="device_capabilities_format_library_count">%1$d в фонотеке</string>
     <string name="device_capabilities_findings_title">Результаты проверки</string>
     <string name="device_capabilities_finding_clear_title">Нет серьезных проблем</string>
@@ -189,15 +189,15 @@
 Обратный слеш (\) можно использовать для экранирования разделителей.</string>
     <string name="presentation_batch_g_artist_example_arrow"> → </string>
     <string name="presentation_batch_g_artist_examples_title">Примеры</string>
-    <string name="presentation_batch_g_artist_ex_1_in">\"Artist1/Artist2\"</string>
+    <string name="presentation_batch_g_artist_ex_1_in">«Artist1/Artist2»</string>
     <string name="presentation_batch_g_artist_ex_1_out">Artist1, Artist2</string>
-    <string name="presentation_batch_g_artist_ex_2_in">\"Drake feat. Rihanna\"</string>
+    <string name="presentation_batch_g_artist_ex_2_in">«Drake feat. Rihanna»</string>
     <string name="presentation_batch_g_artist_ex_2_out">Drake, Rihanna</string>
-    <string name="presentation_batch_g_artist_ex_3_in">\"Marshmello x Bastille\"</string>
+    <string name="presentation_batch_g_artist_ex_3_in">«Marshmello x Bastille»</string>
     <string name="presentation_batch_g_artist_ex_3_out">Marshmello, Bastille</string>
-    <string name="presentation_batch_g_artist_ex_4_in">\"Song (ft. B)\" by A</string>
+    <string name="presentation_batch_g_artist_ex_4_in">«Song (ft. B)» — A</string>
     <string name="presentation_batch_g_artist_ex_4_out">A, B</string>
-    <string name="presentation_batch_g_artist_ex_5_in">\"AC\\DC\"</string>
+    <string name="presentation_batch_g_artist_ex_5_in">«AC/DC»</string>
     <string name="presentation_batch_g_artist_ex_5_out">AC/DC (экранировано)</string>
     <string name="presentation_batch_g_artist_topbar_title">Артисты</string>
     <string name="presentation_batch_g_artist_rescan_banner_title">Нужен перескан</string>
@@ -326,7 +326,7 @@
     <string name="presentation_batch_g_brick_restart">Сначала</string>
     <string name="presentation_batch_g_brick_tap_relaunch">НАЖМИТЕ ДЛЯ ПОВТОРА</string>
     <string name="presentation_batch_g_brick_play_random">Случайная музыка</string>
-    <string name="presentation_batch_g_brick_title">Brick Breaker</string>
+    <string name="presentation_batch_g_brick_title">Арканоид</string>
     <string name="presentation_batch_g_brick_high_score">РЕКОРД  %1$d</string>
     <string name="presentation_batch_g_brick_play">Играть</string>
     <string name="presentation_batch_g_brick_drag_paddle">Тяните, чтобы двигать платформу</string>
@@ -497,274 +497,274 @@
     <string name="presentation_batch_g_beta_sheet_nightly_report_body">При отчёте о проблеме из nightly всегда указывайте, что она в nightly, а не в официальном релизе. Укажите дату сборки, имя или номер запуска workflow или commit SHA — если возможно. Также проверьте, есть ли эта проблема в последнем официальном релизе.</string>
     <string name="artist_whitelist_add">Add</string>
     
-    <string name="artist_whitelist_add_title">Add Artist</string>
+    <string name="artist_whitelist_add_title">Добавить исполнителя</string>
     
-    <string name="artist_whitelist_current_title">Current Whitelist</string>
+    <string name="artist_whitelist_current_title">Текущий белый список</string>
     
-    <string name="artist_whitelist_empty">No artists in whitelist</string>
+    <string name="artist_whitelist_empty">В белом списке нет исполнителей</string>
     
-    <string name="artist_whitelist_hint">Enter artist name, e.g. AC/DC</string>
+    <string name="artist_whitelist_hint">Введите имя исполнителя, напр. AC/DC</string>
     
-    <string name="artist_whitelist_remove">Remove %1$s</string>
+    <string name="artist_whitelist_remove">Удалить %1$s</string>
     
-    <string name="artist_whitelist_reset">Reset</string>
+    <string name="artist_whitelist_reset">Сброс</string>
     
-    <string name="artist_whitelist_reset_cancel">Cancel</string>
+    <string name="artist_whitelist_reset_cancel">Отмена</string>
     
-    <string name="artist_whitelist_reset_confirm">Reset</string>
+    <string name="artist_whitelist_reset_confirm">Сброс</string>
     
-    <string name="artist_whitelist_reset_dialog_body">This will clear all whitelisted artists. A library rescan is required to take effect.</string>
+    <string name="artist_whitelist_reset_dialog_body">Это очистит белый список исполнителей. Для применения потребуется повторное сканирование фонотеки.</string>
     
-    <string name="artist_whitelist_reset_dialog_title">Reset whitelist?</string>
+    <string name="artist_whitelist_reset_dialog_title">Сбросить белый список?</string>
     
-    <string name="artist_whitelist_section_subtitle">Artists in the whitelist are kept intact during library scanning and will never be split by delimiters. Use it for artist names that contain /, &amp;, + etc. (e.g. AC/DC, Tones &amp; I).</string>
+    <string name="artist_whitelist_section_subtitle">Исполнители из белого списка сохраняются целиком при сканировании фонотеки и никогда не разделяются разделителями. Используйте для имен с /, &amp;, + и т. п. (напр., AC/DC, Tones &amp; I).</string>
     
-    <string name="artist_whitelist_section_title">About</string>
+    <string name="artist_whitelist_section_title">О функции</string>
     
-    <string name="artist_whitelist_toast_added">Added to whitelist</string>
+    <string name="artist_whitelist_toast_added">Добавлено в белый список</string>
     
-    <string name="artist_whitelist_toast_invalid">Artist already exists or name is invalid</string>
+    <string name="artist_whitelist_toast_invalid">Исполнитель уже существует или имя неверно</string>
     
-    <string name="artist_whitelist_toolbar_title">Artist Split Whitelist</string>
+    <string name="artist_whitelist_toolbar_title">Белый список разделения исполнителей</string>
     
-    <string name="device_capabilities_advanced_diagnostics_description">Off by default. Records a short lag timeline for beta troubleshooting.</string>
+    <string name="device_capabilities_advanced_diagnostics_description">По умолчанию выключено. Записывает короткую временную шкалу задержек для отладки бета-версии.</string>
     
-    <string name="device_capabilities_advanced_diagnostics_expires">Active until %1$s</string>
+    <string name="device_capabilities_advanced_diagnostics_expires">Активно до %1$s</string>
     
-    <string name="device_capabilities_advanced_diagnostics_mark_lag">Mark lag now</string>
+    <string name="device_capabilities_advanced_diagnostics_mark_lag">Отметить задержку</string>
     
-    <string name="device_capabilities_advanced_diagnostics_marked">Lag moment marked</string>
+    <string name="device_capabilities_advanced_diagnostics_marked">Момент задержки отмечен</string>
     
-    <string name="device_capabilities_advanced_diagnostics_title">Advanced performance diagnostics</string>
+    <string name="device_capabilities_advanced_diagnostics_title">Расширенная диагностика производительности</string>
     
-    <string name="device_capabilities_format_custom_decoder">PixelPlayer in-house DSD decoder</string>
+    <string name="device_capabilities_format_custom_decoder">Собственный DSD-декодер PixelPlayer</string>
     
-    <string name="device_capabilities_report_copied">Report copied to clipboard</string>
+    <string name="device_capabilities_report_copied">Отчет скопирован в буфер обмена</string>
     
     <string name="device_capabilities_report_copy">Copy</string>
     
-    <string name="device_capabilities_report_description">Generate a shareable diagnostic report to help us classify playback or scan lag. It contains only device, library, and timing data — no file paths, titles, or artists.</string>
+    <string name="device_capabilities_report_description">Создайте отчет для отправки, который поможет нам классифицировать задержки воспроизведения или сканирования. Он содержит только данные об устройстве, фонотеке и таймингах — без путей к файлам, названий и исполнителей.</string>
     
-    <string name="device_capabilities_report_generate">Generate report</string>
+    <string name="device_capabilities_report_generate">Создать отчет</string>
     
-    <string name="device_capabilities_report_regenerate">Regenerate</string>
+    <string name="device_capabilities_report_regenerate">Пересоздать</string>
     
-    <string name="device_capabilities_report_share">Share</string>
+    <string name="device_capabilities_report_share">Поделиться</string>
     
-    <string name="device_capabilities_report_share_title">PixelPlay performance report</string>
+    <string name="device_capabilities_report_share_title">Отчет о производительности PixelPlay</string>
     
-    <string name="device_capabilities_report_title">Performance report</string>
+    <string name="device_capabilities_report_title">Отчет о производительности</string>
     
-    <string name="presentation_batch_g_artist_item_whitelist">Artist Split Whitelist</string>
+    <string name="presentation_batch_g_artist_item_whitelist">Белый список разделения исполнителей</string>
     
-    <string name="presentation_batch_g_artist_whitelist_current_prefix">Current: %1$s</string>
+    <string name="presentation_batch_g_artist_whitelist_current_prefix">Текущий: %1$s</string>
     
-    <string name="presentation_batch_g_artist_whitelist_none">Not set</string>
+    <string name="presentation_batch_g_artist_whitelist_none">Не задан</string>
     
     <string-array name="presentation_batch_g_changelog_020_added">
-        <item>Chromecast support for casting audio from your device.</item>
-        <item>In-app changelog to keep you updated on the latest features.</item>
-        <item>Support for .LRC files, both embedded and external.</item>
-        <item>Offline lyrics support.</item>
-        <item>Synchronized lyrics (synced with the song).</item>
-        <item>New screen to view the full queue.</item>
-        <item>Reorder and remove songs from the queue.</item>
-        <item>Mini-player gestures (swipe down to close).</item>
-        <item>Added more material animations.</item>
-        <item>New settings to customize the look and feel.</item>
-        <item>New settings to clear the cache.</item>
+        <item>Поддержка Chromecast для трансляции звука с вашего устройства.</item>
+        <item>Журнал изменений в приложении, чтобы вы были в курсе новых функций.</item>
+        <item>Поддержка файлов .LRC — как встроенных, так и внешних.</item>
+        <item>Поддержка текстов песен офлайн.</item>
+        <item>Синхронизированные тексты (синхронизация с песней).</item>
+        <item>Новый экран для просмотра всей очереди.</item>
+        <item>Меняйте порядок и удаляйте песни из очереди.</item>
+        <item>Жесты мини-плеера (смахните вниз, чтобы закрыть).</item>
+        <item>Добавлено больше анимаций Material.</item>
+        <item>Новые настройки для настройки внешнего вида.</item>
+        <item>Новые настройки для очистки кеша.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_020_changed">
-        <item>Complete redesign of the user interface.</item>
-        <item>Complete redesign of the player.</item>
-        <item>Performance improvements in the library.</item>
-        <item>Improved application startup speed.</item>
-        <item>The AI now provides better results.</item>
+        <item>Полностью переработан пользовательский интерфейс.</item>
+        <item>Полностью переработан плеер.</item>
+        <item>Улучшена производительность библиотеки.</item>
+        <item>Увеличена скорость запуска приложения.</item>
+        <item>ИИ теперь выдаёт более качественные результаты.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_020_fixed">
-        <item>Fixed various bugs in the tag editor.</item>
-        <item>Fixed a bug where the playback notification was not clearing.</item>
-        <item>Fixed several bugs that caused the app to crash.</item>
+        <item>Исправлены различные ошибки в редакторе тегов.</item>
+        <item>Исправлена ошибка, из-за которой уведомление о воспроизведении не исчезало.</item>
+        <item>Исправлено несколько ошибок, приводивших к сбою приложения.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_fixes">
-        <item>Resolved metadata quirks so song details stay accurate everywhere.</item>
-        <item>Restored notification shortcuts so they reliably jump back into playback.</item>
+        <item>Устранены особенности метаданных, чтобы сведения о песнях везде оставались точными.</item>
+        <item>Восстановлены ярлыки уведомлений, чтобы надёжно возвращаться к воспроизведению.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_improvements">
-        <item>Refined the overall Material 3 UI for a cleaner and more cohesive experience.</item>
-        <item>Metadata editing now supports cover art change.</item>
-        <item>Smoothed out animations and transitions across the app for more fluid navigation.</item>
-        <item>Enhanced the artist screen layout with richer details and polish.</item>
-        <item>Upgraded DailyMix and YourMix generation with smarter, more diverse selections.</item>
-        <item>Strengthened the AI playlist generation.</item>
-        <item>Improved search relevance and presentation for faster discovery.</item>
-        <item>Expanded support for a broader range of audio file formats.</item>
+        <item>Общий интерфейс Material 3 доработан: стало чище и целостнее.</item>
+        <item>Редактирование метаданных теперь позволяет менять обложку.</item>
+        <item>Анимации и переходы во всём приложении стали плавнее для более комфортной навигации.</item>
+        <item>Улучшен макет экрана исполнителя: больше деталей и аккуратности.</item>
+        <item>Улучшена генерация DailyMix и YourMix: выбор стал умнее и разнообразнее.</item>
+        <item>Усилена генерация плейлистов с помощью ИИ.</item>
+        <item>Улучшены релевантность и отображение поиска для более быстрого нахождения музыки.</item>
+        <item>Расширена поддержка более широкого спектра аудиоформатов.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_whats_new">
-        <item>Introduced a richer listening stats hub with deeper insights into your sessions.</item>
-        <item>Launched a floating quick player to instantly open and preview local files.</item>
-        <item>Added a folders tab with a tree-style navigator and playlist-ready view.</item>
+        <item>Появился более подробный центр статистики прослушивания с углублённой аналитикой сеансов.</item>
+        <item>Запущен плавающий быстрый плеер для мгновенного открытия и прослушивания локальных файлов.</item>
+        <item>Добавлена вкладка «Папки» с древовидной навигацией и представлением, готовым для плейлистов.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_040_highlights">
-        <item>Major navigation redesign</item>
-        <item>New file explorer for choosing source directories</item>
-        <item>New Connectivity and casting functionalities</item>
-        <item>Seamless continuity between remote devices</item>
-        <item>Gapless transition between songs</item>
-        <item>Crossfade control</item>
-        <item>New Custom Transitions feature (only for playlists)</item>
-        <item>Keep playing after closed the app</item>
-        <item>UI Optimizations</item>
-        <item>Improved stats feature</item>
-        <item>Redesigned Queue control with more features</item>
-        <item>Improved different filetypes support for playing and metadata editing</item>
-        <item>Improved permission controller</item>
-        <item>Minor bug fixes</item>
+        <item>Масштабная переработка навигации</item>
+        <item>Новый файловый менеджер для выбора исходных папок</item>
+        <item>Новые функции подключения и трансляции</item>
+        <item>Бесшовная непрерывность между удалёнными устройствами</item>
+        <item>Бесшовный переход между песнями</item>
+        <item>Управление кроссфейдом</item>
+        <item>Новая функция пользовательских переходов (только для плейлистов)</item>
+        <item>Продолжать воспроизведение после закрытия приложения</item>
+        <item>Оптимизация интерфейса</item>
+        <item>Улучшена функция статистики</item>
+        <item>Переработанное управление очередью с новыми функциями</item>
+        <item>Улучшена поддержка различных типов файлов для воспроизведения и редактирования метаданных</item>
+        <item>Улучшено управление разрешениями</item>
+        <item>Мелкие исправления</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_fixes">
-        <item>Casting Stability Improvements</item>
-        <item>Player Sheet Stability</item>
-        <item>General Bug Fixes &amp; Cleanup</item>
+        <item>Улучшена стабильность трансляции</item>
+        <item>Стабильность панели плеера</item>
+        <item>Общие исправления и очистка</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_highlights">
-        <item>Material 3 Expressive UI Update</item>
-        <item>10-band Equalizer &amp; Effects</item>
-        <item>New Library Sync Flow</item>
-        <item>AI Integration (Gemini Models)</item>
-        <item>M3U Playlist Import/Export</item>
-        <item>Deezer Artist Artwork Integration</item>
-        <item>Custom Playlist Covers</item>
+        <item>Обновление интерфейса Material 3 Expressive</item>
+        <item>10-полосный эквалайзер и эффекты</item>
+        <item>Новый сценарий синхронизации библиотеки</item>
+        <item>Интеграция ИИ (модели Gemini)</item>
+        <item>Импорт и экспорт плейлистов M3U</item>
+        <item>Интеграция изображений исполнителей Deezer</item>
+        <item>Свои обложки плейлистов</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_improvements">
-        <item>Settings Architecture Refactor</item>
-        <item>Queue &amp; Player Animations</item>
-        <item>Baseline Profiles &amp; Performance</item>
-        <item>Better Lyrics System with Sync Offset</item>
+        <item>Переработка архитектуры настроек</item>
+        <item>Анимации очереди и плеера</item>
+        <item>Baseline-профили и производительность</item>
+        <item>Улучшенная система текстов с настройкой смещения синхронизации</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_added">
-        <item>Spanish</item>
-        <item>French</item>
-        <item>Russian</item>
-        <item>Simplified Chinese</item>
-        <item>Indonesian</item>
-        <item>Italian</item>
+        <item>Испанский</item>
+        <item>Французский</item>
+        <item>Русский</item>
+        <item>Китайский (упрощённый)</item>
+        <item>Индонезийский</item>
+        <item>Итальянский</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_fixes">
-        <item>Playback: Fixed stuttering in Opus/MP3, ReplayGain errors during crossfades, and startup issues on Samsung decoders.</item>
-        <item>Stability: Eliminated crashes on startup, artist navigation, and Android 12+ devices.</item>
-        <item>UI: Fixed cover art flickering, text overflow in non-Latin scripts, and navigation bar/miniplayer behavior.</item>
-        <item>Security: Hardened credential handling, storage permissions, and media server communication.</item>
+        <item>Воспроизведение: исправлены рывки в Opus/MP3, ошибки ReplayGain при кроссфейде и проблемы запуска на декодерах Samsung.</item>
+        <item>Стабильность: устранены сбои при запуске, навигации по исполнителям и на устройствах с Android 12+.</item>
+        <item>Интерфейс: исправлены мерцание обложек, выход текста за границы в нелатинских шрифтах и поведение панели навигации и мини-плеера.</item>
+        <item>Безопасность: усилены обработка учётных данных, разрешения на хранение и связь с медиасервером.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_improvements">
-        <item>Audio Engine: Complete overhaul with support for more formats (MIDI, ALAC, M4A) and decoder optimization.</item>
-        <item>Efficiency: Drastic energy consumption reduction, overheating fixes, and background task optimization (SyncWorker).</item>
-        <item>Database: Massive query optimizations and redesigned cover art cache to prevent data loss.</item>
-        <item>Startup: Improved loading time via Baseline Profile optimization.</item>
+        <item>Аудиодвижок: полная переработка с поддержкой большего числа форматов (MIDI, ALAC, M4A) и оптимизацией декодеров.</item>
+        <item>Эффективность: резкое снижение энергопотребления, устранение перегрева и оптимизация фоновых задач (SyncWorker).</item>
+        <item>База данных: масштабная оптимизация запросов и переработанный кеш обложек для предотвращения потери данных.</item>
+        <item>Запуск: время загрузки улучшено благодаря оптимизации Baseline-профиля.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_whats_new">
-        <item>Wear OS: Music transfer, local playback, queue sync, and remote control from watch.</item>
-        <item>AI: Groq AI and OpenRouter (experimental) integration with token optimization.</item>
-        <item>Cloud: Jellyfin support added.</item>
-        <item>Lyrics: Synced translation with dedicated toggle, Kugou LRC format support, text alignment customization, and improved remote loading.</item>
-        <item>UI/UX: Compact navigation bar mode, dynamic themes from album art palette, marquee for long titles, and new sorting options.</item>
-        <item>Telegram: Native topics support and enhanced display modes.</item>
+        <item>Wear OS: передача музыки, локальное воспроизведение, синхронизация очереди и удалённое управление с часов.</item>
+        <item>ИИ: интеграция Groq AI и OpenRouter (экспериментально) с оптимизацией токенов.</item>
+        <item>Облако: добавлена поддержка Jellyfin.</item>
+        <item>Тексты: синхронизированный перевод с отдельным переключателем, поддержка формата Kugou LRC, настройка выравнивания текста и улучшенная удалённая загрузка.</item>
+        <item>Интерфейс: компактный режим панели навигации, динамические темы по палитре обложки, бегущая строка для длинных названий и новые параметры сортировки.</item>
+        <item>Telegram: встроенная поддержка тем и улучшенные режимы отображения.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_080_fixes">
-        <item>Fixed the home screen not resetting to the top when returning from other pages.</item>
-        <item>Fixed Bilibili tracks in playback history failing to play.</item>
+        <item>Исправлено: главный экран не возвращался наверх при возврате с других страниц.</item>
+        <item>Исправлено: треки Bilibili из истории воспроизведения не запускались.</item>
     </string-array>
     
     
     
     <string-array name="presentation_batch_g_changelog_080_improvements">
-        <item>Lyrics: Fixed long lyric lines being clipped on phone screens with more accurate line-wrap measurement.</item>
-        <item>Player: The mini player now transitions with a springy sliding animation when the bottom bar is hidden.</item>
-        <item>Device capabilities: The format counter now includes the software-decoded DFF/DSF/DIF formats.</item>
-        <item>Localization: Completed Chinese translations for the cloud streaming sheet and appearance settings (disable blur, show scrollbar, collage patterns, show lyrics track info).</item>
-        <item>Settings: Moved the "Show lyrics track info" option into the lyrics section of appearance settings.</item>
+        <item>Тексты: исправлена обрезка длинных строк на экранах телефонов благодаря более точному измерению переносов.</item>
+        <item>Плеер: мини-плеер теперь переключается с пружинной анимацией скольжения при скрытии нижней панели.</item>
+        <item>Возможности устройства: счётчик форматов теперь включает программно декодируемые форматы DFF/DSF/DIF.</item>
+        <item>Локализация: завершены китайские переводы для панели облачного стриминга и настроек оформления (отключение размытия, показ полосы прокрутки, узоры коллажа, показ информации о треке в текстах).</item>
+        <item>Настройки: пункт «Показывать информацию о треке в текстах» перенесён в раздел текстов в настройках оформления.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_080_whats_new">
-        <item>Lyrics: The dynamic lyrics blur effect is now enabled by default (adjustable in developer settings).</item>
-        <item>Dot Mode: The bottom navigation bar is now automatically hidden in Dot e-ink mode when using online sources.</item>
+        <item>Тексты: эффект динамического размытия теперь включён по умолчанию (настраивается в параметрах разработчика).</item>
+        <item>Режим Dot: нижняя панель навигации теперь автоматически скрывается в режиме электронных чернил Dot при использовании онлайн-источников.</item>
     </string-array>
     
-    <string name="sort_option_album">Album</string>
+    <string name="sort_option_album">Альбом</string>
     
-    <string name="sort_option_album_desc">Album (Z-A)</string>
+    <string name="sort_option_album_desc">Альбом (Я-А)</string>
     
-    <string name="sort_option_artist">Artist</string>
+    <string name="sort_option_artist">Исполнитель</string>
     
-    <string name="sort_option_artist_desc">Artist (Z-A)</string>
+    <string name="sort_option_artist_desc">Исполнитель (Я-А)</string>
     
-    <string name="sort_option_custom_order">Custom Order</string>
+    <string name="sort_option_custom_order">Свой порядок</string>
     
-    <string name="sort_option_date_added">Date Added</string>
+    <string name="sort_option_date_added">Дата добавления</string>
     
-    <string name="sort_option_date_added_oldest">Date Added (Oldest First)</string>
-    <string name="sort_option_date_modified">Date Modified</string>
-    <string name="sort_option_date_modified_oldest">Date Modified (Oldest First)</string>
+    <string name="sort_option_date_added_oldest">Дата добавления (сначала старые)</string>
+    <string name="sort_option_date_modified">Дата изменения</string>
+    <string name="sort_option_date_modified_oldest">Дата изменения (сначала старые)</string>
     
-    <string name="sort_option_date_created">Date Created</string>
+    <string name="sort_option_date_created">Дата создания</string>
     
-    <string name="sort_option_date_created_oldest">Date Created (Oldest First)</string>
+    <string name="sort_option_date_created_oldest">Дата создания (сначала старые)</string>
     
-    <string name="sort_option_date_liked">Date Liked</string>
+    <string name="sort_option_date_liked">Дата добавления в избранное</string>
     
-    <string name="sort_option_date_liked_oldest">Date Liked (Oldest First)</string>
+    <string name="sort_option_date_liked_oldest">Дата добавления в избранное (сначала старые)</string>
     
-    <string name="sort_option_default_order">Default Order</string>
+    <string name="sort_option_default_order">Порядок по умолчанию</string>
     
-    <string name="sort_option_duration">Duration</string>
+    <string name="sort_option_duration">Длительность</string>
     
-    <string name="sort_option_duration_shortest">Duration (Shortest First)</string>
+    <string name="sort_option_duration_shortest">Длительность (сначала короткие)</string>
     
-    <string name="sort_option_fewest_songs">Fewest Songs</string>
+    <string name="sort_option_fewest_songs">Меньше всего песен</string>
     
-    <string name="sort_option_fewest_subfolders">Fewest Subfolders</string>
+    <string name="sort_option_fewest_subfolders">Меньше всего подпапок</string>
     
-    <string name="sort_option_most_songs">Most Songs</string>
+    <string name="sort_option_most_songs">Больше всего песен</string>
     
-    <string name="sort_option_most_subfolders">Most Subfolders</string>
+    <string name="sort_option_most_subfolders">Больше всего подпапок</string>
     
     <string name="sort_option_name">Name</string>
     
-    <string name="sort_option_name_az">Name (A-Z)</string>
+    <string name="sort_option_name_az">Название (А-Я)</string>
     
-    <string name="sort_option_name_za">Name (Z-A)</string>
+    <string name="sort_option_name_za">Название (Я-А)</string>
     
-    <string name="sort_option_number_of_songs">Number of Songs</string>
+    <string name="sort_option_number_of_songs">Количество песен</string>
     
-    <string name="sort_option_number_of_songs_fewest">Number of Songs (Fewest)</string>
+    <string name="sort_option_number_of_songs_fewest">Количество песен (наименьшее)</string>
     
-    <string name="sort_option_number_of_songs_most">Number of Songs (Most)</string>
+    <string name="sort_option_number_of_songs_most">Количество песен (наибольшее)</string>
     
-    <string name="sort_option_release_year">Release Year</string>
+    <string name="sort_option_release_year">Год выпуска</string>
     
-    <string name="sort_option_release_year_oldest">Release Year (Oldest First)</string>
+    <string name="sort_option_release_year_oldest">Год выпуска (сначала старые)</string>
     
-    <string name="sort_option_song_count">Song Count</string>
+    <string name="sort_option_song_count">Количество песен</string>
     
-    <string name="sort_option_subfolder_count">Subfolder Count</string>
+    <string name="sort_option_subfolder_count">Количество подпапок</string>
 
-    <string name="sort_option_title">Title</string>
+    <string name="sort_option_title">Название</string>
     
-    <string name="sort_option_title_az">Title (A-Z)</string>
+    <string name="sort_option_title_az">Название (А-Я)</string>
     
-    <string name="sort_option_title_za">Title (Z-A)</string>
+    <string name="sort_option_title_za">Название (Я-А)</string>
     
 </resources>

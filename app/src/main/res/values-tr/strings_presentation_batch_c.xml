@@ -39,12 +39,12 @@
     <string name="lib_empty_folders_subtitle">Müzik içeren dahili depolama klasörleri burada görünecektir.</string>
     <string name="lib_empty_playlists_title">Henüz çalma listesi yok</string>
     <string name="lib_empty_playlists_subtitle">Kitaplığınızı düzenlemek için ilk çalma listenizi oluşturun.</string>
-    <string name="daily_recommend_error">Failed to load daily recommend</string>
-    <string name="daily_recommend_play_cd">Play daily recommend</string>
-    <string name="daily_recommend_retry">Retry</string>
-    <string name="daily_recommend_songs_count">%1$d songs today</string>
-    <string name="daily_recommend_subtitle">Personalized picks, updated daily</string>
-    <string name="daily_recommend_title">Daily Recommend</string>
-    <string name="lib_empty_history_subtitle">Songs you play will show up here.</string>
-    <string name="lib_empty_history_title">No playback history yet</string>
+    <string name="daily_recommend_error">Günlük öneriler yüklenemedi</string>
+    <string name="daily_recommend_play_cd">Günlük önerileri çal</string>
+    <string name="daily_recommend_retry">Yeniden dene</string>
+    <string name="daily_recommend_songs_count">Bugün %1$d şarkı</string>
+    <string name="daily_recommend_subtitle">Kişiselleştirilmiş seçkiler, her gün güncellenir</string>
+    <string name="daily_recommend_title">Günlük Öneriler</string>
+    <string name="lib_empty_history_subtitle">Çaldığınız şarkılar burada görünecek.</string>
+    <string name="lib_empty_history_title">Henüz oynatma geçmişi yok</string>
 </resources>

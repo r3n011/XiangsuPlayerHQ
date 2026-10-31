@@ -72,4 +72,30 @@
     <string name="auth_error_qq_login_incomplete">Login belum terdeteksi. Selesaikan login QQ Music sebelum menekan Selesai.</string>
     <string name="auth_navidrome_пароль_hint">App password also works if your server supports it.</string>
     
+    <string name="auth_captcha_invalid">Masukkan kode verifikasi SMS</string>
+    <string name="auth_captcha_label">Kode SMS</string>
+    <string name="auth_captcha_resend_seconds">Kirim ulang dalam %1$ds</string>
+    <string name="auth_phone_invalid">Masukkan nomor telepon yang valid</string>
+    <string name="auth_phone_login_action">Masuk</string>
+    <string name="auth_phone_login_subtitle">Masuk dengan kode SMS yang dikirim ke nomor telepon yang terhubung ke NetEase Anda.</string>
+    <string name="auth_phone_login_use_web">Mengalami masalah? Gunakan login web sebagai gantinya</string>
+    <string name="auth_phone_number_label">Nomor telepon</string>
+    <string name="auth_send_captcha">Kirim kode</string>
+    <string name="netease_login_required_toast">Silakan masuk ke NetEase Cloud Music terlebih dahulu</string>
+    <string name="qq_login_brand_subtitle">Masuk untuk menyinkronkan playlist QQ Music Anda dan memutarnya di aplikasi</string>
+    <string name="qq_login_brand_title">Hubungkan QQ Music</string>
+    <string name="qq_login_edit_phone">Edit nomor telepon</string>
+    <string name="qq_login_loading">Mohon tunggu…</string>
+    <string name="qq_login_loading_sending">Mengirim kode…</string>
+    <string name="qq_login_loading_signing_in">Masuk ke QQ Music…</string>
+    <string name="qq_login_mode_phone">Login telepon</string>
+    <string name="qq_login_mode_web">Login web</string>
+    <string name="qq_login_phone_hint">Playlist QQ Music Anda tersinkron secara otomatis setelah masuk</string>
+    <string name="qq_login_phone_note">Login telepon hanya mendukung nomor daratan Tiongkok; kode SMS dikirim oleh QQ Music. Jika diperlukan pemeriksaan keamanan, selesaikan di aplikasi dari entri di bawah, lalu minta kode lagi.</string>
+    <string name="qq_login_security_body">QQ Music meminta pemeriksaan keamanan terlebih dahulu. Ketuk \"Verifikasi\" untuk menyelesaikannya di popup — kode akan dikirim ulang secara otomatis.</string>
+    <string name="qq_login_security_ignore">Nanti</string>
+    <string name="qq_login_security_open">Verifikasi</string>
+    <string name="qq_login_security_title">Pemeriksaan keamanan diperlukan</string>
+    <string name="qq_login_step_code_subtitle">Masukkan kode SMS yang Anda terima</string>
+    <string name="qq_login_step_phone_subtitle">Masukkan nomor telepon yang terhubung ke akun QQ Music Anda; kode akan dikirim ke nomor tersebut</string>
 </resources>

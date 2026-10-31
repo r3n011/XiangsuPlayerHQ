@@ -117,7 +117,7 @@
 
     <!-- AIPlaylistSheet -->
     <string name="ai_playlist_headline_perfect">Selección impecable</string>
-    <string name="ai_playlist_headline_daily_mix">Daily Mix</string>
+    <string name="ai_playlist_headline_daily_mix">Mix diario</string>
     <string name="ai_playlist_subtitle_journey_ready">Tu viaje sonoro está listo</string>
     <string name="ai_playlist_subtitle_generator">Generador de listas con IA</string>
     <string name="ai_playlist_description">Describe el ambiente, el estado de ánimo o la actividad y deja que la IA cree la lista perfecta desde tu biblioteca.</string>
@@ -243,9 +243,9 @@
     <!-- Time and Duration Formatting -->
     <string name="duration_hours_minutes_long">%1$d h %2$02d min</string>
     <string name="duration_minutes_long">%1$d min</string>
-    <string name="duration_hours_minutes_medium">%1$d h %2$02d m</string>
+    <string name="duration_hours_minutes_medium">%1$d h %2$02d min</string>
     <string name="duration_hours_medium">%1$d h</string>
-    <string name="duration_minutes_medium">%1$d m</string>
+    <string name="duration_minutes_medium">%1$d min</string>
     <string name="duration_seconds_medium">%1$d s</string>
     <string name="duration_hours_minutes_short">%1$dh %2$02dm</string>
     <string name="duration_hours_short">%1$dh</string>

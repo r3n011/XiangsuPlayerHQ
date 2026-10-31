@@ -18,7 +18,7 @@
     <string name="word_delimiter_toast_added">Pemisah kata ditambahkan</string>
     <string name="word_delimiter_toast_invalid">Sudah ada atau tidak valid</string>
     <string name="word_delimiter_toast_reset">Pemisah kata direset ke default</string>
-    <string name="action_reset">Reset</string>
+    <string name="action_reset">Atur ulang</string>
 
     <!-- Delimiter config (path separators) -->
     <string name="delimiter_section_title">Pemisah Saat Ini</string>
@@ -130,9 +130,9 @@
     <string name="dialog_delete_song_message">\"%1$s\" oleh %2$s\n\nLagu ini akan dihapus secara permanen dari perangkat Anda dan tidak dapat dipulihkan.</string>
 
     <!-- Home / detail shared -->
-    <string name="home_your_mix_title">Your\nMix</string>
+    <string name="home_your_mix_title">Mix\nAnda</string>
     <string name="home_empty_placeholder_subtitle">Mix Anda akan muncul di sini saat XiangsuPlayer menemukan lagu atau menyinkronkan sumber.</string>
-    <string name="home_empty_placeholder_refresh">Refresh</string>
+    <string name="home_empty_placeholder_refresh">Segarkan</string>
     <string name="cd_shuffle_play">Putar Acak</string>
     <string name="cd_album_art_for_title">Sampul album untuk %1$s</string>
     <string name="cd_options">Opsi</string>
@@ -189,9 +189,9 @@
     <string name="about_spotlight_subtitle">Penghargaan untuk kolaborator dengan dampak besar.</string>
     <string name="about_contributors_section_title">Kontributor open source</string>
     <string name="about_contributors_section_subtitle">Daftar kontributor langsung dari GitHub.</string>
-    <string name="about_signal_open_source">Open source</string>
-    <string name="about_signal_community_first">Community-first</string>
-    <string name="about_signal_material3">Material 3 expressive</string>
+    <string name="about_signal_open_source">Sumber terbuka</string>
+    <string name="about_signal_community_first">Mengutamakan komunitas</string>
+    <string name="about_signal_material3">Material 3 ekspresif</string>
     <string name="cd_open_github_profile">Buka profil GitHub</string>
     <string name="cd_open_telegram">Buka Telegram</string>
     <string name="cd_contributor_avatar">Avatar %1$s</string>
@@ -249,23 +249,23 @@
     <string name="dash_status_fetching_songs_from_format">Mengambil lagu dari %1$s...</string>
     <string name="dash_status_saving_songs_format">Menyimpan %1$d lagu ke database...</string>
     <string name="dash_status_no_songs_found">Tidak ada lagu pustaka ditemukan</string>
-    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    <string name="about_acknowledgements_blur_desc">Efek blur diadaptasi dari proyek ini</string>
     
-    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
+    <string name="about_acknowledgements_folia_desc">Desain efek visual lirik terinspirasi oleh Folia Major (AGPL-3.0)</string>
     
-    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_lanzou_desc">Integrasi pembaruan didukung oleh LanzouAPI</string>
     
-    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    <string name="about_acknowledgements_miniaudio_desc">Pemutaran audio didukung oleh miniaudio</string>
     
-    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_acknowledgements_title">Ucapan Terima Kasih</string>
     
     <string name="cd_back">Back</string>
     
-    <string name="cd_favorite_artist">Favorite artist</string>
+    <string name="cd_favorite_artist">Artis favorit</string>
     
     <string name="cd_radio_open">Radio</string>
 
-    <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    <string name="cd_unfavorite_artist">Hapus artis dari favorit</string>
     
     <string name="content_description_exit">Exit</string>
     
@@ -273,95 +273,326 @@
 
     
     
-    <string name="content_description_play_pause">Play/Pause</string>
+    <string name="content_description_play_pause">Putar/Jeda</string>
     
-    <string name="content_description_previous">Previous</string>
+    <string name="content_description_previous">Sebelumnya</string>
     
-    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    <string name="discover_ai_subtitle">Playlist pintar, terjemahan lirik, dan wawasan</string>
     
-    <string name="discover_ai_title">AI Assistant</string>
+    <string name="discover_ai_title">Asisten AI</string>
     
-    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    <string name="discover_multi_selected_desc">%1$s — mengetuk tombol Discover akan menampilkan pemilih</string>
     
-    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    <string name="discover_none_selected_desc">Tidak ada yang dipilih — tombol Discover disembunyikan</string>
     
-    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
+    <string name="discover_options_dialog_desc">Pilih apa yang ditampilkan tombol Discover di tengah bawah. Pilih tidak ada untuk menyembunyikan tombol, hanya satu untuk membukanya langsung, atau beberapa untuk membuka pemilih.</string>
     
-    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    <string name="discover_radio_subtitle">Dengarkan stasiun radio internet dari seluruh dunia</string>
     
-    <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
+    <string name="discover_roaming_subtitle">Roaming NetEase Cloud Music dengan pilihan personal</string>
     
-    <string name="discover_sheet_title">Discover</string>
+    <string name="discover_sheet_title">Temukan</string>
     
-    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    <string name="discover_show_item_subtitle">Tampilkan opsi ini di popup Discover</string>
     
-    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    <string name="discover_single_selected_desc">%1$s saja — tombol membukanya langsung</string>
     
     <string name="home_card_ai_recommendation">AI Mix</string>
 
     
     
-    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    <string name="home_card_order_reset_dialog_body">Ini memulihkan urutan kartu beranda bawaan.</string>
     
-    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    <string name="home_card_order_reset_dialog_title">Atur ulang urutan kartu?</string>
     
-    <string name="home_card_order_sheet_title">Customize home</string>
+    <string name="home_card_order_sheet_title">Sesuaikan beranda</string>
     
-    <string name="home_edit_card_order">Edit home cards</string>
+    <string name="home_edit_card_order">Edit kartu beranda</string>
     
-    <string name="home_favorite_artists_title">Favorite Artists</string>
+    <string name="home_favorite_artists_title">Artis Favorit</string>
     
-    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    <string name="open_source_licenses_screen_title">Lisensi Sumber Terbuka</string>
     
     <string name="radio_all">All</string>
     
-    <string name="radio_country_picker_title">Select country</string>
+    <string name="radio_country_picker_title">Pilih negara</string>
     
-    <string name="radio_favorite">Add to favorites</string>
+    <string name="radio_favorite">Tambahkan ke favorit</string>
     
-    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    <string name="radio_favorite_confirm">Tambahkan stasiun ini ke favorit Anda?</string>
     
     <string name="radio_live_badge">LIVE</string>
     
     <string name="radio_more_countries">More</string>
     
-    <string name="radio_no_results">No stations found</string>
+    <string name="radio_no_results">Tidak ada stasiun ditemukan</string>
     
-    <string name="radio_recommendations">Popular stations</string>
+    <string name="radio_recommendations">Stasiun populer</string>
     
-    <string name="radio_retry">Retry</string>
+    <string name="radio_retry">Coba lagi</string>
     
-    <string name="radio_search">Search</string>
+    <string name="radio_search">Cari</string>
     
-    <string name="radio_search_hint">Search stations, countries or tags</string>
+    <string name="radio_search_hint">Cari stasiun, negara, atau tag</string>
     
     <string name="radio_title">Radio</string>
     
     <string name="radio_top">Top</string>
     
-    <string name="radio_unfavorite">Remove from favorites</string>
+    <string name="radio_unfavorite">Hapus dari favorit</string>
     
-    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
+    <string name="radio_unfavorite_confirm">Hapus stasiun ini dari favorit Anda?</string>
     
-    <string name="tab_folders">Folders</string>
+    <string name="tab_folders">Folder</string>
     
-    <string name="tab_history">History</string>
+    <string name="tab_history">Riwayat</string>
     
-    <string name="tab_liked">Liked</string>
+    <string name="tab_liked">Disukai</string>
     
-    <string name="tab_playlists">Playlists</string>
+    <string name="tab_playlists">Playlist</string>
     
-    <string name="third_party_notices_action">Notices</string>
+    <string name="third_party_notices_action">Pemberitahuan</string>
     
-    <string name="third_party_notices_close">Close</string>
+    <string name="third_party_notices_close">Tutup</string>
     
     
-    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    <string name="third_party_notices_load_error">Gagal memuat pemberitahuan pihak ketiga.</string>
     
-    <string name="third_party_notices_title">Third-Party Notices</string>
+    <string name="third_party_notices_title">Pemberitahuan Pihak Ketiga</string>
     
-    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+    <string name="update_install_permission_required">Izin pemasangan diperlukan untuk memperbarui aplikasi.</string>
 
     
     
+    <string name="about_acknowledgements_mineradio_desc">Referensi antarmuka gaya \"Glass\" untuk remote web (MineRadio)</string>
+    <string name="about_acknowledgements_reactor_desc">Referensi gaya \"Reactor\" dan visualizer inti untuk remote web (Reactor Audio Visualizer)</string>
+    <string name="about_acknowledgements_rhythm_desc">Terima kasih khusus: dukungan kreatif dan sebagian referensi UI (Rhythm)</string>
+    <string name="about_donation_button">Donasi dengan Alipay</string>
+    <string name="about_donation_button_alipay">Donasi dengan Alipay</string>
+    <string name="about_donation_button_wechat">Donasi dengan WeChat</string>
+    <string name="about_donation_channel_alipay">Alipay</string>
+    <string name="about_donation_channel_wechat">WeChat Pay</string>
+    <string name="about_donation_no_app">Tidak ada aplikasi yang dapat menangani tautan donasi di perangkat ini.</string>
+    <string name="about_donation_no_wechat">WeChat belum terpasang — silakan pindai kode QR di atas.</string>
+    <string name="about_donation_qr_hint">Pindai dengan Alipay, atau gunakan tombol di bawah</string>
+    <string name="about_donation_qr_hint_both">Pindai dengan Alipay atau WeChat, atau gunakan tombol di bawah</string>
+    <string name="about_donation_qr_hint_wechat">Pindai dengan WeChat, atau gunakan tombol di bawah</string>
+    <string name="about_donation_subtitle">Jika XiangsuPlayer membantu Anda, pertimbangkan untuk mentraktir pengembang secangkir kopi. Dukungan Anda membuat pembaruan terus berlanjut.</string>
+    <string name="about_donation_thanks_note">Daftar ini diperbarui seiring waktu — hubungi pengembang jika ada yang kurang.</string>
+    <string name="about_donation_thanks_subtitle">Terima kasih kepada semua yang telah mendukung proyek ini</string>
+    <string name="about_donation_thanks_title">Daftar ucapan terima kasih</string>
+    <string name="about_donation_title">Dukung pengembangan</string>
+    <string name="about_donation_wechat_opened">WeChat sudah terbuka — pindai kode QR di atas untuk berdonasi.</string>
+    <string name="about_supporters_surprise_hint">Ketuk di sini — ada sesuatu yang ingin kami sampaikan</string>
+    <string name="about_supporters_surprise_message">Dan terima kasih telah memilih XiangsuPlayer. Semoga setiap lagu yang Anda cintai terus diputar.</string>
+    <string name="audiobook_chapter_count">%1$d bab</string>
+    <string name="audiobook_chapters_short">%1$d bab</string>
+    <string name="audiobook_filter_all">Semua</string>
+    <string name="audiobook_filter_gender">Audiens</string>
+    <string name="audiobook_filter_sort">Urutkan</string>
+    <string name="audiobook_filter_status">Status</string>
+    <string name="audiobook_free_library">Pustaka audiobook gratis</string>
+    <string name="audiobook_free_library_desc">Genre · Urutkan · Audiens · Status</string>
+    <string name="audiobook_gender_all">Apa saja</string>
+    <string name="audiobook_gender_female">Perempuan</string>
+    <string name="audiobook_gender_male">Laki-laki</string>
+    <string name="audiobook_home_empty">Belum ada data audiobook</string>
+    <string name="audiobook_intro_collapse">Ciutkan</string>
+    <string name="audiobook_intro_expand">Perluas</string>
+    <string name="audiobook_library_empty">Tidak ada audiobook gratis dalam filter ini</string>
+    <string name="audiobook_load_failed">Gagal memuat. Periksa jaringan Anda dan coba lagi</string>
+    <string name="audiobook_loading_chapters">Memuat semua bab…</string>
+    <string name="audiobook_no_chapters">Tidak ada bab yang dapat diputar</string>
+    <string name="audiobook_play_all">Putar semua</string>
+    <string name="audiobook_queue_name">Audiobook · %1$s</string>
+    <string name="audiobook_retry">Coba lagi</string>
+    <string name="audiobook_search_cd">Cari audiobook</string>
+    <string name="audiobook_search_clear">Hapus</string>
+    <string name="audiobook_search_empty">Audiobook tidak ditemukan untuk “%1$s”</string>
+    <string name="audiobook_search_hint">Cari berdasarkan judul, penulis, atau narator</string>
+    <string name="audiobook_search_initial">Ketik kata kunci untuk mencari audiobook</string>
+    <string name="audiobook_search_title">Cari audiobook</string>
+    <string name="audiobook_section_daily">Pilihan harian</string>
+    <string name="audiobook_section_rank">Pilihan peringkat</string>
+    <string name="audiobook_section_vip">Pilihan VIP</string>
+    <string name="audiobook_section_week">Pilihan mingguan</string>
+    <string name="audiobook_shuffle_play">Acak</string>
+    <string name="audiobook_sort_default">Bawaan</string>
+    <string name="audiobook_sort_plays">Jumlah putar</string>
+    <string name="audiobook_sort_update">Diperbarui</string>
+    <string name="audiobook_status_all">Semua</string>
+    <string name="audiobook_status_done">Selesai</string>
+    <string name="audiobook_status_serial">Berlangsung</string>
+    <string name="audiobook_title">Audiobook</string>
+    <string name="audiobook_unknown_author">Penulis tidak dikenal</string>
+    <string name="cd_donation_qr">Kode QR donasi Alipay</string>
+    <string name="cd_donation_qr_wechat">Kode QR donasi WeChat Pay</string>
+    <string name="chat_action_new_chat">Temukan orang untuk diajak chat</string>
+    <string name="chat_cd_messages">Pesan</string>
+    <string name="chat_empty_conversations">Belum ada percakapan. Ketuk tombol di kanan atas untuk menemukan orang.</string>
+    <string name="chat_empty_friends">Belum ada teman untuk diundang. Ikuti beberapa pengguna terlebih dahulu.</string>
+    <string name="chat_empty_search">Ketik nama panggilan untuk mencari pengguna NetEase</string>
+    <string name="chat_follow">Ikuti</string>
+    <string name="chat_followed">Mengikuti</string>
+    <string name="chat_go_login">Masuk</string>
+    <string name="chat_input_hint">Kirim pesan…</string>
+    <string name="chat_invite_friend">Undang teman NetEase</string>
+    <string name="chat_invite_sent">Terkirim</string>
+    <string name="chat_join_together">Ikuti Listen Together</string>
+    <string name="chat_need_login">Masuk ke akun NetEase Anda untuk menggunakan pesan</string>
+    <string name="chat_no_results">Tidak ada pengguna yang cocok</string>
+    <string name="chat_playlist_empty_hint">Tidak ada lagu yang dapat diputar di playlist ini</string>
+    <string name="chat_search_hint">Cari pengguna NetEase</string>
+    <string name="chat_send">Kirim</string>
+    <string name="chat_send_invite">Kirim undangan</string>
+    <string name="chat_send_message">Kirim pesan</string>
+    <string name="chat_tab_conversations">Obrolan</string>
+    <string name="chat_tab_search">Temukan orang</string>
+    <string name="chat_title">Pesan</string>
+    <string name="chat_unfollow">Berhenti mengikuti</string>
+    <string name="home_card_hide">Sembunyikan kartu</string>
+    <string name="home_card_order_at_least_one_visible">Pertahankan setidaknya satu kartu terlihat</string>
+    <string name="home_card_order_sheet_visibility_hint">Seret untuk mengubah urutan • ketuk ikon mata untuk menampilkan atau menyembunyikan kartu</string>
+    <string name="home_card_show">Tampilkan kartu</string>
+    <string name="home_discover_audiobook">Audiobook</string>
+    <string name="home_discover_card_desc">Roaming · Heart · Mirip · Kenali · Radio · AI</string>
+    <string name="home_discover_heart_mode">Mode Heart</string>
+    <string name="home_discover_kugou_fm">FM Personal</string>
+    <string name="home_discover_listen_together">Dengarkan bersama</string>
+    <string name="home_discover_recognition">Pengenalan lagu</string>
+    <string name="home_discover_similar_songs">Lagu serupa</string>
+    <string name="home_featured_quality_hires">Hi-Res</string>
+    <string name="home_featured_quality_hq">HQ</string>
+    <string name="home_featured_quality_lossless">Lossless</string>
+    <string name="kugou_dashboard_account_id">ID akun: %1$s</string>
+    <string name="kugou_dashboard_quality_hint">Sudah masuk: penyedia Kugou bawaan dapat mengambil kualitas VIP / lossless</string>
+    <string name="kugou_dashboard_refresh_cd">Segarkan info akun</string>
+    <string name="kugou_dashboard_sync_done">Sinkronisasi selesai: %1$d playlist</string>
+    <string name="kugou_dashboard_sync_failed">Sinkronisasi gagal — periksa jaringan Anda dan coba lagi</string>
+    <string name="kugou_dashboard_syncing">Menyinkronkan…</string>
+    <string name="kugou_login_account_pick_hint">Nomor telepon ini tertaut ke beberapa akun Kugou — pilih akun untuk masuk</string>
+    <string name="kugou_login_account_pick_title">Pilih akun</string>
+    <string name="kugou_login_code_label">Kode verifikasi</string>
+    <string name="kugou_login_code_placeholder">Masukkan kode SMS</string>
+    <string name="kugou_login_code_required">Masukkan kode verifikasi terlebih dahulu</string>
+    <string name="kugou_login_code_resend">Kirim ulang dalam %1$d s</string>
+    <string name="kugou_login_code_send">Kirim kode</string>
+    <string name="kugou_login_code_sent">Kode verifikasi terkirim</string>
+    <string name="kugou_login_edit_phone">Ubah nomor telepon</string>
+    <string name="kugou_login_fetching_info">Sudah masuk, memuat info akun…</string>
+    <string name="kugou_login_hint">Pindai kode QR dengan aplikasi Kugou; masuk membuka kualitas lossless/VIP untuk penyedia Kugou bawaan</string>
+    <string name="kugou_login_phone_invalid">Masukkan nomor telepon 11 digit yang valid</string>
+    <string name="kugou_login_phone_label">Nomor telepon</string>
+    <string name="kugou_login_phone_placeholder">Masukkan nomor telepon Anda</string>
+    <string name="kugou_login_phone_submit">Masuk</string>
+    <string name="kugou_login_qr_cd">Kode QR login Kugou</string>
+    <string name="kugou_login_qr_refresh">Segarkan kode QR</string>
+    <string name="kugou_login_required_toast">Masuk ke Kugou terlebih dahulu untuk menggunakan FM Personal</string>
+    <string name="kugou_login_status_confirmed">Sudah masuk</string>
+    <string name="kugou_login_status_expired">Kode QR kedaluwarsa, menyegarkan…</string>
+    <string name="kugou_login_status_scanned">Telah dipindai — konfirmasi di ponsel Anda</string>
+    <string name="kugou_login_status_waiting">Menunggu pemindaian…</string>
+    <string name="kugou_login_subtitle">Masuk membuka kualitas lossless/VIP untuk penyedia Kugou bawaan dan menyinkronkan playlist Kugou Anda</string>
+    <string name="kugou_login_success">Berhasil masuk!</string>
+    <string name="kugou_login_switch_to_phone">Gunakan nomor telepon</string>
+    <string name="kugou_login_switch_to_qr">Gunakan kode QR</string>
+    <string name="kugou_login_tab_phone">Nomor telepon</string>
+    <string name="kugou_login_tab_qr">Kode QR</string>
+    <string name="kugou_login_title">Masuk ke Kugou</string>
+    <string name="kugou_service_name">Kugou Music</string>
+    <string name="kugou_sync_none">Belum ada playlist yang disinkronkan</string>
+    <string name="kugou_sync_playlists_count">%1$d playlist disinkronkan</string>
+    <string name="listen_together_cd_avatar">Avatar %1$s</string>
+    <string name="listen_together_clipboard_detected">Tautan undangan terdeteksi dari papan klip</string>
+    <string name="listen_together_create">Buat ruang</string>
+    <string name="listen_together_create_from_current">Mulai dengarkan bersama</string>
+    <string name="listen_together_create_from_current_hint">Menggunakan antrean pemutaran saat ini (hanya lagu NetEase) — tanpa pemilih playlist</string>
+    <string name="listen_together_create_hint">Pilih playlist NetEase yang disinkronkan sebagai antrean ruang</string>
+    <string name="listen_together_desc">Sinkronkan pemutaran dengan teman melalui akun NetEase. Saat aktif, hanya lagu NetEase yang dapat diputar.</string>
+    <string name="listen_together_end">Akhiri sesi</string>
+    <string name="listen_together_host_badge">Tuan rumah</string>
+    <string name="listen_together_host_left">Tuan rumah telah meninggalkan ruang. Pemutaran dilanjutkan saat mereka kembali.</string>
+    <string name="listen_together_invite_all_friends">Undang semua teman</string>
+    <string name="listen_together_invite_invalid">Tautan undangan tidak valid</string>
+    <string name="listen_together_join">Gabung</string>
+    <string name="listen_together_join_hint">Tempel tautan undangan di sini</string>
+    <string name="listen_together_leave">Keluar</string>
+    <string name="listen_together_leave_to_play">Keluar dari Listen Together untuk memutar lagu ini</string>
+    <string name="listen_together_me">Anda</string>
+    <string name="listen_together_member_count">Listen Together · %1$d</string>
+    <string name="listen_together_members">Anggota</string>
+    <string name="listen_together_netease_only">Listen Together hanya mendukung lagu NetEase</string>
+    <string name="listen_together_open_dashboard">Buka dasbor NetEase untuk menyinkronkan playlist</string>
+    <string name="listen_together_partner">Mendengarkan bersama</string>
+    <string name="listen_together_paste_link_placeholder">Tempel tautan undangan atau teks yang dibagikan</string>
+    <string name="listen_together_pick_playlist">Pilih playlist</string>
+    <string name="listen_together_resolving_link">Menentukan tautan undangan…</string>
+    <string name="listen_together_roaming">Mulai dengan pilihan roaming</string>
+    <string name="listen_together_share">Bagikan undangan</string>
+    <string name="listen_together_share_done">Dibagikan ke %1$d teman</string>
+    <string name="listen_together_share_failed">Tidak dapat memuat teman: %1$s</string>
+    <string name="listen_together_share_no_friends">Belum ada teman untuk dibagikan</string>
+    <string name="listen_together_share_no_invite">Buat atau gabung ke ruang terlebih dahulu</string>
+    <string name="listen_together_share_partial">Dibagikan ke %1$d teman, %2$d gagal</string>
+    <string name="listen_together_share_progress">Membagikan %1$d/%2$d…</string>
+    <string name="listen_together_share_to_friends">Bagikan ke pesan teman</string>
+    <string name="listen_together_share_to_friends_hint">Kirim undangan ke semua teman NetEase Anda (mengikuti + obrolan terbaru)</string>
+    <string name="listen_together_status_connected">Tersinkron</string>
+    <string name="listen_together_status_connecting">Menghubungkan…</string>
+    <string name="listen_together_status_reconnecting">Menyambung ulang…</string>
+    <string name="listen_together_title">Listen Together</string>
+    <string name="listen_together_view_members">Lihat anggota Listen Together</string>
+    <string name="listen_together_waiting_host">Menunggu tuan rumah…</string>
+    <string name="listen_together_with">Mendengarkan bersama %1$s</string>
+    <string name="lyric_share_generating">Membuat…</string>
+    <string name="lyric_share_image">Buat gambar</string>
+    <string name="lyric_share_select_all">Pilih semua</string>
+    <string name="lyric_share_selected_count">%1$d baris dipilih</string>
+    <string name="lyric_share_text">Bagikan sebagai teks</string>
+    <string name="lyric_share_title">Bagikan lirik</string>
+    <string name="lyrics_more_vibrant_folia">Folia</string>
+    <string name="lyrics_more_vibrant_glass">Panggung Glass</string>
+    <string name="lyrics_more_vibrant_off">Mati</string>
+    <string name="market_downloading">Mengunduh… %1$d%%</string>
+    <string name="market_install">Pasang</string>
+    <string name="market_installed">Terpasang</string>
+    <string name="market_installed_count">%1$d sumber terpasang</string>
+    <string name="market_no_sources">Belum ada sumber untuk diuji — pasang skrip sumber terlebih dahulu</string>
+    <string name="market_parsing">Mengurai skrip…</string>
+    <string name="market_refresh">Segarkan</string>
+    <string name="market_source_builtin">Bawaan</string>
+    <string name="market_source_plugin">Plugin</string>
+    <string name="market_source_test_desc">Menjalankan pencarian nyata per sumber; sumber JS juga mengambil URL putar</string>
+    <string name="market_source_test_title">Uji konektivitas sumber</string>
+    <string name="market_subtitle">Unduh dan pasang skrip sumber komunitas dari GitHub</string>
+    <string name="market_tap_expand">Ketuk untuk mengunduh dan memeriksa skrip</string>
+    <string name="market_test">Uji</string>
+    <string name="market_test_all">Uji semua</string>
+    <string name="market_test_failed">Tidak tersedia</string>
+    <string name="market_test_search_only">Pencarian OK</string>
+    <string name="market_test_success">Tersedia</string>
+    <string name="market_testing">Menguji…</string>
+    <string name="market_title">Pixel Source Market</string>
+    <string name="player_cd_song_info">Info lagu</string>
+    <string name="player_more_comments">Lihat komentar</string>
+    <string name="player_more_download">Unduh lagu</string>
+    <string name="playlist_search_hint">Cari lagu di playlist ini</string>
+    <string name="playlist_search_result_count">%1$d lagu</string>
+    <string name="queue_search_hint">Cari lagu di antrean ini</string>
+    <string name="queue_search_result_count">%1$d kecocokan</string>
+    <string name="roaming_mode_explore">Jelajahi</string>
+    <string name="roaming_mode_explore_desc">Cenderung ke lagu yang belum pernah Anda dengar</string>
+    <string name="roaming_mode_familiar">Dikenal</string>
+    <string name="roaming_mode_familiar_desc">Cenderung ke musik yang sudah biasa Anda dengarkan</string>
+    <string name="roaming_mode_title">Mode roaming</string>
+    <string name="song_recognition_hint">Biarkan ponsel mendengarkan musik yang diputar di sekitar (~6 dtk) dan temukan lagunya</string>
+    <string name="song_recognition_listening">Mendengarkan…</string>
+    <string name="song_recognition_mic_denied">Izin mikrofon diperlukan — silakan izinkan di pengaturan sistem</string>
+    <string name="song_recognition_result_title">Kecocokan ditemukan</string>
+    <string name="song_recognition_retry">Coba lagi</string>
+    <string name="song_recognition_start">Mulai mendengarkan</string>
+    <string name="song_recognition_title">Pengenalan lagu</string>
+    <string name="source_badge_kugou">Kugou</string>
+    <string name="source_badge_netease">NetEase</string>
+    <string name="startup_preparing">Menyiapkan…</string>
 </resources>

@@ -72,4 +72,30 @@
     <string name="auth_error_qq_login_incomplete">Connexion non détectée. Terminez la connexion QQ Music avant d\'appuyer sur Terminé.</string>
     <string name="auth_navidrome_пароль_hint">App password also works if your server supports it.</string>
     
+    <string name="auth_captcha_invalid">Saisissez le code de vérification SMS</string>
+    <string name="auth_captcha_label">Code SMS</string>
+    <string name="auth_captcha_resend_seconds">Renvoyer dans %1$ds</string>
+    <string name="auth_phone_invalid">Saisissez un numéro de téléphone valide</string>
+    <string name="auth_phone_login_action">Se connecter</string>
+    <string name="auth_phone_login_subtitle">Connectez-vous avec le code SMS envoyé au numéro associé à votre compte NetEase.</string>
+    <string name="auth_phone_login_use_web">Un problème ? Utilisez plutôt la connexion web</string>
+    <string name="auth_phone_number_label">Numéro de téléphone</string>
+    <string name="auth_send_captcha">Envoyer le code</string>
+    <string name="netease_login_required_toast">Veuillez d\'abord vous connecter à NetEase Cloud Music</string>
+    <string name="qq_login_brand_subtitle">Connectez-vous pour synchroniser vos playlists QQ Music et les lire dans l\'application</string>
+    <string name="qq_login_brand_title">Connecter QQ Music</string>
+    <string name="qq_login_edit_phone">Modifier le numéro de téléphone</string>
+    <string name="qq_login_loading">Veuillez patienter…</string>
+    <string name="qq_login_loading_sending">Envoi du code…</string>
+    <string name="qq_login_loading_signing_in">Connexion à QQ Music…</string>
+    <string name="qq_login_mode_phone">Connexion par téléphone</string>
+    <string name="qq_login_mode_web">Connexion web</string>
+    <string name="qq_login_phone_hint">Vos playlists QQ Music se synchronisent automatiquement après la connexion</string>
+    <string name="qq_login_phone_note">La connexion par téléphone ne prend en charge que les numéros de Chine continentale ; le code SMS est envoyé par QQ Music. Si une vérification de sécurité est requise, effectuez-la dans l\'application depuis l\'entrée ci-dessous, puis redemandez le code.</string>
+    <string name="qq_login_security_body">QQ Music demande d\'abord une vérification de sécurité. Appuyez sur « Vérifier » pour la terminer dans la fenêtre — le code sera renvoyé automatiquement.</string>
+    <string name="qq_login_security_ignore">Plus tard</string>
+    <string name="qq_login_security_open">Vérifier</string>
+    <string name="qq_login_security_title">Vérification de sécurité requise</string>
+    <string name="qq_login_step_code_subtitle">Saisissez le code SMS reçu</string>
+    <string name="qq_login_step_phone_subtitle">Saisissez le numéro de téléphone associé à votre compte QQ Music ; le code y sera envoyé</string>
 </resources>

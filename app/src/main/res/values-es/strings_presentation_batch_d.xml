@@ -58,7 +58,7 @@
     <string name="presentation_batch_d_mashup_stem_separation_unavailable">La separación de stems aún no está disponible.</string>
     <string name="presentation_batch_d_mashup_volume">Volumen</string>
     <string name="presentation_batch_d_mashup_speed">Velocidad</string>
-    <string name="presentation_batch_d_mashup_crossfader">Crossfader</string>
+    <string name="presentation_batch_d_mashup_crossfader">Fundido cruzado</string>
     <string name="presentation_batch_d_mashup_deck_1">Plato 1</string>
     <string name="presentation_batch_d_mashup_deck_2">Plato 2</string>
     <string name="presentation_batch_d_mashup_select_song_title">Elegir una canción</string>
@@ -116,8 +116,8 @@
     <string name="presentation_batch_d_transition_overlap_explanation_format">Las pistas se solapan durante %1$ds</string>
     <string name="presentation_batch_d_transition_curves_title">Curvas de volumen</string>
     <string name="presentation_batch_d_transition_curves_subtitle">Ajusta la pendiente del audio</string>
-    <string name="presentation_batch_d_transition_fade_out">Fade out</string>
-    <string name="presentation_batch_d_transition_fade_in">Fade in</string>
+    <string name="presentation_batch_d_transition_fade_out">Fundido de salida</string>
+    <string name="presentation_batch_d_transition_fade_in">Fundido de entrada</string>
 
     <!-- ArtistDetailScreen -->
     <string name="presentation_batch_d_cd_play_title">Reproducir %1$s</string>

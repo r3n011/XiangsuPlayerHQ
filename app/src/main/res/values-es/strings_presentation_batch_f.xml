@@ -84,7 +84,7 @@
     <string name="presentation_batch_f_palette_style_vibrant_desc">Acentos de alta saturación.</string>
     <string name="presentation_batch_f_palette_style_expressive_desc">Cambios de tono y contraste marcados.</string>
     <string name="presentation_batch_f_palette_style_fruit_salad_desc">Acentos juguetones y rotados.</string>
-    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal Spot</string>
+    <string name="presentation_batch_f_palette_label_tonal_spot">Punto tonal</string>
     <string name="presentation_batch_f_palette_label_vibrant">Vibrante</string>
     <string name="presentation_batch_f_palette_label_expressive">Expresivo</string>
     <string name="presentation_batch_f_palette_label_fruit_salad">Ensalada de frutas</string>
@@ -218,24 +218,59 @@
         <item quantity="one">%d tema</item>
         <item quantity="other">%d temas</item>
     </plurals>
-    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    <string name="presentation_batch_f_adjust_cover_hint">Usa gestos de pellizco y arrastre para encontrar el encuadre perfecto</string>
     
-    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    <string name="presentation_batch_f_adjust_cover_title">Ajusta tu portada</string>
     
-    <string name="presentation_batch_f_change">Change</string>
+    <string name="presentation_batch_f_change">Cambiar</string>
     
-    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    <string name="presentation_batch_f_edit_cover_title">Editar portada</string>
     
-    <string name="presentation_batch_f_remove">Remove</string>
+    <string name="presentation_batch_f_remove">Quitar</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_action">Remove</string>
+    <string name="presentation_batch_f_remove_channel_confirm_action">Quitar</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s will stop syncing and all cached songs from this channel will be removed.</string>
+    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s dejará de sincronizarse y se eliminarán todas las canciones en caché de este canal.</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_title">Remove channel?</string>
+    <string name="presentation_batch_f_remove_channel_confirm_title">¿Quitar el canal?</string>
     
-    <string name="presentation_batch_f_sync_phase_cleaning_cache">Cleaning album art cache</string>
+    <string name="presentation_batch_f_sync_phase_cleaning_cache">Limpiando la caché de portadas</string>
     
-    <string name="presentation_batch_f_sync_phase_syncing_cloud">Syncing cloud sources</string>
+    <string name="presentation_batch_f_sync_phase_syncing_cloud">Sincronizando fuentes en la nube</string>
     
+    <string name="presentation_batch_f_progress_rotate_subtitle">Gira continuamente el control durante la reproducción.</string>
+    <string name="presentation_batch_f_progress_rotate_title">Girar durante la reproducción</string>
+    <string name="presentation_batch_f_progress_style_dots">Puntos</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">Indicadores de puntos.</string>
+    <string name="presentation_batch_f_progress_style_gradient">Degradado</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">Relleno degradado multicolor.</string>
+    <string name="presentation_batch_f_progress_style_normal">Normal</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">Barra de progreso estándar.</string>
+    <string name="presentation_batch_f_progress_style_rounded">Redondeada</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">Progreso con forma de píldora.</string>
+    <string name="presentation_batch_f_progress_style_segmented">Segmentada</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">Bloques segmentados.</string>
+    <string name="presentation_batch_f_progress_style_thick">Gruesa</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">Barra gruesa y llamativa.</string>
+    <string name="presentation_batch_f_progress_style_thin">Fina</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">Línea fina y elegante.</string>
+    <string name="presentation_batch_f_progress_style_waveform">Forma de onda</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">Barras de amplitud estilo audio.</string>
+    <string name="presentation_batch_f_progress_style_wavy">Ondulada</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">Línea ondulada animada.</string>
+    <string name="presentation_batch_f_progress_thumb_circle">Círculo</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">Galleta</string>
+    <string name="presentation_batch_f_progress_thumb_default">Predeterminado</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">Rombo</string>
+    <string name="presentation_batch_f_progress_thumb_flower">Flor</string>
+    <string name="presentation_batch_f_progress_thumb_heading">Estilo del control</string>
+    <string name="presentation_batch_f_progress_thumb_heart">Corazón</string>
+    <string name="presentation_batch_f_progress_thumb_none">Ninguno</string>
+    <string name="presentation_batch_f_progress_thumb_pill">Píldora</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">Esponjoso</string>
+    <string name="presentation_batch_f_progress_thumb_square">Cuadrado</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">Elige el control que se usa para desplazarte por la canción.</string>
+    <string name="presentation_batch_f_progress_title">Barra de progreso</string>
+    <string name="presentation_batch_f_progress_track_heading">Estilo de la pista</string>
+    <string name="presentation_batch_f_progress_track_subtitle">Elige cómo se dibuja la barra de progreso de reproducción.</string>
 </resources>

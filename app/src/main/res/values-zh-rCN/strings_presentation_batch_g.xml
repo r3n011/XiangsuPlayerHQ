@@ -181,7 +181,7 @@
     <string name="presentation_batch_g_ai_token_output">输出</string>
     <string name="presentation_batch_g_ai_token_thought">思考</string>
     <string name="presentation_batch_g_ai_token_count">%1$s：%2$s</string>
-    <string name="presentation_batch_g_ai_usage_date_pattern">MMM dd, HH:mm</string>
+    <string name="presentation_batch_g_ai_usage_date_pattern">M月d日 HH:mm</string>
     <string name="presentation_batch_g_artist_section_multi_parsing">多艺术家解析</string>
     <string name="presentation_batch_g_artist_item_char_delimiters">字符分隔符</string>
     <string name="presentation_batch_g_artist_item_char_delimiters_current">当前：%1$s</string>

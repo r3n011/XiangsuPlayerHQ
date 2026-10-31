@@ -89,10 +89,10 @@
     <string name="presentation_batch_f_palette_style_vibrant_desc">Høy metning.</string>
     <string name="presentation_batch_f_palette_style_expressive_desc">Dristige fargeskift og kontrast.</string>
     <string name="presentation_batch_f_palette_style_fruit_salad_desc">Lekne roterte farger.</string>
-    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal Spot</string>
-    <string name="presentation_batch_f_palette_label_vibrant">Vibrant</string>
-    <string name="presentation_batch_f_palette_label_expressive">Expressive</string>
-    <string name="presentation_batch_f_palette_label_fruit_salad">Fruit Salad</string>
+    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal flekk</string>
+    <string name="presentation_batch_f_palette_label_vibrant">Livlig</string>
+    <string name="presentation_batch_f_palette_label_expressive">Uttrykksfull</string>
+    <string name="presentation_batch_f_palette_label_fruit_salad">Fruktsalat</string>
     <string name="presentation_batch_f_color_accuracy_title">Fargenøyaktighet</string>
     <string name="presentation_batch_f_color_accuracy_subtitle">0 beholder gjeldende innstilling. Høyere verdier holder seg nærmere albumkunstens dominerende farge.</string>
     <string name="presentation_batch_f_accuracy_current">Gjeldende</string>
@@ -228,20 +228,55 @@
         <item quantity="one">%d emne</item>
         <item quantity="other">%d emner</item>
     </plurals>
-    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    <string name="presentation_batch_f_adjust_cover_hint">Bruk knip og dra for å finne den perfekte innrammingen</string>
     
-    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    <string name="presentation_batch_f_adjust_cover_title">Juster omslagsbildet</string>
     
-    <string name="presentation_batch_f_change">Change</string>
+    <string name="presentation_batch_f_change">Bytt</string>
     
-    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    <string name="presentation_batch_f_edit_cover_title">Rediger omslag</string>
     
-    <string name="presentation_batch_f_remove">Remove</string>
+    <string name="presentation_batch_f_remove">Fjern</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_action">Remove</string>
+    <string name="presentation_batch_f_remove_channel_confirm_action">Fjern</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s will stop syncing and all cached songs from this channel will be removed.</string>
+    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s slutter å synkronisere, og alle bufrede sanger fra denne kanalen fjernes.</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_title">Remove channel?</string>
+    <string name="presentation_batch_f_remove_channel_confirm_title">Fjerne kanalen?</string>
     
+    <string name="presentation_batch_f_progress_rotate_subtitle">Roter knotten kontinuerlig under avspilling.</string>
+    <string name="presentation_batch_f_progress_rotate_title">Roter under avspilling</string>
+    <string name="presentation_batch_f_progress_style_dots">Prikker</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">Prikkindikatorer.</string>
+    <string name="presentation_batch_f_progress_style_gradient">Gradient</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">Flerfarget gradientfyll.</string>
+    <string name="presentation_batch_f_progress_style_normal">Normal</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">Standard fremdriftslinje.</string>
+    <string name="presentation_batch_f_progress_style_rounded">Avrundet</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">Pilleformet fremdrift.</string>
+    <string name="presentation_batch_f_progress_style_segmented">Segmentert</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">Segmenterte blokker.</string>
+    <string name="presentation_batch_f_progress_style_thick">Tyk</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">Fet, tykk linje.</string>
+    <string name="presentation_batch_f_progress_style_thin">Tynn</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">Tynn og elegant linje.</string>
+    <string name="presentation_batch_f_progress_style_waveform">Bølgeform</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">Amplitudestolper i lydstil.</string>
+    <string name="presentation_batch_f_progress_style_wavy">Bølgete</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">Animert bølgete linje.</string>
+    <string name="presentation_batch_f_progress_thumb_circle">Sirkel</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">Kjeks</string>
+    <string name="presentation_batch_f_progress_thumb_default">Standard</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">Diamant</string>
+    <string name="presentation_batch_f_progress_thumb_flower">Blomst</string>
+    <string name="presentation_batch_f_progress_thumb_heading">Stil på dra-knott</string>
+    <string name="presentation_batch_f_progress_thumb_heart">Hjerte</string>
+    <string name="presentation_batch_f_progress_thumb_none">Ingen</string>
+    <string name="presentation_batch_f_progress_thumb_pill">Pille</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">Puffet</string>
+    <string name="presentation_batch_f_progress_thumb_square">Kvadrat</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">Velg håndtaket som brukes til å spole i sangen.</string>
+    <string name="presentation_batch_f_progress_title">Fremdriftslinje</string>
+    <string name="presentation_batch_f_progress_track_heading">Stil på sporet</string>
+    <string name="presentation_batch_f_progress_track_subtitle">Velg hvordan fremdriftslinjen for avspilling tegnes.</string>
 </resources>

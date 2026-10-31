@@ -52,7 +52,7 @@
     <string name="presentation_batch_b_clear">Очистить</string>
     <string name="presentation_batch_b_genre_label_format">Жанр: %1$s</string>
     <string name="presentation_batch_b_select_a_genre">Выберите жанр</string>
-    <string name="presentation_batch_b_quick_fill">Quick Fill</string>
+    <string name="presentation_batch_b_quick_fill">Быстрое заполнение</string>
     <string name="presentation_batch_b_add_custom_genre">Свой жанр</string>
     <string name="presentation_batch_b_new_genre">Новый жанр</string>
     <string name="presentation_batch_b_add_custom_genre_title">Добавить свой жанр</string>
@@ -83,10 +83,10 @@
         <item quantity="many">%1$d песен • %2$s</item>
         <item quantity="other">%1$d песни • %2$s</item>
     </plurals>
-    <string name="presentation_batch_b_ai_mix_empty">Generating your AI playlist...</string>
+    <string name="presentation_batch_b_ai_mix_empty">Создание вашего плейлиста ИИ...</string>
 
     
     
-    <string name="presentation_batch_b_ai_mix_title">AI Mix</string>
+    <string name="presentation_batch_b_ai_mix_title">ИИ-микс</string>
     
 </resources>

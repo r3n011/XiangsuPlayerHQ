@@ -187,7 +187,7 @@
     <string name="about_spotlight_subtitle">Anerkjennelse for de som har hatt stor betydning.</string>
     <string name="about_contributors_section_title">Bidragsytere</string>
     <string name="about_contributors_section_subtitle">Live-liste fra GitHub.</string>
-    <string name="about_signal_open_source">Open source</string>
+    <string name="about_signal_open_source">Åpen kildekode</string>
     <string name="about_signal_community_first">Fellesskapet først</string>
     <string name="about_signal_material3">Material 3</string>
     <string name="cd_open_github_profile">Åpne GitHub-profil</string>
@@ -236,23 +236,23 @@
     <string name="toast_added_to_queue">Lagt i kø</string>
     <string name="toast_playing_next">Spilles som neste</string>
     <string name="error_share_song_format">Kunne ikke dele sang: %1$s</string>
-    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    <string name="about_acknowledgements_blur_desc">Uskarphetseffekt tilpasset fra dette prosjektet</string>
     
-    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
+    <string name="about_acknowledgements_folia_desc">Design av visuelle sangteksteffekter inspirert av Folia Major (AGPL-3.0)</string>
     
-    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_lanzou_desc">Oppdateringsintegrasjon drevet av LanzouAPI</string>
     
-    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    <string name="about_acknowledgements_miniaudio_desc">Lydavspilling drevet av miniaudio</string>
     
-    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_acknowledgements_title">Krediteringer</string>
     
     <string name="cd_back">Back</string>
     
-    <string name="cd_favorite_artist">Favorite artist</string>
+    <string name="cd_favorite_artist">Favorittartist</string>
     
     <string name="cd_radio_open">Radio</string>
 
-    <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    <string name="cd_unfavorite_artist">Fjern artist fra favoritter</string>
     
     <string name="content_description_exit">Exit</string>
     
@@ -260,121 +260,352 @@
 
     
     
-    <string name="content_description_play_pause">Play/Pause</string>
+    <string name="content_description_play_pause">Spill av/pause</string>
     
-    <string name="content_description_previous">Previous</string>
+    <string name="content_description_previous">Forrige</string>
     
-    <string name="dash_status_fetching_albums">Fetching album list…</string>
+    <string name="dash_status_fetching_albums">Henter albumliste…</string>
     
-    <string name="dash_status_fetching_playlists">Fetching playlists…</string>
+    <string name="dash_status_fetching_playlists">Henter spillelister…</string>
     
-    <string name="dash_status_fetching_songs_from_format">Fetching songs from %1$s…</string>
+    <string name="dash_status_fetching_songs_from_format">Henter sanger fra %1$s…</string>
     
-    <string name="dash_status_library_sync_complete">Library sync complete</string>
+    <string name="dash_status_library_sync_complete">Biblioteksynkronisering fullført</string>
     
-    <string name="dash_status_no_songs_found">No library songs found</string>
+    <string name="dash_status_no_songs_found">Fant ingen sanger i biblioteket</string>
     
-    <string name="dash_status_saving_songs_format">Saving %1$d songs to database…</string>
+    <string name="dash_status_saving_songs_format">Lagrer %1$d sanger i databasen…</string>
     
-    <string name="dash_status_sync_complete">Sync complete</string>
+    <string name="dash_status_sync_complete">Synkronisering fullført</string>
     
-    <string name="dash_status_syncing_library">Syncing library…</string>
+    <string name="dash_status_syncing_library">Synkroniserer bibliotek…</string>
     
-    <string name="dash_status_syncing_playlist_format">Syncing playlist: %1$s</string>
+    <string name="dash_status_syncing_playlist_format">Synkroniserer spilleliste: %1$s</string>
     
-    <string name="dash_status_updating_local">Updating local library…</string>
+    <string name="dash_status_updating_local">Oppdaterer lokalt bibliotek…</string>
     
-    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    <string name="discover_ai_subtitle">Smarte spillelister, oversettelse og innsikt i sangtekster</string>
     
-    <string name="discover_ai_title">AI Assistant</string>
+    <string name="discover_ai_title">AI-assistent</string>
     
-    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    <string name="discover_multi_selected_desc">%1$s – trykker du på Oppdag-knappen, vises en velger</string>
     
-    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    <string name="discover_none_selected_desc">Ingen valgt – Oppdag-knappen er skjult</string>
     
-    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
+    <string name="discover_options_dialog_desc">Velg hva Oppdag-knappen nederst i midten skal vise. Velg ingen for å skjule knappen, bare én for å åpne den direkte, eller flere for å vise en velger.</string>
     
-    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    <string name="discover_radio_subtitle">Lytt til internettradiostasjoner fra hele verden</string>
     
-    <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
+    <string name="discover_roaming_subtitle">Roaming i Netease Cloud Music med personlige utvalgte</string>
     
-    <string name="discover_sheet_title">Discover</string>
+    <string name="discover_sheet_title">Oppdag</string>
     
-    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    <string name="discover_show_item_subtitle">Vis dette alternativet i Oppdag-vinduet</string>
     
-    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    <string name="discover_single_selected_desc">Bare %1$s – knappen åpner det direkte</string>
     
-    <string name="home_card_ai_recommendation">AI Mix</string>
+    <string name="home_card_ai_recommendation">AI-miks</string>
 
     
     
-    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    <string name="home_card_order_reset_dialog_body">Dette gjenoppretter standard rekkefølge for hjemkortene.</string>
     
-    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    <string name="home_card_order_reset_dialog_title">Nullstille kortrekkefølgen?</string>
     
-    <string name="home_card_order_sheet_title">Customize home</string>
+    <string name="home_card_order_sheet_title">Tilpass hjemskjermen</string>
     
-    <string name="home_edit_card_order">Edit home cards</string>
+    <string name="home_edit_card_order">Rediger hjemkort</string>
     
-    <string name="home_empty_placeholder_refresh">Refresh</string>
+    <string name="home_empty_placeholder_refresh">Oppdater</string>
     
-    <string name="home_empty_placeholder_subtitle">Your mix will appear here when XiangsuPlayer finds songs or syncs a source.</string>
+    <string name="home_empty_placeholder_subtitle">Miksen din vises her når XiangsuPlayer finner sanger eller synkroniserer en kilde.</string>
     
-    <string name="home_empty_placeholder_title">No data to show yet</string>
+    <string name="home_empty_placeholder_title">Ingen data å vise ennå</string>
     
-    <string name="home_favorite_artists_title">Favorite Artists</string>
+    <string name="home_favorite_artists_title">Favorittartister</string>
     
-    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    <string name="open_source_licenses_screen_title">Lisenser for åpen kildekode</string>
     
     <string name="radio_all">All</string>
     
-    <string name="radio_country_picker_title">Select country</string>
+    <string name="radio_country_picker_title">Velg land</string>
     
-    <string name="radio_favorite">Add to favorites</string>
+    <string name="radio_favorite">Legg til i favoritter</string>
     
-    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    <string name="radio_favorite_confirm">Vil du legge denne stasjonen til i favorittene?</string>
     
     <string name="radio_live_badge">LIVE</string>
     
     <string name="radio_more_countries">More</string>
     
-    <string name="radio_no_results">No stations found</string>
+    <string name="radio_no_results">Fant ingen stasjoner</string>
     
-    <string name="radio_recommendations">Popular stations</string>
+    <string name="radio_recommendations">Populære stasjoner</string>
     
-    <string name="radio_retry">Retry</string>
+    <string name="radio_retry">Prøv igjen</string>
     
-    <string name="radio_search">Search</string>
+    <string name="radio_search">Søk</string>
     
-    <string name="radio_search_hint">Search stations, countries or tags</string>
+    <string name="radio_search_hint">Søk etter stasjoner, land eller tagger</string>
     
     <string name="radio_title">Radio</string>
     
     <string name="radio_top">Top</string>
     
-    <string name="radio_unfavorite">Remove from favorites</string>
+    <string name="radio_unfavorite">Fjern fra favoritter</string>
     
-    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
+    <string name="radio_unfavorite_confirm">Vil du fjerne denne stasjonen fra favorittene?</string>
     
-    <string name="tab_folders">Folders</string>
+    <string name="tab_folders">Mapper</string>
     
-    <string name="tab_history">History</string>
+    <string name="tab_history">Historikk</string>
     
-    <string name="tab_liked">Liked</string>
+    <string name="tab_liked">Likte</string>
     
-    <string name="tab_playlists">Playlists</string>
+    <string name="tab_playlists">Spillelister</string>
     
-    <string name="third_party_notices_action">Notices</string>
+    <string name="third_party_notices_action">Merknader</string>
     
-    <string name="third_party_notices_close">Close</string>
+    <string name="third_party_notices_close">Lukk</string>
     
     
-    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    <string name="third_party_notices_load_error">Kunne ikke laste merknader fra tredjeparter.</string>
     
-    <string name="third_party_notices_title">Third-Party Notices</string>
+    <string name="third_party_notices_title">Merknader fra tredjeparter</string>
     
-    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+    <string name="update_install_permission_required">Installasjonstillatelse kreves for å oppdatere appen.</string>
 
     
     
+    <string name="about_acknowledgements_mineradio_desc">Referanse for nettbasert fjernkontroll med «Glass»-stil (MineRadio)</string>
+    <string name="about_acknowledgements_reactor_desc">Referanse for nettbasert fjernkontroll med «Reactor»-stil og kjernevisualisering (Reactor Audio Visualizer)</string>
+    <string name="about_acknowledgements_rhythm_desc">Spesiell takk: kreativ støtte og delvis UI-referanse (Rhythm)</string>
+    <string name="about_donation_button">Doner med Alipay</string>
+    <string name="about_donation_button_alipay">Doner med Alipay</string>
+    <string name="about_donation_button_wechat">Doner med WeChat</string>
+    <string name="about_donation_channel_alipay">Alipay</string>
+    <string name="about_donation_channel_wechat">WeChat Pay</string>
+    <string name="about_donation_no_app">Ingen app kan håndtere donasjonslenken på denne enheten.</string>
+    <string name="about_donation_no_wechat">WeChat er ikke installert – skann QR-koden ovenfor i stedet.</string>
+    <string name="about_donation_qr_hint">Skann med Alipay, eller bruk knappen nedenfor</string>
+    <string name="about_donation_qr_hint_both">Skann med Alipay eller WeChat, eller bruk knappene nedenfor</string>
+    <string name="about_donation_qr_hint_wechat">Skann med WeChat, eller bruk knappen nedenfor</string>
+    <string name="about_donation_subtitle">Hvis XiangsuPlayer er til hjelp for deg, kan du vurdere å spandere en kaffe på utvikleren. Din støtte holder oppdateringene i gang.</string>
+    <string name="about_donation_thanks_note">Listen oppdateres over tid – kontakt utvikleren hvis noe mangler.</string>
+    <string name="about_donation_thanks_subtitle">Takk til alle som har støttet dette prosjektet</string>
+    <string name="about_donation_thanks_title">Takkeliste</string>
+    <string name="about_donation_title">Støtt utviklingen</string>
+    <string name="about_donation_wechat_opened">WeChat er åpnet – skann QR-koden ovenfor for å donere.</string>
+    <string name="about_supporters_surprise_hint">Trykk her – vi har noe å fortelle deg</string>
+    <string name="about_supporters_surprise_message">Og takk for at du valgte XiangsuPlayer. Måtte hver sang du elsker fortsette å spille.</string>
+    <string name="audiobook_chapter_count">%1$d kapitler</string>
+    <string name="audiobook_chapters_short">%1$d kapitler</string>
+    <string name="audiobook_filter_all">Alle</string>
+    <string name="audiobook_filter_gender">Målgruppe</string>
+    <string name="audiobook_filter_sort">Sortering</string>
+    <string name="audiobook_filter_status">Status</string>
+    <string name="audiobook_free_library">Gratis lydbokbibliotek</string>
+    <string name="audiobook_free_library_desc">Sjanger · Sortering · Målgruppe · Status</string>
+    <string name="audiobook_gender_all">Alle</string>
+    <string name="audiobook_gender_female">Kvinne</string>
+    <string name="audiobook_gender_male">Mann</string>
+    <string name="audiobook_home_empty">Ingen lydbokdata ennå</string>
+    <string name="audiobook_intro_collapse">Skjul</string>
+    <string name="audiobook_intro_expand">Vis mer</string>
+    <string name="audiobook_library_empty">Ingen gratis lydbøker med dette filteret</string>
+    <string name="audiobook_load_failed">Kunne ikke laste. Sjekk nettverket og prøv igjen</string>
+    <string name="audiobook_loading_chapters">Laster alle kapitler…</string>
+    <string name="audiobook_no_chapters">Ingen spillbare kapitler</string>
+    <string name="audiobook_play_all">Spill alle</string>
+    <string name="audiobook_queue_name">Lydbøker · %1$s</string>
+    <string name="audiobook_retry">Prøv igjen</string>
+    <string name="audiobook_search_cd">Søk etter lydbøker</string>
+    <string name="audiobook_search_clear">Tøm</string>
+    <string name="audiobook_search_empty">Fant ingen lydbøker for «%1$s»</string>
+    <string name="audiobook_search_hint">Søk etter tittel, forfatter eller innleser</string>
+    <string name="audiobook_search_initial">Skriv et nøkkelord for å søke etter lydbøker</string>
+    <string name="audiobook_search_title">Søk etter lydbøker</string>
+    <string name="audiobook_section_daily">Dagens utvalgte</string>
+    <string name="audiobook_section_rank">Toppliste</string>
+    <string name="audiobook_section_vip">VIP-utvalgte</string>
+    <string name="audiobook_section_week">Ukens utvalgte</string>
+    <string name="audiobook_shuffle_play">Bland</string>
+    <string name="audiobook_sort_default">Standard</string>
+    <string name="audiobook_sort_plays">Avspillinger</string>
+    <string name="audiobook_sort_update">Oppdatert</string>
+    <string name="audiobook_status_all">Alle</string>
+    <string name="audiobook_status_done">Fullført</string>
+    <string name="audiobook_status_serial">Pågår</string>
+    <string name="audiobook_title">Lydbøker</string>
+    <string name="audiobook_unknown_author">Ukjent forfatter</string>
+    <string name="cd_donation_qr">QR-kode for donasjon via Alipay</string>
+    <string name="cd_donation_qr_wechat">QR-kode for donasjon via WeChat Pay</string>
+    <string name="chat_action_new_chat">Finn personer å chatte med</string>
+    <string name="chat_cd_messages">Meldinger</string>
+    <string name="chat_empty_conversations">Ingen samtaler ennå. Trykk på knappen øverst til høyre for å finne personer.</string>
+    <string name="chat_empty_friends">Ingen venner å invitere ennå. Følg noen brukere først.</string>
+    <string name="chat_empty_search">Skriv et kallenavn for å søke etter NetEase-brukere</string>
+    <string name="chat_follow">Følg</string>
+    <string name="chat_followed">Følger</string>
+    <string name="chat_go_login">Logg inn</string>
+    <string name="chat_input_hint">Send en melding…</string>
+    <string name="chat_invite_friend">Inviter NetEase-venner</string>
+    <string name="chat_invite_sent">Sendt</string>
+    <string name="chat_join_together">Bli med i Listen Together</string>
+    <string name="chat_need_login">Logg inn på NetEase-kontoen din for å bruke meldinger</string>
+    <string name="chat_no_results">Ingen samsvarende brukere</string>
+    <string name="chat_playlist_empty_hint">Ingen spillbare sanger i denne spillelisten</string>
+    <string name="chat_search_hint">Søk etter NetEase-brukere</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_send_invite">Send invitasjon</string>
+    <string name="chat_send_message">Send melding</string>
+    <string name="chat_tab_conversations">Chatter</string>
+    <string name="chat_tab_search">Finn personer</string>
+    <string name="chat_title">Meldinger</string>
+    <string name="chat_unfollow">Slutt å følge</string>
+    <string name="home_card_hide">Skjul kort</string>
+    <string name="home_card_order_at_least_one_visible">Hold minst ett kort synlig</string>
+    <string name="home_card_order_sheet_visibility_hint">Dra for å endre rekkefølge · trykk på øyet for å vise eller skjule et kort</string>
+    <string name="home_card_show">Vis kort</string>
+    <string name="home_discover_audiobook">Lydbøker</string>
+    <string name="home_discover_card_desc">Roaming · Hjerte · Lignende · Gjenkjenning · Radio · AI</string>
+    <string name="home_discover_heart_mode">Hjertemodus</string>
+    <string name="home_discover_kugou_fm">Personlig FM</string>
+    <string name="home_discover_listen_together">Lytt sammen</string>
+    <string name="home_discover_recognition">Sanggjenkjenning</string>
+    <string name="home_discover_similar_songs">Lignende sanger</string>
+    <string name="home_featured_quality_hires">Hi-Res</string>
+    <string name="home_featured_quality_hq">HQ</string>
+    <string name="home_featured_quality_lossless">Tapsfri</string>
+    <string name="kugou_dashboard_account_id">Konto-ID: %1$s</string>
+    <string name="kugou_dashboard_quality_hint">Pålogget: den innebygde Kugou-leverandøren kan hente VIP-/tapsfri kvalitet</string>
+    <string name="kugou_dashboard_refresh_cd">Oppdater kontoinformasjon</string>
+    <string name="kugou_dashboard_sync_done">Synkronisering fullført: %1$d spillelister</string>
+    <string name="kugou_dashboard_sync_failed">Synkronisering feilet – sjekk nettverket og prøv igjen</string>
+    <string name="kugou_dashboard_syncing">Synkroniserer…</string>
+    <string name="kugou_login_account_pick_hint">Dette telefonnummeret er knyttet til flere Kugou-kontoer – velg den du vil logge inn med</string>
+    <string name="kugou_login_account_pick_title">Velg en konto</string>
+    <string name="kugou_login_code_label">Bekreftelseskode</string>
+    <string name="kugou_login_code_placeholder">Skriv inn SMS-koden</string>
+    <string name="kugou_login_code_required">Skriv inn bekreftelseskoden først</string>
+    <string name="kugou_login_code_resend">Send på nytt om %1$d s</string>
+    <string name="kugou_login_code_send">Send kode</string>
+    <string name="kugou_login_code_sent">Bekreftelseskode sendt</string>
+    <string name="kugou_login_edit_phone">Bytt telefonnummer</string>
+    <string name="kugou_login_fetching_info">Pålogget, laster kontoinformasjon…</string>
+    <string name="kugou_login_hint">Skann QR-koden med Kugou-appen. Innlogging låser opp tapsfri/VIP-kvalitet for den innebygde Kugou-leverandøren</string>
+    <string name="kugou_login_phone_invalid">Skriv inn et gyldig telefonnummer med 11 sifre</string>
+    <string name="kugou_login_phone_label">Telefonnummer</string>
+    <string name="kugou_login_phone_placeholder">Skriv inn telefonnummeret ditt</string>
+    <string name="kugou_login_phone_submit">Logg inn</string>
+    <string name="kugou_login_qr_cd">QR-kode for Kugou-innlogging</string>
+    <string name="kugou_login_qr_refresh">Oppdater QR-kode</string>
+    <string name="kugou_login_required_toast">Logg inn på Kugou først for å bruke Personlig FM</string>
+    <string name="kugou_login_status_confirmed">Pålogget</string>
+    <string name="kugou_login_status_expired">QR-koden er utløpt, oppdaterer…</string>
+    <string name="kugou_login_status_scanned">Skannet – bekreft på telefonen</string>
+    <string name="kugou_login_status_waiting">Venter på skanning…</string>
+    <string name="kugou_login_subtitle">Innlogging låser opp tapsfri/VIP-kvalitet for den innebygde Kugou-leverandøren og synkroniserer Kugou-spillelistene dine</string>
+    <string name="kugou_login_success">Pålogget!</string>
+    <string name="kugou_login_switch_to_phone">Bruk telefonnummer</string>
+    <string name="kugou_login_switch_to_qr">Bruk QR-kode</string>
+    <string name="kugou_login_tab_phone">Telefonnummer</string>
+    <string name="kugou_login_tab_qr">QR-kode</string>
+    <string name="kugou_login_title">Logg inn på Kugou</string>
+    <string name="kugou_service_name">Kugou Music</string>
+    <string name="kugou_sync_none">Ingen spillelister synkronisert ennå</string>
+    <string name="kugou_sync_playlists_count">%1$d spillelister synkronisert</string>
+    <string name="listen_together_cd_avatar">Avatar for %1$s</string>
+    <string name="listen_together_clipboard_detected">Invitasjonslenke funnet i utklippstavlen</string>
+    <string name="listen_together_create">Opprett rom</string>
+    <string name="listen_together_create_from_current">Start Lytt sammen</string>
+    <string name="listen_together_create_from_current_hint">Bruker gjeldende avspillingskø (bare NetEase-sanger) – ingen spillelistevalg trengs</string>
+    <string name="listen_together_create_hint">Velg en synkronisert NetEase-spilleliste som rommets kø</string>
+    <string name="listen_together_desc">Synkroniser avspillingen med venner via NetEase-kontoen. Mens dette er aktivt, kan bare NetEase-sanger spilles.</string>
+    <string name="listen_together_end">Avslutt økten</string>
+    <string name="listen_together_host_badge">Vert</string>
+    <string name="listen_together_host_left">Verten har forlatt rommet. Avspillingen fortsetter når verten kommer tilbake.</string>
+    <string name="listen_together_invite_all_friends">Inviter alle venner</string>
+    <string name="listen_together_invite_invalid">Ugyldig invitasjonslenke</string>
+    <string name="listen_together_join">Bli med</string>
+    <string name="listen_together_join_hint">Lim inn invitasjonslenken her</string>
+    <string name="listen_together_leave">Forlat</string>
+    <string name="listen_together_leave_to_play">Forlat Lytt sammen for å spille denne sangen</string>
+    <string name="listen_together_me">Deg</string>
+    <string name="listen_together_member_count">Lytt sammen · %1$d</string>
+    <string name="listen_together_members">Medlemmer</string>
+    <string name="listen_together_netease_only">Lytt sammen støtter bare NetEase-sanger</string>
+    <string name="listen_together_open_dashboard">Åpne NetEase-panelet for å synkronisere spillelister</string>
+    <string name="listen_together_partner">Lytter med</string>
+    <string name="listen_together_paste_link_placeholder">Lim inn invitasjonslenken eller delt tekst</string>
+    <string name="listen_together_pick_playlist">Velg en spilleliste</string>
+    <string name="listen_together_resolving_link">Slår opp invitasjonslenken…</string>
+    <string name="listen_together_roaming">Start med roaming-utvalgte</string>
+    <string name="listen_together_share">Del invitasjon</string>
+    <string name="listen_together_share_done">Delt med %1$d venner</string>
+    <string name="listen_together_share_failed">Kunne ikke laste venner: %1$s</string>
+    <string name="listen_together_share_no_friends">Ingen venner å dele med ennå</string>
+    <string name="listen_together_share_no_invite">Opprett eller bli med i et rom først</string>
+    <string name="listen_together_share_partial">Delt med %1$d venner, %2$d feilet</string>
+    <string name="listen_together_share_progress">Deler %1$d/%2$d…</string>
+    <string name="listen_together_share_to_friends">Del via vennemeldinger</string>
+    <string name="listen_together_share_to_friends_hint">Send invitasjonen til alle NetEase-vennene dine (følger + nylige chatter)</string>
+    <string name="listen_together_status_connected">Synkronisert</string>
+    <string name="listen_together_status_connecting">Kobler til…</string>
+    <string name="listen_together_status_reconnecting">Kobler til på nytt…</string>
+    <string name="listen_together_title">Lytt sammen</string>
+    <string name="listen_together_view_members">Vis medlemmer i Lytt sammen</string>
+    <string name="listen_together_waiting_host">Venter på verten…</string>
+    <string name="listen_together_with">Lytter med %1$s</string>
+    <string name="lyric_share_generating">Genererer…</string>
+    <string name="lyric_share_image">Generer bilde</string>
+    <string name="lyric_share_select_all">Velg alle</string>
+    <string name="lyric_share_selected_count">%1$d linje(r) valgt</string>
+    <string name="lyric_share_text">Del som tekst</string>
+    <string name="lyric_share_title">Del sangtekster</string>
+    <string name="lyrics_more_vibrant_folia">Folia</string>
+    <string name="lyrics_more_vibrant_glass">Glass-scene</string>
+    <string name="lyrics_more_vibrant_off">Av</string>
+    <string name="market_downloading">Laster ned… %1$d%%</string>
+    <string name="market_install">Installer</string>
+    <string name="market_installed">Installert</string>
+    <string name="market_installed_count">%1$d kilder installert</string>
+    <string name="market_no_sources">Ingen kilder å teste ennå – installer et skript for en kilde først</string>
+    <string name="market_parsing">Tolker skript…</string>
+    <string name="market_refresh">Oppdater</string>
+    <string name="market_source_builtin">Innebygd</string>
+    <string name="market_source_plugin">Programtillegg</string>
+    <string name="market_source_test_desc">Kjører et ekte søk per kilde; JS-kilder henter også en avspillings-URL</string>
+    <string name="market_source_test_title">Test av kildeforbindelse</string>
+    <string name="market_subtitle">Last ned og installer skript for fellesskapskilder fra GitHub</string>
+    <string name="market_tap_expand">Trykk for å laste ned og se gjennom skriptene</string>
+    <string name="market_test">Test</string>
+    <string name="market_test_all">Test alle</string>
+    <string name="market_test_failed">Utilgjengelig</string>
+    <string name="market_test_search_only">Søk OK</string>
+    <string name="market_test_success">Tilgjengelig</string>
+    <string name="market_testing">Tester…</string>
+    <string name="market_title">Pixel-kildemarked</string>
+    <string name="player_cd_song_info">Sanginformasjon</string>
+    <string name="player_more_comments">Vis kommentarer</string>
+    <string name="player_more_download">Last ned sang</string>
+    <string name="playlist_search_hint">Søk etter sanger i denne spillelisten</string>
+    <string name="playlist_search_result_count">%1$d sanger</string>
+    <string name="queue_search_hint">Søk etter sanger i denne køen</string>
+    <string name="queue_search_result_count">%1$d treff</string>
+    <string name="roaming_mode_explore">Utforsk</string>
+    <string name="roaming_mode_explore_desc">Legg vekt på sanger du ikke har hørt</string>
+    <string name="roaming_mode_familiar">Kjent</string>
+    <string name="roaming_mode_familiar_desc">Legg vekt på det du allerede hører på</string>
+    <string name="roaming_mode_title">Roaming-modus</string>
+    <string name="song_recognition_hint">La telefonen lytte til musikken som spilles i nærheten (~6 s) og finne sangen</string>
+    <string name="song_recognition_listening">Lytter…</string>
+    <string name="song_recognition_mic_denied">Mikrofontillatelse kreves – gi den i systeminnstillingene</string>
+    <string name="song_recognition_result_title">Treff funnet</string>
+    <string name="song_recognition_retry">Prøv igjen</string>
+    <string name="song_recognition_start">Start lytting</string>
+    <string name="song_recognition_title">Sanggjenkjenning</string>
+    <string name="source_badge_kugou">Kugou</string>
+    <string name="source_badge_netease">NetEase</string>
+    <string name="startup_preparing">Forbereder…</string>
 </resources>

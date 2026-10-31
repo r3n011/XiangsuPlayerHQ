@@ -1,570 +1,556 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <!-- Library Screen -->
-    <string name="library_screen_title">Library</string>
-    <string name="library_tabs_sheet_title">Library tabs</string>
-    <string name="library_tabs_sheet_subtitle">Jump directly to any tab or reorder them.</string>
-    <string name="library_reorder_tabs_label">Reorder tabs</string>
+    <string name="library_screen_title">Bibliotek</string>
+    <string name="library_tabs_sheet_title">Bibliotekfaner</string>
+    <string name="library_tabs_sheet_subtitle">Gå direkte til en fane eller endre rekkefølgen.</string>
+    <string name="library_reorder_tabs_label">Endre rekkefølge på faner</string>
 
     <!-- Library Tab Names -->
-    <string name="library_tab_songs">Songs</string>
-    <string name="library_tab_albums">Albums</string>
-    <string name="library_tab_artists">Artists</string>
-    <string name="library_tab_playlists">Playlists</string>
-    <string name="library_tab_folders">Folders</string>
-    <string name="library_tab_liked">Liked</string>
+    <string name="library_tab_songs">Sanger</string>
+    <string name="library_tab_albums">Album</string>
+    <string name="library_tab_artists">Artister</string>
+    <string name="library_tab_playlists">Spillelister</string>
+    <string name="library_tab_folders">Mapper</string>
+    <string name="library_tab_liked">Likte</string>
 
     <!-- Library Toasts -->
-    <string name="library_toast_playlist_created">Playlist created successfully</string>
-    <string name="library_toast_set_ai_provider_api_key_first">Set your AI provider API key first</string>
-    <string name="library_toast_set_gemini_api_key_first">Set your Gemini API key first</string>
-    <string name="library_toast_added_to_queue">Added to queue</string>
-    <string name="library_toast_playing_next">Playing next</string>
+    <string name="library_toast_playlist_created">Spillelisten ble opprettet</string>
+    <string name="library_toast_set_ai_provider_api_key_first">Angi API-nøkkelen for AI-leverandøren din først</string>
+    <string name="library_toast_set_gemini_api_key_first">Angi Gemini API-nøkkelen din først</string>
+    <string name="library_toast_added_to_queue">Lagt i kø</string>
+    <string name="library_toast_playing_next">Spilles som neste</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Watch transfer</string>
-    <string name="library_cd_open_settings">Settings</string>
+    <string name="library_cd_watch_transfer">Overføring til klokke</string>
+    <string name="library_cd_open_settings">Innstillinger</string>
     <string name="library_tab_edit">Edit</string>
-    <string name="library_cd_reorder_tabs">Reorder tabs</string>
-    <string name="library_cd_expand_tab_menu">Expand menu</string>
+    <string name="library_cd_reorder_tabs">Endre rekkefølge på faner</string>
+    <string name="library_cd_expand_tab_menu">Utvid meny</string>
 
     <!-- Library Multi-Selection & Folders -->
-    <string name="library_toast_max_albums_selection">You can select up to %1$d albums</string>
-    <string name="library_folder_name_fallback">Folder</string>
-    <string name="library_cd_folder">Folder</string>
+    <string name="library_toast_max_albums_selection">Du kan velge opptil %1$d album</string>
+    <string name="library_folder_name_fallback">Mappe</string>
+    <string name="library_cd_folder">Mappe</string>
 
     <!-- Library Sort & View Bottom Sheet -->
-    <string name="library_sort_by_title">Sort by</string>
+    <string name="library_sort_by_title">Sorter etter</string>
     <string name="library_sort_section_view">View</string>
-    <string name="library_sort_toggle_playlist_view">Playlist View</string>
+    <string name="library_sort_toggle_playlist_view">Spillelistevisning</string>
     <string name="library_view_mode_grid">Grid</string>
     <string name="library_view_mode_list">List</string>
-    <string name="library_storage_internal">Internal</string>
-    <string name="library_storage_sd_card">SD Card</string>
-    <string name="library_storage_sd_card_unavailable">SD card is not available right now.</string>
-    <string name="library_sort_section_cloud">Cloud</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram Cloud Channels</string>
-    <string name="library_telegram_topics_display_title">Topics Display</string>
-    <string name="library_telegram_topic_mode_channels">Channels</string>
-    <string name="library_telegram_topic_mode_topics">Topics</string>
+    <string name="library_storage_internal">Intern</string>
+    <string name="library_storage_sd_card">SD-kort</string>
+    <string name="library_storage_sd_card_unavailable">SD-kortet er ikke tilgjengelig akkurat nå.</string>
+    <string name="library_sort_section_cloud">Sky</string>
+    <string name="library_sort_toggle_telegram_channels">Telegram-skyskanaler</string>
+    <string name="library_telegram_topics_display_title">Visning av emner</string>
+    <string name="library_telegram_topic_mode_channels">Kanaler</string>
+    <string name="library_telegram_topic_mode_topics">Emner</string>
     <string name="library_telegram_topic_mode_both">Both</string>
-    <string name="library_cloud_sources_heading">Cloud</string>
-    <string name="library_cloud_only_label">Cloud Only</string>
+    <string name="library_cloud_sources_heading">Sky</string>
+    <string name="library_cloud_only_label">Bare sky</string>
 
     <!-- Library AI Metadata Processing -->
-    <string name="library_generating_ai_metadata">Generating metadata with AI…</string>
+    <string name="library_generating_ai_metadata">Genererer metadata med AI…</string>
 
     <!-- Library list errors -->
-    <string name="library_error_loading_songs">Error loading songs</string>
-    <string name="library_album_detail_error_loading_albums">Error loading albums</string>
-    <string name="library_artist_error_loading_artists">Error loading artists</string>
-    <string name="library_action_retry">Retry</string>
+    <string name="library_error_loading_songs">Feil ved lasting av sanger</string>
+    <string name="library_album_detail_error_loading_albums">Feil ved lasting av album</string>
+    <string name="library_artist_error_loading_artists">Feil ved lasting av artister</string>
+    <string name="library_action_retry">Prøv igjen</string>
 
     <!-- Library empty (paginated) -->
-    <string name="library_no_songs_in_library_message">No songs found in your library.</string>
-    <string name="library_no_songs_rescan_hint">Try rescanning your library in settings if you have music on your device.</string>
-    <string name="library_cd_no_songs_in_library">No songs found</string>
+    <string name="library_no_songs_in_library_message">Fant ingen sanger i biblioteket.</string>
+    <string name="library_no_songs_rescan_hint">Prøv å skanne biblioteket på nytt i innstillingene hvis du har musikk på enheten.</string>
+    <string name="library_cd_no_songs_in_library">Fant ingen sanger</string>
 
     <!-- Library action row -->
     <string name="library_action_new">New</string>
-    <string name="library_cd_create_new_playlist">Create new playlist</string>
-    <string name="library_cd_import_m3u_playlist">Import M3U playlist</string>
-    <string name="library_cd_locate_current_song">Locate current song</string>
-    <string name="library_storage_filter_all_songs">All songs</string>
-    <string name="library_storage_filter_online">CLOUD</string>
-    <string name="library_storage_filter_offline">LOCAL</string>
-    <string name="library_cd_sort_options">Sort options</string>
+    <string name="library_cd_create_new_playlist">Opprett ny spilleliste</string>
+    <string name="library_cd_import_m3u_playlist">Importer M3U-spilleliste</string>
+    <string name="library_cd_locate_current_song">Finn gjeldende sang</string>
+    <string name="library_storage_filter_all_songs">Alle sanger</string>
+    <string name="library_storage_filter_online">SKY</string>
+    <string name="library_storage_filter_offline">LOKALT</string>
+    <string name="library_cd_sort_options">Sorteringsvalg</string>
 
     <!-- Library selection action row -->
     <string name="library_selection_all">All</string>
-    <string name="library_selection_deselect">Deselect</string>
-    <string name="library_selection_more_options">More options</string>
+    <string name="library_selection_deselect">Fjern valg</string>
+    <string name="library_selection_more_options">Flere alternativer</string>
 
     <!-- Library Syncing -->
-    <string name="library_sync_scanning">Scanning music files…</string>
-    <string name="library_sync_processing">Processing files…</string>
-    <string name="library_sync_files_progress">%1$d of %2$d files</string>
-    <string name="library_sync_in_progress">Syncing library…</string>
-    <string name="library_sync_complete">Sync complete</string>
-    <string name="library_sync_pending">Waiting…</string>
-    <string name="library_syncing">Syncing library…</string>
-    <string name="library_sync_cache">Cleaning album art cache…</string>
-    <string name="library_sync_cloud">Syncing cloud sources…</string>
-    <string name="library_sync_lyrics">Scanning lyrics…</string>
+    <string name="library_sync_scanning">Skanner musikkfiler…</string>
+    <string name="library_sync_processing">Behandler filer…</string>
+    <string name="library_sync_files_progress">%1$d av %2$d filer</string>
+    <string name="library_sync_in_progress">Synkroniserer bibliotek…</string>
+    <string name="library_sync_complete">Synkronisering fullført</string>
+    <string name="library_sync_pending">Venter…</string>
+    <string name="library_syncing">Synkroniserer bibliotek…</string>
+    <string name="library_sync_cache">Renser cache for albumkunst…</string>
+    <string name="library_sync_cloud">Synkroniserer skykilder…</string>
+    <string name="library_sync_lyrics">Skanner sangtekster…</string>
 
     <!-- Library Empty State -->
-    <string name="library_empty_songs_all_title">No songs yet</string>
-    <string name="library_empty_songs_all_subtitle">Add music to your device or sync a cloud source to start listening.</string>
-    <string name="library_empty_songs_offline_title">No local songs found</string>
-    <string name="library_empty_songs_offline_subtitle">Try another source filter or rescan your device library.</string>
-    <string name="library_empty_songs_online_title">No cloud songs found</string>
-    <string name="library_empty_songs_online_subtitle">Sync Telegram or NetEase songs, or switch to local source.</string>
-    <string name="library_empty_albums_all_title">No albums available</string>
-    <string name="library_empty_albums_all_subtitle">Albums will appear here as soon as your library has grouped tracks.</string>
-    <string name="library_empty_albums_offline_title">No local albums found</string>
-    <string name="library_empty_albums_offline_subtitle">Local songs are required to build local album groups.</string>
-    <string name="library_empty_albums_online_title">No cloud albums found</string>
-    <string name="library_empty_albums_online_subtitle">Cloud songs with album data will appear here after sync.</string>
-    <string name="library_empty_artists_all_title">No artists available</string>
-    <string name="library_empty_artists_all_subtitle">Artists are shown after songs are indexed from any source.</string>
-    <string name="library_empty_artists_offline_title">No local artists found</string>
-    <string name="library_empty_artists_offline_subtitle">No artist metadata is available for local songs right now.</string>
-    <string name="library_empty_artists_online_title">No cloud artists found</string>
-    <string name="library_empty_artists_online_subtitle">Cloud artist entries appear when remote songs are synced.</string>
-    <string name="library_empty_liked_all_title">No liked songs yet</string>
-    <string name="library_empty_liked_all_subtitle">Tap the heart icon while playing a song to save it here.</string>
-    <string name="library_empty_liked_offline_title">No liked local songs</string>
-    <string name="library_empty_liked_offline_subtitle">Switch source filter or like songs from your device.</string>
-    <string name="library_empty_liked_online_title">No liked cloud songs</string>
-    <string name="library_empty_liked_online_subtitle">Like Telegram or NetEase tracks to see them in this view.</string>
-    <string name="library_empty_folders_title">No folders found</string>
-    <string name="library_empty_folders_subtitle">Internal storage folders with music will appear here.</string>
-    <string name="library_empty_playlists_title">No playlists yet</string>
-    <string name="library_empty_playlists_subtitle">Create your first playlist to organize your library.</string>
+    <string name="library_empty_songs_all_title">Ingen sanger ennå</string>
+    <string name="library_empty_songs_all_subtitle">Legg til musikk på enheten din eller synkroniser en skykilde for å begynne å lytte.</string>
+    <string name="library_empty_songs_offline_title">Fant ingen lokale sanger</string>
+    <string name="library_empty_songs_offline_subtitle">Prøv et annet kildefilter eller skann enhetsbiblioteket på nytt.</string>
+    <string name="library_empty_songs_online_title">Fant ingen skysanger</string>
+    <string name="library_empty_songs_online_subtitle">Synkroniser sanger fra Telegram eller NetEase, eller bytt til lokal kilde.</string>
+    <string name="library_empty_albums_all_title">Ingen album tilgjengelig</string>
+    <string name="library_empty_albums_all_subtitle">Album vises her så snart biblioteket har gruppert spor.</string>
+    <string name="library_empty_albums_offline_title">Fant ingen lokale album</string>
+    <string name="library_empty_albums_offline_subtitle">Lokale sanger kreves for å bygge lokale albumgrupper.</string>
+    <string name="library_empty_albums_online_title">Fant ingen album i skyen</string>
+    <string name="library_empty_albums_online_subtitle">Skysanger med albumdata vises her etter synkronisering.</string>
+    <string name="library_empty_artists_all_title">Ingen artister tilgjengelig</string>
+    <string name="library_empty_artists_all_subtitle">Artister vises etter at sanger er indeksert fra en hvilken som helst kilde.</string>
+    <string name="library_empty_artists_offline_title">Fant ingen lokale artister</string>
+    <string name="library_empty_artists_offline_subtitle">Det finnes ingen artistmetadata for lokale sanger akkurat nå.</string>
+    <string name="library_empty_artists_online_title">Fant ingen artister i skyen</string>
+    <string name="library_empty_artists_online_subtitle">Artistoppføringer fra skyen vises når eksterne sanger synkroniseres.</string>
+    <string name="library_empty_liked_all_title">Ingen likte sanger ennå</string>
+    <string name="library_empty_liked_all_subtitle">Trykk på hjerteikonet mens du spiller en sang, for å lagre den her.</string>
+    <string name="library_empty_liked_offline_title">Ingen likte lokale sanger</string>
+    <string name="library_empty_liked_offline_subtitle">Bytt kildefilter eller lik sanger fra enheten din.</string>
+    <string name="library_empty_liked_online_title">Ingen likte skysanger</string>
+    <string name="library_empty_liked_online_subtitle">Lik spor fra Telegram eller NetEase for å se dem i denne visningen.</string>
+    <string name="library_empty_folders_title">Fant ingen mapper</string>
+    <string name="library_empty_folders_subtitle">Mapper med musikk i intern lagring vises her.</string>
+    <string name="library_empty_playlists_title">Ingen spillelister ennå</string>
+    <string name="library_empty_playlists_subtitle">Opprett din første spilleliste for å organisere biblioteket.</string>
 
     <!-- SongInfoBottomSheet, MultiSelectionBottomSheet, PlaylistMultiSelectionBottomSheet -->
-    <string name="song_info_cd_edit_metadata">Edit song metadata</string>
+    <string name="song_info_cd_edit_metadata">Rediger sangmetadata</string>
     <string name="song_info_action_play">Play</string>
-    <string name="song_info_cd_play">Play song</string>
-    <string name="song_info_action_play_all">Play all</string>
-    <string name="song_info_cd_play_all">Play all</string>
-    <string name="song_info_cd_add_to_favorites">Add to favorites</string>
-    <string name="song_info_cd_add_to_favorites_all">Add all to favorites</string>
-    <string name="song_info_cd_remove_from_favorites">Remove from favorites</string>
-    <string name="song_info_cd_remove_from_favorites_all">Remove all from favorites</string>
-    <string name="song_info_share_chooser_title">Share song file via</string>
-    <string name="song_info_cd_share_song_file">Share song file</string>
-    <string name="song_info_cd_share_all_as_zip">Share all as ZIP</string>
-    <string name="song_info_error_share_song">Could not share song: %1$s</string>
-    <string name="song_info_action_add_to_queue">Add to queue</string>
-    <string name="song_info_cd_add_to_queue">Add to queue</string>
+    <string name="song_info_cd_play">Spill sangen</string>
+    <string name="song_info_action_play_all">Spill alle</string>
+    <string name="song_info_cd_play_all">Spill alle</string>
+    <string name="song_info_cd_add_to_favorites">Legg til i favoritter</string>
+    <string name="song_info_cd_add_to_favorites_all">Legg alle til i favoritter</string>
+    <string name="song_info_cd_remove_from_favorites">Fjern fra favoritter</string>
+    <string name="song_info_cd_remove_from_favorites_all">Fjern alle fra favoritter</string>
+    <string name="song_info_share_chooser_title">Del sangfil via</string>
+    <string name="song_info_cd_share_song_file">Del sangfil</string>
+    <string name="song_info_cd_share_all_as_zip">Del alle som ZIP</string>
+    <string name="song_info_error_share_song">Kunne ikke dele sangen: %1$s</string>
+    <string name="song_info_action_add_to_queue">Legg i kø</string>
+    <string name="song_info_cd_add_to_queue">Legg i kø</string>
     <string name="song_info_action_queue_next">Next</string>
-    <string name="song_info_cd_queue_next">Play next in queue</string>
-    <string name="song_info_cd_add_to_playlist">Add to playlist</string>
-    <string name="song_info_action_delete">Delete</string>
-    <string name="song_info_action_delete_all">Delete all</string>
-    <string name="song_info_checking_watch">Checking watch</string>
-    <string name="song_info_transferring_percent">Transferring %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Transferring to watch</string>
-    <string name="song_info_transfer_in_progress">Transfer in progress</string>
-    <string name="song_info_send_to_watch">Send to watch</string>
-    <string name="song_info_watch_unavailable">Watch unavailable</string>
-    <string name="song_info_cd_send_to_watch">Send song to watch</string>
-    <string name="song_info_cd_watch_unavailable">Watch unavailable</string>
-    <string name="song_info_set_sound_as_short">Set as</string>
-    <string name="song_info_set_sound_as_long">Set as sound</string>
-    <string name="song_info_cd_set_sound_as">Choose how to use this song as a system sound</string>
-    <string name="song_info_tone_picker_title">Use this song as</string>
-    <string name="song_info_tone_picker_body">Choose where XiangsuPlayer should install this sound.</string>
-    <string name="song_info_tone_ringtone_title">Phone ringtone</string>
-    <string name="song_info_tone_ringtone_subtitle">Incoming calls</string>
-    <string name="song_info_tone_notification_title">Notification sound</string>
-    <string name="song_info_tone_notification_subtitle">Messages and app alerts</string>
-    <string name="song_info_tone_alarm_title">Alarm sound</string>
-    <string name="song_info_tone_alarm_subtitle">Clock alarms</string>
-    <string name="song_info_tone_confirm_title">Confirm sound change</string>
-    <string name="song_info_tone_confirm_body">Set \"%1$s\" as your %2$s?</string>
-    <string name="song_info_tone_confirm_action">Set sound</string>
-    <string name="song_info_tone_success">Set \"%1$s\" as your %2$s</string>
-    <string name="song_info_tone_ringtone_label">ringtone</string>
-    <string name="song_info_tone_notification_label">notification sound</string>
-    <string name="song_info_tone_alarm_label">alarm sound</string>
-    <string name="song_info_ringtone_permission_prompt">Enable Modify system settings, then return to XiangsuPlayer to finish automatically.</string>
-    <string name="song_info_ringtone_permission_missing">Modify system settings was not enabled.</string>
-    <string name="song_info_ringtone_success">Set \"%1$s\" as your ringtone</string>
-    <string name="song_info_ringtone_local_only">Only local songs can be used as ringtones.</string>
-    <string name="song_info_ringtone_missing_file">Couldn\'t prepare this audio file for ringtone.</string>
-    <string name="song_info_ringtone_failed">Couldn\'t set ringtone: %1$s</string>
-    <string name="song_info_tab_options">Options</string>
-    <string name="song_info_tab_options_badge">OPTIONS</string>
+    <string name="song_info_cd_queue_next">Spill som neste i køen</string>
+    <string name="song_info_cd_add_to_playlist">Legg til i spilleliste</string>
+    <string name="song_info_action_delete">Slett</string>
+    <string name="song_info_action_delete_all">Slett alle</string>
+    <string name="song_info_checking_watch">Sjekker klokken</string>
+    <string name="song_info_transferring_percent">Overfører %1$d%%</string>
+    <string name="song_info_transferring_to_watch">Overfører til klokken</string>
+    <string name="song_info_transfer_in_progress">Overføring pågår</string>
+    <string name="song_info_send_to_watch">Send til klokken</string>
+    <string name="song_info_watch_unavailable">Klokken er utilgjengelig</string>
+    <string name="song_info_cd_send_to_watch">Send sang til klokken</string>
+    <string name="song_info_cd_watch_unavailable">Klokken er utilgjengelig</string>
+    <string name="song_info_set_sound_as_short">Angi som</string>
+    <string name="song_info_set_sound_as_long">Angi som lyd</string>
+    <string name="song_info_cd_set_sound_as">Velg hvordan denne sangen skal brukes som systemlyd</string>
+    <string name="song_info_tone_picker_title">Bruk denne sangen som</string>
+    <string name="song_info_tone_picker_body">Velg hvor XiangsuPlayer skal installere denne lyden.</string>
+    <string name="song_info_tone_ringtone_title">Ringetone</string>
+    <string name="song_info_tone_ringtone_subtitle">Innkommende anrop</string>
+    <string name="song_info_tone_notification_title">Varsellyd</string>
+    <string name="song_info_tone_notification_subtitle">Meldinger og appvarsler</string>
+    <string name="song_info_tone_alarm_title">Alarmlyd</string>
+    <string name="song_info_tone_alarm_subtitle">Klokkealarmer</string>
+    <string name="song_info_tone_confirm_title">Bekreft endring av lyd</string>
+    <string name="song_info_tone_confirm_body">Vil du angi «%1$s» som %2$s?</string>
+    <string name="song_info_tone_confirm_action">Angi lyd</string>
+    <string name="song_info_tone_success">Angi «%1$s» som %2$s</string>
+    <string name="song_info_tone_ringtone_label">ringetone</string>
+    <string name="song_info_tone_notification_label">varsellyd</string>
+    <string name="song_info_tone_alarm_label">alarmlyd</string>
+    <string name="song_info_ringtone_permission_prompt">Aktiver Endre systeminnstillinger, og gå deretter tilbake til XiangsuPlayer for å fullføre automatisk.</string>
+    <string name="song_info_ringtone_permission_missing">Endring av systeminnstillinger er ikke aktivert.</string>
+    <string name="song_info_ringtone_success">Angi «%1$s» som ringetone</string>
+    <string name="song_info_ringtone_local_only">Bare lokale sanger kan brukes som ringetoner.</string>
+    <string name="song_info_ringtone_missing_file">Kunne ikke klargjøre denne lydfilen som ringetone.</string>
+    <string name="song_info_ringtone_failed">Kunne ikke angi ringetone: %1$s</string>
+    <string name="song_info_tab_options">Alternativer</string>
+    <string name="song_info_tab_options_badge">ALTERNATIVER</string>
     <string name="song_info_tab_info">Info</string>
     <string name="song_info_tab_info_badge">INFO</string>
-    <string name="song_info_duration_label">Duration</string>
-    <string name="song_info_genre_label">Genre</string>
+    <string name="song_info_duration_label">Varighet</string>
+    <string name="song_info_genre_label">Sjanger</string>
     <string name="song_info_album_label">Album</string>
     <string name="song_info_artist_label">Artist</string>
-    <string name="song_info_audio_format_label">Song info</string>
-    <string name="song_info_cd_provider">Provider</string>
+    <string name="song_info_audio_format_label">Sanginformasjon</string>
+    <string name="song_info_cd_provider">Leverandør</string>
     <string name="song_info_cd_file">File</string>
-    <string name="song_info_download">Download</string>
-    <string name="song_info_downloading_progress">Downloading %1$d%%</string>
-    <string name="song_info_downloaded">Downloaded</string>
-    <string name="song_info_download_failed">Download failed</string>
-    <string name="multi_selection_songs_count_upper">%1$d SONGS</string>
-    <string name="multi_selection_songs_selected">selected</string>
-    <string name="multi_selection_playlists_count_upper">%1$d PLAYLISTS</string>
-    <string name="multi_selection_albums_count_upper">%1$d ALBUMS</string>
-    <string name="multi_selection_albums_selected">selected</string>
-    <string name="multi_selection_albums_selected_limit">Limit: %1$d albums per selection.</string>
-    <string name="multi_selection_albums_queue_hint">Queue + play respects your selection order.</string>
-    <string name="multi_selection_genres_count_upper">%1$d GENRES</string>
-    <string name="multi_selection_genres_selected">selected</string>
-    <string name="multi_selection_genres_queue_hint">Perform batch operations on all songs within these genres.</string>
+    <string name="song_info_download">Last ned</string>
+    <string name="song_info_downloading_progress">Laster ned %1$d%%</string>
+    <string name="song_info_downloaded">Lastet ned</string>
+    <string name="song_info_download_failed">Nedlasting feilet</string>
+    <string name="multi_selection_songs_count_upper">%1$d SANGER</string>
+    <string name="multi_selection_songs_selected">valgt</string>
+    <string name="multi_selection_playlists_count_upper">%1$d SPILLELISTER</string>
+    <string name="multi_selection_albums_count_upper">%1$d ALBUM</string>
+    <string name="multi_selection_albums_selected">valgt</string>
+    <string name="multi_selection_albums_selected_limit">Grense: %1$d album per valg.</string>
+    <string name="multi_selection_albums_queue_hint">Kø + spill av følger rekkefølgen du valgte.</string>
+    <string name="multi_selection_genres_count_upper">%1$d SJANGERE</string>
+    <string name="multi_selection_genres_selected">valgt</string>
+    <string name="multi_selection_genres_queue_hint">Utfør batchoperasjoner på alle sanger i disse sjangrene.</string>
 
     <!-- Sort Option Display Names -->
-    <string name="sort_display_default_order">Default Order</string>
-    <string name="sort_display_title_az">Title (A-Z)</string>
-    <string name="sort_display_title_za">Title (Z-A)</string>
+    <string name="sort_display_default_order">Standardrekkefølge</string>
+    <string name="sort_display_title_az">Tittel (A-Å)</string>
+    <string name="sort_display_title_za">Tittel (Å-A)</string>
     <string name="sort_display_artist">Artist</string>
-    <string name="sort_display_artist_za">Artist (Z-A)</string>
+    <string name="sort_display_artist_za">Artist (Å-A)</string>
     <string name="sort_display_album">Album</string>
-    <string name="sort_display_album_za">Album (Z-A)</string>
-    <string name="sort_display_date_added">Date Added</string>
-    <string name="sort_display_date_added_oldest">Date Added (Oldest First)</string>
-    <string name="sort_display_duration">Duration</string>
-    <string name="sort_display_duration_shortest">Duration (Shortest First)</string>
-    <string name="sort_display_release_year">Release Year</string>
-    <string name="sort_display_release_year_oldest">Release Year (Oldest First)</string>
-    <string name="sort_display_fewest_songs">Fewest Songs</string>
-    <string name="sort_display_most_songs">Most Songs</string>
-    <string name="sort_display_name_az">Name (A-Z)</string>
-    <string name="sort_display_name_za">Name (Z-A)</string>
-    <string name="sort_display_num_songs_most">Number of Songs (Most)</string>
-    <string name="sort_display_num_songs_fewest">Number of Songs (Fewest)</string>
-    <string name="sort_display_date_created">Date Created</string>
-    <string name="sort_display_date_created_oldest">Date Created (Oldest First)</string>
-    <string name="sort_display_date_liked">Date Liked</string>
-    <string name="sort_display_date_liked_oldest">Date Liked (Oldest First)</string>
-    <string name="sort_display_fewest_subfolders">Fewest Subfolders</string>
-    <string name="sort_display_most_subfolders">Most Subfolders</string>
+    <string name="sort_display_album_za">Album (Å-A)</string>
+    <string name="sort_display_date_added">Dato lagt til</string>
+    <string name="sort_display_date_added_oldest">Dato lagt til (eldste først)</string>
+    <string name="sort_display_duration">Varighet</string>
+    <string name="sort_display_duration_shortest">Varighet (korteste først)</string>
+    <string name="sort_display_release_year">Utgivelsesår</string>
+    <string name="sort_display_release_year_oldest">Utgivelsesår (eldste først)</string>
+    <string name="sort_display_fewest_songs">Færrest sanger</string>
+    <string name="sort_display_most_songs">Flest sanger</string>
+    <string name="sort_display_name_az">Navn (A-Å)</string>
+    <string name="sort_display_name_za">Navn (Å-A)</string>
+    <string name="sort_display_num_songs_most">Antall sanger (flest)</string>
+    <string name="sort_display_num_songs_fewest">Antall sanger (færrest)</string>
+    <string name="sort_display_date_created">Dato opprettet</string>
+    <string name="sort_display_date_created_oldest">Dato opprettet (eldste først)</string>
+    <string name="sort_display_date_liked">Dato likt</string>
+    <string name="sort_display_date_liked_oldest">Dato likt (eldste først)</string>
+    <string name="sort_display_fewest_subfolders">Færrest undermapper</string>
+    <string name="sort_display_most_subfolders">Flest undermapper</string>
 
     <!-- Sort Option Method Labels -->
-    <string name="sort_method_title">Title</string>
+    <string name="sort_method_title">Tittel</string>
     <string name="sort_method_artist">Artist</string>
     <string name="sort_method_album">Album</string>
-    <string name="sort_method_date_added">Date Added</string>
-    <string name="sort_method_duration">Duration</string>
-    <string name="sort_method_release_year">Release Year</string>
-    <string name="sort_method_song_count">Song Count</string>
+    <string name="sort_method_date_added">Dato lagt til</string>
+    <string name="sort_method_duration">Varighet</string>
+    <string name="sort_method_release_year">Utgivelsesår</string>
+    <string name="sort_method_song_count">Antall sanger</string>
     <string name="sort_method_name">Name</string>
-    <string name="sort_method_num_songs">Number of Songs</string>
-    <string name="sort_method_date_created">Date Created</string>
-    <string name="sort_method_date_liked">Date Liked</string>
-    <string name="sort_method_subfolder_count">Subfolder Count</string>
+    <string name="sort_method_num_songs">Antall sanger</string>
+    <string name="sort_method_date_created">Dato opprettet</string>
+    <string name="sort_method_date_liked">Dato likt</string>
+    <string name="sort_method_subfolder_count">Antall undermapper</string>
 
     <!-- LibrarySortBottomSheet-->
-    <string name="library_sort_source">Source</string>
-    <string name="library_sort_order">Order</string>
-    <string name="library_sort_descending">Descending</string>
-    <string name="library_sort_ascending">Ascending</string>
-    <string name="library_sort_original_order">Original Order</string>
-    <string name="library_sort_tap_ascending">Tap to switch to ascending</string>
-    <string name="library_sort_tap_descending">Tap to switch to descending</string>
-    <string name="library_sort_keeps_order">This sort keeps its original order</string>
-    <string name="library_sort_cd_switch_on">Switch is on</string>
+    <string name="library_sort_source">Kilde</string>
+    <string name="library_sort_order">Rekkefølge</string>
+    <string name="library_sort_descending">Synkende</string>
+    <string name="library_sort_ascending">Stigende</string>
+    <string name="library_sort_original_order">Opprinnelig rekkefølge</string>
+    <string name="library_sort_tap_ascending">Trykk for å bytte til stigende</string>
+    <string name="library_sort_tap_descending">Trykk for å bytte til synkende</string>
+    <string name="library_sort_keeps_order">Denne sorteringen beholder opprinnelig rekkefølge</string>
+    <string name="library_sort_cd_switch_on">Bryteren er på</string>
 
     <!-- ReorderTabsSheet-->
-    <string name="reorder_tabs_sheet_title">Reorder library tabs</string>
-    <string name="reorder_tabs_reset_dialog_title">Reset order</string>
-    <string name="reorder_tabs_reset_dialog_body">Reset tab order to the default?</string>
-    <string name="reorder_tabs_reordering">Reordering tabs…</string>
-    <string name="reorder_tabs_cd_drag_handle">Drag handle</string>
+    <string name="reorder_tabs_sheet_title">Endre rekkefølge på bibliotekfaner</string>
+    <string name="reorder_tabs_reset_dialog_title">Nullstill rekkefølgen</string>
+    <string name="reorder_tabs_reset_dialog_body">Nullstille fanerekkefølgen til standard?</string>
+    <string name="reorder_tabs_reordering">Endrer rekkefølge på faner…</string>
+    <string name="reorder_tabs_cd_drag_handle">Dra-håndtak</string>
 
     <!-- PlayerArtistPickerBottomSheet -->
-    <string name="artist_picker_title">Pick an Artist</string>
+    <string name="artist_picker_title">Velg en artist</string>
     <string name="artist_picker_count_single">1 artist</string>
-    <string name="artist_picker_count_multiple">%1$d artists</string>
-    <string name="artist_picker_primary_label">Primary artist</string>
-    <string name="artist_picker_shortcut_label">Artist page</string>
+    <string name="artist_picker_count_multiple">%1$d artister</string>
+    <string name="artist_picker_primary_label">Hovedartist</string>
+    <string name="artist_picker_shortcut_label">Artistside</string>
 
     <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Cancel transfer</string>
+    <string name="watch_transfer_action_cancel">Avbryt overføringen</string>
     <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Shows live progress for phone-to-watch music transfers</string>
-    <string name="watch_transfer_channel_name">Watch transfers</string>
-    <string name="watch_transfer_dialog_title">Sending to Watch</string>
-    <string name="watch_transfer_status_cancelled">Cancelled</string>
-    <string name="watch_transfer_status_cancelled_service">Transfer cancelled</string>
-    <string name="watch_transfer_status_complete_service">Transfer complete</string>
-    <string name="watch_transfer_status_completed">Completed</string>
-    <string name="watch_transfer_status_failed">Failed</string>
-    <string name="watch_transfer_status_failed_service">Transfer failed</string>
-    <string name="watch_transfer_status_multiple_active">Multiple active transfers</string>
+    <string name="watch_transfer_channel_description">Viser direkte fremdrift for musikkoverføringer fra telefon til klokke</string>
+    <string name="watch_transfer_channel_name">Overføringer til klokken</string>
+    <string name="watch_transfer_dialog_title">Sender til klokken</string>
+    <string name="watch_transfer_status_cancelled">Avbrutt</string>
+    <string name="watch_transfer_status_cancelled_service">Overføring avbrutt</string>
+    <string name="watch_transfer_status_complete_service">Overføring fullført</string>
+    <string name="watch_transfer_status_completed">Fullført</string>
+    <string name="watch_transfer_status_failed">Feilet</string>
+    <string name="watch_transfer_status_failed_service">Overføring feilet</string>
+    <string name="watch_transfer_status_multiple_active">Flere aktive overføringer</string>
     <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Preparing</string>
-    <string name="watch_transfer_status_preparing_service">Preparing watch transfer</string>
-    <string name="watch_transfer_status_preparing_transfer">Preparing transfer…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Sending %1$d songs to watch</string>
-    <string name="watch_transfer_status_sending_to_watch">Sending to watch</string>
-    <string name="watch_transfer_status_starting">Starting transfer…</string>
-    <string name="watch_transfer_status_starting_short">Starting</string>
-    <string name="watch_transfer_status_transferring">Transferring</string>
-    <string name="watch_transfer_summary_n">%1$d transfers</string>
+    <string name="watch_transfer_status_preparing">Forbereder</string>
+    <string name="watch_transfer_status_preparing_service">Forbereder overføring til klokke</string>
+    <string name="watch_transfer_status_preparing_transfer">Forbereder overføring…</string>
+    <string name="watch_transfer_status_sending_n_to_watch">Sender %1$d sanger til klokken</string>
+    <string name="watch_transfer_status_sending_to_watch">Sender til klokken</string>
+    <string name="watch_transfer_status_starting">Starter overføring…</string>
+    <string name="watch_transfer_status_starting_short">Starter</string>
+    <string name="watch_transfer_status_transferring">Overfører</string>
+    <string name="watch_transfer_summary_n">%1$d overføringer</string>
 
     <!-- EditSongSheet -->
-    <string name="edit_song_toolbar_title">Edit song</string>
-    <string name="edit_song_cd_show_metadata_info">Show information</string>
-    <string name="edit_song_dialog_title">Editing song metadata</string>
-    <string name="edit_song_dialog_body">Editing a song\'s metadata can affect how it\'s displayed and organized in your library. Changes are permanent and may not be reversible.</string>
-    <string name="edit_song_dialog_got_it">Got it</string>
-    <string name="edit_song_cd_info_icon">Information</string>
-    <string name="edit_song_cover_art_heading">Cover art</string>
-    <string name="edit_song_cover_art_hint">Select a square image and fine-tune it so your cover art looks great across the app.</string>
-    <string name="edit_song_action_change_cover">Change cover art</string>
-    <string name="edit_song_action_delete_cover">Delete cover art</string>
-    <string name="edit_song_field_title">Title</string>
+    <string name="edit_song_toolbar_title">Rediger sang</string>
+    <string name="edit_song_cd_show_metadata_info">Vis informasjon</string>
+    <string name="edit_song_dialog_title">Redigere sangmetadata</string>
+    <string name="edit_song_dialog_body">Redigering av sangmetadata kan påvirke hvordan sangen vises og organiseres i biblioteket. Endringene er permanente og kan være irreversible.</string>
+    <string name="edit_song_dialog_got_it">Skjønner</string>
+    <string name="edit_song_cd_info_icon">Informasjon</string>
+    <string name="edit_song_cover_art_heading">Omslagsbilde</string>
+    <string name="edit_song_cover_art_hint">Velg et kvadratisk bilde og finjuster det, slik at omslagsbildet ser bra ut i hele appen.</string>
+    <string name="edit_song_action_change_cover">Bytt omslagsbilde</string>
+    <string name="edit_song_action_delete_cover">Slett omslagsbilde</string>
+    <string name="edit_song_field_title">Tittel</string>
     <string name="edit_song_field_artist">Artist</string>
     <string name="edit_song_field_album">Album</string>
-    <string name="edit_song_field_album_artist">Album artist</string>
-    <string name="edit_song_field_genre">Genre</string>
-    <string name="edit_song_field_composer">Composer</string>
-    <string name="edit_song_field_track_number">Track number</string>
-    <string name="edit_song_field_disc_number">Disc number</string>
-    <string name="edit_song_field_replaygain_track">ReplayGain track (dB)</string>
+    <string name="edit_song_field_album_artist">Albumartist</string>
+    <string name="edit_song_field_genre">Sjanger</string>
+    <string name="edit_song_field_composer">Komponist</string>
+    <string name="edit_song_field_track_number">Spornummer</string>
+    <string name="edit_song_field_disc_number">Disknummer</string>
+    <string name="edit_song_field_replaygain_track">ReplayGain spor (dB)</string>
     <string name="edit_song_field_replaygain_album">ReplayGain album (dB)</string>
     <string name="edit_song_replaygain_track_placeholder">-6.50</string>
     <string name="edit_song_replaygain_album_placeholder">-8.20</string>
-    <string name="edit_song_cd_cover_preview">Preview of the new cover art</string>
-    <string name="edit_song_cd_current_cover">Current song cover art</string>
-    <string name="edit_song_crop_dialog_title">Adjust your cover art</string>
-    <string name="edit_song_crop_dialog_hint">Use pinch and drag gestures to find the perfect framing.</string>
-    <string name="edit_song_action_apply_cover">Apply cover art</string>
-    <string name="edit_song_unable_to_load_image">Unable to load the selected image</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Search lyrics on lrclib.net</string>
+    <string name="edit_song_cd_cover_preview">Forhåndsvisning av det nye omslagsbildet</string>
+    <string name="edit_song_cd_current_cover">Gjeldende omslagsbilde for sangen</string>
+    <string name="edit_song_crop_dialog_title">Juster omslagsbildet</string>
+    <string name="edit_song_crop_dialog_hint">Bruk knip og dra for å finne den perfekte innrammingen.</string>
+    <string name="edit_song_action_apply_cover">Bruk omslagsbilde</string>
+    <string name="edit_song_unable_to_load_image">Kunne ikke laste det valgte bildet</string>
+    <string name="edit_song_cd_search_lyrics_lrclib">Søk etter sangtekster på lrclib.net</string>
 
     <!-- EditMultipleSongsSheet -->
-    <string name="batch_edit_toolbar_title">Edit %d Songs</string>
-    <string name="batch_edit_info_message">Only modified fields will be updated. Leave fields empty to keep existing values.</string>
-    <string name="batch_edit_mixed_values">(Mixed values)</string>
-    <string name="batch_edit_optional">(Optional - leave empty to skip)</string>
-    <string name="batch_edit_success">Successfully updated %d songs</string>
-    <string name="batch_edit_partial_success">Updated %1$d of %2$d songs. Some files could not be edited.</string>
-    <string name="batch_edit_failed">Failed to update songs</string>
-    <string name="batch_edit_cover_art_heading">Batch Cover Art</string>
-    <string name="batch_edit_cover_art_hint">This will replace the cover art for all %d selected songs</string>
-    <string name="batch_edit_set_cover_art">Set Cover Art for All</string>
-    <string name="batch_edit_remove_all_art">Remove All Cover Art</string>
-    <string name="batch_edit_multiple_covers">(Multiple different covers)</string>
+    <string name="batch_edit_toolbar_title">Rediger %d sanger</string>
+    <string name="batch_edit_info_message">Bare endrede felt oppdateres. La felt stå tomme for å beholde eksisterende verdier.</string>
+    <string name="batch_edit_mixed_values">(Blandede verdier)</string>
+    <string name="batch_edit_optional">(Valgfritt – la stå tomt for å hoppe over)</string>
+    <string name="batch_edit_success">Oppdaterte %d sanger</string>
+    <string name="batch_edit_partial_success">Oppdaterte %1$d av %2$d sanger. Noen filer kunne ikke redigeres.</string>
+    <string name="batch_edit_failed">Kunne ikke oppdatere sanger</string>
+    <string name="batch_edit_cover_art_heading">Omslagsbilde i batch</string>
+    <string name="batch_edit_cover_art_hint">Dette erstatter omslagsbildet for alle %d valgte sanger</string>
+    <string name="batch_edit_set_cover_art">Angi omslagsbilde for alle</string>
+    <string name="batch_edit_remove_all_art">Fjern alt omslagsbilde</string>
+    <string name="batch_edit_multiple_covers">(Flere ulike omslag)</string>
 
     <!-- Playlist dismissed message -->
-    <string name="playlist_dismissed_message">Playlist dismissed</string>
+    <string name="playlist_dismissed_message">Spilleliste forkastet</string>
 
     <!-- PlaylistCreationDialogs -->
-    <string name="playlist_creation_create_playlist_title">Create playlist</string>
-    <string name="playlist_creation_create_playlist_subtitle">Choose the creation flow.</string>
-    <string name="playlist_creation_mode_manual_title">Manual</string>
-    <string name="playlist_creation_mode_manual_subtitle">Design artwork, icon, shape and pick songs yourself.</string>
-    <string name="playlist_creation_mode_ai_title">With AI</string>
-    <string name="playlist_creation_mode_ai_subtitle_enabled">Generate a curated playlist with advanced controls.</string>
-    <string name="playlist_creation_mode_ai_subtitle_disabled">Requires a Gemini API key configured in settings.</string>
-    <string name="playlist_creation_setup_api_key">Set up API key</string>
+    <string name="playlist_creation_create_playlist_title">Opprett spilleliste</string>
+    <string name="playlist_creation_create_playlist_subtitle">Velg hvordan du vil opprette den.</string>
+    <string name="playlist_creation_mode_manual_title">Manuelt</string>
+    <string name="playlist_creation_mode_manual_subtitle">Design omslag, ikon og form selv, og velg sanger.</string>
+    <string name="playlist_creation_mode_ai_title">Med AI</string>
+    <string name="playlist_creation_mode_ai_subtitle_enabled">Generer en kuratert spilleliste med avanserte innstillinger.</string>
+    <string name="playlist_creation_mode_ai_subtitle_disabled">Krever en Gemini API-nøkkel som er konfigurert i innstillingene.</string>
+    <string name="playlist_creation_setup_api_key">Sett opp API-nøkkel</string>
 
     <!-- AI playlist lab -->
-    <string name="playlist_creation_ai_lab_title">AI Playlist Lab</string>
-    <string name="playlist_creation_ai_reset">Reset</string>
-    <string name="playlist_creation_ai_generating">Generating…</string>
-    <string name="playlist_creation_ai_generate">Generate</string>
-    <string name="playlist_creation_ai_section_intent">Intent</string>
-    <string name="playlist_creation_ai_name_optional">Playlist name (optional)</string>
-    <string name="playlist_creation_ai_feel_label">What should this playlist feel like?</string>
-    <string name="playlist_creation_ai_feel_placeholder">Example: sunset drive with warm synths</string>
-    <string name="playlist_creation_ai_section_direction">Direction</string>
+    <string name="playlist_creation_ai_lab_title">AI-spillelistelab</string>
+    <string name="playlist_creation_ai_reset">Nullstill</string>
+    <string name="playlist_creation_ai_generating">Genererer…</string>
+    <string name="playlist_creation_ai_generate">Generer</string>
+    <string name="playlist_creation_ai_section_intent">Hensikt</string>
+    <string name="playlist_creation_ai_name_optional">Navn på spilleliste (valgfritt)</string>
+    <string name="playlist_creation_ai_feel_label">Hvordan skal denne spillelisten føles?</string>
+    <string name="playlist_creation_ai_feel_placeholder">Eksempel: solnedgangstur med varme synth</string>
+    <string name="playlist_creation_ai_section_direction">Retning</string>
     <string name="playlist_creation_ai_mood_label">Mood</string>
-    <string name="playlist_creation_ai_activity_label">Activity</string>
+    <string name="playlist_creation_ai_activity_label">Aktivitet</string>
     <string name="playlist_creation_ai_era_label">Era</string>
-    <string name="playlist_creation_ai_section_curation">Curation engine</string>
-    <string name="playlist_creation_ai_energy_label">Energy</string>
-    <string name="playlist_creation_ai_energy_desc">Controls the intensity and tempo of songs. 1 = calm/slow, 5 = high-energy/fast.</string>
-    <string name="playlist_creation_ai_discovery_label">Discovery</string>
-    <string name="playlist_creation_ai_discovery_desc">Controls how familiar the selections are. 1 = your most played favorites, 5 = rarely played deep cuts.</string>
-    <string name="playlist_creation_ai_min_songs">Min songs</string>
-    <string name="playlist_creation_ai_max_songs">Max songs</string>
-    <string name="playlist_creation_ai_section_filters">Filters</string>
-    <string name="playlist_creation_ai_prioritize_genres">Prioritize genres (optional)</string>
-    <string name="playlist_creation_ai_prioritize_genres_placeholder">e.g. synthwave, indie pop</string>
-    <string name="playlist_creation_ai_avoid_genres">Avoid genres (optional)</string>
-    <string name="playlist_creation_ai_avoid_genres_placeholder">e.g. metal, hard trap</string>
-    <string name="playlist_creation_ai_preferred_language">Preferred language (optional)</string>
-    <string name="playlist_creation_ai_preferred_language_placeholder">e.g. English, Spanish, instrumental</string>
-    <string name="playlist_creation_ai_prioritize_favorites">Prioritize favorites</string>
-    <string name="playlist_creation_ai_avoid_explicit">Avoid explicit lyrics</string>
-    <string name="playlist_creation_ai_section_prompt_preview">Prompt preview</string>
-    <string name="playlist_creation_ai_prompt_preview_empty">Your final prompt will appear here once you add preferences.</string>
-    <string name="playlist_creation_ai_hero_title">Curate with precision</string>
-    <string name="playlist_creation_ai_hero_subtitle">Define mood, activity, constraints and depth.</string>
-    <string name="playlist_creation_ai_hero_library_note">The AI will only use songs from your local library.</string>
-    <string name="playlist_creation_ai_error_add_instruction">Add at least one instruction for AI.</string>
-    <string name="playlist_creation_ai_error_song_range">Set a valid song range.</string>
+    <string name="playlist_creation_ai_section_curation">Kureringsmotor</string>
+    <string name="playlist_creation_ai_energy_label">Energi</string>
+    <string name="playlist_creation_ai_energy_desc">Styrer intensiteten og tempoet i sangene. 1 = rolig/sakte, 5 = energisk/rask.</string>
+    <string name="playlist_creation_ai_discovery_label">Oppdagelse</string>
+    <string name="playlist_creation_ai_discovery_desc">Styrer hvor kjente utvalgene er. 1 = favorittene du spiller mest, 5 = sjelden spilte perler.</string>
+    <string name="playlist_creation_ai_min_songs">Min antall sanger</string>
+    <string name="playlist_creation_ai_max_songs">Maks antall sanger</string>
+    <string name="playlist_creation_ai_section_filters">Filtre</string>
+    <string name="playlist_creation_ai_prioritize_genres">Prioriter sjangere (valgfritt)</string>
+    <string name="playlist_creation_ai_prioritize_genres_placeholder">f.eks. synthwave, indie pop</string>
+    <string name="playlist_creation_ai_avoid_genres">Unngå sjangere (valgfritt)</string>
+    <string name="playlist_creation_ai_avoid_genres_placeholder">f.eks. metal, hard trap</string>
+    <string name="playlist_creation_ai_preferred_language">Foretrukket språk (valgfritt)</string>
+    <string name="playlist_creation_ai_preferred_language_placeholder">f.eks. engelsk, spansk, instrumentalt</string>
+    <string name="playlist_creation_ai_prioritize_favorites">Prioriter favoritter</string>
+    <string name="playlist_creation_ai_avoid_explicit">Unngå eksplisitte sangtekster</string>
+    <string name="playlist_creation_ai_section_prompt_preview">Forhåndsvisning av forespørsel</string>
+    <string name="playlist_creation_ai_prompt_preview_empty">Den endelige forespørselen vises her når du har lagt til preferanser.</string>
+    <string name="playlist_creation_ai_hero_title">Kurer med presisjon</string>
+    <string name="playlist_creation_ai_hero_subtitle">Definer stemning, aktivitet, begrensninger og dybde.</string>
+    <string name="playlist_creation_ai_hero_library_note">AI bruker bare sanger fra ditt lokale bibliotek.</string>
+    <string name="playlist_creation_ai_error_add_instruction">Legg til minst én instruks for AI.</string>
+    <string name="playlist_creation_ai_error_song_range">Angi et gyldig sangantall.</string>
     <string name="playlist_creation_ai_level_out_of_five">%1$d/5</string>
-    <string name="playlist_creation_ai_custom_chip">Custom…</string>
-    <string name="playlist_creation_ai_enter_custom_title">Enter custom value</string>
-    <string name="playlist_creation_ai_enter_custom_label">Enter your custom value</string>
+    <string name="playlist_creation_ai_custom_chip">Egendefinert…</string>
+    <string name="playlist_creation_ai_enter_custom_title">Skriv inn egendefinert verdi</string>
+    <string name="playlist_creation_ai_enter_custom_label">Skriv inn din egendefinerte verdi</string>
 
     <!-- AI prompt -->
-    <string name="playlist_creation_ai_era_any">Any era</string>
-    <string name="playlist_creation_ai_prompt_core_request">Core request: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_mood">Mood target: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_activity">Activity context: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_era">Era focus: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_prioritize_genres">Prioritize genres: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_avoid_genres">Avoid genres: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_preferred_language">Preferred language: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_energy">Energy level target: %1$d/5.</string>
-    <string name="playlist_creation_ai_prompt_discovery">Discovery target: %1$d/5 where 1 is familiar and 5 is deep cuts.</string>
-    <string name="playlist_creation_ai_prompt_prioritize_favorites">Prioritize songs closer to listener favorites when possible.</string>
-    <string name="playlist_creation_ai_prompt_avoid_explicit">Avoid explicit lyrics whenever alternatives exist.</string>
-    <string name="playlist_creation_ai_prompt_smooth_transitions">Keep transitions smooth and avoid repetitive artist clustering.</string>
+    <string name="playlist_creation_ai_era_any">Alle tiår</string>
+    <string name="playlist_creation_ai_prompt_core_request">Hovedønske: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_mood">Stemningsmål: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_activity">Aktivitetskontekst: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_era">Tidsperiode: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_prioritize_genres">Prioriter sjangere: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_avoid_genres">Unngå sjangere: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_preferred_language">Foretrukket språk: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_energy">Mål for energinivå: %1$d/5.</string>
+    <string name="playlist_creation_ai_prompt_discovery">Mål for oppdagelse: %1$d/5, der 1 er kjent og 5 er perler.</string>
+    <string name="playlist_creation_ai_prompt_prioritize_favorites">Prioriter sanger som ligger nærmere lytterens favoritter når det er mulig.</string>
+    <string name="playlist_creation_ai_prompt_avoid_explicit">Unngå eksplisitte sangtekster når det finnes alternativer.</string>
+    <string name="playlist_creation_ai_prompt_smooth_transitions">Hold overgangene jevne og unngå at samme artist gjentas i grupper.</string>
     <string-array name="playlist_creation_ai_mood_options">
-        <item>Chill</item>
-        <item>Energetic</item>
-        <item>Happy</item>
-        <item>Dark</item>
-        <item>Romantic</item>
-        <item>Melancholic</item>
+        <item>Avslappet</item>
+        <item>Energisk</item>
+        <item>Glad</item>
+        <item>Mørk</item>
+        <item>Romantisk</item>
+        <item>Melankolsk</item>
     </string-array>
     <string-array name="playlist_creation_ai_activity_options">
-        <item>Workout</item>
-        <item>Focus</item>
-        <item>Road trip</item>
-        <item>Party</item>
-        <item>Study</item>
-        <item>Late night</item>
+        <item>Trening</item>
+        <item>Fokus</item>
+        <item>Biltur</item>
+        <item>Fest</item>
+        <item>Studier</item>
+        <item>Sen kveld</item>
     </string-array>
     <string-array name="playlist_creation_ai_era_options">
         <item>@string/playlist_creation_ai_era_any</item>
         <item>70s</item>
         <item>80s</item>
         <item>90s</item>
-        <item>2000s</item>
-        <item>2010s</item>
-        <item>2020s</item>
+        <item>2000-tallet</item>
+        <item>2010-tallet</item>
+        <item>2020-tallet</item>
     </string-array>
 
     <!-- PlaylistContainer -->
-    <string name="playlist_container_no_playlist_created">No playlist has been created.</string>
-    <string name="playlist_container_new_playlist_hint">Touch the \'New Playlist\' button to start.</string>
-    <string name="playlist_container_create_playlist_title">New playlist</string>
-    <string name="playlist_container_create_playlist_name_label">Playlist name</string>
-    <string name="playlist_container_create_playlist_name_placeholder">My playlist</string>
+    <string name="playlist_container_no_playlist_created">Ingen spilleliste er opprettet.</string>
+    <string name="playlist_container_new_playlist_hint">Trykk på «Ny spilleliste»-knappen for å begynne.</string>
+    <string name="playlist_container_create_playlist_title">Ny spilleliste</string>
+    <string name="playlist_container_create_playlist_name_label">Navn på spilleliste</string>
+    <string name="playlist_container_create_playlist_name_placeholder">Min spilleliste</string>
 
     <!-- PlaylistBottomSheet -->
-    <string name="playlist_sheet_add_songs_title">Add %1$d songs to…</string>
-    <string name="playlist_sheet_select_playlists">Select playlists</string>
-    <string name="playlist_sheet_search_playlists_hint">Search for playlists…</string>
-    <string name="playlist_sheet_song_added_to_playlists">Songs added to playlists</string>
-    <string name="playlist_sheet_created_and_songs_added">Playlist created and songs added</string>
-    <string name="playlist_sheet_internal_storage">Internal Storage</string>
+    <string name="playlist_sheet_add_songs_title">Legg til %1$d sanger i…</string>
+    <string name="playlist_sheet_select_playlists">Velg spillelister</string>
+    <string name="playlist_sheet_search_playlists_hint">Søk etter spillelister…</string>
+    <string name="playlist_sheet_song_added_to_playlists">Sanger lagt til i spillelister</string>
+    <string name="playlist_sheet_created_and_songs_added">Spilleliste opprettet og sanger lagt til</string>
+    <string name="playlist_sheet_internal_storage">Intern lagring</string>
 
     <!-- SongPickerBottomSheet -->
-    <string name="song_picker_title">Add songs</string>
-    <string name="song_picker_cd_confirm_add_songs">Add selected songs</string>
+    <string name="song_picker_title">Legg til sanger</string>
+    <string name="song_picker_cd_confirm_add_songs">Legg til valgte sanger</string>
     <string name="song_picker_action_add">Add</string>
-    <string name="song_picker_search_label">Search or filter songs…</string>
-    <string name="song_picker_filter_favorites">Liked</string>
-    <string name="song_picker_error_load_failed">Failed to load songs</string>
-    <string name="song_picker_load_more">Load more</string>
+    <string name="song_picker_search_label">Søk eller filtrer sanger…</string>
+    <string name="song_picker_filter_favorites">Likte</string>
+    <string name="song_picker_error_load_failed">Kunne ikke laste sanger</string>
+    <string name="song_picker_load_more">Last inn flere</string>
 
     <!-- Merge Playlists Dialog -->
-    <string name="merge_playlists_dialog_title">Merge Playlists</string>
-    <string name="merge_playlists_dialog_prompt">Enter a name for the merged playlist:</string>
-    <string name="merge_playlists_dialog_placeholder">Merged Playlist</string>
-    <string name="merge_playlists_dialog_body">This will merge %1$d selected playlists into one.</string>
+    <string name="merge_playlists_dialog_title">Slå sammen spillelister</string>
+    <string name="merge_playlists_dialog_prompt">Skriv inn et navn på den sammenslåtte spillelisten:</string>
+    <string name="merge_playlists_dialog_placeholder">Sammenslått spilleliste</string>
+    <string name="merge_playlists_dialog_body">Dette slår sammen %1$d valgte spillelister til én.</string>
 
     <!-- PlayerViewModel -->
-    <string name="player_view_model_no_valid_songs">No valid songs found to play</string>
-    <string name="player_view_model_song_not_found_in_list">Song not found in current list</string>
-    <string name="player_view_model_could_not_locate_song">Could not locate song</string>
-    <string name="player_view_model_no_songs_in_library_toast">No songs found in library</string>
-    <string name="player_view_model_playback_stopped_eot">Playback stopped: %1$s finished (End of Track).</string>
-    <string name="player_view_model_default_track_title">Track</string>
-    <string name="player_view_model_no_songs_to_shuffle">No songs to shuffle.</string>
-    <string name="player_view_model_queue_name_selected_albums">Selected Albums</string>
-    <string name="player_view_model_no_playable_songs_in_albums">No playable songs found in selected albums</string>
-    <string name="player_view_model_no_playable_songs_in_genres">No playable songs found in selected genres</string>
-    <string name="player_view_model_only_first_n_albums_queued">Only the first %1$d albums were queued</string>
-    <string name="player_view_model_albums_queued_format">%1$d albums queued (%2$d songs)</string>
-    <string name="player_view_model_could_not_queue_albums">Could not queue selected albums</string>
-    <string name="player_view_model_all_songs_already_in_favorites">All songs already in favorites</string>
-    <string name="player_view_model_no_songs_were_in_favorites">No songs were in favorites</string>
-    <string name="player_view_model_creating_zip">Creating ZIP file…</string>
-    <string name="player_view_model_share_zip_failed_format">Failed to share: %1$s</string>
-    <plurals name="player_view_model_n_songs_added_to_queue">
-        <item quantity="one">%d song added to queue</item>
-        <item quantity="other">%d songs added to queue</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_will_play_next">
-        <item quantity="one">%d song will play next</item>
-        <item quantity="other">%d songs will play next</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_added_to_favorites">
-        <item quantity="one">%d song added to favorites</item>
-        <item quantity="other">%d songs added to favorites</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_removed_from_favorites">
-        <item quantity="one">%d song removed from favorites</item>
-        <item quantity="other">%d songs removed from favorites</item>
-    </plurals>
+    <string name="player_view_model_no_valid_songs">Fant ingen gyldige sanger å spille av</string>
+    <string name="player_view_model_song_not_found_in_list">Sangen ble ikke funnet i gjeldende liste</string>
+    <string name="player_view_model_could_not_locate_song">Kunne ikke finne sangen</string>
+    <string name="player_view_model_no_songs_in_library_toast">Fant ingen sanger i biblioteket</string>
+    <string name="player_view_model_playback_stopped_eot">Avspilling stoppet: %1$s ferdig (Slutt på spor).</string>
+    <string name="player_view_model_default_track_title">Spor</string>
+    <string name="player_view_model_no_songs_to_shuffle">Ingen sanger å blande.</string>
+    <string name="player_view_model_queue_name_selected_albums">Valgte album</string>
+    <string name="player_view_model_no_playable_songs_in_albums">Ingen spillbare sanger i valgte album</string>
+    <string name="player_view_model_no_playable_songs_in_genres">Ingen spillbare sanger i valgte sjangere</string>
+    <string name="player_view_model_only_first_n_albums_queued">Kun de første %1$d albumene ble lagt i kø</string>
+    <string name="player_view_model_albums_queued_format">%1$d album lagt i kø (%2$d sanger)</string>
+    <string name="player_view_model_could_not_queue_albums">Kunne ikke legge valgte album i kø</string>
+    <string name="player_view_model_all_songs_already_in_favorites">Alle sanger er allerede i favoritter</string>
+    <string name="player_view_model_no_songs_were_in_favorites">Ingen sanger var i favoritter</string>
+    <string name="player_view_model_creating_zip">Oppretter ZIP-fil…</string>
+    <string name="player_view_model_share_zip_failed_format">Deling feilet: %1$s</string>
+    <plurals name="player_view_model_n_songs_added_to_queue">        <item quantity="one">%d sang lagt i kø</item>
+        <item quantity="other">%d sanger lagt i kø</item></plurals>
+    <plurals name="player_view_model_n_songs_will_play_next">        <item quantity="one">%d sang spilles som neste</item>
+        <item quantity="other">%d sanger spilles som neste</item></plurals>
+    <plurals name="player_view_model_n_songs_added_to_favorites">        <item quantity="one">%d sang lagt til i favoritter</item>
+        <item quantity="other">%d sanger lagt til i favoritter</item></plurals>
+    <plurals name="player_view_model_n_songs_removed_from_favorites">        <item quantity="one">%d sang fjernet fra favoritter</item>
+        <item quantity="other">%d sanger fjernet fra favoritter</item></plurals>
 
     <!-- PlaylistViewModel -->
-    <string name="playlist_view_model_none_to_share">No playlists to share</string>
-    <string name="playlist_view_model_share_chooser_title">Share playlists</string>
-    <string name="playlist_view_model_share_failed">Share failed: %1$s</string>
-    <string name="playlist_view_model_none_to_export">No playlists to export</string>
-    <string name="playlist_view_model_export_failed">Export failed: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/XiangsuPlayer Exports</string>
-    <string name="playlist_view_model_ai_gemini_key_required">Please configure your Gemini API key in Settings.</string>
-    <string name="playlist_view_model_restored_toast">Playlist restored</string>
-    <plurals name="playlist_view_model_sharing_message">
-        <item quantity="one">Sharing %d playlist</item>
-        <item quantity="other">Sharing %d playlists</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">Exported %1$d playlist to %2$s</item>
-        <item quantity="other">Exported %1$d playlists to %2$s</item>
-    </plurals>
+    <string name="playlist_view_model_none_to_share">Ingen spillelister å dele</string>
+    <string name="playlist_view_model_share_chooser_title">Del spillelister</string>
+    <string name="playlist_view_model_share_failed">Deling feilet: %1$s</string>
+    <string name="playlist_view_model_none_to_export">Ingen spillelister å eksportere</string>
+    <string name="playlist_view_model_export_failed">Eksport feilet: %1$s</string>
+    <string name="playlist_view_model_export_folder_display">Musikk/XiangsuPlayer Exports</string>
+    <string name="playlist_view_model_ai_gemini_key_required">Konfigurer Gemini API-nøkkelen din i innstillingene.</string>
+    <string name="playlist_view_model_restored_toast">Spilleliste gjenopprettet</string>
+    <plurals name="playlist_view_model_sharing_message">        <item quantity="one">Deler %d spilleliste</item>
+        <item quantity="other">Deler %d spillelister</item></plurals>
+    <plurals name="playlist_view_model_exported_message">        <item quantity="one">Eksporterte %1$d spilleliste til %2$s</item>
+        <item quantity="other">Eksporterte %1$d spillelister til %2$s</item></plurals>
 
     <!-- AlbumDetailViewModel -->
-    <string name="album_detail_invalid_id">Invalid album ID</string>
-    <string name="album_detail_id_not_found">Album ID not found</string>
-    <string name="album_detail_error_loading_album">Error loading album data: %s</string>
-    <string name="album_detail_not_found">Album not found</string>
+    <string name="album_detail_invalid_id">Ugyldig album-ID</string>
+    <string name="album_detail_id_not_found">Album-ID ikke funnet</string>
+    <string name="album_detail_error_loading_album">Feil ved lasting av albumdata: %s</string>
+    <string name="album_detail_not_found">Album ikke funnet</string>
 
     <!-- ArtistDetailViewModel -->
-    <string name="artist_detail_invalid_id">Invalid artist ID</string>
-    <string name="artist_detail_id_not_found">Artist ID not found</string>
-    <string name="artist_error_loading_artist">Error loading artist data: %s</string>
-    <string name="artist_detail_not_found">Could not find the artist</string>
+    <string name="artist_detail_invalid_id">Ugyldig artist-ID</string>
+    <string name="artist_detail_id_not_found">Artist-ID ikke funnet</string>
+    <string name="artist_error_loading_artist">Feil ved lasting av artistdata: %s</string>
+    <string name="artist_detail_not_found">Kunne ikke finne artisten</string>
 
     <!-- SongRemovalStateHolder -->
-    <string name="song_removal_cannot_delete_currently_playing">Cannot delete currently playing song</string>
-    <string name="song_removal_batch_delete_files_deleted_skipped_format">%1$d files deleted (%2$d skipped - playing)</string>
-    <string name="song_removal_batch_delete_partial_format">%1$d of %2$d files deleted</string>
-    <string name="song_removal_delete_files_failed">Failed to delete files</string>
-    <string name="song_removal_file_deleted">File deleted</string>
-    <string name="song_removal_delete_file_not_found">Can\'t delete the file or file not found</string>
-    <string name="song_removal_deletion_cancelled">Deletion cancelled</string>
-    <string name="song_removal_dialog_delete_song_title">Delete song?</string>
-    <string name="song_removal_dialog_delete_song_message">\"%1$s\" by %2$s\n\nThis song will be permanently deleted from your device and cannot be recovered.</string>
-    <string name="song_removal_delete_songs_permanent_message">These songs will be permanently deleted from your device and cannot be recovered.</string>
-    <plurals name="song_removal_n_files_deleted">
-        <item quantity="one">%d file deleted</item>
-        <item quantity="other">%d files deleted</item>
-    </plurals>
-    <plurals name="song_removal_delete_songs_confirmation_title">
-        <item quantity="one">Delete %d song?</item>
-        <item quantity="other">Delete %d songs?</item>
-    </plurals>
+    <string name="song_removal_cannot_delete_currently_playing">Kan ikke slette sangen som spilles nå</string>
+    <string name="song_removal_batch_delete_files_deleted_skipped_format">%1$d filer slettet (%2$d hoppet over – spilles nå)</string>
+    <string name="song_removal_batch_delete_partial_format">%1$d av %2$d filer slettet</string>
+    <string name="song_removal_delete_files_failed">Kunne ikke slette filer</string>
+    <string name="song_removal_file_deleted">Fil slettet</string>
+    <string name="song_removal_delete_file_not_found">Kan ikke slette filen, eller filen ble ikke funnet</string>
+    <string name="song_removal_deletion_cancelled">Sletting avbrutt</string>
+    <string name="song_removal_dialog_delete_song_title">Slette sangen?</string>
+    <string name="song_removal_dialog_delete_song_message">«%1$s» av %2$s\n\nDenne sangen slettes permanent fra enheten og kan ikke gjenopprettes.</string>
+    <string name="song_removal_delete_songs_permanent_message">Disse sangene slettes permanent fra enheten og kan ikke gjenopprettes.</string>
+    <plurals name="song_removal_n_files_deleted">        <item quantity="one">%d fil slettet</item>
+        <item quantity="other">%d filer slettet</item></plurals>
+    <plurals name="song_removal_delete_songs_confirmation_title">        <item quantity="one">Slett %d sang?</item>
+        <item quantity="other">Slett %d sanger?</item></plurals>
 
     <!-- MetadataEditStateHolder -->
-    <string name="metadata_edit_updated_successfully">Metadata updated successfully</string>
-    <string name="metadata_edit_updating_n_songs">Updating %1$d songs…</string>
-    <string name="metadata_edit_batch_genre_updated_all">Successfully updated %1$d songs!</string>
-    <string name="metadata_edit_batch_genre_updated_partial">Updated %1$d songs. Failed: %2$d</string>
-    <string name="metadata_edit_lyrics_saved_successfully">Lyrics saved successfully</string>
-    <string name="metadata_edit_lyrics_save_failed">Failed to save lyrics</string>
-    <string name="metadata_edit_lyrics_none_to_save">No lyrics available to save</string>
-    <string name="metadata_edit_permission_denied_edit_files">Permission denied – cannot edit files</string>
-    <string name="metadata_edit_permission_denied_save_lyrics">Permission denied – cannot save lyrics</string>
-    <string name="metadata_edit_permission_denied_edit_this_file">Permission denied – cannot edit this file</string>
+    <string name="metadata_edit_updated_successfully">Metadata oppdatert</string>
+    <string name="metadata_edit_updating_n_songs">Oppdaterer %1$d sanger…</string>
+    <string name="metadata_edit_batch_genre_updated_all">Oppdaterte %1$d sanger!</string>
+    <string name="metadata_edit_batch_genre_updated_partial">Oppdaterte %1$d sanger. Feilet: %2$d</string>
+    <string name="metadata_edit_lyrics_saved_successfully">Sangtekster lagret</string>
+    <string name="metadata_edit_lyrics_save_failed">Kunne ikke lagre sangtekster</string>
+    <string name="metadata_edit_lyrics_none_to_save">Ingen sangtekster tilgjengelig for lagring</string>
+    <string name="metadata_edit_permission_denied_edit_files">Tillatelse nektet – kan ikke redigere filer</string>
+    <string name="metadata_edit_permission_denied_save_lyrics">Tillatelse nektet – kan ikke lagre sangtekster</string>
+    <string name="metadata_edit_permission_denied_edit_this_file">Tillatelse nektet – kan ikke redigere denne filen</string>
 
     <!-- AiStateHolder -->
-    <string name="ai_state_error_api_key">Please configure a valid API key for the selected AI provider in Settings.</string>
-    <string name="ai_state_error_generic">AI Error: %s</string>
-    <string name="ai_state_error_quota">The selected AI provider rejected the request because the account has no credits or available quota.</string>
-    <string name="ai_state_error_model_unavailable">The selected AI model is no longer available. XiangsuPlayer tried to switch to a supported model automatically.</string>
-    <string name="ai_state_no_songs_found">AI couldn\'t find any songs for your prompt.</string>
-    <string name="ai_state_prompt_empty">Write an idea for your Daily Mix</string>
-    <string name="ai_state_daily_mix_updated">Daily Mix updated with AI</string>
-    <string name="ai_state_could_not_update">Could not update: %s</string>
-    <string name="ai_state_no_songs_for_mix">AI couldn\'t find songs for this mix</string>
+    <string name="ai_state_error_api_key">Konfigurer en gyldig API-nøkkel for den valgte AI-leverandøren i innstillingene.</string>
+    <string name="ai_state_error_generic">AI-feil: %s</string>
+    <string name="ai_state_error_quota">Den valgte AI-leverandøren avviste forespørselen fordi kontoen ikke har kreditt eller tilgjengelig kvote.</string>
+    <string name="ai_state_error_model_unavailable">Den valgte AI-modellen er ikke lenger tilgjengelig. XiangsuPlayer prøvde å bytte til en støttet modell automatisk.</string>
+    <string name="ai_state_no_songs_found">AI fant ingen sanger for forespørselen din.</string>
+    <string name="ai_state_prompt_empty">Skriv en idé til din daglige miks</string>
+    <string name="ai_state_daily_mix_updated">Daglig miks oppdatert med AI</string>
+    <string name="ai_state_could_not_update">Kunne ikke oppdatere: %s</string>
+    <string name="ai_state_no_songs_for_mix">AI fant ingen sanger til denne miksen</string>
+    <string name="library_scroll_to_top">Til toppen</string>
+    <string name="song_info_download_paused">Pauset, trykk for å fortsette</string>
 </resources>

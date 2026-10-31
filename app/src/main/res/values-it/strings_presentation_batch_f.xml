@@ -55,7 +55,7 @@
     <string name="presentation_batch_f_playlist_name_label">Nome playlist</string>
     <string name="presentation_batch_f_playlist_name_placeholder">La mia fantastica mix</string>
     <string name="presentation_batch_f_creation_mode_manual">Manuale</string>
-    <string name="presentation_batch_f_creation_mode_smart">Smart</string>
+    <string name="presentation_batch_f_creation_mode_smart">Intelligente</string>
     <string name="presentation_batch_f_generate_with_ai">Genera con AI</string>
     <string name="presentation_batch_f_smart_rule">Regola smart</string>
     <string name="presentation_batch_f_tab_default">Predefinito</string>
@@ -89,10 +89,10 @@
     <string name="presentation_batch_f_palette_style_vibrant_desc">Accenti ad alta saturazione.</string>
     <string name="presentation_batch_f_palette_style_expressive_desc">Cambiamenti di tonalità audaci e contrasto.</string>
     <string name="presentation_batch_f_palette_style_fruit_salad_desc">Accenti ruotati giocosi.</string>
-    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal Spot</string>
-    <string name="presentation_batch_f_palette_label_vibrant">Vibrant</string>
-    <string name="presentation_batch_f_palette_label_expressive">Expressive</string>
-    <string name="presentation_batch_f_palette_label_fruit_salad">Fruit Salad</string>
+    <string name="presentation_batch_f_palette_label_tonal_spot">Tono spot</string>
+    <string name="presentation_batch_f_palette_label_vibrant">Vivace</string>
+    <string name="presentation_batch_f_palette_label_expressive">Espressiva</string>
+    <string name="presentation_batch_f_palette_label_fruit_salad">Macedonia</string>
     <string name="presentation_batch_f_color_accuracy_title">Precisione colore</string>
     <string name="presentation_batch_f_color_accuracy_subtitle">0 mantiene la regolazione attuale. Valori più alti restano più vicini alla tonalità dominante della copertina dell\'album.</string>
     <string name="presentation_batch_f_accuracy_current">Attuale</string>
@@ -228,20 +228,55 @@
         <item quantity="one">%d argomento</item>
         <item quantity="other">%d argomenti</item>
     </plurals>
-    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    <string name="presentation_batch_f_adjust_cover_hint">Usa i gesti di pinch e trascinamento per trovare l\'inquadratura perfetta</string>
     
-    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    <string name="presentation_batch_f_adjust_cover_title">Regola la copertina</string>
     
-    <string name="presentation_batch_f_change">Change</string>
+    <string name="presentation_batch_f_change">Cambia</string>
     
-    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    <string name="presentation_batch_f_edit_cover_title">Modifica copertina</string>
     
-    <string name="presentation_batch_f_remove">Remove</string>
+    <string name="presentation_batch_f_remove">Rimuovi</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_action">Remove</string>
+    <string name="presentation_batch_f_remove_channel_confirm_action">Rimuovi</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s will stop syncing and all cached songs from this channel will be removed.</string>
+    <string name="presentation_batch_f_remove_channel_confirm_body">%1$s smetterà di sincronizzarsi e tutti i brani in cache di questo canale verranno rimossi.</string>
     
-    <string name="presentation_batch_f_remove_channel_confirm_title">Remove channel?</string>
+    <string name="presentation_batch_f_remove_channel_confirm_title">Rimuovere il canale?</string>
     
+    <string name="presentation_batch_f_progress_rotate_subtitle">Ruota continuamente il cursore durante la riproduzione.</string>
+    <string name="presentation_batch_f_progress_rotate_title">Ruota durante la riproduzione</string>
+    <string name="presentation_batch_f_progress_style_dots">Punti</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">Indicatori a punti.</string>
+    <string name="presentation_batch_f_progress_style_gradient">Sfumatura</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">Riempimento con sfumatura multicolore.</string>
+    <string name="presentation_batch_f_progress_style_normal">Normale</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">Barra di avanzamento standard.</string>
+    <string name="presentation_batch_f_progress_style_rounded">Arrotondata</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">Avanzamento a forma di pillola.</string>
+    <string name="presentation_batch_f_progress_style_segmented">Segmentata</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">Blocchi segmentati.</string>
+    <string name="presentation_batch_f_progress_style_thick">Spessa</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">Barra spessa e marcata.</string>
+    <string name="presentation_batch_f_progress_style_thin">Sottile</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">Linea sottile ed elegante.</string>
+    <string name="presentation_batch_f_progress_style_waveform">Forma d\'onda</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">Barre di ampiezza in stile audio.</string>
+    <string name="presentation_batch_f_progress_style_wavy">Ondulata</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">Linea ondulata animata.</string>
+    <string name="presentation_batch_f_progress_thumb_circle">Cerchio</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">Cookie</string>
+    <string name="presentation_batch_f_progress_thumb_default">Predefinito</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">Rombo</string>
+    <string name="presentation_batch_f_progress_thumb_flower">Fiore</string>
+    <string name="presentation_batch_f_progress_thumb_heading">Stile cursore</string>
+    <string name="presentation_batch_f_progress_thumb_heart">Cuore</string>
+    <string name="presentation_batch_f_progress_thumb_none">Nessuno</string>
+    <string name="presentation_batch_f_progress_thumb_pill">Pillola</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">Morbido</string>
+    <string name="presentation_batch_f_progress_thumb_square">Quadrato</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">Scegli la maniglia usata per scorrere il brano.</string>
+    <string name="presentation_batch_f_progress_title">Barra di avanzamento</string>
+    <string name="presentation_batch_f_progress_track_heading">Stile traccia</string>
+    <string name="presentation_batch_f_progress_track_subtitle">Scegli come viene disegnata la barra di avanzamento della riproduzione.</string>
 </resources>

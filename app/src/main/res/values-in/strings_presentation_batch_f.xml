@@ -24,10 +24,10 @@
     <string name="presentation_batch_f_saved">Tersimpan!</string>
     <string name="presentation_batch_f_preset_prompts">Prompt Preset</string>
     <string name="presentation_batch_f_enter_system_prompt_placeholder">Masukkan prompt sistem…</string>
-    <string name="presentation_batch_f_reset">Reset</string>
+    <string name="presentation_batch_f_reset">Atur ulang</string>
     <string name="presentation_batch_f_ai_preset_professional_curator_name">Kurator Profesional</string>
     <string name="presentation_batch_f_ai_preset_professional_curator_prompt">Anda adalah \'Vibe-Engine\', kurator musik kelas dunia dan ahli dalam alur sonik. Tujuan Anda adalah membangun pengalaman mendengarkan yang mulus dan berkualitas tinggi. Prioritaskan kompatibilitas harmonik, transisi BPM yang logis, dan keseimbangan canggih antara favorit yang sudah dikenal dan penemuan yang berselera tinggi serta didorong oleh logika.</string>
-    <string name="presentation_batch_f_ai_preset_creative_maverick_name">Creative Maverick</string>
+    <string name="presentation_batch_f_ai_preset_creative_maverick_name">Maverick Kreatif</string>
     <string name="presentation_batch_f_ai_preset_creative_maverick_prompt">Anda adalah penjelajah musik avant-garde yang berspesialisasi dalam \'kohesi yang tak terduga\'. Misi Anda adalah mendobrak batas genre konvensional dengan mengidentifikasi paralel sonik yang tidak jelas. Prioritaskan lagu-lagu langka, tekstur eksperimental, dan kebaruan artistik sambil tetap mempertahankan logika transisi yang mengejutkan namun tidak terbantahkan.</string>
     <string name="presentation_batch_f_ai_preset_strict_librarian_name">Pustakawan Ketat</string>
     <string name="presentation_batch_f_ai_preset_strict_librarian_prompt">Anda adalah arsitek database musik yang sangat teliti. Logika Anda didorong oleh presisi metadata absolut dan kepatuhan kategoris yang kaku. Minimalkan penemuan algoritmik demi konsistensi genre yang ketat, pencocokan tingkat energi, dan memaksimalkan pengambilan preferensi pengguna yang sangat spesifik.</string>
@@ -57,7 +57,7 @@
     <string name="presentation_batch_f_creation_mode_smart">Pintar</string>
     <string name="presentation_batch_f_generate_with_ai">Hasilkan dengan AI</string>
     <string name="presentation_batch_f_smart_rule">Aturan Pintar</string>
-    <string name="presentation_batch_f_tab_default">Default</string>
+    <string name="presentation_batch_f_tab_default">Bawaan</string>
     <string name="presentation_batch_f_tab_image">Gambar</string>
     <string name="presentation_batch_f_tab_icon">Ikon</string>
     <string name="presentation_batch_f_background_color">Warna Latar Belakang</string>
@@ -88,10 +88,10 @@
     <string name="presentation_batch_f_palette_style_vibrant_desc">Aksen saturasi tinggi.</string>
     <string name="presentation_batch_f_palette_style_expressive_desc">Pergeseran rona dan kontras yang berani.</string>
     <string name="presentation_batch_f_palette_style_fruit_salad_desc">Aksen rotasi yang ceria.</string>
-    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal Spot</string>
-    <string name="presentation_batch_f_palette_label_vibrant">Vibrant</string>
-    <string name="presentation_batch_f_palette_label_expressive">Expressive</string>
-    <string name="presentation_batch_f_palette_label_fruit_salad">Fruit Salad</string>
+    <string name="presentation_batch_f_palette_label_tonal_spot">Titik Tonal</string>
+    <string name="presentation_batch_f_palette_label_vibrant">Cerah</string>
+    <string name="presentation_batch_f_palette_label_expressive">Ekspresif</string>
+    <string name="presentation_batch_f_palette_label_fruit_salad">Salad Buah</string>
     <string name="presentation_batch_f_color_accuracy_title">Akurasi warna</string>
     <string name="presentation_batch_f_color_accuracy_subtitle">0 mempertahankan penyetelan saat ini. Nilai yang lebih tinggi akan tetap lebih dekat dengan rona dominan sampul album.</string>
     <string name="presentation_batch_f_accuracy_current">Saat Ini</string>
@@ -231,14 +231,49 @@
     </plurals>
     <string name="presentation_batch_f_sync_phase_cleaning_cache">Membersihkan cache sampul album...</string>
     <string name="presentation_batch_f_remove_channel_confirm_title">Hapus channel?</string>
-    <string name="presentation_batch_f_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
+    <string name="presentation_batch_f_adjust_cover_hint">Gunakan gestur cubit dan seret untuk menemukan bingkai yang sempurna</string>
     
-    <string name="presentation_batch_f_adjust_cover_title">Adjust your cover art</string>
+    <string name="presentation_batch_f_adjust_cover_title">Sesuaikan sampul Anda</string>
     
-    <string name="presentation_batch_f_change">Change</string>
+    <string name="presentation_batch_f_change">Ubah</string>
     
-    <string name="presentation_batch_f_edit_cover_title">Edit Cover</string>
+    <string name="presentation_batch_f_edit_cover_title">Edit Sampul</string>
     
-    <string name="presentation_batch_f_remove">Remove</string>
+    <string name="presentation_batch_f_remove">Hapus</string>
     
+    <string name="presentation_batch_f_progress_rotate_subtitle">Putar ibu jari terus-menerus selama pemutaran.</string>
+    <string name="presentation_batch_f_progress_rotate_title">Putar saat diputar</string>
+    <string name="presentation_batch_f_progress_style_dots">Titik</string>
+    <string name="presentation_batch_f_progress_style_dots_desc">Indikator titik.</string>
+    <string name="presentation_batch_f_progress_style_gradient">Gradien</string>
+    <string name="presentation_batch_f_progress_style_gradient_desc">Isi gradien multiwarna.</string>
+    <string name="presentation_batch_f_progress_style_normal">Normal</string>
+    <string name="presentation_batch_f_progress_style_normal_desc">Bilah progres standar.</string>
+    <string name="presentation_batch_f_progress_style_rounded">Membulat</string>
+    <string name="presentation_batch_f_progress_style_rounded_desc">Progres berbentuk pil.</string>
+    <string name="presentation_batch_f_progress_style_segmented">Tersegmentasi</string>
+    <string name="presentation_batch_f_progress_style_segmented_desc">Blok tersegmentasi.</string>
+    <string name="presentation_batch_f_progress_style_thick">Tebal</string>
+    <string name="presentation_batch_f_progress_style_thick_desc">Bilah tebal dan tegas.</string>
+    <string name="presentation_batch_f_progress_style_thin">Tipis</string>
+    <string name="presentation_batch_f_progress_style_thin_desc">Garis tipis dan elegan.</string>
+    <string name="presentation_batch_f_progress_style_waveform">Gelombang</string>
+    <string name="presentation_batch_f_progress_style_waveform_desc">Bilah amplitudo bergaya audio.</string>
+    <string name="presentation_batch_f_progress_style_wavy">Bergelombang</string>
+    <string name="presentation_batch_f_progress_style_wavy_desc">Garis bergelombang beranimasi.</string>
+    <string name="presentation_batch_f_progress_thumb_circle">Lingkaran</string>
+    <string name="presentation_batch_f_progress_thumb_cookie">Kue</string>
+    <string name="presentation_batch_f_progress_thumb_default">Bawaan</string>
+    <string name="presentation_batch_f_progress_thumb_diamond">Berlian</string>
+    <string name="presentation_batch_f_progress_thumb_flower">Bunga</string>
+    <string name="presentation_batch_f_progress_thumb_heading">Gaya ibu jari</string>
+    <string name="presentation_batch_f_progress_thumb_heart">Hati</string>
+    <string name="presentation_batch_f_progress_thumb_none">Tidak ada</string>
+    <string name="presentation_batch_f_progress_thumb_pill">Pil</string>
+    <string name="presentation_batch_f_progress_thumb_puffy">Gembul</string>
+    <string name="presentation_batch_f_progress_thumb_square">Persegi</string>
+    <string name="presentation_batch_f_progress_thumb_subtitle">Pilih pegangan yang digunakan untuk menggeser sepanjang lagu.</string>
+    <string name="presentation_batch_f_progress_title">Bilah progres</string>
+    <string name="presentation_batch_f_progress_track_heading">Gaya trek</string>
+    <string name="presentation_batch_f_progress_track_subtitle">Pilih bagaimana bilah progres pemutaran digambar.</string>
 </resources>

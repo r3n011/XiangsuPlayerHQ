@@ -1,218 +1,214 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Telegram login -->
-    <string name="telegram_login_title">Telegram Login</string>
-    <string name="telegram_edit_number_chip">You are editing your number. Sending code again will replace the previous one.</string>
-    <string name="telegram_working">Working…</string>
-    <string name="telegram_status_initializing">Initializing Telegram…</string>
-    <string name="telegram_status_logging_out">Logging out…</string>
-    <string name="telegram_status_closing">Closing session…</string>
-    <string name="telegram_status_closed">Session closed. Re-open login to continue.</string>
-    <string name="telegram_status_preparing">Preparing secure Telegram session…</string>
-    <string name="telegram_status_waiting">Waiting for Telegram response…</string>
-    <string name="telegram_connect">Connect Telegram</string>
-    <string name="telegram_connect_subtitle">Connect Telegram to stream music from your channels and chats.</string>
-    <string name="telegram_phone_number_title">Phone Number</string>
-    <string name="telegram_phone_number_subtitle">Enter your Telegram number. You can come back and edit it later.</string>
-    <string name="telegram_phone_number_hint">Phone number</string>
+    <string name="telegram_login_title">Telegram Girişi</string>
+    <string name="telegram_edit_number_chip">Numaranızı düzenliyorsunuz. Kodu yeniden göndermek öncekini değiştirir.</string>
+    <string name="telegram_working">İşleniyor…</string>
+    <string name="telegram_status_initializing">Telegram başlatılıyor…</string>
+    <string name="telegram_status_logging_out">Çıkış yapılıyor…</string>
+    <string name="telegram_status_closing">Oturum kapatılıyor…</string>
+    <string name="telegram_status_closed">Oturum kapatıldı. Devam etmek için girişi yeniden açın.</string>
+    <string name="telegram_status_preparing">Güvenli Telegram oturumu hazırlanıyor…</string>
+    <string name="telegram_status_waiting">Telegram yanıtı bekleniyor…</string>
+    <string name="telegram_connect">Telegram\'ı Bağla</string>
+    <string name="telegram_connect_subtitle">Kanallarınızdan ve sohbetlerinizden müzik akışı için Telegram\'ı bağlayın.</string>
+    <string name="telegram_phone_number_title">Telefon Numarası</string>
+    <string name="telegram_phone_number_subtitle">Telegram numaranızı girin. Daha sonra geri dönüp düzenleyebilirsiniz.</string>
+    <string name="telegram_phone_number_hint">Telefon numarası</string>
     <string name="telegram_phone_country_placeholder">1</string>
     <string name="telegram_phone_local_placeholder">5551234567</string>
-    <string name="telegram_send_code">Send Code</string>
-    <string name="telegram_verification_code_title">Verification Code</string>
-    <string name="telegram_verification_code_subtitle">Enter the code from Telegram. If the number is wrong, go back and edit it.</string>
+    <string name="telegram_send_code">Kod Gönder</string>
+    <string name="telegram_verification_code_title">Doğrulama Kodu</string>
+    <string name="telegram_verification_code_subtitle">Telegram\'dan gelen kodu girin. Numara yanlışsa geri dönüp düzenleyin.</string>
     <string name="telegram_code_field_label">Code</string>
     <string name="telegram_code_placeholder">12345</string>
-    <string name="telegram_edit_phone">Edit phone</string>
-    <string name="telegram_resend_code">Resend code</string>
-    <string name="telegram_verify_code">Verify Code</string>
-    <string name="telegram_two_step_password_title">Two-Step Password</string>
-    <string name="telegram_two_step_password_subtitle">Enter your Telegram password. You can still go back to fix your number.</string>
-    <string name="telegram_password_label">Password</string>
-    <string name="telegram_verify_password">Verify Password</string>
-    <string name="telegram_please_wait">Please wait…</string>
+    <string name="telegram_edit_phone">Telefonu düzenle</string>
+    <string name="telegram_resend_code">Kodu yeniden gönder</string>
+    <string name="telegram_verify_code">Kodu Doğrula</string>
+    <string name="telegram_two_step_password_title">İki Adımlı Parola</string>
+    <string name="telegram_two_step_password_subtitle">Telegram parolanızı girin. Numaranızı düzeltmek için hâlâ geri dönebilirsiniz.</string>
+    <string name="telegram_password_label">Parola</string>
+    <string name="telegram_verify_password">Parolayı Doğrula</string>
+    <string name="telegram_please_wait">Lütfen bekleyin…</string>
 
     <!-- Telegram dashboard -->
-    <string name="telegram_channels_title">Telegram Channels</string>
-    <string name="telegram_add_channel_fab">Add Channel</string>
-    <string name="telegram_public_channel_fallback">Public Telegram channel</string>
-    <string name="telegram_syncing">Syncing</string>
-    <string name="telegram_sync_now">Sync now</string>
-    <string name="telegram_cd_collapse_topics">Collapse topics</string>
-    <string name="telegram_cd_show_topics">Show topics</string>
-    <string name="telegram_cd_channel_options">Channel options</string>
-    <string name="telegram_topics_heading">Topics</string>
-    <string name="telegram_syncing_channel">Syncing channel</string>
-    <string name="telegram_updating_songs_from_telegram">Updating songs from Telegram</string>
-    <string name="telegram_fetch_latest_songs">Fetch latest songs from this channel</string>
-    <string name="telegram_remove_channel">Remove channel</string>
-    <string name="telegram_remove_channel_subtitle">Stop syncing and remove cached songs</string>
-    <string name="telegram_remove_channel_confirm_title">Remove channel?</string>
-    <string name="telegram_remove_channel_confirm_body">%1$s will stop syncing and all cached songs from this channel will be removed.</string>
-    <string name="telegram_remove_channel_confirm_action">Remove</string>
-    <string name="telegram_no_channels_synced">No Channels Synced</string>
-    <string name="telegram_no_channels_body">Add public Telegram channels to sync\nyour music library</string>
-    <string name="telegram_add_channel_button">Add channel</string>
-    <string name="telegram_never_synced">Never synced</string>
-    <string name="telegram_synced_relative">Synced %1$s</string>
+    <string name="telegram_channels_title">Telegram Kanalları</string>
+    <string name="telegram_add_channel_fab">Kanal Ekle</string>
+    <string name="telegram_public_channel_fallback">Herkese açık Telegram kanalı</string>
+    <string name="telegram_syncing">Eşitleniyor</string>
+    <string name="telegram_sync_now">Şimdi eşitle</string>
+    <string name="telegram_cd_collapse_topics">Konuları daralt</string>
+    <string name="telegram_cd_show_topics">Konuları göster</string>
+    <string name="telegram_cd_channel_options">Kanal seçenekleri</string>
+    <string name="telegram_topics_heading">Konular</string>
+    <string name="telegram_syncing_channel">Kanal eşitleniyor</string>
+    <string name="telegram_updating_songs_from_telegram">Telegram\'dan şarkılar güncelleniyor</string>
+    <string name="telegram_fetch_latest_songs">Bu kanaldan en son şarkıları getir</string>
+    <string name="telegram_remove_channel">Kanalı kaldır</string>
+    <string name="telegram_remove_channel_subtitle">Eşitlemeyi durdur ve önbelleğe alınmış şarkıları kaldır</string>
+    <string name="telegram_remove_channel_confirm_title">Kanal kaldırılsın mı?</string>
+    <string name="telegram_remove_channel_confirm_body">%1$s eşitlenmeyi durduracak ve bu kanaldan önbelleğe alınmış tüm şarkılar kaldırılacak.</string>
+    <string name="telegram_remove_channel_confirm_action">Kaldır</string>
+    <string name="telegram_no_channels_synced">Eşitlenmiş Kanal Yok</string>
+    <string name="telegram_no_channels_body">Müzik kitaplığınızı eşitlemek için\nherkese açık Telegram kanalları ekleyin</string>
+    <string name="telegram_add_channel_button">Kanal ekle</string>
+    <string name="telegram_never_synced">Hiç eşitlenmedi</string>
+    <string name="telegram_synced_relative">%1$s eşitlendi</string>
 
     <!-- Telegram channel search -->
-    <string name="telegram_add_channel_sheet_title">Add Channel</string>
-    <string name="telegram_add_channel_sheet_subtitle">Search for a public Telegram channel to sync its music</string>
-    <string name="telegram_channel_search_placeholder">\@channelname or link</string>
-    <string name="telegram_searching">Searching…</string>
-    <string name="telegram_search_channel_title">Search for a channel</string>
-    <string name="telegram_search_channel_body">Enter a public channel username or link\nto sync its audio files</string>
+    <string name="telegram_add_channel_sheet_title">Kanal Ekle</string>
+    <string name="telegram_add_channel_sheet_subtitle">Müziğini eşitlemek için herkese açık bir Telegram kanalı arayın</string>
+    <string name="telegram_channel_search_placeholder">@channelname veya bağlantı</string>
+    <string name="telegram_searching">Aranıyor…</string>
+    <string name="telegram_search_channel_title">Kanal ara</string>
+    <string name="telegram_search_channel_body">Ses dosyalarını eşitlemek için herkese açık bir kanal kullanıcı adı veya bağlantısı girin</string>
 
-    <plurals name="telegram_n_songs">
-        <item quantity="one">%d song</item>
-        <item quantity="other">%d songs</item>
-    </plurals>
-    <plurals name="telegram_n_topics">
-        <item quantity="one">%d topic</item>
-        <item quantity="other">%d topics</item>
-    </plurals>
+    <plurals name="telegram_n_songs">        <item quantity="one">%d şarkı</item>
+        <item quantity="other">%d şarkı</item></plurals>
+    <plurals name="telegram_n_topics">        <item quantity="one">%d konu</item>
+        <item quantity="other">%d konu</item></plurals>
 
     <!-- Subsonic/Navidrome dashboard -->
     <string name="subsonic_dashboard_title">Subsonic</string>
-    <string name="subsonic_dashboard_quick_actions_subtitle">Manage Navidrome, Airsonic and other Subsonic-compatible servers.</string>
+    <string name="subsonic_dashboard_quick_actions_subtitle">Navidrome, Airsonic ve diğer Subsonic uyumlu sunucuları yönetin.</string>
 
     <!-- Jellyfin dashboard -->
-    <string name="jellyfin_dashboard_playlists_empty_hint">Tap sync to fetch your Jellyfin playlists</string>
-    <string name="jellyfin_dashboard_quick_actions_subtitle">Manage your Jellyfin server connection.</string>
+    <string name="jellyfin_dashboard_playlists_empty_hint">Jellyfin çalma listelerinizi getirmek için eşitle\'ye dokunun</string>
+    <string name="jellyfin_dashboard_quick_actions_subtitle">Jellyfin sunucu bağlantınızı yönetin.</string>
 
     <!-- Google Drive dashboard -->
-    <string name="gdrive_dashboard_music_folders">Music folders</string>
-    <string name="gdrive_dashboard_add_folder_hint">Tap + to add a Drive folder</string>
-    <string name="gdrive_dashboard_no_folders_yet">No folders added yet</string>
-    <string name="gdrive_dashboard_folders_synced_count">%1$d folders synced</string>
-    <string name="gdrive_cd_add_folder">Add folder</string>
+    <string name="gdrive_dashboard_music_folders">Müzik klasörleri</string>
+    <string name="gdrive_dashboard_add_folder_hint">Drive klasörü eklemek için + simgesine dokunun</string>
+    <string name="gdrive_dashboard_no_folders_yet">Henüz klasör eklenmedi</string>
+    <string name="gdrive_dashboard_folders_synced_count">%1$d klasör eşitlendi</string>
+    <string name="gdrive_cd_add_folder">Klasör ekle</string>
 
     <!-- QQ Music dashboard -->
-    <string name="qqmusic_select_playlist_type_title">Select playlist type</string>
-    <string name="qqmusic_choose_playlists_to_sync">Choose which playlists to sync:</string>
-    <string name="qqmusic_all_playlists">All playlists</string>
-    <string name="qqmusic_created_and_collected">Created &amp; collected</string>
-    <string name="qqmusic_created_playlists">Created playlists</string>
-    <string name="qqmusic_collected_playlists">Collected playlists</string>
+    <string name="qqmusic_select_playlist_type_title">Çalma listesi türünü seçin</string>
+    <string name="qqmusic_choose_playlists_to_sync">Eşitlenecek çalma listelerini seçin:</string>
+    <string name="qqmusic_all_playlists">Tüm çalma listeleri</string>
+    <string name="qqmusic_created_and_collected">Oluşturulan ve toplanan</string>
+    <string name="qqmusic_created_playlists">Oluşturulan çalma listeleri</string>
+    <string name="qqmusic_collected_playlists">Toplanan çalma listeleri</string>
 
     <!-- Cloud dashboard generic -->
-    <string name="cloud_dashboard_playlists_synced_count">%1$d playlists synced</string>
-    <string name="cloud_dashboard_title_playlists">Playlists</string>
+    <string name="cloud_dashboard_playlists_synced_count">%1$d çalma listesi eşitlendi</string>
+    <string name="cloud_dashboard_title_playlists">Çalma listeleri</string>
     <string name="cloud_dashboard_action_sync">Sync</string>
-    <string name="cloud_dashboard_playlists_empty_title">No playlists synced yet</string>
-    <string name="cloud_dashboard_playlists_empty_hint">Tap sync to fetch your playlists</string>
-    <string name="cloud_dashboard_quick_actions">Quick actions</string>
-    <string name="cloud_dashboard_action_sync_library">Sync library</string>
-    <string name="cloud_dashboard_action_disconnect">Disconnect</string>
-    <string name="cloud_dashboard_song_count">%1$d songs</string>
+    <string name="cloud_dashboard_playlists_empty_title">Henüz eşitlenmiş çalma listesi yok</string>
+    <string name="cloud_dashboard_playlists_empty_hint">Çalma listelerinizi getirmek için eşitle\'ye dokunun</string>
+    <string name="cloud_dashboard_quick_actions">Hızlı işlemler</string>
+    <string name="cloud_dashboard_action_sync_library">Kitaplığı eşitle</string>
+    <string name="cloud_dashboard_action_disconnect">Bağlantıyı kes</string>
+    <string name="cloud_dashboard_song_count">%1$d şarkı</string>
 
     <!-- Cloud sync status -->
-    <string name="cloud_sync_status_syncing">Syncing</string>
-    <string name="cloud_sync_status_syncing_library">Syncing library…</string>
-    <string name="cloud_sync_status_fetching_playlists">Fetching playlists…</string>
-    <string name="cloud_sync_status_syncing_playlist_format">Syncing playlist: %1$s</string>
-    <string name="cloud_sync_status_updating_local">Updating local library…</string>
-    <string name="cloud_sync_status_sync_complete">Sync complete</string>
-    <string name="cloud_sync_status_fetching_albums">Fetching album list…</string>
-    <string name="cloud_sync_status_fetching_songs_from_format">Fetching songs from %1$s…</string>
-    <string name="cloud_sync_status_saving_songs_format">Saving %1$d songs to database…</string>
-    <string name="cloud_sync_status_no_songs_found">No library songs found</string>
-    <string name="cloud_sync_status_library_sync_complete">Library sync complete</string>
-    <string name="cloud_sync_status_syncing_ellipsis">Syncing…</string>
-    <string name="cloud_sync_error_with_message_format">Error: %1$s</string>
+    <string name="cloud_sync_status_syncing">Eşitleniyor</string>
+    <string name="cloud_sync_status_syncing_library">Kitaplık eşitleniyor…</string>
+    <string name="cloud_sync_status_fetching_playlists">Çalma listeleri alınıyor…</string>
+    <string name="cloud_sync_status_syncing_playlist_format">Çalma listesi eşitleniyor: %1$s</string>
+    <string name="cloud_sync_status_updating_local">Yerel kitaplık güncelleniyor…</string>
+    <string name="cloud_sync_status_sync_complete">Eşitleme tamamlandı</string>
+    <string name="cloud_sync_status_fetching_albums">Albüm listesi alınıyor…</string>
+    <string name="cloud_sync_status_fetching_songs_from_format">%1$s kaynağından şarkılar alınıyor…</string>
+    <string name="cloud_sync_status_saving_songs_format">%1$d şarkı veritabanına kaydediliyor…</string>
+    <string name="cloud_sync_status_no_songs_found">Kitaplıkta şarkı bulunamadı</string>
+    <string name="cloud_sync_status_library_sync_complete">Kitaplık eşitlemesi tamamlandı</string>
+    <string name="cloud_sync_status_syncing_ellipsis">Eşitleniyor…</string>
+    <string name="cloud_sync_error_with_message_format">Hata: %1$s</string>
 
     <!-- Cloud content descriptions -->
     <string name="cloud_cd_sync">Sync</string>
-    <string name="cloud_cd_sync_all">Sync all</string>
-    <string name="cloud_cd_logout">Log out</string>
-    <string name="cloud_cd_sync_all_playlists">Sync all playlists</string>
-    <string name="cloud_cd_user_avatar">User avatar</string>
+    <string name="cloud_cd_sync_all">Tümünü eşitle</string>
+    <string name="cloud_cd_logout">Çıkış yap</string>
+    <string name="cloud_cd_sync_all_playlists">Tüm çalma listelerini eşitle</string>
+    <string name="cloud_cd_user_avatar">Kullanıcı avatarı</string>
 
     <!-- No internet -->
-    <string name="no_internet_dialog_title">No internet connection</string>
-    <string name="no_internet_dialog_message">This content requires an internet connection. Please check your network settings and try again.</string>
-    <string name="offline_screen_title">You\'re offline</string>
-    <string name="offline_screen_message">Please check your internet connection and try again to access this content.</string>
+    <string name="no_internet_dialog_title">İnternet bağlantısı yok</string>
+    <string name="no_internet_dialog_message">Bu içerik internet bağlantısı gerektirir. Lütfen ağ ayarlarınızı kontrol edip yeniden deneyin.</string>
+    <string name="offline_screen_title">Çevrim dışısınız</string>
+    <string name="offline_screen_message">Bu içeriğe erişmek için lütfen internet bağlantınızı kontrol edip yeniden deneyin.</string>
 
     <!-- Cloud Authentication & Login Shared Strings -->
-    <string name="auth_connect_action">Connect</string>
-    <string name="auth_connecting_msg">Connecting…</string>
-    <string name="auth_details_subtitle">Enter your server URL and account credentials.</string>
-    <string name="auth_details_title">Connection details</string>
-    <string name="auth_hide_pwd_action">Hide password</string>
-    <string name="auth_password_label">Password</string>
-    <string name="auth_prefill_http_action">Prefill http://</string>
-    <string name="auth_server_url_label">Server URL</string>
-    <string name="auth_show_pwd_action">Show password</string>
+    <string name="auth_connect_action">Bağlan</string>
+    <string name="auth_connecting_msg">Bağlanılıyor…</string>
+    <string name="auth_details_subtitle">Sunucu URL\'nizi ve hesap bilgilerinizi girin.</string>
+    <string name="auth_details_title">Bağlantı bilgileri</string>
+    <string name="auth_hide_pwd_action">Parolayı gizle</string>
+    <string name="auth_password_label">Parola</string>
+    <string name="auth_prefill_http_action">http:// önceden doldur</string>
+    <string name="auth_server_url_label">Sunucu URL\'si</string>
+    <string name="auth_show_pwd_action">Parolayı göster</string>
     <string name="auth_telegram_title">Telegram</string>
-    <string name="auth_username_label">Username</string>
+    <string name="auth_username_label">Kullanıcı adı</string>
     <string name="auth_username_placeholder">admin</string>
-    <string name="auth_welcome_toast">Welcome, %1$s!</string>
+    <string name="auth_welcome_toast">Hoş geldiniz, %1$s!</string>
 
     <!-- Subsonic / Navidrome Auth -->
-    <string name="auth_navidrome_footer_msg">Compatible with Navidrome, Gonic, Airsonic, and other Subsonic-compatible servers</string>
-    <string name="auth_navidrome_info_msg">Supports Navidrome, Airsonic, Gonic, Ampache and other servers compatible with the Subsonic API.</string>
-    <string name="auth_navidrome_prefill_https_action">Prefill https://</string>
-    <string name="auth_navidrome_url_hint">Use the full https:// base address of your server.</string>
+    <string name="auth_navidrome_footer_msg">Navidrome, Gonic, Airsonic ve diğer Subsonic uyumlu sunucularla uyumludur</string>
+    <string name="auth_navidrome_info_msg">Navidrome, Airsonic, Gonic, Ampache ve Subsonic API ile uyumlu diğer sunucuları destekler.</string>
+    <string name="auth_navidrome_prefill_https_action">https:// önceden doldur</string>
+    <string name="auth_navidrome_url_hint">Sunucunuzun tam https:// temel adresini kullanın.</string>
     <string name="auth_navidrome_url_placeholder">https://music.example.com</string>
     <string name="auth_subsonic_navidrome_title">Subsonic / Navidrome</string>
     <string name="auth_subsonic_title">Subsonic</string>
 
     <!-- Jellyfin Auth -->
-    <string name="auth_jellyfin_connect_subtitle">Enter your Jellyfin server URL and account credentials.</string>
-    <string name="auth_jellyfin_footer_msg">Connects to Jellyfin servers for streaming your music library</string>
-    <string name="auth_jellyfin_info_msg">Connects to Jellyfin servers. Both HTTP and HTTPS are supported for local network access.</string>
+    <string name="auth_jellyfin_connect_subtitle">Jellyfin sunucu URL\'nizi ve hesap bilgilerinizi girin.</string>
+    <string name="auth_jellyfin_footer_msg">Müzik kitaplığınızı akış olarak çalmak için Jellyfin sunucularına bağlanır</string>
+    <string name="auth_jellyfin_info_msg">Jellyfin sunucularına bağlanır. Yerel ağ erişimi için hem HTTP hem HTTPS desteklenir.</string>
     <string name="auth_jellyfin_logo_cd">Jellyfin</string>
-    <string name="auth_jellyfin_url_hint">Full URL of your Jellyfin server, including port.</string>
+    <string name="auth_jellyfin_url_hint">Jellyfin sunucunuzun bağlantı noktası dahil tam URL\'si.</string>
     <string name="auth_jellyfin_url_placeholder">http://192.168.1.100:8096</string>
 
     <!-- Google Drive Auth -->
-    <string name="auth_gdrive_connect_subtitle">Stream music files directly from your Google Drive</string>
-    <string name="auth_gdrive_connect_title">Connect Google Drive</string>
-    <string name="auth_gdrive_connected_toast">Google Drive connected!</string>
-    <string name="auth_gdrive_create_action">Create \"XiangsuPlayer Music\"</string>
-    <string name="auth_gdrive_create_subtitle">Create a new folder here for your music</string>
-    <string name="auth_gdrive_empty_msg">No folders here</string>
-    <string name="auth_gdrive_open_cd">Open folder</string>
-    <string name="auth_gdrive_select_subtitle">Choose or create a folder to use as your music source</string>
-    <string name="auth_gdrive_select_title">Select a music folder</string>
-    <string name="auth_gdrive_setup_msg">Setting up Google Drive…</string>
-    <string name="auth_gdrive_signin_action">Sign in with Google</string>
+    <string name="auth_gdrive_connect_subtitle">Müzik dosyalarını doğrudan Google Drive\'ınızdan akış olarak çalın</string>
+    <string name="auth_gdrive_connect_title">Google Drive\'ı Bağla</string>
+    <string name="auth_gdrive_connected_toast">Google Drive bağlandı!</string>
+    <string name="auth_gdrive_create_action">“XiangsuPlayer Music” oluştur</string>
+    <string name="auth_gdrive_create_subtitle">Müziğiniz için burada yeni bir klasör oluşturun</string>
+    <string name="auth_gdrive_empty_msg">Burada klasör yok</string>
+    <string name="auth_gdrive_open_cd">Klasörü aç</string>
+    <string name="auth_gdrive_select_subtitle">Müzik kaynağı olarak kullanılacak bir klasör seçin veya oluşturun</string>
+    <string name="auth_gdrive_select_title">Bir müzik klasörü seçin</string>
+    <string name="auth_gdrive_setup_msg">Google Drive ayarlanıyor…</string>
+    <string name="auth_gdrive_signin_action">Google ile oturum aç</string>
     <string name="auth_gdrive_use_action">Use</string>
 
     <!-- Web Login Shared/Generic -->
-    <string name="auth_cookies_unreadable_error">Could not read session cookies.</string>
+    <string name="auth_cookies_unreadable_error">Oturum çerezleri okunamadı.</string>
     <string name="auth_done_action">Done</string>
     <string name="auth_exit_action">Exit</string>
-    <string name="auth_no_cookies_error">No cookies found. Log in first.</string>
-    <string name="auth_page_slow_msg">Page is taking too long to load. Use refresh or try another network.</string>
+    <string name="auth_no_cookies_error">Çerez bulunamadı. Önce giriş yapın.</string>
+    <string name="auth_page_slow_msg">Sayfa yüklenmesi çok uzun sürüyor. Yenileyin veya başka bir ağ deneyin.</string>
     <string name="auth_plus_label">+</string>
-    <string name="auth_saving_msg">Saving…</string>
+    <string name="auth_saving_msg">Kaydediliyor…</string>
     <string name="auth_stay_action">Stay</string>
-    <string name="auth_timeout_toast">Page load timed out. You can retry without losing your progress.</string>
-    <string name="auth_web_back_cd">Web back</string>
-    <string name="auth_web_exit_msg">You can come back later. Current page state will be discarded when closing.</string>
-    <string name="auth_web_forward_cd">Web forward</string>
-    <string name="auth_web_refresh_cd">Refresh</string>
-    <string name="auth_web_retry_action">Retry</string>
-    <string name="auth_web_home_cd">Open home</string>
-    <string name="auth_webview_failed_error">WebView load failed.</string>
+    <string name="auth_timeout_toast">Sayfa yükleme zaman aşımına uğradı. İlerlemenizi kaybetmeden yeniden deneyebilirsiniz.</string>
+    <string name="auth_web_back_cd">Web geri</string>
+    <string name="auth_web_exit_msg">Daha sonra geri dönebilirsiniz. Kapatıldığında mevcut sayfa durumu kaybolur.</string>
+    <string name="auth_web_forward_cd">Web ileri</string>
+    <string name="auth_web_refresh_cd">Yenile</string>
+    <string name="auth_web_retry_action">Yeniden dene</string>
+    <string name="auth_web_home_cd">Ana sayfayı aç</string>
+    <string name="auth_webview_failed_error">WebView yüklenemedi.</string>
 
     <!-- NetEase Web Login -->
-    <string name="auth_netease_cookie_error">Failed to read NetEase cookies: %1$s</string>
-    <string name="auth_netease_exit_title">Exit NetEase login?</string>
-    <string name="auth_netease_http_error">HTTP %1$d while loading NetEase.</string>
-    <string name="auth_netease_incomplete_error">Login not detected yet. Complete NetEase login before pressing Done.</string>
-    <string name="auth_netease_login_title">Login to NetEase Music</string>
-    <string name="auth_netease_security_msg">Security note: your password is entered only in NetEase web pages. XiangsuPlayer stores session cookies (MUSIC_U) to sync your library.</string>
+    <string name="auth_netease_cookie_error">NetEase çerezleri okunamadı: %1$s</string>
+    <string name="auth_netease_exit_title">NetEase girişinden çıkılsın mı?</string>
+    <string name="auth_netease_http_error">NetEase yüklenirken HTTP %1$d.</string>
+    <string name="auth_netease_incomplete_error">Giriş henüz algılanmadı. Tamam\'a basmadan önce NetEase girişini tamamlayın.</string>
+    <string name="auth_netease_login_title">NetEase Music\'e giriş yap</string>
+    <string name="auth_netease_security_msg">Güvenlik notu: parolanız yalnızca NetEase web sayfalarında girilir. XiangsuPlayer, kitaplığınızı eşitlemek için oturum çerezlerini (MUSIC_U) saklar.</string>
     <string name="auth_netease_title">NetEase Music</string>
 
     <!-- QQ Music Web Login -->
-    <string name="auth_qq_cookie_error">Failed to read QQ Music cookies: %1$s</string>
-    <string name="auth_qq_exit_title">Exit QQ Music login?</string>
-    <string name="auth_qq_http_error">HTTP %1$d while loading QQ Music.</string>
-    <string name="auth_qq_incomplete_error">Login not detected yet. Complete QQ Music login before pressing Done.</string>
-    <string name="auth_qq_login_title">Login to QQ Music</string>
-    <string name="auth_qq_security_msg">Security note: your password is entered only in QQ Music web pages. XiangsuPlayer stores session cookies to sync your library.</string>
+    <string name="auth_qq_cookie_error">QQ Music çerezleri okunamadı: %1$s</string>
+    <string name="auth_qq_exit_title">QQ Music girişinden çıkılsın mı?</string>
+    <string name="auth_qq_http_error">QQ Music yüklenirken HTTP %1$d.</string>
+    <string name="auth_qq_incomplete_error">Giriş henüz algılanmadı. Tamam\'a basmadan önce QQ Music girişini tamamlayın.</string>
+    <string name="auth_qq_login_title">QQ Music\'e giriş yap</string>
+    <string name="auth_qq_security_msg">Güvenlik notu: parolanız yalnızca QQ Music web sayfalarında girilir. XiangsuPlayer, kitaplığınızı eşitlemek için oturum çerezlerini saklar.</string>
     <string name="auth_qq_title">QQ Music</string>
 </resources>

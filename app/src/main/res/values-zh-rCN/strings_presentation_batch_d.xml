@@ -51,7 +51,7 @@
     <!-- MashupScreen -->
     <string name="presentation_batch_d_mashup_title">DJ 空间</string>
     <string name="presentation_batch_d_loading">加载中……</string>
-    <string name="presentation_batch_d_mashup_deck_n">Deck %1$d</string>
+    <string name="presentation_batch_d_mashup_deck_n">唱盘 %1$d</string>
     <string name="presentation_batch_d_mashup_load_song_cd">加载歌曲</string>
     <string name="presentation_batch_d_mashup_no_song_loaded">未加载歌曲</string>
     <string name="presentation_batch_d_mashup_artist_placeholder">……</string>
@@ -59,8 +59,8 @@
     <string name="presentation_batch_d_mashup_volume">音量</string>
     <string name="presentation_batch_d_mashup_speed">速度</string>
     <string name="presentation_batch_d_mashup_crossfader">交叉推子</string>
-    <string name="presentation_batch_d_mashup_deck_1">Deck 1</string>
-    <string name="presentation_batch_d_mashup_deck_2">Deck 2</string>
+    <string name="presentation_batch_d_mashup_deck_1">唱盘 1</string>
+    <string name="presentation_batch_d_mashup_deck_2">唱盘 2</string>
     <string name="presentation_batch_d_mashup_select_song_title">选择一首歌曲</string>
 
     <!-- EqualizerScreen -->

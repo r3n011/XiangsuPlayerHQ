@@ -1,570 +1,556 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <!-- Library Screen -->
-    <string name="library_screen_title">Library</string>
-    <string name="library_tabs_sheet_title">Library tabs</string>
-    <string name="library_tabs_sheet_subtitle">Jump directly to any tab or reorder them.</string>
-    <string name="library_reorder_tabs_label">Reorder tabs</string>
+    <string name="library_screen_title">Pustaka</string>
+    <string name="library_tabs_sheet_title">Tab pustaka</string>
+    <string name="library_tabs_sheet_subtitle">Langsung menuju tab mana pun atau ubah urutannya.</string>
+    <string name="library_reorder_tabs_label">Ubah urutan tab</string>
 
     <!-- Library Tab Names -->
-    <string name="library_tab_songs">Songs</string>
-    <string name="library_tab_albums">Albums</string>
-    <string name="library_tab_artists">Artists</string>
-    <string name="library_tab_playlists">Playlists</string>
-    <string name="library_tab_folders">Folders</string>
-    <string name="library_tab_liked">Liked</string>
+    <string name="library_tab_songs">Lagu</string>
+    <string name="library_tab_albums">Album</string>
+    <string name="library_tab_artists">Artis</string>
+    <string name="library_tab_playlists">Playlist</string>
+    <string name="library_tab_folders">Folder</string>
+    <string name="library_tab_liked">Disukai</string>
 
     <!-- Library Toasts -->
-    <string name="library_toast_playlist_created">Playlist created successfully</string>
-    <string name="library_toast_set_ai_provider_api_key_first">Set your AI provider API key first</string>
-    <string name="library_toast_set_gemini_api_key_first">Set your Gemini API key first</string>
-    <string name="library_toast_added_to_queue">Added to queue</string>
-    <string name="library_toast_playing_next">Playing next</string>
+    <string name="library_toast_playlist_created">Playlist berhasil dibuat</string>
+    <string name="library_toast_set_ai_provider_api_key_first">Atur kunci API penyedia AI Anda terlebih dahulu</string>
+    <string name="library_toast_set_gemini_api_key_first">Atur kunci API Gemini Anda terlebih dahulu</string>
+    <string name="library_toast_added_to_queue">Ditambahkan ke antrean</string>
+    <string name="library_toast_playing_next">Diputar berikutnya</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Watch transfer</string>
-    <string name="library_cd_open_settings">Settings</string>
+    <string name="library_cd_watch_transfer">Transfer ke jam tangan</string>
+    <string name="library_cd_open_settings">Pengaturan</string>
     <string name="library_tab_edit">Edit</string>
-    <string name="library_cd_reorder_tabs">Reorder tabs</string>
-    <string name="library_cd_expand_tab_menu">Expand menu</string>
+    <string name="library_cd_reorder_tabs">Ubah urutan tab</string>
+    <string name="library_cd_expand_tab_menu">Perluas menu</string>
 
     <!-- Library Multi-Selection & Folders -->
-    <string name="library_toast_max_albums_selection">You can select up to %1$d albums</string>
+    <string name="library_toast_max_albums_selection">Anda dapat memilih hingga %1$d album</string>
     <string name="library_folder_name_fallback">Folder</string>
     <string name="library_cd_folder">Folder</string>
 
     <!-- Library Sort & View Bottom Sheet -->
-    <string name="library_sort_by_title">Sort by</string>
+    <string name="library_sort_by_title">Urutkan berdasarkan</string>
     <string name="library_sort_section_view">View</string>
-    <string name="library_sort_toggle_playlist_view">Playlist View</string>
+    <string name="library_sort_toggle_playlist_view">Tampilan Playlist</string>
     <string name="library_view_mode_grid">Grid</string>
     <string name="library_view_mode_list">List</string>
     <string name="library_storage_internal">Internal</string>
-    <string name="library_storage_sd_card">SD Card</string>
-    <string name="library_storage_sd_card_unavailable">SD card is not available right now.</string>
+    <string name="library_storage_sd_card">Kartu SD</string>
+    <string name="library_storage_sd_card_unavailable">Kartu SD tidak tersedia saat ini.</string>
     <string name="library_sort_section_cloud">Cloud</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram Cloud Channels</string>
-    <string name="library_telegram_topics_display_title">Topics Display</string>
-    <string name="library_telegram_topic_mode_channels">Channels</string>
-    <string name="library_telegram_topic_mode_topics">Topics</string>
+    <string name="library_sort_toggle_telegram_channels">Kanal Cloud Telegram</string>
+    <string name="library_telegram_topics_display_title">Tampilan Topik</string>
+    <string name="library_telegram_topic_mode_channels">Kanal</string>
+    <string name="library_telegram_topic_mode_topics">Topik</string>
     <string name="library_telegram_topic_mode_both">Both</string>
     <string name="library_cloud_sources_heading">Cloud</string>
-    <string name="library_cloud_only_label">Cloud Only</string>
+    <string name="library_cloud_only_label">Hanya Cloud</string>
 
     <!-- Library AI Metadata Processing -->
-    <string name="library_generating_ai_metadata">Generating metadata with AI…</string>
+    <string name="library_generating_ai_metadata">Membuat metadata dengan AI…</string>
 
     <!-- Library list errors -->
-    <string name="library_error_loading_songs">Error loading songs</string>
-    <string name="library_album_detail_error_loading_albums">Error loading albums</string>
-    <string name="library_artist_error_loading_artists">Error loading artists</string>
-    <string name="library_action_retry">Retry</string>
+    <string name="library_error_loading_songs">Kesalahan memuat lagu</string>
+    <string name="library_album_detail_error_loading_albums">Kesalahan memuat album</string>
+    <string name="library_artist_error_loading_artists">Kesalahan memuat artis</string>
+    <string name="library_action_retry">Coba lagi</string>
 
     <!-- Library empty (paginated) -->
-    <string name="library_no_songs_in_library_message">No songs found in your library.</string>
-    <string name="library_no_songs_rescan_hint">Try rescanning your library in settings if you have music on your device.</string>
-    <string name="library_cd_no_songs_in_library">No songs found</string>
+    <string name="library_no_songs_in_library_message">Tidak ada lagu ditemukan di pustaka Anda.</string>
+    <string name="library_no_songs_rescan_hint">Coba pindai ulang pustaka Anda di pengaturan jika Anda memiliki musik di perangkat.</string>
+    <string name="library_cd_no_songs_in_library">Tidak ada lagu ditemukan</string>
 
     <!-- Library action row -->
     <string name="library_action_new">New</string>
-    <string name="library_cd_create_new_playlist">Create new playlist</string>
-    <string name="library_cd_import_m3u_playlist">Import M3U playlist</string>
-    <string name="library_cd_locate_current_song">Locate current song</string>
-    <string name="library_storage_filter_all_songs">All songs</string>
+    <string name="library_cd_create_new_playlist">Buat playlist baru</string>
+    <string name="library_cd_import_m3u_playlist">Impor playlist M3U</string>
+    <string name="library_cd_locate_current_song">Temukan lagu saat ini</string>
+    <string name="library_storage_filter_all_songs">Semua lagu</string>
     <string name="library_storage_filter_online">CLOUD</string>
-    <string name="library_storage_filter_offline">LOCAL</string>
-    <string name="library_cd_sort_options">Sort options</string>
+    <string name="library_storage_filter_offline">LOKAL</string>
+    <string name="library_cd_sort_options">Opsi urutan</string>
 
     <!-- Library selection action row -->
     <string name="library_selection_all">All</string>
-    <string name="library_selection_deselect">Deselect</string>
-    <string name="library_selection_more_options">More options</string>
+    <string name="library_selection_deselect">Batalkan pilihan</string>
+    <string name="library_selection_more_options">Opsi lainnya</string>
 
     <!-- Library Syncing -->
-    <string name="library_sync_scanning">Scanning music files…</string>
-    <string name="library_sync_processing">Processing files…</string>
-    <string name="library_sync_files_progress">%1$d of %2$d files</string>
-    <string name="library_sync_in_progress">Syncing library…</string>
-    <string name="library_sync_complete">Sync complete</string>
-    <string name="library_sync_pending">Waiting…</string>
-    <string name="library_syncing">Syncing library…</string>
-    <string name="library_sync_cache">Cleaning album art cache…</string>
-    <string name="library_sync_cloud">Syncing cloud sources…</string>
-    <string name="library_sync_lyrics">Scanning lyrics…</string>
+    <string name="library_sync_scanning">Memindai file musik…</string>
+    <string name="library_sync_processing">Memproses file…</string>
+    <string name="library_sync_files_progress">%1$d dari %2$d file</string>
+    <string name="library_sync_in_progress">Menyinkronkan pustaka…</string>
+    <string name="library_sync_complete">Sinkronisasi selesai</string>
+    <string name="library_sync_pending">Menunggu…</string>
+    <string name="library_syncing">Menyinkronkan pustaka…</string>
+    <string name="library_sync_cache">Membersihkan cache sampul album…</string>
+    <string name="library_sync_cloud">Menyinkronkan sumber cloud…</string>
+    <string name="library_sync_lyrics">Memindai lirik…</string>
 
     <!-- Library Empty State -->
-    <string name="library_empty_songs_all_title">No songs yet</string>
-    <string name="library_empty_songs_all_subtitle">Add music to your device or sync a cloud source to start listening.</string>
-    <string name="library_empty_songs_offline_title">No local songs found</string>
-    <string name="library_empty_songs_offline_subtitle">Try another source filter or rescan your device library.</string>
-    <string name="library_empty_songs_online_title">No cloud songs found</string>
-    <string name="library_empty_songs_online_subtitle">Sync Telegram or NetEase songs, or switch to local source.</string>
-    <string name="library_empty_albums_all_title">No albums available</string>
-    <string name="library_empty_albums_all_subtitle">Albums will appear here as soon as your library has grouped tracks.</string>
-    <string name="library_empty_albums_offline_title">No local albums found</string>
-    <string name="library_empty_albums_offline_subtitle">Local songs are required to build local album groups.</string>
-    <string name="library_empty_albums_online_title">No cloud albums found</string>
-    <string name="library_empty_albums_online_subtitle">Cloud songs with album data will appear here after sync.</string>
-    <string name="library_empty_artists_all_title">No artists available</string>
-    <string name="library_empty_artists_all_subtitle">Artists are shown after songs are indexed from any source.</string>
-    <string name="library_empty_artists_offline_title">No local artists found</string>
-    <string name="library_empty_artists_offline_subtitle">No artist metadata is available for local songs right now.</string>
-    <string name="library_empty_artists_online_title">No cloud artists found</string>
-    <string name="library_empty_artists_online_subtitle">Cloud artist entries appear when remote songs are synced.</string>
-    <string name="library_empty_liked_all_title">No liked songs yet</string>
-    <string name="library_empty_liked_all_subtitle">Tap the heart icon while playing a song to save it here.</string>
-    <string name="library_empty_liked_offline_title">No liked local songs</string>
-    <string name="library_empty_liked_offline_subtitle">Switch source filter or like songs from your device.</string>
-    <string name="library_empty_liked_online_title">No liked cloud songs</string>
-    <string name="library_empty_liked_online_subtitle">Like Telegram or NetEase tracks to see them in this view.</string>
-    <string name="library_empty_folders_title">No folders found</string>
-    <string name="library_empty_folders_subtitle">Internal storage folders with music will appear here.</string>
-    <string name="library_empty_playlists_title">No playlists yet</string>
-    <string name="library_empty_playlists_subtitle">Create your first playlist to organize your library.</string>
+    <string name="library_empty_songs_all_title">Belum ada lagu</string>
+    <string name="library_empty_songs_all_subtitle">Tambahkan musik ke perangkat Anda atau sinkronkan sumber cloud untuk mulai mendengarkan.</string>
+    <string name="library_empty_songs_offline_title">Tidak ada lagu lokal ditemukan</string>
+    <string name="library_empty_songs_offline_subtitle">Coba filter sumber lain atau pindai ulang pustaka perangkat Anda.</string>
+    <string name="library_empty_songs_online_title">Tidak ada lagu cloud ditemukan</string>
+    <string name="library_empty_songs_online_subtitle">Sinkronkan lagu Telegram atau NetEase, atau beralih ke sumber lokal.</string>
+    <string name="library_empty_albums_all_title">Tidak ada album tersedia</string>
+    <string name="library_empty_albums_all_subtitle">Album akan muncul di sini segera setelah pustaka Anda memiliki trek yang dikelompokkan.</string>
+    <string name="library_empty_albums_offline_title">Tidak ada album lokal ditemukan</string>
+    <string name="library_empty_albums_offline_subtitle">Lagu lokal diperlukan untuk membuat grup album lokal.</string>
+    <string name="library_empty_albums_online_title">Tidak ada album cloud ditemukan</string>
+    <string name="library_empty_albums_online_subtitle">Lagu cloud dengan data album akan muncul di sini setelah sinkronisasi.</string>
+    <string name="library_empty_artists_all_title">Tidak ada artis tersedia</string>
+    <string name="library_empty_artists_all_subtitle">Artis ditampilkan setelah lagu diindeks dari sumber mana pun.</string>
+    <string name="library_empty_artists_offline_title">Tidak ada artis lokal ditemukan</string>
+    <string name="library_empty_artists_offline_subtitle">Metadata artis untuk lagu lokal tidak tersedia saat ini.</string>
+    <string name="library_empty_artists_online_title">Tidak ada artis cloud ditemukan</string>
+    <string name="library_empty_artists_online_subtitle">Entri artis cloud muncul saat lagu remote disinkronkan.</string>
+    <string name="library_empty_liked_all_title">Belum ada lagu yang disukai</string>
+    <string name="library_empty_liked_all_subtitle">Ketuk ikon hati saat memutar lagu untuk menyimpannya di sini.</string>
+    <string name="library_empty_liked_offline_title">Tidak ada lagu lokal yang disukai</string>
+    <string name="library_empty_liked_offline_subtitle">Ganti filter sumber atau sukai lagu dari perangkat Anda.</string>
+    <string name="library_empty_liked_online_title">Tidak ada lagu cloud yang disukai</string>
+    <string name="library_empty_liked_online_subtitle">Sukai trek Telegram atau NetEase untuk melihatnya di tampilan ini.</string>
+    <string name="library_empty_folders_title">Tidak ada folder ditemukan</string>
+    <string name="library_empty_folders_subtitle">Folder penyimpanan internal yang berisi musik akan muncul di sini.</string>
+    <string name="library_empty_playlists_title">Belum ada playlist</string>
+    <string name="library_empty_playlists_subtitle">Buat playlist pertama Anda untuk mengatur pustaka.</string>
 
     <!-- SongInfoBottomSheet, MultiSelectionBottomSheet, PlaylistMultiSelectionBottomSheet -->
-    <string name="song_info_cd_edit_metadata">Edit song metadata</string>
+    <string name="song_info_cd_edit_metadata">Edit metadata lagu</string>
     <string name="song_info_action_play">Play</string>
-    <string name="song_info_cd_play">Play song</string>
-    <string name="song_info_action_play_all">Play all</string>
-    <string name="song_info_cd_play_all">Play all</string>
-    <string name="song_info_cd_add_to_favorites">Add to favorites</string>
-    <string name="song_info_cd_add_to_favorites_all">Add all to favorites</string>
-    <string name="song_info_cd_remove_from_favorites">Remove from favorites</string>
-    <string name="song_info_cd_remove_from_favorites_all">Remove all from favorites</string>
-    <string name="song_info_share_chooser_title">Share song file via</string>
-    <string name="song_info_cd_share_song_file">Share song file</string>
-    <string name="song_info_cd_share_all_as_zip">Share all as ZIP</string>
-    <string name="song_info_error_share_song">Could not share song: %1$s</string>
-    <string name="song_info_action_add_to_queue">Add to queue</string>
-    <string name="song_info_cd_add_to_queue">Add to queue</string>
+    <string name="song_info_cd_play">Putar lagu</string>
+    <string name="song_info_action_play_all">Putar semua</string>
+    <string name="song_info_cd_play_all">Putar semua</string>
+    <string name="song_info_cd_add_to_favorites">Tambahkan ke favorit</string>
+    <string name="song_info_cd_add_to_favorites_all">Tambahkan semua ke favorit</string>
+    <string name="song_info_cd_remove_from_favorites">Hapus dari favorit</string>
+    <string name="song_info_cd_remove_from_favorites_all">Hapus semua dari favorit</string>
+    <string name="song_info_share_chooser_title">Bagikan file lagu melalui</string>
+    <string name="song_info_cd_share_song_file">Bagikan file lagu</string>
+    <string name="song_info_cd_share_all_as_zip">Bagikan semua sebagai ZIP</string>
+    <string name="song_info_error_share_song">Tidak dapat membagikan lagu: %1$s</string>
+    <string name="song_info_action_add_to_queue">Tambahkan ke antrean</string>
+    <string name="song_info_cd_add_to_queue">Tambahkan ke antrean</string>
     <string name="song_info_action_queue_next">Next</string>
-    <string name="song_info_cd_queue_next">Play next in queue</string>
-    <string name="song_info_cd_add_to_playlist">Add to playlist</string>
-    <string name="song_info_action_delete">Delete</string>
-    <string name="song_info_action_delete_all">Delete all</string>
-    <string name="song_info_checking_watch">Checking watch</string>
-    <string name="song_info_transferring_percent">Transferring %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Transferring to watch</string>
-    <string name="song_info_transfer_in_progress">Transfer in progress</string>
-    <string name="song_info_send_to_watch">Send to watch</string>
-    <string name="song_info_watch_unavailable">Watch unavailable</string>
-    <string name="song_info_cd_send_to_watch">Send song to watch</string>
-    <string name="song_info_cd_watch_unavailable">Watch unavailable</string>
-    <string name="song_info_set_sound_as_short">Set as</string>
-    <string name="song_info_set_sound_as_long">Set as sound</string>
-    <string name="song_info_cd_set_sound_as">Choose how to use this song as a system sound</string>
-    <string name="song_info_tone_picker_title">Use this song as</string>
-    <string name="song_info_tone_picker_body">Choose where XiangsuPlayer should install this sound.</string>
-    <string name="song_info_tone_ringtone_title">Phone ringtone</string>
-    <string name="song_info_tone_ringtone_subtitle">Incoming calls</string>
-    <string name="song_info_tone_notification_title">Notification sound</string>
-    <string name="song_info_tone_notification_subtitle">Messages and app alerts</string>
-    <string name="song_info_tone_alarm_title">Alarm sound</string>
-    <string name="song_info_tone_alarm_subtitle">Clock alarms</string>
-    <string name="song_info_tone_confirm_title">Confirm sound change</string>
-    <string name="song_info_tone_confirm_body">Set \"%1$s\" as your %2$s?</string>
-    <string name="song_info_tone_confirm_action">Set sound</string>
-    <string name="song_info_tone_success">Set \"%1$s\" as your %2$s</string>
-    <string name="song_info_tone_ringtone_label">ringtone</string>
-    <string name="song_info_tone_notification_label">notification sound</string>
-    <string name="song_info_tone_alarm_label">alarm sound</string>
-    <string name="song_info_ringtone_permission_prompt">Enable Modify system settings, then return to XiangsuPlayer to finish automatically.</string>
-    <string name="song_info_ringtone_permission_missing">Modify system settings was not enabled.</string>
-    <string name="song_info_ringtone_success">Set \"%1$s\" as your ringtone</string>
-    <string name="song_info_ringtone_local_only">Only local songs can be used as ringtones.</string>
-    <string name="song_info_ringtone_missing_file">Couldn\'t prepare this audio file for ringtone.</string>
-    <string name="song_info_ringtone_failed">Couldn\'t set ringtone: %1$s</string>
-    <string name="song_info_tab_options">Options</string>
-    <string name="song_info_tab_options_badge">OPTIONS</string>
+    <string name="song_info_cd_queue_next">Putar berikutnya di antrean</string>
+    <string name="song_info_cd_add_to_playlist">Tambahkan ke playlist</string>
+    <string name="song_info_action_delete">Hapus</string>
+    <string name="song_info_action_delete_all">Hapus semua</string>
+    <string name="song_info_checking_watch">Memeriksa jam tangan</string>
+    <string name="song_info_transferring_percent">Mentransfer %1$d%%</string>
+    <string name="song_info_transferring_to_watch">Mentransfer ke jam tangan</string>
+    <string name="song_info_transfer_in_progress">Transfer sedang berlangsung</string>
+    <string name="song_info_send_to_watch">Kirim ke jam tangan</string>
+    <string name="song_info_watch_unavailable">Jam tangan tidak tersedia</string>
+    <string name="song_info_cd_send_to_watch">Kirim lagu ke jam tangan</string>
+    <string name="song_info_cd_watch_unavailable">Jam tangan tidak tersedia</string>
+    <string name="song_info_set_sound_as_short">Atur sebagai</string>
+    <string name="song_info_set_sound_as_long">Atur sebagai suara</string>
+    <string name="song_info_cd_set_sound_as">Pilih cara menggunakan lagu ini sebagai suara sistem</string>
+    <string name="song_info_tone_picker_title">Gunakan lagu ini sebagai</string>
+    <string name="song_info_tone_picker_body">Pilih di mana XiangsuPlayer harus memasang suara ini.</string>
+    <string name="song_info_tone_ringtone_title">Nada dering telepon</string>
+    <string name="song_info_tone_ringtone_subtitle">Panggilan masuk</string>
+    <string name="song_info_tone_notification_title">Suara notifikasi</string>
+    <string name="song_info_tone_notification_subtitle">Pesan dan pemberitahuan aplikasi</string>
+    <string name="song_info_tone_alarm_title">Suara alarm</string>
+    <string name="song_info_tone_alarm_subtitle">Alarm jam</string>
+    <string name="song_info_tone_confirm_title">Konfirmasi perubahan suara</string>
+    <string name="song_info_tone_confirm_body">Atur \"%1$s\" sebagai %2$s Anda?</string>
+    <string name="song_info_tone_confirm_action">Atur suara</string>
+    <string name="song_info_tone_success">Atur \"%1$s\" sebagai %2$s Anda</string>
+    <string name="song_info_tone_ringtone_label">nada dering</string>
+    <string name="song_info_tone_notification_label">suara notifikasi</string>
+    <string name="song_info_tone_alarm_label">suara alarm</string>
+    <string name="song_info_ringtone_permission_prompt">Aktifkan Ubah pengaturan sistem, lalu kembali ke XiangsuPlayer untuk menyelesaikan secara otomatis.</string>
+    <string name="song_info_ringtone_permission_missing">Ubah pengaturan sistem belum diaktifkan.</string>
+    <string name="song_info_ringtone_success">Atur \"%1$s\" sebagai nada dering Anda</string>
+    <string name="song_info_ringtone_local_only">Hanya lagu lokal yang dapat digunakan sebagai nada dering.</string>
+    <string name="song_info_ringtone_missing_file">Tidak dapat menyiapkan file audio ini untuk nada dering.</string>
+    <string name="song_info_ringtone_failed">Tidak dapat mengatur nada dering: %1$s</string>
+    <string name="song_info_tab_options">Opsi</string>
+    <string name="song_info_tab_options_badge">OPSI</string>
     <string name="song_info_tab_info">Info</string>
     <string name="song_info_tab_info_badge">INFO</string>
-    <string name="song_info_duration_label">Duration</string>
+    <string name="song_info_duration_label">Durasi</string>
     <string name="song_info_genre_label">Genre</string>
     <string name="song_info_album_label">Album</string>
-    <string name="song_info_artist_label">Artist</string>
-    <string name="song_info_audio_format_label">Song info</string>
-    <string name="song_info_cd_provider">Provider</string>
+    <string name="song_info_artist_label">Artis</string>
+    <string name="song_info_audio_format_label">Info lagu</string>
+    <string name="song_info_cd_provider">Penyedia</string>
     <string name="song_info_cd_file">File</string>
-    <string name="song_info_download">Download</string>
-    <string name="song_info_downloading_progress">Downloading %1$d%%</string>
-    <string name="song_info_downloaded">Downloaded</string>
-    <string name="song_info_download_failed">Download failed</string>
-    <string name="multi_selection_songs_count_upper">%1$d SONGS</string>
-    <string name="multi_selection_songs_selected">selected</string>
-    <string name="multi_selection_playlists_count_upper">%1$d PLAYLISTS</string>
-    <string name="multi_selection_albums_count_upper">%1$d ALBUMS</string>
-    <string name="multi_selection_albums_selected">selected</string>
-    <string name="multi_selection_albums_selected_limit">Limit: %1$d albums per selection.</string>
-    <string name="multi_selection_albums_queue_hint">Queue + play respects your selection order.</string>
-    <string name="multi_selection_genres_count_upper">%1$d GENRES</string>
-    <string name="multi_selection_genres_selected">selected</string>
-    <string name="multi_selection_genres_queue_hint">Perform batch operations on all songs within these genres.</string>
+    <string name="song_info_download">Unduh</string>
+    <string name="song_info_downloading_progress">Mengunduh %1$d%%</string>
+    <string name="song_info_downloaded">Terunduh</string>
+    <string name="song_info_download_failed">Unduhan gagal</string>
+    <string name="multi_selection_songs_count_upper">%1$d LAGU</string>
+    <string name="multi_selection_songs_selected">dipilih</string>
+    <string name="multi_selection_playlists_count_upper">%1$d PLAYLIST</string>
+    <string name="multi_selection_albums_count_upper">%1$d ALBUM</string>
+    <string name="multi_selection_albums_selected">dipilih</string>
+    <string name="multi_selection_albums_selected_limit">Batas: %1$d album per pilihan.</string>
+    <string name="multi_selection_albums_queue_hint">Antrean + putar mengikuti urutan pilihan Anda.</string>
+    <string name="multi_selection_genres_count_upper">%1$d GENRE</string>
+    <string name="multi_selection_genres_selected">dipilih</string>
+    <string name="multi_selection_genres_queue_hint">Lakukan operasi massal pada semua lagu dalam genre ini.</string>
 
     <!-- Sort Option Display Names -->
-    <string name="sort_display_default_order">Default Order</string>
-    <string name="sort_display_title_az">Title (A-Z)</string>
-    <string name="sort_display_title_za">Title (Z-A)</string>
-    <string name="sort_display_artist">Artist</string>
-    <string name="sort_display_artist_za">Artist (Z-A)</string>
+    <string name="sort_display_default_order">Urutan Bawaan</string>
+    <string name="sort_display_title_az">Judul (A-Z)</string>
+    <string name="sort_display_title_za">Judul (Z-A)</string>
+    <string name="sort_display_artist">Artis</string>
+    <string name="sort_display_artist_za">Artis (Z-A)</string>
     <string name="sort_display_album">Album</string>
     <string name="sort_display_album_za">Album (Z-A)</string>
-    <string name="sort_display_date_added">Date Added</string>
-    <string name="sort_display_date_added_oldest">Date Added (Oldest First)</string>
-    <string name="sort_display_duration">Duration</string>
-    <string name="sort_display_duration_shortest">Duration (Shortest First)</string>
-    <string name="sort_display_release_year">Release Year</string>
-    <string name="sort_display_release_year_oldest">Release Year (Oldest First)</string>
-    <string name="sort_display_fewest_songs">Fewest Songs</string>
-    <string name="sort_display_most_songs">Most Songs</string>
-    <string name="sort_display_name_az">Name (A-Z)</string>
-    <string name="sort_display_name_za">Name (Z-A)</string>
-    <string name="sort_display_num_songs_most">Number of Songs (Most)</string>
-    <string name="sort_display_num_songs_fewest">Number of Songs (Fewest)</string>
-    <string name="sort_display_date_created">Date Created</string>
-    <string name="sort_display_date_created_oldest">Date Created (Oldest First)</string>
-    <string name="sort_display_date_liked">Date Liked</string>
-    <string name="sort_display_date_liked_oldest">Date Liked (Oldest First)</string>
-    <string name="sort_display_fewest_subfolders">Fewest Subfolders</string>
-    <string name="sort_display_most_subfolders">Most Subfolders</string>
+    <string name="sort_display_date_added">Tanggal Ditambahkan</string>
+    <string name="sort_display_date_added_oldest">Tanggal Ditambahkan (Terlama Dulu)</string>
+    <string name="sort_display_duration">Durasi</string>
+    <string name="sort_display_duration_shortest">Durasi (Terpendek Dulu)</string>
+    <string name="sort_display_release_year">Tahun Rilis</string>
+    <string name="sort_display_release_year_oldest">Tahun Rilis (Terlama Dulu)</string>
+    <string name="sort_display_fewest_songs">Paling Sedikit Lagu</string>
+    <string name="sort_display_most_songs">Paling Banyak Lagu</string>
+    <string name="sort_display_name_az">Nama (A-Z)</string>
+    <string name="sort_display_name_za">Nama (Z-A)</string>
+    <string name="sort_display_num_songs_most">Jumlah Lagu (Paling Banyak)</string>
+    <string name="sort_display_num_songs_fewest">Jumlah Lagu (Paling Sedikit)</string>
+    <string name="sort_display_date_created">Tanggal Dibuat</string>
+    <string name="sort_display_date_created_oldest">Tanggal Dibuat (Terlama Dulu)</string>
+    <string name="sort_display_date_liked">Tanggal Disukai</string>
+    <string name="sort_display_date_liked_oldest">Tanggal Disukai (Terlama Dulu)</string>
+    <string name="sort_display_fewest_subfolders">Paling Sedikit Subfolder</string>
+    <string name="sort_display_most_subfolders">Paling Banyak Subfolder</string>
 
     <!-- Sort Option Method Labels -->
-    <string name="sort_method_title">Title</string>
-    <string name="sort_method_artist">Artist</string>
+    <string name="sort_method_title">Judul</string>
+    <string name="sort_method_artist">Artis</string>
     <string name="sort_method_album">Album</string>
-    <string name="sort_method_date_added">Date Added</string>
-    <string name="sort_method_duration">Duration</string>
-    <string name="sort_method_release_year">Release Year</string>
-    <string name="sort_method_song_count">Song Count</string>
+    <string name="sort_method_date_added">Tanggal Ditambahkan</string>
+    <string name="sort_method_duration">Durasi</string>
+    <string name="sort_method_release_year">Tahun Rilis</string>
+    <string name="sort_method_song_count">Jumlah Lagu</string>
     <string name="sort_method_name">Name</string>
-    <string name="sort_method_num_songs">Number of Songs</string>
-    <string name="sort_method_date_created">Date Created</string>
-    <string name="sort_method_date_liked">Date Liked</string>
-    <string name="sort_method_subfolder_count">Subfolder Count</string>
+    <string name="sort_method_num_songs">Jumlah Lagu</string>
+    <string name="sort_method_date_created">Tanggal Dibuat</string>
+    <string name="sort_method_date_liked">Tanggal Disukai</string>
+    <string name="sort_method_subfolder_count">Jumlah Subfolder</string>
 
     <!-- LibrarySortBottomSheet-->
-    <string name="library_sort_source">Source</string>
-    <string name="library_sort_order">Order</string>
-    <string name="library_sort_descending">Descending</string>
-    <string name="library_sort_ascending">Ascending</string>
-    <string name="library_sort_original_order">Original Order</string>
-    <string name="library_sort_tap_ascending">Tap to switch to ascending</string>
-    <string name="library_sort_tap_descending">Tap to switch to descending</string>
-    <string name="library_sort_keeps_order">This sort keeps its original order</string>
-    <string name="library_sort_cd_switch_on">Switch is on</string>
+    <string name="library_sort_source">Sumber</string>
+    <string name="library_sort_order">Urutan</string>
+    <string name="library_sort_descending">Menurun</string>
+    <string name="library_sort_ascending">Menaik</string>
+    <string name="library_sort_original_order">Urutan Asli</string>
+    <string name="library_sort_tap_ascending">Ketuk untuk beralih ke menaik</string>
+    <string name="library_sort_tap_descending">Ketuk untuk beralih ke menurun</string>
+    <string name="library_sort_keeps_order">Urutan ini mempertahankan urutan aslinya</string>
+    <string name="library_sort_cd_switch_on">Tombol aktif</string>
 
     <!-- ReorderTabsSheet-->
-    <string name="reorder_tabs_sheet_title">Reorder library tabs</string>
-    <string name="reorder_tabs_reset_dialog_title">Reset order</string>
-    <string name="reorder_tabs_reset_dialog_body">Reset tab order to the default?</string>
-    <string name="reorder_tabs_reordering">Reordering tabs…</string>
-    <string name="reorder_tabs_cd_drag_handle">Drag handle</string>
+    <string name="reorder_tabs_sheet_title">Ubah urutan tab pustaka</string>
+    <string name="reorder_tabs_reset_dialog_title">Atur ulang urutan</string>
+    <string name="reorder_tabs_reset_dialog_body">Atur ulang urutan tab ke bawaan?</string>
+    <string name="reorder_tabs_reordering">Mengubah urutan tab…</string>
+    <string name="reorder_tabs_cd_drag_handle">Pegangan seret</string>
 
     <!-- PlayerArtistPickerBottomSheet -->
-    <string name="artist_picker_title">Pick an Artist</string>
-    <string name="artist_picker_count_single">1 artist</string>
-    <string name="artist_picker_count_multiple">%1$d artists</string>
-    <string name="artist_picker_primary_label">Primary artist</string>
-    <string name="artist_picker_shortcut_label">Artist page</string>
+    <string name="artist_picker_title">Pilih Artis</string>
+    <string name="artist_picker_count_single">1 artis</string>
+    <string name="artist_picker_count_multiple">%1$d artis</string>
+    <string name="artist_picker_primary_label">Artis utama</string>
+    <string name="artist_picker_shortcut_label">Halaman artis</string>
 
     <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Cancel transfer</string>
+    <string name="watch_transfer_action_cancel">Batalkan transfer</string>
     <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Shows live progress for phone-to-watch music transfers</string>
-    <string name="watch_transfer_channel_name">Watch transfers</string>
-    <string name="watch_transfer_dialog_title">Sending to Watch</string>
-    <string name="watch_transfer_status_cancelled">Cancelled</string>
-    <string name="watch_transfer_status_cancelled_service">Transfer cancelled</string>
-    <string name="watch_transfer_status_complete_service">Transfer complete</string>
-    <string name="watch_transfer_status_completed">Completed</string>
-    <string name="watch_transfer_status_failed">Failed</string>
-    <string name="watch_transfer_status_failed_service">Transfer failed</string>
-    <string name="watch_transfer_status_multiple_active">Multiple active transfers</string>
+    <string name="watch_transfer_channel_description">Menampilkan progres langsung transfer musik dari ponsel ke jam tangan</string>
+    <string name="watch_transfer_channel_name">Transfer jam tangan</string>
+    <string name="watch_transfer_dialog_title">Mengirim ke Jam Tangan</string>
+    <string name="watch_transfer_status_cancelled">Dibatalkan</string>
+    <string name="watch_transfer_status_cancelled_service">Transfer dibatalkan</string>
+    <string name="watch_transfer_status_complete_service">Transfer selesai</string>
+    <string name="watch_transfer_status_completed">Selesai</string>
+    <string name="watch_transfer_status_failed">Gagal</string>
+    <string name="watch_transfer_status_failed_service">Transfer gagal</string>
+    <string name="watch_transfer_status_multiple_active">Beberapa transfer aktif</string>
     <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Preparing</string>
-    <string name="watch_transfer_status_preparing_service">Preparing watch transfer</string>
-    <string name="watch_transfer_status_preparing_transfer">Preparing transfer…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Sending %1$d songs to watch</string>
-    <string name="watch_transfer_status_sending_to_watch">Sending to watch</string>
-    <string name="watch_transfer_status_starting">Starting transfer…</string>
-    <string name="watch_transfer_status_starting_short">Starting</string>
-    <string name="watch_transfer_status_transferring">Transferring</string>
-    <string name="watch_transfer_summary_n">%1$d transfers</string>
+    <string name="watch_transfer_status_preparing">Menyiapkan</string>
+    <string name="watch_transfer_status_preparing_service">Menyiapkan transfer jam tangan</string>
+    <string name="watch_transfer_status_preparing_transfer">Menyiapkan transfer…</string>
+    <string name="watch_transfer_status_sending_n_to_watch">Mengirim %1$d lagu ke jam tangan</string>
+    <string name="watch_transfer_status_sending_to_watch">Mengirim ke jam tangan</string>
+    <string name="watch_transfer_status_starting">Memulai transfer…</string>
+    <string name="watch_transfer_status_starting_short">Memulai</string>
+    <string name="watch_transfer_status_transferring">Mentransfer</string>
+    <string name="watch_transfer_summary_n">%1$d transfer</string>
 
     <!-- EditSongSheet -->
-    <string name="edit_song_toolbar_title">Edit song</string>
-    <string name="edit_song_cd_show_metadata_info">Show information</string>
-    <string name="edit_song_dialog_title">Editing song metadata</string>
-    <string name="edit_song_dialog_body">Editing a song\'s metadata can affect how it\'s displayed and organized in your library. Changes are permanent and may not be reversible.</string>
-    <string name="edit_song_dialog_got_it">Got it</string>
-    <string name="edit_song_cd_info_icon">Information</string>
-    <string name="edit_song_cover_art_heading">Cover art</string>
-    <string name="edit_song_cover_art_hint">Select a square image and fine-tune it so your cover art looks great across the app.</string>
-    <string name="edit_song_action_change_cover">Change cover art</string>
-    <string name="edit_song_action_delete_cover">Delete cover art</string>
-    <string name="edit_song_field_title">Title</string>
-    <string name="edit_song_field_artist">Artist</string>
+    <string name="edit_song_toolbar_title">Edit lagu</string>
+    <string name="edit_song_cd_show_metadata_info">Tampilkan informasi</string>
+    <string name="edit_song_dialog_title">Mengedit metadata lagu</string>
+    <string name="edit_song_dialog_body">Mengedit metadata lagu dapat memengaruhi cara lagu ditampilkan dan diatur di pustaka Anda. Perubahan bersifat permanen dan mungkin tidak dapat dibatalkan.</string>
+    <string name="edit_song_dialog_got_it">Mengerti</string>
+    <string name="edit_song_cd_info_icon">Informasi</string>
+    <string name="edit_song_cover_art_heading">Sampul</string>
+    <string name="edit_song_cover_art_hint">Pilih gambar persegi dan sesuaikan agar sampul terlihat bagus di seluruh aplikasi.</string>
+    <string name="edit_song_action_change_cover">Ganti sampul</string>
+    <string name="edit_song_action_delete_cover">Hapus sampul</string>
+    <string name="edit_song_field_title">Judul</string>
+    <string name="edit_song_field_artist">Artis</string>
     <string name="edit_song_field_album">Album</string>
-    <string name="edit_song_field_album_artist">Album artist</string>
+    <string name="edit_song_field_album_artist">Artis album</string>
     <string name="edit_song_field_genre">Genre</string>
-    <string name="edit_song_field_composer">Composer</string>
-    <string name="edit_song_field_track_number">Track number</string>
-    <string name="edit_song_field_disc_number">Disc number</string>
-    <string name="edit_song_field_replaygain_track">ReplayGain track (dB)</string>
+    <string name="edit_song_field_composer">Komposer</string>
+    <string name="edit_song_field_track_number">Nomor trek</string>
+    <string name="edit_song_field_disc_number">Nomor disc</string>
+    <string name="edit_song_field_replaygain_track">ReplayGain trek (dB)</string>
     <string name="edit_song_field_replaygain_album">ReplayGain album (dB)</string>
     <string name="edit_song_replaygain_track_placeholder">-6.50</string>
     <string name="edit_song_replaygain_album_placeholder">-8.20</string>
-    <string name="edit_song_cd_cover_preview">Preview of the new cover art</string>
-    <string name="edit_song_cd_current_cover">Current song cover art</string>
-    <string name="edit_song_crop_dialog_title">Adjust your cover art</string>
-    <string name="edit_song_crop_dialog_hint">Use pinch and drag gestures to find the perfect framing.</string>
-    <string name="edit_song_action_apply_cover">Apply cover art</string>
-    <string name="edit_song_unable_to_load_image">Unable to load the selected image</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Search lyrics on lrclib.net</string>
+    <string name="edit_song_cd_cover_preview">Pratinjau sampul baru</string>
+    <string name="edit_song_cd_current_cover">Sampul lagu saat ini</string>
+    <string name="edit_song_crop_dialog_title">Sesuaikan sampul Anda</string>
+    <string name="edit_song_crop_dialog_hint">Gunakan gestur cubit dan seret untuk menemukan bingkai yang sempurna.</string>
+    <string name="edit_song_action_apply_cover">Terapkan sampul</string>
+    <string name="edit_song_unable_to_load_image">Tidak dapat memuat gambar yang dipilih</string>
+    <string name="edit_song_cd_search_lyrics_lrclib">Cari lirik di lrclib.net</string>
 
     <!-- EditMultipleSongsSheet -->
-    <string name="batch_edit_toolbar_title">Edit %d Songs</string>
-    <string name="batch_edit_info_message">Only modified fields will be updated. Leave fields empty to keep existing values.</string>
-    <string name="batch_edit_mixed_values">(Mixed values)</string>
-    <string name="batch_edit_optional">(Optional - leave empty to skip)</string>
-    <string name="batch_edit_success">Successfully updated %d songs</string>
-    <string name="batch_edit_partial_success">Updated %1$d of %2$d songs. Some files could not be edited.</string>
-    <string name="batch_edit_failed">Failed to update songs</string>
-    <string name="batch_edit_cover_art_heading">Batch Cover Art</string>
-    <string name="batch_edit_cover_art_hint">This will replace the cover art for all %d selected songs</string>
-    <string name="batch_edit_set_cover_art">Set Cover Art for All</string>
-    <string name="batch_edit_remove_all_art">Remove All Cover Art</string>
-    <string name="batch_edit_multiple_covers">(Multiple different covers)</string>
+    <string name="batch_edit_toolbar_title">Edit %d Lagu</string>
+    <string name="batch_edit_info_message">Hanya bidang yang diubah yang akan diperbarui. Biarkan bidang kosong untuk mempertahankan nilai yang ada.</string>
+    <string name="batch_edit_mixed_values">(Nilai campuran)</string>
+    <string name="batch_edit_optional">(Opsional - biarkan kosong untuk melewati)</string>
+    <string name="batch_edit_success">Berhasil memperbarui %d lagu</string>
+    <string name="batch_edit_partial_success">%1$d dari %2$d lagu diperbarui. Beberapa file tidak dapat diedit.</string>
+    <string name="batch_edit_failed">Gagal memperbarui lagu</string>
+    <string name="batch_edit_cover_art_heading">Sampul Album Massal</string>
+    <string name="batch_edit_cover_art_hint">Ini akan mengganti sampul untuk semua %d lagu yang dipilih</string>
+    <string name="batch_edit_set_cover_art">Tetapkan Sampul untuk Semua</string>
+    <string name="batch_edit_remove_all_art">Hapus Semua Sampul</string>
+    <string name="batch_edit_multiple_covers">(Beberapa sampul berbeda)</string>
 
     <!-- Playlist dismissed message -->
-    <string name="playlist_dismissed_message">Playlist dismissed</string>
+    <string name="playlist_dismissed_message">Playlist ditutup</string>
 
     <!-- PlaylistCreationDialogs -->
-    <string name="playlist_creation_create_playlist_title">Create playlist</string>
-    <string name="playlist_creation_create_playlist_subtitle">Choose the creation flow.</string>
+    <string name="playlist_creation_create_playlist_title">Buat playlist</string>
+    <string name="playlist_creation_create_playlist_subtitle">Pilih alur pembuatan.</string>
     <string name="playlist_creation_mode_manual_title">Manual</string>
-    <string name="playlist_creation_mode_manual_subtitle">Design artwork, icon, shape and pick songs yourself.</string>
-    <string name="playlist_creation_mode_ai_title">With AI</string>
-    <string name="playlist_creation_mode_ai_subtitle_enabled">Generate a curated playlist with advanced controls.</string>
-    <string name="playlist_creation_mode_ai_subtitle_disabled">Requires a Gemini API key configured in settings.</string>
-    <string name="playlist_creation_setup_api_key">Set up API key</string>
+    <string name="playlist_creation_mode_manual_subtitle">Desain sampul, ikon, bentuk, dan pilih lagu sendiri.</string>
+    <string name="playlist_creation_mode_ai_title">Dengan AI</string>
+    <string name="playlist_creation_mode_ai_subtitle_enabled">Buat playlist terkurasi dengan kontrol lanjutan.</string>
+    <string name="playlist_creation_mode_ai_subtitle_disabled">Memerlukan kunci API Gemini yang dikonfigurasi di pengaturan.</string>
+    <string name="playlist_creation_setup_api_key">Siapkan kunci API</string>
 
     <!-- AI playlist lab -->
-    <string name="playlist_creation_ai_lab_title">AI Playlist Lab</string>
-    <string name="playlist_creation_ai_reset">Reset</string>
-    <string name="playlist_creation_ai_generating">Generating…</string>
-    <string name="playlist_creation_ai_generate">Generate</string>
-    <string name="playlist_creation_ai_section_intent">Intent</string>
-    <string name="playlist_creation_ai_name_optional">Playlist name (optional)</string>
-    <string name="playlist_creation_ai_feel_label">What should this playlist feel like?</string>
-    <string name="playlist_creation_ai_feel_placeholder">Example: sunset drive with warm synths</string>
-    <string name="playlist_creation_ai_section_direction">Direction</string>
+    <string name="playlist_creation_ai_lab_title">Lab Playlist AI</string>
+    <string name="playlist_creation_ai_reset">Atur ulang</string>
+    <string name="playlist_creation_ai_generating">Membuat…</string>
+    <string name="playlist_creation_ai_generate">Buat</string>
+    <string name="playlist_creation_ai_section_intent">Niat</string>
+    <string name="playlist_creation_ai_name_optional">Nama playlist (opsional)</string>
+    <string name="playlist_creation_ai_feel_label">Seperti apa suasana playlist ini?</string>
+    <string name="playlist_creation_ai_feel_placeholder">Contoh: perjalanan saat matahari terbenam dengan synth hangat</string>
+    <string name="playlist_creation_ai_section_direction">Arahan</string>
     <string name="playlist_creation_ai_mood_label">Mood</string>
-    <string name="playlist_creation_ai_activity_label">Activity</string>
+    <string name="playlist_creation_ai_activity_label">Aktivitas</string>
     <string name="playlist_creation_ai_era_label">Era</string>
-    <string name="playlist_creation_ai_section_curation">Curation engine</string>
-    <string name="playlist_creation_ai_energy_label">Energy</string>
-    <string name="playlist_creation_ai_energy_desc">Controls the intensity and tempo of songs. 1 = calm/slow, 5 = high-energy/fast.</string>
-    <string name="playlist_creation_ai_discovery_label">Discovery</string>
-    <string name="playlist_creation_ai_discovery_desc">Controls how familiar the selections are. 1 = your most played favorites, 5 = rarely played deep cuts.</string>
-    <string name="playlist_creation_ai_min_songs">Min songs</string>
-    <string name="playlist_creation_ai_max_songs">Max songs</string>
-    <string name="playlist_creation_ai_section_filters">Filters</string>
-    <string name="playlist_creation_ai_prioritize_genres">Prioritize genres (optional)</string>
-    <string name="playlist_creation_ai_prioritize_genres_placeholder">e.g. synthwave, indie pop</string>
-    <string name="playlist_creation_ai_avoid_genres">Avoid genres (optional)</string>
-    <string name="playlist_creation_ai_avoid_genres_placeholder">e.g. metal, hard trap</string>
-    <string name="playlist_creation_ai_preferred_language">Preferred language (optional)</string>
-    <string name="playlist_creation_ai_preferred_language_placeholder">e.g. English, Spanish, instrumental</string>
-    <string name="playlist_creation_ai_prioritize_favorites">Prioritize favorites</string>
-    <string name="playlist_creation_ai_avoid_explicit">Avoid explicit lyrics</string>
-    <string name="playlist_creation_ai_section_prompt_preview">Prompt preview</string>
-    <string name="playlist_creation_ai_prompt_preview_empty">Your final prompt will appear here once you add preferences.</string>
-    <string name="playlist_creation_ai_hero_title">Curate with precision</string>
-    <string name="playlist_creation_ai_hero_subtitle">Define mood, activity, constraints and depth.</string>
-    <string name="playlist_creation_ai_hero_library_note">The AI will only use songs from your local library.</string>
-    <string name="playlist_creation_ai_error_add_instruction">Add at least one instruction for AI.</string>
-    <string name="playlist_creation_ai_error_song_range">Set a valid song range.</string>
+    <string name="playlist_creation_ai_section_curation">Mesin kurasi</string>
+    <string name="playlist_creation_ai_energy_label">Energi</string>
+    <string name="playlist_creation_ai_energy_desc">Mengontrol intensitas dan tempo lagu. 1 = tenang/lambat, 5 = energik/cepat.</string>
+    <string name="playlist_creation_ai_discovery_label">Penemuan</string>
+    <string name="playlist_creation_ai_discovery_desc">Mengontrol seberapa familiar pilihan lagu. 1 = favorit yang paling sering diputar, 5 = lagu yang jarang diputar.</string>
+    <string name="playlist_creation_ai_min_songs">Min. lagu</string>
+    <string name="playlist_creation_ai_max_songs">Maks. lagu</string>
+    <string name="playlist_creation_ai_section_filters">Filter</string>
+    <string name="playlist_creation_ai_prioritize_genres">Prioritaskan genre (opsional)</string>
+    <string name="playlist_creation_ai_prioritize_genres_placeholder">mis. synthwave, indie pop</string>
+    <string name="playlist_creation_ai_avoid_genres">Hindari genre (opsional)</string>
+    <string name="playlist_creation_ai_avoid_genres_placeholder">mis. metal, hard trap</string>
+    <string name="playlist_creation_ai_preferred_language">Bahasa pilihan (opsional)</string>
+    <string name="playlist_creation_ai_preferred_language_placeholder">mis. Inggris, Spanyol, instrumental</string>
+    <string name="playlist_creation_ai_prioritize_favorites">Prioritaskan favorit</string>
+    <string name="playlist_creation_ai_avoid_explicit">Hindari lirik eksplisit</string>
+    <string name="playlist_creation_ai_section_prompt_preview">Pratinjau prompt</string>
+    <string name="playlist_creation_ai_prompt_preview_empty">Prompt akhir Anda akan muncul di sini setelah Anda menambahkan preferensi.</string>
+    <string name="playlist_creation_ai_hero_title">Susun dengan presisi</string>
+    <string name="playlist_creation_ai_hero_subtitle">Tentukan mood, aktivitas, batasan, dan kedalaman.</string>
+    <string name="playlist_creation_ai_hero_library_note">AI hanya akan menggunakan lagu dari pustaka lokal Anda.</string>
+    <string name="playlist_creation_ai_error_add_instruction">Tambahkan setidaknya satu instruksi untuk AI.</string>
+    <string name="playlist_creation_ai_error_song_range">Atur rentang lagu yang valid.</string>
     <string name="playlist_creation_ai_level_out_of_five">%1$d/5</string>
-    <string name="playlist_creation_ai_custom_chip">Custom…</string>
-    <string name="playlist_creation_ai_enter_custom_title">Enter custom value</string>
-    <string name="playlist_creation_ai_enter_custom_label">Enter your custom value</string>
+    <string name="playlist_creation_ai_custom_chip">Kustom…</string>
+    <string name="playlist_creation_ai_enter_custom_title">Masukkan nilai kustom</string>
+    <string name="playlist_creation_ai_enter_custom_label">Masukkan nilai kustom Anda</string>
 
     <!-- AI prompt -->
-    <string name="playlist_creation_ai_era_any">Any era</string>
-    <string name="playlist_creation_ai_prompt_core_request">Core request: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_mood">Mood target: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_activity">Activity context: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_era">Era focus: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_prioritize_genres">Prioritize genres: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_avoid_genres">Avoid genres: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_preferred_language">Preferred language: %1$s.</string>
-    <string name="playlist_creation_ai_prompt_energy">Energy level target: %1$d/5.</string>
-    <string name="playlist_creation_ai_prompt_discovery">Discovery target: %1$d/5 where 1 is familiar and 5 is deep cuts.</string>
-    <string name="playlist_creation_ai_prompt_prioritize_favorites">Prioritize songs closer to listener favorites when possible.</string>
-    <string name="playlist_creation_ai_prompt_avoid_explicit">Avoid explicit lyrics whenever alternatives exist.</string>
-    <string name="playlist_creation_ai_prompt_smooth_transitions">Keep transitions smooth and avoid repetitive artist clustering.</string>
+    <string name="playlist_creation_ai_era_any">Semua era</string>
+    <string name="playlist_creation_ai_prompt_core_request">Permintaan inti: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_mood">Target mood: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_activity">Konteks aktivitas: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_era">Fokus era: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_prioritize_genres">Prioritaskan genre: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_avoid_genres">Hindari genre: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_preferred_language">Bahasa pilihan: %1$s.</string>
+    <string name="playlist_creation_ai_prompt_energy">Target tingkat energi: %1$d/5.</string>
+    <string name="playlist_creation_ai_prompt_discovery">Target penemuan: %1$d/5 di mana 1 adalah familiar dan 5 adalah lagu langka.</string>
+    <string name="playlist_creation_ai_prompt_prioritize_favorites">Prioritaskan lagu yang lebih dekat ke favorit pendengar bila memungkinkan.</string>
+    <string name="playlist_creation_ai_prompt_avoid_explicit">Hindari lirik eksplisit jika ada alternatif.</string>
+    <string name="playlist_creation_ai_prompt_smooth_transitions">Jaga transisi tetap mulus dan hindari pengelompokan artis yang repetitif.</string>
     <string-array name="playlist_creation_ai_mood_options">
-        <item>Chill</item>
-        <item>Energetic</item>
-        <item>Happy</item>
-        <item>Dark</item>
-        <item>Romantic</item>
-        <item>Melancholic</item>
+        <item>Santai</item>
+        <item>Energik</item>
+        <item>Bahagia</item>
+        <item>Gelap</item>
+        <item>Romantis</item>
+        <item>Melankolis</item>
     </string-array>
     <string-array name="playlist_creation_ai_activity_options">
-        <item>Workout</item>
-        <item>Focus</item>
-        <item>Road trip</item>
-        <item>Party</item>
-        <item>Study</item>
-        <item>Late night</item>
+        <item>Olahraga</item>
+        <item>Fokus</item>
+        <item>Perjalanan</item>
+        <item>Pesta</item>
+        <item>Belajar</item>
+        <item>Malam larut</item>
     </string-array>
     <string-array name="playlist_creation_ai_era_options">
         <item>@string/playlist_creation_ai_era_any</item>
         <item>70s</item>
         <item>80s</item>
         <item>90s</item>
-        <item>2000s</item>
-        <item>2010s</item>
-        <item>2020s</item>
+        <item>2000-an</item>
+        <item>2010-an</item>
+        <item>2020-an</item>
     </string-array>
 
     <!-- PlaylistContainer -->
-    <string name="playlist_container_no_playlist_created">No playlist has been created.</string>
-    <string name="playlist_container_new_playlist_hint">Touch the \'New Playlist\' button to start.</string>
-    <string name="playlist_container_create_playlist_title">New playlist</string>
-    <string name="playlist_container_create_playlist_name_label">Playlist name</string>
-    <string name="playlist_container_create_playlist_name_placeholder">My playlist</string>
+    <string name="playlist_container_no_playlist_created">Belum ada playlist yang dibuat.</string>
+    <string name="playlist_container_new_playlist_hint">Ketuk tombol \'Playlist Baru\' untuk memulai.</string>
+    <string name="playlist_container_create_playlist_title">Playlist baru</string>
+    <string name="playlist_container_create_playlist_name_label">Nama playlist</string>
+    <string name="playlist_container_create_playlist_name_placeholder">Playlist saya</string>
 
     <!-- PlaylistBottomSheet -->
-    <string name="playlist_sheet_add_songs_title">Add %1$d songs to…</string>
-    <string name="playlist_sheet_select_playlists">Select playlists</string>
-    <string name="playlist_sheet_search_playlists_hint">Search for playlists…</string>
-    <string name="playlist_sheet_song_added_to_playlists">Songs added to playlists</string>
-    <string name="playlist_sheet_created_and_songs_added">Playlist created and songs added</string>
-    <string name="playlist_sheet_internal_storage">Internal Storage</string>
+    <string name="playlist_sheet_add_songs_title">Tambahkan %1$d lagu ke…</string>
+    <string name="playlist_sheet_select_playlists">Pilih playlist</string>
+    <string name="playlist_sheet_search_playlists_hint">Cari playlist…</string>
+    <string name="playlist_sheet_song_added_to_playlists">Lagu ditambahkan ke playlist</string>
+    <string name="playlist_sheet_created_and_songs_added">Playlist dibuat dan lagu ditambahkan</string>
+    <string name="playlist_sheet_internal_storage">Penyimpanan Internal</string>
 
     <!-- SongPickerBottomSheet -->
-    <string name="song_picker_title">Add songs</string>
-    <string name="song_picker_cd_confirm_add_songs">Add selected songs</string>
+    <string name="song_picker_title">Tambah lagu</string>
+    <string name="song_picker_cd_confirm_add_songs">Tambahkan lagu yang dipilih</string>
     <string name="song_picker_action_add">Add</string>
-    <string name="song_picker_search_label">Search or filter songs…</string>
-    <string name="song_picker_filter_favorites">Liked</string>
-    <string name="song_picker_error_load_failed">Failed to load songs</string>
-    <string name="song_picker_load_more">Load more</string>
+    <string name="song_picker_search_label">Cari atau filter lagu…</string>
+    <string name="song_picker_filter_favorites">Disukai</string>
+    <string name="song_picker_error_load_failed">Gagal memuat lagu</string>
+    <string name="song_picker_load_more">Muat lebih banyak</string>
 
     <!-- Merge Playlists Dialog -->
-    <string name="merge_playlists_dialog_title">Merge Playlists</string>
-    <string name="merge_playlists_dialog_prompt">Enter a name for the merged playlist:</string>
-    <string name="merge_playlists_dialog_placeholder">Merged Playlist</string>
-    <string name="merge_playlists_dialog_body">This will merge %1$d selected playlists into one.</string>
+    <string name="merge_playlists_dialog_title">Gabungkan Playlist</string>
+    <string name="merge_playlists_dialog_prompt">Masukkan nama untuk playlist gabungan:</string>
+    <string name="merge_playlists_dialog_placeholder">Playlist Gabungan</string>
+    <string name="merge_playlists_dialog_body">Ini akan menggabungkan %1$d playlist yang dipilih menjadi satu.</string>
 
     <!-- PlayerViewModel -->
-    <string name="player_view_model_no_valid_songs">No valid songs found to play</string>
-    <string name="player_view_model_song_not_found_in_list">Song not found in current list</string>
-    <string name="player_view_model_could_not_locate_song">Could not locate song</string>
-    <string name="player_view_model_no_songs_in_library_toast">No songs found in library</string>
-    <string name="player_view_model_playback_stopped_eot">Playback stopped: %1$s finished (End of Track).</string>
-    <string name="player_view_model_default_track_title">Track</string>
-    <string name="player_view_model_no_songs_to_shuffle">No songs to shuffle.</string>
-    <string name="player_view_model_queue_name_selected_albums">Selected Albums</string>
-    <string name="player_view_model_no_playable_songs_in_albums">No playable songs found in selected albums</string>
-    <string name="player_view_model_no_playable_songs_in_genres">No playable songs found in selected genres</string>
-    <string name="player_view_model_only_first_n_albums_queued">Only the first %1$d albums were queued</string>
-    <string name="player_view_model_albums_queued_format">%1$d albums queued (%2$d songs)</string>
-    <string name="player_view_model_could_not_queue_albums">Could not queue selected albums</string>
-    <string name="player_view_model_all_songs_already_in_favorites">All songs already in favorites</string>
-    <string name="player_view_model_no_songs_were_in_favorites">No songs were in favorites</string>
-    <string name="player_view_model_creating_zip">Creating ZIP file…</string>
-    <string name="player_view_model_share_zip_failed_format">Failed to share: %1$s</string>
-    <plurals name="player_view_model_n_songs_added_to_queue">
-        <item quantity="one">%d song added to queue</item>
-        <item quantity="other">%d songs added to queue</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_will_play_next">
-        <item quantity="one">%d song will play next</item>
-        <item quantity="other">%d songs will play next</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_added_to_favorites">
-        <item quantity="one">%d song added to favorites</item>
-        <item quantity="other">%d songs added to favorites</item>
-    </plurals>
-    <plurals name="player_view_model_n_songs_removed_from_favorites">
-        <item quantity="one">%d song removed from favorites</item>
-        <item quantity="other">%d songs removed from favorites</item>
-    </plurals>
+    <string name="player_view_model_no_valid_songs">Tidak ada lagu valid untuk diputar</string>
+    <string name="player_view_model_song_not_found_in_list">Lagu tidak ditemukan dalam daftar saat ini</string>
+    <string name="player_view_model_could_not_locate_song">Tidak dapat menemukan lagu</string>
+    <string name="player_view_model_no_songs_in_library_toast">Tidak ada lagu ditemukan di pustaka</string>
+    <string name="player_view_model_playback_stopped_eot">Pemutaran berhenti: %1$s selesai (Akhir Trek).</string>
+    <string name="player_view_model_default_track_title">Trek</string>
+    <string name="player_view_model_no_songs_to_shuffle">Tidak ada lagu untuk diacak.</string>
+    <string name="player_view_model_queue_name_selected_albums">Album yang Dipilih</string>
+    <string name="player_view_model_no_playable_songs_in_albums">Tidak ada lagu yang dapat diputar di album yang dipilih</string>
+    <string name="player_view_model_no_playable_songs_in_genres">Tidak ada lagu yang dapat diputar di genre yang dipilih</string>
+    <string name="player_view_model_only_first_n_albums_queued">Hanya %1$d album pertama yang diantrekan</string>
+    <string name="player_view_model_albums_queued_format">%1$d album diantrekan (%2$d lagu)</string>
+    <string name="player_view_model_could_not_queue_albums">Tidak dapat mengantrekan album yang dipilih</string>
+    <string name="player_view_model_all_songs_already_in_favorites">Semua lagu sudah ada di favorit</string>
+    <string name="player_view_model_no_songs_were_in_favorites">Tidak ada lagu di favorit</string>
+    <string name="player_view_model_creating_zip">Membuat file ZIP…</string>
+    <string name="player_view_model_share_zip_failed_format">Gagal berbagi: %1$s</string>
+    <plurals name="player_view_model_n_songs_added_to_queue">        <item quantity="one">%d lagu ditambahkan ke antrean</item>
+        <item quantity="other">%d lagu ditambahkan ke antrean</item></plurals>
+    <plurals name="player_view_model_n_songs_will_play_next">        <item quantity="one">%d lagu akan diputar berikutnya</item>
+        <item quantity="other">%d lagu akan diputar berikutnya</item></plurals>
+    <plurals name="player_view_model_n_songs_added_to_favorites">        <item quantity="one">%d lagu ditambahkan ke favorit</item>
+        <item quantity="other">%d lagu ditambahkan ke favorit</item></plurals>
+    <plurals name="player_view_model_n_songs_removed_from_favorites">        <item quantity="one">%d lagu dihapus dari favorit</item>
+        <item quantity="other">%d lagu dihapus dari favorit</item></plurals>
 
     <!-- PlaylistViewModel -->
-    <string name="playlist_view_model_none_to_share">No playlists to share</string>
-    <string name="playlist_view_model_share_chooser_title">Share playlists</string>
-    <string name="playlist_view_model_share_failed">Share failed: %1$s</string>
-    <string name="playlist_view_model_none_to_export">No playlists to export</string>
-    <string name="playlist_view_model_export_failed">Export failed: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/XiangsuPlayer Exports</string>
-    <string name="playlist_view_model_ai_gemini_key_required">Please configure your Gemini API key in Settings.</string>
-    <string name="playlist_view_model_restored_toast">Playlist restored</string>
-    <plurals name="playlist_view_model_sharing_message">
-        <item quantity="one">Sharing %d playlist</item>
-        <item quantity="other">Sharing %d playlists</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">Exported %1$d playlist to %2$s</item>
-        <item quantity="other">Exported %1$d playlists to %2$s</item>
-    </plurals>
+    <string name="playlist_view_model_none_to_share">Tidak ada playlist untuk dibagikan</string>
+    <string name="playlist_view_model_share_chooser_title">Bagikan playlist</string>
+    <string name="playlist_view_model_share_failed">Berbagi gagal: %1$s</string>
+    <string name="playlist_view_model_none_to_export">Tidak ada playlist untuk diekspor</string>
+    <string name="playlist_view_model_export_failed">Ekspor gagal: %1$s</string>
+    <string name="playlist_view_model_export_folder_display">Musik/Ekspor XiangsuPlayer</string>
+    <string name="playlist_view_model_ai_gemini_key_required">Silakan konfigurasi kunci API Gemini Anda di Pengaturan.</string>
+    <string name="playlist_view_model_restored_toast">Playlist dipulihkan</string>
+    <plurals name="playlist_view_model_sharing_message">        <item quantity="one">Berbagi %d playlist</item>
+        <item quantity="other">Berbagi %d playlist</item></plurals>
+    <plurals name="playlist_view_model_exported_message">        <item quantity="one">Berhasil mengekspor %1$d playlist ke %2$s</item>
+        <item quantity="other">Berhasil mengekspor %1$d playlist ke %2$s</item></plurals>
 
     <!-- AlbumDetailViewModel -->
-    <string name="album_detail_invalid_id">Invalid album ID</string>
-    <string name="album_detail_id_not_found">Album ID not found</string>
-    <string name="album_detail_error_loading_album">Error loading album data: %s</string>
-    <string name="album_detail_not_found">Album not found</string>
+    <string name="album_detail_invalid_id">ID album tidak valid</string>
+    <string name="album_detail_id_not_found">ID album tidak ditemukan</string>
+    <string name="album_detail_error_loading_album">Kesalahan memuat data album: %s</string>
+    <string name="album_detail_not_found">Album tidak ditemukan</string>
 
     <!-- ArtistDetailViewModel -->
-    <string name="artist_detail_invalid_id">Invalid artist ID</string>
-    <string name="artist_detail_id_not_found">Artist ID not found</string>
-    <string name="artist_error_loading_artist">Error loading artist data: %s</string>
-    <string name="artist_detail_not_found">Could not find the artist</string>
+    <string name="artist_detail_invalid_id">ID artis tidak valid</string>
+    <string name="artist_detail_id_not_found">ID artis tidak ditemukan</string>
+    <string name="artist_error_loading_artist">Kesalahan memuat data artis: %s</string>
+    <string name="artist_detail_not_found">Tidak dapat menemukan artis</string>
 
     <!-- SongRemovalStateHolder -->
-    <string name="song_removal_cannot_delete_currently_playing">Cannot delete currently playing song</string>
-    <string name="song_removal_batch_delete_files_deleted_skipped_format">%1$d files deleted (%2$d skipped - playing)</string>
-    <string name="song_removal_batch_delete_partial_format">%1$d of %2$d files deleted</string>
-    <string name="song_removal_delete_files_failed">Failed to delete files</string>
-    <string name="song_removal_file_deleted">File deleted</string>
-    <string name="song_removal_delete_file_not_found">Can\'t delete the file or file not found</string>
-    <string name="song_removal_deletion_cancelled">Deletion cancelled</string>
-    <string name="song_removal_dialog_delete_song_title">Delete song?</string>
-    <string name="song_removal_dialog_delete_song_message">\"%1$s\" by %2$s\n\nThis song will be permanently deleted from your device and cannot be recovered.</string>
-    <string name="song_removal_delete_songs_permanent_message">These songs will be permanently deleted from your device and cannot be recovered.</string>
-    <plurals name="song_removal_n_files_deleted">
-        <item quantity="one">%d file deleted</item>
-        <item quantity="other">%d files deleted</item>
-    </plurals>
-    <plurals name="song_removal_delete_songs_confirmation_title">
-        <item quantity="one">Delete %d song?</item>
-        <item quantity="other">Delete %d songs?</item>
-    </plurals>
+    <string name="song_removal_cannot_delete_currently_playing">Tidak dapat menghapus lagu yang sedang diputar</string>
+    <string name="song_removal_batch_delete_files_deleted_skipped_format">%1$d file dihapus (%2$d dilewati - sedang diputar)</string>
+    <string name="song_removal_batch_delete_partial_format">%1$d dari %2$d file dihapus</string>
+    <string name="song_removal_delete_files_failed">Gagal menghapus file</string>
+    <string name="song_removal_file_deleted">File dihapus</string>
+    <string name="song_removal_delete_file_not_found">Tidak dapat menghapus file atau file tidak ditemukan</string>
+    <string name="song_removal_deletion_cancelled">Penghapusan dibatalkan</string>
+    <string name="song_removal_dialog_delete_song_title">Hapus lagu?</string>
+    <string name="song_removal_dialog_delete_song_message">\"%1$s\" oleh %2$s\n\nLagu ini akan dihapus permanen dari perangkat Anda dan tidak dapat dipulihkan.</string>
+    <string name="song_removal_delete_songs_permanent_message">Lagu-lagu ini akan dihapus permanen dari perangkat Anda dan tidak dapat dipulihkan.</string>
+    <plurals name="song_removal_n_files_deleted">        <item quantity="one">%d file dihapus</item>
+        <item quantity="other">%d file dihapus</item></plurals>
+    <plurals name="song_removal_delete_songs_confirmation_title">        <item quantity="one">Hapus %d lagu?</item>
+        <item quantity="other">Hapus %d lagu?</item></plurals>
 
     <!-- MetadataEditStateHolder -->
-    <string name="metadata_edit_updated_successfully">Metadata updated successfully</string>
-    <string name="metadata_edit_updating_n_songs">Updating %1$d songs…</string>
-    <string name="metadata_edit_batch_genre_updated_all">Successfully updated %1$d songs!</string>
-    <string name="metadata_edit_batch_genre_updated_partial">Updated %1$d songs. Failed: %2$d</string>
-    <string name="metadata_edit_lyrics_saved_successfully">Lyrics saved successfully</string>
-    <string name="metadata_edit_lyrics_save_failed">Failed to save lyrics</string>
-    <string name="metadata_edit_lyrics_none_to_save">No lyrics available to save</string>
-    <string name="metadata_edit_permission_denied_edit_files">Permission denied – cannot edit files</string>
-    <string name="metadata_edit_permission_denied_save_lyrics">Permission denied – cannot save lyrics</string>
-    <string name="metadata_edit_permission_denied_edit_this_file">Permission denied – cannot edit this file</string>
+    <string name="metadata_edit_updated_successfully">Metadata berhasil diperbarui</string>
+    <string name="metadata_edit_updating_n_songs">Memperbarui %1$d lagu…</string>
+    <string name="metadata_edit_batch_genre_updated_all">Berhasil memperbarui %1$d lagu!</string>
+    <string name="metadata_edit_batch_genre_updated_partial">%1$d lagu diperbarui. Gagal: %2$d</string>
+    <string name="metadata_edit_lyrics_saved_successfully">Lirik berhasil disimpan</string>
+    <string name="metadata_edit_lyrics_save_failed">Gagal menyimpan lirik</string>
+    <string name="metadata_edit_lyrics_none_to_save">Tidak ada lirik yang tersedia untuk disimpan</string>
+    <string name="metadata_edit_permission_denied_edit_files">Izin ditolak – tidak dapat mengedit file</string>
+    <string name="metadata_edit_permission_denied_save_lyrics">Izin ditolak – tidak dapat menyimpan lirik</string>
+    <string name="metadata_edit_permission_denied_edit_this_file">Izin ditolak – tidak dapat mengedit file ini</string>
 
     <!-- AiStateHolder -->
-    <string name="ai_state_error_api_key">Please configure a valid API key for the selected AI provider in Settings.</string>
-    <string name="ai_state_error_generic">AI Error: %s</string>
-    <string name="ai_state_error_quota">The selected AI provider rejected the request because the account has no credits or available quota.</string>
-    <string name="ai_state_error_model_unavailable">The selected AI model is no longer available. XiangsuPlayer tried to switch to a supported model automatically.</string>
-    <string name="ai_state_no_songs_found">AI couldn\'t find any songs for your prompt.</string>
-    <string name="ai_state_prompt_empty">Write an idea for your Daily Mix</string>
-    <string name="ai_state_daily_mix_updated">Daily Mix updated with AI</string>
-    <string name="ai_state_could_not_update">Could not update: %s</string>
-    <string name="ai_state_no_songs_for_mix">AI couldn\'t find songs for this mix</string>
+    <string name="ai_state_error_api_key">Silakan konfigurasi kunci API yang valid untuk penyedia AI yang dipilih di Pengaturan.</string>
+    <string name="ai_state_error_generic">Kesalahan AI: %s</string>
+    <string name="ai_state_error_quota">Penyedia AI yang dipilih menolak permintaan karena akun tidak memiliki kredit atau kuota yang tersedia.</string>
+    <string name="ai_state_error_model_unavailable">Model AI yang dipilih tidak lagi tersedia. XiangsuPlayer mencoba beralih ke model yang didukung secara otomatis.</string>
+    <string name="ai_state_no_songs_found">AI tidak dapat menemukan lagu apa pun untuk permintaan Anda.</string>
+    <string name="ai_state_prompt_empty">Tulis ide untuk Daily Mix Anda</string>
+    <string name="ai_state_daily_mix_updated">Daily Mix diperbarui dengan AI</string>
+    <string name="ai_state_could_not_update">Tidak dapat memperbarui: %s</string>
+    <string name="ai_state_no_songs_for_mix">AI tidak dapat menemukan lagu untuk mix ini</string>
+    <string name="library_scroll_to_top">Kembali ke atas</string>
+    <string name="song_info_download_paused">Dijeda, ketuk untuk melanjutkan</string>
 </resources>

@@ -74,18 +74,18 @@
     <string name="presentation_batch_d_action_update">Perbarui</string>
     <string name="presentation_batch_d_eq_bass_boost">Bass Boost</string>
     <string name="presentation_batch_d_eq_virtualizer">Virtualizer</string>
-    <string name="presentation_batch_d_eq_loudness">Loudness</string>
+    <string name="presentation_batch_d_eq_loudness">Kenyaringan</string>
     <string name="presentation_batch_d_eq_effect_not_supported">Tidak didukung</string>
     <string name="presentation_batch_d_eq_effect_not_supported_device">Tidak didukung di perangkat ini</string>
     <string name="presentation_batch_d_eq_volume">Volume</string>
     <string name="presentation_batch_d_eq_frequency_response">Respons Frekuensi</string>
     <string name="presentation_batch_d_eq_unit_hz">Hz</string>
     <string name="presentation_batch_d_eq_band_bass">Bass</string>
-    <string name="presentation_batch_d_eq_band_low_mids">Low Mids</string>
-    <string name="presentation_batch_d_eq_band_high_mids">High Mids</string>
+    <string name="presentation_batch_d_eq_band_low_mids">Mid Rendah</string>
+    <string name="presentation_batch_d_eq_band_high_mids">Mid Tinggi</string>
     <string name="presentation_batch_d_eq_band_treble">Treble</string>
-    <string name="presentation_batch_d_eq_band_bass_low">Bass / Low</string>
-    <string name="presentation_batch_d_eq_band_mid_high">Mid / High</string>
+    <string name="presentation_batch_d_eq_band_bass_low">Bass / Rendah</string>
+    <string name="presentation_batch_d_eq_band_mid_high">Mid / Tinggi</string>
     <string name="presentation_batch_d_eq_page_n">Halaman %1$d</string>
     <string name="presentation_batch_d_eq_reset_duration_cd">Reset durasi</string>
 
@@ -110,7 +110,7 @@
     <string name="presentation_batch_d_transition_mode_none">Tidak ada</string>
     <string name="presentation_batch_d_transition_duration_title">Durasi Transisi</string>
     <string name="presentation_batch_d_transition_duration_subtitle_format">Tumpang tindih total %1$ddtk</string>
-    <string name="presentation_batch_d_transition_reset_cd">Reset</string>
+    <string name="presentation_batch_d_transition_reset_cd">Atur ulang</string>
     <string name="presentation_batch_d_transition_visualizer_current">Lagu Saat Ini</string>
     <string name="presentation_batch_d_transition_visualizer_next">Lagu Berikutnya</string>
     <string name="presentation_batch_d_transition_overlap_explanation_format">Trek akan tumpang tindih selama %1$ddtk</string>

@@ -149,156 +149,156 @@
     <string name="presentation_batch_e_daily_mix_cost_hint">Maliyetleri düşük tutmak için küçük bir örneklem kullanıyoruz</string>
     <string name="presentation_batch_e_daily_mix_updating">Güncelleniyor…</string>
     <string name="presentation_batch_e_daily_mix_update">Günlük Miksi Güncelle</string>
-    <string name="presentation_batch_e_ai_afternoon_subtitle">Keep productive</string>
+    <string name="presentation_batch_e_ai_afternoon_subtitle">Üretken kalın</string>
     
-    <string name="presentation_batch_e_ai_afternoon_title">AI Afternoon Drive</string>
+    <string name="presentation_batch_e_ai_afternoon_title">YZ Öğleden Sonra Sürüşü</string>
     
-    <string name="presentation_batch_e_ai_desc_1">Based on your recent listening, I think you\'ll love these picks!</string>
+    <string name="presentation_batch_e_ai_desc_1">Son dinlediklerinize dayanarak bu seçkileri seveceğinizi düşünüyorum!</string>
     
-    <string name="presentation_batch_e_ai_desc_2">Curated just for you - discover new music that fits your vibe.</string>
+    <string name="presentation_batch_e_ai_desc_2">Sadece sizin için seçildi - tarzınıza uyan yeni müzikler keşfedin.</string>
     
-    <string name="presentation_batch_e_ai_desc_3">Your taste is amazing! Here are some tracks you shouldn\'t miss.</string>
+    <string name="presentation_batch_e_ai_desc_3">Zevkiniz harika! Kaçırmamanız gereken bazı parçalar.</string>
     
-    <string name="presentation_batch_e_ai_desc_4">Perfect for this moment - let the music guide your mood.</string>
+    <string name="presentation_batch_e_ai_desc_4">Bu an için mükemmel - bırakın müzik ruh halinize yön versin.</string>
     
-    <string name="presentation_batch_e_ai_desc_5">Mixing your favorites with fresh finds - enjoy your personalized playlist!</string>
+    <string name="presentation_batch_e_ai_desc_5">Favorilerinizi yeni keşiflerle karıştırıyoruz - kişiselleştirilmiş çalma listenizin keyfini çıkarın!</string>
 
     
     
-    <string name="presentation_batch_e_ai_eval_cohesion">Cohesion</string>
+    <string name="presentation_batch_e_ai_eval_cohesion">Tutarlılık</string>
     
-    <string name="presentation_batch_e_ai_eval_diversity">Diversity</string>
+    <string name="presentation_batch_e_ai_eval_diversity">Çeşitlilik</string>
     
-    <string name="presentation_batch_e_ai_eval_energy_flow">Energy Flow</string>
+    <string name="presentation_batch_e_ai_eval_energy_flow">Enerji Akışı</string>
     
-    <string name="presentation_batch_e_ai_eval_suggestions">Suggestions</string>
+    <string name="presentation_batch_e_ai_eval_suggestions">Öneriler</string>
     
-    <string name="presentation_batch_e_ai_eval_title">AI Evaluation</string>
+    <string name="presentation_batch_e_ai_eval_title">YZ Değerlendirmesi</string>
     
-    <string name="presentation_batch_e_ai_evaluate_playlist">AI Evaluate Playlist</string>
+    <string name="presentation_batch_e_ai_evaluate_playlist">Çalma Listesini YZ ile Değerlendir</string>
     
-    <string name="presentation_batch_e_ai_evaluating">Evaluating playlist…</string>
+    <string name="presentation_batch_e_ai_evaluating">Çalma listesi değerlendiriliyor…</string>
     
-    <string name="presentation_batch_e_ai_evening_subtitle">Unwind after a long day</string>
+    <string name="presentation_batch_e_ai_evening_subtitle">Uzun bir günün ardından rahatlayın</string>
     
-    <string name="presentation_batch_e_ai_evening_title">AI Evening Wind Down</string>
+    <string name="presentation_batch_e_ai_evening_title">YZ Akşam Rahatlaması</string>
     
-    <string name="presentation_batch_e_ai_holiday_april_fools">April Fools</string>
+    <string name="presentation_batch_e_ai_holiday_april_fools">1 Nisan</string>
     
     <string name="presentation_batch_e_ai_holiday_april_fools_tag">Fun</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_christmas">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas">Noel</string>
     
-    <string name="presentation_batch_e_ai_holiday_christmas_tag">Christmas</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_fathers">Father\'s Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_fathers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_christmas_tag">Noel</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_halloween">Halloween</string>
+    <string name="presentation_batch_e_ai_holiday_fathers">Babalar Günü</string>
     
-    <string name="presentation_batch_e_ai_holiday_halloween_tag">Spooky</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_independence">Independence Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotic</string>
+    <string name="presentation_batch_e_ai_holiday_fathers_tag">Aile</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_labor">Labor Day</string>
+    <string name="presentation_batch_e_ai_holiday_halloween">Cadılar Bayramı</string>
+    
+    <string name="presentation_batch_e_ai_holiday_halloween_tag">Ürkütücü</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_independence">Bağımsızlık Günü</string>
+    
+    <string name="presentation_batch_e_ai_holiday_independence_tag">Vatansever</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_labor">Emek Günü</string>
     
     <string name="presentation_batch_e_ai_holiday_labor_tag">Work</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_mothers">Mother\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_mothers">Anneler Günü</string>
     
-    <string name="presentation_batch_e_ai_holiday_mothers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_mothers_tag">Aile</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year">Yeni Yıl</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve">New Year\'s Eve</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve">Yılbaşı Gecesi</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Party</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Parti</string>
 
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year_tag">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_tag">Yeni Yıl</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick">St. Patrick\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick">Aziz Patrick Günü</string>
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irish</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving">Thanksgiving</string>
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Gratitude</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">İrlanda</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_valentine">Valentine\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_thanksgiving">Şükran Günü</string>
+    
+    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Minnettarlık</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_valentine">Sevgililer Günü</string>
     
     <string name="presentation_batch_e_ai_holiday_valentine_tag">Love</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_veterans">Veterans Day</string>
+    <string name="presentation_batch_e_ai_holiday_veterans">Gaziler Günü</string>
     
-    <string name="presentation_batch_e_ai_holiday_veterans_tag">Tribute</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_womens">Women\'s Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_womens_tag">Celebrate</string>
+    <string name="presentation_batch_e_ai_holiday_veterans_tag">Saygı</string>
     
     
-    <string name="presentation_batch_e_ai_late_night_subtitle">Deep and mellow</string>
+    <string name="presentation_batch_e_ai_holiday_womens">Dünya Kadınlar Günü</string>
     
-    <string name="presentation_batch_e_ai_late_night_title">AI Late Night</string>
-    
-    <string name="presentation_batch_e_ai_lunch_subtitle">Relax and recharge</string>
-    
-    <string name="presentation_batch_e_ai_lunch_title">AI Lunch Break</string>
-    
-    <string name="presentation_batch_e_ai_midday_subtitle">Keep the momentum going</string>
-    
-    <string name="presentation_batch_e_ai_midday_title">AI Midday Flow</string>
-    
-    <string name="presentation_batch_e_ai_morning_subtitle">Start your day with energy</string>
-    
-    <string name="presentation_batch_e_ai_morning_title">AI Morning Boost</string>
-    
-    <string name="presentation_batch_e_ai_night_subtitle">Perfect for late nights</string>
-    
-    <string name="presentation_batch_e_ai_night_title">AI Night Vibes</string>
-    
-    <string name="presentation_batch_e_ai_recommendation_success">AI recommendation generated!</string>
-    
-    <string name="presentation_batch_e_ai_tag_chill">Chill</string>
+    <string name="presentation_batch_e_ai_holiday_womens_tag">Kutlama</string>
     
     
-    <string name="presentation_batch_e_ai_tag_focus">Focus</string>
+    <string name="presentation_batch_e_ai_late_night_subtitle">Derin ve yumuşak</string>
+    
+    <string name="presentation_batch_e_ai_late_night_title">YZ Gece Yarısı</string>
+    
+    <string name="presentation_batch_e_ai_lunch_subtitle">Rahatlayın ve enerji toplayın</string>
+    
+    <string name="presentation_batch_e_ai_lunch_title">YZ Öğle Arası</string>
+    
+    <string name="presentation_batch_e_ai_midday_subtitle">Tempoyu koruyun</string>
+    
+    <string name="presentation_batch_e_ai_midday_title">YZ Gün Ortası Akışı</string>
+    
+    <string name="presentation_batch_e_ai_morning_subtitle">Gününüze enerjiyle başlayın</string>
+    
+    <string name="presentation_batch_e_ai_morning_title">YZ Sabah Enerjisi</string>
+    
+    <string name="presentation_batch_e_ai_night_subtitle">Gece yarıları için mükemmel</string>
+    
+    <string name="presentation_batch_e_ai_night_title">YZ Gece Havası</string>
+    
+    <string name="presentation_batch_e_ai_recommendation_success">YZ önerisi oluşturuldu!</string>
+    
+    <string name="presentation_batch_e_ai_tag_chill">Sakin</string>
     
     
-    <string name="presentation_batch_e_ai_tag_morning">Morning</string>
+    <string name="presentation_batch_e_ai_tag_focus">Odaklan</string>
     
     
-    <string name="presentation_batch_e_ai_tag_night">Night</string>
+    <string name="presentation_batch_e_ai_tag_morning">Sabah</string>
     
     
-    <string name="presentation_batch_e_ai_tag_relax">Relax</string>
+    <string name="presentation_batch_e_ai_tag_night">Gece</string>
     
     
-    <string name="presentation_batch_e_ai_tag_sleep">Sleep</string>
+    <string name="presentation_batch_e_ai_tag_relax">Rahatla</string>
+    
+    
+    <string name="presentation_batch_e_ai_tag_sleep">Uyku</string>
     
     
     
     <string name="presentation_batch_e_ai_tag_work">Work</string>
     
     
-    <string name="presentation_batch_e_ai_view_all_mix">View All AI Mix</string>
+    <string name="presentation_batch_e_ai_view_all_mix">Tüm YZ Miksini Gör</string>
     
     
     

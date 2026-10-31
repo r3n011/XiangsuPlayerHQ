@@ -72,4 +72,30 @@
     <string name="auth_error_qq_login_incomplete">로그인이 감지되지 않았습니다. \'완료\'를 누르기 전에 QQ Music 로그인을 완료하세요.</string>
     <string name="auth_navidrome_пароль_hint">App password also works if your server supports it.</string>
     
+    <string name="auth_captcha_invalid">SMS 인증 코드를 입력하세요</string>
+    <string name="auth_captcha_label">SMS 코드</string>
+    <string name="auth_captcha_resend_seconds">%1$d초 후 재전송</string>
+    <string name="auth_phone_invalid">유효한 전화번호를 입력하세요</string>
+    <string name="auth_phone_login_action">로그인</string>
+    <string name="auth_phone_login_subtitle">NetEase에 연결된 전화번호로 전송된 SMS 코드로 로그인합니다.</string>
+    <string name="auth_phone_login_use_web">문제가 있나요? 웹 로그인을 사용해 보세요</string>
+    <string name="auth_phone_number_label">전화번호</string>
+    <string name="auth_send_captcha">코드 전송</string>
+    <string name="netease_login_required_toast">먼저 NetEase Cloud Music에 로그인해 주세요</string>
+    <string name="qq_login_brand_subtitle">로그인하면 QQ Music 플레이리스트가 동기화되고 앱에서 재생할 수 있습니다</string>
+    <string name="qq_login_brand_title">QQ Music 연결</string>
+    <string name="qq_login_edit_phone">전화번호 편집</string>
+    <string name="qq_login_loading">잠시만 기다려 주세요…</string>
+    <string name="qq_login_loading_sending">코드 전송 중…</string>
+    <string name="qq_login_loading_signing_in">QQ Music 로그인 중…</string>
+    <string name="qq_login_mode_phone">전화번호 로그인</string>
+    <string name="qq_login_mode_web">웹 로그인</string>
+    <string name="qq_login_phone_hint">로그인하면 QQ Music 플레이리스트가 자동으로 동기화됩니다</string>
+    <string name="qq_login_phone_note">전화번호 로그인은 중국 본토 번호만 지원하며, SMS 코드는 QQ Music에서 전송됩니다. 보안 확인이 필요하면 아래 항목에서 앱 내로 완료한 후 코드를 다시 요청하세요.</string>
+    <string name="qq_login_security_body">QQ Music에서 보안 확인을 먼저 요구합니다. “인증”을 눌러 팝업에서 완료하면 코드가 자동으로 다시 전송됩니다.</string>
+    <string name="qq_login_security_ignore">나중에</string>
+    <string name="qq_login_security_open">인증</string>
+    <string name="qq_login_security_title">보안 확인 필요</string>
+    <string name="qq_login_step_code_subtitle">받은 SMS 코드를 입력하세요</string>
+    <string name="qq_login_step_phone_subtitle">QQ Music 계정에 연결된 전화번호를 입력하면 해당 번호로 코드가 전송됩니다</string>
 </resources>

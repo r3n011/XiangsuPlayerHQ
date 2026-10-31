@@ -94,10 +94,10 @@
     <string name="presentation_batch_f_palette_style_vibrant_desc">高饱和度点缀。</string>
     <string name="presentation_batch_f_palette_style_expressive_desc">大胆的色相变化与对比。</string>
     <string name="presentation_batch_f_palette_style_fruit_salad_desc">活泼的旋转式点缀色。</string>
-    <string name="presentation_batch_f_palette_label_tonal_spot">Tonal Spot</string>
+    <string name="presentation_batch_f_palette_label_tonal_spot">色调点缀</string>
     <string name="presentation_batch_f_palette_label_vibrant">鲜明</string>
     <string name="presentation_batch_f_palette_label_expressive">表现力</string>
-    <string name="presentation_batch_f_palette_label_fruit_salad">Fruit Salad</string>
+    <string name="presentation_batch_f_palette_label_fruit_salad">水果沙拉</string>
     <string name="presentation_batch_f_color_accuracy_title">颜色准确度</string>
     <string name="presentation_batch_f_color_accuracy_subtitle">0 会保留当前调校。数值越高，越接近专辑封面的主色调。</string>
     <string name="presentation_batch_f_accuracy_current">当前</string>

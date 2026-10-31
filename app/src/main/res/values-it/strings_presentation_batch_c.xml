@@ -39,12 +39,12 @@
     <string name="lib_empty_folders_subtitle">Le cartelle della memoria interna con musica appariranno qui.</string>
     <string name="lib_empty_playlists_title">Ancora nessuna playlist</string>
     <string name="lib_empty_playlists_subtitle">Crea la tua prima playlist per organizzare la tua libreria.</string>
-    <string name="daily_recommend_error">Failed to load daily recommend</string>
-    <string name="daily_recommend_play_cd">Play daily recommend</string>
-    <string name="daily_recommend_retry">Retry</string>
-    <string name="daily_recommend_songs_count">%1$d songs today</string>
-    <string name="daily_recommend_subtitle">Personalized picks, updated daily</string>
-    <string name="daily_recommend_title">Daily Recommend</string>
-    <string name="lib_empty_history_subtitle">Songs you play will show up here.</string>
-    <string name="lib_empty_history_title">No playback history yet</string>
+    <string name="daily_recommend_error">Caricamento dei consigli giornalieri non riuscito</string>
+    <string name="daily_recommend_play_cd">Riproduci i consigli giornalieri</string>
+    <string name="daily_recommend_retry">Riprova</string>
+    <string name="daily_recommend_songs_count">%1$d brani oggi</string>
+    <string name="daily_recommend_subtitle">Scelte personalizzate, aggiornate ogni giorno</string>
+    <string name="daily_recommend_title">Consigli giornalieri</string>
+    <string name="lib_empty_history_subtitle">I brani che riproduci appariranno qui.</string>
+    <string name="lib_empty_history_title">Nessuna cronologia di riproduzione</string>
 </resources>

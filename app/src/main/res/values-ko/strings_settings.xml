@@ -304,28 +304,28 @@
     <string name="setcat_ai_api_key_subtitle">%1$s에서 가져오기</string>
     <string
         name="setcat_ai_source_gemini"
-    >Google AI Studio (aistudio.google.com)</string>
+    >Google AI Studio(aistudio.google.com)</string>
     <string
         name="setcat_ai_source_deepseek"
-    >DeepSeek Platform (api.deepseek.com)</string>
+    >DeepSeek 플랫폼(api.deepseek.com)</string>
     <string
         name="setcat_ai_source_groq"
-    >Groq Console (console.groq.com)</string>
+    >Groq 콘솔(console.groq.com)</string>
     <string
         name="setcat_ai_source_mistral"
-    >Mistral AI Platform (console.mistral.ai)</string>
+    >Mistral AI 플랫폼(console.mistral.ai)</string>
     <string
         name="setcat_ai_source_nvidia"
-    >NVIDIA Build (build.nvidia.com)</string>
+    >NVIDIA Build(build.nvidia.com)</string>
     <string
         name="setcat_ai_source_kimi"
-    >Moonshot AI Platform (platform.moonshot.cn)</string>
+    >Moonshot AI 플랫폼(platform.moonshot.cn)</string>
     <string
         name="setcat_ai_source_glm"
-    >Zhipu AI Open Platform (bigmodel.cn)</string>
+    >Zhipu AI 오픈 플랫폼(bigmodel.cn)</string>
     <string
         name="setcat_ai_source_openai"
-    >OpenAI Platform (platform.openai.com)</string>
+    >OpenAI 플랫폼(platform.openai.com)</string>
     <string name="setcat_model_selection">모델 선택</string>
     <string name="setcat_loading_models">사용 가능한 모델 로드 중…</string>
     <string name="setcat_ai_model_label">AI 모델</string>
@@ -386,7 +386,7 @@
     <string name="backup_summary_all">모든 섹션이 선택되었습니다.</string>
     <string
         name="backup_summary_partial"
-    >%2$개 중 %1$개 섹션이 선택되었습니다.</string>
+    >%2$d개 중 %1$d개 섹션이 선택되었습니다.</string>
     <string name="backup_how_title">백업 작동 방식</string>
     <string
         name="backup_how_body"
@@ -397,16 +397,16 @@
     <string name="backup_confirm_export_pxpl">.pxpl 내보내기</string>
     <string
         name="backup_sections_selected_format"
-    >%2$개 중 %1$개 섹션 선택됨</string>
+    >%2$d개 중 %1$d개 섹션 선택됨</string>
     <string name="backup_transfer_in_progress">전송 중…</string>
     <string name="backup_exporting">내보내는 중</string>
     <string name="backup_importing">가져오는 중</string>
     <string name="backup_dialog_creating">백업 생성 중</string>
     <string name="backup_dialog_restoring">백업 복구 중</string>
-    <string name="backup_step_format">%2$단계 중 %1$단계</string>
+    <string name="backup_step_format">%2$d단계 중 %1$d단계</string>
     <string
         name="backup_entries_will_replace"
-    >%1$개 항목 · 현재 데이터를 대체합니다</string>
+    >%1$d개 항목 · 현재 데이터를 대체합니다</string>
 
     <string
         name="dialog_palette_regenerated"
@@ -422,19 +422,19 @@
     >모든 앨범 팔레트를 재생성하시겠습니까?</string>
     <string
         name="dialog_regenerate_palettes_progress_body"
-    >%1$개의 고유한 앨범 아트에 대해 캐시된 팔레트 변형을 다시 빌드합니다. 라이브러리가 큰 경우 시간이 걸릴 수 있습니다.</string>
+    >%1$d개의 고유한 앨범 아트에 대해 캐시된 팔레트 변형을 다시 빌드합니다. 라이브러리가 큰 경우 시간이 걸릴 수 있습니다.</string>
     <string
         name="dialog_regenerate_palettes_confirm_body"
-    >캐시된 테마 데이터를 지우고 %1$개의 고유한 앨범 아트에 대해 모든 팔레트 스타일을 다시 빌드합니다.</string>
-    <string name="dialog_palette_progress_format">%2$개 중 %1$개 완료</string>
+    >캐시된 테마 데이터를 지우고 %1$d개의 고유한 앨범 아트에 대해 모든 팔레트 스타일을 다시 빌드합니다.</string>
+    <string name="dialog_palette_progress_format">%2$d개 중 %1$d개 완료</string>
     <string name="working_ellipsis">작업 중…</string>
     <string name="dialog_regenerate">재생성</string>
     <string
         name="toast_regenerated_palettes_all"
-    >%1$개의 앨범 아트 팔레트가 재생성되었습니다</string>
+    >%1$d개의 앨범 아트 팔레트가 재생성되었습니다</string>
     <string
         name="toast_regenerated_palettes_partial"
-    >%2$개 중 %1$개의 앨범 아트 팔레트가 재생성되었습니다</string>
+    >%2$d개 중 %1$d개의 앨범 아트 팔레트가 재생성되었습니다</string>
 
     <string
         name="dialog_reset_lyrics_title"
@@ -519,83 +519,83 @@
     <string
         name="backup_history_modules_line"
     >모듈 %1$d개 · v%2$s · 스키마 v%3$d</string>
-    <string name="setcat_download_complete">Download complete</string>
-    <string name="setcat_download_failed">Download failed</string>
+    <string name="setcat_download_complete">다운로드 완료</string>
+    <string name="setcat_download_failed">다운로드 실패</string>
     <string name="setcat_download_progress_format">%1$.0f%%</string>
-    <string name="setcat_download_progress_title">Download progress</string>
-    <string name="ai_auto_disabled">AI auto-trigger is disabled</string>
+    <string name="setcat_download_progress_title">다운로드 진행률</string>
+    <string name="ai_auto_disabled">AI 자동 실행이 비활성화되어 있습니다</string>
     
-    <string name="backup_format_external_desc">Compatible with other XiangsuPlayer versions</string>
+    <string name="backup_format_external_desc">다른 XiangsuPlayer 버전과 호환됩니다</string>
     
-    <string name="backup_format_external_title">External (.pxpbak)</string>
+    <string name="backup_format_external_title">외부 형식(.pxpbak)</string>
     
-    <string name="backup_format_pxpl_desc">Original format with all data types</string>
+    <string name="backup_format_pxpl_desc">모든 데이터 유형을 포함한 원본 형식</string>
     
-    <string name="backup_format_pxpl_title">PixelPlay (.pxpl)</string>
+    <string name="backup_format_pxpl_title">PixelPlay(.pxpl)</string>
     
-    <string name="backup_format_select_prompt">Choose backup format:</string>
+    <string name="backup_format_select_prompt">백업 형식 선택:</string>
     
-    <string name="car_mode_action_library">Library</string>
+    <string name="car_mode_action_library">라이브러리</string>
     
-    <string name="car_mode_action_library_desc">Your music</string>
+    <string name="car_mode_action_library_desc">내 음악</string>
     
-    <string name="car_mode_action_roaming">Roaming</string>
+    <string name="car_mode_action_roaming">로밍</string>
     
-    <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
+    <string name="car_mode_action_roaming_desc">NetEase Cloud Music 로밍</string>
     
-    <string name="car_mode_action_search">Search</string>
+    <string name="car_mode_action_search">검색</string>
     
-    <string name="car_mode_action_search_desc">Find songs</string>
+    <string name="car_mode_action_search_desc">노래 찾기</string>
     
-    <string name="car_mode_action_settings">Settings</string>
+    <string name="car_mode_action_settings">설정</string>
     
-    <string name="car_mode_action_settings_desc">App settings</string>
+    <string name="car_mode_action_settings_desc">앱 설정</string>
 
     
     
-    <string name="car_mode_quick_actions_title">Quick Actions</string>
+    <string name="car_mode_quick_actions_title">빠른 작업</string>
     
-    <string name="dot_device_api_key_hint">输入你的 Dot API Key</string>
+    <string name="dot_device_api_key_hint">Dot API 키 입력</string>
     
-    <string name="dot_device_api_key_label">API Key</string>
+    <string name="dot_device_api_key_label">API 키</string>
     
-    <string name="dot_device_auto_push_description">切换歌曲时自动推送专辑封面到墨水屏</string>
+    <string name="dot_device_auto_push_description">곡이 바뀌면 전자 잉크 디스플레이로 앨범 커버를 자동 전송</string>
     
-    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
+    <string name="dot_device_auto_push_title">앨범 커버 자동 전송</string>
     
-    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_clear">설정 지우기</string>
 
     
     
-    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏设备显示</string>
+    <string name="dot_device_header_description">현재 재생 중인 곡의 앨범 커버를 전자 잉크 디스플레이로 전송</string>
     
-    <string name="dot_device_header_title">Dot 墨水屏设备</string>
+    <string name="dot_device_header_title">Dot 전자 잉크 디스플레이 기기</string>
     
-    <string name="dot_device_id_hint">输入设备 ID</string>
+    <string name="dot_device_id_hint">기기 ID 입력</string>
     
-    <string name="dot_device_id_label">Device ID</string>
+    <string name="dot_device_id_label">기기 ID</string>
     
-    <string name="dot_device_save">保存设置</string>
+    <string name="dot_device_save">설정 저장</string>
     
-    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
+    <string name="dot_device_settings_title">Dot 전자 잉크 디스플레이 설정</string>
     
-    <string name="dot_device_test_connection">测试连接</string>
+    <string name="dot_device_test_connection">연결 테스트</string>
     
-    <string name="dot_device_testing">测试中...</string>
+    <string name="dot_device_testing">테스트 중…</string>
     
-    <string name="equalizer_preset_bass_boost">Bass Boost</string>
+    <string name="equalizer_preset_bass_boost">베이스 부스트</string>
     
-    <string name="equalizer_preset_classical">Classical</string>
+    <string name="equalizer_preset_classical">클래식</string>
     
-    <string name="equalizer_preset_custom">Custom</string>
+    <string name="equalizer_preset_custom">사용자 지정</string>
 
     
     
-    <string name="equalizer_preset_electronic">Electronic</string>
+    <string name="equalizer_preset_electronic">일렉트로닉</string>
     
     <string name="equalizer_preset_flat">Flat</string>
     
-    <string name="equalizer_preset_hip_hop">Hip Hop</string>
+    <string name="equalizer_preset_hip_hop">힙합</string>
     
     <string name="equalizer_preset_jazz">Jazz</string>
     
@@ -603,515 +603,717 @@
     
     <string name="equalizer_preset_rock">Rock</string>
     
-    <string name="equalizer_preset_treble_boost">Treble Boost</string>
+    <string name="equalizer_preset_treble_boost">고음 부스트</string>
     
-    <string name="equalizer_preset_vocal">Vocal</string>
+    <string name="equalizer_preset_vocal">보컬</string>
     
-    <string name="music_quality_flac">Lossless (FLAC)</string>
+    <string name="music_quality_flac">무손실(FLAC)</string>
     
-    <string name="music_quality_high">High (320kbps)</string>
+    <string name="music_quality_high">높음(320kbps)</string>
     
-    <string name="music_quality_hires">Hi-Res (24bit)</string>
+    <string name="music_quality_hires">Hi-Res(24bit)</string>
     
-    <string name="music_quality_standard">Standard (128kbps)</string>
+    <string name="music_quality_standard">표준(128kbps)</string>
     
-    <string name="music_quality_subtitle">Preferred quality for streaming music. Higher quality uses more bandwidth.</string>
+    <string name="music_quality_subtitle">음악 스트리밍 시 선호하는 음질. 음질이 높을수록 더 많은 대역폭을 사용합니다.</string>
     
-    <string name="music_quality_title">Music Quality</string>
+    <string name="music_quality_title">음악 음질</string>
     
-    <string name="setcat_aaudio_subtitle_off">Default system audio backend (AudioTrack). Enable AAudio for higher quality output.</string>
+    <string name="setcat_aaudio_subtitle_off">기본 시스템 오디오 백엔드(AudioTrack). 더 높은 품질의 출력을 위해 AAudio를 활성화하세요.</string>
     
-    <string name="setcat_aaudio_subtitle_on">Using AAudio for improved audio fidelity and lower latency.</string>
+    <string name="setcat_aaudio_subtitle_on">향상된 오디오 충실도와 낮은 지연을 위해 AAudio 사용 중.</string>
     
-    <string name="setcat_aaudio_title">AAudio Low-Latency Backend</string>
+    <string name="setcat_aaudio_title">AAudio 저지연 백엔드</string>
     
-    <string name="setcat_ai_api_key_title_simple">API Key</string>
+    <string name="setcat_ai_api_key_title_simple">API 키</string>
     
-    <string name="setcat_ai_auto_daily_mix_subtitle">Automatically enhance Daily Mix with AI</string>
-    
-    
-    <string name="setcat_ai_auto_daily_mix_title">Daily Mix AI Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_metadata_subtitle">Automatically fetch AI-generated metadata</string>
-    
-    <string name="setcat_ai_auto_metadata_title">AI Metadata Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Automatically evaluate playlists with AI</string>
+    <string name="setcat_ai_auto_daily_mix_subtitle">AI로 데일리 믹스를 자동 향상</string>
     
     
-    <string name="setcat_ai_auto_playlist_evaluation_title">AI Playlist Evaluation Auto-Trigger</string>
+    <string name="setcat_ai_auto_daily_mix_title">데일리 믹스 AI 자동 실행</string>
     
-    <string name="setcat_ai_auto_playlist_subtitle">Automatically generate AI playlists when triggered</string>
+    <string name="setcat_ai_auto_metadata_subtitle">AI 생성 메타데이터 자동 가져오기</string>
     
-    <string name="setcat_ai_auto_playlist_title">AI Playlist Auto-Trigger</string>
+    <string name="setcat_ai_auto_metadata_title">AI 메타데이터 자동 실행</string>
     
-    <string name="setcat_ai_auto_trigger_section">Auto-Trigger Settings</string>
+    <string name="setcat_ai_auto_playlist_evaluation_subtitle">AI로 플레이리스트 자동 평가</string>
     
-    <string name="setcat_ai_lyrics_explanation_subtitle">Show AI-powered lyrics explanation card in the lyrics view (off by default; can be enabled per-session from the lyrics menu)</string>
+    
+    <string name="setcat_ai_auto_playlist_evaluation_title">AI 플레이리스트 평가 자동 실행</string>
+    
+    <string name="setcat_ai_auto_playlist_subtitle">트리거 시 AI 플레이리스트 자동 생성</string>
+    
+    <string name="setcat_ai_auto_playlist_title">AI 플레이리스트 자동 실행</string>
+    
+    <string name="setcat_ai_auto_trigger_section">자동 실행 설정</string>
+    
+    <string name="setcat_ai_lyrics_explanation_subtitle">가사 화면에 AI 기반 가사 설명 카드 표시(기본적으로 꺼짐, 가사 메뉴에서 세션별로 활성화 가능)</string>
 
     
-    <string name="setcat_ai_lyrics_explanation_title">AI Lyrics Insight Card</string>
+    <string name="setcat_ai_lyrics_explanation_title">AI 가사 인사이트 카드</string>
     
-    <string name="setcat_ai_recommendation_card_subtitle">Display AI recommendation card on home screen</string>
+    <string name="setcat_ai_recommendation_card_subtitle">홈 화면에 AI 추천 카드 표시</string>
     
-    <string name="setcat_ai_recommendation_card_title">Show AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_card_title">AI 추천 카드 표시</string>
     
-    <string name="setcat_ai_recommendation_manual_subtitle">Click to generate recommendation (prevents automatic token usage)</string>
+    <string name="setcat_ai_recommendation_manual_subtitle">눌러서 추천 생성(자동 토큰 사용 방지)</string>
 
     
-    <string name="setcat_ai_recommendation_manual_title">Manual Generation Only</string>
+    <string name="setcat_ai_recommendation_manual_title">수동 생성만</string>
     
-    <string name="setcat_ai_recommendation_section">AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_section">AI 추천 카드</string>
     
-    <string name="setcat_bluetooth_lyrics">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics">Bluetooth 가사</string>
     
-    <string name="setcat_bluetooth_lyrics_subtitle">Push the currently playing song lyrics to compatible Bluetooth A2DP display devices.</string>
+    <string name="setcat_bluetooth_lyrics_subtitle">현재 재생 중인 곡의 가사를 호환되는 Bluetooth A2DP 디스플레이 기기로 전송합니다.</string>
     
-    <string name="setcat_bluetooth_lyrics_title">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics_title">Bluetooth 가사</string>
     
-    <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <string name="setcat_car_mode_subtitle">운전에 최적화: 더 큰 컨트롤, 애니메이션 감소, 향상된 성능.</string>
     
     
     
-    <string name="setcat_car_mode_title">Car Mode</string>
+    <string name="setcat_car_mode_title">차량 모드</string>
     
-    <string name="setcat_center_nav_discover">Discover</string>
+    <string name="setcat_center_nav_discover">발견</string>
     
-    <string name="setcat_center_nav_none">Don\'t show</string>
+    <string name="setcat_center_nav_none">표시 안 함</string>
     
-    <string name="setcat_center_nav_radio">Radio</string>
+    <string name="setcat_center_nav_radio">라디오</string>
     
-    <string name="setcat_center_nav_roaming">Roaming</string>
+    <string name="setcat_center_nav_roaming">로밍</string>
     
-    <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
+    <string name="setcat_center_nav_subtitle">중앙 내비게이션 버튼의 동작을 선택하세요.</string>
     
-    <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_center_nav_title">중앙 버튼</string>
     
-    <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">코스믹 스월</string>
     
-    <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">허니컴 그루브</string>
     
-    <string name="setcat_collage_pattern_pixel_mosaic">Pixel Mosaic</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">픽셀 모자이크</string>
     
-    <string name="setcat_collage_pattern_stardust_scatter">Stardust Scatter</string>
+    <string name="setcat_collage_pattern_stardust_scatter">스타더스트 스캐터</string>
     
-    <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
+    <string name="setcat_collage_pattern_vinyl_stack">바이닐 스택</string>
     
-    <string name="setcat_custom_palette_enabled_subtitle">When off, the app follows wallpaper colors. When on, custom colors are used. The player keeps its own album-art colors.</string>
+    <string name="setcat_custom_palette_enabled_subtitle">끄면 앱이 배경화면 색상을 따르고, 켜면 사용자 지정 색상을 사용합니다. 플레이어는 자체 앨범 아트 색상을 유지합니다.</string>
     
-    <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
+    <string name="setcat_custom_palette_enabled_title">앱 팔레트 활성화</string>
     
     <string name="setcat_custom_player_background_blur_off">Off</string>
     
-    <string name="setcat_custom_player_background_blur_title">Background Blur</string>
+    <string name="setcat_custom_player_background_blur_title">배경 흐림</string>
     
-    <string name="setcat_custom_player_background_change">Change background image</string>
+    <string name="setcat_custom_player_background_change">배경 이미지 변경</string>
     
     <string name="setcat_custom_player_background_mode_cover">Fill</string>
     
-    <string name="setcat_custom_player_background_mode_stretch">Stretch</string>
+    <string name="setcat_custom_player_background_mode_stretch">늘이기</string>
     
-    <string name="setcat_custom_player_background_mode_title">Display Mode</string>
+    <string name="setcat_custom_player_background_mode_title">표시 모드</string>
     
-    <string name="setcat_custom_player_background_pick">Choose background image</string>
+    <string name="setcat_custom_player_background_pick">배경 이미지 선택</string>
     
-    <string name="setcat_custom_player_background_remove">Remove background</string>
+    <string name="setcat_custom_player_background_remove">배경 제거</string>
     
-    <string name="setcat_custom_player_background_subtitle">Use a custom image as the background of the player and lyrics screens. When enabled, it takes precedence over the dynamic album-art background below.</string>
+    <string name="setcat_custom_player_background_subtitle">플레이어와 가사 화면의 배경으로 사용자 지정 이미지를 사용합니다. 활성화하면 아래의 동적 앨범 아트 배경보다 우선합니다.</string>
     
-    <string name="setcat_custom_player_background_title">Custom Player Background</string>
+    <string name="setcat_custom_player_background_title">사용자 지정 플레이어 배경</string>
     
-    <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
+    <string name="setcat_custom_player_controls_opacity_desc">플레이어와 가사 화면 모두에서 배경(앨범 아트, 메타데이터, 진행 표시, 컨트롤)을 제외한 모든 요소에 적용됩니다.</string>
     
-    <string name="setcat_custom_player_controls_opacity_title">Player Opacity</string>
+    <string name="setcat_custom_player_controls_opacity_title">플레이어 불투명도</string>
     
-    <string name="setcat_disable_blur_all_over_subtitle">Turn off blur effects across the app to save battery and resources.</string>
+    <string name="setcat_disable_blur_all_over_subtitle">배터리와 리소스를 절약하기 위해 앱 전체의 흐림 효과를 끕니다.</string>
     
-    <string name="setcat_disable_blur_all_over_title">Disable Blur Effects</string>
+    <string name="setcat_disable_blur_all_over_title">흐림 효과 비활성화</string>
     
-    <string name="setcat_download_path_title">Download Path</string>
+    <string name="setcat_download_path_title">다운로드 경로</string>
     
     
     
     <string name="setcat_download_settings">Download Settings</string>
     
-    <string name="setcat_external_lyrics_broadcast_subtitle">When enabled, the system media title updates to the current lyric line in real time, showing lyrics outside the app (notification, lock screen, Bluetooth devices). When disabled, the original song title is restored.</string>
+    <string name="setcat_external_lyrics_broadcast_subtitle">활성화하면 시스템 미디어 제목이 현재 가사 줄로 실시간 업데이트되어 앱 밖(알림, 잠금 화면, Bluetooth 기기)에서도 가사를 보여줍니다. 비활성화하면 원래 곡 제목이 복원됩니다.</string>
 
     
     
-    <string name="setcat_external_lyrics_broadcast_title">Broadcast Lyrics Externally</string>
+    <string name="setcat_external_lyrics_broadcast_title">외부로 가사 전송</string>
     
-    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix is a programmable LED display on the back of Nothing Phone (3) featuring 625 individual LEDs arranged in a 25×25 grid. When you play music, PixelPlayer can animate the matrix to create stunning visual effects that sync with your music.</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix는 Nothing Phone (3) 후면에 있는 25×25 그리드로 배열된 625개의 개별 LED로 구성된 프로그래밍 가능한 디스플레이입니다. 음악을 재생하면 PixelPlayer가 매트릭스를 움직여 음악과 동기화되는 멋진 시각 효과를 만들 수 있습니다.</string>
 
     
     
-    <string name="setcat_glyph_matrix_about_title">About Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_title">Glyph Matrix 정보</string>
     
-    <string name="setcat_glyph_matrix_enable_subtitle">Show music visualization on Nothing Phone LED matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">Nothing Phone LED 매트릭스에 음악 시각화 표시</string>
     
-    <string name="setcat_glyph_matrix_enable_title">Enable Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">Glyph Matrix 활성화</string>
     
-    <string name="setcat_glyph_matrix_mode_artwork">Album Cover</string>
+    <string name="setcat_glyph_matrix_mode_artwork">앨범 커버</string>
     
-    <string name="setcat_glyph_matrix_mode_desc">Choose what to display on the Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_mode_desc">Glyph Matrix에 표시할 항목을 선택하세요</string>
     
-    <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">지금 재생 중</string>
     
-    <string name="setcat_glyph_matrix_mode_progress">Playback Progress</string>
+    <string name="setcat_glyph_matrix_mode_progress">재생 진행률</string>
     
-    <string name="setcat_glyph_matrix_mode_pulse">Beat Pulse</string>
+    <string name="setcat_glyph_matrix_mode_pulse">비트 펄스</string>
     
-    <string name="setcat_glyph_matrix_mode_ring">Music Ring</string>
+    <string name="setcat_glyph_matrix_mode_ring">뮤직 링</string>
     
-    <string name="setcat_glyph_matrix_mode_scroll_title">Scrolling Title</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">스크롤 제목</string>
     
-    <string name="setcat_glyph_matrix_mode_title">Display Mode</string>
+    <string name="setcat_glyph_matrix_mode_title">표시 모드</string>
     
-    <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">오디오 시각화</string>
     
-    <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_mode_waveform">파형</string>
     
-    <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
+    <string name="setcat_glyph_matrix_not_available">이 기능은 Glyph Matrix가 있는 Nothing Phone이 필요합니다. 아래에서 효과를 미리 볼 수는 있습니다.</string>
     
-    <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
+    <string name="setcat_glyph_matrix_not_available_title">이 기기에서 사용할 수 없음</string>
     
-    <string name="setcat_glyph_matrix_preview_desc">This is how it will look on the Nothing Phone LED matrix (25×25)</string>
+    <string name="setcat_glyph_matrix_preview_desc">Nothing Phone LED 매트릭스(25×25)에서 이렇게 보입니다</string>
     
-    <string name="setcat_glyph_matrix_preview_title">Preview</string>
+    <string name="setcat_glyph_matrix_preview_title">미리보기</string>
     
     <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
     
-    <string name="setcat_home_top_whitespace_subtitle">Adjust the blank space above the Home content.</string>
+    <string name="setcat_home_top_whitespace_subtitle">홈 콘텐츠 위의 빈 공간을 조정합니다.</string>
     
-    <string name="setcat_home_top_whitespace_title">Home Top Whitespace</string>
+    <string name="setcat_home_top_whitespace_title">홈 상단 여백</string>
     
-    <string name="setcat_home_top_whitespace_value">Current whitespace: %1$d dp</string>
+    <string name="setcat_home_top_whitespace_value">현재 여백: %1$d dp</string>
     
-    <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">가독성을 높이기 위해 가사 화면 상하단에 부드러운 그라데이션을 표시합니다.</string>
     
-    <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
+    <string name="setcat_lyrics_gradient_overlay_title">가사 그라데이션 오버레이</string>
     
-    <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
+    <string name="setcat_lyrics_solid_overlay_desc">배경을 어둡게 하기 위해 가사 화면의 단색 오버레이 불투명도를 조정합니다.</string>
     
-    <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
+    <string name="setcat_lyrics_solid_overlay_title">가사 단색 오버레이</string>
     
-    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">가사 뒤에 회전하는 흐린 앨범 아트 배경을 표시합니다.</string>
     
-    <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
+    <string name="setcat_lyrics_vibrant_bg_title">가사 생동감 배경</string>
     
-    <string name="setcat_navbar_style_floating">Floating</string>
+    <string name="setcat_navbar_style_floating">플로팅</string>
     
-    <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
+    <string name="setcat_netease_quality_title">Netease 선호 음질</string>
 
     
     
-    <string name="setcat_palette_brightness">Brightness</string>
+    <string name="setcat_palette_brightness">밝기</string>
     
-    <string name="setcat_palette_cancel">Cancel</string>
+    <string name="setcat_palette_cancel">취소</string>
     
-    <string name="setcat_palette_confirm">Confirm</string>
+    <string name="setcat_palette_confirm">확인</string>
     
-    <string name="setcat_palette_custom_title">Custom Color</string>
+    <string name="setcat_palette_custom_title">사용자 지정 색상</string>
     
     <string name="setcat_palette_hue">Hue</string>
     
-    <string name="setcat_palette_live_hint">Live preview</string>
+    <string name="setcat_palette_live_hint">실시간 미리보기</string>
     
-    <string name="setcat_palette_preview_label">Color Scheme Preview</string>
+    <string name="setcat_palette_preview_label">색상 구성 미리보기</string>
     
-    <string name="setcat_palette_saturation">Saturation</string>
+    <string name="setcat_palette_saturation">채도</string>
     
-    <string name="setcat_player_theme_custom_palette">Custom Palette</string>
+    <string name="setcat_player_theme_custom_palette">사용자 지정 팔레트</string>
     
-    <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
+    <string name="setcat_player_vibrant_bg_desc">사용자 지정 배경 이미지가 없을 때 플레이어에 회전하는 흐린 앨범 아트 배경을 표시합니다. 사용자 지정 플레이어 배경이 이보다 우선합니다.</string>
     
-    <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
+    <string name="setcat_player_vibrant_bg_title">플레이어 생동감 배경</string>
     
-    <string name="setcat_show_lyrics_track_info_subtitle">Show song title and artist in a pill-shaped bar at the top of lyrics view.</string>
+    <string name="setcat_show_lyrics_track_info_subtitle">가사 화면 상단의 알약 모양 바에 곡 제목과 아티스트를 표시합니다.</string>
 
     
     
-    <string name="setcat_show_lyrics_track_info_title">Show lyrics track info</string>
+    <string name="setcat_show_lyrics_track_info_title">가사 트랙 정보 표시</string>
     
-    <string name="setcat_show_scrollbar_subtitle">Display lateral scrollbar on music lists for quick scrolling</string>
+    <string name="setcat_show_scrollbar_subtitle">빠른 스크롤을 위해 음악 목록에 측면 스크롤바 표시</string>
     
-    <string name="setcat_show_scrollbar_title">Show Scrollbar</string>
+    <string name="setcat_show_scrollbar_title">스크롤바 표시</string>
     
-    <string name="setcat_show_speed_button_subtitle">Show the speed (1x) button in the player control bar. Disable to hide it and manually adjust speed from the player.</string>
+    <string name="setcat_show_speed_button_subtitle">플레이어 컨트롤 바에 속도(1x) 버튼을 표시합니다. 비활성화하면 버튼을 숨기고 플레이어에서 수동으로 속도를 조정합니다.</string>
     
-    <string name="setcat_show_speed_button_title">Show playback speed button</string>
+    <string name="setcat_show_speed_button_title">재생 속도 버튼 표시</string>
     
-    <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
+    <string name="setcat_tablet_layout_parallel">병렬(플레이어 + 가사)</string>
     
-    <string name="setcat_tablet_layout_vertical">Vertical</string>
+    <string name="setcat_tablet_layout_vertical">세로</string>
     
-    <string name="setcat_tablet_player_layout_desc">Choose the layout for the player on tablets.</string>
+    <string name="setcat_tablet_player_layout_desc">태블릿에서 플레이어 레이아웃을 선택하세요.</string>
     
-    <string name="setcat_tablet_player_layout_label">Tablet Player Layout</string>
+    <string name="setcat_tablet_player_layout_label">태블릿 플레이어 레이아웃</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, widely compatible)</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16비트(표준, 폭넓은 호환성)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (high-resolution, recommended)</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24비트(고해상도, 권장)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (highest fidelity, USB DAC only)</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32비트(최고 충실도, USB DAC 전용)</string>
     
-    <string name="setcat_usb_bit_depth_title">USB Output Bit Depth</string>
+    <string name="setcat_usb_bit_depth_title">USB 출력 비트 심도</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_connected">Route audio to USB device: %s</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_connected">오디오를 USB 기기로 라우팅: %s</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">No USB audio device detected. Connect a USB DAC to use this feature.</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">USB 오디오 기기를 감지하지 못했습니다. 이 기능을 사용하려면 USB DAC를 연결하세요.</string>
     
-    <string name="setcat_usb_exclusive_mode_title">USB Exclusive Mode</string>
+    <string name="setcat_usb_exclusive_mode_title">USB 독점 모드</string>
     
-    <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
+    <string name="setcat_vibrant_bg_requires_newer">이 효과는 Android 11 이상의 하드웨어 흐림이 필요하며 이 기기에서는 비활성화됩니다.</string>
     
-    <string name="setcat_web_remote_audio_device_phone">Phone</string>
+    <string name="setcat_web_remote_audio_device_phone">휴대폰</string>
     
-    <string name="setcat_web_remote_audio_device_subtitle">When web connected: play on phone or web browser</string>
+    <string name="setcat_web_remote_audio_device_subtitle">웹 연결 시: 휴대폰 또는 웹 브라우저에서 재생</string>
     
-    <string name="setcat_web_remote_audio_device_title">Playback Device</string>
+    <string name="setcat_web_remote_audio_device_title">재생 기기</string>
     
-    <string name="setcat_web_remote_audio_device_web">Web Browser</string>
+    <string name="setcat_web_remote_audio_device_web">웹 브라우저</string>
     
-    <string name="setcat_web_remote_enabled_subtitle">Access PixelPlay from any browser on your network</string>
+    <string name="setcat_web_remote_enabled_subtitle">네트워크의 모든 브라우저에서 PixelPlay에 접속</string>
     
-    <string name="setcat_web_remote_enabled_title">Enable Web Remote</string>
+    <string name="setcat_web_remote_enabled_title">웹 리모컨 활성화</string>
     
-    <string name="setcat_web_remote_pin">PIN Code</string>
+    <string name="setcat_web_remote_pin">PIN 코드</string>
     
-    <string name="setcat_web_remote_port_subtitle">Port number for the web server (default: 8081)</string>
+    <string name="setcat_web_remote_port_subtitle">웹 서버 포트 번호(기본값: 8081)</string>
     
-    <string name="setcat_web_remote_port_title">Server Port</string>
+    <string name="setcat_web_remote_port_title">서버 포트</string>
     
-    <string name="setcat_web_remote_section">Web Remote</string>
+    <string name="setcat_web_remote_section">웹 리모컨</string>
     
-    <string name="setcat_web_remote_server_address">Server Address</string>
+    <string name="setcat_web_remote_server_address">서버 주소</string>
     
-    <string name="setcat_web_remote_server_running">Running</string>
+    <string name="setcat_web_remote_server_running">실행 중</string>
     
-    <string name="setcat_web_remote_server_status">Server Status</string>
+    <string name="setcat_web_remote_server_status">서버 상태</string>
     
-    <string name="setcat_web_remote_server_stopped">Stopped</string>
+    <string name="setcat_web_remote_server_stopped">중지됨</string>
     
-    <string name="setcat_web_remote_start_button">Start Server</string>
+    <string name="setcat_web_remote_start_button">서버 시작</string>
     
-    <string name="setcat_web_remote_stop_button">Stop Server</string>
+    <string name="setcat_web_remote_stop_button">서버 중지</string>
     
     
-    <string name="setcat_web_remote_sync_subtitle">Web controls phone playback</string>
+    <string name="setcat_web_remote_sync_subtitle">웹에서 휴대폰 재생 제어</string>
     
-    <string name="setcat_web_remote_sync_title">Sync Mode</string>
+    <string name="setcat_web_remote_sync_title">동기화 모드</string>
     
-    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED matrix display integration</string>
+    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED 매트릭스 디스플레이 연동</string>
     
     <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
     
-    <string name="settings_category_web_remote_subtitle">Control playback from other devices on your network</string>
+    <string name="settings_category_web_remote_subtitle">네트워크의 다른 기기에서 재생 제어</string>
     
-    <string name="settings_category_web_remote_title">Web Remote</string>
+    <string name="settings_category_web_remote_title">웹 리모컨</string>
     
-    <string name="settings_search_category_about">About</string>
+    <string name="settings_search_category_about">정보</string>
     
-    <string name="settings_search_category_ai_integration">AI Integration</string>
+    <string name="settings_search_category_ai_integration">AI 연동</string>
     
-    <string name="settings_search_category_appearance">Appearance</string>
+    <string name="settings_search_category_appearance">디자인</string>
     
-    <string name="settings_search_category_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_search_category_backup_restore">백업 및 복구</string>
     
-    <string name="settings_search_category_behavior">Behavior</string>
+    <string name="settings_search_category_behavior">동작</string>
     
-    <string name="settings_search_category_developer">Developer</string>
+    <string name="settings_search_category_developer">개발자</string>
     
-    <string name="settings_search_category_device_capabilities">Device Capabilities</string>
+    <string name="settings_search_category_device_capabilities">기기 성능</string>
     
-    <string name="settings_search_category_equalizer">Equalizer</string>
+    <string name="settings_search_category_equalizer">이퀄라이저</string>
     
-    <string name="settings_search_category_library">Music Library</string>
+    <string name="settings_search_category_library">음악 라이브러리</string>
     
-    <string name="settings_search_category_playback">Playback</string>
+    <string name="settings_search_category_playback">재생</string>
     
-    <string name="settings_search_category_settings_format">%1$s settings</string>
+    <string name="settings_search_category_settings_format">%1$s 설정</string>
     
     
     
-    <string name="settings_search_category_subtitle">Settings category</string>
+    <string name="settings_search_category_subtitle">설정 카테고리</string>
     
     <string name="settings_search_keyword_aaudio">AAudio</string>
     
-    <string name="settings_search_keyword_about">About</string>
+    <string name="settings_search_keyword_about">정보</string>
     
-    <string name="settings_search_keyword_account">Account</string>
+    <string name="settings_search_keyword_account">계정</string>
     
     <string name="settings_search_keyword_ai">AI</string>
     
-    <string name="settings_search_keyword_album">Album</string>
+    <string name="settings_search_keyword_album">앨범</string>
     
-    <string name="settings_search_keyword_album_art">Album art</string>
+    <string name="settings_search_keyword_album_art">앨범 아트</string>
     
-    <string name="settings_search_keyword_appearance">Appearance</string>
+    <string name="settings_search_keyword_appearance">디자인</string>
     
-    <string name="settings_search_keyword_artist">Artist</string>
+    <string name="settings_search_keyword_artist">아티스트</string>
     
-    <string name="settings_search_keyword_auto_hide">Auto-hide</string>
+    <string name="settings_search_keyword_auto_hide">자동 숨기기</string>
     
-    <string name="settings_search_keyword_background">Background playback</string>
+    <string name="settings_search_keyword_background">백그라운드 재생</string>
     
-    <string name="settings_search_keyword_background_image">Background image, wallpaper</string>
+    <string name="settings_search_keyword_background_image">배경 이미지, 배경화면</string>
     
-    <string name="settings_search_keyword_backup">Backup</string>
+    <string name="settings_search_keyword_backup">백업</string>
     
-    <string name="settings_search_keyword_battery">Battery</string>
+    <string name="settings_search_keyword_battery">배터리</string>
     
     <string name="settings_search_keyword_bluetooth">Bluetooth</string>
     
     <string name="settings_search_keyword_blur">Blur</string>
     
-    <string name="settings_search_keyword_cache">Cache</string>
+    <string name="settings_search_keyword_cache">캐시</string>
     
-    <string name="settings_search_keyword_car_mode">Car mode</string>
+    <string name="settings_search_keyword_car_mode">차량 모드</string>
     
     <string name="settings_search_keyword_cast">Cast</string>
     
-    <string name="settings_search_keyword_collage">Collage</string>
+    <string name="settings_search_keyword_collage">콜라주</string>
     
-    <string name="settings_search_keyword_color">Color</string>
+    <string name="settings_search_keyword_color">색상</string>
     
-    <string name="settings_search_keyword_compact">Compact</string>
+    <string name="settings_search_keyword_compact">컴팩트</string>
     
-    <string name="settings_search_keyword_corner_radius">Corner radius</string>
+    <string name="settings_search_keyword_corner_radius">모서리 반경</string>
     
-    <string name="settings_search_keyword_crossfade">Crossfade</string>
+    <string name="settings_search_keyword_crossfade">크로스페이드</string>
     
-    <string name="settings_search_keyword_daily_mix">Daily mix</string>
+    <string name="settings_search_keyword_daily_mix">데일리 믹스</string>
     
-    <string name="settings_search_keyword_developer">Developer</string>
+    <string name="settings_search_keyword_developer">개발자</string>
     
-    <string name="settings_search_keyword_device">Device</string>
+    <string name="settings_search_keyword_device">기기</string>
     
-    <string name="settings_search_keyword_diagnostics">Diagnostics</string>
+    <string name="settings_search_keyword_diagnostics">진단</string>
     
-    <string name="settings_search_keyword_download">Download</string>
+    <string name="settings_search_keyword_download">다운로드</string>
     
-    <string name="settings_search_keyword_dynamic_background">Dynamic background, ambient</string>
+    <string name="settings_search_keyword_dynamic_background">다이내믹 배경, 앰비언트</string>
     
     
     
-    <string name="settings_search_keyword_equalizer">Equalizer</string>
+    <string name="settings_search_keyword_equalizer">이퀄라이저</string>
     
-    <string name="settings_search_keyword_excluded">Excluded folders</string>
+    <string name="settings_search_keyword_excluded">제외된 폴더</string>
     
-    <string name="settings_search_keyword_export">Export</string>
+    <string name="settings_search_keyword_export">내보내기</string>
     
-    <string name="settings_search_keyword_filter">Filter</string>
+    <string name="settings_search_keyword_filter">필터</string>
     
-    <string name="settings_search_keyword_folder">Folder</string>
+    <string name="settings_search_keyword_folder">폴더</string>
     
-    <string name="settings_search_keyword_gesture">Gesture</string>
+    <string name="settings_search_keyword_gesture">제스처</string>
     
-    <string name="settings_search_keyword_haptics">Haptics</string>
+    <string name="settings_search_keyword_haptics">햅틱</string>
     
-    <string name="settings_search_keyword_headphones">Headphones</string>
+    <string name="settings_search_keyword_headphones">헤드폰</string>
     
     <string name="settings_search_keyword_hifi">HiFi</string>
     
-    <string name="settings_search_keyword_immersive_lyrics">Immersive lyrics</string>
+    <string name="settings_search_keyword_immersive_lyrics">몰입형 가사</string>
     
-    <string name="settings_search_keyword_import">Import</string>
+    <string name="settings_search_keyword_import">가져오기</string>
     
-    <string name="settings_search_keyword_language">Language</string>
+    <string name="settings_search_keyword_language">언어</string>
     
-    <string name="settings_search_keyword_lyrics">Lyrics</string>
+    <string name="settings_search_keyword_lyrics">가사</string>
     
-    <string name="settings_search_keyword_maintenance">Maintenance</string>
+    <string name="settings_search_keyword_maintenance">유지 관리</string>
     
-    <string name="settings_search_keyword_min_duration">Minimum duration</string>
+    <string name="settings_search_keyword_min_duration">최소 길이</string>
     
-    <string name="settings_search_keyword_mixer">Mixer</string>
+    <string name="settings_search_keyword_mixer">믹서</string>
     
-    <string name="settings_search_keyword_model">Model</string>
+    <string name="settings_search_keyword_model">모델</string>
     
-    <string name="settings_search_keyword_navigation">Navigation</string>
+    <string name="settings_search_keyword_navigation">내비게이션</string>
     
-    <string name="settings_search_keyword_now_playing">Now playing</string>
+    <string name="settings_search_keyword_now_playing">지금 재생 중</string>
     
-    <string name="settings_search_keyword_online_source">Online source</string>
+    <string name="settings_search_keyword_online_source">온라인 소스</string>
     
-    <string name="settings_search_keyword_palette">Palette</string>
+    <string name="settings_search_keyword_palette">팔레트</string>
     
-    <string name="settings_search_keyword_playback">Playback</string>
+    <string name="settings_search_keyword_playback">재생</string>
     
-    <string name="settings_search_keyword_player">Player</string>
+    <string name="settings_search_keyword_player">플레이어</string>
     
-    <string name="settings_search_keyword_queue">Queue</string>
+    <string name="settings_search_keyword_queue">대기열</string>
     
-    <string name="settings_search_keyword_recommendation">Recommendation</string>
+    <string name="settings_search_keyword_recommendation">추천</string>
     
-    <string name="settings_search_keyword_remote">Remote</string>
+    <string name="settings_search_keyword_remote">리모컨</string>
     
     <string name="settings_search_keyword_replaygain">ReplayGain</string>
     
-    <string name="settings_search_keyword_restore">Restore</string>
+    <string name="settings_search_keyword_restore">복구</string>
     
     <string name="settings_search_keyword_scan">Scan</string>
     
-    <string name="settings_search_keyword_scroll">Scroll</string>
+    <string name="settings_search_keyword_scroll">스크롤</string>
     
-    <string name="settings_search_keyword_shuffle">Shuffle</string>
+    <string name="settings_search_keyword_shuffle">셔플</string>
     
-    <string name="settings_search_keyword_speed">Speed, playback rate</string>
+    <string name="settings_search_keyword_speed">속도, 재생 속도</string>
     
-    <string name="settings_search_keyword_stats">Statistics</string>
+    <string name="settings_search_keyword_stats">통계</string>
     
     <string name="settings_search_keyword_sync">Sync</string>
     
-    <string name="settings_search_keyword_theme">Theme</string>
+    <string name="settings_search_keyword_theme">테마</string>
     
-    <string name="settings_search_keyword_token">Token</string>
+    <string name="settings_search_keyword_token">토큰</string>
     
-    <string name="settings_search_keyword_transcode">Transcode</string>
+    <string name="settings_search_keyword_transcode">트랜스코드</string>
     
     <string name="settings_search_keyword_usb">USB</string>
     
-    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_no_results">설정을 찾을 수 없습니다</string>
     
-    <string name="settings_search_placeholder">Search settings</string>
+    <string name="settings_search_placeholder">설정 검색</string>
     
-    <string name="settings_search_results_count_format">%1$d results</string>
+    <string name="settings_search_results_count_format">결과 %1$d개</string>
     
-    <string name="usb_bit_depth_16">16-bit</string>
+    <string name="usb_bit_depth_16">16비트</string>
     
-    <string name="usb_bit_depth_24">24-bit</string>
+    <string name="usb_bit_depth_24">24비트</string>
     
-    <string name="usb_bit_depth_32">32-bit</string>
+    <string name="usb_bit_depth_32">32비트</string>
     
-    <string name="usb_device_selector_connect_message">This will enable exclusive access to the USB DAC for bit-perfect audio. The system audio will be routed through the DAC directly.</string>
+    <string name="usb_device_selector_connect_message">USB DAC에 대한 독점 액세스를 활성화하여 비트 퍼펙트 오디오를 사용합니다. 시스템 오디오는 DAC를 통해 직접 라우팅됩니다.</string>
     
-    <string name="usb_device_selector_connect_title">USB Exclusive Mode</string>
+    <string name="usb_device_selector_connect_title">USB 독점 모드</string>
     
-    <string name="usb_device_selector_connected_to">Connected to: %s</string>
+    <string name="usb_device_selector_connected_to">연결 대상: %s</string>
     
-    <string name="usb_device_selector_connecting">Connecting to USB DAC…</string>
+    <string name="usb_device_selector_connecting">USB DAC에 연결 중…</string>
     
-    <string name="usb_device_selector_connection_failed">Failed to connect to USB DAC</string>
+    <string name="usb_device_selector_connection_failed">USB DAC에 연결하지 못했습니다</string>
     
-    <string name="usb_device_selector_hint">Connect a USB DAC and enable USB exclusive mode for bit-perfect audio output.</string>
+    <string name="usb_device_selector_hint">비트 퍼펙트 오디오 출력을 위해 USB DAC를 연결하고 USB 독점 모드를 활성화하세요.</string>
     
-    <string name="usb_device_selector_no_devices">No USB audio devices found</string>
+    <string name="usb_device_selector_no_devices">USB 오디오 기기를 찾을 수 없습니다</string>
     
-    <string name="usb_device_selector_permission_message">XiangsuPlayer needs access to your USB DAC to enable exclusive mode.</string>
+    <string name="usb_device_selector_permission_message">독점 모드를 활성화하려면 XiangsuPlayer가 USB DAC에 접근해야 합니다.</string>
     
-    <string name="usb_device_selector_permission_required">USB permission required</string>
+    <string name="usb_device_selector_permission_required">USB 권한 필요</string>
     
-    <string name="usb_device_selector_refresh">Refresh</string>
+    <string name="usb_device_selector_refresh">새로고침</string>
     
-    <string name="usb_device_selector_scanning">Scanning for USB devices…</string>
+    <string name="usb_device_selector_scanning">USB 기기 스캔 중…</string>
     
-    <string name="usb_device_selector_select_device">Select USB DAC device</string>
+    <string name="usb_device_selector_select_device">USB DAC 기기 선택</string>
     
-    <string name="usb_device_selector_title">Select USB DAC</string>
+    <string name="usb_device_selector_title">USB DAC 선택</string>
     
-    <string name="usb_exclusive_toast_activate_failed">Failed to activate USB exclusive mode. Check device permission and try again.</string>
+    <string name="usb_exclusive_toast_activate_failed">USB 독점 모드를 활성화하지 못했습니다. 기기 권한을 확인하고 다시 시도하세요.</string>
     
-    <string name="usb_exclusive_toast_activated">USB exclusive activated: %s</string>
+    <string name="usb_exclusive_toast_activated">USB 독점 활성화됨: %s</string>
     
+    <string name="car_mode_action_radio">라디오</string>
+    <string name="car_mode_action_radio_desc">온라인 라디오</string>
+    <string name="download_manager_cancel">취소</string>
+    <string name="download_manager_clear_completed">완료된 항목 지우기</string>
+    <string name="download_manager_empty">아직 다운로드가 없습니다</string>
+    <string name="download_manager_pause">일시정지</string>
+    <string name="download_manager_resume">재개</string>
+    <string name="download_manager_retry">다시 시도</string>
+    <string name="download_manager_title">다운로드</string>
+    <string name="download_manager_waiting">대기 중</string>
+    <string name="setcat_api_lyrics_amll_subtitle">NetEase 곡만 지원하며 노래방식 타이밍을 제공합니다.</string>
+    <string name="setcat_api_lyrics_amll_title">AMLLDB 단어별 가사</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">Bilibili 트랙의 영상 자막을 가사로 사용합니다.</string>
+    <string name="setcat_api_lyrics_bilibili_title">Bilibili 자막 가사</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ Music / Kugou / Kuwo / Migu, 내장 소스 곡에 사용됩니다.</string>
+    <string name="setcat_api_lyrics_builtin_title">내장 소스 가사</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">해외 서비스로, 제한된 네트워크에서는 연결되지 않는 경우가 많습니다.</string>
+    <string name="setcat_api_lyrics_lrclib_title">LRCLIB 가사</string>
+    <string name="setcat_api_lyrics_netease_subtitle">공식 API로, NetEase 및 클라우드 곡의 우선 소스입니다.</string>
+    <string name="setcat_api_lyrics_netease_title">NetEase 가사</string>
+    <string name="setcat_api_lyrics_online_title">온라인 가사 소스</string>
+    <string name="setcat_api_lyrics_priority_action">조정</string>
+    <string name="setcat_api_lyrics_priority_desc">위에서 아래로 소스를 시도하며 화살표로 순서를 바꿀 수 있습니다.</string>
+    <string name="setcat_api_lyrics_priority_label">온라인 가사 우선순위</string>
+    <string name="setcat_api_metadata_deezer_subtitle">아티스트 사진을 온라인에서 검색하고 캐시합니다. 해외 서비스입니다.</string>
+    <string name="setcat_api_metadata_deezer_title">Deezer 아티스트 이미지</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">제목 / 아티스트 / 앨범 / 장르 및 앨범 아트를 보완합니다. 해외 서비스입니다.</string>
+    <string name="setcat_api_metadata_musicbrainz_title">MusicBrainz 메타데이터</string>
+    <string name="setcat_api_metadata_title">곡 정보 보완</string>
+    <string name="setcat_api_note">연결할 수 없는 서비스를 비활성화하면 타임아웃을 건너뛰어 가사와 커버 로딩이 빨라집니다. 기존 로컬 캐시는 유지됩니다.</string>
+    <string name="setcat_api_priority_builtin">내장 우선</string>
+    <string name="setcat_api_priority_lrclib">LRCLIB 우선</string>
+    <string name="setcat_api_priority_move_down">아래로 이동</string>
+    <string name="setcat_api_priority_move_up">위로 이동</string>
+    <string name="setcat_api_priority_netease">NetEase 우선</string>
+    <string name="setcat_api_priority_reset">순서 초기화</string>
+    <string name="setcat_appearance_miniplayer_section">미니 플레이어</string>
+    <string name="setcat_appearance_startup_section">시작 애니메이션</string>
+    <string name="setcat_apple_canvas_subtitle">현재 곡의 애니메이션 커버를 온라인에서 가져와 찾으면 크로스페이드합니다. 로컬 아트워크가 대체로 유지되며 네트워크 트래픽이 다소 늘어납니다.</string>
+    <string name="setcat_apple_canvas_title">다이내믹 커버(Apple Music)</string>
+    <string name="setcat_audio_focus">오디오 포커스</string>
+    <string name="setcat_audio_focus_duck_subtitle">짧은 오디오 포커스 변경 시 볼륨을 낮출 수 있습니다. 이 옵션은 오디오 출력 설정에 의해 재정의됩니다.</string>
+    <string name="setcat_audio_focus_duck_title">볼륨 낮추기</string>
+    <string name="setcat_audio_focus_gain_subtitle">포커스를 되찾으면 재생을 재개합니다. 비활성화하면 플레이어는 일시정지 상태로 유지됩니다.</string>
+    <string name="setcat_audio_focus_gain_title">포커스 회복 시 재개</string>
+    <string name="setcat_audio_focus_hint_bg">Android 8 이상에서는 일시정지 중에 시스템이 플레이어를 종료합니다. 이를 피하려면 “항상 알림 표시” 옵션을 사용하세요.</string>
+    <string name="setcat_audio_focus_hint_cast">Chromecast 출력은 통화 및 짧은 오디오 포커스 변경을 완전히 무시할 수 있습니다.</string>
+    <string name="setcat_audio_focus_permanent_subtitle">긴 오디오 포커스 변경 시 일시정지(예: 다른 플레이어나 게임이 음악 재생).</string>
+    <string name="setcat_audio_focus_permanent_title">영구 오디오 포커스 변경</string>
+    <string name="setcat_audio_focus_reset">기본값 복원</string>
+    <string name="setcat_audio_focus_resume_call_subtitle">통화가 끝난 후 재생을 재개합니다(수신 통화로 일시정지된 경우).</string>
+    <string name="setcat_audio_focus_resume_call_title">통화 후 재생 재개</string>
+    <string name="setcat_audio_focus_transient_subtitle">오디오 포커스가 일시적으로 변경되면 재생을 일시정지합니다(예: 통화, 알림, 내비게이션).</string>
+    <string name="setcat_audio_focus_transient_title">짧은 오디오 포커스 변경 / 통화</string>
+    <string name="setcat_bg_style_palette">팔레트</string>
+    <string name="setcat_bg_style_solid">단색</string>
+    <string name="setcat_bg_style_vibrant">생동감</string>
+    <string name="setcat_carousel_style_classic">클래식(엿보기 없음)</string>
+    <string name="setcat_carousel_style_preview">캐러셀 미리보기</string>
+    <string name="setcat_download_embed_cover_subtitle">앨범 아트를 오디오 파일 태그에 기록합니다(로컬 아트워크도 포함).</string>
+    <string name="setcat_download_embed_cover_title">앨범 아트 포함</string>
+    <string name="setcat_download_embed_lyrics_subtitle">플레이어가 읽을 수 있도록 가사를 오디오 파일 태그에 기록합니다.</string>
+    <string name="setcat_download_embed_lyrics_title">가사 포함</string>
+    <string name="setcat_download_file_name_artist_title">아티스트 - 제목</string>
+    <string name="setcat_download_file_name_desc">다운로드한 파일의 이름 지정 방식.</string>
+    <string name="setcat_download_file_name_label">다운로드 파일 이름</string>
+    <string name="setcat_download_file_name_title_artist">제목 - 아티스트</string>
+    <string name="setcat_download_file_name_title_only">제목만</string>
+    <string name="setcat_download_manager_subtitle">다운로드 대기열, 진행 중 및 완료된 다운로드를 확인합니다.</string>
+    <string name="setcat_download_quality_desc">곡 다운로드 시 사용할 음질로, 재생 음질을 따를 수 있습니다.</string>
+    <string name="setcat_download_quality_follow">재생 음질과 동일</string>
+    <string name="setcat_download_quality_label">다운로드 음질</string>
+    <string name="setcat_download_skip_existing_subtitle">대상 폴더에 같은 이름의 파일이 이미 있으면 건너뜁니다.</string>
+    <string name="setcat_download_skip_existing_title">기존 파일 건너뛰기</string>
+    <string name="setcat_download_write_lrc_subtitle">다운로드한 오디오 파일 옆에 일치하는 .lrc 파일을 만듭니다.</string>
+    <string name="setcat_download_write_lrc_title">.lrc 파일도 저장</string>
+    <string name="setcat_expressive_accent_desc">컨트롤 카드와 토글 버튼을 앨범 강조 색상 유리 스타일로 물들입니다.</string>
+    <string name="setcat_expressive_accent_title">강조 배경</string>
+    <string name="setcat_expressive_group_title">표현형 플레이어</string>
+    <string name="setcat_expressive_merge_desc">즐겨찾기, 셔플, 반복, 가사, 대기열 버튼을 컨트롤 카드에 병합합니다.</string>
+    <string name="setcat_expressive_merge_title">컨트롤 병합</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">컨트롤 확장과 크기 조정에 애니메이션을 적용합니다. 끄면 즉시 전환됩니다.</string>
+    <string name="setcat_floating_lyrics_animation_title">전환 애니메이션</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">배경 불투명도</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">가사를 왼쪽이나 오른쪽 끝 너머로 밀었다 놓으면 작은 화살표만 남기고 숨겨집니다. 화살표를 탭하면 다시 나타납니다.</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">화면 가장자리에 숨기기</string>
+    <string name="setcat_floating_lyrics_lines_double">현재 + 다음</string>
+    <string name="setcat_floating_lyrics_lines_multi">세 줄</string>
+    <string name="setcat_floating_lyrics_lines_single">한 줄</string>
+    <string name="setcat_floating_lyrics_lines_title">표시할 줄 수</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">잠그면 드래그해도 창이 움직이지 않습니다(가사를 길게 눌러 전환).</string>
+    <string name="setcat_floating_lyrics_lock_title">위치 잠금</string>
+    <string name="setcat_floating_lyrics_scale_title">전체 크기</string>
+    <string name="setcat_floating_lyrics_section">플로팅 가사</string>
+    <string name="setcat_floating_lyrics_subtitle">다른 앱 위에 가사를 표시합니다. “다른 앱 위에 표시” 권한이 필요합니다.</string>
+    <string name="setcat_floating_lyrics_title">플로팅 가사(데스크톱)</string>
+    <string name="setcat_floating_lyrics_usage">사용 방법: 드래그하여 이동, 탭하여 이전 / 재생-일시정지 / 다음, 길게 눌러 위치 잠금. 가사를 왼쪽이나 오른쪽 끝 너머로 밀면 작은 화살표로 숨겨지고, 화살표를 탭하면 다시 나타납니다. 창은 곡이 재생 중일 때만 표시됩니다.</string>
+    <string name="setcat_force_software_blur_subtitle">Android 12 미만에서 사용하는 소프트웨어/비트맵 흐림을 강제로 적용해 최신 기기에서 확인할 수 있습니다</string>
+    <string name="setcat_force_software_blur_title">레거시 흐림 강제 적용(테스트)</string>
+    <string name="setcat_force_tablet_layout_subtitle">세로 모드에서도 태블릿 레이아웃(측면 내비게이션 레일 + 넓은 콘텐츠)을 사용합니다. 대형 스마트폰과 폴더블에 적합합니다.</string>
+    <string name="setcat_force_tablet_layout_title">세로 모드에서 태블릿 레이아웃 강제</string>
+    <string name="setcat_home_top_style_collage">콜라주 월</string>
+    <string name="setcat_home_top_style_desc">홈 상단에 콜라주 월 또는 추천 캐러셀을 표시합니다.</string>
+    <string name="setcat_home_top_style_featured">추천 캐러셀</string>
+    <string name="setcat_home_top_style_label">홈 상단 스타일</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">가사 화면이 자동으로 몰입 모드로 전환될 때 텍스트를 확대하지 않고 컨트롤만 숨깁니다(기본값은 확대)</string>
+    <string name="setcat_immersive_keep_font_size_title">몰입 모드에서 가사 글꼴 크기 유지</string>
+    <string name="setcat_immersive_keep_size_hint">몰입 모드 미리보기: 텍스트 그대로 유지</string>
+    <string name="setcat_immersive_scale_hint">몰입 모드 미리보기: 텍스트 x1.25 확대</string>
+    <string name="setcat_lanzou_test_close">닫기</string>
+    <string name="setcat_lanzou_test_dialog_title">Lanzou 다운로드 흐름 테스트</string>
+    <string name="setcat_lanzou_test_open_browser">브라우저에서 첫 번째 직접 링크 열기</string>
+    <string name="setcat_lanzou_test_running">공유 링크 확인 중…</string>
+    <string name="setcat_lanzou_test_subtitle">업데이트 공유 링크를 확인하고 파일, 감지된 버전 및 직접 URL을 나열합니다(앱 내 업데이트 채널 검증).</string>
+    <string name="setcat_lanzou_test_title">Lanzou 다운로드 흐름 테스트</string>
+    <string name="setcat_lyrics_bg_style_desc">가사 배경 스타일: 생동감 있는 그라데이션, 커버 팔레트 색상 또는 단색 테마 색상.</string>
+    <string name="setcat_lyrics_bg_style_title">가사 배경</string>
+    <string name="setcat_lyrics_mono_colors_desc">가사 버튼과 텍스트를 순수 검정 / 흰색으로 강제합니다(다크 테마에서는 흰색, 라이트 테마에서는 검정). 끄면 현재 모양을 유지합니다.</string>
+    <string name="setcat_lyrics_mono_colors_title">흑백 가사 버튼 및 텍스트</string>
+    <string name="setcat_miniplayer_corner_radius">미니 플레이어 모서리 반경</string>
+    <string name="setcat_miniplayer_style_capsule">캡슐</string>
+    <string name="setcat_miniplayer_style_classic">클래식</string>
+    <string name="setcat_miniplayer_style_desc">하단 미니 플레이어의 모양. Material = 카드 위에 이전/재생/다음이 있는 둥근 아트워크, Expressive = 단색 진행 채우기와 사각 아트워크, 하나의 큰 재생 버튼이 있는 전체 알약형.</string>
+    <string name="setcat_miniplayer_style_expressive">표현형</string>
+    <string name="setcat_miniplayer_style_label">스타일</string>
+    <string name="setcat_miniplayer_style_material">머티리얼</string>
+    <string name="setcat_miniplayer_style_rhythm">리듬</string>
+    <string name="setcat_navrail_style_desc">태블릿 및 가로 모드에서 왼쪽 레일의 모양을 선택하세요.</string>
+    <string name="setcat_navrail_style_docked">고정</string>
+    <string name="setcat_navrail_style_floating">플로팅</string>
+    <string name="setcat_navrail_style_label">태블릿 내비게이션 레일</string>
+    <string name="setcat_new_top_bar_subtitle">상단 바는 점진적 흐림 마스크와 축소된 제목 캡슐을 사용합니다. 끄면 모든 곳에서 단색 상단 바를 사용합니다.</string>
+    <string name="setcat_new_top_bar_title">새 상단 바 스타일</string>
+    <string name="setcat_player_bg_style_desc">플레이어 배경 스타일: 생동감 있는 그라데이션, 커버 팔레트 색상 또는 단색 테마 색상.</string>
+    <string name="setcat_player_bg_style_title">플레이어 배경</string>
+    <string name="setcat_player_controls_group">플레이어 컨트롤</string>
+    <string name="setcat_player_cover_style_default">기본 캐러셀</string>
+    <string name="setcat_player_cover_style_desc">플레이어 커버 표시 방식(Rhythm 추천 카드).</string>
+    <string name="setcat_player_cover_style_featured">추천 카드 캐러셀</string>
+    <string name="setcat_player_cover_style_label">커버 스타일</string>
+    <string name="setcat_player_glass_controls_subtitle">중립적인 컨트롤 버튼(건너뛰기 / 즐겨찾기 / 하단 알약 / 컨트롤 카드)을 실제 배경 흐림이 있는 반투명으로 만듭니다. 재생/일시정지 버튼은 강조 색상과 레이아웃을 유지하며 모든 테마와 배경에 어울립니다.</string>
+    <string name="setcat_player_glass_controls_title">프로스트 글래스 컨트롤 버튼</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">상단에 고정된 실시간 미리보기로, 아래의 모든 옵션이 즉시 반영됩니다</string>
+    <string name="setcat_player_lyrics_appearance_title">플레이어 및 가사 모양</string>
+    <string name="setcat_player_lyrics_preview_artist">샘플 아티스트</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24bit · 44.1 kHz</string>
+    <string name="setcat_player_lyrics_preview_label">실시간 미리보기</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">지금 이 줄이 재생 중입니다</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">도시가 잠든 사이</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">그리고 밤은 계속 흐르고</string>
+    <string name="setcat_player_lyrics_preview_track">샘플 트랙</string>
+    <string name="setcat_player_mono_colors_desc">플레이어 버튼과 텍스트를 순수 검정 / 흰색으로 강제합니다(다크 테마에서는 흰색, 라이트 테마에서는 검정). 끄면 현재 모양을 유지합니다.</string>
+    <string name="setcat_player_mono_colors_title">흑백 플레이어 버튼 및 텍스트</string>
+    <string name="setcat_player_progress_bar_subtitle">현재: %1$s. 트랙 스타일, 손잡이 스타일, 회전을 선택하세요.</string>
+    <string name="setcat_player_progress_bar_title">재생 진행 표시줄</string>
+    <string name="setcat_player_style_classic">클래식</string>
+    <string name="setcat_player_style_desc">전체 화면 플레이어를 클래식 레이아웃과 Expressive 레이아웃(Rhythm에서 이식) 간에 전환합니다.</string>
+    <string name="setcat_player_style_expressive">표현형</string>
+    <string name="setcat_player_style_label">플레이어 스타일</string>
+    <string name="setcat_player_theme_immersive">몰입형 커버(흐림 확장)</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">위로 스크롤하면 내비게이션 바가 내려가고 미니 플레이어가 이동하며, 다시 스크롤하면 돌아옵니다</string>
+    <string name="setcat_scroll_hide_chrome_title">스크롤 시 숨기기</string>
+    <string name="setcat_startup_animation_desc">실행 후 메인 화면에 진입할 때 재생되는 전환 효과.</string>
+    <string name="setcat_startup_animation_label">진입 애니메이션</string>
+    <string name="setcat_startup_style_emerge">떠오르기</string>
+    <string name="setcat_startup_style_none">끔</string>
+    <string name="setcat_startup_style_scale">크기 조정</string>
+    <string name="setcat_transport_flat_style_subtitle">이전 / 재생 / 다음을 색상 배경 없는 단순 아이콘으로 표시</string>
+    <string name="setcat_transport_flat_style_title">플랫 컨트롤 버튼</string>
+    <string name="setcat_ui_scale_section">인터페이스 크기</string>
+    <string name="setcat_ui_scale_title">UI 크기(앱 전용)</string>
+    <string name="setcat_updates_auto_check_subtitle">백그라운드에서 새 버전 확인</string>
+    <string name="setcat_updates_auto_check_title">업데이트 자동 확인</string>
+    <string name="setcat_updates_auto_title">자동 업데이트</string>
+    <string name="setcat_updates_bg_download_subtitle">새 버전 APK 자동 다운로드</string>
+    <string name="setcat_updates_bg_download_title">백그라운드에서 업데이트 다운로드</string>
+    <string name="setcat_updates_download_title">백그라운드 다운로드</string>
+    <string name="setcat_updates_frequency_daily">매일</string>
+    <string name="setcat_updates_frequency_title">확인 주기</string>
+    <string name="setcat_updates_frequency_weekly">매주</string>
+    <string name="setcat_updates_wifi_charging_subtitle">WiFi 연결 및 충전 중에만 다운로드</string>
+    <string name="setcat_updates_wifi_charging_title">WiFi + 충전 중에만</string>
+    <string name="setcat_vibrant_bg_warning_message">Android 버전이 Android 11보다 낮습니다. 이 기기에서는 이 효과가 예상대로 동작하지 않을 수 있습니다. 그래도 활성화할까요?</string>
+    <string name="setcat_vibrant_bg_warning_title">Android 버전이 너무 낮음</string>
+    <string name="settings_category_api_subtitle">가사 및 메타데이터 보완 서비스 전환</string>
+    <string name="settings_category_api_title">API 관리</string>
+    <string name="settings_category_download_subtitle">대기열, 음질, 폴더, 파일 이름 지정 및 태그 포함</string>
+    <string name="settings_category_download_title">다운로드</string>
+    <string name="settings_category_updates_subtitle">자동 확인 주기, 백그라운드 다운로드, WiFi + 충전</string>
+    <string name="settings_category_updates_title">업데이트 및 다운로드</string>
+    <string name="settings_category_usb_exclusive_subtitle">외부 USB DAC로의 비트 퍼펙트 출력: 비트 심도, 기기 및 상태</string>
+    <string name="settings_category_usb_exclusive_title">USB 독점</string>
+    <string name="settings_search_keyword_audio_focus">오디오 포커스</string>
+    <string name="settings_search_keyword_update">업데이트</string>
+    <string name="usb_status_active">독점 활성 — 오디오가 시스템 믹서를 우회합니다</string>
+    <string name="usb_status_found">USB 오디오 기기 %1$d개 발견</string>
+    <string name="usb_status_inactive">독점 비활성(시스템 믹서 출력)</string>
+    <string name="usb_status_no_device">USB 오디오 기기를 감지하지 못했습니다 — DAC를 연결하면 자동으로 찾습니다</string>
+    <string name="usb_status_none_found">USB 오디오 기기를 찾을 수 없습니다</string>
+    <string name="usb_status_rescan">다시 스캔</string>
+    <string name="usb_status_section">기기 상태</string>
+    <string name="usb_status_switch_device">기기 변경</string>
 </resources>

@@ -189,15 +189,15 @@
 백슬래시(\\)를 사용하여 문자 구분 기호를 이스케이프할 수 있습니다.</string>
     <string name="presentation_batch_g_artist_example_arrow"> → </string>
     <string name="presentation_batch_g_artist_examples_title">예시</string>
-    <string name="presentation_batch_g_artist_ex_1_in">\"Artist1/Artist2\"</string>
+    <string name="presentation_batch_g_artist_ex_1_in">“Artist1/Artist2”</string>
     <string name="presentation_batch_g_artist_ex_1_out">Artist1, Artist2</string>
-    <string name="presentation_batch_g_artist_ex_2_in">\"Drake feat. Rihanna\"</string>
+    <string name="presentation_batch_g_artist_ex_2_in">“Drake feat. Rihanna”</string>
     <string name="presentation_batch_g_artist_ex_2_out">Drake, Rihanna</string>
-    <string name="presentation_batch_g_artist_ex_3_in">\"Marshmello x Bastille\"</string>
+    <string name="presentation_batch_g_artist_ex_3_in">“Marshmello x Bastille”</string>
     <string name="presentation_batch_g_artist_ex_3_out">Marshmello, Bastille</string>
-    <string name="presentation_batch_g_artist_ex_4_in">\"Song (ft. B)\" by A</string>
+    <string name="presentation_batch_g_artist_ex_4_in">“Song (ft. B)” by A</string>
     <string name="presentation_batch_g_artist_ex_4_out">A, B</string>
-    <string name="presentation_batch_g_artist_ex_5_in">\"AC\\DC\"</string>
+    <string name="presentation_batch_g_artist_ex_5_in">“AC\DC”</string>
     <string name="presentation_batch_g_artist_ex_5_out">AC/DC (이스케이프됨)</string>
     <string name="presentation_batch_g_artist_topbar_title">아티스트</string>
     <string name="presentation_batch_g_artist_rescan_banner_title">재스캔 필요</string>
@@ -231,12 +231,12 @@
     <string name="presentation_batch_g_file_explorer_empty_folders">여기에 하위 폴더가 없습니다</string>
     <string name="presentation_batch_g_file_explorer_cd_navigate_up">상위로 이동</string>
     <string name="presentation_batch_g_file_explorer_cd_go_root">최상위로 이동</string>
-    <string name="presentation_batch_g_daily_mix_queue_name">Daily Mix</string>
-    <string name="presentation_batch_g_daily_mix_heading">DAILY MIX</string>
+    <string name="presentation_batch_g_daily_mix_queue_name">데일리 믹스</string>
+    <string name="presentation_batch_g_daily_mix_heading">데일리 믹스</string>
     <string name="presentation_batch_g_daily_mix_based_on_history">청취 기록 기반</string>
     <string name="presentation_batch_g_daily_mix_see_all">Daily Mix 전체 보기</string>
     <string name="presentation_batch_g_selection_one_song">곡 선택됨</string>
-    <string name="presentation_batch_g_selection_n_songs">곡 %1$d개 선택됨</string>
+    <string name="presentation_batch_g_selection_n_songs">곡 개 선택됨</string>
     <string name="presentation_batch_g_selection_cd_share">선택 항목 공유</string>
     <string name="presentation_batch_g_selection_cd_like">선택 항목 좋아요</string>
     <string name="presentation_batch_g_selection_play">재생</string>
@@ -326,7 +326,7 @@
     <string name="presentation_batch_g_brick_restart">게임 재시작</string>
     <string name="presentation_batch_g_brick_tap_relaunch">탭하여 다시 시작</string>
     <string name="presentation_batch_g_brick_play_random">무작위 음악 재생</string>
-    <string name="presentation_batch_g_brick_title">Brick Breaker</string>
+    <string name="presentation_batch_g_brick_title">벽돌 깨기</string>
     <string name="presentation_batch_g_brick_high_score">최고 점수 %1$d</string>
     <string name="presentation_batch_g_brick_play">재생</string>
     <string name="presentation_batch_g_brick_drag_paddle">드래그하여 패들을 이동하세요</string>
@@ -339,11 +339,11 @@
     <string name="presentation_batch_g_backup_schema">스키마</string>
     <string name="presentation_batch_g_backup_device">기기</string>
     <string name="presentation_batch_g_backup_unknown">알 수 없음</string>
-    <string name="presentation_batch_g_backup_modules_selected">%2$개 중 %1$개 모듈 선택됨</string>
+    <string name="presentation_batch_g_backup_modules_selected">%2$d개 중 %1$d개 모듈 선택됨</string>
     <string name="presentation_batch_g_backup_transfer_progress">전송 중…</string>
     <string name="presentation_batch_g_backup_cd_select_all">모두 선택</string>
     <string name="presentation_batch_g_backup_cd_clear_selection">선택 해제</string>
-    <string name="presentation_batch_g_backup_entries_will_replace">%1$개 항목 · 현재 데이터를 대체합니다</string>
+    <string name="presentation_batch_g_backup_entries_will_replace">%1$d개 항목 · 현재 데이터를 대체합니다</string>
     <string name="presentation_batch_g_player_cd_cloud_stream">클라우드 스트림</string>
     <string name="presentation_batch_g_player_cd_collapse">플레이어 접기</string>
     <string name="presentation_batch_g_player_cd_cast">전송(Cast)</string>
@@ -416,411 +416,411 @@
     <string name="presentation_batch_g_changelog_sec_fixed">수정됨</string>
     <string name="artist_whitelist_add">Add</string>
     
-    <string name="artist_whitelist_add_title">Add Artist</string>
+    <string name="artist_whitelist_add_title">아티스트 추가</string>
     
-    <string name="artist_whitelist_current_title">Current Whitelist</string>
+    <string name="artist_whitelist_current_title">현재 화이트리스트</string>
     
-    <string name="artist_whitelist_empty">No artists in whitelist</string>
+    <string name="artist_whitelist_empty">화이트리스트에 아티스트가 없습니다</string>
     
-    <string name="artist_whitelist_hint">Enter artist name, e.g. AC/DC</string>
+    <string name="artist_whitelist_hint">아티스트 이름 입력, 예: AC/DC</string>
     
-    <string name="artist_whitelist_remove">Remove %1$s</string>
+    <string name="artist_whitelist_remove">%1$s 제거</string>
     
-    <string name="artist_whitelist_reset">Reset</string>
+    <string name="artist_whitelist_reset">초기화</string>
     
-    <string name="artist_whitelist_reset_cancel">Cancel</string>
+    <string name="artist_whitelist_reset_cancel">취소</string>
     
-    <string name="artist_whitelist_reset_confirm">Reset</string>
+    <string name="artist_whitelist_reset_confirm">초기화</string>
     
-    <string name="artist_whitelist_reset_dialog_body">This will clear all whitelisted artists. A library rescan is required to take effect.</string>
+    <string name="artist_whitelist_reset_dialog_body">화이트리스트의 모든 아티스트를 지웁니다. 적용하려면 라이브러리를 다시 스캔해야 합니다.</string>
     
-    <string name="artist_whitelist_reset_dialog_title">Reset whitelist?</string>
+    <string name="artist_whitelist_reset_dialog_title">화이트리스트를 초기화할까요?</string>
     
-    <string name="artist_whitelist_section_subtitle">Artists in the whitelist are kept intact during library scanning and will never be split by delimiters. Use it for artist names that contain /, &amp;, + etc. (e.g. AC/DC, Tones &amp; I).</string>
+    <string name="artist_whitelist_section_subtitle">화이트리스트에 있는 아티스트는 라이브러리 스캔 시 그대로 유지되며 구분 기호로 분리되지 않습니다. /, &amp;, + 등이 포함된 아티스트 이름(예: AC/DC, Tones &amp; I)에 사용하세요.</string>
     
-    <string name="artist_whitelist_section_title">About</string>
+    <string name="artist_whitelist_section_title">정보</string>
     
-    <string name="artist_whitelist_toast_added">Added to whitelist</string>
+    <string name="artist_whitelist_toast_added">화이트리스트에 추가되었습니다</string>
     
-    <string name="artist_whitelist_toast_invalid">Artist already exists or name is invalid</string>
+    <string name="artist_whitelist_toast_invalid">아티스트가 이미 존재하거나 이름이 유효하지 않습니다</string>
     
-    <string name="artist_whitelist_toolbar_title">Artist Split Whitelist</string>
+    <string name="artist_whitelist_toolbar_title">아티스트 분리 화이트리스트</string>
     
-    <string name="device_capabilities_advanced_diagnostics_description">Off by default. Records a short lag timeline for beta troubleshooting.</string>
+    <string name="device_capabilities_advanced_diagnostics_description">기본적으로 꺼져 있습니다. 베타 문제 해결을 위해 짧은 지연 타임라인을 기록합니다.</string>
     
-    <string name="device_capabilities_advanced_diagnostics_expires">Active until %1$s</string>
+    <string name="device_capabilities_advanced_diagnostics_expires">%1$s까지 활성</string>
     
-    <string name="device_capabilities_advanced_diagnostics_mark_lag">Mark lag now</string>
+    <string name="device_capabilities_advanced_diagnostics_mark_lag">지금 지연 표시</string>
     
-    <string name="device_capabilities_advanced_diagnostics_marked">Lag moment marked</string>
+    <string name="device_capabilities_advanced_diagnostics_marked">지연 시점이 표시되었습니다</string>
     
-    <string name="device_capabilities_advanced_diagnostics_title">Advanced performance diagnostics</string>
+    <string name="device_capabilities_advanced_diagnostics_title">고급 성능 진단</string>
     
-    <string name="device_capabilities_format_custom_decoder">PixelPlayer in-house DSD decoder</string>
+    <string name="device_capabilities_format_custom_decoder">PixelPlayer 자체 DSD 디코더</string>
     
-    <string name="device_capabilities_report_copied">Report copied to clipboard</string>
+    <string name="device_capabilities_report_copied">보고서를 클립보드에 복사했습니다</string>
     
     <string name="device_capabilities_report_copy">Copy</string>
     
-    <string name="device_capabilities_report_description">Generate a shareable diagnostic report to help us classify playback or scan lag. It contains only device, library, and timing data — no file paths, titles, or artists.</string>
+    <string name="device_capabilities_report_description">재생이나 스캔 지연을 분류하는 데 도움이 되도록 공유 가능한 진단 보고서를 생성합니다. 기기, 라이브러리, 타이밍 데이터만 포함하며 파일 경로, 제목, 아티스트는 포함하지 않습니다.</string>
     
-    <string name="device_capabilities_report_generate">Generate report</string>
+    <string name="device_capabilities_report_generate">보고서 생성</string>
     
-    <string name="device_capabilities_report_regenerate">Regenerate</string>
+    <string name="device_capabilities_report_regenerate">다시 생성</string>
     
-    <string name="device_capabilities_report_share">Share</string>
+    <string name="device_capabilities_report_share">공유</string>
     
-    <string name="device_capabilities_report_share_title">PixelPlay performance report</string>
+    <string name="device_capabilities_report_share_title">PixelPlay 성능 보고서</string>
     
-    <string name="device_capabilities_report_title">Performance report</string>
+    <string name="device_capabilities_report_title">성능 보고서</string>
     
-    <string name="presentation_batch_g_artist_item_whitelist">Artist Split Whitelist</string>
+    <string name="presentation_batch_g_artist_item_whitelist">아티스트 분리 화이트리스트</string>
     
-    <string name="presentation_batch_g_artist_whitelist_current_prefix">Current: %1$s</string>
+    <string name="presentation_batch_g_artist_whitelist_current_prefix">현재: %1$s</string>
     
-    <string name="presentation_batch_g_artist_whitelist_none">Not set</string>
+    <string name="presentation_batch_g_artist_whitelist_none">설정되지 않음</string>
     
-    <string name="presentation_batch_g_beta_sheet_avoid_1">Generic reports like \"It doesn\'t work\".</string>
+    <string name="presentation_batch_g_beta_sheet_avoid_1">“작동하지 않아요” 같은 막연한 신고.</string>
     
-    <string name="presentation_batch_g_beta_sheet_avoid_2">Multiple unrelated problems in one issue.</string>
+    <string name="presentation_batch_g_beta_sheet_avoid_2">하나의 이슈에 서로 무관한 여러 문제를 담는 것.</string>
     
-    <string name="presentation_batch_g_beta_sheet_avoid_3">Unredacted logs or screenshots with private data.</string>
+    <string name="presentation_batch_g_beta_sheet_avoid_3">개인 정보가 가려지지 않은 로그나 스크린샷.</string>
     
-    <string name="presentation_batch_g_beta_sheet_avoid_title">Please avoid</string>
+    <string name="presentation_batch_g_beta_sheet_avoid_title">피해 주세요</string>
     
-    <string name="presentation_batch_g_beta_sheet_before_1">Search existing open and closed issues to avoid duplicates.</string>
+    <string name="presentation_batch_g_beta_sheet_before_1">중복을 피하려면 열려 있거나 닫힌 기존 이슈를 검색하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_before_2">Update to the latest XiangsuPlayer version and confirm the problem still happens.</string>
+    <string name="presentation_batch_g_beta_sheet_before_2">최신 XiangsuPlayer 버전으로 업데이트하고 문제가 계속되는지 확인하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_before_3">Restart the app and confirm the problem persists.</string>
+    <string name="presentation_batch_g_beta_sheet_before_3">앱을 다시 시작하고 문제가 계속되는지 확인하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_before_4">Try to reproduce it and write down the exact steps.</string>
+    <string name="presentation_batch_g_beta_sheet_before_4">문제를 재현해 보고 정확한 단계를 적어 두세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_before_title">Before opening an issue</string>
+    <string name="presentation_batch_g_beta_sheet_before_title">이슈를 열기 전에</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_actual">Current behavior:</string>
+    <string name="presentation_batch_g_beta_sheet_bug_actual">현재 동작:</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_expected">Expected behavior:</string>
+    <string name="presentation_batch_g_beta_sheet_bug_expected">기대 동작:</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_frequency">How often does it happen? Always / Sometimes / Rarely.</string>
+    <string name="presentation_batch_g_beta_sheet_bug_frequency">얼마나 자주 발생하나요? 항상 / 가끔 / 드물게.</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_logs">Logs / stack trace: if available.</string>
+    <string name="presentation_batch_g_beta_sheet_bug_logs">로그 / 스택 트레이스: 가능한 경우.</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_screenshot">Screenshot / video: if available.</string>
+    <string name="presentation_batch_g_beta_sheet_bug_screenshot">스크린샷 / 동영상: 가능한 경우.</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_steps">Steps to play/reproduce: 1. 2. 3.</string>
+    <string name="presentation_batch_g_beta_sheet_bug_steps">재생/재현 단계: 1. 2. 3.</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_summary">Short summary:</string>
+    <string name="presentation_batch_g_beta_sheet_bug_summary">간단한 요약:</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_summary_text">Copy these fields when something behaves incorrectly or crashes.</string>
+    <string name="presentation_batch_g_beta_sheet_bug_summary_text">동작이 잘못되거나 크래시가 발생하면 이 항목들을 복사하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_template_title">Bug Report</string>
+    <string name="presentation_batch_g_beta_sheet_bug_template_title">버그 신고</string>
     
-    <string name="presentation_batch_g_beta_sheet_bug_title">Bug report</string>
+    <string name="presentation_batch_g_beta_sheet_bug_title">버그 신고</string>
     
-    <string name="presentation_batch_g_beta_sheet_env_android">Android version:</string>
+    <string name="presentation_batch_g_beta_sheet_env_android">Android 버전:</string>
     
-    <string name="presentation_batch_g_beta_sheet_env_device">Device model:</string>
+    <string name="presentation_batch_g_beta_sheet_env_device">기기 모델:</string>
     
-    <string name="presentation_batch_g_beta_sheet_env_extra">Extra context: SD card usage, special settings, permissions, etc.</string>
+    <string name="presentation_batch_g_beta_sheet_env_extra">추가 정보: SD 카드 사용, 특별 설정, 권한 등.</string>
     
-    <string name="presentation_batch_g_beta_sheet_env_source">Install source: GitHub Release, debug build, nightly build, etc.</string>
+    <string name="presentation_batch_g_beta_sheet_env_source">설치 경로: GitHub Release, 디버그 빌드, 나이틀리 빌드 등.</string>
     
-    <string name="presentation_batch_g_beta_sheet_env_title">Environment</string>
+    <string name="presentation_batch_g_beta_sheet_env_title">환경</string>
     
-    <string name="presentation_batch_g_beta_sheet_env_version">XiangsuPlayer version:</string>
+    <string name="presentation_batch_g_beta_sheet_env_version">XiangsuPlayer 버전:</string>
     
-    <string name="presentation_batch_g_beta_sheet_expect_summary">What beta builds can change, break, or improve while testing.</string>
+    <string name="presentation_batch_g_beta_sheet_expect_summary">테스트 중 베타 빌드에서 달라지거나 깨지거나 개선될 수 있는 부분.</string>
     
-    <string name="presentation_batch_g_beta_sheet_feature_alternatives">Alternatives considered: Any other approaches?</string>
+    <string name="presentation_batch_g_beta_sheet_feature_alternatives">검토한 대안: 다른 접근 방식이 있나요?</string>
     
-    <string name="presentation_batch_g_beta_sheet_feature_mockup">Mockup or reference image if available.</string>
+    <string name="presentation_batch_g_beta_sheet_feature_mockup">가능한 경우 목업이나 참고 이미지.</string>
     
-    <string name="presentation_batch_g_beta_sheet_feature_problem">Problem statement: What problem are you trying to solve?</string>
+    <string name="presentation_batch_g_beta_sheet_feature_problem">문제 정의: 어떤 문제를 해결하려 하나요?</string>
     
-    <string name="presentation_batch_g_beta_sheet_feature_scope">Scope: Which screens or flows are affected?</string>
+    <string name="presentation_batch_g_beta_sheet_feature_scope">범위: 어떤 화면이나 흐름이 영향을 받나요?</string>
     
-    <string name="presentation_batch_g_beta_sheet_feature_solution">Proposed solution: How should it work?</string>
+    <string name="presentation_batch_g_beta_sheet_feature_solution">제안 해결책: 어떻게 동작해야 하나요?</string>
     
-    <string name="presentation_batch_g_beta_sheet_feature_summary">Copy these fields when you want a new feature or improvement.</string>
+    <string name="presentation_batch_g_beta_sheet_feature_summary">새 기능이나 개선을 원할 때 이 항목들을 복사하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_feature_title">Feature request</string>
+    <string name="presentation_batch_g_beta_sheet_feature_title">기능 요청</string>
     
-    <string name="presentation_batch_g_beta_sheet_github_body">Search first, then open a focused report for bugs, crashes, requests, or questions.</string>
+    <string name="presentation_batch_g_beta_sheet_github_body">먼저 검색한 뒤 버그, 크래시, 요청 또는 질문에 대해 명확한 보고서를 작성하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_github_title">GitHub issue shortcut</string>
+    <string name="presentation_batch_g_beta_sheet_github_title">GitHub 이슈 바로가기</string>
     
-    <string name="presentation_batch_g_beta_sheet_issue_type_bug">Bug report: Something behaves incorrectly.</string>
+    <string name="presentation_batch_g_beta_sheet_issue_type_bug">버그 신고: 무언가 잘못 동작합니다.</string>
     
-    <string name="presentation_batch_g_beta_sheet_issue_type_feature">Feature request: Add a new feature or improvement.</string>
+    <string name="presentation_batch_g_beta_sheet_issue_type_feature">기능 요청: 새 기능이나 개선을 추가합니다.</string>
     
-    <string name="presentation_batch_g_beta_sheet_issue_type_question">Question: Use Discussions if enabled, or open an issue with a question label.</string>
+    <string name="presentation_batch_g_beta_sheet_issue_type_question">질문: Discussions가 활성화되어 있으면 사용하고, 아니면 질문 라벨로 이슈를 여세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_issue_type_title">Which issue type?</string>
+    <string name="presentation_batch_g_beta_sheet_issue_type_title">어떤 이슈 유형인가요?</string>
     
-    <string name="presentation_batch_g_beta_sheet_nightly_access">Access them from the repository\'s GitHub Actions workflow artifacts if available.</string>
+    <string name="presentation_batch_g_beta_sheet_nightly_access">가능한 경우 저장소의 GitHub Actions 워크플로 아티팩트에서 접근할 수 있습니다.</string>
     
-    <string name="presentation_batch_g_beta_sheet_nightly_body">Nightly builds are generated from the latest commit and may contain unfinished changes, temporary bugs, or regressions. They are more experimental than official releases.</string>
+    <string name="presentation_batch_g_beta_sheet_nightly_body">나이틀리 빌드는 최신 커밋에서 생성되며 미완성 변경, 임시 버그 또는 회귀가 포함될 수 있습니다. 공식 릴리스보다 실험적입니다.</string>
     
-    <string name="presentation_batch_g_beta_sheet_nightly_report_body">When reporting an issue from a nightly build, always mention that it happened on a nightly build, not on the official release. Include the build date, workflow run name or number, or commit SHA if possible. Also check if the same problem happens on the latest official release.</string>
+    <string name="presentation_batch_g_beta_sheet_nightly_report_body">나이틀리 빌드에서 문제를 신고할 때는 항상 공식 릴리스가 아닌 나이틀리 빌드에서 발생했음을 밝히세요. 가능하면 빌드 날짜, 워크플로 실행 이름이나 번호, 커밋 SHA를 포함하세요. 같은 문제가 최신 공식 릴리스에서도 발생하는지도 확인하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_nightly_report_title">Reporting nightly issues</string>
+    <string name="presentation_batch_g_beta_sheet_nightly_report_title">나이틀리 문제 신고</string>
     
-    <string name="presentation_batch_g_beta_sheet_nightly_summary">How nightlies differ from releases, and what to include when they break.</string>
+    <string name="presentation_batch_g_beta_sheet_nightly_summary">나이틀리가 릴리스와 어떻게 다르고, 문제가 생겼을 때 무엇을 포함해야 하는지.</string>
     
-    <string name="presentation_batch_g_beta_sheet_nightly_title">Nightly builds</string>
+    <string name="presentation_batch_g_beta_sheet_nightly_title">나이틀리 빌드</string>
     
-    <string name="presentation_batch_g_beta_sheet_privacy_body">Before posting logs, screenshots, or videos, remove personal or private information.</string>
+    <string name="presentation_batch_g_beta_sheet_privacy_body">로그, 스크린샷 또는 동영상을 게시하기 전에 개인 정보나 사적인 정보를 제거하세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_privacy_title">Privacy note</string>
+    <string name="presentation_batch_g_beta_sheet_privacy_title">개인정보 안내</string>
     
-    <string name="presentation_batch_g_beta_sheet_quality_summary">Make the report easy to triage and safe to share.</string>
+    <string name="presentation_batch_g_beta_sheet_quality_summary">보고서를 분류하기 쉽고 공유하기 안전하게 만드세요.</string>
     
-    <string name="presentation_batch_g_beta_sheet_quality_title">Titles, privacy, and scope</string>
+    <string name="presentation_batch_g_beta_sheet_quality_title">제목, 개인정보 및 범위</string>
     
-    <string name="presentation_batch_g_beta_sheet_report_summary">A quick checklist before opening a new issue.</string>
+    <string name="presentation_batch_g_beta_sheet_report_summary">새 이슈를 열기 전 빠른 점검 목록.</string>
     
-    <string name="presentation_batch_g_beta_sheet_title_example_1">Equalizer: Indicator shifts when switching preset tabs</string>
+    <string name="presentation_batch_g_beta_sheet_title_example_1">이퀄라이저: 프리셋 탭 전환 시 표시가 어긋남</string>
     
-    <string name="presentation_batch_g_beta_sheet_title_example_2">Search: History list does not appear for empty query</string>
+    <string name="presentation_batch_g_beta_sheet_title_example_2">검색: 빈 쿼리에서 기록 목록이 표시되지 않음</string>
     
-    <string name="presentation_batch_g_beta_sheet_title_example_3">Feature: Add \"Recently Added\" playlist sort option</string>
+    <string name="presentation_batch_g_beta_sheet_title_example_3">기능: “최근 추가됨” 플레이리스트 정렬 옵션 추가</string>
     
-    <string name="presentation_batch_g_beta_sheet_title_examples_title">Good issue titles</string>
+    <string name="presentation_batch_g_beta_sheet_title_examples_title">좋은 이슈 제목</string>
     
-    <string name="presentation_batch_g_cast_perm_nearby_desc">Needed to read and control your connected Bluetooth audio gear.</string>
+    <string name="presentation_batch_g_cast_perm_nearby_desc">연결된 Bluetooth 오디오 기기를 읽고 제어하는 데 필요합니다.</string>
     
-    <string name="presentation_batch_g_cast_perm_nearby_title">Nearby devices</string>
+    <string name="presentation_batch_g_cast_perm_nearby_title">주변 기기</string>
     
     <string-array name="presentation_batch_g_changelog_020_added">
-        <item>Chromecast support for casting audio from your device.</item>
-        <item>In-app changelog to keep you updated on the latest features.</item>
-        <item>Support for .LRC files, both embedded and external.</item>
-        <item>Offline lyrics support.</item>
-        <item>Synchronized lyrics (synced with the song).</item>
-        <item>New screen to view the full queue.</item>
-        <item>Reorder and remove songs from the queue.</item>
-        <item>Mini-player gestures (swipe down to close).</item>
-        <item>Added more material animations.</item>
-        <item>New settings to customize the look and feel.</item>
-        <item>New settings to clear the cache.</item>
+        <item>기기에서 오디오를 전송하는 Chromecast 지원.</item>
+        <item>최신 기능을 알려주는 앱 내 변경 내역.</item>
+        <item>내장 및 외부 .LRC 파일 지원.</item>
+        <item>오프라인 가사 지원.</item>
+        <item>동기화 가사(곡과 동기화됨).</item>
+        <item>전체 대기열을 볼 수 있는 새 화면.</item>
+        <item>대기열에서 곡 순서 변경 및 삭제.</item>
+        <item>미니 플레이어 제스처(아래로 스와이프하여 닫기).</item>
+        <item>다양한 머티리얼 애니메이션 추가.</item>
+        <item>모양과 느낌을 사용자 지정하는 새 설정.</item>
+        <item>캐시를 지우는 새 설정.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_020_changed">
-        <item>Complete redesign of the user interface.</item>
-        <item>Complete redesign of the player.</item>
-        <item>Performance improvements in the library.</item>
-        <item>Improved application startup speed.</item>
-        <item>The AI now provides better results.</item>
+        <item>사용자 인터페이스 전면 재디자인.</item>
+        <item>플레이어 전면 재디자인.</item>
+        <item>라이브러리 성능 개선.</item>
+        <item>앱 시작 속도 개선.</item>
+        <item>AI가 더 나은 결과를 제공합니다.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_020_fixed">
-        <item>Fixed various bugs in the tag editor.</item>
-        <item>Fixed a bug where the playback notification was not clearing.</item>
-        <item>Fixed several bugs that caused the app to crash.</item>
+        <item>태그 편집기의 여러 버그 수정.</item>
+        <item>재생 알림이 사라지지 않던 버그 수정.</item>
+        <item>앱이 종료되던 여러 버그 수정.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_fixes">
-        <item>Resolved metadata quirks so song details stay accurate everywhere.</item>
-        <item>Restored notification shortcuts so they reliably jump back into playback.</item>
+        <item>어디서나 곡 정보가 정확하게 유지되도록 메타데이터 문제 해결.</item>
+        <item>알림 바로가기로 재생 화면에 안정적으로 돌아가도록 복원.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_improvements">
-        <item>Refined the overall Material 3 UI for a cleaner and more cohesive experience.</item>
-        <item>Metadata editing now supports cover art change.</item>
-        <item>Smoothed out animations and transitions across the app for more fluid navigation.</item>
-        <item>Enhanced the artist screen layout with richer details and polish.</item>
-        <item>Upgraded DailyMix and YourMix generation with smarter, more diverse selections.</item>
-        <item>Strengthened the AI playlist generation.</item>
-        <item>Improved search relevance and presentation for faster discovery.</item>
-        <item>Expanded support for a broader range of audio file formats.</item>
+        <item>더 깔끔하고 일관된 경험을 위해 전체 Material 3 UI 개선.</item>
+        <item>메타데이터 편집에서 커버 아트 변경을 지원합니다.</item>
+        <item>더 유연한 탐색을 위해 앱 전반의 애니메이션과 전환을 부드럽게 개선.</item>
+        <item>아티스트 화면 레이아웃을 더 풍부한 정보와 세련된 디자인으로 개선.</item>
+        <item>더 똑똑하고 다양한 선곡으로 DailyMix와 YourMix 생성 업그레이드.</item>
+        <item>AI 플레이리스트 생성 기능 강화.</item>
+        <item>더 빠른 탐색을 위해 검색 정확도와 표시 방식 개선.</item>
+        <item>더 다양한 오디오 파일 형식 지원 확대.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_whats_new">
-        <item>Introduced a richer listening stats hub with deeper insights into your sessions.</item>
-        <item>Launched a floating quick player to instantly open and preview local files.</item>
-        <item>Added a folders tab with a tree-style navigator and playlist-ready view.</item>
+        <item>더 깊은 청취 세션 분석을 제공하는 풍부한 청취 통계 허브 도입.</item>
+        <item>로컬 파일을 즉시 열고 미리 들을 수 있는 플로팅 퀵 플레이어 출시.</item>
+        <item>트리형 탐색기와 플레이리스트 보기를 지원하는 폴더 탭 추가.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_040_highlights">
-        <item>Major navigation redesign</item>
-        <item>New file explorer for choosing source directories</item>
-        <item>New Connectivity and casting functionalities</item>
-        <item>Seamless continuity between remote devices</item>
-        <item>Gapless transition between songs</item>
-        <item>Crossfade control</item>
-        <item>New Custom Transitions feature (only for playlists)</item>
-        <item>Keep playing after closed the app</item>
-        <item>UI Optimizations</item>
-        <item>Improved stats feature</item>
-        <item>Redesigned Queue control with more features</item>
-        <item>Improved different filetypes support for playing and metadata editing</item>
-        <item>Improved permission controller</item>
-        <item>Minor bug fixes</item>
+        <item>대규모 탐색 재디자인</item>
+        <item>소스 디렉터리를 선택하는 새 파일 탐색기</item>
+        <item>새로운 연결 및 캐스팅 기능</item>
+        <item>원격 기기 간 매끄러운 연속성</item>
+        <item>곡 간 끊김 없는 전환</item>
+        <item>크로스페이드 제어</item>
+        <item>새로운 사용자 지정 전환 기능(플레이리스트 전용)</item>
+        <item>앱을 닫아도 계속 재생</item>
+        <item>UI 최적화</item>
+        <item>통계 기능 개선</item>
+        <item>더 많은 기능을 갖춘 대기열 제어 재디자인</item>
+        <item>재생 및 메타데이터 편집을 위한 다양한 파일 형식 지원 개선</item>
+        <item>권한 관리 개선</item>
+        <item>사소한 버그 수정</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_fixes">
-        <item>Casting Stability Improvements</item>
-        <item>Player Sheet Stability</item>
-        <item>General Bug Fixes &amp; Cleanup</item>
+        <item>캐스팅 안정성 개선</item>
+        <item>플레이어 패널 안정성</item>
+        <item>일반 버그 수정 및 정리</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_highlights">
-        <item>Material 3 Expressive UI Update</item>
-        <item>10-band Equalizer &amp; Effects</item>
-        <item>New Library Sync Flow</item>
-        <item>AI Integration (Gemini Models)</item>
-        <item>M3U Playlist Import/Export</item>
-        <item>Deezer Artist Artwork Integration</item>
-        <item>Custom Playlist Covers</item>
+        <item>Material 3 Expressive UI 업데이트</item>
+        <item>10밴드 이퀄라이저 및 효과</item>
+        <item>새로운 라이브러리 동기화 흐름</item>
+        <item>AI 연동(Gemini 모델)</item>
+        <item>M3U 플레이리스트 가져오기/내보내기</item>
+        <item>Deezer 아티스트 이미지 연동</item>
+        <item>사용자 지정 플레이리스트 커버</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_improvements">
-        <item>Settings Architecture Refactor</item>
-        <item>Queue &amp; Player Animations</item>
-        <item>Baseline Profiles &amp; Performance</item>
-        <item>Better Lyrics System with Sync Offset</item>
+        <item>설정 구조 리팩터링</item>
+        <item>대기열 및 플레이어 애니메이션</item>
+        <item>베이스라인 프로필 및 성능</item>
+        <item>싱크 오프셋을 지원하는 개선된 가사 시스템</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_060_fixes">
-        <item>Queue and shuffle behavior is now more stable and predictable.</item>
-        <item>Several background playback and casting edge cases were fixed.</item>
-        <item>Sleep Timer, Files tab navigation, and album artist crash issues were fixed.</item>
-        <item>Widget loading and service stability were improved to reduce overheating/memory issues.</item>
-        <item>General bug fixes and UI polish across the app.</item>
+        <item>대기열과 셔플 동작이 더 안정적이고 예측 가능해졌습니다.</item>
+        <item>여러 백그라운드 재생 및 캐스팅 예외 상황 수정.</item>
+        <item>Sleep Timer, 파일 탭 탐색, 앨범 아티스트 관련 앱 종료 문제 수정.</item>
+        <item>발열과 메모리 문제를 줄이기 위해 위젯 로딩과 서비스 안정성 개선.</item>
+        <item>앱 전반의 일반 버그 수정과 UI 다듬기.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_060_improvements">
-        <item>Big performance pass across startup, library, queue, and player interactions.</item>
-        <item>Player, Cast, Lyrics, Artist, and Genre surfaces were redesigned for smoother use.</item>
-        <item>Navigation and search flows are more reliable, with safer route handling.</item>
-        <item>Audio playback compatibility improved for more devices and formats.</item>
-        <item>Multi-selection workflows were expanded across songs, albums, and playlists.</item>
+        <item>시작, 라이브러리, 재생 대기열, 플레이어 상호작용 전반의 대규모 성능 개선.</item>
+        <item>더 부드러운 사용을 위해 플레이어, 캐스트, 가사, 아티스트, 장르 화면을 재디자인했습니다.</item>
+        <item>더 안전한 경로 처리로 탐색과 검색 흐름의 안정성 향상.</item>
+        <item>더 많은 기기와 포맷에서 오디오 재생 호환성 개선.</item>
+        <item>곡, 앨범, 플레이리스트 전반으로 다중 선택 작업 확장.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_060_whats_new">
-        <item>Android Auto support is now available for in-car playback.</item>
-        <item>Wear OS support is live, including better watch-to-phone playback controls.</item>
-        <item>Cloud integrations expanded with Telegram, NetEase, QQ Music, and Google Drive improvements.</item>
-        <item>Recently Played and persistent queue restoration keep your listening session ready.</item>
-        <item>Backup &amp; Restore v3 and account management tools are now included.</item>
-        <item>Lyrics got smarter with manual search fallback and storage improvements.</item>
+        <item>차량 재생을 위한 Android Auto 지원이 추가되었습니다.</item>
+        <item>워치에서 휴대폰으로의 재생 제어 개선을 포함해 Wear OS 지원이 시작되었습니다.</item>
+        <item>Telegram, NetEase, QQ Music, Google Drive 개선으로 클라우드 연동 확장.</item>
+        <item>최근 재생과 대기열 복원 기능으로 청취 세션이 유지됩니다.</item>
+        <item>Backup &amp; Restore v3와 계정 관리 도구가 추가되었습니다.</item>
+        <item>수동 검색 대체와 저장 개선으로 가사가 더 똑똑해졌습니다.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_added">
-        <item>Spanish</item>
-        <item>French</item>
-        <item>Russian</item>
-        <item>Simplified Chinese</item>
-        <item>Indonesian</item>
-        <item>Italian</item>
+        <item>스페인어</item>
+        <item>프랑스어</item>
+        <item>러시아어</item>
+        <item>중국어 간체</item>
+        <item>인도네시아어</item>
+        <item>이탈리아어</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_fixes">
-        <item>Playback: Fixed stuttering in Opus/MP3, ReplayGain errors during crossfades, and startup issues on Samsung decoders.</item>
-        <item>Stability: Eliminated crashes on startup, artist navigation, and Android 12+ devices.</item>
-        <item>UI: Fixed cover art flickering, text overflow in non-Latin scripts, and navigation bar/miniplayer behavior.</item>
-        <item>Security: Hardened credential handling, storage permissions, and media server communication.</item>
+        <item>재생: Opus/MP3 끊김, 크로스페이드 중 ReplayGain 오류, 삼성 디코더의 시작 문제 수정.</item>
+        <item>안정성: 시작, 아티스트 탐색, Android 12+ 기기의 앱 종료 문제 해결.</item>
+        <item>UI: 커버 아트 깜빡임, 비라틴 문자 텍스트 넘침, 탐색 표시줄 및 미니 플레이어 동작 수정.</item>
+        <item>보안: 자격 증명 처리, 저장 권한, 미디어 서버 통신 강화.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_improvements">
-        <item>Audio Engine: Complete overhaul with support for more formats (MIDI, ALAC, M4A) and decoder optimization.</item>
-        <item>Efficiency: Drastic energy consumption reduction, overheating fixes, and background task optimization (SyncWorker).</item>
-        <item>Database: Massive query optimizations and redesigned cover art cache to prevent data loss.</item>
-        <item>Startup: Improved loading time via Baseline Profile optimization.</item>
+        <item>오디오 엔진: 더 많은 포맷(MIDI, ALAC, M4A) 지원과 디코더 최적화로 전면 개편.</item>
+        <item>효율성: 에너지 소비 대폭 감소, 발열 문제 수정, 백그라운드 작업 최적화(SyncWorker).</item>
+        <item>데이터베이스: 대규모 쿼리 최적화와 데이터 손실 방지를 위한 커버 아트 캐시 재설계.</item>
+        <item>시작: 베이스라인 프로필 최적화로 로딩 시간 개선.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_070_whats_new">
-        <item>Wear OS: Music transfer, local playback, queue sync, and remote control from watch.</item>
-        <item>AI: Groq AI and OpenRouter (experimental) integration with token optimization.</item>
-        <item>Cloud: Jellyfin support added.</item>
-        <item>Lyrics: Synced translation with dedicated toggle, Kugou LRC format support, text alignment customization, and improved remote loading.</item>
-        <item>UI/UX: Compact navigation bar mode, dynamic themes from album art palette, marquee for long titles, and new sorting options.</item>
-        <item>Telegram: Native topics support and enhanced display modes.</item>
+        <item>Wear OS: 음악 전송, 로컬 재생, 대기열 동기화, 워치에서 원격 제어.</item>
+        <item>AI: 토큰 최적화를 지원하는 Groq AI 및 OpenRouter(실험적) 연동.</item>
+        <item>클라우드: Jellyfin 지원 추가.</item>
+        <item>가사: 전용 토글이 있는 동기화 번역, Kugou LRC 형식 지원, 텍스트 정렬 사용자 지정, 원격 로딩 개선.</item>
+        <item>UI/UX: 컴팩트 탐색 표시줄 모드, 앨범 아트 팔레트 기반 동적 테마, 긴 제목 흐르기 효과, 새로운 정렬 옵션.</item>
+        <item>Telegram: 네이티브 토픽 지원과 개선된 표시 모드.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_080_fixes">
-        <item>Fixed the home screen not resetting to the top when returning from other pages.</item>
-        <item>Fixed Bilibili tracks in playback history failing to play.</item>
+        <item>다른 페이지에서 돌아올 때 홈 화면이 맨 위로 초기화되지 않던 문제 수정.</item>
+        <item>재생 기록의 Bilibili 트랙이 재생되지 않던 문제 수정.</item>
     </string-array>
     
     
     
     <string-array name="presentation_batch_g_changelog_080_improvements">
-        <item>Lyrics: Fixed long lyric lines being clipped on phone screens with more accurate line-wrap measurement.</item>
-        <item>Player: The mini player now transitions with a springy sliding animation when the bottom bar is hidden.</item>
-        <item>Device capabilities: The format counter now includes the software-decoded DFF/DSF/DIF formats.</item>
-        <item>Localization: Completed Chinese translations for the cloud streaming sheet and appearance settings (disable blur, show scrollbar, collage patterns, show lyrics track info).</item>
-        <item>Settings: Moved the "Show lyrics track info" option into the lyrics section of appearance settings.</item>
+        <item>가사: 더 정확한 줄바꿈 측정으로 휴대폰 화면에서 긴 가사 줄이 잘리던 문제 수정.</item>
+        <item>플레이어: 하단 바가 숨겨지면 미니 플레이어가 탄성 있는 슬라이드 애니메이션으로 전환됩니다.</item>
+        <item>기기 기능: 형식 카운터에 소프트웨어 디코딩 DFF/DSF/DIF 형식이 포함됩니다.</item>
+        <item>현지화: 클라우드 스트리밍 패널과 모양 설정의 중국어 번역 완료(블러 끄기, 스크롤바 표시, 콜라주 패턴, 가사 트랙 정보 표시).</item>
+        <item>설정: “가사 트랙 정보 표시” 옵션을 모양 설정의 가사 섹션으로 이동.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_080_whats_new">
-        <item>Lyrics: The dynamic lyrics blur effect is now enabled by default (adjustable in developer settings).</item>
-        <item>Dot Mode: The bottom navigation bar is now automatically hidden in Dot e-ink mode when using online sources.</item>
+        <item>가사: 동적 가사 블러 효과가 기본으로 켜집니다(개발자 설정에서 조정 가능).</item>
+        <item>닷 모드: 온라인 소스를 사용할 때 닷 전자잉크 모드에서 하단 탐색 표시줄이 자동으로 숨겨집니다.</item>
     </string-array>
     
-    <string name="sort_option_album">Album</string>
+    <string name="sort_option_album">앨범</string>
     
-    <string name="sort_option_album_desc">Album (Z-A)</string>
+    <string name="sort_option_album_desc">앨범(Z-A)</string>
     
-    <string name="sort_option_artist">Artist</string>
+    <string name="sort_option_artist">아티스트</string>
     
-    <string name="sort_option_artist_desc">Artist (Z-A)</string>
+    <string name="sort_option_artist_desc">아티스트(Z-A)</string>
     
-    <string name="sort_option_custom_order">Custom Order</string>
+    <string name="sort_option_custom_order">사용자 지정 순서</string>
     
-    <string name="sort_option_date_added">Date Added</string>
+    <string name="sort_option_date_added">추가한 날짜</string>
     
-    <string name="sort_option_date_added_oldest">Date Added (Oldest First)</string>
-    <string name="sort_option_date_modified">Date Modified</string>
-    <string name="sort_option_date_modified_oldest">Date Modified (Oldest First)</string>
+    <string name="sort_option_date_added_oldest">추가한 날짜(오래된 순)</string>
+    <string name="sort_option_date_modified">수정한 날짜</string>
+    <string name="sort_option_date_modified_oldest">수정한 날짜(오래된 순)</string>
     
-    <string name="sort_option_date_created">Date Created</string>
+    <string name="sort_option_date_created">만든 날짜</string>
     
-    <string name="sort_option_date_created_oldest">Date Created (Oldest First)</string>
+    <string name="sort_option_date_created_oldest">만든 날짜(오래된 순)</string>
     
-    <string name="sort_option_date_liked">Date Liked</string>
+    <string name="sort_option_date_liked">좋아요한 날짜</string>
     
-    <string name="sort_option_date_liked_oldest">Date Liked (Oldest First)</string>
+    <string name="sort_option_date_liked_oldest">좋아요한 날짜(오래된 순)</string>
     
-    <string name="sort_option_default_order">Default Order</string>
+    <string name="sort_option_default_order">기본 순서</string>
     
-    <string name="sort_option_duration">Duration</string>
+    <string name="sort_option_duration">길이</string>
     
-    <string name="sort_option_duration_shortest">Duration (Shortest First)</string>
+    <string name="sort_option_duration_shortest">길이(짧은 순)</string>
     
-    <string name="sort_option_fewest_songs">Fewest Songs</string>
+    <string name="sort_option_fewest_songs">곡 적은 순</string>
     
-    <string name="sort_option_fewest_subfolders">Fewest Subfolders</string>
+    <string name="sort_option_fewest_subfolders">하위 폴더 적은 순</string>
     
-    <string name="sort_option_most_songs">Most Songs</string>
+    <string name="sort_option_most_songs">곡 많은 순</string>
     
-    <string name="sort_option_most_subfolders">Most Subfolders</string>
+    <string name="sort_option_most_subfolders">하위 폴더 많은 순</string>
     
     <string name="sort_option_name">Name</string>
     
-    <string name="sort_option_name_az">Name (A-Z)</string>
+    <string name="sort_option_name_az">이름(A-Z)</string>
     
-    <string name="sort_option_name_za">Name (Z-A)</string>
+    <string name="sort_option_name_za">이름(Z-A)</string>
     
-    <string name="sort_option_number_of_songs">Number of Songs</string>
+    <string name="sort_option_number_of_songs">곡 수</string>
     
-    <string name="sort_option_number_of_songs_fewest">Number of Songs (Fewest)</string>
+    <string name="sort_option_number_of_songs_fewest">곡 수(적은 순)</string>
     
-    <string name="sort_option_number_of_songs_most">Number of Songs (Most)</string>
+    <string name="sort_option_number_of_songs_most">곡 수(많은 순)</string>
     
-    <string name="sort_option_release_year">Release Year</string>
+    <string name="sort_option_release_year">출시 연도</string>
     
-    <string name="sort_option_release_year_oldest">Release Year (Oldest First)</string>
+    <string name="sort_option_release_year_oldest">출시 연도(오래된 순)</string>
     
-    <string name="sort_option_song_count">Song Count</string>
+    <string name="sort_option_song_count">곡 수</string>
     
-    <string name="sort_option_subfolder_count">Subfolder Count</string>
+    <string name="sort_option_subfolder_count">하위 폴더 수</string>
 
-    <string name="sort_option_title">Title</string>
+    <string name="sort_option_title">제목</string>
     
-    <string name="sort_option_title_az">Title (A-Z)</string>
+    <string name="sort_option_title_az">제목(A-Z)</string>
     
-    <string name="sort_option_title_za">Title (Z-A)</string>
+    <string name="sort_option_title_za">제목(Z-A)</string>
     
 </resources>

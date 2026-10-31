@@ -86,23 +86,23 @@
     <string name="presentation_batch_g_stats_top_three_share_line">Top 3 trek menyumbang %1$d%% dari waktu mendengarkan Anda.</string>
     <string name="presentation_batch_g_stats_avg_plays_per_track">Rata-rata putaran/trek</string>
     <string name="presentation_batch_g_stats_unique_tracks">Trek unik</string>
-    <string name="presentation_batch_g_stats_top_three_share_label">Top 3 share</string>
+    <string name="presentation_batch_g_stats_top_three_share_label">Pangsa Top 3</string>
     <string name="presentation_batch_g_stats_avatar_placeholder">\?</string>
     <string name="presentation_batch_g_device_info_title">Info Perangkat</string>
     <string name="presentation_batch_g_device_supported_codecs_title">Codec Audio yang Didukung</string>
     <string name="presentation_batch_g_device_section_audio_output">Output Audio</string>
-    <string name="presentation_batch_g_device_section_exoplayer">ExoPlayer Engine</string>
-    <string name="presentation_batch_g_device_label_sample_rate">Sample Rate</string>
+    <string name="presentation_batch_g_device_section_exoplayer">Mesin ExoPlayer</string>
+    <string name="presentation_batch_g_device_label_sample_rate">Laju Sampel</string>
     <string name="presentation_batch_g_device_label_frames_per_buffer">Frame Per Buffer</string>
-    <string name="presentation_batch_g_device_label_low_latency">Low Latency Support</string>
-    <string name="presentation_batch_g_device_label_pro_audio">Pro Audio Support</string>
+    <string name="presentation_batch_g_device_label_low_latency">Dukungan Latensi Rendah</string>
+    <string name="presentation_batch_g_device_label_pro_audio">Dukungan Audio Pro</string>
     <string name="presentation_batch_g_device_label_version">Versi</string>
     <string name="presentation_batch_g_device_label_active_renderers">Renderer Aktif</string>
     <string name="presentation_batch_g_device_label_decoder_counters">Penghitung Dekoder</string>
     <string name="presentation_batch_g_device_value_hz">%1$d Hz</string>
     <string name="presentation_batch_g_yes">Ya</string>
     <string name="presentation_batch_g_no">Tidak</string>
-    <string name="presentation_batch_g_device_cd_hw_accelerated">Hardware Accelerated</string>
+    <string name="presentation_batch_g_device_cd_hw_accelerated">Akselerasi perangkat keras</string>
     <string name="presentation_batch_g_device_key_manufacturer">Manufaktur</string>
     <string name="presentation_batch_g_device_key_model">Model</string>
     <string name="presentation_batch_g_device_key_brand">Merek</string>
@@ -195,7 +195,7 @@
     <string name="presentation_batch_g_artist_ex_3_out">Marshmello, Bastille</string>
     <string name="presentation_batch_g_artist_ex_4_in">\"Lagu (ft. B)\" oleh A</string>
     <string name="presentation_batch_g_artist_ex_4_out">A, B</string>
-    <string name="presentation_batch_g_artist_ex_5_in">\"AC\\DC\"</string>
+    <string name="presentation_batch_g_artist_ex_5_in">\"AC\DC\"</string>
     <string name="presentation_batch_g_artist_ex_5_out">AC/DC (diabaikan)</string>
     <string name="presentation_batch_g_artist_topbar_title">Artis</string>
     <string name="presentation_batch_g_artist_rescan_banner_title">Pemindaian Ulang Diperlukan</string>
@@ -207,10 +207,10 @@
     <string name="presentation_batch_g_topbar_cd_telegram">Telegram</string>
     <string name="presentation_batch_g_topbar_cd_changelog">Log Perubahan</string>
     <string name="presentation_batch_g_topbar_cd_settings">Pengaturan</string>
-    <string name="presentation_batch_g_lyrics_mode_synced">Synced</string>
+    <string name="presentation_batch_g_lyrics_mode_synced">Tersinkron</string>
     <string name="presentation_batch_g_lyrics_mode_static">Statis</string>
     <string name="presentation_batch_g_lyrics_cd_options">Opsi lirik</string>
-    <string name="presentation_batch_g_streaming_title">Cloud Streaming</string>
+    <string name="presentation_batch_g_streaming_title">Streaming Cloud</string>
     <string name="presentation_batch_g_streaming_subtitle">Stream musik dari akun cloud Anda</string>
     <string name="presentation_batch_g_sort_source">Sumber</string>
     <string name="presentation_batch_g_sort_order">Urutan</string>
@@ -220,7 +220,7 @@
     <string name="presentation_batch_g_sort_tap_ascending">Ketuk untuk beralih ke menaik</string>
     <string name="presentation_batch_g_sort_tap_descending">Ketuk untuk beralih ke menurun</string>
     <string name="presentation_batch_g_sort_keeps_order">Pengurutan ini mempertahankan urutan aslinya</string>
-    <string name="presentation_batch_g_cd_switch_on">Switch is on</string>
+    <string name="presentation_batch_g_cd_switch_on">Tombol aktif</string>
     <string name="presentation_batch_g_file_explorer_cd_close">Tutup</string>
     <string name="presentation_batch_g_file_explorer_cd_refresh">Segarkan</string>
     <string name="presentation_batch_g_file_explorer_cd_done">Selesai</string>
@@ -395,7 +395,7 @@
     <string name="presentation_batch_g_backup_cd_select_all">Pilih semua</string>
     <string name="presentation_batch_g_backup_cd_clear_selection">Bersihkan pilihan</string>
     <string name="presentation_batch_g_backup_entries_will_replace">%1$d entri · Akan menggantikan data saat ini</string>
-    <string name="presentation_batch_g_player_cd_cloud_stream">Cloud stream</string>
+    <string name="presentation_batch_g_player_cd_cloud_stream">Stream cloud</string>
     <string name="presentation_batch_g_player_cd_collapse">Ciutkan pemutar</string>
     <string name="presentation_batch_g_player_cd_cast">Cast</string>
     <string name="presentation_batch_g_player_cd_bluetooth">Bluetooth</string>
@@ -500,271 +500,271 @@
     <string name="presentation_batch_g_cast_nearby_title">Perangkat terdekat</string>
     <string name="artist_whitelist_add">Add</string>
     
-    <string name="artist_whitelist_add_title">Add Artist</string>
+    <string name="artist_whitelist_add_title">Tambah Artis</string>
     
-    <string name="artist_whitelist_current_title">Current Whitelist</string>
+    <string name="artist_whitelist_current_title">Daftar Putih Saat Ini</string>
     
-    <string name="artist_whitelist_empty">No artists in whitelist</string>
+    <string name="artist_whitelist_empty">Tidak ada artis dalam daftar putih</string>
     
-    <string name="artist_whitelist_hint">Enter artist name, e.g. AC/DC</string>
+    <string name="artist_whitelist_hint">Masukkan nama artis, mis. AC/DC</string>
     
-    <string name="artist_whitelist_remove">Remove %1$s</string>
+    <string name="artist_whitelist_remove">Hapus %1$s</string>
     
-    <string name="artist_whitelist_reset">Reset</string>
+    <string name="artist_whitelist_reset">Atur ulang</string>
     
-    <string name="artist_whitelist_reset_cancel">Cancel</string>
+    <string name="artist_whitelist_reset_cancel">Batal</string>
     
-    <string name="artist_whitelist_reset_confirm">Reset</string>
+    <string name="artist_whitelist_reset_confirm">Atur ulang</string>
     
-    <string name="artist_whitelist_reset_dialog_body">This will clear all whitelisted artists. A library rescan is required to take effect.</string>
+    <string name="artist_whitelist_reset_dialog_body">Ini akan menghapus semua artis dalam daftar putih. Pemindaian ulang pustaka diperlukan agar berlaku.</string>
     
-    <string name="artist_whitelist_reset_dialog_title">Reset whitelist?</string>
+    <string name="artist_whitelist_reset_dialog_title">Atur ulang daftar putih?</string>
     
-    <string name="artist_whitelist_section_subtitle">Artists in the whitelist are kept intact during library scanning and will never be split by delimiters. Use it for artist names that contain /, &amp;, + etc. (e.g. AC/DC, Tones &amp; I).</string>
+    <string name="artist_whitelist_section_subtitle">Artis dalam daftar putih tetap utuh saat pemindaian pustaka dan tidak akan pernah dipecah oleh pemisah. Gunakan untuk nama artis yang mengandung /, &amp;, +, dll. (mis. AC/DC, Tones &amp; I).</string>
     
-    <string name="artist_whitelist_section_title">About</string>
+    <string name="artist_whitelist_section_title">Tentang</string>
     
-    <string name="artist_whitelist_toast_added">Added to whitelist</string>
+    <string name="artist_whitelist_toast_added">Ditambahkan ke daftar putih</string>
     
-    <string name="artist_whitelist_toast_invalid">Artist already exists or name is invalid</string>
+    <string name="artist_whitelist_toast_invalid">Artis sudah ada atau nama tidak valid</string>
     
-    <string name="artist_whitelist_toolbar_title">Artist Split Whitelist</string>
+    <string name="artist_whitelist_toolbar_title">Daftar Putih Pemisahan Artis</string>
     
-    <string name="device_capabilities_advanced_diagnostics_description">Off by default. Records a short lag timeline for beta troubleshooting.</string>
+    <string name="device_capabilities_advanced_diagnostics_description">Nonaktif secara default. Merekam linimasa lag singkat untuk troubleshooting beta.</string>
     
-    <string name="device_capabilities_advanced_diagnostics_expires">Active until %1$s</string>
+    <string name="device_capabilities_advanced_diagnostics_expires">Aktif hingga %1$s</string>
     
-    <string name="device_capabilities_advanced_diagnostics_mark_lag">Mark lag now</string>
+    <string name="device_capabilities_advanced_diagnostics_mark_lag">Tandai lag sekarang</string>
     
-    <string name="device_capabilities_advanced_diagnostics_marked">Lag moment marked</string>
+    <string name="device_capabilities_advanced_diagnostics_marked">Momen lag ditandai</string>
     
-    <string name="device_capabilities_advanced_diagnostics_title">Advanced performance diagnostics</string>
+    <string name="device_capabilities_advanced_diagnostics_title">Diagnostik performa lanjutan</string>
     
-    <string name="device_capabilities_format_custom_decoder">PixelPlayer in-house DSD decoder</string>
+    <string name="device_capabilities_format_custom_decoder">Dekoder DSD internal PixelPlayer</string>
     
-    <string name="device_capabilities_report_copied">Report copied to clipboard</string>
+    <string name="device_capabilities_report_copied">Laporan disalin ke papan klip</string>
     
     <string name="device_capabilities_report_copy">Copy</string>
     
-    <string name="device_capabilities_report_description">Generate a shareable diagnostic report to help us classify playback or scan lag. It contains only device, library, and timing data — no file paths, titles, or artists.</string>
+    <string name="device_capabilities_report_description">Buat laporan diagnostik yang dapat dibagikan untuk membantu kami mengklasifikasikan lag pemutaran atau pemindaian. Laporan hanya berisi data perangkat, pustaka, dan waktu — tanpa jalur file, judul, atau artis.</string>
     
-    <string name="device_capabilities_report_generate">Generate report</string>
+    <string name="device_capabilities_report_generate">Buat laporan</string>
     
-    <string name="device_capabilities_report_regenerate">Regenerate</string>
+    <string name="device_capabilities_report_regenerate">Buat ulang</string>
     
-    <string name="device_capabilities_report_share">Share</string>
+    <string name="device_capabilities_report_share">Bagikan</string>
     
-    <string name="device_capabilities_report_share_title">PixelPlay performance report</string>
+    <string name="device_capabilities_report_share_title">Laporan performa PixelPlay</string>
     
-    <string name="device_capabilities_report_title">Performance report</string>
+    <string name="device_capabilities_report_title">Laporan performa</string>
     
-    <string name="presentation_batch_g_artist_item_whitelist">Artist Split Whitelist</string>
+    <string name="presentation_batch_g_artist_item_whitelist">Daftar Putih Pemisahan Artis</string>
     
-    <string name="presentation_batch_g_artist_whitelist_current_prefix">Current: %1$s</string>
+    <string name="presentation_batch_g_artist_whitelist_current_prefix">Saat ini: %1$s</string>
     
-    <string name="presentation_batch_g_artist_whitelist_none">Not set</string>
+    <string name="presentation_batch_g_artist_whitelist_none">Belum diatur</string>
     
-    <string name="presentation_batch_g_beta_sheet_report_body">Share steps to reproduce, expected results, actual results, and your device/OS details.</string>
+    <string name="presentation_batch_g_beta_sheet_report_body">Bagikan langkah reproduksi, hasil yang diharapkan, hasil aktual, dan detail perangkat/OS Anda.</string>
     
     <string-array name="presentation_batch_g_changelog_020_added">
-        <item>Chromecast support for casting audio from your device.</item>
-        <item>In-app changelog to keep you updated on the latest features.</item>
-        <item>Support for .LRC files, both embedded and external.</item>
-        <item>Offline lyrics support.</item>
-        <item>Synchronized lyrics (synced with the song).</item>
-        <item>New screen to view the full queue.</item>
-        <item>Reorder and remove songs from the queue.</item>
-        <item>Mini-player gestures (swipe down to close).</item>
-        <item>Added more material animations.</item>
-        <item>New settings to customize the look and feel.</item>
-        <item>New settings to clear the cache.</item>
+        <item>Dukungan Chromecast untuk mentransmisikan audio dari perangkat Anda.</item>
+        <item>Log perubahan dalam aplikasi agar Anda selalu tahu fitur terbaru.</item>
+        <item>Dukungan file .LRC, baik tersemat maupun eksternal.</item>
+        <item>Dukungan lirik offline.</item>
+        <item>Lirik tersinkronisasi (selaras dengan lagu).</item>
+        <item>Layar baru untuk melihat antrean lengkap.</item>
+        <item>Atur ulang dan hapus lagu dari antrean.</item>
+        <item>Gestur mini-player (geser ke bawah untuk menutup).</item>
+        <item>Menambahkan lebih banyak animasi material.</item>
+        <item>Pengaturan baru untuk menyesuaikan tampilan dan nuansa.</item>
+        <item>Pengaturan baru untuk menghapus cache.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_020_changed">
-        <item>Complete redesign of the user interface.</item>
-        <item>Complete redesign of the player.</item>
-        <item>Performance improvements in the library.</item>
-        <item>Improved application startup speed.</item>
-        <item>The AI now provides better results.</item>
+        <item>Desain ulang total antarmuka pengguna.</item>
+        <item>Desain ulang total pemutar.</item>
+        <item>Peningkatan performa di pustaka.</item>
+        <item>Kecepatan startup aplikasi ditingkatkan.</item>
+        <item>AI kini memberikan hasil yang lebih baik.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_020_fixed">
-        <item>Fixed various bugs in the tag editor.</item>
-        <item>Fixed a bug where the playback notification was not clearing.</item>
-        <item>Fixed several bugs that caused the app to crash.</item>
+        <item>Memperbaiki berbagai bug di editor tag.</item>
+        <item>Memperbaiki bug notifikasi pemutaran yang tidak hilang.</item>
+        <item>Memperbaiki beberapa bug yang menyebabkan aplikasi mogok.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_fixes">
-        <item>Resolved metadata quirks so song details stay accurate everywhere.</item>
-        <item>Restored notification shortcuts so they reliably jump back into playback.</item>
+        <item>Mengatasi keanehan metadata agar detail lagu tetap akurat di mana pun.</item>
+        <item>Memulihkan pintasan notifikasi agar dapat kembali ke pemutaran dengan andal.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_improvements">
-        <item>Refined the overall Material 3 UI for a cleaner and more cohesive experience.</item>
-        <item>Metadata editing now supports cover art change.</item>
-        <item>Smoothed out animations and transitions across the app for more fluid navigation.</item>
-        <item>Enhanced the artist screen layout with richer details and polish.</item>
-        <item>Upgraded DailyMix and YourMix generation with smarter, more diverse selections.</item>
-        <item>Strengthened the AI playlist generation.</item>
-        <item>Improved search relevance and presentation for faster discovery.</item>
-        <item>Expanded support for a broader range of audio file formats.</item>
+        <item>UI Material 3 secara keseluruhan disempurnakan agar lebih bersih dan kohesif.</item>
+        <item>Pengeditan metadata kini mendukung perubahan sampul.</item>
+        <item>Animasi dan transisi di seluruh aplikasi dibuat lebih halus untuk navigasi yang lebih lancar.</item>
+        <item>Tata letak layar artis ditingkatkan dengan detail dan polesan yang lebih kaya.</item>
+        <item>Pembuatan DailyMix dan YourMix ditingkatkan dengan pilihan yang lebih cerdas dan beragam.</item>
+        <item>Pembuatan playlist AI diperkuat.</item>
+        <item>Relevansi dan tampilan pencarian ditingkatkan agar penemuan lebih cepat.</item>
+        <item>Dukungan diperluas untuk lebih banyak format file audio.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_030_whats_new">
-        <item>Introduced a richer listening stats hub with deeper insights into your sessions.</item>
-        <item>Launched a floating quick player to instantly open and preview local files.</item>
-        <item>Added a folders tab with a tree-style navigator and playlist-ready view.</item>
+        <item>Pusat statistik mendengarkan yang lebih kaya dengan wawasan lebih mendalam tentang sesi Anda.</item>
+        <item>Pemutar cepat mengambang untuk langsung membuka dan mempratinjau file lokal.</item>
+        <item>Tab Folder baru dengan navigasi bergaya pohon dan tampilan siap playlist.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_040_highlights">
-        <item>Major navigation redesign</item>
-        <item>New file explorer for choosing source directories</item>
-        <item>New Connectivity and casting functionalities</item>
-        <item>Seamless continuity between remote devices</item>
-        <item>Gapless transition between songs</item>
-        <item>Crossfade control</item>
-        <item>New Custom Transitions feature (only for playlists)</item>
-        <item>Keep playing after closed the app</item>
-        <item>UI Optimizations</item>
-        <item>Improved stats feature</item>
-        <item>Redesigned Queue control with more features</item>
-        <item>Improved different filetypes support for playing and metadata editing</item>
-        <item>Improved permission controller</item>
-        <item>Minor bug fixes</item>
+        <item>Redesain navigasi besar</item>
+        <item>File explorer baru untuk memilih direktori sumber</item>
+        <item>Fungsi konektivitas dan casting baru</item>
+        <item>Kesinambungan mulus antar perangkat jarak jauh</item>
+        <item>Transisi tanpa jeda antar lagu</item>
+        <item>Kontrol crossfade</item>
+        <item>Fitur Transisi Kustom baru (khusus playlist)</item>
+        <item>Tetap diputar setelah aplikasi ditutup</item>
+        <item>Optimasi UI</item>
+        <item>Fitur statistik ditingkatkan</item>
+        <item>Kontrol antrean didesain ulang dengan lebih banyak fitur</item>
+        <item>Dukungan berbagai jenis file ditingkatkan untuk pemutaran dan pengeditan metadata</item>
+        <item>Pengontrol izin ditingkatkan</item>
+        <item>Perbaikan bug kecil</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_fixes">
-        <item>Casting Stability Improvements</item>
-        <item>Player Sheet Stability</item>
-        <item>General Bug Fixes &amp; Cleanup</item>
+        <item>Peningkatan Stabilitas Casting</item>
+        <item>Stabilitas Panel Pemutar</item>
+        <item>Perbaikan Bug Umum &amp; Pembersihan</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_highlights">
-        <item>Material 3 Expressive UI Update</item>
-        <item>10-band Equalizer &amp; Effects</item>
-        <item>New Library Sync Flow</item>
-        <item>AI Integration (Gemini Models)</item>
-        <item>M3U Playlist Import/Export</item>
-        <item>Deezer Artist Artwork Integration</item>
-        <item>Custom Playlist Covers</item>
+        <item>Pembaruan UI Material 3 Expressive</item>
+        <item>Equalizer 10 Band &amp; Efek</item>
+        <item>Alur Sinkronisasi Pustaka Baru</item>
+        <item>Integrasi AI (Model Gemini)</item>
+        <item>Impor/Ekspor Playlist M3U</item>
+        <item>Integrasi Foto Artis Deezer</item>
+        <item>Sampul Playlist Kustom</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_050_improvements">
-        <item>Settings Architecture Refactor</item>
-        <item>Queue &amp; Player Animations</item>
-        <item>Baseline Profiles &amp; Performance</item>
-        <item>Better Lyrics System with Sync Offset</item>
+        <item>Refaktor Arsitektur Pengaturan</item>
+        <item>Animasi Antrean &amp; Pemutar</item>
+        <item>Baseline Profile &amp; Performa</item>
+        <item>Sistem Lirik Lebih Baik dengan Offset Sinkronisasi</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_060_fixes">
-        <item>Queue and shuffle behavior is now more stable and predictable.</item>
-        <item>Several background playback and casting edge cases were fixed.</item>
-        <item>Sleep Timer, Files tab navigation, and album artist crash issues were fixed.</item>
-        <item>Widget loading and service stability were improved to reduce overheating/memory issues.</item>
-        <item>General bug fixes and UI polish across the app.</item>
+        <item>Perilaku antrean dan shuffle kini lebih stabil dan dapat diprediksi.</item>
+        <item>Beberapa kasus khusus pemutaran latar belakang dan casting telah diperbaiki.</item>
+        <item>Masalah Sleep Timer, navigasi tab File, dan crash artis album telah diperbaiki.</item>
+        <item>Pemuatan widget dan stabilitas layanan ditingkatkan untuk mengurangi masalah panas berlebih/memori.</item>
+        <item>Perbaikan bug umum dan penyempurnaan UI di seluruh aplikasi.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_060_improvements">
-        <item>Big performance pass across startup, library, queue, and player interactions.</item>
-        <item>Player, Cast, Lyrics, Artist, and Genre surfaces were redesigned for smoother use.</item>
-        <item>Navigation and search flows are more reliable, with safer route handling.</item>
-        <item>Audio playback compatibility improved for more devices and formats.</item>
-        <item>Multi-selection workflows were expanded across songs, albums, and playlists.</item>
+        <item>Peningkatan performa besar pada startup, pustaka, antrean, dan interaksi pemutar.</item>
+        <item>Layar Pemutar, Cast, Lirik, Artis, dan Genre didesain ulang agar lebih nyaman digunakan.</item>
+        <item>Alur navigasi dan pencarian lebih andal, dengan penanganan rute yang lebih aman.</item>
+        <item>Kompatibilitas pemutaran audio ditingkatkan untuk lebih banyak perangkat dan format.</item>
+        <item>Alur pilih-banyak diperluas ke lagu, album, dan playlist.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_060_whats_new">
-        <item>Android Auto support is now available for in-car playback.</item>
-        <item>Wear OS support is live, including better watch-to-phone playback controls.</item>
-        <item>Cloud integrations expanded with Telegram, NetEase, QQ Music, and Google Drive improvements.</item>
-        <item>Recently Played and persistent queue restoration keep your listening session ready.</item>
-        <item>Backup &amp; Restore v3 and account management tools are now included.</item>
-        <item>Lyrics got smarter with manual search fallback and storage improvements.</item>
+        <item>Dukungan Android Auto kini tersedia untuk pemutaran di mobil.</item>
+        <item>Dukungan Wear OS telah hadir, termasuk kontrol pemutaran jam ke ponsel yang lebih baik.</item>
+        <item>Integrasi cloud diperluas dengan peningkatan pada Telegram, NetEase, QQ Music, dan Google Drive.</item>
+        <item>Baru Diputar dan pemulihan antrean persisten membuat sesi mendengarkan Anda tetap siap.</item>
+        <item>Backup &amp; Restore v3 dan alat pengelolaan akun kini tersedia.</item>
+        <item>Lirik jadi lebih pintar dengan pencarian manual sebagai cadangan dan penyimpanan yang lebih baik.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_080_fixes">
-        <item>Fixed the home screen not resetting to the top when returning from other pages.</item>
-        <item>Fixed Bilibili tracks in playback history failing to play.</item>
+        <item>Memperbaiki layar utama yang tidak kembali ke atas saat kembali dari halaman lain.</item>
+        <item>Memperbaiki trek Bilibili di riwayat pemutaran yang gagal diputar.</item>
     </string-array>
     
     
     
     <string-array name="presentation_batch_g_changelog_080_improvements">
-        <item>Lyrics: Fixed long lyric lines being clipped on phone screens with more accurate line-wrap measurement.</item>
-        <item>Player: The mini player now transitions with a springy sliding animation when the bottom bar is hidden.</item>
-        <item>Device capabilities: The format counter now includes the software-decoded DFF/DSF/DIF formats.</item>
-        <item>Localization: Completed Chinese translations for the cloud streaming sheet and appearance settings (disable blur, show scrollbar, collage patterns, show lyrics track info).</item>
-        <item>Settings: Moved the "Show lyrics track info" option into the lyrics section of appearance settings.</item>
+        <item>Lirik: memperbaiki baris lirik panjang yang terpotong di layar ponsel dengan pengukuran pembungkusan baris yang lebih akurat.</item>
+        <item>Pemutar: mini player kini bertransisi dengan animasi geser kenyal saat bilah bawah disembunyikan.</item>
+        <item>Kemampuan perangkat: penghitung format kini mencakup format DFF/DSF/DIF yang didekode secara perangkat lunak.</item>
+        <item>Lokalisasi: terjemahan bahasa Mandarin untuk panel streaming cloud dan pengaturan tampilan telah selesai (nonaktifkan blur, tampilkan scrollbar, pola kolase, tampilkan info trek lirik).</item>
+        <item>Pengaturan: opsi “Tampilkan info trek lirik” dipindahkan ke bagian lirik di pengaturan tampilan.</item>
     </string-array>
     
     <string-array name="presentation_batch_g_changelog_080_whats_new">
-        <item>Lyrics: The dynamic lyrics blur effect is now enabled by default (adjustable in developer settings).</item>
-        <item>Dot Mode: The bottom navigation bar is now automatically hidden in Dot e-ink mode when using online sources.</item>
+        <item>Lirik: efek blur lirik dinamis kini aktif secara default (dapat diatur di pengaturan pengembang).</item>
+        <item>Mode Dot: bilah navigasi bawah kini otomatis disembunyikan dalam mode e-ink Dot saat menggunakan sumber online.</item>
     </string-array>
     
-    <string name="presentation_batch_g_changelog_sec_whats_new">What\'s New</string>
+    <string name="presentation_batch_g_changelog_sec_whats_new">Yang Baru</string>
     
     <string name="sort_option_album">Album</string>
     
     <string name="sort_option_album_desc">Album (Z-A)</string>
     
-    <string name="sort_option_artist">Artist</string>
+    <string name="sort_option_artist">Artis</string>
     
-    <string name="sort_option_artist_desc">Artist (Z-A)</string>
+    <string name="sort_option_artist_desc">Artis (Z-A)</string>
     
-    <string name="sort_option_custom_order">Custom Order</string>
+    <string name="sort_option_custom_order">Urutan Kustom</string>
     
-    <string name="sort_option_date_added">Date Added</string>
+    <string name="sort_option_date_added">Tanggal Ditambahkan</string>
     
-    <string name="sort_option_date_added_oldest">Date Added (Oldest First)</string>
-    <string name="sort_option_date_modified">Date Modified</string>
-    <string name="sort_option_date_modified_oldest">Date Modified (Oldest First)</string>
+    <string name="sort_option_date_added_oldest">Tanggal Ditambahkan (Terlama Dulu)</string>
+    <string name="sort_option_date_modified">Tanggal Diubah</string>
+    <string name="sort_option_date_modified_oldest">Tanggal Diubah (Terlama Dulu)</string>
     
-    <string name="sort_option_date_created">Date Created</string>
+    <string name="sort_option_date_created">Tanggal Dibuat</string>
     
-    <string name="sort_option_date_created_oldest">Date Created (Oldest First)</string>
+    <string name="sort_option_date_created_oldest">Tanggal Dibuat (Terlama Dulu)</string>
     
-    <string name="sort_option_date_liked">Date Liked</string>
+    <string name="sort_option_date_liked">Tanggal Disukai</string>
     
-    <string name="sort_option_date_liked_oldest">Date Liked (Oldest First)</string>
+    <string name="sort_option_date_liked_oldest">Tanggal Disukai (Terlama Dulu)</string>
     
-    <string name="sort_option_default_order">Default Order</string>
+    <string name="sort_option_default_order">Urutan Bawaan</string>
     
-    <string name="sort_option_duration">Duration</string>
+    <string name="sort_option_duration">Durasi</string>
     
-    <string name="sort_option_duration_shortest">Duration (Shortest First)</string>
+    <string name="sort_option_duration_shortest">Durasi (Terpendek Dulu)</string>
     
-    <string name="sort_option_fewest_songs">Fewest Songs</string>
+    <string name="sort_option_fewest_songs">Paling Sedikit Lagu</string>
     
-    <string name="sort_option_fewest_subfolders">Fewest Subfolders</string>
+    <string name="sort_option_fewest_subfolders">Paling Sedikit Subfolder</string>
     
-    <string name="sort_option_most_songs">Most Songs</string>
+    <string name="sort_option_most_songs">Paling Banyak Lagu</string>
     
-    <string name="sort_option_most_subfolders">Most Subfolders</string>
+    <string name="sort_option_most_subfolders">Paling Banyak Subfolder</string>
     
     <string name="sort_option_name">Name</string>
     
-    <string name="sort_option_name_az">Name (A-Z)</string>
+    <string name="sort_option_name_az">Nama (A-Z)</string>
     
-    <string name="sort_option_name_za">Name (Z-A)</string>
+    <string name="sort_option_name_za">Nama (Z-A)</string>
     
-    <string name="sort_option_number_of_songs">Number of Songs</string>
+    <string name="sort_option_number_of_songs">Jumlah Lagu</string>
     
-    <string name="sort_option_number_of_songs_fewest">Number of Songs (Fewest)</string>
+    <string name="sort_option_number_of_songs_fewest">Jumlah Lagu (Paling Sedikit)</string>
     
-    <string name="sort_option_number_of_songs_most">Number of Songs (Most)</string>
+    <string name="sort_option_number_of_songs_most">Jumlah Lagu (Paling Banyak)</string>
     
-    <string name="sort_option_release_year">Release Year</string>
+    <string name="sort_option_release_year">Tahun Rilis</string>
     
-    <string name="sort_option_release_year_oldest">Release Year (Oldest First)</string>
+    <string name="sort_option_release_year_oldest">Tahun Rilis (Terlama Dulu)</string>
     
-    <string name="sort_option_song_count">Song Count</string>
+    <string name="sort_option_song_count">Jumlah Lagu</string>
     
-    <string name="sort_option_subfolder_count">Subfolder Count</string>
+    <string name="sort_option_subfolder_count">Jumlah Subfolder</string>
 
-    <string name="sort_option_title">Title</string>
+    <string name="sort_option_title">Judul</string>
     
-    <string name="sort_option_title_az">Title (A-Z)</string>
+    <string name="sort_option_title_az">Judul (A-Z)</string>
     
-    <string name="sort_option_title_za">Title (Z-A)</string>
+    <string name="sort_option_title_za">Judul (Z-A)</string>
     
 </resources>

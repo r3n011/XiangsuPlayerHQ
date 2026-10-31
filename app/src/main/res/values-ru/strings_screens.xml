@@ -179,7 +179,7 @@
     <string name="about_app_name">XiangsuPlayer</string>
     <string name="about_tagline">Плеер с открытым исходным кодом, созданный сообществом.</string>
     <string name="about_version_format">Версия v%1$s</string>
-    <string name="about_contributions_format">%1$d contrib.</string>
+    <string name="about_contributions_format">Вклад: %1$d</string>
     <string name="screen_about">О приложении</string>
     <string name="about_maintainer_title">Ведущий сообщества</string>
     <string name="about_maintainer_subtitle">Человек, стоящий за XiangsuPlayer.</string>
@@ -187,7 +187,7 @@
     <string name="about_spotlight_subtitle">Участники, внесшие огромный вклад.</string>
     <string name="about_contributors_section_title">Участники проекта</string>
     <string name="about_contributors_section_subtitle">Список участников из GitHub.</string>
-    <string name="about_signal_open_source">Open source</string>
+    <string name="about_signal_open_source">Открытый исходный код</string>
     <string name="about_signal_community_first">Для сообщества</string>
     <string name="about_signal_material3">Material 3 дизайн</string>
     <string name="cd_open_github_profile">Открыть профиль GitHub</string>
@@ -253,23 +253,23 @@
     <string name="home_empty_placeholder_title">Пока нечего показать</string>
     <string name="home_empty_placeholder_subtitle">Ваш микс появится здесь, когда XiangsuPlayer найдёт треки или синхронизирует источник.</string>
     <string name="home_empty_placeholder_refresh">Обновить</string>
-    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    <string name="about_acknowledgements_blur_desc">Эффект размытия адаптирован из этого проекта</string>
     
-    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
+    <string name="about_acknowledgements_folia_desc">Дизайн визуальных эффектов текста вдохновлен Folia Major (AGPL-3.0)</string>
     
-    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_lanzou_desc">Интеграция обновлений на базе LanzouAPI</string>
     
-    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    <string name="about_acknowledgements_miniaudio_desc">Воспроизведение аудио на базе miniaudio</string>
     
-    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_acknowledgements_title">Благодарности</string>
     
     <string name="cd_back">Back</string>
     
-    <string name="cd_favorite_artist">Favorite artist</string>
+    <string name="cd_favorite_artist">Любимый исполнитель</string>
     
-    <string name="cd_radio_open">Radio</string>
+    <string name="cd_radio_open">Радио</string>
 
-    <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    <string name="cd_unfavorite_artist">Убрать исполнителя из избранного</string>
     
     <string name="content_description_exit">Exit</string>
     
@@ -277,95 +277,326 @@
 
     
     
-    <string name="content_description_play_pause">Play/Pause</string>
+    <string name="content_description_play_pause">Пуск/Пауза</string>
     
-    <string name="content_description_previous">Previous</string>
+    <string name="content_description_previous">Предыдущий</string>
     
-    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    <string name="discover_ai_subtitle">Умные плейлисты, перевод текстов и разбор</string>
     
-    <string name="discover_ai_title">AI Assistant</string>
+    <string name="discover_ai_title">ИИ-помощник</string>
     
-    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    <string name="discover_multi_selected_desc">%1$s — при нажатии кнопки «Обзор» открывается выбор</string>
     
-    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    <string name="discover_none_selected_desc">Ничего не выбрано — кнопка «Обзор» скрыта</string>
     
-    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
+    <string name="discover_options_dialog_desc">Выберите, что показывает кнопка «Обзор» внизу по центру. Ничего — кнопка скрыта, один пункт — открывается сразу, несколько — открывается выбор.</string>
     
-    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    <string name="discover_radio_subtitle">Слушайте интернет-радиостанции со всего мира</string>
     
-    <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
+    <string name="discover_roaming_subtitle">Роуминг NetEase Cloud Music с персональными подборками</string>
     
-    <string name="discover_sheet_title">Discover</string>
+    <string name="discover_sheet_title">Обзор</string>
     
-    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    <string name="discover_show_item_subtitle">Показывать этот пункт в меню «Обзор»</string>
     
-    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    <string name="discover_single_selected_desc">Только %1$s — кнопка открывает его сразу</string>
     
-    <string name="home_card_ai_recommendation">AI Mix</string>
+    <string name="home_card_ai_recommendation">ИИ-микс</string>
 
     
     
-    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    <string name="home_card_order_reset_dialog_body">Это восстановит стандартный порядок карточек на Главной.</string>
     
-    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    <string name="home_card_order_reset_dialog_title">Сбросить порядок карточек?</string>
     
-    <string name="home_card_order_sheet_title">Customize home</string>
+    <string name="home_card_order_sheet_title">Настроить Главную</string>
     
-    <string name="home_edit_card_order">Edit home cards</string>
+    <string name="home_edit_card_order">Изменить карточки Главной</string>
     
-    <string name="home_favorite_artists_title">Favorite Artists</string>
+    <string name="home_favorite_artists_title">Любимые исполнители</string>
     
-    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    <string name="open_source_licenses_screen_title">Лицензии открытого кода</string>
     
     <string name="radio_all">All</string>
     
-    <string name="radio_country_picker_title">Select country</string>
+    <string name="radio_country_picker_title">Выберите страну</string>
     
-    <string name="radio_favorite">Add to favorites</string>
+    <string name="radio_favorite">Добавить в избранное</string>
     
-    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    <string name="radio_favorite_confirm">Добавить эту станцию в избранное?</string>
     
     <string name="radio_live_badge">LIVE</string>
     
     <string name="radio_more_countries">More</string>
     
-    <string name="radio_no_results">No stations found</string>
+    <string name="radio_no_results">Станции не найдены</string>
     
-    <string name="radio_recommendations">Popular stations</string>
+    <string name="radio_recommendations">Популярные станции</string>
     
-    <string name="radio_retry">Retry</string>
+    <string name="radio_retry">Повторить</string>
     
-    <string name="radio_search">Search</string>
+    <string name="radio_search">Поиск</string>
     
-    <string name="radio_search_hint">Search stations, countries or tags</string>
+    <string name="radio_search_hint">Поиск станций, стран или тегов</string>
     
-    <string name="radio_title">Radio</string>
+    <string name="radio_title">Радио</string>
     
     <string name="radio_top">Top</string>
     
-    <string name="radio_unfavorite">Remove from favorites</string>
+    <string name="radio_unfavorite">Удалить из избранного</string>
     
-    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
+    <string name="radio_unfavorite_confirm">Удалить эту станцию из избранного?</string>
     
-    <string name="tab_folders">Folders</string>
+    <string name="tab_folders">Папки</string>
     
-    <string name="tab_history">History</string>
+    <string name="tab_history">История</string>
     
-    <string name="tab_liked">Liked</string>
+    <string name="tab_liked">Избранное</string>
     
-    <string name="tab_playlists">Playlists</string>
+    <string name="tab_playlists">Плейлисты</string>
     
-    <string name="third_party_notices_action">Notices</string>
+    <string name="third_party_notices_action">Правовые уведомления</string>
     
-    <string name="third_party_notices_close">Close</string>
+    <string name="third_party_notices_close">Закрыть</string>
     
     
-    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    <string name="third_party_notices_load_error">Не удалось загрузить уведомления третьих сторон.</string>
     
-    <string name="third_party_notices_title">Third-Party Notices</string>
+    <string name="third_party_notices_title">Уведомления третьих сторон</string>
     
-    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+    <string name="update_install_permission_required">Для обновления приложения требуется разрешение на установку.</string>
 
     
     
+    <string name="about_acknowledgements_mineradio_desc">Референс интерфейса веб-пульта в стиле «Glass» (MineRadio)</string>
+    <string name="about_acknowledgements_reactor_desc">Референс стиля «Reactor» и визуализатора для веб-пульта (Reactor Audio Visualizer)</string>
+    <string name="about_acknowledgements_rhythm_desc">Особая благодарность: творческая поддержка и частичный референс интерфейса (Rhythm)</string>
+    <string name="about_donation_button">Поддержать через Alipay</string>
+    <string name="about_donation_button_alipay">Поддержать через Alipay</string>
+    <string name="about_donation_button_wechat">Поддержать через WeChat</string>
+    <string name="about_donation_channel_alipay">Alipay</string>
+    <string name="about_donation_channel_wechat">WeChat Pay</string>
+    <string name="about_donation_no_app">На этом устройстве нет приложения для открытия ссылки для пожертвования.</string>
+    <string name="about_donation_no_wechat">WeChat не установлен — отсканируйте QR-код выше.</string>
+    <string name="about_donation_qr_hint">Отсканируйте в Alipay или используйте кнопку ниже</string>
+    <string name="about_donation_qr_hint_both">Отсканируйте в Alipay или WeChat либо используйте кнопки ниже</string>
+    <string name="about_donation_qr_hint_wechat">Отсканируйте в WeChat или используйте кнопку ниже</string>
+    <string name="about_donation_subtitle">Если XiangsuPlayer вам помогает, угостите разработчика чашкой кофе. Ваша поддержка помогает выпускать обновления.</string>
+    <string name="about_donation_thanks_note">Список со временем обновляется — если кого-то не хватает, свяжитесь с разработчиком.</string>
+    <string name="about_donation_thanks_subtitle">Спасибо всем, кто поддерживает этот проект</string>
+    <string name="about_donation_thanks_title">Список благодарностей</string>
+    <string name="about_donation_title">Поддержать разработку</string>
+    <string name="about_donation_wechat_opened">WeChat открыт — отсканируйте QR-код выше, чтобы сделать пожертвование.</string>
+    <string name="about_supporters_surprise_hint">Нажмите здесь — у нас есть кое-что для вас</string>
+    <string name="about_supporters_surprise_message">И спасибо, что выбрали XiangsuPlayer. Пусть любимые песни звучат всегда.</string>
+    <string name="audiobook_chapter_count">Глав: %1$d</string>
+    <string name="audiobook_chapters_short">Глав: %1$d</string>
+    <string name="audiobook_filter_all">Все</string>
+    <string name="audiobook_filter_gender">Аудитория</string>
+    <string name="audiobook_filter_sort">Сортировка</string>
+    <string name="audiobook_filter_status">Статус</string>
+    <string name="audiobook_free_library">Бесплатная библиотека аудиокниг</string>
+    <string name="audiobook_free_library_desc">Жанр · Сортировка · Аудитория · Статус</string>
+    <string name="audiobook_gender_all">Любая</string>
+    <string name="audiobook_gender_female">Женский</string>
+    <string name="audiobook_gender_male">Мужской</string>
+    <string name="audiobook_home_empty">Данных об аудиокнигах пока нет</string>
+    <string name="audiobook_intro_collapse">Свернуть</string>
+    <string name="audiobook_intro_expand">Развернуть</string>
+    <string name="audiobook_library_empty">С этим фильтром нет бесплатных аудиокниг</string>
+    <string name="audiobook_load_failed">Не удалось загрузить. Проверьте сеть и повторите попытку</string>
+    <string name="audiobook_loading_chapters">Загрузка всех глав…</string>
+    <string name="audiobook_no_chapters">Нет доступных для воспроизведения глав</string>
+    <string name="audiobook_play_all">Играть всё</string>
+    <string name="audiobook_queue_name">Аудиокниги · %1$s</string>
+    <string name="audiobook_retry">Повторить</string>
+    <string name="audiobook_search_cd">Поиск аудиокниг</string>
+    <string name="audiobook_search_clear">Очистить</string>
+    <string name="audiobook_search_empty">По запросу «%1$s» аудиокниги не найдены</string>
+    <string name="audiobook_search_hint">Поиск по названию, автору или чтецу</string>
+    <string name="audiobook_search_initial">Введите запрос для поиска аудиокниг</string>
+    <string name="audiobook_search_title">Поиск аудиокниг</string>
+    <string name="audiobook_section_daily">Подборка дня</string>
+    <string name="audiobook_section_rank">Топ подборок</string>
+    <string name="audiobook_section_vip">VIP-подборка</string>
+    <string name="audiobook_section_week">Подборка недели</string>
+    <string name="audiobook_shuffle_play">Перемешать</string>
+    <string name="audiobook_sort_default">По умолчанию</string>
+    <string name="audiobook_sort_plays">Прослушивания</string>
+    <string name="audiobook_sort_update">Обновлено</string>
+    <string name="audiobook_status_all">Все</string>
+    <string name="audiobook_status_done">Завершено</string>
+    <string name="audiobook_status_serial">В процессе</string>
+    <string name="audiobook_title">Аудиокниги</string>
+    <string name="audiobook_unknown_author">Неизвестный автор</string>
+    <string name="cd_donation_qr">QR-код для пожертвования через Alipay</string>
+    <string name="cd_donation_qr_wechat">QR-код для пожертвования через WeChat Pay</string>
+    <string name="chat_action_new_chat">Найти собеседников</string>
+    <string name="chat_cd_messages">Сообщения</string>
+    <string name="chat_empty_conversations">Бесед пока нет. Нажмите кнопку справа сверху, чтобы найти людей.</string>
+    <string name="chat_empty_friends">Пока нет друзей для приглашения. Сначала подпишитесь на пользователей.</string>
+    <string name="chat_empty_search">Введите никнейм для поиска пользователей NetEase</string>
+    <string name="chat_follow">Подписаться</string>
+    <string name="chat_followed">Вы подписаны</string>
+    <string name="chat_go_login">Войти</string>
+    <string name="chat_input_hint">Отправить сообщение…</string>
+    <string name="chat_invite_friend">Пригласить друзей из NetEase</string>
+    <string name="chat_invite_sent">Отправлено</string>
+    <string name="chat_join_together">Присоединиться к совместному прослушиванию</string>
+    <string name="chat_need_login">Войдите в аккаунт NetEase, чтобы пользоваться сообщениями</string>
+    <string name="chat_no_results">Подходящих пользователей нет</string>
+    <string name="chat_playlist_empty_hint">В этом плейлисте нет песен для воспроизведения</string>
+    <string name="chat_search_hint">Поиск пользователей NetEase</string>
+    <string name="chat_send">Отправить</string>
+    <string name="chat_send_invite">Отправить приглашение</string>
+    <string name="chat_send_message">Отправить сообщение</string>
+    <string name="chat_tab_conversations">Чаты</string>
+    <string name="chat_tab_search">Найти людей</string>
+    <string name="chat_title">Сообщения</string>
+    <string name="chat_unfollow">Отписаться</string>
+    <string name="home_card_hide">Скрыть карточку</string>
+    <string name="home_card_order_at_least_one_visible">Оставьте хотя бы одну карточку видимой</string>
+    <string name="home_card_order_sheet_visibility_hint">Перетащите, чтобы изменить порядок · нажмите на глаз, чтобы показать или скрыть карточку</string>
+    <string name="home_card_show">Показать карточку</string>
+    <string name="home_discover_audiobook">Аудиокниги</string>
+    <string name="home_discover_card_desc">Роуминг · Сердце · Похожие · Распознавание · Радио · ИИ</string>
+    <string name="home_discover_heart_mode">Режим «Сердце»</string>
+    <string name="home_discover_kugou_fm">Персональное FM</string>
+    <string name="home_discover_listen_together">Совместное прослушивание</string>
+    <string name="home_discover_recognition">Распознавание песен</string>
+    <string name="home_discover_similar_songs">Похожие песни</string>
+    <string name="home_featured_quality_hires">Hi-Res</string>
+    <string name="home_featured_quality_hq">HQ</string>
+    <string name="home_featured_quality_lossless">Без потерь</string>
+    <string name="kugou_dashboard_account_id">ID аккаунта: %1$s</string>
+    <string name="kugou_dashboard_quality_hint">Вы вошли: встроенный сервис Kugou может загружать качество VIP / без потерь</string>
+    <string name="kugou_dashboard_refresh_cd">Обновить данные аккаунта</string>
+    <string name="kugou_dashboard_sync_done">Синхронизация завершена: плейлистов — %1$d</string>
+    <string name="kugou_dashboard_sync_failed">Синхронизация не удалась — проверьте сеть и повторите попытку</string>
+    <string name="kugou_dashboard_syncing">Синхронизация…</string>
+    <string name="kugou_login_account_pick_hint">Этот номер привязан к нескольким аккаунтам Kugou — выберите, под каким войти</string>
+    <string name="kugou_login_account_pick_title">Выберите аккаунт</string>
+    <string name="kugou_login_code_label">Код подтверждения</string>
+    <string name="kugou_login_code_placeholder">Введите код из SMS</string>
+    <string name="kugou_login_code_required">Сначала введите код подтверждения</string>
+    <string name="kugou_login_code_resend">Повтор через %1$d с</string>
+    <string name="kugou_login_code_send">Отправить код</string>
+    <string name="kugou_login_code_sent">Код подтверждения отправлен</string>
+    <string name="kugou_login_edit_phone">Изменить номер телефона</string>
+    <string name="kugou_login_fetching_info">Вы вошли, загрузка данных аккаунта…</string>
+    <string name="kugou_login_hint">Отсканируйте QR-код в приложении Kugou; вход открывает качество без потерь / VIP для встроенного сервиса Kugou</string>
+    <string name="kugou_login_phone_invalid">Введите корректный 11-значный номер телефона</string>
+    <string name="kugou_login_phone_label">Номер телефона</string>
+    <string name="kugou_login_phone_placeholder">Введите номер телефона</string>
+    <string name="kugou_login_phone_submit">Войти</string>
+    <string name="kugou_login_qr_cd">QR-код для входа в Kugou</string>
+    <string name="kugou_login_qr_refresh">Обновить QR-код</string>
+    <string name="kugou_login_required_toast">Сначала войдите в Kugou, чтобы использовать персональное FM</string>
+    <string name="kugou_login_status_confirmed">Вы вошли</string>
+    <string name="kugou_login_status_expired">QR-код истек, обновление…</string>
+    <string name="kugou_login_status_scanned">Отсканировано — подтвердите на телефоне</string>
+    <string name="kugou_login_status_waiting">Ожидание сканирования…</string>
+    <string name="kugou_login_subtitle">Вход открывает качество без потерь / VIP для встроенного сервиса Kugou и синхронизирует ваши плейлисты Kugou</string>
+    <string name="kugou_login_success">Вы вошли!</string>
+    <string name="kugou_login_switch_to_phone">Использовать номер телефона</string>
+    <string name="kugou_login_switch_to_qr">Использовать QR-код</string>
+    <string name="kugou_login_tab_phone">Номер телефона</string>
+    <string name="kugou_login_tab_qr">QR-код</string>
+    <string name="kugou_login_title">Вход в Kugou</string>
+    <string name="kugou_service_name">Kugou Music</string>
+    <string name="kugou_sync_none">Плейлисты еще не синхронизированы</string>
+    <string name="kugou_sync_playlists_count">Синхронизировано плейлистов: %1$d</string>
+    <string name="listen_together_cd_avatar">Аватар %1$s</string>
+    <string name="listen_together_clipboard_detected">В буфере обмена найдена ссылка-приглашение</string>
+    <string name="listen_together_create">Создать комнату</string>
+    <string name="listen_together_create_from_current">Начать совместное прослушивание</string>
+    <string name="listen_together_create_from_current_hint">Использует текущую очередь воспроизведения (только песни NetEase) — выбирать плейлист не нужно</string>
+    <string name="listen_together_create_hint">Выберите синхронизированный плейлист NetEase как очередь комнаты</string>
+    <string name="listen_together_desc">Синхронизируйте воспроизведение с друзьями через аккаунт NetEase. Пока режим активен, можно воспроизводить только песни NetEase.</string>
+    <string name="listen_together_end">Завершить сеанс</string>
+    <string name="listen_together_host_badge">Организатор</string>
+    <string name="listen_together_host_left">Организатор покинул комнату. Воспроизведение возобновится, когда он вернется.</string>
+    <string name="listen_together_invite_all_friends">Пригласить всех друзей</string>
+    <string name="listen_together_invite_invalid">Неверная ссылка-приглашение</string>
+    <string name="listen_together_join">Присоединиться</string>
+    <string name="listen_together_join_hint">Вставьте ссылку-приглашение</string>
+    <string name="listen_together_leave">Выйти</string>
+    <string name="listen_together_leave_to_play">Выйдите из совместного прослушивания, чтобы включить эту песню</string>
+    <string name="listen_together_me">Вы</string>
+    <string name="listen_together_member_count">Совместное прослушивание · %1$d</string>
+    <string name="listen_together_members">Участники</string>
+    <string name="listen_together_netease_only">Совместное прослушивание поддерживает только песни NetEase</string>
+    <string name="listen_together_open_dashboard">Откройте панель NetEase, чтобы синхронизировать плейлисты</string>
+    <string name="listen_together_partner">Слушают вместе с</string>
+    <string name="listen_together_paste_link_placeholder">Вставьте ссылку-приглашение или общий текст</string>
+    <string name="listen_together_pick_playlist">Выберите плейлист</string>
+    <string name="listen_together_resolving_link">Обработка ссылки-приглашения…</string>
+    <string name="listen_together_roaming">Начать с подборок роуминга</string>
+    <string name="listen_together_share">Поделиться приглашением</string>
+    <string name="listen_together_share_done">Отправлено друзьям: %1$d</string>
+    <string name="listen_together_share_failed">Не удалось загрузить друзей: %1$s</string>
+    <string name="listen_together_share_no_friends">Пока нет друзей, кому можно отправить</string>
+    <string name="listen_together_share_no_invite">Сначала создайте комнату или присоединитесь к ней</string>
+    <string name="listen_together_share_partial">Отправлено друзьям: %1$d, не удалось: %2$d</string>
+    <string name="listen_together_share_progress">Отправка %1$d из %2$d…</string>
+    <string name="listen_together_share_to_friends">Отправить в сообщения друзьям</string>
+    <string name="listen_together_share_to_friends_hint">Отправьте приглашение всем друзьям в NetEase (подписки и недавние чаты)</string>
+    <string name="listen_together_status_connected">Синхронизировано</string>
+    <string name="listen_together_status_connecting">Подключение…</string>
+    <string name="listen_together_status_reconnecting">Переподключение…</string>
+    <string name="listen_together_title">Совместное прослушивание</string>
+    <string name="listen_together_view_members">Показать участников совместного прослушивания</string>
+    <string name="listen_together_waiting_host">Ожидание организатора…</string>
+    <string name="listen_together_with">Совместное прослушивание с %1$s</string>
+    <string name="lyric_share_generating">Создание…</string>
+    <string name="lyric_share_image">Создать изображение</string>
+    <string name="lyric_share_select_all">Выбрать все</string>
+    <string name="lyric_share_selected_count">Выбрано строк: %1$d</string>
+    <string name="lyric_share_text">Поделиться как текст</string>
+    <string name="lyric_share_title">Поделиться текстом</string>
+    <string name="lyrics_more_vibrant_folia">Folia</string>
+    <string name="lyrics_more_vibrant_glass">Сцена Glass</string>
+    <string name="lyrics_more_vibrant_off">Выкл</string>
+    <string name="market_downloading">Загрузка… %1$d%%</string>
+    <string name="market_install">Установить</string>
+    <string name="market_installed">Установлено</string>
+    <string name="market_installed_count">Установлено источников: %1$d</string>
+    <string name="market_no_sources">Источников для проверки пока нет — сначала установите скрипт источника</string>
+    <string name="market_parsing">Разбор скриптов…</string>
+    <string name="market_refresh">Обновить</string>
+    <string name="market_source_builtin">Встроенный</string>
+    <string name="market_source_plugin">Плагин</string>
+    <string name="market_source_test_desc">Выполняет реальный поиск по каждому источнику; JS-источники также получают URL воспроизведения</string>
+    <string name="market_source_test_title">Проверка доступности источников</string>
+    <string name="market_subtitle">Скачивайте и устанавливайте скрипты источников сообщества с GitHub</string>
+    <string name="market_tap_expand">Нажмите, чтобы скачать и просмотреть скрипты</string>
+    <string name="market_test">Проверить</string>
+    <string name="market_test_all">Проверить все</string>
+    <string name="market_test_failed">Недоступно</string>
+    <string name="market_test_search_only">Поиск работает</string>
+    <string name="market_test_success">Доступно</string>
+    <string name="market_testing">Проверка…</string>
+    <string name="market_title">Магазин источников Pixel</string>
+    <string name="player_cd_song_info">Инфо о песне</string>
+    <string name="player_more_comments">Посмотреть комментарии</string>
+    <string name="player_more_download">Скачать песню</string>
+    <string name="playlist_search_hint">Поиск песен в этом плейлисте</string>
+    <string name="playlist_search_result_count">Песен: %1$d</string>
+    <string name="queue_search_hint">Поиск песен в этой очереди</string>
+    <string name="queue_search_result_count">Совпадений: %1$d</string>
+    <string name="roaming_mode_explore">Открывать новое</string>
+    <string name="roaming_mode_explore_desc">Склоняться к песням, которые вы еще не слышали</string>
+    <string name="roaming_mode_familiar">Знакомое</string>
+    <string name="roaming_mode_familiar_desc">Склоняться к тому, что вы уже слушаете</string>
+    <string name="roaming_mode_title">Режим роуминга</string>
+    <string name="song_recognition_hint">Дайте телефону послушать музыку рядом (~6 с) и найдите песню</string>
+    <string name="song_recognition_listening">Слушаем…</string>
+    <string name="song_recognition_mic_denied">Требуется разрешение на микрофон — разрешите его в системных настройках</string>
+    <string name="song_recognition_result_title">Совпадение найдено</string>
+    <string name="song_recognition_retry">Попробовать снова</string>
+    <string name="song_recognition_start">Начать прослушивание</string>
+    <string name="song_recognition_title">Распознавание песен</string>
+    <string name="source_badge_kugou">Kugou</string>
+    <string name="source_badge_netease">NetEase</string>
+    <string name="startup_preparing">Подготовка…</string>
 </resources>

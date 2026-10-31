@@ -72,7 +72,7 @@
     <string name="presentation_batch_d_eq_custom_preset_cd">Eigenes Preset</string>
     <string name="presentation_batch_d_eq_presets_cd">Presets</string>
     <string name="presentation_batch_d_action_update">Aktualisieren</string>
-    <string name="presentation_batch_d_eq_bass_boost">Bass Boost</string>
+    <string name="presentation_batch_d_eq_bass_boost">Bassverstärkung</string>
     <string name="presentation_batch_d_eq_virtualizer">Virtualizer</string>
     <string name="presentation_batch_d_eq_loudness">Lautstärke</string>
     <string name="presentation_batch_d_eq_effect_not_supported">Nicht unterstützt</string>
@@ -116,8 +116,8 @@
     <string name="presentation_batch_d_transition_overlap_explanation_format">Titel überlappen sich für %1$ds</string>
     <string name="presentation_batch_d_transition_curves_title">Lautstärkekurven</string>
     <string name="presentation_batch_d_transition_curves_subtitle">Audiokurve feinjustieren</string>
-    <string name="presentation_batch_d_transition_fade_out">Fade Out</string>
-    <string name="presentation_batch_d_transition_fade_in">Fade In</string>
+    <string name="presentation_batch_d_transition_fade_out">Ausblenden</string>
+    <string name="presentation_batch_d_transition_fade_in">Einblenden</string>
 
     <!-- ArtistDetailScreen -->
     <string name="presentation_batch_d_cd_play_title">%1$s abspielen</string>

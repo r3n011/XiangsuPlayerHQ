@@ -81,7 +81,7 @@
         <item quantity="one">%1$d lagu • %2$s</item>
         <item quantity="other">%1$d lagu • %2$s</item>
     </plurals>
-    <string name="presentation_batch_b_ai_mix_empty">Generating your AI playlist...</string>
+    <string name="presentation_batch_b_ai_mix_empty">Membuat playlist AI Anda...</string>
 
     
     

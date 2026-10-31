@@ -235,23 +235,23 @@
     <string name="toast_added_to_queue">Sıraya eklendi</string>
     <string name="toast_playing_next">Sırada oynatılacak</string>
     <string name="error_share_song_format">Şarkı paylaşılamadı: %1$s</string>
-    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    <string name="about_acknowledgements_blur_desc">Bulanıklaştırma efekti bu projeden uyarlanmıştır</string>
     
-    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
+    <string name="about_acknowledgements_folia_desc">Şarkı sözü görsel efektleri tasarımı Folia Major\'dan (AGPL-3.0) esinlenmiştir</string>
     
-    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_lanzou_desc">Güncelleme entegrasyonu LanzouAPI ile sağlanmıştır</string>
     
-    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    <string name="about_acknowledgements_miniaudio_desc">Ses oynatma miniaudio ile sağlanır</string>
     
-    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_acknowledgements_title">Teşekkürler</string>
     
     <string name="cd_back">Back</string>
     
-    <string name="cd_favorite_artist">Favorite artist</string>
+    <string name="cd_favorite_artist">Favori sanatçı</string>
     
-    <string name="cd_radio_open">Radio</string>
+    <string name="cd_radio_open">Radyo</string>
 
-    <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    <string name="cd_unfavorite_artist">Favorilerden çıkar</string>
     
     <string name="content_description_exit">Exit</string>
     
@@ -259,95 +259,326 @@
 
     
     
-    <string name="content_description_play_pause">Play/Pause</string>
+    <string name="content_description_play_pause">Çal / Duraklat</string>
     
-    <string name="content_description_previous">Previous</string>
+    <string name="content_description_previous">Önceki</string>
     
-    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    <string name="discover_ai_subtitle">Akıllı çalma listeleri, şarkı sözü çevirisi ve analizler</string>
     
-    <string name="discover_ai_title">AI Assistant</string>
+    <string name="discover_ai_title">YZ Asistanı</string>
     
-    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    <string name="discover_multi_selected_desc">%1$s — Keşfet düğmesine dokunmak bir seçici gösterir</string>
     
-    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    <string name="discover_none_selected_desc">Hiçbiri seçilmedi — Keşfet düğmesi gizli</string>
     
-    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
+    <string name="discover_options_dialog_desc">Alt ortadaki Keşfet düğmesinin ne göstereceğini seçin. Düğmeyi gizlemek için hiçbirini, doğrudan açmak için yalnızca birini veya seçici açmak için birkaçını seçin.</string>
     
-    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    <string name="discover_radio_subtitle">Dünya çapında internet radyo istasyonlarını dinleyin</string>
     
-    <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
+    <string name="discover_roaming_subtitle">Kişiselleştirilmiş seçkilerle Netease Cloud Music dolaşma</string>
     
-    <string name="discover_sheet_title">Discover</string>
+    <string name="discover_sheet_title">Keşfet</string>
     
-    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    <string name="discover_show_item_subtitle">Bu seçeneği Keşfet açılır penceresinde göster</string>
     
-    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    <string name="discover_single_selected_desc">Yalnızca %1$s — düğme doğrudan açar</string>
     
-    <string name="home_card_ai_recommendation">AI Mix</string>
+    <string name="home_card_ai_recommendation">YZ Miksi</string>
 
     
     
-    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    <string name="home_card_order_reset_dialog_body">Bu, varsayılan ana sayfa kart sırasını geri yükler.</string>
     
-    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    <string name="home_card_order_reset_dialog_title">Kart sırası sıfırlansın mı?</string>
     
-    <string name="home_card_order_sheet_title">Customize home</string>
+    <string name="home_card_order_sheet_title">Ana sayfayı özelleştir</string>
     
-    <string name="home_edit_card_order">Edit home cards</string>
+    <string name="home_edit_card_order">Ana sayfa kartlarını düzenle</string>
     
-    <string name="home_favorite_artists_title">Favorite Artists</string>
+    <string name="home_favorite_artists_title">Favori Sanatçılar</string>
     
-    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    <string name="open_source_licenses_screen_title">Açık Kaynak Lisansları</string>
     
     <string name="radio_all">All</string>
     
-    <string name="radio_country_picker_title">Select country</string>
+    <string name="radio_country_picker_title">Ülke seçin</string>
     
-    <string name="radio_favorite">Add to favorites</string>
+    <string name="radio_favorite">Favorilere ekle</string>
     
-    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    <string name="radio_favorite_confirm">Bu istasyon favorilerinize eklensin mi?</string>
     
     <string name="radio_live_badge">LIVE</string>
     
     <string name="radio_more_countries">More</string>
     
-    <string name="radio_no_results">No stations found</string>
+    <string name="radio_no_results">İstasyon bulunamadı</string>
     
-    <string name="radio_recommendations">Popular stations</string>
+    <string name="radio_recommendations">Popüler istasyonlar</string>
     
-    <string name="radio_retry">Retry</string>
+    <string name="radio_retry">Yeniden dene</string>
     
-    <string name="radio_search">Search</string>
+    <string name="radio_search">Ara</string>
     
-    <string name="radio_search_hint">Search stations, countries or tags</string>
+    <string name="radio_search_hint">İstasyon, ülke veya etiket ara</string>
     
-    <string name="radio_title">Radio</string>
+    <string name="radio_title">Radyo</string>
     
     <string name="radio_top">Top</string>
     
-    <string name="radio_unfavorite">Remove from favorites</string>
+    <string name="radio_unfavorite">Favorilerden çıkar</string>
     
-    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
+    <string name="radio_unfavorite_confirm">Bu istasyon favorilerinizden çıkarılsın mı?</string>
     
-    <string name="tab_folders">Folders</string>
+    <string name="tab_folders">Klasörler</string>
     
-    <string name="tab_history">History</string>
+    <string name="tab_history">Geçmiş</string>
     
-    <string name="tab_liked">Liked</string>
+    <string name="tab_liked">Beğenilenler</string>
     
-    <string name="tab_playlists">Playlists</string>
+    <string name="tab_playlists">Çalma listeleri</string>
     
-    <string name="third_party_notices_action">Notices</string>
+    <string name="third_party_notices_action">Bildirimler</string>
     
-    <string name="third_party_notices_close">Close</string>
+    <string name="third_party_notices_close">Kapat</string>
     
     
-    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    <string name="third_party_notices_load_error">Üçüncü taraf bildirimleri yüklenemedi.</string>
     
-    <string name="third_party_notices_title">Third-Party Notices</string>
+    <string name="third_party_notices_title">Üçüncü Taraf Bildirimleri</string>
     
-    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+    <string name="update_install_permission_required">Uygulamayı güncellemek için yükleme izni gerekir.</string>
 
     
     
+    <string name="about_acknowledgements_mineradio_desc">Web uzaktan kumanda “Glass” stil arayüz referansı (MineRadio)</string>
+    <string name="about_acknowledgements_reactor_desc">Web uzaktan kumanda “Reactor” stili ve temel görselleştirici referansı (Reactor Audio Visualizer)</string>
+    <string name="about_acknowledgements_rhythm_desc">Özel teşekkürler: yaratıcı destek ve kısmi arayüz referansı (Rhythm)</string>
+    <string name="about_donation_button">Alipay ile bağış yap</string>
+    <string name="about_donation_button_alipay">Alipay ile bağış yap</string>
+    <string name="about_donation_button_wechat">WeChat ile bağış yap</string>
+    <string name="about_donation_channel_alipay">Alipay</string>
+    <string name="about_donation_channel_wechat">WeChat Pay</string>
+    <string name="about_donation_no_app">Bu cihazda bağış bağlantısını açabilecek bir uygulama yok.</string>
+    <string name="about_donation_no_wechat">WeChat yüklü değil — lütfen yukarıdaki QR kodunu tarayın.</string>
+    <string name="about_donation_qr_hint">Alipay ile tarayın veya aşağıdaki düğmeyi kullanın</string>
+    <string name="about_donation_qr_hint_both">Alipay veya WeChat ile tarayın ya da aşağıdaki düğmeleri kullanın</string>
+    <string name="about_donation_qr_hint_wechat">WeChat ile tarayın veya aşağıdaki düğmeyi kullanın</string>
+    <string name="about_donation_subtitle">XiangsuPlayer size yardımcı oluyorsa geliştiriciye bir kahve ısmarlamayı düşünün. Desteğiniz güncellemelerin sürmesini sağlar.</string>
+    <string name="about_donation_thanks_note">Liste zaman içinde güncellenir — eksik bir şey varsa geliştiriciyle iletişime geçin.</string>
+    <string name="about_donation_thanks_subtitle">Bu projeyi destekleyen herkese teşekkürler</string>
+    <string name="about_donation_thanks_title">Teşekkür listesi</string>
+    <string name="about_donation_title">Geliştirmeyi destekle</string>
+    <string name="about_donation_wechat_opened">WeChat açık — bağış için yukarıdaki QR kodunu tarayın.</string>
+    <string name="about_supporters_surprise_hint">Buraya dokunun — size söyleyeceğimiz bir şey var</string>
+    <string name="about_supporters_surprise_message">Ve XiangsuPlayer\'ı tercih ettiğiniz için teşekkürler. Sevdiğiniz her şarkı çalmaya devam etsin.</string>
+    <string name="audiobook_chapter_count">%1$d bölüm</string>
+    <string name="audiobook_chapters_short">%1$d bölüm</string>
+    <string name="audiobook_filter_all">Tümü</string>
+    <string name="audiobook_filter_gender">Hedef Kitle</string>
+    <string name="audiobook_filter_sort">Sırala</string>
+    <string name="audiobook_filter_status">Durum</string>
+    <string name="audiobook_free_library">Ücretsiz sesli kitap kitaplığı</string>
+    <string name="audiobook_free_library_desc">Tür · Sıralama · Hedef Kitle · Durum</string>
+    <string name="audiobook_gender_all">Herhangi</string>
+    <string name="audiobook_gender_female">Kadın</string>
+    <string name="audiobook_gender_male">Erkek</string>
+    <string name="audiobook_home_empty">Henüz sesli kitap verisi yok</string>
+    <string name="audiobook_intro_collapse">Daralt</string>
+    <string name="audiobook_intro_expand">Genişlet</string>
+    <string name="audiobook_library_empty">Bu filtrede ücretsiz sesli kitap yok</string>
+    <string name="audiobook_load_failed">Yüklenemedi. Ağınızı kontrol edip yeniden deneyin</string>
+    <string name="audiobook_loading_chapters">Tüm bölümler yükleniyor…</string>
+    <string name="audiobook_no_chapters">Oynatılabilir bölüm yok</string>
+    <string name="audiobook_play_all">Tümünü çal</string>
+    <string name="audiobook_queue_name">Sesli Kitaplar · %1$s</string>
+    <string name="audiobook_retry">Yeniden dene</string>
+    <string name="audiobook_search_cd">Sesli kitap ara</string>
+    <string name="audiobook_search_clear">Temizle</string>
+    <string name="audiobook_search_empty">“%1$s” için sesli kitap bulunamadı</string>
+    <string name="audiobook_search_hint">Başlık, yazar veya anlatıcıya göre ara</string>
+    <string name="audiobook_search_initial">Sesli kitap aramak için bir anahtar kelime yazın</string>
+    <string name="audiobook_search_title">Sesli kitap ara</string>
+    <string name="audiobook_section_daily">Günlük seçkiler</string>
+    <string name="audiobook_section_rank">Sıralama seçkileri</string>
+    <string name="audiobook_section_vip">VIP seçkileri</string>
+    <string name="audiobook_section_week">Haftalık seçkiler</string>
+    <string name="audiobook_shuffle_play">Karıştır</string>
+    <string name="audiobook_sort_default">Varsayılan</string>
+    <string name="audiobook_sort_plays">Çalma</string>
+    <string name="audiobook_sort_update">Güncellenme</string>
+    <string name="audiobook_status_all">Tümü</string>
+    <string name="audiobook_status_done">Tamamlandı</string>
+    <string name="audiobook_status_serial">Devam ediyor</string>
+    <string name="audiobook_title">Sesli Kitaplar</string>
+    <string name="audiobook_unknown_author">Bilinmeyen yazar</string>
+    <string name="cd_donation_qr">Alipay bağış QR kodu</string>
+    <string name="cd_donation_qr_wechat">WeChat Pay bağış QR kodu</string>
+    <string name="chat_action_new_chat">Sohbet edecek kişi bul</string>
+    <string name="chat_cd_messages">Mesajlar</string>
+    <string name="chat_empty_conversations">Henüz sohbet yok. Kişi bulmak için sağ üstteki düğmeye dokunun.</string>
+    <string name="chat_empty_friends">Henüz davet edilecek arkadaş yok. Önce bazı kullanıcıları takip edin.</string>
+    <string name="chat_empty_search">NetEase kullanıcılarını aramak için bir takma ad yazın</string>
+    <string name="chat_follow">Takip et</string>
+    <string name="chat_followed">Takip ediliyor</string>
+    <string name="chat_go_login">Giriş yap</string>
+    <string name="chat_input_hint">Mesaj gönder…</string>
+    <string name="chat_invite_friend">NetEase arkadaşlarını davet et</string>
+    <string name="chat_invite_sent">Gönderildi</string>
+    <string name="chat_join_together">Birlikte Dinle\'ye katıl</string>
+    <string name="chat_need_login">Mesajları kullanmak için NetEase hesabınıza giriş yapın</string>
+    <string name="chat_no_results">Eşleşen kullanıcı yok</string>
+    <string name="chat_playlist_empty_hint">Bu çalma listesinde oynatılabilir şarkı yok</string>
+    <string name="chat_search_hint">NetEase kullanıcılarında ara</string>
+    <string name="chat_send">Gönder</string>
+    <string name="chat_send_invite">Davet gönder</string>
+    <string name="chat_send_message">Mesaj gönder</string>
+    <string name="chat_tab_conversations">Sohbetler</string>
+    <string name="chat_tab_search">Kişi bul</string>
+    <string name="chat_title">Mesajlar</string>
+    <string name="chat_unfollow">Takibi bırak</string>
+    <string name="home_card_hide">Kartı gizle</string>
+    <string name="home_card_order_at_least_one_visible">En az bir kart görünür kalsın</string>
+    <string name="home_card_order_sheet_visibility_hint">Yeniden sıralamak için sürükleyin · kartı göstermek veya gizlemek için göze dokunun</string>
+    <string name="home_card_show">Kartı göster</string>
+    <string name="home_discover_audiobook">Sesli Kitaplar</string>
+    <string name="home_discover_card_desc">Dolaşma · Kalp · Benzer · Tanıma · Radyo · YZ</string>
+    <string name="home_discover_heart_mode">Kalp modu</string>
+    <string name="home_discover_kugou_fm">Kişisel FM</string>
+    <string name="home_discover_listen_together">Birlikte dinle</string>
+    <string name="home_discover_recognition">Şarkı tanıma</string>
+    <string name="home_discover_similar_songs">Benzer şarkılar</string>
+    <string name="home_featured_quality_hires">Hi-Res</string>
+    <string name="home_featured_quality_hq">HQ</string>
+    <string name="home_featured_quality_lossless">Kayıpsız</string>
+    <string name="kugou_dashboard_account_id">Hesap Kimliği: %1$s</string>
+    <string name="kugou_dashboard_quality_hint">Oturum açıldı: yerleşik Kugou sağlayıcısı VIP / kayıpsız kalitede getirebilir</string>
+    <string name="kugou_dashboard_refresh_cd">Hesap bilgilerini yenile</string>
+    <string name="kugou_dashboard_sync_done">Eşitleme tamamlandı: %1$d çalma listesi</string>
+    <string name="kugou_dashboard_sync_failed">Eşitleme başarısız — ağınızı kontrol edip yeniden deneyin</string>
+    <string name="kugou_dashboard_syncing">Eşitleniyor…</string>
+    <string name="kugou_login_account_pick_hint">Bu telefon numarası birkaç Kugou hesabına bağlı — giriş yapmak için birini seçin</string>
+    <string name="kugou_login_account_pick_title">Bir hesap seçin</string>
+    <string name="kugou_login_code_label">Doğrulama kodu</string>
+    <string name="kugou_login_code_placeholder">SMS kodunu girin</string>
+    <string name="kugou_login_code_required">Önce doğrulama kodunu girin</string>
+    <string name="kugou_login_code_resend">%1$d sn sonra yeniden gönder</string>
+    <string name="kugou_login_code_send">Kod gönder</string>
+    <string name="kugou_login_code_sent">Doğrulama kodu gönderildi</string>
+    <string name="kugou_login_edit_phone">Telefon numarasını değiştir</string>
+    <string name="kugou_login_fetching_info">Oturum açıldı, hesap bilgileri yükleniyor…</string>
+    <string name="kugou_login_hint">Kugou uygulamasıyla QR kodunu tarayın; oturum açmak yerleşik Kugou sağlayıcısı için kayıpsız/VIP kalitenin kilidini açar</string>
+    <string name="kugou_login_phone_invalid">Geçerli bir 11 haneli telefon numarası girin</string>
+    <string name="kugou_login_phone_label">Telefon numarası</string>
+    <string name="kugou_login_phone_placeholder">Telefon numaranızı girin</string>
+    <string name="kugou_login_phone_submit">Giriş yap</string>
+    <string name="kugou_login_qr_cd">Kugou giriş QR kodu</string>
+    <string name="kugou_login_qr_refresh">QR kodunu yenile</string>
+    <string name="kugou_login_required_toast">Kişisel FM\'i kullanmak için önce Kugou\'ya giriş yapın</string>
+    <string name="kugou_login_status_confirmed">Oturum açıldı</string>
+    <string name="kugou_login_status_expired">QR kodunun süresi doldu, yenileniyor…</string>
+    <string name="kugou_login_status_scanned">Tarandı — telefonunuzda onaylayın</string>
+    <string name="kugou_login_status_waiting">Tarama bekleniyor…</string>
+    <string name="kugou_login_subtitle">Oturum açmak yerleşik Kugou sağlayıcısı için kayıpsız/VIP kalitenin kilidini açar ve Kugou çalma listelerinizi eşitler</string>
+    <string name="kugou_login_success">Oturum açıldı!</string>
+    <string name="kugou_login_switch_to_phone">Telefon numarası kullan</string>
+    <string name="kugou_login_switch_to_qr">QR kodu kullan</string>
+    <string name="kugou_login_tab_phone">Telefon numarası</string>
+    <string name="kugou_login_tab_qr">QR kodu</string>
+    <string name="kugou_login_title">Kugou\'ya giriş yap</string>
+    <string name="kugou_service_name">Kugou Music</string>
+    <string name="kugou_sync_none">Henüz çalma listesi eşitlenmedi</string>
+    <string name="kugou_sync_playlists_count">%1$d çalma listesi eşitlendi</string>
+    <string name="listen_together_cd_avatar">%1$s avatarı</string>
+    <string name="listen_together_clipboard_detected">Panodan davet bağlantısı algılandı</string>
+    <string name="listen_together_create">Oda oluştur</string>
+    <string name="listen_together_create_from_current">Birlikte dinlemeye başla</string>
+    <string name="listen_together_create_from_current_hint">Mevcut oynatma kuyruğunu kullanır (yalnızca NetEase şarkıları) — çalma listesi seçici gerekmez</string>
+    <string name="listen_together_create_hint">Oda kuyruğu olarak eşitlenmiş bir NetEase çalma listesi seçin</string>
+    <string name="listen_together_desc">NetEase hesabıyla arkadaşlarınızla oynatmayı eşitleyin. Etkinken yalnızca NetEase şarkıları çalınabilir.</string>
+    <string name="listen_together_end">Oturumu bitir</string>
+    <string name="listen_together_host_badge">Sunucu</string>
+    <string name="listen_together_host_left">Sunucu odadan ayrıldı. Geri döndüğünde oynatma devam eder.</string>
+    <string name="listen_together_invite_all_friends">Tüm arkadaşları davet et</string>
+    <string name="listen_together_invite_invalid">Geçersiz davet bağlantısı</string>
+    <string name="listen_together_join">Katıl</string>
+    <string name="listen_together_join_hint">Davet bağlantısını buraya yapıştırın</string>
+    <string name="listen_together_leave">Ayrıl</string>
+    <string name="listen_together_leave_to_play">Bu şarkıyı çalmak için Birlikte Dinle\'den ayrılın</string>
+    <string name="listen_together_me">Siz</string>
+    <string name="listen_together_member_count">Birlikte Dinle · %1$d</string>
+    <string name="listen_together_members">Üyeler</string>
+    <string name="listen_together_netease_only">Birlikte Dinle yalnızca NetEase şarkılarını destekler</string>
+    <string name="listen_together_open_dashboard">Çalma listelerini eşitlemek için NetEase panelini aç</string>
+    <string name="listen_together_partner">Birlikte dinlenen</string>
+    <string name="listen_together_paste_link_placeholder">Davet bağlantısını veya paylaşılan metni yapıştırın</string>
+    <string name="listen_together_pick_playlist">Bir çalma listesi seçin</string>
+    <string name="listen_together_resolving_link">Davet bağlantısı çözümleniyor…</string>
+    <string name="listen_together_roaming">Dolaşma seçkileriyle başla</string>
+    <string name="listen_together_share">Davet et</string>
+    <string name="listen_together_share_done">%1$d arkadaşla paylaşıldı</string>
+    <string name="listen_together_share_failed">Arkadaşlar yüklenemedi: %1$s</string>
+    <string name="listen_together_share_no_friends">Henüz paylaşılacak arkadaş yok</string>
+    <string name="listen_together_share_no_invite">Önce bir oda oluşturun veya katılın</string>
+    <string name="listen_together_share_partial">%1$d arkadaşla paylaşıldı, %2$d başarısız</string>
+    <string name="listen_together_share_progress">%1$d/%2$d paylaşılıyor…</string>
+    <string name="listen_together_share_to_friends">Arkadaş mesajlarına paylaş</string>
+    <string name="listen_together_share_to_friends_hint">Daveti tüm NetEase arkadaşlarınıza gönderin (takip + son sohbetler)</string>
+    <string name="listen_together_status_connected">Eşitlendi</string>
+    <string name="listen_together_status_connecting">Bağlanılıyor…</string>
+    <string name="listen_together_status_reconnecting">Yeniden bağlanılıyor…</string>
+    <string name="listen_together_title">Birlikte Dinle</string>
+    <string name="listen_together_view_members">Birlikte Dinle üyelerini görüntüle</string>
+    <string name="listen_together_waiting_host">Sunucu bekleniyor…</string>
+    <string name="listen_together_with">%1$s ile dinleniyor</string>
+    <string name="lyric_share_generating">Oluşturuluyor…</string>
+    <string name="lyric_share_image">Görsel oluştur</string>
+    <string name="lyric_share_select_all">Tümünü seç</string>
+    <string name="lyric_share_selected_count">%1$d satır seçildi</string>
+    <string name="lyric_share_text">Metin olarak paylaş</string>
+    <string name="lyric_share_title">Şarkı sözlerini paylaş</string>
+    <string name="lyrics_more_vibrant_folia">Folia</string>
+    <string name="lyrics_more_vibrant_glass">Cam sahne</string>
+    <string name="lyrics_more_vibrant_off">Kapalı</string>
+    <string name="market_downloading">İndiriliyor… %1$d%%</string>
+    <string name="market_install">Yükle</string>
+    <string name="market_installed">Yüklendi</string>
+    <string name="market_installed_count">%1$d kaynak yüklendi</string>
+    <string name="market_no_sources">Henüz test edilecek kaynak yok — önce bir kaynak betiği yükleyin</string>
+    <string name="market_parsing">Betikler ayrıştırılıyor…</string>
+    <string name="market_refresh">Yenile</string>
+    <string name="market_source_builtin">Yerleşik</string>
+    <string name="market_source_plugin">Eklenti</string>
+    <string name="market_source_test_desc">Kaynak başına gerçek bir arama çalıştırır; JS kaynakları ayrıca bir oynatma URL\'si getirir</string>
+    <string name="market_source_test_title">Kaynak bağlantı testi</string>
+    <string name="market_subtitle">GitHub\'dan topluluk kaynak betiklerini indirin ve yükleyin</string>
+    <string name="market_tap_expand">Betikleri indirmek ve incelemek için dokunun</string>
+    <string name="market_test">Test et</string>
+    <string name="market_test_all">Tümünü test et</string>
+    <string name="market_test_failed">Kullanılamıyor</string>
+    <string name="market_test_search_only">Arama tamam</string>
+    <string name="market_test_success">Kullanılabilir</string>
+    <string name="market_testing">Test ediliyor…</string>
+    <string name="market_title">Pixel Kaynak Pazarı</string>
+    <string name="player_cd_song_info">Şarkı bilgisi</string>
+    <string name="player_more_comments">Yorumları görüntüle</string>
+    <string name="player_more_download">Şarkıyı indir</string>
+    <string name="playlist_search_hint">Bu çalma listesinde şarkı ara</string>
+    <string name="playlist_search_result_count">%1$d şarkı</string>
+    <string name="queue_search_hint">Bu kuyrukta şarkı ara</string>
+    <string name="queue_search_result_count">%1$d eşleşme</string>
+    <string name="roaming_mode_explore">Keşfet</string>
+    <string name="roaming_mode_explore_desc">Duymadığınız şarkılara yönelin</string>
+    <string name="roaming_mode_familiar">Tanıdık</string>
+    <string name="roaming_mode_familiar_desc">Zaten dinlediklerinize yönelin</string>
+    <string name="roaming_mode_title">Dolaşma modu</string>
+    <string name="song_recognition_hint">Telefonun yakındaki müziği (~6 sn) dinlemesine izin verin ve şarkıyı bulun</string>
+    <string name="song_recognition_listening">Dinleniyor…</string>
+    <string name="song_recognition_mic_denied">Mikrofon izni gerekli — lütfen sistem ayarlarından izin verin</string>
+    <string name="song_recognition_result_title">Eşleşme bulundu</string>
+    <string name="song_recognition_retry">Tekrar dene</string>
+    <string name="song_recognition_start">Dinlemeye başla</string>
+    <string name="song_recognition_title">Şarkı tanıma</string>
+    <string name="source_badge_kugou">Kugou</string>
+    <string name="source_badge_netease">NetEase</string>
+    <string name="startup_preparing">Hazırlanıyor…</string>
 </resources>

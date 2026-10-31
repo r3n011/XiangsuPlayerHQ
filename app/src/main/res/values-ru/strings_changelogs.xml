@@ -1,150 +1,150 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="changelog_title">Changelog</string>
-    <string name="changelog_view_github">View on GitHub</string>
-    <string name="changelog_sec_improvements">Improvements</string>
-    <string name="changelog_sec_fixes">Fixes</string>
-    <string name="changelog_sec_whats_new">What\'s New</string>
-    <string name="changelog_sec_added">Added</string>
+    <string name="changelog_title">Список изменений</string>
+    <string name="changelog_view_github">Смотреть на GitHub</string>
+    <string name="changelog_sec_improvements">Улучшения</string>
+    <string name="changelog_sec_fixes">Исправления</string>
+    <string name="changelog_sec_whats_new">Что нового</string>
+    <string name="changelog_sec_added">Добавлено</string>
     <string-array name="changelog_020_added">
-        <item>Chromecast support for casting audio from your device.</item>
-        <item>In-app changelog to keep you updated on the latest features.</item>
-        <item>Support for .LRC files, both embedded and external.</item>
-        <item>Offline lyrics support.</item>
-        <item>Synchronized lyrics (synced with the song).</item>
-        <item>New screen to view the full queue.</item>
-        <item>Reorder and remove songs from the queue.</item>
-        <item>Mini-player gestures (swipe down to close).</item>
-        <item>Added more material animations.</item>
-        <item>New settings to customize the look and feel.</item>
-        <item>New settings to clear the cache.</item>
+        <item>Поддержка Chromecast для трансляции звука с вашего устройства.</item>
+        <item>Журнал изменений в приложении, чтобы вы были в курсе новых функций.</item>
+        <item>Поддержка файлов .LRC — как встроенных, так и внешних.</item>
+        <item>Поддержка текстов песен офлайн.</item>
+        <item>Синхронизированные тексты (синхронизация с песней).</item>
+        <item>Новый экран для просмотра всей очереди.</item>
+        <item>Меняйте порядок и удаляйте песни из очереди.</item>
+        <item>Жесты мини-плеера (смахните вниз, чтобы закрыть).</item>
+        <item>Добавлено больше анимаций Material.</item>
+        <item>Новые настройки для настройки внешнего вида.</item>
+        <item>Новые настройки для очистки кеша.</item>
     </string-array>
     <string-array name="changelog_020_improvements">
-        <item>Complete redesign of the user interface.</item>
-        <item>Complete redesign of the player.</item>
-        <item>Performance improvements in the library.</item>
-        <item>Improved application startup speed.</item>
-        <item>The AI now provides better results.</item>
+        <item>Полностью переработан пользовательский интерфейс.</item>
+        <item>Полностью переработан плеер.</item>
+        <item>Улучшена производительность библиотеки.</item>
+        <item>Увеличена скорость запуска приложения.</item>
+        <item>ИИ теперь выдаёт более качественные результаты.</item>
     </string-array>
     <string-array name="changelog_020_fixes">
-        <item>Fixed various bugs in the tag editor.</item>
-        <item>Fixed a bug where the playback notification was not clearing.</item>
-        <item>Fixed several bugs that caused the app to crash.</item>
+        <item>Исправлены различные ошибки в редакторе тегов.</item>
+        <item>Исправлена ошибка, из-за которой уведомление о воспроизведении не исчезало.</item>
+        <item>Исправлено несколько ошибок, приводивших к сбою приложения.</item>
     </string-array>
     <string-array name="changelog_030_whats_new">
-        <item>Introduced a richer listening stats hub with deeper insights into your sessions.</item>
-        <item>Launched a floating quick player to instantly open and preview local files.</item>
-        <item>Added a folders tab with a tree-style navigator and playlist-ready view.</item>
+        <item>Появился более подробный центр статистики прослушивания с углублённой аналитикой сеансов.</item>
+        <item>Запущен плавающий быстрый плеер для мгновенного открытия и прослушивания локальных файлов.</item>
+        <item>Добавлена вкладка «Папки» с древовидной навигацией и представлением, готовым для плейлистов.</item>
     </string-array>
     <string-array name="changelog_030_improvements">
-        <item>Refined the overall Material 3 UI for a cleaner and more cohesive experience.</item>
-        <item>Metadata editing now supports cover art change.</item>
-        <item>Smoothed out animations and transitions across the app for more fluid navigation.</item>
-        <item>Enhanced the artist screen layout with richer details and polish.</item>
-        <item>Upgraded DailyMix and YourMix generation with smarter, more diverse selections.</item>
-        <item>Strengthened the AI playlist generation.</item>
-        <item>Improved search relevance and presentation for faster discovery.</item>
-        <item>Expanded support for a broader range of audio file formats.</item>
+        <item>Общий интерфейс Material 3 доработан: стало чище и целостнее.</item>
+        <item>Редактирование метаданных теперь позволяет менять обложку.</item>
+        <item>Анимации и переходы во всём приложении стали плавнее для более комфортной навигации.</item>
+        <item>Улучшен макет экрана исполнителя: больше деталей и аккуратности.</item>
+        <item>Улучшена генерация DailyMix и YourMix: выбор стал умнее и разнообразнее.</item>
+        <item>Усилена генерация плейлистов с помощью ИИ.</item>
+        <item>Улучшены релевантность и отображение поиска для более быстрого нахождения музыки.</item>
+        <item>Расширена поддержка более широкого спектра аудиоформатов.</item>
     </string-array>
     <string-array name="changelog_030_fixes">
-        <item>Resolved metadata quirks so song details stay accurate everywhere.</item>
-        <item>Restored notification shortcuts so they reliably jump back into playback.</item>
+        <item>Устранены особенности метаданных, чтобы сведения о песнях везде оставались точными.</item>
+        <item>Восстановлены ярлыки уведомлений, чтобы надёжно возвращаться к воспроизведению.</item>
     </string-array>
     <string-array name="changelog_040_improvements">
-        <item>Major navigation redesign</item>
-        <item>New file explorer for choosing source directories</item>
-        <item>New Connectivity and casting functionalities</item>
-        <item>Seamless continuity between remote devices</item>
-        <item>Gapless transition between songs</item>
-        <item>Crossfade control</item>
-        <item>New Custom Transitions feature (only for playlists)</item>
-        <item>Keep playing after closed the app</item>
-        <item>UI Optimizations</item>
-        <item>Improved stats feature</item>
-        <item>Redesigned Queue control with more features</item>
-        <item>Improved different filetypes support for playing and metadata editing</item>
-        <item>Improved permission controller</item>
-        <item>Minor bug fixes</item>
+        <item>Масштабная переработка навигации</item>
+        <item>Новый файловый менеджер для выбора исходных папок</item>
+        <item>Новые функции подключения и трансляции</item>
+        <item>Бесшовная непрерывность между удалёнными устройствами</item>
+        <item>Бесшовный переход между песнями</item>
+        <item>Управление кроссфейдом</item>
+        <item>Новая функция пользовательских переходов (только для плейлистов)</item>
+        <item>Продолжать воспроизведение после закрытия приложения</item>
+        <item>Оптимизация интерфейса</item>
+        <item>Улучшена функция статистики</item>
+        <item>Переработанное управление очередью с новыми функциями</item>
+        <item>Улучшена поддержка различных типов файлов для воспроизведения и редактирования метаданных</item>
+        <item>Улучшено управление разрешениями</item>
+        <item>Мелкие исправления</item>
     </string-array>
     <string-array name="changelog_050_improvements">
-        <item>Material 3 Expressive UI Update</item>
-        <item>10-band Equalizer &amp; Effects</item>
-        <item>New Library Sync Flow</item>
-        <item>AI Integration (Gemini Models)</item>
-        <item>M3U Playlist Import/Export</item>
-        <item>Deezer Artist Artwork Integration</item>
-        <item>Custom Playlist Covers</item>
-        <item>Settings Architecture Refactor</item>
-        <item>Queue &amp; Player Animations</item>
-        <item>Baseline Profiles &amp; Performance</item>
-        <item>Better Lyrics System with Sync Offset</item>
+        <item>Обновление интерфейса Material 3 Expressive</item>
+        <item>10-полосный эквалайзер и эффекты</item>
+        <item>Новый сценарий синхронизации библиотеки</item>
+        <item>Интеграция ИИ (модели Gemini)</item>
+        <item>Импорт и экспорт плейлистов M3U</item>
+        <item>Интеграция изображений исполнителей Deezer</item>
+        <item>Свои обложки плейлистов</item>
+        <item>Переработка архитектуры настроек</item>
+        <item>Анимации очереди и плеера</item>
+        <item>Baseline-профили и производительность</item>
+        <item>Улучшенная система текстов с настройкой смещения синхронизации</item>
     </string-array>
     <string-array name="changelog_050_fixes">
-        <item>Casting Stability Improvements</item>
-        <item>Player Sheet Stability</item>
-        <item>General Bug Fixes &amp; Cleanup</item>
+        <item>Улучшена стабильность трансляции</item>
+        <item>Стабильность панели плеера</item>
+        <item>Общие исправления и очистка</item>
     </string-array>
     <string-array name="changelog_060_whats_new">
-        <item>Android Auto support is now available for in-car playback.</item>
-        <item>Wear OS support is live, including better watch-to-phone playback controls.</item>
-        <item>Cloud integrations expanded with Telegram, NetEase, QQ Music, and Google Drive improvements.</item>
-        <item>Recently Played and persistent queue restoration keep your listening session ready.</item>
-        <item>Backup &amp; Restore v3 and account management tools are now included.</item>
-        <item>Lyrics got smarter with manual search fallback and storage improvements.</item>
+        <item>Теперь поддерживается Android Auto для воспроизведения в автомобиле.</item>
+        <item>Поддержка Wear OS запущена, включая улучшенное управление воспроизведением с часов на телефон.</item>
+        <item>Облачные интеграции расширены: улучшены Telegram, NetEase, QQ Music и Google Drive.</item>
+        <item>«Недавно прослушанные» и сохранение очереди позволяют продолжить прослушивание в любой момент.</item>
+        <item>Теперь доступны Backup &amp; Restore v3 и инструменты управления аккаунтом.</item>
+        <item>Тексты стали умнее: резервный ручной поиск и улучшенное хранение.</item>
     </string-array>
     <string-array name="changelog_060_improvements">
-        <item>Big performance pass across startup, library, queue, and player interactions.</item>
-        <item>Player, Cast, Lyrics, Artist, and Genre surfaces were redesigned for smoother use.</item>
-        <item>Navigation and search flows are more reliable, with safer route handling.</item>
-        <item>Audio playback compatibility improved for more devices and formats.</item>
-        <item>Multi-selection workflows were expanded across songs, albums, and playlists.</item>
+        <item>Масштабная оптимизация производительности при запуске, в библиотеке, очереди и при взаимодействии с плеером.</item>
+        <item>Экраны плеера, трансляции, текстов, исполнителей и жанров переработаны для более плавной работы.</item>
+        <item>Навигация и поиск стали надёжнее, обработка маршрутов — безопаснее.</item>
+        <item>Улучшена совместимость воспроизведения звука с большим числом устройств и форматов.</item>
+        <item>Множественный выбор расширен на песни, альбомы и плейлисты.</item>
     </string-array>
     <string-array name="changelog_060_fixes">
-        <item>Queue and shuffle behavior is now more stable and predictable.</item>
-        <item>Several background playback and casting edge cases were fixed.</item>
-        <item>Sleep Timer, Files tab navigation, and album artist crash issues were fixed.</item>
-        <item>Widget loading and service stability were improved to reduce overheating/memory issues.</item>
-        <item>General bug fixes and UI polish across the app.</item>
+        <item>Очередь и случайное воспроизведение теперь работают стабильнее и предсказуемее.</item>
+        <item>Исправлено несколько граничных случаев фонового воспроизведения и трансляции.</item>
+        <item>Исправлены проблемы с таймером сна, навигацией во вкладке «Файлы» и сбои при работе с исполнителем альбома.</item>
+        <item>Улучшены загрузка виджетов и стабильность службы, чтобы снизить перегрев и расход памяти.</item>
+        <item>Общие исправления ошибок и улучшение интерфейса во всём приложении.</item>
     </string-array>
     <string-array name="changelog_070_whats_new">
-        <item>Wear OS: Music transfer, local playback, queue sync, and remote control from watch.</item>
-        <item>AI: Groq AI and OpenRouter (experimental) integration with token optimization.</item>
-        <item>Cloud: Jellyfin support added.</item>
-        <item>Lyrics: Synced translation with dedicated toggle, Kugou LRC format support, text alignment customization, and improved remote loading.</item>
-        <item>UI/UX: Compact navigation bar mode, dynamic themes from album art palette, marquee for long titles, and new sorting options.</item>
-        <item>Telegram: Native topics support and enhanced display modes.</item>
+        <item>Wear OS: передача музыки, локальное воспроизведение, синхронизация очереди и удалённое управление с часов.</item>
+        <item>ИИ: интеграция Groq AI и OpenRouter (экспериментально) с оптимизацией токенов.</item>
+        <item>Облако: добавлена поддержка Jellyfin.</item>
+        <item>Тексты: синхронизированный перевод с отдельным переключателем, поддержка формата Kugou LRC, настройка выравнивания текста и улучшенная удалённая загрузка.</item>
+        <item>Интерфейс: компактный режим панели навигации, динамические темы по палитре обложки, бегущая строка для длинных названий и новые параметры сортировки.</item>
+        <item>Telegram: встроенная поддержка тем и улучшенные режимы отображения.</item>
     </string-array>
     <string-array name="changelog_070_improvements">
-        <item>Audio Engine: Complete overhaul with support for more formats (MIDI, ALAC, M4A) and decoder optimization.</item>
-        <item>Efficiency: Drastic energy consumption reduction, overheating fixes, and background task optimization (SyncWorker).</item>
-        <item>Database: Massive query optimizations and redesigned cover art cache to prevent data loss.</item>
-        <item>Startup: Improved loading time via Baseline Profile optimization.</item>
+        <item>Аудиодвижок: полная переработка с поддержкой большего числа форматов (MIDI, ALAC, M4A) и оптимизацией декодеров.</item>
+        <item>Эффективность: резкое снижение энергопотребления, устранение перегрева и оптимизация фоновых задач (SyncWorker).</item>
+        <item>База данных: масштабная оптимизация запросов и переработанный кеш обложек для предотвращения потери данных.</item>
+        <item>Запуск: время загрузки улучшено благодаря оптимизации Baseline-профиля.</item>
     </string-array>
     <string-array name="changelog_070_fixes">
-        <item>Playback: Fixed stuttering in Opus/MP3, ReplayGain errors during crossfades, and startup issues on Samsung decoders.</item>
-        <item>Stability: Eliminated crashes on startup, artist navigation, and Android 12+ devices.</item>
-        <item>UI: Fixed cover art flickering, text overflow in non-Latin scripts, and navigation bar/miniplayer behavior.</item>
-        <item>Security: Hardened credential handling, storage permissions, and media server communication.</item>
+        <item>Воспроизведение: исправлены рывки в Opus/MP3, ошибки ReplayGain при кроссфейде и проблемы запуска на декодерах Samsung.</item>
+        <item>Стабильность: устранены сбои при запуске, навигации по исполнителям и на устройствах с Android 12+.</item>
+        <item>Интерфейс: исправлены мерцание обложек, выход текста за границы в нелатинских шрифтах и поведение панели навигации и мини-плеера.</item>
+        <item>Безопасность: усилены обработка учётных данных, разрешения на хранение и связь с медиасервером.</item>
     </string-array>
     <string-array name="changelog_070_added">
         <item>Localization: Spanish, French, Russian, Simplified Chinese, Indonesian, Italian</item>
     </string-array>
     <string-array name="changelog_075_whats_new">
-        <item>Google Drive integration with player lifecycle management.</item>
-        <item>Batch song metadata editing (tags and cover art).</item>
-        <item>AI lyrics translation with customizable Wear OS preferences.</item>
-        <item>Lag diagnostic tool and multi-selection on Search screen.</item>
-        <item>Arabic &amp; Turkish support, with localized http URL local-network options.</item>
+        <item>Интеграция с Google Drive и управление жизненным циклом плеера.</item>
+        <item>Пакетное редактирование метаданных песен (теги и обложки).</item>
+        <item>Перевод текстов песен с помощью ИИ и настраиваемые параметры Wear OS.</item>
+        <item>Инструмент диагностики задержек и множественный выбор на экране поиска.</item>
+        <item>Добавлена поддержка арабского и турецкого языков, а также локализованные параметры http-URL для локальной сети.</item>
     </string-array>
     <string-array name="changelog_075_improvements">
-        <item>Drastic battery saving (audio offload and UI polling gates).</item>
-        <item>Optimized queue management (faster insertions and explicit indexing).</item>
-        <item>Material 3 Expressive motion animations for transition screens.</item>
-        <item>Refactored library synchronization via throttled scanning.</item>
+        <item>Существенная экономия заряда (выгрузка аудио и ограничение опроса интерфейса).</item>
+        <item>Оптимизировано управление очередью (более быстрое добавление и явная индексация).</item>
+        <item>Анимации движения Material 3 Expressive для экранов переходов.</item>
+        <item>Переработана синхронизация библиотеки за счёт ограниченного сканирования.</item>
     </string-array>
     <string-array name="changelog_075_fixes">
-        <item>Resolved stuttering/skipping playback lags and buffering issues.</item>
-        <item>Fixed external song deletion sync and metadata consistency.</item>
-        <item>Fixed memory issues, crashes, and layout glitches on Wear OS and phone.</item>
+        <item>Устранены рывки, пропуски и проблемы с буферизацией при воспроизведении.</item>
+        <item>Исправлены синхронизация при удалении внешних песен и согласованность метаданных.</item>
+        <item>Исправлены проблемы с памятью, сбои и ошибки вёрстки на Wear OS и телефоне.</item>
     </string-array>
 </resources>

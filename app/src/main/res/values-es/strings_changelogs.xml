@@ -130,24 +130,24 @@
         <item>Localización: Español, francés, ruso, chino simplificado, indonesio, italiano</item>
     </string-array>
     <string-array name="changelog_075_fixes">
-        <item>Resolved stuttering/skipping playback lags and buffering issues.</item>
-        <item>Fixed external song deletion sync and metadata consistency.</item>
-        <item>Fixed memory issues, crashes, and layout glitches on Wear OS and phone.</item>
+        <item>Resueltos los tirones, saltos y problemas de búfer en la reproducción.</item>
+        <item>Corregidas la sincronización al eliminar canciones externas y la coherencia de metadatos.</item>
+        <item>Corregidos problemas de memoria, fallos y errores de diseño en Wear OS y el teléfono.</item>
     </string-array>
 
     <string-array name="changelog_075_improvements">
-        <item>Drastic battery saving (audio offload and UI polling gates).</item>
-        <item>Optimized queue management (faster insertions and explicit indexing).</item>
-        <item>Material 3 Expressive motion animations for transition screens.</item>
-        <item>Refactored library synchronization via throttled scanning.</item>
+        <item>Ahorro drástico de batería (descarga de audio y sondeos de la interfaz limitados).</item>
+        <item>Gestión de la cola optimizada (inserciones más rápidas e indexación explícita).</item>
+        <item>Animaciones de movimiento Material 3 Expressive para las pantallas de transición.</item>
+        <item>Sincronización de la biblioteca refactorizada mediante escaneo limitado.</item>
     </string-array>
     
     <string-array name="changelog_075_whats_new">
-        <item>Google Drive integration with player lifecycle management.</item>
-        <item>Batch song metadata editing (tags and cover art).</item>
-        <item>AI lyrics translation with customizable Wear OS preferences.</item>
-        <item>Lag diagnostic tool and multi-selection on Search screen.</item>
-        <item>Arabic &amp; Turkish support, with localized http URL local-network options.</item>
+        <item>Integración con Google Drive con gestión del ciclo de vida del reproductor.</item>
+        <item>Edición de metadatos de varias canciones a la vez (etiquetas y carátulas).</item>
+        <item>Traducción de letras con IA y preferencias de Wear OS personalizables.</item>
+        <item>Herramienta de diagnóstico de lag y selección múltiple en la pantalla de búsqueda.</item>
+        <item>Compatibilidad con árabe y turco, con opciones de URL http localizadas para la red local.</item>
     </string-array>
     
 </resources>

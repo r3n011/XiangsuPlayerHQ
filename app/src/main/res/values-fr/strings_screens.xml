@@ -106,7 +106,7 @@
     >Vous pouvez changer cela plus tard dans Paramètres &gt; Apparence &gt; Navigation dans la bibliothèque.</string>
     <string name="tab_library">Bibliothèque</string>
     <string name="tab_songs">CHANSONS</string>
-    <string name="tab_albums">ALBUMS</string>
+    <string name="tab_albums">Albums</string>
     <string name="tab_artists">ARTISTES</string>
     <string name="setup_all_set_title">Tout est prêt !</string>
     <string
@@ -410,23 +410,23 @@
     <string
         name="error_share_song_format"
     >Impossible de partager la chanson : %1$s</string>
-    <string name="about_acknowledgements_blur_desc">Blur effect adapted from this project</string>
+    <string name="about_acknowledgements_blur_desc">Effet de flou adapté de ce projet</string>
     
-    <string name="about_acknowledgements_folia_desc">Lyric visual effects design inspired by Folia Major (AGPL-3.0)</string>
+    <string name="about_acknowledgements_folia_desc">Conception des effets visuels de paroles inspirée de Folia Major (AGPL-3.0)</string>
     
-    <string name="about_acknowledgements_lanzou_desc">Update integration powered by LanzouAPI</string>
+    <string name="about_acknowledgements_lanzou_desc">Intégration des mises à jour assurée par LanzouAPI</string>
     
-    <string name="about_acknowledgements_miniaudio_desc">Audio playback powered by miniaudio</string>
+    <string name="about_acknowledgements_miniaudio_desc">Lecture audio assurée par miniaudio</string>
     
-    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_acknowledgements_title">Remerciements</string>
     
     <string name="cd_back">Back</string>
     
-    <string name="cd_favorite_artist">Favorite artist</string>
+    <string name="cd_favorite_artist">Ajouter l\'artiste aux favoris</string>
     
     <string name="cd_radio_open">Radio</string>
 
-    <string name="cd_unfavorite_artist">Unfavorite artist</string>
+    <string name="cd_unfavorite_artist">Retirer l\'artiste des favoris</string>
     
     <string name="content_description_exit">Exit</string>
     
@@ -434,121 +434,352 @@
 
     
     
-    <string name="content_description_play_pause">Play/Pause</string>
+    <string name="content_description_play_pause">Lecture/Pause</string>
     
-    <string name="content_description_previous">Previous</string>
+    <string name="content_description_previous">Précédent</string>
     
-    <string name="dash_status_fetching_albums">Fetching album list…</string>
+    <string name="dash_status_fetching_albums">Récupération de la liste des albums…</string>
     
-    <string name="dash_status_fetching_playlists">Fetching playlists…</string>
+    <string name="dash_status_fetching_playlists">Récupération des playlists…</string>
     
-    <string name="dash_status_fetching_songs_from_format">Fetching songs from %1$s…</string>
+    <string name="dash_status_fetching_songs_from_format">Récupération des chansons depuis %1$s…</string>
     
-    <string name="dash_status_library_sync_complete">Library sync complete</string>
+    <string name="dash_status_library_sync_complete">Synchronisation de la bibliothèque terminée</string>
     
-    <string name="dash_status_no_songs_found">No library songs found</string>
+    <string name="dash_status_no_songs_found">Aucune chanson de bibliothèque trouvée</string>
     
-    <string name="dash_status_saving_songs_format">Saving %1$d songs to database…</string>
+    <string name="dash_status_saving_songs_format">Enregistrement de %1$d chansons dans la base de données…</string>
     
-    <string name="dash_status_sync_complete">Sync complete</string>
+    <string name="dash_status_sync_complete">Synchronisation terminée</string>
     
-    <string name="dash_status_syncing_library">Syncing library…</string>
+    <string name="dash_status_syncing_library">Synchronisation de la bibliothèque…</string>
     
-    <string name="dash_status_syncing_playlist_format">Syncing playlist: %1$s</string>
+    <string name="dash_status_syncing_playlist_format">Synchronisation de la playlist : %1$s</string>
     
-    <string name="dash_status_updating_local">Updating local library…</string>
+    <string name="dash_status_updating_local">Mise à jour de la bibliothèque locale…</string>
     
-    <string name="discover_ai_subtitle">Smart playlists, lyrics translation and insights</string>
+    <string name="discover_ai_subtitle">Playlists intelligentes, traduction et analyse des paroles</string>
     
-    <string name="discover_ai_title">AI Assistant</string>
+    <string name="discover_ai_title">Assistant IA</string>
     
-    <string name="discover_multi_selected_desc">%1$s — tapping the Discover button shows a picker</string>
+    <string name="discover_multi_selected_desc">%1$s — appuyer sur le bouton Découvrir affiche un sélecteur</string>
     
-    <string name="discover_none_selected_desc">None selected — the Discover button is hidden</string>
+    <string name="discover_none_selected_desc">Aucune sélection — le bouton Découvrir est masqué</string>
     
-    <string name="discover_options_dialog_desc">Choose what the bottom-center Discover button shows. Select none to hide the button, only one to open it directly, or several to open a picker.</string>
+    <string name="discover_options_dialog_desc">Choisissez ce que le bouton Découvrir en bas au centre affiche. Sélectionnez aucun pour masquer le bouton, un seul pour l\'ouvrir directement, ou plusieurs pour ouvrir un sélecteur.</string>
     
-    <string name="discover_radio_subtitle">Listen to internet radio stations worldwide</string>
+    <string name="discover_radio_subtitle">Écoutez des stations de radio Internet du monde entier</string>
     
-    <string name="discover_roaming_subtitle">Netease Cloud Music roaming with personalized picks</string>
+    <string name="discover_roaming_subtitle">Roaming NetEase Cloud Music avec des sélections personnalisées</string>
     
-    <string name="discover_sheet_title">Discover</string>
+    <string name="discover_sheet_title">Découvrir</string>
     
-    <string name="discover_show_item_subtitle">Show this option in the Discover popup</string>
+    <string name="discover_show_item_subtitle">Afficher cette option dans la fenêtre Découvrir</string>
     
-    <string name="discover_single_selected_desc">%1$s only — the button opens it directly</string>
+    <string name="discover_single_selected_desc">%1$s uniquement — le bouton l\'ouvre directement</string>
     
-    <string name="home_card_ai_recommendation">AI Mix</string>
+    <string name="home_card_ai_recommendation">Mix IA</string>
 
     
     
-    <string name="home_card_order_reset_dialog_body">This restores the default home card order.</string>
+    <string name="home_card_order_reset_dialog_body">Cela restaure l\'ordre par défaut des cartes de l\'accueil.</string>
     
-    <string name="home_card_order_reset_dialog_title">Reset card order?</string>
+    <string name="home_card_order_reset_dialog_title">Réinitialiser l\'ordre des cartes ?</string>
     
-    <string name="home_card_order_sheet_title">Customize home</string>
+    <string name="home_card_order_sheet_title">Personnaliser l\'accueil</string>
     
-    <string name="home_edit_card_order">Edit home cards</string>
+    <string name="home_edit_card_order">Modifier les cartes de l\'accueil</string>
     
-    <string name="home_empty_placeholder_refresh">Refresh</string>
+    <string name="home_empty_placeholder_refresh">Actualiser</string>
     
-    <string name="home_empty_placeholder_subtitle">Your mix will appear here when XiangsuPlayer finds songs or syncs a source.</string>
+    <string name="home_empty_placeholder_subtitle">Votre mix apparaîtra ici dès que XiangsuPlayer trouvera des chansons ou synchronisera une source.</string>
     
-    <string name="home_empty_placeholder_title">No data to show yet</string>
+    <string name="home_empty_placeholder_title">Aucune donnée à afficher pour l\'instant</string>
     
-    <string name="home_favorite_artists_title">Favorite Artists</string>
+    <string name="home_favorite_artists_title">Artistes favoris</string>
     
-    <string name="open_source_licenses_screen_title">Open Source Licenses</string>
+    <string name="open_source_licenses_screen_title">Licences open source</string>
     
     <string name="radio_all">All</string>
     
-    <string name="radio_country_picker_title">Select country</string>
+    <string name="radio_country_picker_title">Sélectionner un pays</string>
     
-    <string name="radio_favorite">Add to favorites</string>
+    <string name="radio_favorite">Ajouter aux favoris</string>
     
-    <string name="radio_favorite_confirm">Add this station to your favorites?</string>
+    <string name="radio_favorite_confirm">Ajouter cette station à vos favoris ?</string>
     
     <string name="radio_live_badge">LIVE</string>
     
     <string name="radio_more_countries">More</string>
     
-    <string name="radio_no_results">No stations found</string>
+    <string name="radio_no_results">Aucune station trouvée</string>
     
-    <string name="radio_recommendations">Popular stations</string>
+    <string name="radio_recommendations">Stations populaires</string>
     
-    <string name="radio_retry">Retry</string>
+    <string name="radio_retry">Réessayer</string>
     
-    <string name="radio_search">Search</string>
+    <string name="radio_search">Rechercher</string>
     
-    <string name="radio_search_hint">Search stations, countries or tags</string>
+    <string name="radio_search_hint">Rechercher des stations, pays ou étiquettes</string>
     
     <string name="radio_title">Radio</string>
     
     <string name="radio_top">Top</string>
     
-    <string name="radio_unfavorite">Remove from favorites</string>
+    <string name="radio_unfavorite">Retirer des favoris</string>
     
-    <string name="radio_unfavorite_confirm">Remove this station from your favorites?</string>
+    <string name="radio_unfavorite_confirm">Retirer cette station de vos favoris ?</string>
     
-    <string name="tab_folders">Folders</string>
+    <string name="tab_folders">Dossiers</string>
     
-    <string name="tab_history">History</string>
+    <string name="tab_history">Historique</string>
     
-    <string name="tab_liked">Liked</string>
+    <string name="tab_liked">Aimées</string>
     
     <string name="tab_playlists">Playlists</string>
     
-    <string name="third_party_notices_action">Notices</string>
+    <string name="third_party_notices_action">Mentions</string>
     
-    <string name="third_party_notices_close">Close</string>
+    <string name="third_party_notices_close">Fermer</string>
     
     
-    <string name="third_party_notices_load_error">Failed to load third-party notices.</string>
+    <string name="third_party_notices_load_error">Impossible de charger les mentions de tiers.</string>
     
-    <string name="third_party_notices_title">Third-Party Notices</string>
+    <string name="third_party_notices_title">Mentions de tiers</string>
     
-    <string name="update_install_permission_required">Install permission is required to update the app.</string>
+    <string name="update_install_permission_required">L\'autorisation d\'installation est requise pour mettre à jour l\'application.</string>
 
     
     
+    <string name="about_acknowledgements_mineradio_desc">Référence pour l\'interface distante web de style « Glass » (MineRadio)</string>
+    <string name="about_acknowledgements_reactor_desc">Référence pour le style « Reactor » de la télécommande web et le visualiseur principal (Reactor Audio Visualizer)</string>
+    <string name="about_acknowledgements_rhythm_desc">Remerciements particuliers : soutien créatif et référence partielle pour l\'interface (Rhythm)</string>
+    <string name="about_donation_button">Faire un don avec Alipay</string>
+    <string name="about_donation_button_alipay">Faire un don avec Alipay</string>
+    <string name="about_donation_button_wechat">Faire un don avec WeChat</string>
+    <string name="about_donation_channel_alipay">Alipay</string>
+    <string name="about_donation_channel_wechat">WeChat Pay</string>
+    <string name="about_donation_no_app">Aucune application ne peut gérer le lien de don sur cet appareil.</string>
+    <string name="about_donation_no_wechat">WeChat n\'est pas installé — veuillez scanner le QR code ci-dessus à la place.</string>
+    <string name="about_donation_qr_hint">Scannez avec Alipay ou utilisez le bouton ci-dessous</string>
+    <string name="about_donation_qr_hint_both">Scannez avec Alipay ou WeChat, ou utilisez les boutons ci-dessous</string>
+    <string name="about_donation_qr_hint_wechat">Scannez avec WeChat ou utilisez le bouton ci-dessous</string>
+    <string name="about_donation_subtitle">Si XiangsuPlayer vous est utile, pensez à offrir un café au développeur. Votre soutien permet de financer les mises à jour.</string>
+    <string name="about_donation_thanks_note">La liste est mise à jour au fil du temps — contactez le développeur si quelque chose manque.</string>
+    <string name="about_donation_thanks_subtitle">Merci à toutes les personnes qui ont soutenu ce projet</string>
+    <string name="about_donation_thanks_title">Liste de remerciements</string>
+    <string name="about_donation_title">Soutenir le développement</string>
+    <string name="about_donation_wechat_opened">WeChat est ouvert — scannez le QR code ci-dessus pour faire un don.</string>
+    <string name="about_supporters_surprise_hint">Appuyez ici — nous avons quelque chose à vous dire</string>
+    <string name="about_supporters_surprise_message">Et merci d\'avoir choisi XiangsuPlayer. Que chaque chanson que vous aimez continue de résonner.</string>
+    <string name="audiobook_chapter_count">%1$d chapitres</string>
+    <string name="audiobook_chapters_short">%1$d chap.</string>
+    <string name="audiobook_filter_all">Tout</string>
+    <string name="audiobook_filter_gender">Public</string>
+    <string name="audiobook_filter_sort">Trier</string>
+    <string name="audiobook_filter_status">Statut</string>
+    <string name="audiobook_free_library">Bibliothèque de livres audio gratuits</string>
+    <string name="audiobook_free_library_desc">Genre · Tri · Public · Statut</string>
+    <string name="audiobook_gender_all">Tous</string>
+    <string name="audiobook_gender_female">Femme</string>
+    <string name="audiobook_gender_male">Homme</string>
+    <string name="audiobook_home_empty">Aucune donnée de livre audio pour l\'instant</string>
+    <string name="audiobook_intro_collapse">Réduire</string>
+    <string name="audiobook_intro_expand">Développer</string>
+    <string name="audiobook_library_empty">Aucun livre audio gratuit avec ce filtre</string>
+    <string name="audiobook_load_failed">Échec du chargement. Vérifiez votre connexion et réessayez</string>
+    <string name="audiobook_loading_chapters">Chargement de tous les chapitres…</string>
+    <string name="audiobook_no_chapters">Aucun chapitre lisible</string>
+    <string name="audiobook_play_all">Tout lire</string>
+    <string name="audiobook_queue_name">Livres audio · %1$s</string>
+    <string name="audiobook_retry">Réessayer</string>
+    <string name="audiobook_search_cd">Rechercher des livres audio</string>
+    <string name="audiobook_search_clear">Effacer</string>
+    <string name="audiobook_search_empty">Aucun livre audio trouvé pour « %1$s »</string>
+    <string name="audiobook_search_hint">Rechercher par titre, auteur ou narrateur</string>
+    <string name="audiobook_search_initial">Saisissez un mot-clé pour rechercher des livres audio</string>
+    <string name="audiobook_search_title">Rechercher des livres audio</string>
+    <string name="audiobook_section_daily">Sélections du jour</string>
+    <string name="audiobook_section_rank">Sélections du classement</string>
+    <string name="audiobook_section_vip">Sélections VIP</string>
+    <string name="audiobook_section_week">Sélections de la semaine</string>
+    <string name="audiobook_shuffle_play">Aléatoire</string>
+    <string name="audiobook_sort_default">Par défaut</string>
+    <string name="audiobook_sort_plays">Écoutes</string>
+    <string name="audiobook_sort_update">Mis à jour</string>
+    <string name="audiobook_status_all">Tout</string>
+    <string name="audiobook_status_done">Terminé</string>
+    <string name="audiobook_status_serial">En cours</string>
+    <string name="audiobook_title">Livres audio</string>
+    <string name="audiobook_unknown_author">Auteur inconnu</string>
+    <string name="cd_donation_qr">QR code de don Alipay</string>
+    <string name="cd_donation_qr_wechat">QR code de don WeChat Pay</string>
+    <string name="chat_action_new_chat">Trouver des personnes à qui parler</string>
+    <string name="chat_cd_messages">Messages</string>
+    <string name="chat_empty_conversations">Aucune conversation pour l\'instant. Appuyez sur le bouton en haut à droite pour trouver des personnes.</string>
+    <string name="chat_empty_friends">Aucun ami à inviter pour l\'instant. Suivez d\'abord des utilisateurs.</string>
+    <string name="chat_empty_search">Saisissez un pseudo pour rechercher des utilisateurs NetEase</string>
+    <string name="chat_follow">Suivre</string>
+    <string name="chat_followed">Abonné</string>
+    <string name="chat_go_login">Se connecter</string>
+    <string name="chat_input_hint">Envoyer un message…</string>
+    <string name="chat_invite_friend">Inviter des amis NetEase</string>
+    <string name="chat_invite_sent">Envoyé</string>
+    <string name="chat_join_together">Rejoindre l\'écoute à plusieurs</string>
+    <string name="chat_need_login">Connectez-vous à votre compte NetEase pour utiliser les messages</string>
+    <string name="chat_no_results">Aucun utilisateur correspondant</string>
+    <string name="chat_playlist_empty_hint">Aucune chanson lisible dans cette playlist</string>
+    <string name="chat_search_hint">Rechercher des utilisateurs NetEase</string>
+    <string name="chat_send">Envoyer</string>
+    <string name="chat_send_invite">Envoyer l\'invitation</string>
+    <string name="chat_send_message">Envoyer le message</string>
+    <string name="chat_tab_conversations">Discussions</string>
+    <string name="chat_tab_search">Trouver des personnes</string>
+    <string name="chat_title">Messages</string>
+    <string name="chat_unfollow">Ne plus suivre</string>
+    <string name="home_card_hide">Masquer la carte</string>
+    <string name="home_card_order_at_least_one_visible">Gardez au moins une carte visible</string>
+    <string name="home_card_order_sheet_visibility_hint">Glissez pour réorganiser · appuyez sur l\'œil pour afficher ou masquer une carte</string>
+    <string name="home_card_show">Afficher la carte</string>
+    <string name="home_discover_audiobook">Livres audio</string>
+    <string name="home_discover_card_desc">Roaming · Cœur · Similaires · Reconnaissance · Radio · IA</string>
+    <string name="home_discover_heart_mode">Mode Cœur</string>
+    <string name="home_discover_kugou_fm">FM personnelle</string>
+    <string name="home_discover_listen_together">Écoute à plusieurs</string>
+    <string name="home_discover_recognition">Reconnaissance musicale</string>
+    <string name="home_discover_similar_songs">Chansons similaires</string>
+    <string name="home_featured_quality_hires">Hi-Res</string>
+    <string name="home_featured_quality_hq">HQ</string>
+    <string name="home_featured_quality_lossless">Sans perte</string>
+    <string name="kugou_dashboard_account_id">ID du compte : %1$s</string>
+    <string name="kugou_dashboard_quality_hint">Connecté : le fournisseur Kugou intégré peut obtenir la qualité VIP / sans perte</string>
+    <string name="kugou_dashboard_refresh_cd">Actualiser les infos du compte</string>
+    <string name="kugou_dashboard_sync_done">Synchronisation terminée : %1$d playlists</string>
+    <string name="kugou_dashboard_sync_failed">Échec de la synchronisation — vérifiez votre réseau et réessayez</string>
+    <string name="kugou_dashboard_syncing">Synchronisation…</string>
+    <string name="kugou_login_account_pick_hint">Ce numéro de téléphone est associé à plusieurs comptes Kugou — choisissez celui avec lequel vous connecter</string>
+    <string name="kugou_login_account_pick_title">Choisir un compte</string>
+    <string name="kugou_login_code_label">Code de vérification</string>
+    <string name="kugou_login_code_placeholder">Saisissez le code SMS</string>
+    <string name="kugou_login_code_required">Saisissez d\'abord le code de vérification</string>
+    <string name="kugou_login_code_resend">Renvoyer dans %1$d s</string>
+    <string name="kugou_login_code_send">Envoyer le code</string>
+    <string name="kugou_login_code_sent">Code de vérification envoyé</string>
+    <string name="kugou_login_edit_phone">Changer de numéro de téléphone</string>
+    <string name="kugou_login_fetching_info">Connecté, chargement des infos du compte…</string>
+    <string name="kugou_login_hint">Scannez le QR code avec l\'application Kugou ; la connexion débloque la qualité sans perte/VIP pour le fournisseur Kugou intégré</string>
+    <string name="kugou_login_phone_invalid">Saisissez un numéro de téléphone valide à 11 chiffres</string>
+    <string name="kugou_login_phone_label">Numéro de téléphone</string>
+    <string name="kugou_login_phone_placeholder">Saisissez votre numéro de téléphone</string>
+    <string name="kugou_login_phone_submit">Se connecter</string>
+    <string name="kugou_login_qr_cd">QR code de connexion Kugou</string>
+    <string name="kugou_login_qr_refresh">Actualiser le QR code</string>
+    <string name="kugou_login_required_toast">Connectez-vous d\'abord à Kugou pour utiliser la FM personnelle</string>
+    <string name="kugou_login_status_confirmed">Connecté</string>
+    <string name="kugou_login_status_expired">QR code expiré, actualisation…</string>
+    <string name="kugou_login_status_scanned">Scanné — confirmez sur votre téléphone</string>
+    <string name="kugou_login_status_waiting">En attente du scan…</string>
+    <string name="kugou_login_subtitle">La connexion débloque la qualité sans perte/VIP pour le fournisseur Kugou intégré et synchronise vos playlists Kugou</string>
+    <string name="kugou_login_success">Connecté !</string>
+    <string name="kugou_login_switch_to_phone">Utiliser un numéro de téléphone</string>
+    <string name="kugou_login_switch_to_qr">Utiliser un QR code</string>
+    <string name="kugou_login_tab_phone">Numéro de téléphone</string>
+    <string name="kugou_login_tab_qr">QR code</string>
+    <string name="kugou_login_title">Se connecter à Kugou</string>
+    <string name="kugou_service_name">Kugou Music</string>
+    <string name="kugou_sync_none">Aucune playlist synchronisée pour l\'instant</string>
+    <string name="kugou_sync_playlists_count">%1$d playlists synchronisées</string>
+    <string name="listen_together_cd_avatar">Avatar de %1$s</string>
+    <string name="listen_together_clipboard_detected">Lien d\'invitation détecté dans le presse-papiers</string>
+    <string name="listen_together_create">Créer une salle</string>
+    <string name="listen_together_create_from_current">Commencer une écoute à plusieurs</string>
+    <string name="listen_together_create_from_current_hint">Utilise l\'actuelle file d\'attente de lecture (chansons NetEase uniquement) — aucun choix de playlist nécessaire</string>
+    <string name="listen_together_create_hint">Choisissez une playlist NetEase synchronisée comme file d\'attente de la salle</string>
+    <string name="listen_together_desc">Synchronisez la lecture avec vos amis via votre compte NetEase. Pendant l\'écoute, seules les chansons NetEase peuvent être lues.</string>
+    <string name="listen_together_end">Terminer la session</string>
+    <string name="listen_together_host_badge">Hôte</string>
+    <string name="listen_together_host_left">L\'hôte a quitté la salle. La lecture reprendra à son retour.</string>
+    <string name="listen_together_invite_all_friends">Inviter tous les amis</string>
+    <string name="listen_together_invite_invalid">Lien d\'invitation invalide</string>
+    <string name="listen_together_join">Rejoindre</string>
+    <string name="listen_together_join_hint">Collez le lien d\'invitation ici</string>
+    <string name="listen_together_leave">Quitter</string>
+    <string name="listen_together_leave_to_play">Quittez l\'écoute à plusieurs pour lire cette chanson</string>
+    <string name="listen_together_me">Vous</string>
+    <string name="listen_together_member_count">Écoute à plusieurs · %1$d</string>
+    <string name="listen_together_members">Membres</string>
+    <string name="listen_together_netease_only">L\'écoute à plusieurs prend en charge uniquement les chansons NetEase</string>
+    <string name="listen_together_open_dashboard">Ouvrez le tableau de bord NetEase pour synchroniser les playlists</string>
+    <string name="listen_together_partner">En écoute avec</string>
+    <string name="listen_together_paste_link_placeholder">Collez le lien d\'invitation ou le texte partagé</string>
+    <string name="listen_together_pick_playlist">Choisir une playlist</string>
+    <string name="listen_together_resolving_link">Résolution du lien d\'invitation…</string>
+    <string name="listen_together_roaming">Commencer avec les sélections du roaming</string>
+    <string name="listen_together_share">Partager l\'invitation</string>
+    <string name="listen_together_share_done">Partagée avec %1$d amis</string>
+    <string name="listen_together_share_failed">Impossible de charger les amis : %1$s</string>
+    <string name="listen_together_share_no_friends">Aucun ami avec qui partager pour l\'instant</string>
+    <string name="listen_together_share_no_invite">Créez ou rejoignez d\'abord une salle</string>
+    <string name="listen_together_share_partial">Partagée avec %1$d amis, %2$d échecs</string>
+    <string name="listen_together_share_progress">Partage %1$d/%2$d…</string>
+    <string name="listen_together_share_to_friends">Partager dans les messages d\'amis</string>
+    <string name="listen_together_share_to_friends_hint">Envoyer l\'invitation à tous vos amis NetEase (abonnements + discussions récentes)</string>
+    <string name="listen_together_status_connected">Synchronisé</string>
+    <string name="listen_together_status_connecting">Connexion…</string>
+    <string name="listen_together_status_reconnecting">Reconnexion…</string>
+    <string name="listen_together_title">Écoute à plusieurs</string>
+    <string name="listen_together_view_members">Voir les membres de l\'écoute à plusieurs</string>
+    <string name="listen_together_waiting_host">En attente de l\'hôte…</string>
+    <string name="listen_together_with">En écoute avec %1$s</string>
+    <string name="lyric_share_generating">Génération…</string>
+    <string name="lyric_share_image">Générer une image</string>
+    <string name="lyric_share_select_all">Tout sélectionner</string>
+    <string name="lyric_share_selected_count">%1$d ligne(s) sélectionnée(s)</string>
+    <string name="lyric_share_text">Partager en texte</string>
+    <string name="lyric_share_title">Partager les paroles</string>
+    <string name="lyrics_more_vibrant_folia">Folia</string>
+    <string name="lyrics_more_vibrant_glass">Scène Glass</string>
+    <string name="lyrics_more_vibrant_off">Désactivé</string>
+    <string name="market_downloading">Téléchargement… %1$d%%</string>
+    <string name="market_install">Installer</string>
+    <string name="market_installed">Installée</string>
+    <string name="market_installed_count">%1$d sources installées</string>
+    <string name="market_no_sources">Aucune source à tester pour l\'instant — installez d\'abord un script de source</string>
+    <string name="market_parsing">Analyse des scripts…</string>
+    <string name="market_refresh">Actualiser</string>
+    <string name="market_source_builtin">Intégrée</string>
+    <string name="market_source_plugin">Extension</string>
+    <string name="market_source_test_desc">Lance une vraie recherche par source ; les sources JS récupèrent aussi une URL de lecture</string>
+    <string name="market_source_test_title">Test de connectivité des sources</string>
+    <string name="market_subtitle">Téléchargez et installez des scripts de sources communautaires depuis GitHub</string>
+    <string name="market_tap_expand">Appuyez pour télécharger et inspecter les scripts</string>
+    <string name="market_test">Tester</string>
+    <string name="market_test_all">Tout tester</string>
+    <string name="market_test_failed">Indisponible</string>
+    <string name="market_test_search_only">Recherche OK</string>
+    <string name="market_test_success">Disponible</string>
+    <string name="market_testing">Test…</string>
+    <string name="market_title">Pixel Source Market</string>
+    <string name="player_cd_song_info">Infos sur la chanson</string>
+    <string name="player_more_comments">Voir les commentaires</string>
+    <string name="player_more_download">Télécharger la chanson</string>
+    <string name="playlist_search_hint">Rechercher des chansons dans cette playlist</string>
+    <string name="playlist_search_result_count">%1$d chansons</string>
+    <string name="queue_search_hint">Rechercher des chansons dans cette file d\'attente</string>
+    <string name="queue_search_result_count">%1$d correspondances</string>
+    <string name="roaming_mode_explore">Explorer</string>
+    <string name="roaming_mode_explore_desc">Privilégier les chansons que vous n\'avez pas encore entendues</string>
+    <string name="roaming_mode_familiar">Familier</string>
+    <string name="roaming_mode_familiar_desc">Privilégier ce que vous écoutez déjà</string>
+    <string name="roaming_mode_title">Mode roaming</string>
+    <string name="song_recognition_hint">Laissez le téléphone écouter la musique jouée à proximité (~6 s) et identifier la chanson</string>
+    <string name="song_recognition_listening">Écoute…</string>
+    <string name="song_recognition_mic_denied">L\'autorisation microphone est requise — veuillez l\'accorder dans les paramètres système</string>
+    <string name="song_recognition_result_title">Correspondance trouvée</string>
+    <string name="song_recognition_retry">Réessayer</string>
+    <string name="song_recognition_start">Commencer l\'écoute</string>
+    <string name="song_recognition_title">Reconnaissance musicale</string>
+    <string name="source_badge_kugou">Kugou</string>
+    <string name="source_badge_netease">NetEase</string>
+    <string name="startup_preparing">Préparation…</string>
 </resources>

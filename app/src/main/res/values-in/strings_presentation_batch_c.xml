@@ -39,12 +39,12 @@
     <string name="lib_empty_folders_subtitle">Folder penyimpanan internal dengan musik akan muncul di sini.</string>
     <string name="lib_empty_playlists_title">Belum ada playlist</string>
     <string name="lib_empty_playlists_subtitle">Buat playlist pertama Anda untuk mengatur pustaka Anda.</string>
-    <string name="daily_recommend_error">Failed to load daily recommend</string>
-    <string name="daily_recommend_play_cd">Play daily recommend</string>
-    <string name="daily_recommend_retry">Retry</string>
-    <string name="daily_recommend_songs_count">%1$d songs today</string>
-    <string name="daily_recommend_subtitle">Personalized picks, updated daily</string>
-    <string name="daily_recommend_title">Daily Recommend</string>
-    <string name="lib_empty_history_subtitle">Songs you play will show up here.</string>
-    <string name="lib_empty_history_title">No playback history yet</string>
+    <string name="daily_recommend_error">Gagal memuat rekomendasi harian</string>
+    <string name="daily_recommend_play_cd">Putar rekomendasi harian</string>
+    <string name="daily_recommend_retry">Coba lagi</string>
+    <string name="daily_recommend_songs_count">%1$d lagu hari ini</string>
+    <string name="daily_recommend_subtitle">Pilihan personal yang diperbarui setiap hari</string>
+    <string name="daily_recommend_title">Rekomendasi Harian</string>
+    <string name="lib_empty_history_subtitle">Lagu yang Anda putar akan muncul di sini.</string>
+    <string name="lib_empty_history_title">Belum ada riwayat pemutaran</string>
 </resources>

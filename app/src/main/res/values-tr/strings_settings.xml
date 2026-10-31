@@ -315,25 +315,25 @@
     >Google AI Studio (aistudio.google.com)</string>
     <string
         name="setcat_ai_source_deepseek"
-    >DeepSeek Platform (api.deepseek.com)</string>
+    >DeepSeek Platformu (api.deepseek.com)</string>
     <string
         name="setcat_ai_source_groq"
-    >Groq Console (console.groq.com)</string>
+    >Groq Konsolu (console.groq.com)</string>
     <string
         name="setcat_ai_source_mistral"
-    >Mistral AI Platform (console.mistral.ai)</string>
+    >Mistral AI Platformu (console.mistral.ai)</string>
     <string
         name="setcat_ai_source_nvidia"
     >NVIDIA Build (build.nvidia.com)</string>
     <string
         name="setcat_ai_source_kimi"
-    >Moonshot AI Platform (platform.moonshot.cn)</string>
+    >Moonshot AI Platformu (platform.moonshot.cn)</string>
     <string
         name="setcat_ai_source_glm"
-    >Zhipu AI Open Platform (bigmodel.cn)</string>
+    >Zhipu AI Açık Platformu (bigmodel.cn)</string>
     <string
         name="setcat_ai_source_openai"
-    >OpenAI Platform (platform.openai.com)</string>
+    >OpenAI Platformu (platform.openai.com)</string>
     <string name="setcat_model_selection">Model Seçimi</string>
     <string name="setcat_loading_models">Kullanılabilir modeller yükleniyor…</string>
     <string name="setcat_ai_model_label">YZ Modeli</string>
@@ -529,79 +529,79 @@
     >%1$d modül · v%2$s · şema v%3$d</string>
     <string name="setcat_language_korean">Korece (Korean)</string>
     <string name="setcat_language_norwegian_bokmal">Norveççe (Bokmål)</string>
-    <string name="setcat_download_complete">Download complete</string>
-    <string name="setcat_download_failed">Download failed</string>
+    <string name="setcat_download_complete">İndirme tamamlandı</string>
+    <string name="setcat_download_failed">İndirme başarısız oldu</string>
     <string name="setcat_download_progress_format">%1$.0f%%</string>
-    <string name="setcat_download_progress_title">Download progress</string>
-    <string name="ai_auto_disabled">AI auto-trigger is disabled</string>
+    <string name="setcat_download_progress_title">İndirme ilerlemesi</string>
+    <string name="ai_auto_disabled">YZ otomatik tetikleme devre dışı</string>
     
-    <string name="backup_format_external_desc">Compatible with other XiangsuPlayer versions</string>
+    <string name="backup_format_external_desc">Diğer XiangsuPlayer sürümleriyle uyumlu</string>
     
-    <string name="backup_format_external_title">External (.pxpbak)</string>
+    <string name="backup_format_external_title">Harici (.pxpbak)</string>
     
-    <string name="backup_format_pxpl_desc">Original format with all data types</string>
+    <string name="backup_format_pxpl_desc">Tüm veri türlerini içeren özgün biçim</string>
     
     <string name="backup_format_pxpl_title">PixelPlay (.pxpl)</string>
     
-    <string name="backup_format_select_prompt">Choose backup format:</string>
+    <string name="backup_format_select_prompt">Yedekleme biçimini seçin:</string>
     
-    <string name="car_mode_action_library">Library</string>
+    <string name="car_mode_action_library">Kitaplık</string>
     
-    <string name="car_mode_action_library_desc">Your music</string>
+    <string name="car_mode_action_library_desc">Müziğiniz</string>
     
-    <string name="car_mode_action_roaming">Roaming</string>
+    <string name="car_mode_action_roaming">Dolaşma</string>
     
-    <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
+    <string name="car_mode_action_roaming_desc">Netease Cloud Music dolaşma</string>
     
-    <string name="car_mode_action_search">Search</string>
+    <string name="car_mode_action_search">Ara</string>
     
-    <string name="car_mode_action_search_desc">Find songs</string>
+    <string name="car_mode_action_search_desc">Şarkı bul</string>
     
-    <string name="car_mode_action_settings">Settings</string>
+    <string name="car_mode_action_settings">Ayarlar</string>
     
-    <string name="car_mode_action_settings_desc">App settings</string>
+    <string name="car_mode_action_settings_desc">Uygulama ayarları</string>
 
     
     
-    <string name="car_mode_quick_actions_title">Quick Actions</string>
+    <string name="car_mode_quick_actions_title">Hızlı İşlemler</string>
     
-    <string name="dot_device_api_key_hint">输入你的 Dot API Key</string>
+    <string name="dot_device_api_key_hint">Dot API anahtarınızı girin</string>
     
-    <string name="dot_device_api_key_label">API Key</string>
+    <string name="dot_device_api_key_label">API Anahtarı</string>
     
-    <string name="dot_device_auto_push_description">切换歌曲时自动推送专辑封面到墨水屏</string>
+    <string name="dot_device_auto_push_description">Şarkı değiştiğinde albüm kapağını e-mürekkep ekrana otomatik gönder</string>
     
-    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
+    <string name="dot_device_auto_push_title">Albüm kapaklarını otomatik gönder</string>
     
-    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_clear">Ayarları temizle</string>
 
     
     
-    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏设备显示</string>
+    <string name="dot_device_header_description">Çalan şarkının albüm kapağını e-mürekkep ekrana gönder</string>
     
-    <string name="dot_device_header_title">Dot 墨水屏设备</string>
+    <string name="dot_device_header_title">Dot E-Mürekkep Ekran Cihazı</string>
     
-    <string name="dot_device_id_hint">输入设备 ID</string>
+    <string name="dot_device_id_hint">Cihaz kimliğini girin</string>
     
-    <string name="dot_device_id_label">Device ID</string>
+    <string name="dot_device_id_label">Cihaz Kimliği</string>
     
-    <string name="dot_device_save">保存设置</string>
+    <string name="dot_device_save">Ayarları kaydet</string>
     
-    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
+    <string name="dot_device_settings_title">Dot E-Mürekkep Ekran Ayarları</string>
     
-    <string name="dot_device_test_connection">测试连接</string>
+    <string name="dot_device_test_connection">Bağlantıyı test et</string>
     
-    <string name="dot_device_testing">测试中...</string>
+    <string name="dot_device_testing">Test ediliyor…</string>
     
-    <string name="equalizer_preset_bass_boost">Bass Boost</string>
+    <string name="equalizer_preset_bass_boost">Bas Artırma</string>
     
-    <string name="equalizer_preset_classical">Classical</string>
+    <string name="equalizer_preset_classical">Klasik</string>
     
-    <string name="equalizer_preset_custom">Custom</string>
+    <string name="equalizer_preset_custom">Özel</string>
 
     
     
-    <string name="equalizer_preset_electronic">Electronic</string>
+    <string name="equalizer_preset_electronic">Elektronik</string>
     
     <string name="equalizer_preset_flat">Flat</string>
     
@@ -613,480 +613,480 @@
     
     <string name="equalizer_preset_rock">Rock</string>
     
-    <string name="equalizer_preset_treble_boost">Treble Boost</string>
+    <string name="equalizer_preset_treble_boost">Tiz Artırma</string>
     
-    <string name="equalizer_preset_vocal">Vocal</string>
+    <string name="equalizer_preset_vocal">Vokal</string>
     
-    <string name="music_quality_flac">Lossless (FLAC)</string>
+    <string name="music_quality_flac">Kayıpsız (FLAC)</string>
     
-    <string name="music_quality_high">High (320kbps)</string>
+    <string name="music_quality_high">Yüksek (320kbps)</string>
     
     <string name="music_quality_hires">Hi-Res (24bit)</string>
     
-    <string name="music_quality_standard">Standard (128kbps)</string>
+    <string name="music_quality_standard">Standart (128kbps)</string>
     
-    <string name="music_quality_subtitle">Preferred quality for streaming music. Higher quality uses more bandwidth.</string>
+    <string name="music_quality_subtitle">Müzik akışı için tercih edilen kalite. Daha yüksek kalite daha fazla bant genişliği kullanır.</string>
     
-    <string name="music_quality_title">Music Quality</string>
+    <string name="music_quality_title">Müzik Kalitesi</string>
     
-    <string name="setcat_aaudio_subtitle_off">Default system audio backend (AudioTrack). Enable AAudio for higher quality output.</string>
+    <string name="setcat_aaudio_subtitle_off">Varsayılan sistem ses arka ucu (AudioTrack). Daha yüksek kaliteli çıkış için AAudio\'yu etkinleştirin.</string>
     
-    <string name="setcat_aaudio_subtitle_on">Using AAudio for improved audio fidelity and lower latency.</string>
+    <string name="setcat_aaudio_subtitle_on">Daha iyi ses doğruluğu ve daha düşük gecikme için AAudio kullanılıyor.</string>
     
-    <string name="setcat_aaudio_title">AAudio Low-Latency Backend</string>
+    <string name="setcat_aaudio_title">AAudio Düşük Gecikmeli Arka Uç</string>
     
-    <string name="setcat_ai_api_key_title_simple">API Key</string>
+    <string name="setcat_ai_api_key_title_simple">API Anahtarı</string>
     
-    <string name="setcat_ai_auto_daily_mix_subtitle">Automatically enhance Daily Mix with AI</string>
-    
-    
-    <string name="setcat_ai_auto_daily_mix_title">Daily Mix AI Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_metadata_subtitle">Automatically fetch AI-generated metadata</string>
-    
-    <string name="setcat_ai_auto_metadata_title">AI Metadata Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Automatically evaluate playlists with AI</string>
+    <string name="setcat_ai_auto_daily_mix_subtitle">Günlük Miksi YZ ile otomatik olarak geliştir</string>
     
     
-    <string name="setcat_ai_auto_playlist_evaluation_title">AI Playlist Evaluation Auto-Trigger</string>
+    <string name="setcat_ai_auto_daily_mix_title">Günlük Miks YZ Otomatik Tetikleme</string>
     
-    <string name="setcat_ai_auto_playlist_subtitle">Automatically generate AI playlists when triggered</string>
+    <string name="setcat_ai_auto_metadata_subtitle">YZ tarafından oluşturulan meta verileri otomatik al</string>
     
-    <string name="setcat_ai_auto_playlist_title">AI Playlist Auto-Trigger</string>
+    <string name="setcat_ai_auto_metadata_title">YZ Meta Veri Otomatik Tetikleme</string>
     
-    <string name="setcat_ai_auto_trigger_section">Auto-Trigger Settings</string>
+    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Çalma listelerini YZ ile otomatik değerlendir</string>
     
-    <string name="setcat_ai_lyrics_explanation_subtitle">Show AI-powered lyrics explanation card in the lyrics view (off by default; can be enabled per-session from the lyrics menu)</string>
+    
+    <string name="setcat_ai_auto_playlist_evaluation_title">YZ Çalma Listesi Değerlendirme Otomatik Tetikleme</string>
+    
+    <string name="setcat_ai_auto_playlist_subtitle">Tetiklendiğinde YZ çalma listelerini otomatik oluştur</string>
+    
+    <string name="setcat_ai_auto_playlist_title">YZ Çalma Listesi Otomatik Tetikleme</string>
+    
+    <string name="setcat_ai_auto_trigger_section">Otomatik Tetikleme Ayarları</string>
+    
+    <string name="setcat_ai_lyrics_explanation_subtitle">Şarkı sözü görünümünde YZ destekli şarkı sözü açıklama kartı göster (varsayılan olarak kapalı; şarkı sözü menüsünden oturum başına etkinleştirilebilir)</string>
 
     
-    <string name="setcat_ai_lyrics_explanation_title">AI Lyrics Insight Card</string>
+    <string name="setcat_ai_lyrics_explanation_title">YZ Şarkı Sözü Analiz Kartı</string>
     
-    <string name="setcat_ai_recommendation_card_subtitle">Display AI recommendation card on home screen</string>
+    <string name="setcat_ai_recommendation_card_subtitle">Ana ekranda YZ öneri kartı göster</string>
     
-    <string name="setcat_ai_recommendation_card_title">Show AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_card_title">YZ Öneri Kartını Göster</string>
     
-    <string name="setcat_ai_recommendation_manual_subtitle">Click to generate recommendation (prevents automatic token usage)</string>
+    <string name="setcat_ai_recommendation_manual_subtitle">Öneri oluşturmak için tıklayın (otomatik token kullanımını önler)</string>
 
     
-    <string name="setcat_ai_recommendation_manual_title">Manual Generation Only</string>
+    <string name="setcat_ai_recommendation_manual_title">Yalnızca Manuel Oluşturma</string>
     
-    <string name="setcat_ai_recommendation_section">AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_section">YZ Öneri Kartı</string>
     
-    <string name="setcat_bluetooth_lyrics">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics">Bluetooth Şarkı Sözleri</string>
     
-    <string name="setcat_bluetooth_lyrics_subtitle">Push the currently playing song lyrics to compatible Bluetooth A2DP display devices.</string>
+    <string name="setcat_bluetooth_lyrics_subtitle">Çalan şarkının sözlerini uyumlu Bluetooth A2DP ekran cihazlarına gönder.</string>
     
-    <string name="setcat_bluetooth_lyrics_title">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics_title">Bluetooth Şarkı Sözleri</string>
     
-    <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <string name="setcat_car_mode_subtitle">Sürüş için optimize edildi: daha büyük kontroller, azaltılmış animasyonlar ve iyileştirilmiş performans.</string>
     
     
     
-    <string name="setcat_car_mode_title">Car Mode</string>
+    <string name="setcat_car_mode_title">Araç Modu</string>
     
-    <string name="setcat_center_nav_discover">Discover</string>
+    <string name="setcat_center_nav_discover">Keşfet</string>
     
-    <string name="setcat_center_nav_none">Don\'t show</string>
+    <string name="setcat_center_nav_none">Gösterme</string>
     
-    <string name="setcat_center_nav_radio">Radio</string>
+    <string name="setcat_center_nav_radio">Radyo</string>
     
-    <string name="setcat_center_nav_roaming">Roaming</string>
+    <string name="setcat_center_nav_roaming">Dolaşma</string>
     
-    <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
+    <string name="setcat_center_nav_subtitle">Orta gezinme düğmesinin ne yapacağını seçin.</string>
     
-    <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_center_nav_title">Orta Düğme</string>
     
-    <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">Kozmik Girdap</string>
     
-    <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">Petek Ritmi</string>
     
-    <string name="setcat_collage_pattern_pixel_mosaic">Pixel Mosaic</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">Piksel Mozaik</string>
     
-    <string name="setcat_collage_pattern_stardust_scatter">Stardust Scatter</string>
+    <string name="setcat_collage_pattern_stardust_scatter">Yıldız Tozu Saçılımı</string>
     
-    <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
+    <string name="setcat_collage_pattern_vinyl_stack">Vinil Yığını</string>
     
-    <string name="setcat_custom_palette_enabled_subtitle">When off, the app follows wallpaper colors. When on, custom colors are used. The player keeps its own album-art colors.</string>
+    <string name="setcat_custom_palette_enabled_subtitle">Kapalıyken uygulama duvar kağıdı renklerini izler. Açıkken özel renkler kullanılır. Oynatıcı kendi albüm kapağı renklerini korur.</string>
     
-    <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
+    <string name="setcat_custom_palette_enabled_title">Uygulama Paletini Etkinleştir</string>
     
     <string name="setcat_custom_player_background_blur_off">Off</string>
     
-    <string name="setcat_custom_player_background_blur_title">Background Blur</string>
+    <string name="setcat_custom_player_background_blur_title">Arka Plan Bulanıklığı</string>
     
-    <string name="setcat_custom_player_background_change">Change background image</string>
+    <string name="setcat_custom_player_background_change">Arka plan görselini değiştir</string>
     
     <string name="setcat_custom_player_background_mode_cover">Fill</string>
     
-    <string name="setcat_custom_player_background_mode_stretch">Stretch</string>
+    <string name="setcat_custom_player_background_mode_stretch">Uzat</string>
     
-    <string name="setcat_custom_player_background_mode_title">Display Mode</string>
+    <string name="setcat_custom_player_background_mode_title">Görüntüleme Modu</string>
     
-    <string name="setcat_custom_player_background_pick">Choose background image</string>
+    <string name="setcat_custom_player_background_pick">Arka plan görseli seç</string>
     
-    <string name="setcat_custom_player_background_remove">Remove background</string>
+    <string name="setcat_custom_player_background_remove">Arka planı kaldır</string>
     
-    <string name="setcat_custom_player_background_subtitle">Use a custom image as the background of the player and lyrics screens. When enabled, it takes precedence over the dynamic album-art background below.</string>
+    <string name="setcat_custom_player_background_subtitle">Oynatıcı ve şarkı sözü ekranlarının arka planı olarak özel bir görsel kullanın. Etkinleştirildiğinde aşağıdaki dinamik albüm kapağı arka planına göre önceliklidir.</string>
     
-    <string name="setcat_custom_player_background_title">Custom Player Background</string>
+    <string name="setcat_custom_player_background_title">Özel Oynatıcı Arka Planı</string>
     
-    <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
+    <string name="setcat_custom_player_controls_opacity_desc">Hem oynatıcı hem de şarkı sözü ekranlarında arka plan dışındaki tüm öğelere (albüm kapağı, meta veriler, ilerleme, kontroller) uygulanır.</string>
     
-    <string name="setcat_custom_player_controls_opacity_title">Player Opacity</string>
+    <string name="setcat_custom_player_controls_opacity_title">Oynatıcı Opaklığı</string>
     
-    <string name="setcat_disable_blur_all_over_subtitle">Turn off blur effects across the app to save battery and resources.</string>
+    <string name="setcat_disable_blur_all_over_subtitle">Pil ve kaynak tasarrufu için uygulama genelindeki bulanıklaştırma efektlerini kapatın.</string>
     
-    <string name="setcat_disable_blur_all_over_title">Disable Blur Effects</string>
+    <string name="setcat_disable_blur_all_over_title">Bulanıklaştırma Efektlerini Devre Dışı Bırak</string>
     
-    <string name="setcat_download_path_title">Download Path</string>
+    <string name="setcat_download_path_title">İndirme Yolu</string>
     
     
     
     <string name="setcat_download_settings">Download Settings</string>
     
-    <string name="setcat_external_lyrics_broadcast_subtitle">When enabled, the system media title updates to the current lyric line in real time, showing lyrics outside the app (notification, lock screen, Bluetooth devices). When disabled, the original song title is restored.</string>
+    <string name="setcat_external_lyrics_broadcast_subtitle">Etkinleştirildiğinde sistem medya başlığı geçerli şarkı sözü satırına gerçek zamanlı olarak güncellenir ve şarkı sözleri uygulama dışında (bildirim, kilit ekranı, Bluetooth cihazları) gösterilir. Devre dışı bırakıldığında özgün şarkı başlığı geri yüklenir.</string>
 
     
     
-    <string name="setcat_external_lyrics_broadcast_title">Broadcast Lyrics Externally</string>
+    <string name="setcat_external_lyrics_broadcast_title">Şarkı Sözlerini Harici Olarak Yayınla</string>
     
-    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix is a programmable LED display on the back of Nothing Phone (3) featuring 625 individual LEDs arranged in a 25×25 grid. When you play music, PixelPlayer can animate the matrix to create stunning visual effects that sync with your music.</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix, Nothing Phone (3) arkasında 25×25 ızgarada düzenlenmiş 625 ayrı LED içeren programlanabilir bir LED ekrandır. Müzik çaldığınızda PixelPlayer müziğinizle senkronize çarpıcı görsel efektler oluşturmak için matrisi canlandırabilir.</string>
 
     
     
-    <string name="setcat_glyph_matrix_about_title">About Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_title">Glyph Matrix Hakkında</string>
     
-    <string name="setcat_glyph_matrix_enable_subtitle">Show music visualization on Nothing Phone LED matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">Nothing Phone LED matrisinde müzik görselleştirmesi göster</string>
     
-    <string name="setcat_glyph_matrix_enable_title">Enable Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">Glyph Matrix\'i Etkinleştir</string>
     
-    <string name="setcat_glyph_matrix_mode_artwork">Album Cover</string>
+    <string name="setcat_glyph_matrix_mode_artwork">Albüm Kapağı</string>
     
-    <string name="setcat_glyph_matrix_mode_desc">Choose what to display on the Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_mode_desc">Glyph Matrix\'te ne gösterileceğini seçin</string>
     
-    <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">Şimdi Çalıyor</string>
     
-    <string name="setcat_glyph_matrix_mode_progress">Playback Progress</string>
+    <string name="setcat_glyph_matrix_mode_progress">Oynatma İlerlemesi</string>
     
-    <string name="setcat_glyph_matrix_mode_pulse">Beat Pulse</string>
+    <string name="setcat_glyph_matrix_mode_pulse">Ritim Nabzı</string>
     
-    <string name="setcat_glyph_matrix_mode_ring">Music Ring</string>
+    <string name="setcat_glyph_matrix_mode_ring">Müzik Halkası</string>
     
-    <string name="setcat_glyph_matrix_mode_scroll_title">Scrolling Title</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">Kayan Başlık</string>
     
-    <string name="setcat_glyph_matrix_mode_title">Display Mode</string>
+    <string name="setcat_glyph_matrix_mode_title">Görüntüleme Modu</string>
     
-    <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">Ses Görselleştirici</string>
     
-    <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_mode_waveform">Dalga Biçimi</string>
     
-    <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
+    <string name="setcat_glyph_matrix_not_available">Bu özellik Glyph Matrix\'li bir Nothing Phone gerektirir. Aşağıdaki efektleri yine de önizleyebilirsiniz.</string>
     
-    <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
+    <string name="setcat_glyph_matrix_not_available_title">Bu cihazda kullanılamıyor</string>
     
-    <string name="setcat_glyph_matrix_preview_desc">This is how it will look on the Nothing Phone LED matrix (25×25)</string>
+    <string name="setcat_glyph_matrix_preview_desc">Nothing Phone LED matrisinde (25×25) böyle görünecek</string>
     
-    <string name="setcat_glyph_matrix_preview_title">Preview</string>
+    <string name="setcat_glyph_matrix_preview_title">Önizleme</string>
     
     <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
     
-    <string name="setcat_home_top_whitespace_subtitle">Adjust the blank space above the Home content.</string>
+    <string name="setcat_home_top_whitespace_subtitle">Ana Sayfa içeriğinin üstündeki boş alanı ayarlayın.</string>
     
-    <string name="setcat_home_top_whitespace_title">Home Top Whitespace</string>
+    <string name="setcat_home_top_whitespace_title">Ana Sayfa Üst Boşluğu</string>
     
-    <string name="setcat_home_top_whitespace_value">Current whitespace: %1$d dp</string>
+    <string name="setcat_home_top_whitespace_value">Geçerli boşluk: %1$d dp</string>
     
-    <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">Daha iyi okunabilirlik için şarkı sözü ekranının üstünde ve altında yumuşak bir degrade göster.</string>
     
-    <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
+    <string name="setcat_lyrics_gradient_overlay_title">Şarkı Sözü Degrade Kaplaması</string>
     
-    <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
+    <string name="setcat_lyrics_solid_overlay_desc">Arka planı karartmak için şarkı sözü ekranındaki düz kaplamanın opaklığını ayarlayın.</string>
     
-    <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
+    <string name="setcat_lyrics_solid_overlay_title">Şarkı Sözü Düz Kaplaması</string>
     
-    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">Şarkı sözlerinin arkasında dönen bulanık albüm kapağı arka planı göster.</string>
     
-    <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
+    <string name="setcat_lyrics_vibrant_bg_title">Şarkı Sözü Canlı Arka Planı</string>
     
-    <string name="setcat_navbar_style_floating">Floating</string>
+    <string name="setcat_navbar_style_floating">Yüzen</string>
     
-    <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
+    <string name="setcat_netease_quality_title">Netease Tercih Edilen Kalite</string>
 
     
     
-    <string name="setcat_palette_brightness">Brightness</string>
+    <string name="setcat_palette_brightness">Parlaklık</string>
     
-    <string name="setcat_palette_cancel">Cancel</string>
+    <string name="setcat_palette_cancel">İptal</string>
     
-    <string name="setcat_palette_confirm">Confirm</string>
+    <string name="setcat_palette_confirm">Onayla</string>
     
-    <string name="setcat_palette_custom_title">Custom Color</string>
+    <string name="setcat_palette_custom_title">Özel Renk</string>
     
     <string name="setcat_palette_hue">Hue</string>
     
-    <string name="setcat_palette_live_hint">Live preview</string>
+    <string name="setcat_palette_live_hint">Canlı önizleme</string>
     
-    <string name="setcat_palette_preview_label">Color Scheme Preview</string>
+    <string name="setcat_palette_preview_label">Renk Şeması Önizlemesi</string>
     
-    <string name="setcat_palette_saturation">Saturation</string>
+    <string name="setcat_palette_saturation">Doygunluk</string>
     
-    <string name="setcat_player_theme_custom_palette">Custom Palette</string>
+    <string name="setcat_player_theme_custom_palette">Özel Palet</string>
     
-    <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
+    <string name="setcat_player_vibrant_bg_desc">Özel arka plan görseli ayarlanmadığında oynatıcıda dönen bulanık albüm kapağı arka planı göster. Özel oynatıcı arka planı buna göre önceliklidir.</string>
     
-    <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
+    <string name="setcat_player_vibrant_bg_title">Oynatıcı Canlı Arka Planı</string>
     
-    <string name="setcat_show_lyrics_track_info_subtitle">Show song title and artist in a pill-shaped bar at the top of lyrics view.</string>
+    <string name="setcat_show_lyrics_track_info_subtitle">Şarkı sözü görünümünün üst kısmında kapsül biçimli bir çubukta şarkı başlığını ve sanatçıyı göster.</string>
 
     
     
-    <string name="setcat_show_lyrics_track_info_title">Show lyrics track info</string>
+    <string name="setcat_show_lyrics_track_info_title">Şarkı sözü parça bilgisini göster</string>
     
-    <string name="setcat_show_scrollbar_subtitle">Display lateral scrollbar on music lists for quick scrolling</string>
+    <string name="setcat_show_scrollbar_subtitle">Hızlı kaydırma için müzik listelerinde yan kaydırma çubuğunu göster</string>
     
-    <string name="setcat_show_scrollbar_title">Show Scrollbar</string>
+    <string name="setcat_show_scrollbar_title">Kaydırma Çubuğunu Göster</string>
     
-    <string name="setcat_show_speed_button_subtitle">Show the speed (1x) button in the player control bar. Disable to hide it and manually adjust speed from the player.</string>
+    <string name="setcat_show_speed_button_subtitle">Oynatıcı kontrol çubuğunda hız (1x) düğmesini göster. Gizlemek ve hızı oynatıcıdan manuel olarak ayarlamak için devre dışı bırakın.</string>
     
-    <string name="setcat_show_speed_button_title">Show playback speed button</string>
+    <string name="setcat_show_speed_button_title">Oynatma hızı düğmesini göster</string>
     
-    <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
+    <string name="setcat_tablet_layout_parallel">Paralel (Oynatıcı + Şarkı Sözleri)</string>
     
-    <string name="setcat_tablet_layout_vertical">Vertical</string>
+    <string name="setcat_tablet_layout_vertical">Dikey</string>
     
-    <string name="setcat_tablet_player_layout_desc">Choose the layout for the player on tablets.</string>
+    <string name="setcat_tablet_player_layout_desc">Tabletlerde oynatıcı düzenini seçin.</string>
     
-    <string name="setcat_tablet_player_layout_label">Tablet Player Layout</string>
+    <string name="setcat_tablet_player_layout_label">Tablet Oynatıcı Düzeni</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, widely compatible)</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standart, geniş uyumluluk)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (high-resolution, recommended)</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (yüksek çözünürlük, önerilir)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (highest fidelity, USB DAC only)</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (en yüksek doğruluk, yalnızca USB DAC)</string>
     
-    <string name="setcat_usb_bit_depth_title">USB Output Bit Depth</string>
+    <string name="setcat_usb_bit_depth_title">USB Çıkış Bit Derinliği</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_connected">Route audio to USB device: %s</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_connected">Sesi USB cihazına yönlendir: %s</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">No USB audio device detected. Connect a USB DAC to use this feature.</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">USB ses cihazı algılanmadı. Bu özelliği kullanmak için bir USB DAC bağlayın.</string>
     
-    <string name="setcat_usb_exclusive_mode_title">USB Exclusive Mode</string>
+    <string name="setcat_usb_exclusive_mode_title">USB Özel Modu</string>
     
-    <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
+    <string name="setcat_vibrant_bg_requires_newer">Bu efekt Android 11 veya üzeri donanım bulanıklaştırması gerektirir ve bu cihazda devre dışıdır.</string>
     
-    <string name="setcat_web_remote_audio_device_phone">Phone</string>
+    <string name="setcat_web_remote_audio_device_phone">Telefon</string>
     
-    <string name="setcat_web_remote_audio_device_subtitle">When web connected: play on phone or web browser</string>
+    <string name="setcat_web_remote_audio_device_subtitle">Web bağlıyken: telefonda veya web tarayıcısında çal</string>
     
-    <string name="setcat_web_remote_audio_device_title">Playback Device</string>
+    <string name="setcat_web_remote_audio_device_title">Oynatma Cihazı</string>
     
-    <string name="setcat_web_remote_audio_device_web">Web Browser</string>
+    <string name="setcat_web_remote_audio_device_web">Web Tarayıcı</string>
     
-    <string name="setcat_web_remote_enabled_subtitle">Access PixelPlay from any browser on your network</string>
+    <string name="setcat_web_remote_enabled_subtitle">Ağınızdaki herhangi bir tarayıcıdan PixelPlay\'e erişin</string>
     
-    <string name="setcat_web_remote_enabled_title">Enable Web Remote</string>
+    <string name="setcat_web_remote_enabled_title">Web Uzaktan Kumandayı Etkinleştir</string>
     
-    <string name="setcat_web_remote_pin">PIN Code</string>
+    <string name="setcat_web_remote_pin">PIN Kodu</string>
     
-    <string name="setcat_web_remote_port_subtitle">Port number for the web server (default: 8081)</string>
+    <string name="setcat_web_remote_port_subtitle">Web sunucusu için bağlantı noktası numarası (varsayılan: 8081)</string>
     
-    <string name="setcat_web_remote_port_title">Server Port</string>
+    <string name="setcat_web_remote_port_title">Sunucu Bağlantı Noktası</string>
     
-    <string name="setcat_web_remote_section">Web Remote</string>
+    <string name="setcat_web_remote_section">Web Uzaktan Kumanda</string>
     
-    <string name="setcat_web_remote_server_address">Server Address</string>
+    <string name="setcat_web_remote_server_address">Sunucu Adresi</string>
     
-    <string name="setcat_web_remote_server_running">Running</string>
+    <string name="setcat_web_remote_server_running">Çalışıyor</string>
     
-    <string name="setcat_web_remote_server_status">Server Status</string>
+    <string name="setcat_web_remote_server_status">Sunucu Durumu</string>
     
-    <string name="setcat_web_remote_server_stopped">Stopped</string>
+    <string name="setcat_web_remote_server_stopped">Durduruldu</string>
     
-    <string name="setcat_web_remote_start_button">Start Server</string>
+    <string name="setcat_web_remote_start_button">Sunucuyu Başlat</string>
     
-    <string name="setcat_web_remote_stop_button">Stop Server</string>
+    <string name="setcat_web_remote_stop_button">Sunucuyu Durdur</string>
     
     
-    <string name="setcat_web_remote_sync_subtitle">Web controls phone playback</string>
+    <string name="setcat_web_remote_sync_subtitle">Web, telefon oynatmasını kontrol eder</string>
     
-    <string name="setcat_web_remote_sync_title">Sync Mode</string>
+    <string name="setcat_web_remote_sync_title">Eşitleme Modu</string>
     
-    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED matrix display integration</string>
+    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED matris ekranı entegrasyonu</string>
     
     <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
     
-    <string name="settings_category_web_remote_subtitle">Control playback from other devices on your network</string>
+    <string name="settings_category_web_remote_subtitle">Ağınızdaki diğer cihazlardan oynatmayı kontrol edin</string>
     
-    <string name="settings_category_web_remote_title">Web Remote</string>
+    <string name="settings_category_web_remote_title">Web Uzaktan Kumanda</string>
     
-    <string name="settings_search_category_about">About</string>
+    <string name="settings_search_category_about">Hakkında</string>
     
-    <string name="settings_search_category_ai_integration">AI Integration</string>
+    <string name="settings_search_category_ai_integration">YZ Entegrasyonu</string>
     
-    <string name="settings_search_category_appearance">Appearance</string>
+    <string name="settings_search_category_appearance">Görünüm</string>
     
-    <string name="settings_search_category_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_search_category_backup_restore">Yedekleme ve Geri Yükleme</string>
     
-    <string name="settings_search_category_behavior">Behavior</string>
+    <string name="settings_search_category_behavior">Davranış</string>
     
-    <string name="settings_search_category_developer">Developer</string>
+    <string name="settings_search_category_developer">Geliştirici</string>
     
-    <string name="settings_search_category_device_capabilities">Device Capabilities</string>
+    <string name="settings_search_category_device_capabilities">Cihaz Yetenekleri</string>
     
-    <string name="settings_search_category_equalizer">Equalizer</string>
+    <string name="settings_search_category_equalizer">Ekolayzer</string>
     
-    <string name="settings_search_category_library">Music Library</string>
+    <string name="settings_search_category_library">Müzik Kitaplığı</string>
     
-    <string name="settings_search_category_playback">Playback</string>
+    <string name="settings_search_category_playback">Oynatma</string>
     
-    <string name="settings_search_category_settings_format">%1$s settings</string>
+    <string name="settings_search_category_settings_format">%1$s ayarları</string>
     
     
     
-    <string name="settings_search_category_subtitle">Settings category</string>
+    <string name="settings_search_category_subtitle">Ayar kategorisi</string>
     
     <string name="settings_search_keyword_aaudio">AAudio</string>
     
-    <string name="settings_search_keyword_about">About</string>
+    <string name="settings_search_keyword_about">Hakkında</string>
     
-    <string name="settings_search_keyword_account">Account</string>
+    <string name="settings_search_keyword_account">Hesap</string>
     
     <string name="settings_search_keyword_ai">AI</string>
     
-    <string name="settings_search_keyword_album">Album</string>
+    <string name="settings_search_keyword_album">Albüm</string>
     
-    <string name="settings_search_keyword_album_art">Album art</string>
+    <string name="settings_search_keyword_album_art">Albüm kapağı</string>
     
-    <string name="settings_search_keyword_appearance">Appearance</string>
+    <string name="settings_search_keyword_appearance">Görünüm</string>
     
-    <string name="settings_search_keyword_artist">Artist</string>
+    <string name="settings_search_keyword_artist">Sanatçı</string>
     
-    <string name="settings_search_keyword_auto_hide">Auto-hide</string>
+    <string name="settings_search_keyword_auto_hide">Otomatik gizle</string>
     
-    <string name="settings_search_keyword_background">Background playback</string>
+    <string name="settings_search_keyword_background">Arka planda oynatma</string>
     
-    <string name="settings_search_keyword_background_image">Background image, wallpaper</string>
+    <string name="settings_search_keyword_background_image">Arka plan görseli, duvar kağıdı</string>
     
-    <string name="settings_search_keyword_backup">Backup</string>
+    <string name="settings_search_keyword_backup">Yedekleme</string>
     
-    <string name="settings_search_keyword_battery">Battery</string>
+    <string name="settings_search_keyword_battery">Pil</string>
     
     <string name="settings_search_keyword_bluetooth">Bluetooth</string>
     
     <string name="settings_search_keyword_blur">Blur</string>
     
-    <string name="settings_search_keyword_cache">Cache</string>
+    <string name="settings_search_keyword_cache">Önbellek</string>
     
-    <string name="settings_search_keyword_car_mode">Car mode</string>
+    <string name="settings_search_keyword_car_mode">Araç modu</string>
     
     <string name="settings_search_keyword_cast">Cast</string>
     
-    <string name="settings_search_keyword_collage">Collage</string>
+    <string name="settings_search_keyword_collage">Kolaj</string>
     
-    <string name="settings_search_keyword_color">Color</string>
+    <string name="settings_search_keyword_color">Renk</string>
     
-    <string name="settings_search_keyword_compact">Compact</string>
+    <string name="settings_search_keyword_compact">Kompakt</string>
     
-    <string name="settings_search_keyword_corner_radius">Corner radius</string>
+    <string name="settings_search_keyword_corner_radius">Köşe yarıçapı</string>
     
-    <string name="settings_search_keyword_crossfade">Crossfade</string>
+    <string name="settings_search_keyword_crossfade">Çapraz geçiş</string>
     
-    <string name="settings_search_keyword_daily_mix">Daily mix</string>
+    <string name="settings_search_keyword_daily_mix">Günlük miks</string>
     
-    <string name="settings_search_keyword_developer">Developer</string>
+    <string name="settings_search_keyword_developer">Geliştirici</string>
     
-    <string name="settings_search_keyword_device">Device</string>
+    <string name="settings_search_keyword_device">Cihaz</string>
     
-    <string name="settings_search_keyword_diagnostics">Diagnostics</string>
+    <string name="settings_search_keyword_diagnostics">Tanılama</string>
     
-    <string name="settings_search_keyword_download">Download</string>
+    <string name="settings_search_keyword_download">İndirme</string>
     
-    <string name="settings_search_keyword_dynamic_background">Dynamic background, ambient</string>
+    <string name="settings_search_keyword_dynamic_background">Dinamik arka plan, ortam</string>
     
     
     
-    <string name="settings_search_keyword_equalizer">Equalizer</string>
+    <string name="settings_search_keyword_equalizer">Ekolayzer</string>
     
-    <string name="settings_search_keyword_excluded">Excluded folders</string>
+    <string name="settings_search_keyword_excluded">Hariç tutulan klasörler</string>
     
-    <string name="settings_search_keyword_export">Export</string>
+    <string name="settings_search_keyword_export">Dışa aktarma</string>
     
-    <string name="settings_search_keyword_filter">Filter</string>
+    <string name="settings_search_keyword_filter">Filtre</string>
     
-    <string name="settings_search_keyword_folder">Folder</string>
+    <string name="settings_search_keyword_folder">Klasör</string>
     
-    <string name="settings_search_keyword_gesture">Gesture</string>
+    <string name="settings_search_keyword_gesture">Hareket</string>
     
-    <string name="settings_search_keyword_haptics">Haptics</string>
+    <string name="settings_search_keyword_haptics">Dokunsal geri bildirim</string>
     
-    <string name="settings_search_keyword_headphones">Headphones</string>
+    <string name="settings_search_keyword_headphones">Kulaklıklar</string>
     
     <string name="settings_search_keyword_hifi">HiFi</string>
     
-    <string name="settings_search_keyword_immersive_lyrics">Immersive lyrics</string>
+    <string name="settings_search_keyword_immersive_lyrics">Sürükleyici şarkı sözleri</string>
     
-    <string name="settings_search_keyword_import">Import</string>
+    <string name="settings_search_keyword_import">İçe aktarma</string>
     
-    <string name="settings_search_keyword_language">Language</string>
+    <string name="settings_search_keyword_language">Dil</string>
     
-    <string name="settings_search_keyword_lyrics">Lyrics</string>
+    <string name="settings_search_keyword_lyrics">Şarkı sözleri</string>
     
-    <string name="settings_search_keyword_maintenance">Maintenance</string>
+    <string name="settings_search_keyword_maintenance">Bakım</string>
     
-    <string name="settings_search_keyword_min_duration">Minimum duration</string>
+    <string name="settings_search_keyword_min_duration">Minimum süre</string>
     
-    <string name="settings_search_keyword_mixer">Mixer</string>
+    <string name="settings_search_keyword_mixer">Mikser</string>
     
     <string name="settings_search_keyword_model">Model</string>
     
-    <string name="settings_search_keyword_navigation">Navigation</string>
+    <string name="settings_search_keyword_navigation">Gezinme</string>
     
-    <string name="settings_search_keyword_now_playing">Now playing</string>
+    <string name="settings_search_keyword_now_playing">Şimdi çalıyor</string>
     
-    <string name="settings_search_keyword_online_source">Online source</string>
+    <string name="settings_search_keyword_online_source">Çevrim içi kaynak</string>
     
-    <string name="settings_search_keyword_palette">Palette</string>
+    <string name="settings_search_keyword_palette">Palet</string>
     
-    <string name="settings_search_keyword_playback">Playback</string>
+    <string name="settings_search_keyword_playback">Oynatma</string>
     
-    <string name="settings_search_keyword_player">Player</string>
+    <string name="settings_search_keyword_player">Oynatıcı</string>
     
-    <string name="settings_search_keyword_queue">Queue</string>
+    <string name="settings_search_keyword_queue">Kuyruk</string>
     
-    <string name="settings_search_keyword_recommendation">Recommendation</string>
+    <string name="settings_search_keyword_recommendation">Öneri</string>
     
-    <string name="settings_search_keyword_remote">Remote</string>
+    <string name="settings_search_keyword_remote">Uzaktan</string>
     
     <string name="settings_search_keyword_replaygain">ReplayGain</string>
     
-    <string name="settings_search_keyword_restore">Restore</string>
+    <string name="settings_search_keyword_restore">Geri yükleme</string>
     
     <string name="settings_search_keyword_scan">Scan</string>
     
-    <string name="settings_search_keyword_scroll">Scroll</string>
+    <string name="settings_search_keyword_scroll">Kaydırma</string>
     
-    <string name="settings_search_keyword_shuffle">Shuffle</string>
+    <string name="settings_search_keyword_shuffle">Karıştırma</string>
     
-    <string name="settings_search_keyword_speed">Speed, playback rate</string>
+    <string name="settings_search_keyword_speed">Hız, oynatma oranı</string>
     
-    <string name="settings_search_keyword_stats">Statistics</string>
+    <string name="settings_search_keyword_stats">İstatistikler</string>
     
     <string name="settings_search_keyword_sync">Sync</string>
     
-    <string name="settings_search_keyword_theme">Theme</string>
+    <string name="settings_search_keyword_theme">Tema</string>
     
     <string name="settings_search_keyword_token">Token</string>
     
-    <string name="settings_search_keyword_transcode">Transcode</string>
+    <string name="settings_search_keyword_transcode">Dönüştürme</string>
     
     <string name="settings_search_keyword_usb">USB</string>
     
-    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_no_results">Ayar bulunamadı</string>
     
-    <string name="settings_search_placeholder">Search settings</string>
+    <string name="settings_search_placeholder">Ayarlarda ara</string>
     
-    <string name="settings_search_results_count_format">%1$d results</string>
+    <string name="settings_search_results_count_format">%1$d sonuç</string>
     
     <string name="usb_bit_depth_16">16-bit</string>
     
@@ -1094,34 +1094,236 @@
     
     <string name="usb_bit_depth_32">32-bit</string>
     
-    <string name="usb_device_selector_connect_message">This will enable exclusive access to the USB DAC for bit-perfect audio. The system audio will be routed through the DAC directly.</string>
+    <string name="usb_device_selector_connect_message">Bu, bit-perfect ses için USB DAC\'a özel erişimi etkinleştirir. Sistem sesi doğrudan DAC üzerinden yönlendirilir.</string>
     
-    <string name="usb_device_selector_connect_title">USB Exclusive Mode</string>
+    <string name="usb_device_selector_connect_title">USB Özel Modu</string>
     
-    <string name="usb_device_selector_connected_to">Connected to: %s</string>
+    <string name="usb_device_selector_connected_to">Bağlı: %s</string>
     
-    <string name="usb_device_selector_connecting">Connecting to USB DAC…</string>
+    <string name="usb_device_selector_connecting">USB DAC\'a bağlanılıyor…</string>
     
-    <string name="usb_device_selector_connection_failed">Failed to connect to USB DAC</string>
+    <string name="usb_device_selector_connection_failed">USB DAC\'a bağlanılamadı</string>
     
-    <string name="usb_device_selector_hint">Connect a USB DAC and enable USB exclusive mode for bit-perfect audio output.</string>
+    <string name="usb_device_selector_hint">Bit-perfect ses çıkışı için bir USB DAC bağlayın ve USB özel modunu etkinleştirin.</string>
     
-    <string name="usb_device_selector_no_devices">No USB audio devices found</string>
+    <string name="usb_device_selector_no_devices">USB ses cihazı bulunamadı</string>
     
-    <string name="usb_device_selector_permission_message">XiangsuPlayer needs access to your USB DAC to enable exclusive mode.</string>
+    <string name="usb_device_selector_permission_message">XiangsuPlayer\'ın özel modu etkinleştirmek için USB DAC\'ınıza erişmesi gerekir.</string>
     
-    <string name="usb_device_selector_permission_required">USB permission required</string>
+    <string name="usb_device_selector_permission_required">USB izni gerekli</string>
     
-    <string name="usb_device_selector_refresh">Refresh</string>
+    <string name="usb_device_selector_refresh">Yenile</string>
     
-    <string name="usb_device_selector_scanning">Scanning for USB devices…</string>
+    <string name="usb_device_selector_scanning">USB cihazları taranıyor…</string>
     
-    <string name="usb_device_selector_select_device">Select USB DAC device</string>
+    <string name="usb_device_selector_select_device">USB DAC cihazı seç</string>
     
-    <string name="usb_device_selector_title">Select USB DAC</string>
+    <string name="usb_device_selector_title">USB DAC Seç</string>
     
-    <string name="usb_exclusive_toast_activate_failed">Failed to activate USB exclusive mode. Check device permission and try again.</string>
+    <string name="usb_exclusive_toast_activate_failed">USB özel modu etkinleştirilemedi. Cihaz iznini kontrol edip yeniden deneyin.</string>
     
-    <string name="usb_exclusive_toast_activated">USB exclusive activated: %s</string>
+    <string name="usb_exclusive_toast_activated">USB özel modu etkinleştirildi: %s</string>
     
+    <string name="car_mode_action_radio">Radyo</string>
+    <string name="car_mode_action_radio_desc">Çevrim içi radyo</string>
+    <string name="download_manager_cancel">İptal</string>
+    <string name="download_manager_clear_completed">Tamamlananları temizle</string>
+    <string name="download_manager_empty">Henüz indirme yok</string>
+    <string name="download_manager_pause">Duraklat</string>
+    <string name="download_manager_resume">Devam ettir</string>
+    <string name="download_manager_retry">Yeniden dene</string>
+    <string name="download_manager_title">İndirmeler</string>
+    <string name="download_manager_waiting">Bekliyor</string>
+    <string name="setcat_api_lyrics_amll_subtitle">Yalnızca NetEase şarkıları; karaoke tarzı zamanlama sağlar.</string>
+    <string name="setcat_api_lyrics_amll_title">AMLLDB kelime kelime şarkı sözleri</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">Bilibili parçalarının video altyazılarını şarkı sözü olarak kullan.</string>
+    <string name="setcat_api_lyrics_bilibili_title">Bilibili altyazı şarkı sözleri</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ Music / Kugou / Kuwo / Migu, yerleşik kaynak şarkıları için kullanılır.</string>
+    <string name="setcat_api_lyrics_builtin_title">Yerleşik kaynak şarkı sözleri</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">Yurt dışı hizmet, kısıtlı ağlarda genellikle erişilemez.</string>
+    <string name="setcat_api_lyrics_lrclib_title">LRCLIB şarkı sözleri</string>
+    <string name="setcat_api_lyrics_netease_subtitle">Resmi API, NetEase ve bulut şarkıları için tercih edilen kaynak.</string>
+    <string name="setcat_api_lyrics_netease_title">NetEase şarkı sözleri</string>
+    <string name="setcat_api_lyrics_online_title">Çevrim içi şarkı sözü kaynakları</string>
+    <string name="setcat_api_lyrics_priority_action">Ayarla</string>
+    <string name="setcat_api_lyrics_priority_desc">Kaynakları yukarıdan aşağıya deneyin; yeniden sıralamak için okları kullanın.</string>
+    <string name="setcat_api_lyrics_priority_label">Çevrim içi şarkı sözü önceliği</string>
+    <string name="setcat_api_metadata_deezer_subtitle">Sanatçı görsellerini çevrim içi arar ve önbelleğe alır; yurt dışı hizmet.</string>
+    <string name="setcat_api_metadata_deezer_title">Deezer sanatçı görselleri</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">Başlık / sanatçı / albüm / tür ve kapak resmini tamamlar; yurt dışı hizmet.</string>
+    <string name="setcat_api_metadata_musicbrainz_title">MusicBrainz meta verileri</string>
+    <string name="setcat_api_metadata_title">Şarkı bilgisi tamamlama</string>
+    <string name="setcat_api_note">Erişilemeyen hizmetleri devre dışı bırakmak, zaman aşımlarını atlayarak şarkı sözü ve kapak yüklemeyi hızlandırır. Mevcut yerel önbellekler korunur.</string>
+    <string name="setcat_api_priority_builtin">Önce yerleşik</string>
+    <string name="setcat_api_priority_lrclib">Önce LRCLIB</string>
+    <string name="setcat_api_priority_move_down">Aşağı taşı</string>
+    <string name="setcat_api_priority_move_up">Yukarı taşı</string>
+    <string name="setcat_api_priority_netease">Önce NetEase</string>
+    <string name="setcat_api_priority_reset">Sırayı sıfırla</string>
+    <string name="setcat_appearance_miniplayer_section">Mini oynatıcı</string>
+    <string name="setcat_appearance_startup_section">Başlangıç animasyonu</string>
+    <string name="setcat_apple_canvas_subtitle">Çalan şarkı için çevrim içi hareketli kapak al ve bulunduğunda ona çapraz geçiş yap. Yerel kapak resmi yedek olarak kalır; biraz ağ trafiği ekler.</string>
+    <string name="setcat_apple_canvas_title">Dinamik kapak (Apple Music)</string>
+    <string name="setcat_audio_focus">Ses Odağı</string>
+    <string name="setcat_audio_focus_duck_subtitle">Kısa bir ses odağı değişikliği sırasında sesin düşürülmesine izin ver. Bu seçenek ses çıkışı ayarları tarafından geçersiz kılınır.</string>
+    <string name="setcat_audio_focus_duck_title">Sesi düşür</string>
+    <string name="setcat_audio_focus_gain_subtitle">Odak geri kazanıldıktan sonra oynatmayı sürdür. Devre dışı bırakıldığında oynatıcı duraklatılmış kalır.</string>
+    <string name="setcat_audio_focus_gain_title">Odak kazanınca devam et</string>
+    <string name="setcat_audio_focus_hint_bg">Android 8 ve üzerinde oynatıcı duraklatılmışken sistem tarafından sonlandırılır. Bunu önlemek için “Bildirimi her zaman göster” seçeneğini kullanın.</string>
+    <string name="setcat_audio_focus_hint_cast">Chromecast çıkışı arama ve kısa ses odağı değişikliklerini tamamen yok sayabilir.</string>
+    <string name="setcat_audio_focus_permanent_subtitle">Uzun bir ses odağı değişikliğinde duraklat (ör. başka bir oynatıcı veya oyun müzik çalıyor).</string>
+    <string name="setcat_audio_focus_permanent_title">Kalıcı ses odağı değişikliği</string>
+    <string name="setcat_audio_focus_reset">Varsayılanları geri yükle</string>
+    <string name="setcat_audio_focus_resume_call_subtitle">Arama bittikten sonra oynatmayı sürdür (gelen arama tarafından duraklatıldıysa).</string>
+    <string name="setcat_audio_focus_resume_call_title">Aramadan sonra oynatmayı sürdür</string>
+    <string name="setcat_audio_focus_transient_subtitle">Ses odağı geçici olarak değiştiğinde oynatmayı duraklat (ör. arama, bildirim, navigasyon).</string>
+    <string name="setcat_audio_focus_transient_title">Kısa ses odağı değişikliği / arama</string>
+    <string name="setcat_bg_style_palette">Palet</string>
+    <string name="setcat_bg_style_solid">Düz</string>
+    <string name="setcat_bg_style_vibrant">Canlı</string>
+    <string name="setcat_carousel_style_classic">Klasik (gözetlemesiz)</string>
+    <string name="setcat_carousel_style_preview">Carousel önizlemesi</string>
+    <string name="setcat_download_embed_cover_subtitle">Kapak resmini ses dosyası etiketlerine yaz (yerel kapak resmi de gömülür).</string>
+    <string name="setcat_download_embed_cover_title">Kapak resmini göm</string>
+    <string name="setcat_download_embed_lyrics_subtitle">Şarkı sözlerini ses dosyası etiketlerine yaz, böylece oynatıcılar okuyabilir.</string>
+    <string name="setcat_download_embed_lyrics_title">Şarkı sözlerini göm</string>
+    <string name="setcat_download_file_name_artist_title">Sanatçı - Başlık</string>
+    <string name="setcat_download_file_name_desc">İndirilen dosyaların nasıl adlandırılacağı.</string>
+    <string name="setcat_download_file_name_label">İndirme dosya adı</string>
+    <string name="setcat_download_file_name_title_artist">Başlık - Sanatçı</string>
+    <string name="setcat_download_file_name_title_only">Yalnızca başlık</string>
+    <string name="setcat_download_manager_subtitle">İndirme kuyruğunu, devam eden ve tamamlanan indirmeleri görüntüleyin.</string>
+    <string name="setcat_download_quality_desc">Şarkı indirirken kullanılan kalite; oynatma kalitesini izleyebilir.</string>
+    <string name="setcat_download_quality_follow">Oynatmayla aynı</string>
+    <string name="setcat_download_quality_label">İndirme kalitesi</string>
+    <string name="setcat_download_skip_existing_subtitle">Hedef klasörde aynı adlı bir dosya zaten varsa atla.</string>
+    <string name="setcat_download_skip_existing_title">Mevcut dosyaları atla</string>
+    <string name="setcat_download_write_lrc_subtitle">İndirilen ses dosyasının yanında eşleşen bir .lrc oluştur.</string>
+    <string name="setcat_download_write_lrc_title">Ayrıca .lrc dosyası kaydet</string>
+    <string name="setcat_expressive_accent_desc">Kontrol kartını ve aç/kapat düğmelerini albüm vurgu rengi camıyla renklendir.</string>
+    <string name="setcat_expressive_accent_title">Vurgu arka planı</string>
+    <string name="setcat_expressive_group_title">Etkileyici oynatıcı</string>
+    <string name="setcat_expressive_merge_desc">Favori, karıştır, tekrarla, şarkı sözleri ve kuyruk düğmelerini kontrol kartında birleştir.</string>
+    <string name="setcat_expressive_merge_title">Kontrolleri birleştir</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">Kontrolleri genişletme ve yeniden boyutlandırmayı animasyonla yap; anında geçiş için kapatın.</string>
+    <string name="setcat_floating_lyrics_animation_title">Geçiş animasyonları</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">Arka plan opaklığı</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">Şarkı sözlerini sol veya sağ kenarın ötesine itip bırakın — küçük bir ok bırakarak kıvrılır. Geri getirmek için oka dokunun.</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">Ekran kenarına gizlen</string>
+    <string name="setcat_floating_lyrics_lines_double">Geçerli + sonraki</string>
+    <string name="setcat_floating_lyrics_lines_multi">Üç satır</string>
+    <string name="setcat_floating_lyrics_lines_single">Tek</string>
+    <string name="setcat_floating_lyrics_lines_title">Gösterilen satırlar</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">Kilitliyken sürükleme artık pencereyi taşımaz (aç/kapat için şarkı sözlerine uzun basın).</string>
+    <string name="setcat_floating_lyrics_lock_title">Konumu kilitle</string>
+    <string name="setcat_floating_lyrics_scale_title">Genel boyut</string>
+    <string name="setcat_floating_lyrics_section">Yüzen Şarkı Sözleri</string>
+    <string name="setcat_floating_lyrics_subtitle">Şarkı sözlerini diğer uygulamaların üzerinde göster. “Diğer uygulamaların üzerinde göster” izni gerekir.</string>
+    <string name="setcat_floating_lyrics_title">Yüzen Şarkı Sözleri (masaüstü)</string>
+    <string name="setcat_floating_lyrics_usage">Kullanım: taşımak için sürükleyin, önceki / çal-duraklat / sonraki göstermek için dokunun, konumu kilitlemek için uzun basın. Şarkı sözlerini sol veya sağ kenarın ötesine iterek küçük bir oka gizleyin — geri getirmek için oka dokunun. Pencere yalnızca bir şarkı çalarken görünür.</string>
+    <string name="setcat_force_software_blur_subtitle">Android 12\'den eski sürümlerde kullanılan yazılım/bitmap bulanıklaştırmasını zorla, böylece yeni cihazlarda doğrulayabilirsiniz</string>
+    <string name="setcat_force_software_blur_title">Eski bulanıklaştırmayı zorla (test)</string>
+    <string name="setcat_force_tablet_layout_subtitle">Tablet düzenini (yan gezinme çubuğu + geniş içerik) dikey modda bile kullanın. Büyük telefonlar ve katlanabilirler için harika.</string>
+    <string name="setcat_force_tablet_layout_title">Dikey modda tablet düzenini zorla</string>
+    <string name="setcat_home_top_style_collage">Kolaj duvarı</string>
+    <string name="setcat_home_top_style_desc">Ana Sayfa\'nın üst kısmında bir kolaj duvarı veya öne çıkan carousel göster.</string>
+    <string name="setcat_home_top_style_featured">Öne çıkan carousel</string>
+    <string name="setcat_home_top_style_label">Ana sayfa üst stili</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">Şarkı sözü ekranı otomatik olarak sürükleyici moda geçtiğinde, metni büyütmek yerine yalnızca kontrolleri gizle (varsayılan büyütür)</string>
+    <string name="setcat_immersive_keep_font_size_title">Sürükleyici modda şarkı sözü yazı tipi boyutunu koru</string>
+    <string name="setcat_immersive_keep_size_hint">Sürükleyici önizleme: metin olduğu gibi korunur</string>
+    <string name="setcat_immersive_scale_hint">Sürükleyici önizleme: metin x1.25 büyütülür</string>
+    <string name="setcat_lanzou_test_close">Kapat</string>
+    <string name="setcat_lanzou_test_dialog_title">Lanzou indirme akışı testi</string>
+    <string name="setcat_lanzou_test_open_browser">İlk doğrudan bağlantıyı tarayıcıda aç</string>
+    <string name="setcat_lanzou_test_running">Paylaşım bağlantısı çözümleniyor…</string>
+    <string name="setcat_lanzou_test_subtitle">Güncelleme paylaşım bağlantısını çözümleyin ve dosyaları, algılanan sürümleri ve doğrudan URL\'leri listeleyin (uygulama içi güncelleme kanalını doğrular).</string>
+    <string name="setcat_lanzou_test_title">Lanzou indirme akışını test et</string>
+    <string name="setcat_lyrics_bg_style_desc">Şarkı sözü arka plan stili: canlı degrade, kapak paleti rengi veya düz tema rengi.</string>
+    <string name="setcat_lyrics_bg_style_title">Şarkı sözü arka planı</string>
+    <string name="setcat_lyrics_mono_colors_desc">Şarkı sözü düğmelerini ve metnini saf siyah / beyaza zorla (koyu temada beyaz, açık temada siyah). Kapalıyken mevcut görünüm korunur.</string>
+    <string name="setcat_lyrics_mono_colors_title">Tek renkli şarkı sözü düğmeleri ve metni</string>
+    <string name="setcat_miniplayer_corner_radius">Mini oynatıcı köşe yarıçapı</string>
+    <string name="setcat_miniplayer_style_capsule">Kapsül</string>
+    <string name="setcat_miniplayer_style_classic">Klasik</string>
+    <string name="setcat_miniplayer_style_desc">Alt mini oynatıcının görünümü. Material = kart üzerinde önceki/çal/sonraki ile yuvarlatılmış kapak resmi; Etkileyici = düz ilerleme dolgulu tam kapsül, kare kapak resmi ve tek büyük çal düğmesi.</string>
+    <string name="setcat_miniplayer_style_expressive">Etkileyici</string>
+    <string name="setcat_miniplayer_style_label">Stil</string>
+    <string name="setcat_miniplayer_style_material">Material</string>
+    <string name="setcat_miniplayer_style_rhythm">Rhythm</string>
+    <string name="setcat_navrail_style_desc">Tabletlerde ve yatay modda sol çubuğun görünümünü seçin.</string>
+    <string name="setcat_navrail_style_docked">Sabitlenmiş</string>
+    <string name="setcat_navrail_style_floating">Yüzen</string>
+    <string name="setcat_navrail_style_label">Tablet gezinme çubuğu</string>
+    <string name="setcat_new_top_bar_subtitle">Üst çubuklar aşamalı bulanıklaştırma maskesi ve daraltılmış başlık kapsülü kullanır. Her yerde düz opak üst çubuk kullanmak için kapatın.</string>
+    <string name="setcat_new_top_bar_title">Yeni Üst Çubuk Stili</string>
+    <string name="setcat_player_bg_style_desc">Oynatıcı arka plan stili: canlı degrade, kapak paleti rengi veya düz tema rengi.</string>
+    <string name="setcat_player_bg_style_title">Oynatıcı arka planı</string>
+    <string name="setcat_player_controls_group">Oynatıcı kontrolleri</string>
+    <string name="setcat_player_cover_style_default">Varsayılan carousel</string>
+    <string name="setcat_player_cover_style_desc">Oynatıcı kapağının nasıl gösterileceği (Rhythm öne çıkan kart).</string>
+    <string name="setcat_player_cover_style_featured">Öne çıkan kart carousel\'i</string>
+    <string name="setcat_player_cover_style_label">Kapak stili</string>
+    <string name="setcat_player_glass_controls_subtitle">Nötr kontrol düğmelerini (atla / favori / alt kapsül / kontrol kartları) gerçek arka plan bulanıklığıyla yarı saydam yap. Çal/duraklat düğmesi vurgu rengini korur ve düzen değişmez; her tema ve arka planla birleşir.</string>
+    <string name="setcat_player_glass_controls_title">Buzlu cam kontrol düğmeleri</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">Üstte sabitlenmiş canlı önizleme, aşağıdaki her seçenek anında günceller</string>
+    <string name="setcat_player_lyrics_appearance_title">Oynatıcı ve şarkı sözü görünümü</string>
+    <string name="setcat_player_lyrics_preview_artist">Örnek sanatçı</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24bit · 44.1 kHz</string>
+    <string name="setcat_player_lyrics_preview_label">Canlı önizleme</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">Bu satır şimdi çalıyor</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">şehir uyurken</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">ve gece devam ederken</string>
+    <string name="setcat_player_lyrics_preview_track">Örnek parça</string>
+    <string name="setcat_player_mono_colors_desc">Oynatıcı düğmelerini ve metnini saf siyah / beyaza zorla (koyu temada beyaz, açık temada siyah). Kapalıyken mevcut görünüm korunur.</string>
+    <string name="setcat_player_mono_colors_title">Tek renkli oynatıcı düğmeleri ve metni</string>
+    <string name="setcat_player_progress_bar_subtitle">Geçerli: %1$s. Parça stilini, tutamaç stilini ve döndürmeyi seçin.</string>
+    <string name="setcat_player_progress_bar_title">Oynatma İlerleme Çubuğu</string>
+    <string name="setcat_player_style_classic">Klasik</string>
+    <string name="setcat_player_style_desc">Tam ekran oynatıcıyı klasik düzen ile Etkileyici düzen (Rhythm\'ten uyarlanmış) arasında değiştirin.</string>
+    <string name="setcat_player_style_expressive">Etkileyici</string>
+    <string name="setcat_player_style_label">Oynatıcı stili</string>
+    <string name="setcat_player_theme_immersive">Sürükleyici kapak (bulanıklık uzatma)</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">Yukarı kaydırırken gezinme çubuğunu aşağı kaydır ve mini oynatıcıyı kaydır; geri kaydırdığınızda geri dönerler</string>
+    <string name="setcat_scroll_hide_chrome_title">Kaydırırken gizle</string>
+    <string name="setcat_startup_animation_desc">Başlatmadan sonra ana ekrana girerken oynatılan geçiş.</string>
+    <string name="setcat_startup_animation_label">Giriş animasyonu</string>
+    <string name="setcat_startup_style_emerge">Belir</string>
+    <string name="setcat_startup_style_none">Kapalı</string>
+    <string name="setcat_startup_style_scale">Ölçek</string>
+    <string name="setcat_transport_flat_style_subtitle">Önceki / çal / sonrakiyi renkli arka planlar olmadan düz simgeler olarak göster</string>
+    <string name="setcat_transport_flat_style_title">Düz kontrol düğmeleri</string>
+    <string name="setcat_ui_scale_section">Arayüz Ölçeği</string>
+    <string name="setcat_ui_scale_title">Arayüz Ölçeği (yalnızca uygulama)</string>
+    <string name="setcat_updates_auto_check_subtitle">Arka planda yeni sürümleri kontrol et</string>
+    <string name="setcat_updates_auto_check_title">Güncellemeleri otomatik kontrol et</string>
+    <string name="setcat_updates_auto_title">Otomatik Güncellemeler</string>
+    <string name="setcat_updates_bg_download_subtitle">Yeni sürüm APK\'sını otomatik indir</string>
+    <string name="setcat_updates_bg_download_title">Güncellemeleri arka planda indir</string>
+    <string name="setcat_updates_download_title">Arka Plan İndirme</string>
+    <string name="setcat_updates_frequency_daily">Günlük</string>
+    <string name="setcat_updates_frequency_title">Kontrol sıklığı</string>
+    <string name="setcat_updates_frequency_weekly">Haftalık</string>
+    <string name="setcat_updates_wifi_charging_subtitle">Yalnızca WiFi\'de ve şarj olurken indir</string>
+    <string name="setcat_updates_wifi_charging_title">Yalnızca WiFi + şarj</string>
+    <string name="setcat_vibrant_bg_warning_message">Android sürümünüz Android 11\'den düşük. Bu efekt cihazınızda beklendiği gibi çalışmayabilir. Yine de etkinleştirmek istiyor musunuz?</string>
+    <string name="setcat_vibrant_bg_warning_title">Android sürümü çok düşük</string>
+    <string name="settings_category_api_subtitle">Şarkı sözü ve meta veri tamamlama hizmetlerini aç/kapat</string>
+    <string name="settings_category_api_title">API yönetimi</string>
+    <string name="settings_category_download_subtitle">Kuyruk, kalite, klasör, dosya adlandırma ve etiket gömme</string>
+    <string name="settings_category_download_title">İndirmeler</string>
+    <string name="settings_category_updates_subtitle">Otomatik kontrol sıklığı, arka plan indirme, WiFi + şarj</string>
+    <string name="settings_category_updates_title">Güncellemeler ve İndirmeler</string>
+    <string name="settings_category_usb_exclusive_subtitle">Harici USB DAC\'a bit-perfect çıkış: bit derinliği, cihaz ve durum</string>
+    <string name="settings_category_usb_exclusive_title">USB özel modu</string>
+    <string name="settings_search_keyword_audio_focus">Ses odağı</string>
+    <string name="settings_search_keyword_update">Güncelleme</string>
+    <string name="usb_status_active">Özel mod etkin — ses sistem mikserini atlar</string>
+    <string name="usb_status_found">%1$d USB ses cihazı bulundu</string>
+    <string name="usb_status_inactive">Özel mod etkin değil (sistem mikseri çıkışı)</string>
+    <string name="usb_status_no_device">USB ses cihazı algılanmadı — bir DAC takın, otomatik olarak bulunacak</string>
+    <string name="usb_status_none_found">USB ses cihazı bulunamadı</string>
+    <string name="usb_status_rescan">Yeniden tara</string>
+    <string name="usb_status_section">Cihaz durumu</string>
+    <string name="usb_status_switch_device">Cihazı değiştir</string>
 </resources>

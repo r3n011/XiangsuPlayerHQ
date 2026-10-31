@@ -15,7 +15,7 @@
     <string name="presentation_batch_e_queue_source_fallback">Kø</string>
     <string name="presentation_batch_e_cd_toggle_shuffle">Bland sanger</string>
     <string name="presentation_batch_e_cd_toggle_repeat">Gjenta sanger</string>
-    <string name="presentation_batch_e_cd_sleep_timer">Sleep timer</string>
+    <string name="presentation_batch_e_cd_sleep_timer">Innsovingstimer</string>
     <string name="presentation_batch_e_save_as_playlist_sheet_title">Lagre som spilleliste</string>
     <string name="presentation_batch_e_deselect_all">Velg bort alle</string>
     <string name="presentation_batch_e_playlist_name_label">Navn på spilleliste</string>
@@ -51,7 +51,7 @@
     <string name="presentation_batch_e_setup_api_key">Sett opp API-nøkkel</string>
 
     <!-- AI playlist lab -->
-    <string name="presentation_batch_e_ai_playlist_lab_title">AI Playlist Lab</string>
+    <string name="presentation_batch_e_ai_playlist_lab_title">AI-spillelistelab</string>
     <string name="presentation_batch_e_ai_reset">Nullstill</string>
     <string name="presentation_batch_e_ai_generating">Genererer…</string>
     <string name="presentation_batch_e_ai_generate">Generer</string>
@@ -148,158 +148,158 @@
     <string name="presentation_batch_e_daily_mix_cost_hint">Vi bruker et lite utvalg for å holde kostnadene lave</string>
     <string name="presentation_batch_e_daily_mix_updating">Oppdaterer…</string>
     <string name="presentation_batch_e_daily_mix_update">Oppdater Daily Mix</string>
-    <string name="presentation_batch_e_action_locate_current_song">Locate current song</string>
+    <string name="presentation_batch_e_action_locate_current_song">Finn gjeldende sang</string>
     
-    <string name="presentation_batch_e_ai_afternoon_subtitle">Keep productive</string>
+    <string name="presentation_batch_e_ai_afternoon_subtitle">Hold deg produktiv</string>
     
-    <string name="presentation_batch_e_ai_afternoon_title">AI Afternoon Drive</string>
+    <string name="presentation_batch_e_ai_afternoon_title">AI-ettermiddag</string>
     
-    <string name="presentation_batch_e_ai_desc_1">Based on your recent listening, I think you\'ll love these picks!</string>
+    <string name="presentation_batch_e_ai_desc_1">Basert på det du har hørt i det siste, tror jeg du vil elske disse!</string>
     
-    <string name="presentation_batch_e_ai_desc_2">Curated just for you - discover new music that fits your vibe.</string>
+    <string name="presentation_batch_e_ai_desc_2">Kuratert bare for deg – oppdag ny musikk som passer stemningen din.</string>
     
-    <string name="presentation_batch_e_ai_desc_3">Your taste is amazing! Here are some tracks you shouldn\'t miss.</string>
+    <string name="presentation_batch_e_ai_desc_3">Smaken din er fantastisk! Her er noen spor du ikke bør gå glipp av.</string>
     
-    <string name="presentation_batch_e_ai_desc_4">Perfect for this moment - let the music guide your mood.</string>
+    <string name="presentation_batch_e_ai_desc_4">Perfekt for dette øyeblikket – la musikken styre stemningen.</string>
     
-    <string name="presentation_batch_e_ai_desc_5">Mixing your favorites with fresh finds - enjoy your personalized playlist!</string>
+    <string name="presentation_batch_e_ai_desc_5">Mikser favorittene dine med ferske funn – kos deg med den personlige spillelisten!</string>
 
     
     
-    <string name="presentation_batch_e_ai_eval_cohesion">Cohesion</string>
+    <string name="presentation_batch_e_ai_eval_cohesion">Sammenheng</string>
     
-    <string name="presentation_batch_e_ai_eval_diversity">Diversity</string>
+    <string name="presentation_batch_e_ai_eval_diversity">Variasjon</string>
     
-    <string name="presentation_batch_e_ai_eval_energy_flow">Energy Flow</string>
+    <string name="presentation_batch_e_ai_eval_energy_flow">Energiflyt</string>
     
-    <string name="presentation_batch_e_ai_eval_suggestions">Suggestions</string>
+    <string name="presentation_batch_e_ai_eval_suggestions">Forslag</string>
     
-    <string name="presentation_batch_e_ai_eval_title">AI Evaluation</string>
+    <string name="presentation_batch_e_ai_eval_title">AI-vurdering</string>
     
-    <string name="presentation_batch_e_ai_evaluate_playlist">AI Evaluate Playlist</string>
+    <string name="presentation_batch_e_ai_evaluate_playlist">Vurder spilleliste med AI</string>
     
-    <string name="presentation_batch_e_ai_evaluating">Evaluating playlist…</string>
+    <string name="presentation_batch_e_ai_evaluating">Vurderer spillelisten…</string>
     
-    <string name="presentation_batch_e_ai_evening_subtitle">Unwind after a long day</string>
+    <string name="presentation_batch_e_ai_evening_subtitle">Koble av etter en lang dag</string>
     
-    <string name="presentation_batch_e_ai_evening_title">AI Evening Wind Down</string>
+    <string name="presentation_batch_e_ai_evening_title">AI-kveld</string>
     
-    <string name="presentation_batch_e_ai_holiday_april_fools">April Fools</string>
+    <string name="presentation_batch_e_ai_holiday_april_fools">Aprilsnarr</string>
     
     <string name="presentation_batch_e_ai_holiday_april_fools_tag">Fun</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_christmas">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas">Jul</string>
     
-    <string name="presentation_batch_e_ai_holiday_christmas_tag">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas_tag">Jul</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_fathers">Father\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_fathers">Farsdag</string>
     
-    <string name="presentation_batch_e_ai_holiday_fathers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_fathers_tag">Familie</string>
     
     
     <string name="presentation_batch_e_ai_holiday_halloween">Halloween</string>
     
-    <string name="presentation_batch_e_ai_holiday_halloween_tag">Spooky</string>
+    <string name="presentation_batch_e_ai_holiday_halloween_tag">Skummel</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_independence">Independence Day</string>
+    <string name="presentation_batch_e_ai_holiday_independence">USAs uavhengighetsdag</string>
     
-    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotic</string>
+    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotisk</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_labor">Labor Day</string>
+    <string name="presentation_batch_e_ai_holiday_labor">Arbeidernes dag</string>
     
     <string name="presentation_batch_e_ai_holiday_labor_tag">Work</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_mothers">Mother\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_mothers">Morsdag</string>
     
-    <string name="presentation_batch_e_ai_holiday_mothers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_mothers_tag">Familie</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year">Nyttår</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve">New Year\'s Eve</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve">Nyttårsaften</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Party</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Fest</string>
 
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year_tag">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_tag">Nyttår</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick">St. Patrick\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick">St. Patricks dag</string>
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irish</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving">Thanksgiving</string>
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Gratitude</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irsk</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_valentine">Valentine\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_thanksgiving">Høsttakkefest</string>
+    
+    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Takknemlighet</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_valentine">Valentinsdagen</string>
     
     <string name="presentation_batch_e_ai_holiday_valentine_tag">Love</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_veterans">Veterans Day</string>
+    <string name="presentation_batch_e_ai_holiday_veterans">Veterandagen</string>
     
-    <string name="presentation_batch_e_ai_holiday_veterans_tag">Tribute</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_womens">Women\'s Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_womens_tag">Celebrate</string>
+    <string name="presentation_batch_e_ai_holiday_veterans_tag">Hyllest</string>
     
     
-    <string name="presentation_batch_e_ai_late_night_subtitle">Deep and mellow</string>
+    <string name="presentation_batch_e_ai_holiday_womens">Kvinnedagen</string>
     
-    <string name="presentation_batch_e_ai_late_night_title">AI Late Night</string>
-    
-    <string name="presentation_batch_e_ai_lunch_subtitle">Relax and recharge</string>
-    
-    <string name="presentation_batch_e_ai_lunch_title">AI Lunch Break</string>
-    
-    <string name="presentation_batch_e_ai_midday_subtitle">Keep the momentum going</string>
-    
-    <string name="presentation_batch_e_ai_midday_title">AI Midday Flow</string>
-    
-    <string name="presentation_batch_e_ai_morning_subtitle">Start your day with energy</string>
-    
-    <string name="presentation_batch_e_ai_morning_title">AI Morning Boost</string>
-    
-    <string name="presentation_batch_e_ai_night_subtitle">Perfect for late nights</string>
-    
-    <string name="presentation_batch_e_ai_night_title">AI Night Vibes</string>
-    
-    <string name="presentation_batch_e_ai_recommendation_success">AI recommendation generated!</string>
-    
-    <string name="presentation_batch_e_ai_tag_chill">Chill</string>
+    <string name="presentation_batch_e_ai_holiday_womens_tag">Feir</string>
     
     
-    <string name="presentation_batch_e_ai_tag_focus">Focus</string>
+    <string name="presentation_batch_e_ai_late_night_subtitle">Dyp og rund</string>
+    
+    <string name="presentation_batch_e_ai_late_night_title">AI-sen natt</string>
+    
+    <string name="presentation_batch_e_ai_lunch_subtitle">Slapp av og lad opp</string>
+    
+    <string name="presentation_batch_e_ai_lunch_title">AI-lunsjpause</string>
+    
+    <string name="presentation_batch_e_ai_midday_subtitle">Hold dampen oppe</string>
+    
+    <string name="presentation_batch_e_ai_midday_title">AI-midt på dagen</string>
+    
+    <string name="presentation_batch_e_ai_morning_subtitle">Start dagen med energi</string>
+    
+    <string name="presentation_batch_e_ai_morning_title">AI-morgenboost</string>
+    
+    <string name="presentation_batch_e_ai_night_subtitle">Perfekt for sene kvelder</string>
+    
+    <string name="presentation_batch_e_ai_night_title">AI-nattestemning</string>
+    
+    <string name="presentation_batch_e_ai_recommendation_success">AI-anbefaling generert!</string>
+    
+    <string name="presentation_batch_e_ai_tag_chill">Rolig</string>
     
     
-    <string name="presentation_batch_e_ai_tag_morning">Morning</string>
+    <string name="presentation_batch_e_ai_tag_focus">Fokus</string>
     
     
-    <string name="presentation_batch_e_ai_tag_night">Night</string>
+    <string name="presentation_batch_e_ai_tag_morning">Morgen</string>
     
     
-    <string name="presentation_batch_e_ai_tag_relax">Relax</string>
+    <string name="presentation_batch_e_ai_tag_night">Natt</string>
     
     
-    <string name="presentation_batch_e_ai_tag_sleep">Sleep</string>
+    <string name="presentation_batch_e_ai_tag_relax">Avslapping</string>
+    
+    
+    <string name="presentation_batch_e_ai_tag_sleep">Søvn</string>
     
     
     
     <string name="presentation_batch_e_ai_tag_work">Work</string>
     
     
-    <string name="presentation_batch_e_ai_view_all_mix">View All AI Mix</string>
+    <string name="presentation_batch_e_ai_view_all_mix">Se all AI-miks</string>
     
     
     

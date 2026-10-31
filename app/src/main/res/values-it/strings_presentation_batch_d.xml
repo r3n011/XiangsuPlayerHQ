@@ -74,7 +74,7 @@
     <string name="presentation_batch_d_action_update">Aggiorna</string>
     <string name="presentation_batch_d_eq_bass_boost">Potenziamento bassi</string>
     <string name="presentation_batch_d_eq_virtualizer">Virtualizzatore</string>
-    <string name="presentation_batch_d_eq_loudness">Loudness</string>
+    <string name="presentation_batch_d_eq_loudness">Volume percepito</string>
     <string name="presentation_batch_d_eq_effect_not_supported">Non supportato</string>
     <string name="presentation_batch_d_eq_effect_not_supported_device">Non supportato su questo dispositivo</string>
     <string name="presentation_batch_d_eq_volume">Volume</string>

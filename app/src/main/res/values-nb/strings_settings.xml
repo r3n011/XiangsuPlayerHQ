@@ -276,7 +276,7 @@
         name="setcat_headphones_resume_subtitle"
     >Hvis avspillingen stoppet fordi hodetelefoner ble fjernet, gjenoppta automatisk når de kobles til igjen.</string>
     <string name="setcat_queue_transitions">Kø og overganger</string>
-    <string name="setcat_crossfade_label">Crossfade</string>
+    <string name="setcat_crossfade_label">Kryssfading</string>
     <string
         name="setcat_crossfade_desc"
     >Aktiver sømløs overgang mellom sanger.</string>
@@ -337,25 +337,25 @@
     >Google AI Studio (aistudio.google.com)</string>
     <string
         name="setcat_ai_source_deepseek"
-    >DeepSeek Platform (api.deepseek.com)</string>
+    >DeepSeek-plattformen (api.deepseek.com)</string>
     <string
         name="setcat_ai_source_groq"
-    >Groq Console (console.groq.com)</string>
+    >Groq-konsollen (console.groq.com)</string>
     <string
         name="setcat_ai_source_mistral"
-    >Mistral AI Platform (console.mistral.ai)</string>
+    >Mistral AI-plattformen (console.mistral.ai)</string>
     <string
         name="setcat_ai_source_nvidia"
     >NVIDIA Build (build.nvidia.com)</string>
     <string
         name="setcat_ai_source_kimi"
-    >Moonshot AI Platform (platform.moonshot.cn)</string>
+    >Moonshot AI-plattformen (platform.moonshot.cn)</string>
     <string
         name="setcat_ai_source_glm"
-    >Zhipu AI Open Platform (bigmodel.cn)</string>
+    >Zhipu AI åpen plattform (bigmodel.cn)</string>
     <string
         name="setcat_ai_source_openai"
-    >OpenAI Platform (platform.openai.com)</string>
+    >OpenAI-plattformen (platform.openai.com)</string>
     <string name="setcat_model_selection">Modellvalg</string>
     <string name="setcat_loading_models">Laster tilgjengelige modeller…</string>
     <string name="setcat_ai_model_label">AI-modell</string>
@@ -557,83 +557,83 @@
     <string
         name="backup_history_modules_line"
     >%1$d moduler · v%2$s · skjema v%3$d</string>
-    <string name="setcat_download_complete">Download complete</string>
-    <string name="setcat_download_failed">Download failed</string>
+    <string name="setcat_download_complete">Nedlasting fullført</string>
+    <string name="setcat_download_failed">Nedlasting feilet</string>
     <string name="setcat_download_progress_format">%1$.0f%%</string>
-    <string name="setcat_download_progress_title">Download progress</string>
-    <string name="ai_auto_disabled">AI auto-trigger is disabled</string>
+    <string name="setcat_download_progress_title">Nedlastingsfremdrift</string>
+    <string name="ai_auto_disabled">Automatisk AI-utløsing er deaktivert</string>
     
-    <string name="backup_format_external_desc">Compatible with other XiangsuPlayer versions</string>
+    <string name="backup_format_external_desc">Kompatibel med andre XiangsuPlayer-versjoner</string>
     
-    <string name="backup_format_external_title">External (.pxpbak)</string>
+    <string name="backup_format_external_title">Ekstern (.pxpbak)</string>
     
-    <string name="backup_format_pxpl_desc">Original format with all data types</string>
+    <string name="backup_format_pxpl_desc">Opprinnelig format med alle datatyper</string>
     
     <string name="backup_format_pxpl_title">PixelPlay (.pxpl)</string>
     
-    <string name="backup_format_select_prompt">Choose backup format:</string>
+    <string name="backup_format_select_prompt">Velg sikkerhetskopiformat:</string>
     
-    <string name="car_mode_action_library">Library</string>
+    <string name="car_mode_action_library">Bibliotek</string>
     
-    <string name="car_mode_action_library_desc">Your music</string>
+    <string name="car_mode_action_library_desc">Musikken din</string>
     
     <string name="car_mode_action_roaming">Roaming</string>
     
-    <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
+    <string name="car_mode_action_roaming_desc">Roaming i Netease Cloud Music</string>
     
-    <string name="car_mode_action_search">Search</string>
+    <string name="car_mode_action_search">Søk</string>
     
-    <string name="car_mode_action_search_desc">Find songs</string>
+    <string name="car_mode_action_search_desc">Finn sanger</string>
     
-    <string name="car_mode_action_settings">Settings</string>
+    <string name="car_mode_action_settings">Innstillinger</string>
     
-    <string name="car_mode_action_settings_desc">App settings</string>
+    <string name="car_mode_action_settings_desc">Appinnstillinger</string>
 
     
     
-    <string name="car_mode_quick_actions_title">Quick Actions</string>
+    <string name="car_mode_quick_actions_title">Hurtighandlinger</string>
     
-    <string name="dot_device_api_key_hint">输入你的 Dot API Key</string>
+    <string name="dot_device_api_key_hint">Skriv inn Dot API-nøkkelen din</string>
     
-    <string name="dot_device_api_key_label">API Key</string>
+    <string name="dot_device_api_key_label">API-nøkkel</string>
     
-    <string name="dot_device_auto_push_description">切换歌曲时自动推送专辑封面到墨水屏</string>
+    <string name="dot_device_auto_push_description">Send omslagsbildet automatisk til e-ink-skjermen når sangen endres</string>
     
-    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
+    <string name="dot_device_auto_push_title">Automatisk sending av omslagsbilder</string>
     
-    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_clear">Tøm innstillinger</string>
 
     
     
-    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏设备显示</string>
+    <string name="dot_device_header_description">Send omslagsbildet til sangen som spilles, til e-ink-skjermen</string>
     
-    <string name="dot_device_header_title">Dot 墨水屏设备</string>
+    <string name="dot_device_header_title">Dot e-ink-skjermenhet</string>
     
-    <string name="dot_device_id_hint">输入设备 ID</string>
+    <string name="dot_device_id_hint">Skriv inn enhets-ID-en</string>
     
-    <string name="dot_device_id_label">Device ID</string>
+    <string name="dot_device_id_label">Enhets-ID</string>
     
-    <string name="dot_device_save">保存设置</string>
+    <string name="dot_device_save">Lagre innstillinger</string>
     
-    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
+    <string name="dot_device_settings_title">Innstillinger for Dot e-ink-skjerm</string>
     
-    <string name="dot_device_test_connection">测试连接</string>
+    <string name="dot_device_test_connection">Test tilkoblingen</string>
     
-    <string name="dot_device_testing">测试中...</string>
+    <string name="dot_device_testing">Tester…</string>
     
-    <string name="equalizer_preset_bass_boost">Bass Boost</string>
+    <string name="equalizer_preset_bass_boost">Bassforsterkning</string>
     
-    <string name="equalizer_preset_classical">Classical</string>
+    <string name="equalizer_preset_classical">Klassisk</string>
     
-    <string name="equalizer_preset_custom">Custom</string>
+    <string name="equalizer_preset_custom">Egendefinert</string>
 
     
     
-    <string name="equalizer_preset_electronic">Electronic</string>
+    <string name="equalizer_preset_electronic">Elektronisk</string>
     
     <string name="equalizer_preset_flat">Flat</string>
     
-    <string name="equalizer_preset_hip_hop">Hip Hop</string>
+    <string name="equalizer_preset_hip_hop">Hiphop</string>
     
     <string name="equalizer_preset_jazz">Jazz</string>
     
@@ -641,364 +641,364 @@
     
     <string name="equalizer_preset_rock">Rock</string>
     
-    <string name="equalizer_preset_treble_boost">Treble Boost</string>
+    <string name="equalizer_preset_treble_boost">Diskantforsterkning</string>
     
-    <string name="equalizer_preset_vocal">Vocal</string>
+    <string name="equalizer_preset_vocal">Vokal</string>
     
-    <string name="music_quality_flac">Lossless (FLAC)</string>
+    <string name="music_quality_flac">Tapsfri (FLAC)</string>
     
-    <string name="music_quality_high">High (320kbps)</string>
+    <string name="music_quality_high">Høy (320 kbps)</string>
     
-    <string name="music_quality_hires">Hi-Res (24bit)</string>
+    <string name="music_quality_hires">Hi-Res (24 bit)</string>
     
-    <string name="music_quality_standard">Standard (128kbps)</string>
+    <string name="music_quality_standard">Standard (128 kbps)</string>
     
-    <string name="music_quality_subtitle">Preferred quality for streaming music. Higher quality uses more bandwidth.</string>
+    <string name="music_quality_subtitle">Foretrukket kvalitet for strømming av musikk. Høyere kvalitet bruker mer båndbredde.</string>
     
-    <string name="music_quality_title">Music Quality</string>
+    <string name="music_quality_title">Musikkvalitet</string>
     
-    <string name="setcat_aaudio_subtitle_off">Default system audio backend (AudioTrack). Enable AAudio for higher quality output.</string>
+    <string name="setcat_aaudio_subtitle_off">Systemets standard lydbakgrunn (AudioTrack). Aktiver AAudio for utgang med høyere kvalitet.</string>
     
-    <string name="setcat_aaudio_subtitle_on">Using AAudio for improved audio fidelity and lower latency.</string>
+    <string name="setcat_aaudio_subtitle_on">Bruker AAudio for bedre lydkvalitet og lavere forsinkelse.</string>
     
-    <string name="setcat_aaudio_title">AAudio Low-Latency Backend</string>
+    <string name="setcat_aaudio_title">AAudio-bakgrunn med lav forsinkelse</string>
     
-    <string name="setcat_ai_api_key_title_simple">API Key</string>
+    <string name="setcat_ai_api_key_title_simple">API-nøkkel</string>
     
-    <string name="setcat_ai_auto_daily_mix_subtitle">Automatically enhance Daily Mix with AI</string>
-    
-    
-    <string name="setcat_ai_auto_daily_mix_title">Daily Mix AI Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_metadata_subtitle">Automatically fetch AI-generated metadata</string>
-    
-    <string name="setcat_ai_auto_metadata_title">AI Metadata Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Automatically evaluate playlists with AI</string>
+    <string name="setcat_ai_auto_daily_mix_subtitle">Forbedre daglig miks automatisk med AI</string>
     
     
-    <string name="setcat_ai_auto_playlist_evaluation_title">AI Playlist Evaluation Auto-Trigger</string>
+    <string name="setcat_ai_auto_daily_mix_title">Automatisk AI-utløsing for daglig miks</string>
     
-    <string name="setcat_ai_auto_playlist_subtitle">Automatically generate AI playlists when triggered</string>
+    <string name="setcat_ai_auto_metadata_subtitle">Hent AI-genererte metadata automatisk</string>
     
-    <string name="setcat_ai_auto_playlist_title">AI Playlist Auto-Trigger</string>
+    <string name="setcat_ai_auto_metadata_title">Automatisk AI-utløsing for metadata</string>
     
-    <string name="setcat_ai_auto_trigger_section">Auto-Trigger Settings</string>
+    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Vurder spillelister automatisk med AI</string>
     
-    <string name="setcat_ai_lyrics_explanation_subtitle">Show AI-powered lyrics explanation card in the lyrics view (off by default; can be enabled per-session from the lyrics menu)</string>
+    
+    <string name="setcat_ai_auto_playlist_evaluation_title">Automatisk AI-utløsing for spillelistevurdering</string>
+    
+    <string name="setcat_ai_auto_playlist_subtitle">Generer AI-spillelister automatisk når det utløses</string>
+    
+    <string name="setcat_ai_auto_playlist_title">Automatisk AI-utløsing for spillelister</string>
+    
+    <string name="setcat_ai_auto_trigger_section">Innstillinger for automatisk utløsing</string>
+    
+    <string name="setcat_ai_lyrics_explanation_subtitle">Vis AI-drevet forklaringskort for sangtekster i sangtekstvisningen (av som standard; kan aktiveres per økt fra sangtekstmenyen)</string>
 
     
-    <string name="setcat_ai_lyrics_explanation_title">AI Lyrics Insight Card</string>
+    <string name="setcat_ai_lyrics_explanation_title">AI-kort med sangtekstinnsikt</string>
     
-    <string name="setcat_ai_recommendation_card_subtitle">Display AI recommendation card on home screen</string>
+    <string name="setcat_ai_recommendation_card_subtitle">Vis AI-anbefalingskort på hjemskjermen</string>
     
-    <string name="setcat_ai_recommendation_card_title">Show AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_card_title">Vis AI-anbefalingskort</string>
     
-    <string name="setcat_ai_recommendation_manual_subtitle">Click to generate recommendation (prevents automatic token usage)</string>
+    <string name="setcat_ai_recommendation_manual_subtitle">Trykk for å generere anbefaling (forhindrer automatisk tokenbruk)</string>
 
     
-    <string name="setcat_ai_recommendation_manual_title">Manual Generation Only</string>
+    <string name="setcat_ai_recommendation_manual_title">Bare manuell generering</string>
     
-    <string name="setcat_ai_recommendation_section">AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_section">AI-anbefalingskort</string>
     
-    <string name="setcat_bluetooth_lyrics">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics">Bluetooth-sangtekster</string>
     
-    <string name="setcat_bluetooth_lyrics_subtitle">Push the currently playing song lyrics to compatible Bluetooth A2DP display devices.</string>
+    <string name="setcat_bluetooth_lyrics_subtitle">Send sangtekstene til sangen som spilles, til kompatible Bluetooth A2DP-skjermenheter.</string>
     
-    <string name="setcat_bluetooth_lyrics_title">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics_title">Bluetooth-sangtekster</string>
     
-    <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <string name="setcat_car_mode_subtitle">Optimalisert for kjøring: større kontroller, mindre animasjoner og bedre ytelse.</string>
     
     
     
-    <string name="setcat_car_mode_title">Car Mode</string>
+    <string name="setcat_car_mode_title">Bilmodus</string>
     
-    <string name="setcat_center_nav_discover">Discover</string>
+    <string name="setcat_center_nav_discover">Oppdag</string>
     
-    <string name="setcat_center_nav_none">Don\'t show</string>
+    <string name="setcat_center_nav_none">Ikke vis</string>
     
     <string name="setcat_center_nav_radio">Radio</string>
     
     <string name="setcat_center_nav_roaming">Roaming</string>
     
-    <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
+    <string name="setcat_center_nav_subtitle">Velg hva den midtre navigasjonsknappen skal gjøre.</string>
     
-    <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_center_nav_title">Midtknapp</string>
     
-    <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">Kosmisk virvel</string>
     
-    <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">Bikubemønster</string>
     
-    <string name="setcat_collage_pattern_pixel_mosaic">Pixel Mosaic</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">Pikselmosaikk</string>
     
-    <string name="setcat_collage_pattern_stardust_scatter">Stardust Scatter</string>
+    <string name="setcat_collage_pattern_stardust_scatter">Stjernestøv</string>
     
-    <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
+    <string name="setcat_collage_pattern_vinyl_stack">Vinylstabel</string>
     
-    <string name="setcat_custom_palette_enabled_subtitle">When off, the app follows wallpaper colors. When on, custom colors are used. The player keeps its own album-art colors.</string>
+    <string name="setcat_custom_palette_enabled_subtitle">Når av, følger appen bakgrunnsbildets farger. Når på, brukes egendefinerte farger. Spilleren beholder sine egne farger fra albumkunsten.</string>
     
-    <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
+    <string name="setcat_custom_palette_enabled_title">Aktiver app-palett</string>
     
     <string name="setcat_custom_player_background_blur_off">Off</string>
     
-    <string name="setcat_custom_player_background_blur_title">Background Blur</string>
+    <string name="setcat_custom_player_background_blur_title">Bakgrunnsuskarphet</string>
     
-    <string name="setcat_custom_player_background_change">Change background image</string>
+    <string name="setcat_custom_player_background_change">Bytt bakgrunnsbilde</string>
     
     <string name="setcat_custom_player_background_mode_cover">Fill</string>
     
-    <string name="setcat_custom_player_background_mode_stretch">Stretch</string>
+    <string name="setcat_custom_player_background_mode_stretch">Strekk</string>
     
-    <string name="setcat_custom_player_background_mode_title">Display Mode</string>
+    <string name="setcat_custom_player_background_mode_title">Visningsmodus</string>
     
-    <string name="setcat_custom_player_background_pick">Choose background image</string>
+    <string name="setcat_custom_player_background_pick">Velg bakgrunnsbilde</string>
     
-    <string name="setcat_custom_player_background_remove">Remove background</string>
+    <string name="setcat_custom_player_background_remove">Fjern bakgrunn</string>
     
-    <string name="setcat_custom_player_background_subtitle">Use a custom image as the background of the player and lyrics screens. When enabled, it takes precedence over the dynamic album-art background below.</string>
+    <string name="setcat_custom_player_background_subtitle">Bruk et egendefinert bilde som bakgrunn på spiller- og sangtekstskjermen. Når dette er aktivert, har det forrang over den dynamiske albumkunstbakgrunnen nedenfor.</string>
     
-    <string name="setcat_custom_player_background_title">Custom Player Background</string>
+    <string name="setcat_custom_player_background_title">Egendefinert spillerbakgrunn</string>
     
-    <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
+    <string name="setcat_custom_player_controls_opacity_desc">Gjelder alle elementer unntatt bakgrunnen (albumkunst, metadata, fremdrift, kontroller) på både spiller- og sangtekstskjermen.</string>
     
-    <string name="setcat_custom_player_controls_opacity_title">Player Opacity</string>
+    <string name="setcat_custom_player_controls_opacity_title">Spillerens opasitet</string>
     
-    <string name="setcat_disable_blur_all_over_subtitle">Turn off blur effects across the app to save battery and resources.</string>
+    <string name="setcat_disable_blur_all_over_subtitle">Slå av uskarphetseffekter i hele appen for å spare batteri og ressurser.</string>
     
-    <string name="setcat_disable_blur_all_over_title">Disable Blur Effects</string>
+    <string name="setcat_disable_blur_all_over_title">Deaktiver uskarphetseffekter</string>
     
-    <string name="setcat_download_path_title">Download Path</string>
+    <string name="setcat_download_path_title">Nedlastingsmappe</string>
     
     
     
     <string name="setcat_download_settings">Download Settings</string>
     
-    <string name="setcat_external_lyrics_broadcast_subtitle">When enabled, the system media title updates to the current lyric line in real time, showing lyrics outside the app (notification, lock screen, Bluetooth devices). When disabled, the original song title is restored.</string>
+    <string name="setcat_external_lyrics_broadcast_subtitle">Når aktivert, oppdateres systemets medietittel til gjeldende sangtekstlinje i sanntid, slik at sangtekster vises utenfor appen (varsel, låseskjerm, Bluetooth-enheter). Når deaktivert, gjenopprettes den opprinnelige sangtittelen.</string>
 
     
     
-    <string name="setcat_external_lyrics_broadcast_title">Broadcast Lyrics Externally</string>
+    <string name="setcat_external_lyrics_broadcast_title">Kringkast sangtekster eksternt</string>
     
-    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix is a programmable LED display on the back of Nothing Phone (3) featuring 625 individual LEDs arranged in a 25×25 grid. When you play music, PixelPlayer can animate the matrix to create stunning visual effects that sync with your music.</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix er en programmerbar LED-skjerm på baksiden av Nothing Phone (3) med 625 enkeltdioder i et 25×25-rutenett. Når du spiller musikk, kan PixelPlayer animere matrisen og lage imponerende visuelle effekter som synkroniseres med musikken.</string>
 
     
     
-    <string name="setcat_glyph_matrix_about_title">About Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_title">Om Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_enable_subtitle">Show music visualization on Nothing Phone LED matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">Vis musikkvisualisering på LED-matrisen til Nothing Phone</string>
     
-    <string name="setcat_glyph_matrix_enable_title">Enable Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">Aktiver Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_mode_artwork">Album Cover</string>
+    <string name="setcat_glyph_matrix_mode_artwork">Albumomslag</string>
     
-    <string name="setcat_glyph_matrix_mode_desc">Choose what to display on the Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_mode_desc">Velg hva som skal vises på Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">Spiller nå</string>
     
-    <string name="setcat_glyph_matrix_mode_progress">Playback Progress</string>
+    <string name="setcat_glyph_matrix_mode_progress">Avspillingsfremdrift</string>
     
-    <string name="setcat_glyph_matrix_mode_pulse">Beat Pulse</string>
+    <string name="setcat_glyph_matrix_mode_pulse">Taktslagspuls</string>
     
-    <string name="setcat_glyph_matrix_mode_ring">Music Ring</string>
+    <string name="setcat_glyph_matrix_mode_ring">Musikkring</string>
     
-    <string name="setcat_glyph_matrix_mode_scroll_title">Scrolling Title</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">Rullende tittel</string>
     
-    <string name="setcat_glyph_matrix_mode_title">Display Mode</string>
+    <string name="setcat_glyph_matrix_mode_title">Visningsmodus</string>
     
-    <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">Lydvisualisering</string>
     
-    <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_mode_waveform">Bølgeform</string>
     
-    <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
+    <string name="setcat_glyph_matrix_not_available">Denne funksjonen krever en Nothing Phone med Glyph Matrix. Du kan fortsatt forhåndsvise effektene nedenfor.</string>
     
-    <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
+    <string name="setcat_glyph_matrix_not_available_title">Ikke tilgjengelig på denne enheten</string>
     
-    <string name="setcat_glyph_matrix_preview_desc">This is how it will look on the Nothing Phone LED matrix (25×25)</string>
+    <string name="setcat_glyph_matrix_preview_desc">Slik vil det se ut på LED-matrisen til Nothing Phone (25×25)</string>
     
-    <string name="setcat_glyph_matrix_preview_title">Preview</string>
+    <string name="setcat_glyph_matrix_preview_title">Forhåndsvisning</string>
     
     <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
     
-    <string name="setcat_home_top_whitespace_subtitle">Adjust the blank space above the Home content.</string>
+    <string name="setcat_home_top_whitespace_subtitle">Juster tomrommet over innholdet på Hjem.</string>
     
-    <string name="setcat_home_top_whitespace_title">Home Top Whitespace</string>
+    <string name="setcat_home_top_whitespace_title">Tomrom øverst på Hjem</string>
     
-    <string name="setcat_home_top_whitespace_value">Current whitespace: %1$d dp</string>
+    <string name="setcat_home_top_whitespace_value">Gjeldende tomrom: %1$d dp</string>
     
-    <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">Vis en myk gradient øverst og nederst på sangtekstskjermen for bedre lesbarhet.</string>
     
-    <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
+    <string name="setcat_lyrics_gradient_overlay_title">Gradientoverlegg for sangtekster</string>
     
-    <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
+    <string name="setcat_lyrics_solid_overlay_desc">Juster opasiteten til et ensfarget overlegg på sangtekstskjermen for å dempe bakgrunnen.</string>
     
-    <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
+    <string name="setcat_lyrics_solid_overlay_title">Ensfarget overlegg for sangtekster</string>
     
-    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">Vis en roterende, uskarp albumkunstbakgrunn bak sangtekstene.</string>
     
-    <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
+    <string name="setcat_lyrics_vibrant_bg_title">Livlig bakgrunn for sangtekster</string>
     
-    <string name="setcat_navbar_style_floating">Floating</string>
+    <string name="setcat_navbar_style_floating">Flytende</string>
     
-    <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
+    <string name="setcat_netease_quality_title">Foretrukket kvalitet for Netease</string>
 
     
     
-    <string name="setcat_palette_brightness">Brightness</string>
+    <string name="setcat_palette_brightness">Lysstyrke</string>
     
-    <string name="setcat_palette_cancel">Cancel</string>
+    <string name="setcat_palette_cancel">Avbryt</string>
     
-    <string name="setcat_palette_confirm">Confirm</string>
+    <string name="setcat_palette_confirm">Bekreft</string>
     
-    <string name="setcat_palette_custom_title">Custom Color</string>
+    <string name="setcat_palette_custom_title">Egendefinert farge</string>
     
     <string name="setcat_palette_hue">Hue</string>
     
-    <string name="setcat_palette_live_hint">Live preview</string>
+    <string name="setcat_palette_live_hint">Direkteforhåndsvisning</string>
     
-    <string name="setcat_palette_preview_label">Color Scheme Preview</string>
+    <string name="setcat_palette_preview_label">Forhåndsvisning av fargeskjema</string>
     
-    <string name="setcat_palette_saturation">Saturation</string>
+    <string name="setcat_palette_saturation">Metning</string>
     
-    <string name="setcat_player_theme_custom_palette">Custom Palette</string>
+    <string name="setcat_player_theme_custom_palette">Egendefinert palett</string>
     
-    <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
+    <string name="setcat_player_vibrant_bg_desc">Vis en roterende, uskarp albumkunstbakgrunn i spilleren når det ikke er angitt et egendefinert bakgrunnsbilde. En egendefinert spillerbakgrunn har forrang over dette.</string>
     
-    <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
+    <string name="setcat_player_vibrant_bg_title">Livlig spillerbakgrunn</string>
     
-    <string name="setcat_show_lyrics_track_info_subtitle">Show song title and artist in a pill-shaped bar at the top of lyrics view.</string>
+    <string name="setcat_show_lyrics_track_info_subtitle">Vis sangtittel og artist i en pilleformet linje øverst i sangtekstvisningen.</string>
 
     
     
-    <string name="setcat_show_lyrics_track_info_title">Show lyrics track info</string>
+    <string name="setcat_show_lyrics_track_info_title">Vis sporinformasjon for sangtekster</string>
     
-    <string name="setcat_show_scrollbar_subtitle">Display lateral scrollbar on music lists for quick scrolling</string>
+    <string name="setcat_show_scrollbar_subtitle">Vis sideveis rullefelt i musikklister for rask rulling</string>
     
-    <string name="setcat_show_scrollbar_title">Show Scrollbar</string>
+    <string name="setcat_show_scrollbar_title">Vis rullefelt</string>
     
-    <string name="setcat_show_speed_button_subtitle">Show the speed (1x) button in the player control bar. Disable to hide it and manually adjust speed from the player.</string>
+    <string name="setcat_show_speed_button_subtitle">Vis hastighetsknappen (1x) i spillerens kontrollinje. Deaktiver for å skjule den og justere hastigheten manuelt fra spilleren.</string>
     
-    <string name="setcat_show_speed_button_title">Show playback speed button</string>
+    <string name="setcat_show_speed_button_title">Vis knapp for avspillingshastighet</string>
     
-    <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
+    <string name="setcat_tablet_layout_parallel">Parallelt (spiller + sangtekster)</string>
     
-    <string name="setcat_tablet_layout_vertical">Vertical</string>
+    <string name="setcat_tablet_layout_vertical">Loddrett</string>
     
-    <string name="setcat_tablet_player_layout_desc">Choose the layout for the player on tablets.</string>
+    <string name="setcat_tablet_player_layout_desc">Velg oppsettet for spilleren på nettbrett.</string>
     
-    <string name="setcat_tablet_player_layout_label">Tablet Player Layout</string>
+    <string name="setcat_tablet_player_layout_label">Spilleroppsett for nettbrett</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, widely compatible)</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, bred kompatibilitet)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (high-resolution, recommended)</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (høy oppløsning, anbefalt)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (highest fidelity, USB DAC only)</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (høyest lydkvalitet, bare USB-DAC)</string>
     
-    <string name="setcat_usb_bit_depth_title">USB Output Bit Depth</string>
+    <string name="setcat_usb_bit_depth_title">Bittdybde for USB-utgang</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_connected">Route audio to USB device: %s</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_connected">Rut lyd til USB-enhet: %s</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">No USB audio device detected. Connect a USB DAC to use this feature.</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">Fant ingen USB-lydenhet. Koble til en USB-DAC for å bruke denne funksjonen.</string>
     
-    <string name="setcat_usb_exclusive_mode_title">USB Exclusive Mode</string>
+    <string name="setcat_usb_exclusive_mode_title">USB-eksklusiv modus</string>
     
-    <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
+    <string name="setcat_vibrant_bg_requires_newer">Denne effekten krever maskinvareuskarphet fra Android 11 eller nyere og er deaktivert på denne enheten.</string>
     
-    <string name="setcat_web_remote_audio_device_phone">Phone</string>
+    <string name="setcat_web_remote_audio_device_phone">Telefon</string>
     
-    <string name="setcat_web_remote_audio_device_subtitle">When web connected: play on phone or web browser</string>
+    <string name="setcat_web_remote_audio_device_subtitle">Når nettet er tilkoblet: spill av på telefonen eller i nettleseren</string>
     
-    <string name="setcat_web_remote_audio_device_title">Playback Device</string>
+    <string name="setcat_web_remote_audio_device_title">Avspillingsenhet</string>
     
-    <string name="setcat_web_remote_audio_device_web">Web Browser</string>
+    <string name="setcat_web_remote_audio_device_web">Nettleser</string>
     
-    <string name="setcat_web_remote_enabled_subtitle">Access PixelPlay from any browser on your network</string>
+    <string name="setcat_web_remote_enabled_subtitle">Få tilgang til PixelPlay fra en hvilken som helst nettleser på nettverket ditt</string>
     
-    <string name="setcat_web_remote_enabled_title">Enable Web Remote</string>
+    <string name="setcat_web_remote_enabled_title">Aktiver nettfjernkontroll</string>
     
-    <string name="setcat_web_remote_pin">PIN Code</string>
+    <string name="setcat_web_remote_pin">PIN-kode</string>
     
-    <string name="setcat_web_remote_port_subtitle">Port number for the web server (default: 8081)</string>
+    <string name="setcat_web_remote_port_subtitle">Portnummer for nettserveren (standard: 8081)</string>
     
-    <string name="setcat_web_remote_port_title">Server Port</string>
+    <string name="setcat_web_remote_port_title">Serverport</string>
     
-    <string name="setcat_web_remote_section">Web Remote</string>
+    <string name="setcat_web_remote_section">Nettfjernkontroll</string>
     
-    <string name="setcat_web_remote_server_address">Server Address</string>
+    <string name="setcat_web_remote_server_address">Serveradresse</string>
     
-    <string name="setcat_web_remote_server_running">Running</string>
+    <string name="setcat_web_remote_server_running">Kjører</string>
     
-    <string name="setcat_web_remote_server_status">Server Status</string>
+    <string name="setcat_web_remote_server_status">Serverstatus</string>
     
-    <string name="setcat_web_remote_server_stopped">Stopped</string>
+    <string name="setcat_web_remote_server_stopped">Stoppet</string>
     
-    <string name="setcat_web_remote_start_button">Start Server</string>
+    <string name="setcat_web_remote_start_button">Start serveren</string>
     
-    <string name="setcat_web_remote_stop_button">Stop Server</string>
+    <string name="setcat_web_remote_stop_button">Stopp serveren</string>
     
     
-    <string name="setcat_web_remote_sync_subtitle">Web controls phone playback</string>
+    <string name="setcat_web_remote_sync_subtitle">Nettet styrer avspillingen på telefonen</string>
     
-    <string name="setcat_web_remote_sync_title">Sync Mode</string>
+    <string name="setcat_web_remote_sync_title">Synkroniseringsmodus</string>
     
-    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED matrix display integration</string>
+    <string name="settings_category_glyph_matrix_subtitle">Integrasjon med LED-matrisen på Nothing Phone</string>
     
     <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
     
-    <string name="settings_category_web_remote_subtitle">Control playback from other devices on your network</string>
+    <string name="settings_category_web_remote_subtitle">Styr avspillingen fra andre enheter på nettverket ditt</string>
     
-    <string name="settings_category_web_remote_title">Web Remote</string>
+    <string name="settings_category_web_remote_title">Nettfjernkontroll</string>
     
-    <string name="settings_search_category_about">About</string>
+    <string name="settings_search_category_about">Om</string>
     
-    <string name="settings_search_category_ai_integration">AI Integration</string>
+    <string name="settings_search_category_ai_integration">AI-integrasjon</string>
     
-    <string name="settings_search_category_appearance">Appearance</string>
+    <string name="settings_search_category_appearance">Utseende</string>
     
-    <string name="settings_search_category_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_search_category_backup_restore">Sikkerhetskopi og gjenoppretting</string>
     
-    <string name="settings_search_category_behavior">Behavior</string>
+    <string name="settings_search_category_behavior">Atferd</string>
     
-    <string name="settings_search_category_developer">Developer</string>
+    <string name="settings_search_category_developer">Utvikler</string>
     
-    <string name="settings_search_category_device_capabilities">Device Capabilities</string>
+    <string name="settings_search_category_device_capabilities">Enhetsfunksjoner</string>
     
     <string name="settings_search_category_equalizer">Equalizer</string>
     
-    <string name="settings_search_category_library">Music Library</string>
+    <string name="settings_search_category_library">Musikkbibliotek</string>
     
-    <string name="settings_search_category_playback">Playback</string>
+    <string name="settings_search_category_playback">Avspilling</string>
     
-    <string name="settings_search_category_settings_format">%1$s settings</string>
+    <string name="settings_search_category_settings_format">Innstillinger for %1$s</string>
     
     
     
-    <string name="settings_search_category_subtitle">Settings category</string>
+    <string name="settings_search_category_subtitle">Innstillingskategori</string>
     
     <string name="settings_search_keyword_aaudio">AAudio</string>
     
-    <string name="settings_search_keyword_about">About</string>
+    <string name="settings_search_keyword_about">Om</string>
     
-    <string name="settings_search_keyword_account">Account</string>
+    <string name="settings_search_keyword_account">Konto</string>
     
     <string name="settings_search_keyword_ai">AI</string>
     
     <string name="settings_search_keyword_album">Album</string>
     
-    <string name="settings_search_keyword_album_art">Album art</string>
+    <string name="settings_search_keyword_album_art">Albumkunst</string>
     
-    <string name="settings_search_keyword_appearance">Appearance</string>
+    <string name="settings_search_keyword_appearance">Utseende</string>
     
     <string name="settings_search_keyword_artist">Artist</string>
     
-    <string name="settings_search_keyword_auto_hide">Auto-hide</string>
+    <string name="settings_search_keyword_auto_hide">Automatisk skjuling</string>
     
-    <string name="settings_search_keyword_background">Background playback</string>
+    <string name="settings_search_keyword_background">Bakgrunnsavspilling</string>
     
-    <string name="settings_search_keyword_background_image">Background image, wallpaper</string>
+    <string name="settings_search_keyword_background_image">Bakgrunnsbilde, tapet</string>
     
-    <string name="settings_search_keyword_backup">Backup</string>
+    <string name="settings_search_keyword_backup">Sikkerhetskopi</string>
     
-    <string name="settings_search_keyword_battery">Battery</string>
+    <string name="settings_search_keyword_battery">Batteri</string>
     
     <string name="settings_search_keyword_bluetooth">Bluetooth</string>
     
@@ -1006,115 +1006,115 @@
     
     <string name="settings_search_keyword_cache">Cache</string>
     
-    <string name="settings_search_keyword_car_mode">Car mode</string>
+    <string name="settings_search_keyword_car_mode">Bilmodus</string>
     
     <string name="settings_search_keyword_cast">Cast</string>
     
-    <string name="settings_search_keyword_collage">Collage</string>
+    <string name="settings_search_keyword_collage">Kollasje</string>
     
-    <string name="settings_search_keyword_color">Color</string>
+    <string name="settings_search_keyword_color">Farge</string>
     
-    <string name="settings_search_keyword_compact">Compact</string>
+    <string name="settings_search_keyword_compact">Kompakt</string>
     
-    <string name="settings_search_keyword_corner_radius">Corner radius</string>
+    <string name="settings_search_keyword_corner_radius">Hjørneradius</string>
     
-    <string name="settings_search_keyword_crossfade">Crossfade</string>
+    <string name="settings_search_keyword_crossfade">Kryssfading</string>
     
-    <string name="settings_search_keyword_daily_mix">Daily mix</string>
+    <string name="settings_search_keyword_daily_mix">Daglig miks</string>
     
-    <string name="settings_search_keyword_developer">Developer</string>
+    <string name="settings_search_keyword_developer">Utvikler</string>
     
-    <string name="settings_search_keyword_device">Device</string>
+    <string name="settings_search_keyword_device">Enhet</string>
     
-    <string name="settings_search_keyword_diagnostics">Diagnostics</string>
+    <string name="settings_search_keyword_diagnostics">Diagnostikk</string>
     
-    <string name="settings_search_keyword_download">Download</string>
+    <string name="settings_search_keyword_download">Last ned</string>
     
-    <string name="settings_search_keyword_dynamic_background">Dynamic background, ambient</string>
+    <string name="settings_search_keyword_dynamic_background">Dynamisk bakgrunn, stemningsfull</string>
     
     
     
     <string name="settings_search_keyword_equalizer">Equalizer</string>
     
-    <string name="settings_search_keyword_excluded">Excluded folders</string>
+    <string name="settings_search_keyword_excluded">Utelatte mapper</string>
     
-    <string name="settings_search_keyword_export">Export</string>
+    <string name="settings_search_keyword_export">Eksporter</string>
     
     <string name="settings_search_keyword_filter">Filter</string>
     
-    <string name="settings_search_keyword_folder">Folder</string>
+    <string name="settings_search_keyword_folder">Mappe</string>
     
-    <string name="settings_search_keyword_gesture">Gesture</string>
+    <string name="settings_search_keyword_gesture">Bevegelse</string>
     
-    <string name="settings_search_keyword_haptics">Haptics</string>
+    <string name="settings_search_keyword_haptics">Haptikk</string>
     
-    <string name="settings_search_keyword_headphones">Headphones</string>
+    <string name="settings_search_keyword_headphones">Hodetelefoner</string>
     
     <string name="settings_search_keyword_hifi">HiFi</string>
     
-    <string name="settings_search_keyword_immersive_lyrics">Immersive lyrics</string>
+    <string name="settings_search_keyword_immersive_lyrics">Immersive sangtekster</string>
     
-    <string name="settings_search_keyword_import">Import</string>
+    <string name="settings_search_keyword_import">Importer</string>
     
-    <string name="settings_search_keyword_language">Language</string>
+    <string name="settings_search_keyword_language">Språk</string>
     
-    <string name="settings_search_keyword_lyrics">Lyrics</string>
+    <string name="settings_search_keyword_lyrics">Sangtekster</string>
     
-    <string name="settings_search_keyword_maintenance">Maintenance</string>
+    <string name="settings_search_keyword_maintenance">Vedlikehold</string>
     
-    <string name="settings_search_keyword_min_duration">Minimum duration</string>
+    <string name="settings_search_keyword_min_duration">Minste varighet</string>
     
-    <string name="settings_search_keyword_mixer">Mixer</string>
+    <string name="settings_search_keyword_mixer">Mikser</string>
     
-    <string name="settings_search_keyword_model">Model</string>
+    <string name="settings_search_keyword_model">Modell</string>
     
-    <string name="settings_search_keyword_navigation">Navigation</string>
+    <string name="settings_search_keyword_navigation">Navigasjon</string>
     
-    <string name="settings_search_keyword_now_playing">Now playing</string>
+    <string name="settings_search_keyword_now_playing">Spiller nå</string>
     
-    <string name="settings_search_keyword_online_source">Online source</string>
+    <string name="settings_search_keyword_online_source">Nettkilde</string>
     
-    <string name="settings_search_keyword_palette">Palette</string>
+    <string name="settings_search_keyword_palette">Palett</string>
     
-    <string name="settings_search_keyword_playback">Playback</string>
+    <string name="settings_search_keyword_playback">Avspilling</string>
     
-    <string name="settings_search_keyword_player">Player</string>
+    <string name="settings_search_keyword_player">Spiller</string>
     
-    <string name="settings_search_keyword_queue">Queue</string>
+    <string name="settings_search_keyword_queue">Kø</string>
     
-    <string name="settings_search_keyword_recommendation">Recommendation</string>
+    <string name="settings_search_keyword_recommendation">Anbefaling</string>
     
-    <string name="settings_search_keyword_remote">Remote</string>
+    <string name="settings_search_keyword_remote">Fjernkontroll</string>
     
     <string name="settings_search_keyword_replaygain">ReplayGain</string>
     
-    <string name="settings_search_keyword_restore">Restore</string>
+    <string name="settings_search_keyword_restore">Gjenopprett</string>
     
     <string name="settings_search_keyword_scan">Scan</string>
     
-    <string name="settings_search_keyword_scroll">Scroll</string>
+    <string name="settings_search_keyword_scroll">Rulling</string>
     
-    <string name="settings_search_keyword_shuffle">Shuffle</string>
+    <string name="settings_search_keyword_shuffle">Blanding</string>
     
-    <string name="settings_search_keyword_speed">Speed, playback rate</string>
+    <string name="settings_search_keyword_speed">Hastighet, avspillingsrate</string>
     
-    <string name="settings_search_keyword_stats">Statistics</string>
+    <string name="settings_search_keyword_stats">Statistikk</string>
     
     <string name="settings_search_keyword_sync">Sync</string>
     
-    <string name="settings_search_keyword_theme">Theme</string>
+    <string name="settings_search_keyword_theme">Tema</string>
     
     <string name="settings_search_keyword_token">Token</string>
     
-    <string name="settings_search_keyword_transcode">Transcode</string>
+    <string name="settings_search_keyword_transcode">Transkoding</string>
     
     <string name="settings_search_keyword_usb">USB</string>
     
-    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_no_results">Fant ingen innstillinger</string>
     
-    <string name="settings_search_placeholder">Search settings</string>
+    <string name="settings_search_placeholder">Søk i innstillinger</string>
     
-    <string name="settings_search_results_count_format">%1$d results</string>
+    <string name="settings_search_results_count_format">%1$d resultater</string>
     
     <string name="usb_bit_depth_16">16-bit</string>
     
@@ -1122,34 +1122,236 @@
     
     <string name="usb_bit_depth_32">32-bit</string>
     
-    <string name="usb_device_selector_connect_message">This will enable exclusive access to the USB DAC for bit-perfect audio. The system audio will be routed through the DAC directly.</string>
+    <string name="usb_device_selector_connect_message">Dette gir eksklusiv tilgang til USB-DAC-en for bittperfekt lyd. Systemlyden rutes direkte gjennom DAC-en.</string>
     
-    <string name="usb_device_selector_connect_title">USB Exclusive Mode</string>
+    <string name="usb_device_selector_connect_title">USB-eksklusiv modus</string>
     
-    <string name="usb_device_selector_connected_to">Connected to: %s</string>
+    <string name="usb_device_selector_connected_to">Tilkoblet: %s</string>
     
-    <string name="usb_device_selector_connecting">Connecting to USB DAC…</string>
+    <string name="usb_device_selector_connecting">Kobler til USB-DAC…</string>
     
-    <string name="usb_device_selector_connection_failed">Failed to connect to USB DAC</string>
+    <string name="usb_device_selector_connection_failed">Kunne ikke koble til USB-DAC</string>
     
-    <string name="usb_device_selector_hint">Connect a USB DAC and enable USB exclusive mode for bit-perfect audio output.</string>
+    <string name="usb_device_selector_hint">Koble til en USB-DAC og aktiver USB-eksklusiv modus for bittperfekt lydutgang.</string>
     
-    <string name="usb_device_selector_no_devices">No USB audio devices found</string>
+    <string name="usb_device_selector_no_devices">Fant ingen USB-lydenheter</string>
     
-    <string name="usb_device_selector_permission_message">XiangsuPlayer needs access to your USB DAC to enable exclusive mode.</string>
+    <string name="usb_device_selector_permission_message">XiangsuPlayer trenger tilgang til USB-DAC-en for å aktivere eksklusiv modus.</string>
     
-    <string name="usb_device_selector_permission_required">USB permission required</string>
+    <string name="usb_device_selector_permission_required">USB-tillatelse kreves</string>
     
-    <string name="usb_device_selector_refresh">Refresh</string>
+    <string name="usb_device_selector_refresh">Oppdater</string>
     
-    <string name="usb_device_selector_scanning">Scanning for USB devices…</string>
+    <string name="usb_device_selector_scanning">Skanner etter USB-enheter…</string>
     
-    <string name="usb_device_selector_select_device">Select USB DAC device</string>
+    <string name="usb_device_selector_select_device">Velg USB-DAC-enhet</string>
     
-    <string name="usb_device_selector_title">Select USB DAC</string>
+    <string name="usb_device_selector_title">Velg USB-DAC</string>
     
-    <string name="usb_exclusive_toast_activate_failed">Failed to activate USB exclusive mode. Check device permission and try again.</string>
+    <string name="usb_exclusive_toast_activate_failed">Kunne ikke aktivere USB-eksklusiv modus. Sjekk enhetstillatelsen og prøv igjen.</string>
     
-    <string name="usb_exclusive_toast_activated">USB exclusive activated: %s</string>
+    <string name="usb_exclusive_toast_activated">USB-eksklusiv aktivert: %s</string>
     
+    <string name="car_mode_action_radio">Radio</string>
+    <string name="car_mode_action_radio_desc">Nettradio</string>
+    <string name="download_manager_cancel">Avbryt</string>
+    <string name="download_manager_clear_completed">Fjern fullførte</string>
+    <string name="download_manager_empty">Ingen nedlastinger ennå</string>
+    <string name="download_manager_pause">Pause</string>
+    <string name="download_manager_resume">Fortsett</string>
+    <string name="download_manager_retry">Prøv igjen</string>
+    <string name="download_manager_title">Nedlastinger</string>
+    <string name="download_manager_waiting">Venter</string>
+    <string name="setcat_api_lyrics_amll_subtitle">Bare NetEase-sanger; gir karaokeaktig timing.</string>
+    <string name="setcat_api_lyrics_amll_title">AMLLDB-sangtekster ord for ord</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">Bruk videotekstene til Bilibili-spor som sangtekster.</string>
+    <string name="setcat_api_lyrics_bilibili_title">Sangtekster fra Bilibili-tekster</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ Music / Kugou / Kuwo / Migu, brukes for sanger fra innebygde kilder.</string>
+    <string name="setcat_api_lyrics_builtin_title">Sangtekster fra innebygde kilder</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">Utenlandsk tjeneste, ofte utilgjengelig på begrensede nettverk.</string>
+    <string name="setcat_api_lyrics_lrclib_title">LRCLIB-sangtekster</string>
+    <string name="setcat_api_lyrics_netease_subtitle">Offisiell API, foretrukket kilde for NetEase- og skysanger.</string>
+    <string name="setcat_api_lyrics_netease_title">NetEase-sangtekster</string>
+    <string name="setcat_api_lyrics_online_title">Kilder for sangtekster på nettet</string>
+    <string name="setcat_api_lyrics_priority_action">Juster</string>
+    <string name="setcat_api_lyrics_priority_desc">Kildene prøves ovenfra og ned; bruk pilene for å endre rekkefølgen.</string>
+    <string name="setcat_api_lyrics_priority_label">Prioritet for sangtekster på nettet</string>
+    <string name="setcat_api_metadata_deezer_subtitle">Søker etter og bufrer artistbilder på nettet; utenlandsk tjeneste.</string>
+    <string name="setcat_api_metadata_deezer_title">Deezer-artistbilder</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">Fullfører tittel / artist / album / sjanger og omslagsbilde; utenlandsk tjeneste.</string>
+    <string name="setcat_api_metadata_musicbrainz_title">MusicBrainz-metadata</string>
+    <string name="setcat_api_metadata_title">Fullføring av sanginformasjon</string>
+    <string name="setcat_api_note">Deaktivering av utilgjengelige tjenester gjør lasting av sangtekster og omslag raskere ved å hoppe over tidsavbruddene deres. Eksisterende lokal cache beholdes.</string>
+    <string name="setcat_api_priority_builtin">Innebygd først</string>
+    <string name="setcat_api_priority_lrclib">LRCLIB først</string>
+    <string name="setcat_api_priority_move_down">Flytt ned</string>
+    <string name="setcat_api_priority_move_up">Flytt opp</string>
+    <string name="setcat_api_priority_netease">NetEase først</string>
+    <string name="setcat_api_priority_reset">Nullstill rekkefølgen</string>
+    <string name="setcat_appearance_miniplayer_section">Minispiller</string>
+    <string name="setcat_appearance_startup_section">Oppstartsanimasjon</string>
+    <string name="setcat_apple_canvas_subtitle">Hent et animert omslag for gjeldende sang på nettet, og kryssfade til det når det er funnet. Lokalt omslag brukes hvis ikke; gir litt mer nettverkstrafikk.</string>
+    <string name="setcat_apple_canvas_title">Dynamisk omslag (Apple Music)</string>
+    <string name="setcat_audio_focus">Lydfokus</string>
+    <string name="setcat_audio_focus_duck_subtitle">Tillat å senke volumet ved en kort endring i lydfokus. Dette alternativet overstyres av innstillingene for lydutgang.</string>
+    <string name="setcat_audio_focus_duck_title">Senk volumet</string>
+    <string name="setcat_audio_focus_gain_subtitle">Fortsett avspillingen når lydfokus er gjenopprettet. Når dette er deaktivert, blir spilleren stående på pause.</string>
+    <string name="setcat_audio_focus_gain_title">Fortsett ved gjenvunnet fokus</string>
+    <string name="setcat_audio_focus_hint_bg">På Android 8 og nyere avslutter systemet spilleren mens den er på pause. Bruk alternativet «Vis alltid varsel» for å unngå dette.</string>
+    <string name="setcat_audio_focus_hint_cast">Chromecast-utgang kan helt overse anrop og korte endringer i lydfokus.</string>
+    <string name="setcat_audio_focus_permanent_subtitle">Sett på pause ved en langvarig endring i lydfokus (f.eks. en annen spiller eller et spill som spiller musikk).</string>
+    <string name="setcat_audio_focus_permanent_title">Varig endring i lydfokus</string>
+    <string name="setcat_audio_focus_reset">Gjenopprett standardverdier</string>
+    <string name="setcat_audio_focus_resume_call_subtitle">Fortsett avspillingen når anropet er avsluttet (hvis den ble satt på pause av et innkommende anrop).</string>
+    <string name="setcat_audio_focus_resume_call_title">Fortsett avspillingen etter et anrop</string>
+    <string name="setcat_audio_focus_transient_subtitle">Sett avspillingen på pause når lydfokus endres midlertidig (f.eks. anrop, varsel, navigasjon).</string>
+    <string name="setcat_audio_focus_transient_title">Kort endring i lydfokus / anrop</string>
+    <string name="setcat_bg_style_palette">Palett</string>
+    <string name="setcat_bg_style_solid">Ensfarget</string>
+    <string name="setcat_bg_style_vibrant">Livlig</string>
+    <string name="setcat_carousel_style_classic">Klassisk (ingen titt)</string>
+    <string name="setcat_carousel_style_preview">Forhåndsvisningskarusell</string>
+    <string name="setcat_download_embed_cover_subtitle">Skriv omslagsbildet inn i lydfilens tagger (lokalt omslag legges også inn).</string>
+    <string name="setcat_download_embed_cover_title">Bygg inn omslagsbilde</string>
+    <string name="setcat_download_embed_lyrics_subtitle">Skriv sangtekster inn i lydfilens tagger slik at spillere kan lese dem.</string>
+    <string name="setcat_download_embed_lyrics_title">Bygg inn sangtekster</string>
+    <string name="setcat_download_file_name_artist_title">Artist - Tittel</string>
+    <string name="setcat_download_file_name_desc">Hvordan nedlastede filer navngis.</string>
+    <string name="setcat_download_file_name_label">Filnavn for nedlasting</string>
+    <string name="setcat_download_file_name_title_artist">Tittel - Artist</string>
+    <string name="setcat_download_file_name_title_only">Kun tittel</string>
+    <string name="setcat_download_manager_subtitle">Se nedlastingskøen, pågående og fullførte nedlastinger.</string>
+    <string name="setcat_download_quality_desc">Kvalitet som brukes ved nedlasting av sanger; kan følge avspillingskvaliteten.</string>
+    <string name="setcat_download_quality_follow">Samme som avspilling</string>
+    <string name="setcat_download_quality_label">Nedlastingskvalitet</string>
+    <string name="setcat_download_skip_existing_subtitle">Hopp over når en fil med samme navn allerede finnes i målmappen.</string>
+    <string name="setcat_download_skip_existing_title">Hopp over eksisterende filer</string>
+    <string name="setcat_download_write_lrc_subtitle">Opprett en tilhørende .lrc-fil ved siden av den nedlastede lydfilen.</string>
+    <string name="setcat_download_write_lrc_title">Lagre også en .lrc-fil</string>
+    <string name="setcat_expressive_accent_desc">Farg kontrollkortet og bryterknappene med aksentfargen fra albumet.</string>
+    <string name="setcat_expressive_accent_title">Aksentbakgrunn</string>
+    <string name="setcat_expressive_group_title">Uttrykksfull spiller</string>
+    <string name="setcat_expressive_merge_desc">Slå sammen knappene for favoritt, blanding, gjentakelse, sangtekster og kø i kontrollkortet.</string>
+    <string name="setcat_expressive_merge_title">Slå sammen kontroller</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">Animer utvidelse av kontrollene og størrelsesendring; slå av for å bytte umiddelbart.</string>
+    <string name="setcat_floating_lyrics_animation_title">Overgangsanimasjoner</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">Bakgrunnens opasitet</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">Dra sangtekstene forbi venstre eller høyre kant og slipp – de skjules og etterlater en liten pil. Trykk på pilen for å hente dem tilbake.</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">Skjul ved skjermkanten</string>
+    <string name="setcat_floating_lyrics_lines_double">Gjeldende + neste</string>
+    <string name="setcat_floating_lyrics_lines_multi">Tre linjer</string>
+    <string name="setcat_floating_lyrics_lines_single">Én linje</string>
+    <string name="setcat_floating_lyrics_lines_title">Antall linjer</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">Når låst, flytter ikke lenger dra vinduet (hold inne sangtekstene for å veksle).</string>
+    <string name="setcat_floating_lyrics_lock_title">Lås posisjonen</string>
+    <string name="setcat_floating_lyrics_scale_title">Samlet størrelse</string>
+    <string name="setcat_floating_lyrics_section">Flytende sangtekster</string>
+    <string name="setcat_floating_lyrics_subtitle">Vis sangtekster oppå andre apper. Krever tillatelsen «Vis over andre apper».</string>
+    <string name="setcat_floating_lyrics_title">Flytende sangtekster (skrivebord)</string>
+    <string name="setcat_floating_lyrics_usage">Slik bruker du det: dra for å flytte, trykk for å vise forrige / spill av-pause / neste, hold inne for å låse posisjonen. Dra sangtekstene forbi venstre eller høyre kant for å skjule dem i en liten pil – trykk på pilen for å hente dem tilbake. Vinduet vises bare mens en sang spilles.</string>
+    <string name="setcat_force_software_blur_subtitle">Tving bruk av programvare-/bitmap-uskarphet som brukes på Android &lt; 12, slik at du kan teste den på nyere enheter</string>
+    <string name="setcat_force_software_blur_title">Tving eldre uskarphet (test)</string>
+    <string name="setcat_force_tablet_layout_subtitle">Bruk nettbrettlayouten (sidenavigasjon + bredt innhold) også i stående retning. Perfekt for store telefoner og brette telefoner.</string>
+    <string name="setcat_force_tablet_layout_title">Tving nettbrettlayout i stående retning</string>
+    <string name="setcat_home_top_style_collage">Kollasjevegg</string>
+    <string name="setcat_home_top_style_desc">Vis en kollasjevegg eller en fremhevet karusell øverst på Hjem.</string>
+    <string name="setcat_home_top_style_featured">Fremhevet karusell</string>
+    <string name="setcat_home_top_style_label">Stil for toppen av Hjem</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">Når sangtekstskjermen går i automatisk immersiv modus, skjules bare kontrollene i stedet for å forstørre teksten (standard er å forstørre)</string>
+    <string name="setcat_immersive_keep_font_size_title">Behold skriftstørrelsen for sangtekster i immersiv modus</string>
+    <string name="setcat_immersive_keep_size_hint">Forhåndsvisning av immersiv modus: teksten beholdes som den er</string>
+    <string name="setcat_immersive_scale_hint">Forhåndsvisning av immersiv modus: teksten forstørres 1,25x</string>
+    <string name="setcat_lanzou_test_close">Lukk</string>
+    <string name="setcat_lanzou_test_dialog_title">Test av Lanzou-nedlastingsflyt</string>
+    <string name="setcat_lanzou_test_open_browser">Åpne første direkte lenke i nettleseren</string>
+    <string name="setcat_lanzou_test_running">Slår opp delelenken…</string>
+    <string name="setcat_lanzou_test_subtitle">Slå opp oppdateringens delelenke og vis filer, oppdagede versjoner og direkte URL-er (verifiserer oppdateringskanalen i appen).</string>
+    <string name="setcat_lanzou_test_title">Test Lanzou-nedlastingsflyten</string>
+    <string name="setcat_lyrics_bg_style_desc">Stil for sangtekstbakgrunn: livlig gradient, farge fra omslagspaletten eller vanlig temafarge.</string>
+    <string name="setcat_lyrics_bg_style_title">Bakgrunn for sangtekster</string>
+    <string name="setcat_lyrics_mono_colors_desc">Tving knapper og tekst for sangtekster til rent svart / hvitt (hvitt i mørkt tema, svart i lyst tema). Av beholder dagens utseende.</string>
+    <string name="setcat_lyrics_mono_colors_title">Monokrome knapper og tekst for sangtekster</string>
+    <string name="setcat_miniplayer_corner_radius">Hjørneradius for minispiller</string>
+    <string name="setcat_miniplayer_style_capsule">Kapsel</string>
+    <string name="setcat_miniplayer_style_classic">Klassisk</string>
+    <string name="setcat_miniplayer_style_desc">Utseendet til minispilleren nederst. Material = avrundet omslag med forrige/spill av/neste på et kort; Expressive = full pille med ensfarget fremdriftsfyll, firkantet omslag og én stor avspillingsknapp.</string>
+    <string name="setcat_miniplayer_style_expressive">Uttrykksfull</string>
+    <string name="setcat_miniplayer_style_label">Stil</string>
+    <string name="setcat_miniplayer_style_material">Material</string>
+    <string name="setcat_miniplayer_style_rhythm">Rhythm</string>
+    <string name="setcat_navrail_style_desc">Velg utseendet til venstre sidepanel på nettbrett og i liggende retning.</string>
+    <string name="setcat_navrail_style_docked">Festet</string>
+    <string name="setcat_navrail_style_floating">Flytende</string>
+    <string name="setcat_navrail_style_label">Navigasjonspanel for nettbrett</string>
+    <string name="setcat_new_top_bar_subtitle">Topplinjer bruker en progressiv uskarphetsmaske med en sammenslått tittelkapsel. Slå av for å bruke en enkel, ensfarget topplinje overalt.</string>
+    <string name="setcat_new_top_bar_title">Ny stil for topplinje</string>
+    <string name="setcat_player_bg_style_desc">Stil for spillerbakgrunn: livlig gradient, farge fra omslagspaletten eller vanlig temafarge.</string>
+    <string name="setcat_player_bg_style_title">Spillerbakgrunn</string>
+    <string name="setcat_player_controls_group">Spillerkontroller</string>
+    <string name="setcat_player_cover_style_default">Standardkarusell</string>
+    <string name="setcat_player_cover_style_desc">Hvordan spillerens omslag vises (fremhevet kort i Rhythm).</string>
+    <string name="setcat_player_cover_style_featured">Karusell med fremhevede kort</string>
+    <string name="setcat_player_cover_style_label">Omslagsstil</string>
+    <string name="setcat_player_glass_controls_subtitle">Gjør nøytrale kontrollknapper (hopp over / favoritt / nederste pille / kontrollkort) gjennomsiktige med ekte bakgrunnsuskarphet. Spill av/pause-knappen beholder aksentfargen, og oppsettet er uendret; fungerer med alle temaer og bakgrunner.</string>
+    <string name="setcat_player_glass_controls_title">Kontrollknapper i frostet glass</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">Direkteforhåndsvisning festet øverst; hvert alternativ nedenfor oppdaterer den umiddelbart</string>
+    <string name="setcat_player_lyrics_appearance_title">Utseende for spiller og sangtekster</string>
+    <string name="setcat_player_lyrics_preview_artist">Eksempelartist</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24bit · 44,1 kHz</string>
+    <string name="setcat_player_lyrics_preview_label">Direkteforhåndsvisning</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">Denne linjen spilles nå</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">mens byen sover</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">og natten går videre</string>
+    <string name="setcat_player_lyrics_preview_track">Eksempelspor</string>
+    <string name="setcat_player_mono_colors_desc">Tving spillerens knapper og tekst til rent svart / hvitt (hvitt i mørkt tema, svart i lyst tema). Av beholder dagens utseende.</string>
+    <string name="setcat_player_mono_colors_title">Monokrome spillerknapper og tekst</string>
+    <string name="setcat_player_progress_bar_subtitle">Gjeldende: %1$s. Velg stil på sporet, stil på dra-knotten og rotasjon.</string>
+    <string name="setcat_player_progress_bar_title">Fremdriftslinje for avspilling</string>
+    <string name="setcat_player_style_classic">Klassisk</string>
+    <string name="setcat_player_style_desc">Bytt fullskjermsspilleren mellom klassisk oppsett og uttrykksfullt oppsett (portert fra Rhythm).</string>
+    <string name="setcat_player_style_expressive">Uttrykksfull</string>
+    <string name="setcat_player_style_label">Spillerstil</string>
+    <string name="setcat_player_theme_immersive">Immersivt omslag (utvidet uskarphet)</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">Skyv navigasjonslinjen ned og flytt minispilleren når du ruller oppover; de kommer tilbake når du ruller tilbake</string>
+    <string name="setcat_scroll_hide_chrome_title">Skjul ved rulling</string>
+    <string name="setcat_startup_animation_desc">Overgang som spilles av når du går inn i hovedskjermen etter oppstart.</string>
+    <string name="setcat_startup_animation_label">Inngangsanimasjon</string>
+    <string name="setcat_startup_style_emerge">Fremtoning</string>
+    <string name="setcat_startup_style_none">Av</string>
+    <string name="setcat_startup_style_scale">Skalering</string>
+    <string name="setcat_transport_flat_style_subtitle">Vis forrige / spill av / neste som enkle ikoner uten fargede bakgrunner</string>
+    <string name="setcat_transport_flat_style_title">Flate kontrollknapper</string>
+    <string name="setcat_ui_scale_section">Grensesnittskalering</string>
+    <string name="setcat_ui_scale_title">UI-skalering (bare appen)</string>
+    <string name="setcat_updates_auto_check_subtitle">Se etter nye versjoner i bakgrunnen</string>
+    <string name="setcat_updates_auto_check_title">Se automatisk etter oppdateringer</string>
+    <string name="setcat_updates_auto_title">Automatiske oppdateringer</string>
+    <string name="setcat_updates_bg_download_subtitle">Last ned APK for ny versjon automatisk</string>
+    <string name="setcat_updates_bg_download_title">Last ned oppdateringer i bakgrunnen</string>
+    <string name="setcat_updates_download_title">Bakgrunnsnedlasting</string>
+    <string name="setcat_updates_frequency_daily">Daglig</string>
+    <string name="setcat_updates_frequency_title">Sjekkfrekvens</string>
+    <string name="setcat_updates_frequency_weekly">Ukentlig</string>
+    <string name="setcat_updates_wifi_charging_subtitle">Last bare ned på WiFi og mens enheten lader</string>
+    <string name="setcat_updates_wifi_charging_title">Bare WiFi + lading</string>
+    <string name="setcat_vibrant_bg_warning_message">Android-versjonen din er lavere enn Android 11. Denne effekten fungerer kanskje ikke som forventet på enheten din. Vil du likevel aktivere den?</string>
+    <string name="setcat_vibrant_bg_warning_title">Android-versjonen er for lav</string>
+    <string name="settings_category_api_subtitle">Slå tjenestene for sangtekster og metadatafullføring av/på</string>
+    <string name="settings_category_api_title">API-administrasjon</string>
+    <string name="settings_category_download_subtitle">Kø, kvalitet, mappe, filnavn og innbygging av tagger</string>
+    <string name="settings_category_download_title">Nedlastinger</string>
+    <string name="settings_category_updates_subtitle">Sjekkfrekvens, bakgrunnsnedlasting, WiFi + lading</string>
+    <string name="settings_category_updates_title">Oppdateringer og nedlastinger</string>
+    <string name="settings_category_usb_exclusive_subtitle">Bittperfekt utgang til en ekstern USB-DAC: bittdybde, enhet og status</string>
+    <string name="settings_category_usb_exclusive_title">USB-eksklusiv</string>
+    <string name="settings_search_keyword_audio_focus">Lydfokus</string>
+    <string name="settings_search_keyword_update">Oppdatering</string>
+    <string name="usb_status_active">Eksklusiv aktiv – lyden går utenom systemmikseren</string>
+    <string name="usb_status_found">Fant %1$d USB-lydenhet(er)</string>
+    <string name="usb_status_inactive">Eksklusiv inaktiv (utgang via systemmikseren)</string>
+    <string name="usb_status_no_device">Fant ingen USB-lydenhet – koble til en DAC, så finnes den automatisk</string>
+    <string name="usb_status_none_found">Fant ingen USB-lydenhet</string>
+    <string name="usb_status_rescan">Skann på nytt</string>
+    <string name="usb_status_section">Enhetsstatus</string>
+    <string name="usb_status_switch_device">Bytt enhet</string>
 </resources>

@@ -439,7 +439,7 @@
     <string name="onboarding_quick_hearing_setup">初始化像素卫士设置</string>
     <string name="onboarding_quick_hearing_reconfigure">重新配置像素卫士</string>
     <string name="onboarding_quick_ai_provider">选择 AI 服务商</string>
-    <string name="onboarding_quick_ai_api_key">API Key</string>
+    <string name="onboarding_quick_ai_api_key">API 密钥</string>
     <string name="onboarding_quick_ai_api_key_hint">在此粘贴你的 API Key</string>
     <string name="onboarding_quick_lyrics_aurora">歌词绚丽背景</string>
     <string name="onboarding_quick_player_background">播放器绚丽背景</string>

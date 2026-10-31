@@ -51,7 +51,7 @@
     <!-- MashupScreen -->
     <string name="presentation_batch_d_mashup_title">DJ Alanı</string>
     <string name="presentation_batch_d_loading">Yükleniyor…</string>
-    <string name="presentation_batch_d_mashup_deck_n">Deck %1$d</string>
+    <string name="presentation_batch_d_mashup_deck_n">Deste %1$d</string>
     <string name="presentation_batch_d_mashup_load_song_cd">Şarkı yükle</string>
     <string name="presentation_batch_d_mashup_no_song_loaded">Şarkı yüklenmedi</string>
     <string name="presentation_batch_d_mashup_artist_placeholder">…</string>
@@ -59,8 +59,8 @@
     <string name="presentation_batch_d_mashup_volume">Ses</string>
     <string name="presentation_batch_d_mashup_speed">Hız</string>
     <string name="presentation_batch_d_mashup_crossfader">Çapraz Geçiş (Crossfader)</string>
-    <string name="presentation_batch_d_mashup_deck_1">Deck 1</string>
-    <string name="presentation_batch_d_mashup_deck_2">Deck 2</string>
+    <string name="presentation_batch_d_mashup_deck_1">Deste 1</string>
+    <string name="presentation_batch_d_mashup_deck_2">Deste 2</string>
     <string name="presentation_batch_d_mashup_select_song_title">Bir şarkı seçin</string>
 
     <!-- EqualizerScreen -->

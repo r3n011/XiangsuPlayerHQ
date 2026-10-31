@@ -189,7 +189,7 @@
     <string
         name="setcat_navbar_style_desc"
     >Pilih tampilan untuk bilah navigasi.</string>
-    <string name="setcat_navbar_style_default">Default</string>
+    <string name="setcat_navbar_style_default">Bawaan</string>
     <string name="setcat_navbar_style_full_width">Lebar Penuh</string>
     <string name="setcat_compact_mode_title">Mode ringkas</string>
     <string
@@ -313,7 +313,7 @@
         name="setcat_tap_bg_closes_subtitle"
     >Ketuk latar belakang yang kabur untuk menutup panel pemutar.</string>
     <string name="setcat_haptics">Haptic</string>
-    <string name="setcat_haptic_feedback_title">Haptic feedback</string>
+    <string name="setcat_haptic_feedback_title">Umpan balik haptik</string>
     <string
         name="setcat_haptic_feedback_subtitle"
     >Aktifkan haptic feedback di seluruh aplikasi.</string>
@@ -563,79 +563,79 @@
     >%1$d modul · v%2$s · schema v%3$d</string>
     <string name="setcat_language_korean">Bahasa Korea</string>
     <string name="setcat_language_norwegian_bokmal">Norwegia (Bokmål)</string>
-    <string name="setcat_download_complete">Download complete</string>
-    <string name="setcat_download_failed">Download failed</string>
+    <string name="setcat_download_complete">Unduhan selesai</string>
+    <string name="setcat_download_failed">Unduhan gagal</string>
     <string name="setcat_download_progress_format">%1$.0f%%</string>
-    <string name="setcat_download_progress_title">Download progress</string>
-    <string name="ai_auto_disabled">AI auto-trigger is disabled</string>
+    <string name="setcat_download_progress_title">Progres unduhan</string>
+    <string name="ai_auto_disabled">Pemicu otomatis AI dinonaktifkan</string>
     
-    <string name="backup_format_external_desc">Compatible with other XiangsuPlayer versions</string>
+    <string name="backup_format_external_desc">Kompatibel dengan versi XiangsuPlayer lainnya</string>
     
-    <string name="backup_format_external_title">External (.pxpbak)</string>
+    <string name="backup_format_external_title">Eksternal (.pxpbak)</string>
     
-    <string name="backup_format_pxpl_desc">Original format with all data types</string>
+    <string name="backup_format_pxpl_desc">Format asli dengan semua jenis data</string>
     
     <string name="backup_format_pxpl_title">PixelPlay (.pxpl)</string>
     
-    <string name="backup_format_select_prompt">Choose backup format:</string>
+    <string name="backup_format_select_prompt">Pilih format cadangan:</string>
     
-    <string name="car_mode_action_library">Library</string>
+    <string name="car_mode_action_library">Pustaka</string>
     
-    <string name="car_mode_action_library_desc">Your music</string>
+    <string name="car_mode_action_library_desc">Musik Anda</string>
     
     <string name="car_mode_action_roaming">Roaming</string>
     
-    <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
+    <string name="car_mode_action_roaming_desc">Roaming NetEase Cloud Music</string>
     
-    <string name="car_mode_action_search">Search</string>
+    <string name="car_mode_action_search">Cari</string>
     
-    <string name="car_mode_action_search_desc">Find songs</string>
+    <string name="car_mode_action_search_desc">Temukan lagu</string>
     
-    <string name="car_mode_action_settings">Settings</string>
+    <string name="car_mode_action_settings">Pengaturan</string>
     
-    <string name="car_mode_action_settings_desc">App settings</string>
+    <string name="car_mode_action_settings_desc">Pengaturan aplikasi</string>
 
     
     
-    <string name="car_mode_quick_actions_title">Quick Actions</string>
+    <string name="car_mode_quick_actions_title">Tindakan Cepat</string>
     
-    <string name="dot_device_api_key_hint">输入你的 Dot API Key</string>
+    <string name="dot_device_api_key_hint">Masukkan kunci API Dot Anda</string>
     
-    <string name="dot_device_api_key_label">API Key</string>
+    <string name="dot_device_api_key_label">Kunci API</string>
     
-    <string name="dot_device_auto_push_description">切换歌曲时自动推送专辑封面到墨水屏</string>
+    <string name="dot_device_auto_push_description">Secara otomatis mengirim sampul album ke layar e-ink saat lagu berganti</string>
     
-    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
+    <string name="dot_device_auto_push_title">Kirim sampul album otomatis</string>
     
-    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_clear">Hapus pengaturan</string>
 
     
     
-    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏设备显示</string>
+    <string name="dot_device_header_description">Kirim sampul album lagu yang sedang diputar ke layar e-ink</string>
     
-    <string name="dot_device_header_title">Dot 墨水屏设备</string>
+    <string name="dot_device_header_title">Perangkat Layar E-Ink Dot</string>
     
-    <string name="dot_device_id_hint">输入设备 ID</string>
+    <string name="dot_device_id_hint">Masukkan ID perangkat</string>
     
-    <string name="dot_device_id_label">Device ID</string>
+    <string name="dot_device_id_label">ID perangkat</string>
     
-    <string name="dot_device_save">保存设置</string>
+    <string name="dot_device_save">Simpan pengaturan</string>
     
-    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
+    <string name="dot_device_settings_title">Pengaturan Layar E-Ink Dot</string>
     
-    <string name="dot_device_test_connection">测试连接</string>
+    <string name="dot_device_test_connection">Uji koneksi</string>
     
-    <string name="dot_device_testing">测试中...</string>
+    <string name="dot_device_testing">Menguji…</string>
     
     <string name="equalizer_preset_bass_boost">Bass Boost</string>
     
-    <string name="equalizer_preset_classical">Classical</string>
+    <string name="equalizer_preset_classical">Klasik</string>
     
-    <string name="equalizer_preset_custom">Custom</string>
+    <string name="equalizer_preset_custom">Kustom</string>
 
     
     
-    <string name="equalizer_preset_electronic">Electronic</string>
+    <string name="equalizer_preset_electronic">Elektronik</string>
     
     <string name="equalizer_preset_flat">Flat</string>
     
@@ -649,362 +649,362 @@
     
     <string name="equalizer_preset_treble_boost">Treble Boost</string>
     
-    <string name="equalizer_preset_vocal">Vocal</string>
+    <string name="equalizer_preset_vocal">Vokal</string>
     
     <string name="music_quality_flac">Lossless (FLAC)</string>
     
-    <string name="music_quality_high">High (320kbps)</string>
+    <string name="music_quality_high">Tinggi (320kbps)</string>
     
     <string name="music_quality_hires">Hi-Res (24bit)</string>
     
-    <string name="music_quality_standard">Standard (128kbps)</string>
+    <string name="music_quality_standard">Standar (128kbps)</string>
     
-    <string name="music_quality_subtitle">Preferred quality for streaming music. Higher quality uses more bandwidth.</string>
+    <string name="music_quality_subtitle">Kualitas pilihan untuk streaming musik. Kualitas lebih tinggi menggunakan lebih banyak bandwidth.</string>
     
-    <string name="music_quality_title">Music Quality</string>
+    <string name="music_quality_title">Kualitas Musik</string>
     
-    <string name="setcat_aaudio_subtitle_off">Default system audio backend (AudioTrack). Enable AAudio for higher quality output.</string>
+    <string name="setcat_aaudio_subtitle_off">Backend audio sistem bawaan (AudioTrack). Aktifkan AAudio untuk output kualitas lebih tinggi.</string>
     
-    <string name="setcat_aaudio_subtitle_on">Using AAudio for improved audio fidelity and lower latency.</string>
+    <string name="setcat_aaudio_subtitle_on">Menggunakan AAudio untuk fidelitas audio lebih baik dan latensi lebih rendah.</string>
     
-    <string name="setcat_aaudio_title">AAudio Low-Latency Backend</string>
+    <string name="setcat_aaudio_title">Backend Latensi Rendah AAudio</string>
     
-    <string name="setcat_ai_api_key_title_simple">API Key</string>
+    <string name="setcat_ai_api_key_title_simple">Kunci API</string>
     
-    <string name="setcat_ai_auto_daily_mix_subtitle">Automatically enhance Daily Mix with AI</string>
-    
-    
-    <string name="setcat_ai_auto_daily_mix_title">Daily Mix AI Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_metadata_subtitle">Automatically fetch AI-generated metadata</string>
-    
-    <string name="setcat_ai_auto_metadata_title">AI Metadata Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Automatically evaluate playlists with AI</string>
+    <string name="setcat_ai_auto_daily_mix_subtitle">Secara otomatis tingkatkan Daily Mix dengan AI</string>
     
     
-    <string name="setcat_ai_auto_playlist_evaluation_title">AI Playlist Evaluation Auto-Trigger</string>
+    <string name="setcat_ai_auto_daily_mix_title">Pemicu Otomatis AI Daily Mix</string>
     
-    <string name="setcat_ai_auto_playlist_subtitle">Automatically generate AI playlists when triggered</string>
+    <string name="setcat_ai_auto_metadata_subtitle">Secara otomatis mengambil metadata yang dihasilkan AI</string>
     
-    <string name="setcat_ai_auto_playlist_title">AI Playlist Auto-Trigger</string>
+    <string name="setcat_ai_auto_metadata_title">Pemicu Otomatis Metadata AI</string>
     
-    <string name="setcat_ai_auto_trigger_section">Auto-Trigger Settings</string>
+    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Secara otomatis mengevaluasi playlist dengan AI</string>
     
-    <string name="setcat_ai_lyrics_explanation_subtitle">Show AI-powered lyrics explanation card in the lyrics view (off by default; can be enabled per-session from the lyrics menu)</string>
+    
+    <string name="setcat_ai_auto_playlist_evaluation_title">Pemicu Otomatis Evaluasi Playlist AI</string>
+    
+    <string name="setcat_ai_auto_playlist_subtitle">Secara otomatis membuat playlist AI saat dipicu</string>
+    
+    <string name="setcat_ai_auto_playlist_title">Pemicu Otomatis Playlist AI</string>
+    
+    <string name="setcat_ai_auto_trigger_section">Pengaturan Pemicu Otomatis</string>
+    
+    <string name="setcat_ai_lyrics_explanation_subtitle">Tampilkan kartu penjelasan lirik bertenaga AI di tampilan lirik (nonaktif secara default; dapat diaktifkan per sesi dari menu lirik)</string>
 
     
-    <string name="setcat_ai_lyrics_explanation_title">AI Lyrics Insight Card</string>
+    <string name="setcat_ai_lyrics_explanation_title">Kartu Wawasan Lirik AI</string>
     
-    <string name="setcat_ai_recommendation_card_subtitle">Display AI recommendation card on home screen</string>
+    <string name="setcat_ai_recommendation_card_subtitle">Tampilkan kartu rekomendasi AI di layar beranda</string>
     
-    <string name="setcat_ai_recommendation_card_title">Show AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_card_title">Tampilkan Kartu Rekomendasi AI</string>
     
-    <string name="setcat_ai_recommendation_manual_subtitle">Click to generate recommendation (prevents automatic token usage)</string>
+    <string name="setcat_ai_recommendation_manual_subtitle">Ketuk untuk membuat rekomendasi (mencegah penggunaan token otomatis)</string>
 
     
-    <string name="setcat_ai_recommendation_manual_title">Manual Generation Only</string>
+    <string name="setcat_ai_recommendation_manual_title">Hanya Pembuatan Manual</string>
     
-    <string name="setcat_ai_recommendation_section">AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_section">Kartu Rekomendasi AI</string>
     
-    <string name="setcat_bluetooth_lyrics">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics">Lirik Bluetooth</string>
     
-    <string name="setcat_bluetooth_lyrics_subtitle">Push the currently playing song lyrics to compatible Bluetooth A2DP display devices.</string>
+    <string name="setcat_bluetooth_lyrics_subtitle">Kirim lirik lagu yang sedang diputar ke perangkat tampilan Bluetooth A2DP yang kompatibel.</string>
     
-    <string name="setcat_bluetooth_lyrics_title">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics_title">Lirik Bluetooth</string>
     
-    <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <string name="setcat_car_mode_subtitle">Dioptimalkan untuk menyetir: kontrol lebih besar, animasi dikurangi, dan performa ditingkatkan.</string>
     
     
     
-    <string name="setcat_car_mode_title">Car Mode</string>
+    <string name="setcat_car_mode_title">Mode Mobil</string>
     
-    <string name="setcat_center_nav_discover">Discover</string>
+    <string name="setcat_center_nav_discover">Temukan</string>
     
-    <string name="setcat_center_nav_none">Don\'t show</string>
+    <string name="setcat_center_nav_none">Jangan tampilkan</string>
     
     <string name="setcat_center_nav_radio">Radio</string>
     
     <string name="setcat_center_nav_roaming">Roaming</string>
     
-    <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
+    <string name="setcat_center_nav_subtitle">Pilih fungsi tombol navigasi tengah.</string>
     
-    <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_center_nav_title">Tombol Tengah</string>
     
-    <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">Pusaran Kosmik</string>
     
-    <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">Alur Sarang Lebah</string>
     
-    <string name="setcat_collage_pattern_pixel_mosaic">Pixel Mosaic</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">Mosaik Piksel</string>
     
-    <string name="setcat_collage_pattern_stardust_scatter">Stardust Scatter</string>
+    <string name="setcat_collage_pattern_stardust_scatter">Taburan Debu Bintang</string>
     
-    <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
+    <string name="setcat_collage_pattern_vinyl_stack">Tumpukan Vinyl</string>
     
-    <string name="setcat_custom_palette_enabled_subtitle">When off, the app follows wallpaper colors. When on, custom colors are used. The player keeps its own album-art colors.</string>
+    <string name="setcat_custom_palette_enabled_subtitle">Saat nonaktif, aplikasi mengikuti warna wallpaper. Saat aktif, warna kustom digunakan. Pemutar mempertahankan warna sampul albumnya sendiri.</string>
     
-    <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
+    <string name="setcat_custom_palette_enabled_title">Aktifkan Palet Aplikasi</string>
     
     <string name="setcat_custom_player_background_blur_off">Off</string>
     
-    <string name="setcat_custom_player_background_blur_title">Background Blur</string>
+    <string name="setcat_custom_player_background_blur_title">Blur Latar</string>
     
-    <string name="setcat_custom_player_background_change">Change background image</string>
+    <string name="setcat_custom_player_background_change">Ubah gambar latar</string>
     
     <string name="setcat_custom_player_background_mode_cover">Fill</string>
     
-    <string name="setcat_custom_player_background_mode_stretch">Stretch</string>
+    <string name="setcat_custom_player_background_mode_stretch">Regangkan</string>
     
-    <string name="setcat_custom_player_background_mode_title">Display Mode</string>
+    <string name="setcat_custom_player_background_mode_title">Mode Tampilan</string>
     
-    <string name="setcat_custom_player_background_pick">Choose background image</string>
+    <string name="setcat_custom_player_background_pick">Pilih gambar latar</string>
     
-    <string name="setcat_custom_player_background_remove">Remove background</string>
+    <string name="setcat_custom_player_background_remove">Hapus latar</string>
     
-    <string name="setcat_custom_player_background_subtitle">Use a custom image as the background of the player and lyrics screens. When enabled, it takes precedence over the dynamic album-art background below.</string>
+    <string name="setcat_custom_player_background_subtitle">Gunakan gambar kustom sebagai latar layar pemutar dan lirik. Saat aktif, ini lebih diutamakan daripada latar sampul album dinamis di bawah.</string>
     
-    <string name="setcat_custom_player_background_title">Custom Player Background</string>
+    <string name="setcat_custom_player_background_title">Latar Pemutar Kustom</string>
     
-    <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
+    <string name="setcat_custom_player_controls_opacity_desc">Berlaku untuk semua elemen kecuali latar (sampul album, metadata, progres, kontrol) di layar pemutar dan lirik.</string>
     
-    <string name="setcat_custom_player_controls_opacity_title">Player Opacity</string>
+    <string name="setcat_custom_player_controls_opacity_title">Opasitas Pemutar</string>
     
-    <string name="setcat_disable_blur_all_over_subtitle">Turn off blur effects across the app to save battery and resources.</string>
+    <string name="setcat_disable_blur_all_over_subtitle">Matikan efek blur di seluruh aplikasi untuk menghemat baterai dan sumber daya.</string>
     
-    <string name="setcat_disable_blur_all_over_title">Disable Blur Effects</string>
+    <string name="setcat_disable_blur_all_over_title">Nonaktifkan Efek Blur</string>
     
-    <string name="setcat_download_path_title">Download Path</string>
+    <string name="setcat_download_path_title">Lokasi Unduhan</string>
     
     
     
     <string name="setcat_download_settings">Download Settings</string>
     
-    <string name="setcat_external_lyrics_broadcast_subtitle">When enabled, the system media title updates to the current lyric line in real time, showing lyrics outside the app (notification, lock screen, Bluetooth devices). When disabled, the original song title is restored.</string>
+    <string name="setcat_external_lyrics_broadcast_subtitle">Saat aktif, judul media sistem diperbarui ke baris lirik saat ini secara real-time, menampilkan lirik di luar aplikasi (notifikasi, layar kunci, perangkat Bluetooth). Saat nonaktif, judul lagu asli dipulihkan.</string>
 
     
     
-    <string name="setcat_external_lyrics_broadcast_title">Broadcast Lyrics Externally</string>
+    <string name="setcat_external_lyrics_broadcast_title">Siarkan Lirik ke Luar</string>
     
-    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix is a programmable LED display on the back of Nothing Phone (3) featuring 625 individual LEDs arranged in a 25×25 grid. When you play music, PixelPlayer can animate the matrix to create stunning visual effects that sync with your music.</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix adalah layar LED terprogram di bagian belakang Nothing Phone (3) dengan 625 LED individual tersusun dalam kisi 25×25. Saat Anda memutar musik, PixelPlayer dapat menganimasikan matriks untuk membuat efek visual memukau yang selaras dengan musik Anda.</string>
 
     
     
-    <string name="setcat_glyph_matrix_about_title">About Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_title">Tentang Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_enable_subtitle">Show music visualization on Nothing Phone LED matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">Tampilkan visualisasi musik di matriks LED Nothing Phone</string>
     
-    <string name="setcat_glyph_matrix_enable_title">Enable Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">Aktifkan Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_mode_artwork">Album Cover</string>
+    <string name="setcat_glyph_matrix_mode_artwork">Sampul Album</string>
     
-    <string name="setcat_glyph_matrix_mode_desc">Choose what to display on the Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_mode_desc">Pilih apa yang ditampilkan di Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">Sedang Diputar</string>
     
-    <string name="setcat_glyph_matrix_mode_progress">Playback Progress</string>
+    <string name="setcat_glyph_matrix_mode_progress">Progres Pemutaran</string>
     
-    <string name="setcat_glyph_matrix_mode_pulse">Beat Pulse</string>
+    <string name="setcat_glyph_matrix_mode_pulse">Denyut Beat</string>
     
-    <string name="setcat_glyph_matrix_mode_ring">Music Ring</string>
+    <string name="setcat_glyph_matrix_mode_ring">Cincin Musik</string>
     
-    <string name="setcat_glyph_matrix_mode_scroll_title">Scrolling Title</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">Judul Bergulir</string>
     
-    <string name="setcat_glyph_matrix_mode_title">Display Mode</string>
+    <string name="setcat_glyph_matrix_mode_title">Mode Tampilan</string>
     
-    <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">Visualizer Audio</string>
     
-    <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_mode_waveform">Gelombang</string>
     
-    <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
+    <string name="setcat_glyph_matrix_not_available">Fitur ini memerlukan Nothing Phone dengan Glyph Matrix. Anda tetap dapat melihat pratinjau efek di bawah.</string>
     
-    <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
+    <string name="setcat_glyph_matrix_not_available_title">Tidak tersedia di perangkat ini</string>
     
-    <string name="setcat_glyph_matrix_preview_desc">This is how it will look on the Nothing Phone LED matrix (25×25)</string>
+    <string name="setcat_glyph_matrix_preview_desc">Beginilah tampilannya di matriks LED Nothing Phone (25×25)</string>
     
-    <string name="setcat_glyph_matrix_preview_title">Preview</string>
+    <string name="setcat_glyph_matrix_preview_title">Pratinjau</string>
     
     <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
     
-    <string name="setcat_home_top_whitespace_subtitle">Adjust the blank space above the Home content.</string>
+    <string name="setcat_home_top_whitespace_subtitle">Sesuaikan ruang kosong di atas konten Beranda.</string>
     
-    <string name="setcat_home_top_whitespace_title">Home Top Whitespace</string>
+    <string name="setcat_home_top_whitespace_title">Ruang Kosong Atas Beranda</string>
     
-    <string name="setcat_home_top_whitespace_value">Current whitespace: %1$d dp</string>
+    <string name="setcat_home_top_whitespace_value">Ruang kosong saat ini: %1$d dp</string>
     
-    <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">Tampilkan gradien lembut di bagian atas dan bawah layar lirik untuk keterbacaan lebih baik.</string>
     
-    <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
+    <string name="setcat_lyrics_gradient_overlay_title">Overlay Gradien Lirik</string>
     
-    <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
+    <string name="setcat_lyrics_solid_overlay_desc">Sesuaikan opasitas overlay solid di layar lirik untuk meredupkan latar.</string>
     
-    <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
+    <string name="setcat_lyrics_solid_overlay_title">Overlay Solid Lirik</string>
     
-    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">Tampilkan latar sampul album buram yang berputar di belakang lirik.</string>
     
-    <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
+    <string name="setcat_lyrics_vibrant_bg_title">Latar Cerah Lirik</string>
     
-    <string name="setcat_navbar_style_floating">Floating</string>
+    <string name="setcat_navbar_style_floating">Melayang</string>
     
-    <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
+    <string name="setcat_netease_quality_title">Kualitas Pilihan NetEase</string>
 
     
     
-    <string name="setcat_palette_brightness">Brightness</string>
+    <string name="setcat_palette_brightness">Kecerahan</string>
     
-    <string name="setcat_palette_cancel">Cancel</string>
+    <string name="setcat_palette_cancel">Batal</string>
     
-    <string name="setcat_palette_confirm">Confirm</string>
+    <string name="setcat_palette_confirm">Konfirmasi</string>
     
-    <string name="setcat_palette_custom_title">Custom Color</string>
+    <string name="setcat_palette_custom_title">Warna Kustom</string>
     
     <string name="setcat_palette_hue">Hue</string>
     
-    <string name="setcat_palette_live_hint">Live preview</string>
+    <string name="setcat_palette_live_hint">Pratinjau langsung</string>
     
-    <string name="setcat_palette_preview_label">Color Scheme Preview</string>
+    <string name="setcat_palette_preview_label">Pratinjau Skema Warna</string>
     
-    <string name="setcat_palette_saturation">Saturation</string>
+    <string name="setcat_palette_saturation">Saturasi</string>
     
-    <string name="setcat_player_theme_custom_palette">Custom Palette</string>
+    <string name="setcat_player_theme_custom_palette">Palet Kustom</string>
     
-    <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
+    <string name="setcat_player_vibrant_bg_desc">Tampilkan latar sampul album buram yang berputar di pemutar saat tidak ada gambar latar kustom. Latar pemutar kustom lebih diutamakan daripada ini.</string>
     
-    <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
+    <string name="setcat_player_vibrant_bg_title">Latar Cerah Pemutar</string>
     
-    <string name="setcat_show_lyrics_track_info_subtitle">Show song title and artist in a pill-shaped bar at the top of lyrics view.</string>
+    <string name="setcat_show_lyrics_track_info_subtitle">Tampilkan judul lagu dan artis dalam bilah berbentuk pil di bagian atas tampilan lirik.</string>
 
     
     
-    <string name="setcat_show_lyrics_track_info_title">Show lyrics track info</string>
+    <string name="setcat_show_lyrics_track_info_title">Tampilkan info trek lirik</string>
     
-    <string name="setcat_show_scrollbar_subtitle">Display lateral scrollbar on music lists for quick scrolling</string>
+    <string name="setcat_show_scrollbar_subtitle">Tampilkan bilah gulir lateral pada daftar musik untuk menggulir cepat</string>
     
-    <string name="setcat_show_scrollbar_title">Show Scrollbar</string>
+    <string name="setcat_show_scrollbar_title">Tampilkan Bilah Gulir</string>
     
-    <string name="setcat_show_speed_button_subtitle">Show the speed (1x) button in the player control bar. Disable to hide it and manually adjust speed from the player.</string>
+    <string name="setcat_show_speed_button_subtitle">Tampilkan tombol kecepatan (1x) di bilah kontrol pemutar. Nonaktifkan untuk menyembunyikannya dan mengatur kecepatan secara manual dari pemutar.</string>
     
-    <string name="setcat_show_speed_button_title">Show playback speed button</string>
+    <string name="setcat_show_speed_button_title">Tampilkan tombol kecepatan pemutaran</string>
     
-    <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
+    <string name="setcat_tablet_layout_parallel">Paralel (Pemutar + Lirik)</string>
     
-    <string name="setcat_tablet_layout_vertical">Vertical</string>
+    <string name="setcat_tablet_layout_vertical">Vertikal</string>
     
-    <string name="setcat_tablet_player_layout_desc">Choose the layout for the player on tablets.</string>
+    <string name="setcat_tablet_player_layout_desc">Pilih tata letak pemutar di tablet.</string>
     
-    <string name="setcat_tablet_player_layout_label">Tablet Player Layout</string>
+    <string name="setcat_tablet_player_layout_label">Tata Letak Pemutar Tablet</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, widely compatible)</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standar, sangat kompatibel)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (high-resolution, recommended)</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (resolusi tinggi, disarankan)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (highest fidelity, USB DAC only)</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (fidelitas tertinggi, hanya DAC USB)</string>
     
-    <string name="setcat_usb_bit_depth_title">USB Output Bit Depth</string>
+    <string name="setcat_usb_bit_depth_title">Kedalaman Bit Output USB</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_connected">Route audio to USB device: %s</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_connected">Arahkan audio ke perangkat USB: %s</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">No USB audio device detected. Connect a USB DAC to use this feature.</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">Tidak ada perangkat audio USB terdeteksi. Hubungkan DAC USB untuk menggunakan fitur ini.</string>
     
-    <string name="setcat_usb_exclusive_mode_title">USB Exclusive Mode</string>
+    <string name="setcat_usb_exclusive_mode_title">Mode Eksklusif USB</string>
     
-    <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
+    <string name="setcat_vibrant_bg_requires_newer">Efek ini memerlukan blur perangkat keras Android 11 atau lebih baru dan dinonaktifkan di perangkat ini.</string>
     
-    <string name="setcat_web_remote_audio_device_phone">Phone</string>
+    <string name="setcat_web_remote_audio_device_phone">Telepon</string>
     
-    <string name="setcat_web_remote_audio_device_subtitle">When web connected: play on phone or web browser</string>
+    <string name="setcat_web_remote_audio_device_subtitle">Saat web terhubung: putar di telepon atau browser web</string>
     
-    <string name="setcat_web_remote_audio_device_title">Playback Device</string>
+    <string name="setcat_web_remote_audio_device_title">Perangkat Pemutaran</string>
     
-    <string name="setcat_web_remote_audio_device_web">Web Browser</string>
+    <string name="setcat_web_remote_audio_device_web">Browser Web</string>
     
-    <string name="setcat_web_remote_enabled_subtitle">Access PixelPlay from any browser on your network</string>
+    <string name="setcat_web_remote_enabled_subtitle">Akses PixelPlay dari browser mana pun di jaringan Anda</string>
     
-    <string name="setcat_web_remote_enabled_title">Enable Web Remote</string>
+    <string name="setcat_web_remote_enabled_title">Aktifkan Remote Web</string>
     
-    <string name="setcat_web_remote_pin">PIN Code</string>
+    <string name="setcat_web_remote_pin">Kode PIN</string>
     
-    <string name="setcat_web_remote_port_subtitle">Port number for the web server (default: 8081)</string>
+    <string name="setcat_web_remote_port_subtitle">Nomor port untuk server web (bawaan: 8081)</string>
     
-    <string name="setcat_web_remote_port_title">Server Port</string>
+    <string name="setcat_web_remote_port_title">Port Server</string>
     
-    <string name="setcat_web_remote_section">Web Remote</string>
+    <string name="setcat_web_remote_section">Remote Web</string>
     
-    <string name="setcat_web_remote_server_address">Server Address</string>
+    <string name="setcat_web_remote_server_address">Alamat Server</string>
     
-    <string name="setcat_web_remote_server_running">Running</string>
+    <string name="setcat_web_remote_server_running">Berjalan</string>
     
-    <string name="setcat_web_remote_server_status">Server Status</string>
+    <string name="setcat_web_remote_server_status">Status Server</string>
     
-    <string name="setcat_web_remote_server_stopped">Stopped</string>
+    <string name="setcat_web_remote_server_stopped">Berhenti</string>
     
-    <string name="setcat_web_remote_start_button">Start Server</string>
+    <string name="setcat_web_remote_start_button">Mulai Server</string>
     
-    <string name="setcat_web_remote_stop_button">Stop Server</string>
+    <string name="setcat_web_remote_stop_button">Hentikan Server</string>
     
     
-    <string name="setcat_web_remote_sync_subtitle">Web controls phone playback</string>
+    <string name="setcat_web_remote_sync_subtitle">Web mengontrol pemutaran di ponsel</string>
     
-    <string name="setcat_web_remote_sync_title">Sync Mode</string>
+    <string name="setcat_web_remote_sync_title">Mode Sinkronisasi</string>
     
-    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED matrix display integration</string>
+    <string name="settings_category_glyph_matrix_subtitle">Integrasi layar matriks LED Nothing Phone</string>
     
     <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
     
-    <string name="settings_category_web_remote_subtitle">Control playback from other devices on your network</string>
+    <string name="settings_category_web_remote_subtitle">Kontrol pemutaran dari perangkat lain di jaringan Anda</string>
     
-    <string name="settings_category_web_remote_title">Web Remote</string>
+    <string name="settings_category_web_remote_title">Remote Web</string>
     
-    <string name="settings_search_category_about">About</string>
+    <string name="settings_search_category_about">Tentang</string>
     
-    <string name="settings_search_category_ai_integration">AI Integration</string>
+    <string name="settings_search_category_ai_integration">Integrasi AI</string>
     
-    <string name="settings_search_category_appearance">Appearance</string>
+    <string name="settings_search_category_appearance">Tampilan</string>
     
-    <string name="settings_search_category_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_search_category_backup_restore">Cadangkan &amp; Pulihkan</string>
     
-    <string name="settings_search_category_behavior">Behavior</string>
+    <string name="settings_search_category_behavior">Perilaku</string>
     
-    <string name="settings_search_category_developer">Developer</string>
+    <string name="settings_search_category_developer">Pengembang</string>
     
-    <string name="settings_search_category_device_capabilities">Device Capabilities</string>
+    <string name="settings_search_category_device_capabilities">Kemampuan Perangkat</string>
     
     <string name="settings_search_category_equalizer">Equalizer</string>
     
-    <string name="settings_search_category_library">Music Library</string>
+    <string name="settings_search_category_library">Pustaka Musik</string>
     
-    <string name="settings_search_category_playback">Playback</string>
+    <string name="settings_search_category_playback">Pemutaran</string>
     
-    <string name="settings_search_category_settings_format">%1$s settings</string>
+    <string name="settings_search_category_settings_format">pengaturan %1$s</string>
     
     
     
-    <string name="settings_search_category_subtitle">Settings category</string>
+    <string name="settings_search_category_subtitle">Kategori pengaturan</string>
     
     <string name="settings_search_keyword_aaudio">AAudio</string>
     
-    <string name="settings_search_keyword_about">About</string>
+    <string name="settings_search_keyword_about">Tentang</string>
     
-    <string name="settings_search_keyword_account">Account</string>
+    <string name="settings_search_keyword_account">Akun</string>
     
     <string name="settings_search_keyword_ai">AI</string>
     
     <string name="settings_search_keyword_album">Album</string>
     
-    <string name="settings_search_keyword_album_art">Album art</string>
+    <string name="settings_search_keyword_album_art">Sampul album</string>
     
-    <string name="settings_search_keyword_appearance">Appearance</string>
+    <string name="settings_search_keyword_appearance">Tampilan</string>
     
-    <string name="settings_search_keyword_artist">Artist</string>
+    <string name="settings_search_keyword_artist">Artis</string>
     
-    <string name="settings_search_keyword_auto_hide">Auto-hide</string>
+    <string name="settings_search_keyword_auto_hide">Sembunyikan otomatis</string>
     
-    <string name="settings_search_keyword_background">Background playback</string>
+    <string name="settings_search_keyword_background">Pemutaran latar belakang</string>
     
-    <string name="settings_search_keyword_background_image">Background image, wallpaper</string>
+    <string name="settings_search_keyword_background_image">Gambar latar, wallpaper</string>
     
-    <string name="settings_search_keyword_backup">Backup</string>
+    <string name="settings_search_keyword_backup">Cadangan</string>
     
-    <string name="settings_search_keyword_battery">Battery</string>
+    <string name="settings_search_keyword_battery">Baterai</string>
     
     <string name="settings_search_keyword_bluetooth">Bluetooth</string>
     
@@ -1012,103 +1012,103 @@
     
     <string name="settings_search_keyword_cache">Cache</string>
     
-    <string name="settings_search_keyword_car_mode">Car mode</string>
+    <string name="settings_search_keyword_car_mode">Mode mobil</string>
     
     <string name="settings_search_keyword_cast">Cast</string>
     
-    <string name="settings_search_keyword_collage">Collage</string>
+    <string name="settings_search_keyword_collage">Kolase</string>
     
-    <string name="settings_search_keyword_color">Color</string>
+    <string name="settings_search_keyword_color">Warna</string>
     
-    <string name="settings_search_keyword_compact">Compact</string>
+    <string name="settings_search_keyword_compact">Ringkas</string>
     
-    <string name="settings_search_keyword_corner_radius">Corner radius</string>
+    <string name="settings_search_keyword_corner_radius">Radius sudut</string>
     
     <string name="settings_search_keyword_crossfade">Crossfade</string>
     
     <string name="settings_search_keyword_daily_mix">Daily mix</string>
     
-    <string name="settings_search_keyword_developer">Developer</string>
+    <string name="settings_search_keyword_developer">Pengembang</string>
     
-    <string name="settings_search_keyword_device">Device</string>
+    <string name="settings_search_keyword_device">Perangkat</string>
     
-    <string name="settings_search_keyword_diagnostics">Diagnostics</string>
+    <string name="settings_search_keyword_diagnostics">Diagnostik</string>
     
-    <string name="settings_search_keyword_download">Download</string>
+    <string name="settings_search_keyword_download">Unduhan</string>
     
-    <string name="settings_search_keyword_dynamic_background">Dynamic background, ambient</string>
+    <string name="settings_search_keyword_dynamic_background">Latar dinamis, ambien</string>
     
     
     
     <string name="settings_search_keyword_equalizer">Equalizer</string>
     
-    <string name="settings_search_keyword_excluded">Excluded folders</string>
+    <string name="settings_search_keyword_excluded">Folder dikecualikan</string>
     
-    <string name="settings_search_keyword_export">Export</string>
+    <string name="settings_search_keyword_export">Ekspor</string>
     
     <string name="settings_search_keyword_filter">Filter</string>
     
     <string name="settings_search_keyword_folder">Folder</string>
     
-    <string name="settings_search_keyword_gesture">Gesture</string>
+    <string name="settings_search_keyword_gesture">Gestur</string>
     
-    <string name="settings_search_keyword_haptics">Haptics</string>
+    <string name="settings_search_keyword_haptics">Haptik</string>
     
-    <string name="settings_search_keyword_headphones">Headphones</string>
+    <string name="settings_search_keyword_headphones">Headphone</string>
     
     <string name="settings_search_keyword_hifi">HiFi</string>
     
-    <string name="settings_search_keyword_immersive_lyrics">Immersive lyrics</string>
+    <string name="settings_search_keyword_immersive_lyrics">Lirik imersif</string>
     
-    <string name="settings_search_keyword_import">Import</string>
+    <string name="settings_search_keyword_import">Impor</string>
     
-    <string name="settings_search_keyword_language">Language</string>
+    <string name="settings_search_keyword_language">Bahasa</string>
     
-    <string name="settings_search_keyword_lyrics">Lyrics</string>
+    <string name="settings_search_keyword_lyrics">Lirik</string>
     
-    <string name="settings_search_keyword_maintenance">Maintenance</string>
+    <string name="settings_search_keyword_maintenance">Perawatan</string>
     
-    <string name="settings_search_keyword_min_duration">Minimum duration</string>
+    <string name="settings_search_keyword_min_duration">Durasi minimum</string>
     
     <string name="settings_search_keyword_mixer">Mixer</string>
     
     <string name="settings_search_keyword_model">Model</string>
     
-    <string name="settings_search_keyword_navigation">Navigation</string>
+    <string name="settings_search_keyword_navigation">Navigasi</string>
     
-    <string name="settings_search_keyword_now_playing">Now playing</string>
+    <string name="settings_search_keyword_now_playing">Sedang diputar</string>
     
-    <string name="settings_search_keyword_online_source">Online source</string>
+    <string name="settings_search_keyword_online_source">Sumber online</string>
     
-    <string name="settings_search_keyword_palette">Palette</string>
+    <string name="settings_search_keyword_palette">Palet</string>
     
-    <string name="settings_search_keyword_playback">Playback</string>
+    <string name="settings_search_keyword_playback">Pemutaran</string>
     
-    <string name="settings_search_keyword_player">Player</string>
+    <string name="settings_search_keyword_player">Pemutar</string>
     
-    <string name="settings_search_keyword_queue">Queue</string>
+    <string name="settings_search_keyword_queue">Antrean</string>
     
-    <string name="settings_search_keyword_recommendation">Recommendation</string>
+    <string name="settings_search_keyword_recommendation">Rekomendasi</string>
     
     <string name="settings_search_keyword_remote">Remote</string>
     
     <string name="settings_search_keyword_replaygain">ReplayGain</string>
     
-    <string name="settings_search_keyword_restore">Restore</string>
+    <string name="settings_search_keyword_restore">Pulihkan</string>
     
     <string name="settings_search_keyword_scan">Scan</string>
     
-    <string name="settings_search_keyword_scroll">Scroll</string>
+    <string name="settings_search_keyword_scroll">Gulir</string>
     
-    <string name="settings_search_keyword_shuffle">Shuffle</string>
+    <string name="settings_search_keyword_shuffle">Acak</string>
     
-    <string name="settings_search_keyword_speed">Speed, playback rate</string>
+    <string name="settings_search_keyword_speed">Kecepatan, laju pemutaran</string>
     
-    <string name="settings_search_keyword_stats">Statistics</string>
+    <string name="settings_search_keyword_stats">Statistik</string>
     
     <string name="settings_search_keyword_sync">Sync</string>
     
-    <string name="settings_search_keyword_theme">Theme</string>
+    <string name="settings_search_keyword_theme">Tema</string>
     
     <string name="settings_search_keyword_token">Token</string>
     
@@ -1116,11 +1116,11 @@
     
     <string name="settings_search_keyword_usb">USB</string>
     
-    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_no_results">Tidak ada pengaturan ditemukan</string>
     
-    <string name="settings_search_placeholder">Search settings</string>
+    <string name="settings_search_placeholder">Cari pengaturan</string>
     
-    <string name="settings_search_results_count_format">%1$d results</string>
+    <string name="settings_search_results_count_format">%1$d hasil</string>
     
     <string name="usb_bit_depth_16">16-bit</string>
     
@@ -1128,34 +1128,236 @@
     
     <string name="usb_bit_depth_32">32-bit</string>
     
-    <string name="usb_device_selector_connect_message">This will enable exclusive access to the USB DAC for bit-perfect audio. The system audio will be routed through the DAC directly.</string>
+    <string name="usb_device_selector_connect_message">Ini akan mengaktifkan akses eksklusif ke DAC USB untuk audio bit-perfect. Audio sistem akan dialihkan langsung melalui DAC.</string>
     
-    <string name="usb_device_selector_connect_title">USB Exclusive Mode</string>
+    <string name="usb_device_selector_connect_title">Mode Eksklusif USB</string>
     
-    <string name="usb_device_selector_connected_to">Connected to: %s</string>
+    <string name="usb_device_selector_connected_to">Terhubung ke: %s</string>
     
-    <string name="usb_device_selector_connecting">Connecting to USB DAC…</string>
+    <string name="usb_device_selector_connecting">Menghubungkan ke DAC USB…</string>
     
-    <string name="usb_device_selector_connection_failed">Failed to connect to USB DAC</string>
+    <string name="usb_device_selector_connection_failed">Gagal terhubung ke DAC USB</string>
     
-    <string name="usb_device_selector_hint">Connect a USB DAC and enable USB exclusive mode for bit-perfect audio output.</string>
+    <string name="usb_device_selector_hint">Hubungkan DAC USB dan aktifkan mode eksklusif USB untuk output audio bit-perfect.</string>
     
-    <string name="usb_device_selector_no_devices">No USB audio devices found</string>
+    <string name="usb_device_selector_no_devices">Tidak ada perangkat audio USB ditemukan</string>
     
-    <string name="usb_device_selector_permission_message">XiangsuPlayer needs access to your USB DAC to enable exclusive mode.</string>
+    <string name="usb_device_selector_permission_message">XiangsuPlayer memerlukan akses ke DAC USB Anda untuk mengaktifkan mode eksklusif.</string>
     
-    <string name="usb_device_selector_permission_required">USB permission required</string>
+    <string name="usb_device_selector_permission_required">Izin USB diperlukan</string>
     
-    <string name="usb_device_selector_refresh">Refresh</string>
+    <string name="usb_device_selector_refresh">Segarkan</string>
     
-    <string name="usb_device_selector_scanning">Scanning for USB devices…</string>
+    <string name="usb_device_selector_scanning">Memindai perangkat USB…</string>
     
-    <string name="usb_device_selector_select_device">Select USB DAC device</string>
+    <string name="usb_device_selector_select_device">Pilih perangkat DAC USB</string>
     
-    <string name="usb_device_selector_title">Select USB DAC</string>
+    <string name="usb_device_selector_title">Pilih DAC USB</string>
     
-    <string name="usb_exclusive_toast_activate_failed">Failed to activate USB exclusive mode. Check device permission and try again.</string>
+    <string name="usb_exclusive_toast_activate_failed">Gagal mengaktifkan mode eksklusif USB. Periksa izin perangkat dan coba lagi.</string>
     
-    <string name="usb_exclusive_toast_activated">USB exclusive activated: %s</string>
+    <string name="usb_exclusive_toast_activated">USB eksklusif diaktifkan: %s</string>
     
+    <string name="car_mode_action_radio">Radio</string>
+    <string name="car_mode_action_radio_desc">Radio online</string>
+    <string name="download_manager_cancel">Batal</string>
+    <string name="download_manager_clear_completed">Hapus yang selesai</string>
+    <string name="download_manager_empty">Belum ada unduhan</string>
+    <string name="download_manager_pause">Jeda</string>
+    <string name="download_manager_resume">Lanjutkan</string>
+    <string name="download_manager_retry">Coba lagi</string>
+    <string name="download_manager_title">Unduhan</string>
+    <string name="download_manager_waiting">Menunggu</string>
+    <string name="setcat_api_lyrics_amll_subtitle">Hanya lagu NetEase; menyediakan timing bergaya karaoke.</string>
+    <string name="setcat_api_lyrics_amll_title">Lirik kata-per-kata AMLLDB</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">Gunakan subtitle video dari trek Bilibili sebagai lirik.</string>
+    <string name="setcat_api_lyrics_bilibili_title">Lirik subtitle Bilibili</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ Music / Kugou / Kuwo / Migu, digunakan untuk lagu dari sumber bawaan.</string>
+    <string name="setcat_api_lyrics_builtin_title">Lirik sumber bawaan</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">Layanan luar negeri, sering tidak dapat diakses di jaringan terbatas.</string>
+    <string name="setcat_api_lyrics_lrclib_title">Lirik LRCLIB</string>
+    <string name="setcat_api_lyrics_netease_subtitle">API resmi, sumber pilihan untuk lagu NetEase dan cloud.</string>
+    <string name="setcat_api_lyrics_netease_title">Lirik NetEase</string>
+    <string name="setcat_api_lyrics_online_title">Sumber lirik online</string>
+    <string name="setcat_api_lyrics_priority_action">Sesuaikan</string>
+    <string name="setcat_api_lyrics_priority_desc">Coba sumber dari atas ke bawah; gunakan panah untuk mengubah urutan.</string>
+    <string name="setcat_api_lyrics_priority_label">Prioritas lirik online</string>
+    <string name="setcat_api_metadata_deezer_subtitle">Mencari dan menyimpan gambar artis secara online; layanan luar negeri.</string>
+    <string name="setcat_api_metadata_deezer_title">Gambar artis Deezer</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">Melengkapi judul / artis / album / genre dan sampul; layanan luar negeri.</string>
+    <string name="setcat_api_metadata_musicbrainz_title">Metadata MusicBrainz</string>
+    <string name="setcat_api_metadata_title">Pelengkapan info lagu</string>
+    <string name="setcat_api_note">Menonaktifkan layanan yang tidak dapat dijangkau mempercepat pemuatan lirik dan sampul dengan melewati timeout-nya. Cache lokal yang ada tetap disimpan.</string>
+    <string name="setcat_api_priority_builtin">Bawaan lebih dulu</string>
+    <string name="setcat_api_priority_lrclib">LRCLIB lebih dulu</string>
+    <string name="setcat_api_priority_move_down">Pindah ke bawah</string>
+    <string name="setcat_api_priority_move_up">Pindah ke atas</string>
+    <string name="setcat_api_priority_netease">NetEase lebih dulu</string>
+    <string name="setcat_api_priority_reset">Atur ulang urutan</string>
+    <string name="setcat_appearance_miniplayer_section">Mini player</string>
+    <string name="setcat_appearance_startup_section">Animasi mulai</string>
+    <string name="setcat_apple_canvas_subtitle">Ambil sampul beranimasi untuk lagu saat ini secara online dan crossfade saat ditemukan. Sampul lokal tetap menjadi cadangan; menambah lalu lintas jaringan.</string>
+    <string name="setcat_apple_canvas_title">Sampul dinamis (Apple Music)</string>
+    <string name="setcat_audio_focus">Fokus Audio</string>
+    <string name="setcat_audio_focus_duck_subtitle">Izinkan volume diturunkan selama perubahan fokus audio singkat. Opsi ini ditimpa oleh pengaturan output audio.</string>
+    <string name="setcat_audio_focus_duck_title">Turunkan volume</string>
+    <string name="setcat_audio_focus_gain_subtitle">Lanjutkan pemutaran setelah fokus diperoleh kembali. Jika dinonaktifkan, pemutar tetap dijeda.</string>
+    <string name="setcat_audio_focus_gain_title">Lanjutkan saat fokus diperoleh</string>
+    <string name="setcat_audio_focus_hint_bg">Di Android 8 ke atas, pemutar dihentikan oleh sistem saat dijeda. Untuk menghindari ini, gunakan opsi \"Selalu tampilkan notifikasi\".</string>
+    <string name="setcat_audio_focus_hint_cast">Output Chromecast dapat sepenuhnya mengabaikan perubahan fokus audio panggilan dan singkat.</string>
+    <string name="setcat_audio_focus_permanent_subtitle">Jeda pada perubahan fokus audio panjang (mis. pemutar atau game lain memutar musik).</string>
+    <string name="setcat_audio_focus_permanent_title">Perubahan fokus audio permanen</string>
+    <string name="setcat_audio_focus_reset">Pulihkan bawaan</string>
+    <string name="setcat_audio_focus_resume_call_subtitle">Lanjutkan pemutaran setelah panggilan berakhir (jika dijeda oleh panggilan masuk).</string>
+    <string name="setcat_audio_focus_resume_call_title">Lanjutkan pemutaran setelah panggilan</string>
+    <string name="setcat_audio_focus_transient_subtitle">Jeda pemutaran saat fokus audio berubah sementara (mis. panggilan, notifikasi, navigasi).</string>
+    <string name="setcat_audio_focus_transient_title">Perubahan fokus audio singkat / panggilan</string>
+    <string name="setcat_bg_style_palette">Palet</string>
+    <string name="setcat_bg_style_solid">Solid</string>
+    <string name="setcat_bg_style_vibrant">Cerah</string>
+    <string name="setcat_carousel_style_classic">Klasik (tanpa peek)</string>
+    <string name="setcat_carousel_style_preview">Carousel pratinjau</string>
+    <string name="setcat_download_embed_cover_subtitle">Tulis sampul ke tag file audio (sampul lokal juga disematkan).</string>
+    <string name="setcat_download_embed_cover_title">Sematkan sampul</string>
+    <string name="setcat_download_embed_lyrics_subtitle">Tulis lirik ke tag file audio agar pemutar dapat membacanya.</string>
+    <string name="setcat_download_embed_lyrics_title">Sematkan lirik</string>
+    <string name="setcat_download_file_name_artist_title">Artis - Judul</string>
+    <string name="setcat_download_file_name_desc">Cara file yang diunduh diberi nama.</string>
+    <string name="setcat_download_file_name_label">Nama file unduhan</string>
+    <string name="setcat_download_file_name_title_artist">Judul - Artis</string>
+    <string name="setcat_download_file_name_title_only">Hanya judul</string>
+    <string name="setcat_download_manager_subtitle">Lihat antrean unduhan, unduhan yang sedang berlangsung dan yang selesai.</string>
+    <string name="setcat_download_quality_desc">Kualitas yang digunakan saat mengunduh lagu; dapat mengikuti kualitas pemutaran.</string>
+    <string name="setcat_download_quality_follow">Sama dengan pemutaran</string>
+    <string name="setcat_download_quality_label">Kualitas unduhan</string>
+    <string name="setcat_download_skip_existing_subtitle">Lewati jika file dengan nama sama sudah ada di folder tujuan.</string>
+    <string name="setcat_download_skip_existing_title">Lewati file yang sudah ada</string>
+    <string name="setcat_download_write_lrc_subtitle">Buat file .lrc yang sesuai di samping file audio yang diunduh.</string>
+    <string name="setcat_download_write_lrc_title">Simpan juga file .lrc</string>
+    <string name="setcat_expressive_accent_desc">Warnai kartu kontrol dan tombol toggle dengan kaca warna aksen album.</string>
+    <string name="setcat_expressive_accent_title">Latar aksen</string>
+    <string name="setcat_expressive_group_title">Pemutar ekspresif</string>
+    <string name="setcat_expressive_merge_desc">Gabungkan tombol favorit, acak, ulangi, lirik, dan antrean ke dalam kartu kontrol.</string>
+    <string name="setcat_expressive_merge_title">Gabungkan kontrol</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">Menganimasikan perluasan kontrol dan pengubahan ukuran; matikan untuk beralih seketika.</string>
+    <string name="setcat_floating_lyrics_animation_title">Animasi transisi</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">Opasitas latar</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">Geser lirik melewati tepi kiri atau kanan lalu lepaskan — lirik akan terselip menyisakan panah kecil. Ketuk panah untuk mengembalikannya.</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">Selipkan di tepi layar</string>
+    <string name="setcat_floating_lyrics_lines_double">Saat ini + berikutnya</string>
+    <string name="setcat_floating_lyrics_lines_multi">Tiga baris</string>
+    <string name="setcat_floating_lyrics_lines_single">Tunggal</string>
+    <string name="setcat_floating_lyrics_lines_title">Baris ditampilkan</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">Saat dikunci, menyeret tidak lagi memindahkan jendela (tekan lama lirik untuk mengalihkan).</string>
+    <string name="setcat_floating_lyrics_lock_title">Kunci posisi</string>
+    <string name="setcat_floating_lyrics_scale_title">Ukuran keseluruhan</string>
+    <string name="setcat_floating_lyrics_section">Lirik Melayang</string>
+    <string name="setcat_floating_lyrics_subtitle">Tampilkan lirik di atas aplikasi lain. Memerlukan izin \"Tampil di atas aplikasi lain\".</string>
+    <string name="setcat_floating_lyrics_title">Lirik Melayang (desktop)</string>
+    <string name="setcat_floating_lyrics_usage">Cara pakai: seret untuk memindahkan, ketuk untuk menampilkan sebelumnya / putar-jeda / berikutnya, tekan lama untuk mengunci posisi. Geser lirik melewati tepi kiri atau kanan untuk menyelipkannya menjadi panah kecil — ketuk panah untuk mengembalikannya. Jendela hanya muncul saat lagu diputar.</string>
+    <string name="setcat_force_software_blur_subtitle">Paksa blur perangkat lunak/bitmap yang digunakan di Android &lt; 12 agar Anda dapat memverifikasinya di perangkat yang lebih baru</string>
+    <string name="setcat_force_software_blur_title">Paksa blur lama (uji)</string>
+    <string name="setcat_force_tablet_layout_subtitle">Gunakan tata letak tablet (rel navigasi samping + konten lebar) bahkan dalam mode potret. Cocok untuk ponsel besar dan perangkat lipat.</string>
+    <string name="setcat_force_tablet_layout_title">Paksa tata letak tablet dalam mode potret</string>
+    <string name="setcat_home_top_style_collage">Dinding kolase</string>
+    <string name="setcat_home_top_style_desc">Tampilkan dinding kolase atau carousel unggulan di bagian atas Beranda.</string>
+    <string name="setcat_home_top_style_featured">Carousel unggulan</string>
+    <string name="setcat_home_top_style_label">Gaya atas beranda</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">Saat layar lirik otomatis masuk mode imersif, sembunyikan kontrol saja alih-alih memperbesar teks (bawaan memperbesarnya)</string>
+    <string name="setcat_immersive_keep_font_size_title">Pertahankan ukuran font lirik saat imersif</string>
+    <string name="setcat_immersive_keep_size_hint">Pratinjau imersif: teks dipertahankan</string>
+    <string name="setcat_immersive_scale_hint">Pratinjau imersif: teks diperbesar x1.25</string>
+    <string name="setcat_lanzou_test_close">Tutup</string>
+    <string name="setcat_lanzou_test_dialog_title">Uji alur unduhan Lanzou</string>
+    <string name="setcat_lanzou_test_open_browser">Buka tautan langsung pertama di browser</string>
+    <string name="setcat_lanzou_test_running">Menentukan tautan berbagi…</string>
+    <string name="setcat_lanzou_test_subtitle">Tentukan tautan berbagi pembaruan dan daftar file, versi terdeteksi, dan URL langsung (memverifikasi kanal pembaruan dalam aplikasi).</string>
+    <string name="setcat_lanzou_test_title">Uji alur unduhan Lanzou</string>
+    <string name="setcat_lyrics_bg_style_desc">Gaya latar lirik: gradien cerah, warna palet sampul, atau warna tema biasa.</string>
+    <string name="setcat_lyrics_bg_style_title">Latar lirik</string>
+    <string name="setcat_lyrics_mono_colors_desc">Paksa tombol dan teks lirik menjadi hitam / putih murni (putih pada tema gelap, hitam pada tema terang). Nonaktif mempertahankan tampilan saat ini.</string>
+    <string name="setcat_lyrics_mono_colors_title">Tombol &amp; teks lirik monokrom</string>
+    <string name="setcat_miniplayer_corner_radius">Radius sudut mini player</string>
+    <string name="setcat_miniplayer_style_capsule">Kapsul</string>
+    <string name="setcat_miniplayer_style_classic">Klasik</string>
+    <string name="setcat_miniplayer_style_desc">Tampilan mini player di bawah. Material = sampul membulat dengan prev/play/next pada kartu; Expressive = pil penuh dengan isian progres solid, sampul persegi, dan satu tombol putar besar.</string>
+    <string name="setcat_miniplayer_style_expressive">Ekspresif</string>
+    <string name="setcat_miniplayer_style_label">Gaya</string>
+    <string name="setcat_miniplayer_style_material">Material</string>
+    <string name="setcat_miniplayer_style_rhythm">Rhythm</string>
+    <string name="setcat_navrail_style_desc">Pilih tampilan rel kiri pada tablet dan dalam mode lanskap.</string>
+    <string name="setcat_navrail_style_docked">Terpasang</string>
+    <string name="setcat_navrail_style_floating">Melayang</string>
+    <string name="setcat_navrail_style_label">Rel navigasi tablet</string>
+    <string name="setcat_new_top_bar_subtitle">Bilah atas menggunakan masker blur progresif dengan kapsul judul yang menyusut. Matikan untuk menggunakan bilah atas solid biasa di mana-mana.</string>
+    <string name="setcat_new_top_bar_title">Gaya Bilah Atas Baru</string>
+    <string name="setcat_player_bg_style_desc">Gaya latar pemutar: gradien cerah, warna palet sampul, atau warna tema biasa.</string>
+    <string name="setcat_player_bg_style_title">Latar pemutar</string>
+    <string name="setcat_player_controls_group">Kontrol pemutar</string>
+    <string name="setcat_player_cover_style_default">Carousel bawaan</string>
+    <string name="setcat_player_cover_style_desc">Cara sampul pemutar ditampilkan (kartu unggulan Rhythm).</string>
+    <string name="setcat_player_cover_style_featured">Carousel kartu unggulan</string>
+    <string name="setcat_player_cover_style_label">Gaya sampul</string>
+    <string name="setcat_player_glass_controls_subtitle">Buat tombol kontrol netral (lewati / favorit / pil bawah / kartu kontrol) transparan dengan blur latar nyata. Tombol putar/jeda mempertahankan warna aksennya dan tata letak tidak berubah; dapat digabungkan dengan tema dan latar apa pun.</string>
+    <string name="setcat_player_glass_controls_title">Tombol kontrol kaca es</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">Pratinjau langsung tersemat di atas, setiap opsi di bawah langsung memperbaruinya</string>
+    <string name="setcat_player_lyrics_appearance_title">Tampilan pemutar &amp; lirik</string>
+    <string name="setcat_player_lyrics_preview_artist">Artis contoh</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24bit · 44.1 kHz</string>
+    <string name="setcat_player_lyrics_preview_label">Pratinjau langsung</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">Baris ini sedang diputar</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">sementara kota tertidur</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">dan malam terus berjalan</string>
+    <string name="setcat_player_lyrics_preview_track">Trek contoh</string>
+    <string name="setcat_player_mono_colors_desc">Paksa tombol dan teks pemutar menjadi hitam / putih murni (putih pada tema gelap, hitam pada tema terang). Nonaktif mempertahankan tampilan saat ini.</string>
+    <string name="setcat_player_mono_colors_title">Tombol &amp; teks pemutar monokrom</string>
+    <string name="setcat_player_progress_bar_subtitle">Saat ini: %1$s. Pilih gaya trek, gaya ibu jari, dan rotasi.</string>
+    <string name="setcat_player_progress_bar_title">Bilah Progres Pemutaran</string>
+    <string name="setcat_player_style_classic">Klasik</string>
+    <string name="setcat_player_style_desc">Ganti pemutar layar penuh antara tata letak klasik dan tata letak Ekspresif (diadaptasi dari Rhythm).</string>
+    <string name="setcat_player_style_expressive">Ekspresif</string>
+    <string name="setcat_player_style_label">Gaya pemutar</string>
+    <string name="setcat_player_theme_immersive">Sampul imersif (blur diperluas)</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">Geser bilah navigasi ke bawah dan geser mini player saat menggulir ke atas; keduanya kembali saat Anda menggulir balik</string>
+    <string name="setcat_scroll_hide_chrome_title">Sembunyikan saat menggulir</string>
+    <string name="setcat_startup_animation_desc">Transisi yang diputar saat masuk ke layar utama setelah peluncuran.</string>
+    <string name="setcat_startup_animation_label">Animasi masuk</string>
+    <string name="setcat_startup_style_emerge">Muncul</string>
+    <string name="setcat_startup_style_none">Mati</string>
+    <string name="setcat_startup_style_scale">Skala</string>
+    <string name="setcat_transport_flat_style_subtitle">Tampilkan sebelumnya / putar / berikutnya sebagai ikon biasa tanpa latar berwarna</string>
+    <string name="setcat_transport_flat_style_title">Tombol kontrol datar</string>
+    <string name="setcat_ui_scale_section">Skala Antarmuka</string>
+    <string name="setcat_ui_scale_title">Skala UI (hanya aplikasi)</string>
+    <string name="setcat_updates_auto_check_subtitle">Periksa versi baru di latar belakang</string>
+    <string name="setcat_updates_auto_check_title">Periksa pembaruan otomatis</string>
+    <string name="setcat_updates_auto_title">Pembaruan Otomatis</string>
+    <string name="setcat_updates_bg_download_subtitle">Secara otomatis mengunduh APK versi baru</string>
+    <string name="setcat_updates_bg_download_title">Unduh pembaruan di latar belakang</string>
+    <string name="setcat_updates_download_title">Unduhan Latar Belakang</string>
+    <string name="setcat_updates_frequency_daily">Harian</string>
+    <string name="setcat_updates_frequency_title">Frekuensi pemeriksaan</string>
+    <string name="setcat_updates_frequency_weekly">Mingguan</string>
+    <string name="setcat_updates_wifi_charging_subtitle">Hanya unduh saat menggunakan WiFi dan mengisi daya</string>
+    <string name="setcat_updates_wifi_charging_title">Hanya WiFi + mengisi daya</string>
+    <string name="setcat_vibrant_bg_warning_message">Versi Android Anda lebih rendah dari Android 11. Efek ini mungkin tidak berjalan sesuai harapan di perangkat Anda. Tetap aktifkan?</string>
+    <string name="setcat_vibrant_bg_warning_title">Versi Android terlalu rendah</string>
+    <string name="settings_category_api_subtitle">Aktifkan/nonaktifkan layanan pelengkapan lirik dan metadata</string>
+    <string name="settings_category_api_title">Manajemen API</string>
+    <string name="settings_category_download_subtitle">Antrean, kualitas, folder, penamaan file, dan penyematan tag</string>
+    <string name="settings_category_download_title">Unduhan</string>
+    <string name="settings_category_updates_subtitle">Frekuensi periksa otomatis, unduhan latar belakang, WiFi + mengisi daya</string>
+    <string name="settings_category_updates_title">Pembaruan &amp; Unduhan</string>
+    <string name="settings_category_usb_exclusive_subtitle">Output bit-perfect ke DAC USB eksternal: kedalaman bit, perangkat, dan status</string>
+    <string name="settings_category_usb_exclusive_title">USB eksklusif</string>
+    <string name="settings_search_keyword_audio_focus">Fokus audio</string>
+    <string name="settings_search_keyword_update">Pembaruan</string>
+    <string name="usb_status_active">Eksklusif aktif — audio melewati mixer sistem</string>
+    <string name="usb_status_found">Ditemukan %1$d perangkat audio USB</string>
+    <string name="usb_status_inactive">Eksklusif tidak aktif (output mixer sistem)</string>
+    <string name="usb_status_no_device">Tidak ada perangkat audio USB terdeteksi — pasang DAC dan akan ditemukan otomatis</string>
+    <string name="usb_status_none_found">Tidak ada perangkat audio USB ditemukan</string>
+    <string name="usb_status_rescan">Pindai ulang</string>
+    <string name="usb_status_section">Status perangkat</string>
+    <string name="usb_status_switch_device">Ubah perangkat</string>
 </resources>

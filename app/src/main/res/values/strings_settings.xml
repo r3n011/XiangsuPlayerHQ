@@ -779,7 +779,7 @@
     <string name="import_browse_file">Browse for file</string>
     <string
         name="import_backup_hint"
-    >选择一个 .pxpl 或 .pxpbak 备份文件进行检查。你将在下一步中选择要恢复的部分。</string>
+    >Choose a .pxpl or .pxpbak backup file to inspect. You will pick what to restore in the next step.</string>
     <string name="import_recent_backups">Recent Backups</string>
     <string name="import_no_recent_title">No recent backups</string>
     <string
@@ -825,19 +825,19 @@
     <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
 
     <!-- Dot Device -->
-    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
-    <string name="dot_device_header_title">Dot 墨水屏设备</string>
-    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏设备显示</string>
+    <string name="dot_device_settings_title">Dot E-Ink Display Settings</string>
+    <string name="dot_device_header_title">Dot E-Ink Display Device</string>
+    <string name="dot_device_header_description">Push the album cover of the currently playing song to the e-ink display</string>
     <string name="dot_device_api_key_label">API Key</string>
-    <string name="dot_device_api_key_hint">输入你的 Dot API Key</string>
+    <string name="dot_device_api_key_hint">Enter your Dot API key</string>
     <string name="dot_device_id_label">Device ID</string>
-    <string name="dot_device_id_hint">输入设备 ID</string>
-    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
-    <string name="dot_device_auto_push_description">切换歌曲时自动推送专辑封面到墨水屏</string>
-    <string name="dot_device_test_connection">测试连接</string>
-    <string name="dot_device_testing">测试中...</string>
-    <string name="dot_device_save">保存设置</string>
-    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_id_hint">Enter the device ID</string>
+    <string name="dot_device_auto_push_title">Auto-push album covers</string>
+    <string name="dot_device_auto_push_description">Automatically push the album cover to the e-ink display when the song changes</string>
+    <string name="dot_device_test_connection">Test connection</string>
+    <string name="dot_device_testing">Testing…</string>
+    <string name="dot_device_save">Save settings</string>
+    <string name="dot_device_clear">Clear settings</string>
 
     <!-- Glyph Matrix -->
     <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>

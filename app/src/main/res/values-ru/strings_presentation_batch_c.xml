@@ -39,12 +39,12 @@
     <string name="lib_empty_folders_subtitle">Папки внутреннего хранилища с музыкой появятся здесь.</string>
     <string name="lib_empty_playlists_title">Плейлистов пока нет</string>
     <string name="lib_empty_playlists_subtitle">Создайте свой первый плейлист, чтобы организовать фонотеку.</string>
-    <string name="daily_recommend_error">Failed to load daily recommend</string>
-    <string name="daily_recommend_play_cd">Play daily recommend</string>
-    <string name="daily_recommend_retry">Retry</string>
-    <string name="daily_recommend_songs_count">%1$d songs today</string>
-    <string name="daily_recommend_subtitle">Personalized picks, updated daily</string>
-    <string name="daily_recommend_title">Daily Recommend</string>
-    <string name="lib_empty_history_subtitle">Songs you play will show up here.</string>
-    <string name="lib_empty_history_title">No playback history yet</string>
+    <string name="daily_recommend_error">Не удалось загрузить ежедневные рекомендации</string>
+    <string name="daily_recommend_play_cd">Включить ежедневные рекомендации</string>
+    <string name="daily_recommend_retry">Повторить</string>
+    <string name="daily_recommend_songs_count">Сегодня: %1$d песен</string>
+    <string name="daily_recommend_subtitle">Персональная подборка, обновляется ежедневно</string>
+    <string name="daily_recommend_title">Рекомендации дня</string>
+    <string name="lib_empty_history_subtitle">Прослушанные песни появятся здесь.</string>
+    <string name="lib_empty_history_title">История воспроизведения пока пуста</string>
 </resources>

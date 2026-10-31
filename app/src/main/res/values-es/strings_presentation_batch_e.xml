@@ -125,9 +125,9 @@
         <item>70s</item>
         <item>80s</item>
         <item>90s</item>
-        <item>2000s</item>
-        <item>2010s</item>
-        <item>2020s</item>
+        <item>Años 2000</item>
+        <item>Años 2010</item>
+        <item>Años 2020</item>
     </string-array>
 
     <!-- ReorderPresetsSheet -->
@@ -146,158 +146,158 @@
     <string name="presentation_batch_e_daily_mix_cost_hint">Usamos una muestra pequeña para mantener los costes bajos</string>
     <string name="presentation_batch_e_daily_mix_updating">Actualizando…</string>
     <string name="presentation_batch_e_daily_mix_update">Actualizar Daily Mix</string>
-    <string name="presentation_batch_e_action_locate_current_song">Locate current song</string>
+    <string name="presentation_batch_e_action_locate_current_song">Localizar la canción actual</string>
     
-    <string name="presentation_batch_e_ai_afternoon_subtitle">Keep productive</string>
+    <string name="presentation_batch_e_ai_afternoon_subtitle">Mantén la productividad</string>
     
-    <string name="presentation_batch_e_ai_afternoon_title">AI Afternoon Drive</string>
+    <string name="presentation_batch_e_ai_afternoon_title">Tarde con IA</string>
     
-    <string name="presentation_batch_e_ai_desc_1">Based on your recent listening, I think you\'ll love these picks!</string>
+    <string name="presentation_batch_e_ai_desc_1">Según tu escucha reciente, ¡creo que te encantarán estas selecciones!</string>
     
-    <string name="presentation_batch_e_ai_desc_2">Curated just for you - discover new music that fits your vibe.</string>
+    <string name="presentation_batch_e_ai_desc_2">Seleccionado para ti: descubre música nueva que encaje con tu vibra.</string>
     
-    <string name="presentation_batch_e_ai_desc_3">Your taste is amazing! Here are some tracks you shouldn\'t miss.</string>
+    <string name="presentation_batch_e_ai_desc_3">¡Tu gusto es increíble! Aquí tienes pistas que no deberías perderte.</string>
     
-    <string name="presentation_batch_e_ai_desc_4">Perfect for this moment - let the music guide your mood.</string>
+    <string name="presentation_batch_e_ai_desc_4">Perfecto para este momento: deja que la música guíe tu ánimo.</string>
     
-    <string name="presentation_batch_e_ai_desc_5">Mixing your favorites with fresh finds - enjoy your personalized playlist!</string>
+    <string name="presentation_batch_e_ai_desc_5">Mezclando tus favoritas con novedades: ¡disfruta de tu lista personalizada!</string>
 
     
     
-    <string name="presentation_batch_e_ai_eval_cohesion">Cohesion</string>
+    <string name="presentation_batch_e_ai_eval_cohesion">Cohesión</string>
     
-    <string name="presentation_batch_e_ai_eval_diversity">Diversity</string>
+    <string name="presentation_batch_e_ai_eval_diversity">Diversidad</string>
     
-    <string name="presentation_batch_e_ai_eval_energy_flow">Energy Flow</string>
+    <string name="presentation_batch_e_ai_eval_energy_flow">Flujo de energía</string>
     
-    <string name="presentation_batch_e_ai_eval_suggestions">Suggestions</string>
+    <string name="presentation_batch_e_ai_eval_suggestions">Sugerencias</string>
     
-    <string name="presentation_batch_e_ai_eval_title">AI Evaluation</string>
+    <string name="presentation_batch_e_ai_eval_title">Evaluación de IA</string>
     
-    <string name="presentation_batch_e_ai_evaluate_playlist">AI Evaluate Playlist</string>
+    <string name="presentation_batch_e_ai_evaluate_playlist">Evaluar lista con IA</string>
     
-    <string name="presentation_batch_e_ai_evaluating">Evaluating playlist…</string>
+    <string name="presentation_batch_e_ai_evaluating">Evaluando la lista…</string>
     
-    <string name="presentation_batch_e_ai_evening_subtitle">Unwind after a long day</string>
+    <string name="presentation_batch_e_ai_evening_subtitle">Desconecta tras un largo día</string>
     
-    <string name="presentation_batch_e_ai_evening_title">AI Evening Wind Down</string>
+    <string name="presentation_batch_e_ai_evening_title">Relax nocturno con IA</string>
     
-    <string name="presentation_batch_e_ai_holiday_april_fools">April Fools</string>
+    <string name="presentation_batch_e_ai_holiday_april_fools">Día de las Inocentes</string>
     
     <string name="presentation_batch_e_ai_holiday_april_fools_tag">Fun</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_christmas">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas">Navidad</string>
     
-    <string name="presentation_batch_e_ai_holiday_christmas_tag">Christmas</string>
+    <string name="presentation_batch_e_ai_holiday_christmas_tag">Navidad</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_fathers">Father\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_fathers">Día del Padre</string>
     
-    <string name="presentation_batch_e_ai_holiday_fathers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_fathers_tag">Familia</string>
     
     
     <string name="presentation_batch_e_ai_holiday_halloween">Halloween</string>
     
-    <string name="presentation_batch_e_ai_holiday_halloween_tag">Spooky</string>
+    <string name="presentation_batch_e_ai_holiday_halloween_tag">Terror</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_independence">Independence Day</string>
+    <string name="presentation_batch_e_ai_holiday_independence">Día de la Independencia</string>
     
-    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriotic</string>
+    <string name="presentation_batch_e_ai_holiday_independence_tag">Patriótico</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_labor">Labor Day</string>
+    <string name="presentation_batch_e_ai_holiday_labor">Día del Trabajo</string>
     
     <string name="presentation_batch_e_ai_holiday_labor_tag">Work</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_mothers">Mother\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_mothers">Día de la Madre</string>
     
-    <string name="presentation_batch_e_ai_holiday_mothers_tag">Family</string>
+    <string name="presentation_batch_e_ai_holiday_mothers_tag">Familia</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year">Año Nuevo</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve">New Year\'s Eve</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve">Nochevieja</string>
     
-    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Party</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_eve_tag">Fiesta</string>
 
     
     
-    <string name="presentation_batch_e_ai_holiday_new_year_tag">New Year</string>
+    <string name="presentation_batch_e_ai_holiday_new_year_tag">Año Nuevo</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick">St. Patrick\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick">Día de San Patricio</string>
     
-    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irish</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving">Thanksgiving</string>
-    
-    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Gratitude</string>
+    <string name="presentation_batch_e_ai_holiday_st_patrick_tag">Irlandés</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_valentine">Valentine\'s Day</string>
+    <string name="presentation_batch_e_ai_holiday_thanksgiving">Acción de Gracias</string>
+    
+    <string name="presentation_batch_e_ai_holiday_thanksgiving_tag">Gratitud</string>
+    
+    
+    <string name="presentation_batch_e_ai_holiday_valentine">San Valentín</string>
     
     <string name="presentation_batch_e_ai_holiday_valentine_tag">Love</string>
     
     
-    <string name="presentation_batch_e_ai_holiday_veterans">Veterans Day</string>
+    <string name="presentation_batch_e_ai_holiday_veterans">Día de los Veteranos</string>
     
-    <string name="presentation_batch_e_ai_holiday_veterans_tag">Tribute</string>
-    
-    
-    <string name="presentation_batch_e_ai_holiday_womens">Women\'s Day</string>
-    
-    <string name="presentation_batch_e_ai_holiday_womens_tag">Celebrate</string>
+    <string name="presentation_batch_e_ai_holiday_veterans_tag">Homenaje</string>
     
     
-    <string name="presentation_batch_e_ai_late_night_subtitle">Deep and mellow</string>
+    <string name="presentation_batch_e_ai_holiday_womens">Día de la Mujer</string>
     
-    <string name="presentation_batch_e_ai_late_night_title">AI Late Night</string>
-    
-    <string name="presentation_batch_e_ai_lunch_subtitle">Relax and recharge</string>
-    
-    <string name="presentation_batch_e_ai_lunch_title">AI Lunch Break</string>
-    
-    <string name="presentation_batch_e_ai_midday_subtitle">Keep the momentum going</string>
-    
-    <string name="presentation_batch_e_ai_midday_title">AI Midday Flow</string>
-    
-    <string name="presentation_batch_e_ai_morning_subtitle">Start your day with energy</string>
-    
-    <string name="presentation_batch_e_ai_morning_title">AI Morning Boost</string>
-    
-    <string name="presentation_batch_e_ai_night_subtitle">Perfect for late nights</string>
-    
-    <string name="presentation_batch_e_ai_night_title">AI Night Vibes</string>
-    
-    <string name="presentation_batch_e_ai_recommendation_success">AI recommendation generated!</string>
-    
-    <string name="presentation_batch_e_ai_tag_chill">Chill</string>
+    <string name="presentation_batch_e_ai_holiday_womens_tag">Celebración</string>
     
     
-    <string name="presentation_batch_e_ai_tag_focus">Focus</string>
+    <string name="presentation_batch_e_ai_late_night_subtitle">Profundo y suave</string>
+    
+    <string name="presentation_batch_e_ai_late_night_title">Madrugada con IA</string>
+    
+    <string name="presentation_batch_e_ai_lunch_subtitle">Relájate y recarga energía</string>
+    
+    <string name="presentation_batch_e_ai_lunch_title">Pausa del almuerzo con IA</string>
+    
+    <string name="presentation_batch_e_ai_midday_subtitle">Sigue con el impulso</string>
+    
+    <string name="presentation_batch_e_ai_midday_title">Mediodía con IA</string>
+    
+    <string name="presentation_batch_e_ai_morning_subtitle">Empieza el día con energía</string>
+    
+    <string name="presentation_batch_e_ai_morning_title">Mañana con IA</string>
+    
+    <string name="presentation_batch_e_ai_night_subtitle">Perfecto para la noche</string>
+    
+    <string name="presentation_batch_e_ai_night_title">Vibra nocturna con IA</string>
+    
+    <string name="presentation_batch_e_ai_recommendation_success">¡Recomendación de IA generada!</string>
+    
+    <string name="presentation_batch_e_ai_tag_chill">Relax</string>
     
     
-    <string name="presentation_batch_e_ai_tag_morning">Morning</string>
+    <string name="presentation_batch_e_ai_tag_focus">Concentración</string>
     
     
-    <string name="presentation_batch_e_ai_tag_night">Night</string>
+    <string name="presentation_batch_e_ai_tag_morning">Mañana</string>
     
     
-    <string name="presentation_batch_e_ai_tag_relax">Relax</string>
+    <string name="presentation_batch_e_ai_tag_night">Noche</string>
     
     
-    <string name="presentation_batch_e_ai_tag_sleep">Sleep</string>
+    <string name="presentation_batch_e_ai_tag_relax">Descanso</string>
+    
+    
+    <string name="presentation_batch_e_ai_tag_sleep">Dormir</string>
     
     
     
     <string name="presentation_batch_e_ai_tag_work">Work</string>
     
     
-    <string name="presentation_batch_e_ai_view_all_mix">View All AI Mix</string>
+    <string name="presentation_batch_e_ai_view_all_mix">Ver todo el Mix de IA</string>
     
     
     

@@ -2,7 +2,7 @@
 <resources>
     <!-- Main settings screen -->
     <string name="settings_top_bar_title">Einstellungen</string>
-    <string name="settings_accounts_row_title">Accounts</string>
+    <string name="settings_accounts_row_title">Konten</string>
     <string
         name="settings_accounts_row_subtitle"
     >Telegram, Google Drive, Netease und mehr verwalten</string>
@@ -144,7 +144,7 @@
     <string name="setcat_player_theme_label">Player-Design</string>
     <string name="setcat_player_theme_desc">Wie der Player aussieht.</string>
     <string name="setcat_player_theme_album_art">Cover</string>
-    <string name="setcat_player_theme_dynamic">System Dynamic</string>
+    <string name="setcat_player_theme_dynamic">Systemdynamisch</string>
     <string
         name="setcat_show_player_file_info_title"
     >Dateiinfo im Player</string>
@@ -243,7 +243,7 @@
     <string
         name="setcat_gain_mode_desc"
     >Track: jeden Song einzeln normalisieren. Album: Lautstärke pro Album angleichen.</string>
-    <string name="setcat_gain_mode_track">Track</string>
+    <string name="setcat_gain_mode_track">Titel</string>
     <string name="setcat_gain_mode_album">Album</string>
     <string name="setcat_cast">Cast</string>
     <string
@@ -316,7 +316,7 @@
         name="setcat_safe_token_off"
     >AUS – Mehr Kontext. Das vollständige Hörprofil (~8K Tokens) für bessere Ergebnisse.</string>
     <string name="setcat_credentials">Zugangsdaten</string>
-    <string name="setcat_ai_api_key_title">%1$s API Key</string>
+    <string name="setcat_ai_api_key_title">%1$s-API-Schlüssel</string>
     <string name="setcat_ai_api_key_subtitle">Erhältlich bei %1$s</string>
     <string
         name="setcat_ai_source_gemini"
@@ -465,112 +465,112 @@
     >Importierte Lyrics zurücksetzen?</string>
     <string name="setcat_language_korean">Koreanisch</string>
     <string name="setcat_language_norwegian_bokmal">Norwegisch Bokmål</string>
-    <string name="setcat_download_complete">Download complete</string>
-    <string name="setcat_download_failed">Download failed</string>
+    <string name="setcat_download_complete">Download abgeschlossen</string>
+    <string name="setcat_download_failed">Download fehlgeschlagen</string>
     <string name="setcat_download_progress_format">%1$.0f%%</string>
-    <string name="setcat_download_progress_title">Download progress</string>
-    <string name="ai_auto_disabled">AI auto-trigger is disabled</string>
+    <string name="setcat_download_progress_title">Download-Fortschritt</string>
+    <string name="ai_auto_disabled">Automatische KI-Auslösung ist deaktiviert</string>
     
     <string name="backup_file_name_format">XiangsuPlayer_Backup_%1$d.pxpl</string>
 
     
-    <string name="backup_format_external_desc">Compatible with other XiangsuPlayer versions</string>
+    <string name="backup_format_external_desc">Kompatibel mit anderen XiangsuPlayer-Versionen</string>
     
-    <string name="backup_format_external_title">External (.pxpbak)</string>
+    <string name="backup_format_external_title">Extern (.pxpbak)</string>
     
-    <string name="backup_format_pxpl_desc">Original format with all data types</string>
+    <string name="backup_format_pxpl_desc">Originalformat mit allen Datentypen</string>
     
     <string name="backup_format_pxpl_title">PixelPlay (.pxpl)</string>
     
-    <string name="backup_format_select_prompt">Choose backup format:</string>
+    <string name="backup_format_select_prompt">Backup-Format wählen:</string>
     
-    <string name="backup_history_modules_line">%1$d modules · v%2$s · schema v%3$d</string>
+    <string name="backup_history_modules_line">%1$d Module · v%2$s · Schema v%3$d</string>
     
-    <string name="car_mode_action_library">Library</string>
+    <string name="car_mode_action_library">Bibliothek</string>
     
-    <string name="car_mode_action_library_desc">Your music</string>
+    <string name="car_mode_action_library_desc">Deine Musik</string>
     
     <string name="car_mode_action_roaming">Roaming</string>
     
-    <string name="car_mode_action_roaming_desc">Netease Cloud Music roaming</string>
+    <string name="car_mode_action_roaming_desc">Roaming in NetEase Cloud Music</string>
     
-    <string name="car_mode_action_search">Search</string>
+    <string name="car_mode_action_search">Suche</string>
     
-    <string name="car_mode_action_search_desc">Find songs</string>
+    <string name="car_mode_action_search_desc">Songs finden</string>
     
-    <string name="car_mode_action_settings">Settings</string>
+    <string name="car_mode_action_settings">Einstellungen</string>
     
-    <string name="car_mode_action_settings_desc">App settings</string>
+    <string name="car_mode_action_settings_desc">App-Einstellungen</string>
 
     
     
-    <string name="car_mode_quick_actions_title">Quick Actions</string>
+    <string name="car_mode_quick_actions_title">Schnellaktionen</string>
     
-    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_clear_search">Suche löschen</string>
     
     <string name="cd_hide">Hide</string>
     
-    <string name="cd_remove_from_history">Remove from history</string>
+    <string name="cd_remove_from_history">Aus Verlauf entfernen</string>
     
     <string name="cd_show">Show</string>
     
-    <string name="confirm">Confirm</string>
+    <string name="confirm">Bestätigen</string>
     
-    <string name="dialog_cannot_undo">This action cannot be undone.</string>
+    <string name="dialog_cannot_undo">Das lässt sich nicht rückgängig machen.</string>
     
-    <string name="dialog_rebuild_database_message">This will completely rebuild your music library from scratch. All imported lyrics, favorites, and custom metadata will be lost. This action cannot be undone.</string>
+    <string name="dialog_rebuild_database_message">Damit wird deine Musikbibliothek komplett neu aufgebaut. Alle importierten Lyrics, Favoriten und benutzerdefinierten Metadaten gehen verloren. Das lässt sich nicht rückgängig machen.</string>
     
-    <string name="dialog_rebuild_database_title">Rebuild database?</string>
+    <string name="dialog_rebuild_database_title">Datenbank neu aufbauen?</string>
     
-    <string name="dialog_regenerate_daily_mix_body">This will discard the current mix and generate a new one based on recent listening habits.</string>
+    <string name="dialog_regenerate_daily_mix_body">Der aktuelle Mix wird verworfen und anhand deiner letzten Hörgewohnheiten neu erstellt.</string>
     
-    <string name="dialog_regenerate_daily_mix_title">Regenerate Daily Mix?</string>
+    <string name="dialog_regenerate_daily_mix_title">Daily Mix neu erstellen?</string>
     
-    <string name="dialog_regenerate_stats_body">This will clear the statistics cache and force a recalculation from the database history.</string>
+    <string name="dialog_regenerate_stats_body">Der Statistik-Cache wird geleert und anhand der Datenbankhistorie neu berechnet.</string>
     
-    <string name="dialog_regenerate_stats_title">Regenerate Stats?</string>
+    <string name="dialog_regenerate_stats_title">Statistiken neu berechnen?</string>
     
-    <string name="dot_device_api_key_hint">输入你的 Dot API Key</string>
+    <string name="dot_device_api_key_hint">Dot-API-Schlüssel eingeben</string>
     
-    <string name="dot_device_api_key_label">API Key</string>
+    <string name="dot_device_api_key_label">API-Schlüssel</string>
     
-    <string name="dot_device_auto_push_description">切换歌曲时自动推送专辑封面到墨水屏</string>
+    <string name="dot_device_auto_push_description">Albumcover automatisch an das E-Ink-Display senden, wenn der Song wechselt</string>
     
-    <string name="dot_device_auto_push_title">自动推送专辑封面</string>
+    <string name="dot_device_auto_push_title">Albumcover automatisch senden</string>
     
-    <string name="dot_device_clear">清除设置</string>
+    <string name="dot_device_clear">Einstellungen löschen</string>
 
     
     
-    <string name="dot_device_header_description">将当前播放歌曲的专辑封面推送到墨水屏设备显示</string>
+    <string name="dot_device_header_description">Albumcover des aktuell laufenden Songs an das E-Ink-Display senden</string>
     
-    <string name="dot_device_header_title">Dot 墨水屏设备</string>
+    <string name="dot_device_header_title">Dot E-Ink-Display-Gerät</string>
     
-    <string name="dot_device_id_hint">输入设备 ID</string>
+    <string name="dot_device_id_hint">Geräte-ID eingeben</string>
     
-    <string name="dot_device_id_label">Device ID</string>
+    <string name="dot_device_id_label">Geräte-ID</string>
     
-    <string name="dot_device_save">保存设置</string>
+    <string name="dot_device_save">Einstellungen speichern</string>
     
-    <string name="dot_device_settings_title">Dot 墨水屏设置</string>
+    <string name="dot_device_settings_title">Einstellungen für Dot E-Ink-Display</string>
     
-    <string name="dot_device_test_connection">测试连接</string>
+    <string name="dot_device_test_connection">Verbindung testen</string>
     
-    <string name="dot_device_testing">测试中...</string>
+    <string name="dot_device_testing">Wird getestet…</string>
     
-    <string name="equalizer_preset_bass_boost">Bass Boost</string>
+    <string name="equalizer_preset_bass_boost">Bassverstärkung</string>
     
-    <string name="equalizer_preset_classical">Classical</string>
+    <string name="equalizer_preset_classical">Klassik</string>
     
-    <string name="equalizer_preset_custom">Custom</string>
+    <string name="equalizer_preset_custom">Benutzerdefiniert</string>
 
     
     
-    <string name="equalizer_preset_electronic">Electronic</string>
+    <string name="equalizer_preset_electronic">Elektronisch</string>
     
     <string name="equalizer_preset_flat">Flat</string>
     
-    <string name="equalizer_preset_hip_hop">Hip Hop</string>
+    <string name="equalizer_preset_hip_hop">Hip-Hop</string>
     
     <string name="equalizer_preset_jazz">Jazz</string>
     
@@ -578,415 +578,415 @@
     
     <string name="equalizer_preset_rock">Rock</string>
     
-    <string name="equalizer_preset_treble_boost">Treble Boost</string>
+    <string name="equalizer_preset_treble_boost">Höhenverstärkung</string>
     
-    <string name="equalizer_preset_vocal">Vocal</string>
+    <string name="equalizer_preset_vocal">Gesang</string>
     
-    <string name="import_backup_hint">选择一个 .pxpl 或 .pxpbak 备份文件进行检查。你将在下一步中选择要恢复的部分。</string>
+    <string name="import_backup_hint">Wähle eine .pxpl- oder .pxpbak-Backupdatei zum Prüfen. Im nächsten Schritt legst du fest, was wiederhergestellt wird.</string>
     
-    <string name="import_backup_toolbar_title">Import Backup</string>
+    <string name="import_backup_toolbar_title">Backup importieren</string>
     
-    <string name="import_browse_file">Browse for file</string>
+    <string name="import_browse_file">Datei auswählen</string>
     
-    <string name="import_inspecting">Inspecting…</string>
+    <string name="import_inspecting">Wird geprüft…</string>
     
-    <string name="import_no_recent_subtitle">Previously imported backups will appear here.</string>
+    <string name="import_no_recent_subtitle">Zuvor importierte Backups erscheinen hier.</string>
     
-    <string name="import_no_recent_title">No recent backups</string>
+    <string name="import_no_recent_title">Keine aktuellen Backups</string>
     
-    <string name="import_recent_backups">Recent Backups</string>
+    <string name="import_recent_backups">Aktuelle Backups</string>
     
-    <string name="music_quality_flac">Lossless (FLAC)</string>
+    <string name="music_quality_flac">Verlustfrei (FLAC)</string>
     
-    <string name="music_quality_high">High (320kbps)</string>
+    <string name="music_quality_high">Hoch (320 kbit/s)</string>
     
-    <string name="music_quality_hires">Hi-Res (24bit)</string>
+    <string name="music_quality_hires">Hi-Res (24 Bit)</string>
     
-    <string name="music_quality_standard">Standard (128kbps)</string>
+    <string name="music_quality_standard">Standard (128 kbit/s)</string>
     
-    <string name="music_quality_subtitle">Preferred quality for streaming music. Higher quality uses more bandwidth.</string>
+    <string name="music_quality_subtitle">Bevorzugte Qualität für Musikstreaming. Höhere Qualität verbraucht mehr Bandbreite.</string>
     
-    <string name="music_quality_title">Music Quality</string>
+    <string name="music_quality_title">Musikqualität</string>
     
-    <string name="palette_force_regenerate_subtitle">Select a song to clear cached theme data and regenerate all palette styles from the album art.</string>
+    <string name="palette_force_regenerate_subtitle">Wähle einen Song, um zwischengespeicherte Designdaten zu löschen und alle Palettenstile aus dem Albumcover neu zu erzeugen.</string>
     
-    <string name="palette_force_regenerate_title">Force Regenerate Album Palette</string>
+    <string name="palette_force_regenerate_title">Album-Palette neu erzeugen</string>
     
-    <string name="palette_regenerating_progress">Regenerating palette…</string>
+    <string name="palette_regenerating_progress">Palette wird neu erzeugt…</string>
     
-    <string name="rebuild">Rebuild</string>
+    <string name="rebuild">Neu aufbauen</string>
     
-    <string name="search_no_songs_match">No songs match your search.</string>
+    <string name="search_no_songs_match">Keine Songs entsprechen deiner Suche.</string>
     
-    <string name="search_songs_by_title_artist_album">Search by title, artist, or album</string>
+    <string name="search_songs_by_title_artist_album">Nach Titel, Künstler oder Album suchen</string>
     
-    <string name="setcat_aaudio_subtitle_off">Default system audio backend (AudioTrack). Enable AAudio for higher quality output.</string>
+    <string name="setcat_aaudio_subtitle_off">Standard-Audio-Backend des Systems (AudioTrack). Aktiviere AAudio für höhere Ausgabequalität.</string>
     
-    <string name="setcat_aaudio_subtitle_on">Using AAudio for improved audio fidelity and lower latency.</string>
+    <string name="setcat_aaudio_subtitle_on">AAudio wird für bessere Audioqualität und geringere Latenz verwendet.</string>
     
-    <string name="setcat_aaudio_title">AAudio Low-Latency Backend</string>
+    <string name="setcat_aaudio_title">AAudio-Backend mit niedriger Latenz</string>
     
-    <string name="setcat_ai_activity_log_title">AI Activity Log (%1$d)</string>
+    <string name="setcat_ai_activity_log_title">KI-Aktivitätsprotokoll (%1$d)</string>
     
-    <string name="setcat_ai_api_key_title_simple">API Key</string>
+    <string name="setcat_ai_api_key_title_simple">API-Schlüssel</string>
     
-    <string name="setcat_ai_auto_daily_mix_subtitle">Automatically enhance Daily Mix with AI</string>
-    
-    
-    <string name="setcat_ai_auto_daily_mix_title">Daily Mix AI Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_metadata_subtitle">Automatically fetch AI-generated metadata</string>
-    
-    <string name="setcat_ai_auto_metadata_title">AI Metadata Auto-Trigger</string>
-    
-    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Automatically evaluate playlists with AI</string>
+    <string name="setcat_ai_auto_daily_mix_subtitle">Daily Mix automatisch per KI verbessern</string>
     
     
-    <string name="setcat_ai_auto_playlist_evaluation_title">AI Playlist Evaluation Auto-Trigger</string>
+    <string name="setcat_ai_auto_daily_mix_title">Automatische KI-Auslösung für Daily Mix</string>
     
-    <string name="setcat_ai_auto_playlist_subtitle">Automatically generate AI playlists when triggered</string>
+    <string name="setcat_ai_auto_metadata_subtitle">KI-generierte Metadaten automatisch abrufen</string>
     
-    <string name="setcat_ai_auto_playlist_title">AI Playlist Auto-Trigger</string>
+    <string name="setcat_ai_auto_metadata_title">Automatische KI-Auslösung für Metadaten</string>
     
-    <string name="setcat_ai_auto_trigger_section">Auto-Trigger Settings</string>
+    <string name="setcat_ai_auto_playlist_evaluation_subtitle">Playlists automatisch per KI bewerten</string>
     
-    <string name="setcat_ai_clear_logs">Clear Logs</string>
     
-    <string name="setcat_ai_lyrics_explanation_subtitle">Show AI-powered lyrics explanation card in the lyrics view (off by default; can be enabled per-session from the lyrics menu)</string>
+    <string name="setcat_ai_auto_playlist_evaluation_title">Automatische KI-Auslösung für Playlist-Bewertung</string>
+    
+    <string name="setcat_ai_auto_playlist_subtitle">KI-Playlists bei Auslösung automatisch erstellen</string>
+    
+    <string name="setcat_ai_auto_playlist_title">Automatische KI-Auslösung für Playlists</string>
+    
+    <string name="setcat_ai_auto_trigger_section">Einstellungen für automatische Auslösung</string>
+    
+    <string name="setcat_ai_clear_logs">Protokolle löschen</string>
+    
+    <string name="setcat_ai_lyrics_explanation_subtitle">Zeige die KI-Lyrics-Erklärungskarte in der Lyrics-Ansicht (standardmäßig aus; kann pro Sitzung über das Lyrics-Menü aktiviert werden)</string>
 
     
-    <string name="setcat_ai_lyrics_explanation_title">AI Lyrics Insight Card</string>
+    <string name="setcat_ai_lyrics_explanation_title">KI-Lyrics-Einblick-Karte</string>
     
-    <string name="setcat_ai_recommendation_card_subtitle">Display AI recommendation card on home screen</string>
+    <string name="setcat_ai_recommendation_card_subtitle">KI-Empfehlungskarte auf dem Startbildschirm anzeigen</string>
     
-    <string name="setcat_ai_recommendation_card_title">Show AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_card_title">KI-Empfehlungskarte anzeigen</string>
     
-    <string name="setcat_ai_recommendation_manual_subtitle">Click to generate recommendation (prevents automatic token usage)</string>
+    <string name="setcat_ai_recommendation_manual_subtitle">Zum Erzeugen einer Empfehlung tippen (verhindert automatischen Tokenverbrauch)</string>
 
     
-    <string name="setcat_ai_recommendation_manual_title">Manual Generation Only</string>
+    <string name="setcat_ai_recommendation_manual_title">Nur manuelle Erstellung</string>
     
-    <string name="setcat_ai_recommendation_section">AI Recommendation Card</string>
+    <string name="setcat_ai_recommendation_section">KI-Empfehlungskarte</string>
     
-    <string name="setcat_bluetooth_lyrics">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics">Bluetooth-Lyrics</string>
     
-    <string name="setcat_bluetooth_lyrics_subtitle">Push the currently playing song lyrics to compatible Bluetooth A2DP display devices.</string>
+    <string name="setcat_bluetooth_lyrics_subtitle">Sende die Lyrics des aktuell laufenden Songs an kompatible Bluetooth-A2DP-Displaygeräte.</string>
     
-    <string name="setcat_bluetooth_lyrics_title">Bluetooth Lyrics</string>
+    <string name="setcat_bluetooth_lyrics_title">Bluetooth-Lyrics</string>
     
-    <string name="setcat_car_mode_subtitle">Optimized for driving: larger controls, reduced animations, and improved performance.</string>
+    <string name="setcat_car_mode_subtitle">Fürs Fahren optimiert: größere Bedienelemente, weniger Animationen und bessere Leistung.</string>
     
     
     
-    <string name="setcat_car_mode_title">Car Mode</string>
+    <string name="setcat_car_mode_title">Auto-Modus</string>
     
-    <string name="setcat_center_nav_discover">Discover</string>
+    <string name="setcat_center_nav_discover">Entdecken</string>
     
-    <string name="setcat_center_nav_none">Don\'t show</string>
+    <string name="setcat_center_nav_none">Nicht anzeigen</string>
     
     <string name="setcat_center_nav_radio">Radio</string>
     
     <string name="setcat_center_nav_roaming">Roaming</string>
     
-    <string name="setcat_center_nav_subtitle">Choose what the center navigation button does.</string>
+    <string name="setcat_center_nav_subtitle">Lege fest, was die mittlere Navigationsschaltfläche tut.</string>
     
-    <string name="setcat_center_nav_title">Center Button</string>
+    <string name="setcat_center_nav_title">Mittlere Schaltfläche</string>
     
-    <string name="setcat_choose_song">Choose Song</string>
+    <string name="setcat_choose_song">Song auswählen</string>
 
     
-    <string name="setcat_collage_pattern_cosmic_swirl">Cosmic Swirl</string>
+    <string name="setcat_collage_pattern_cosmic_swirl">Kosmischer Wirbel</string>
     
-    <string name="setcat_collage_pattern_honeycomb_groove">Honeycomb Groove</string>
+    <string name="setcat_collage_pattern_honeycomb_groove">Waben-Groove</string>
     
-    <string name="setcat_collage_pattern_pixel_mosaic">Pixel Mosaic</string>
+    <string name="setcat_collage_pattern_pixel_mosaic">Pixelmosaik</string>
     
-    <string name="setcat_collage_pattern_stardust_scatter">Stardust Scatter</string>
+    <string name="setcat_collage_pattern_stardust_scatter">Sternenstaub</string>
     
-    <string name="setcat_collage_pattern_vinyl_stack">Vinyl Stack</string>
+    <string name="setcat_collage_pattern_vinyl_stack">Vinyl-Stapel</string>
     
-    <string name="setcat_custom_palette_enabled_subtitle">When off, the app follows wallpaper colors. When on, custom colors are used. The player keeps its own album-art colors.</string>
+    <string name="setcat_custom_palette_enabled_subtitle">Wenn aus, folgt die App den Farben des Hintergrundbilds. Wenn an, werden eigene Farben verwendet. Der Player behält seine eigenen Albumcover-Farben.</string>
     
-    <string name="setcat_custom_palette_enabled_title">Enable App Palette</string>
+    <string name="setcat_custom_palette_enabled_title">App-Palette aktivieren</string>
     
     <string name="setcat_custom_player_background_blur_off">Off</string>
     
-    <string name="setcat_custom_player_background_blur_title">Background Blur</string>
+    <string name="setcat_custom_player_background_blur_title">Hintergrundunschärfe</string>
     
-    <string name="setcat_custom_player_background_change">Change background image</string>
+    <string name="setcat_custom_player_background_change">Hintergrundbild ändern</string>
     
     <string name="setcat_custom_player_background_mode_cover">Fill</string>
     
-    <string name="setcat_custom_player_background_mode_stretch">Stretch</string>
+    <string name="setcat_custom_player_background_mode_stretch">Strecken</string>
     
-    <string name="setcat_custom_player_background_mode_title">Display Mode</string>
+    <string name="setcat_custom_player_background_mode_title">Anzeigemodus</string>
     
-    <string name="setcat_custom_player_background_pick">Choose background image</string>
+    <string name="setcat_custom_player_background_pick">Hintergrundbild auswählen</string>
     
-    <string name="setcat_custom_player_background_remove">Remove background</string>
+    <string name="setcat_custom_player_background_remove">Hintergrund entfernen</string>
     
-    <string name="setcat_custom_player_background_subtitle">Use a custom image as the background of the player and lyrics screens. When enabled, it takes precedence over the dynamic album-art background below.</string>
+    <string name="setcat_custom_player_background_subtitle">Verwende ein eigenes Bild als Hintergrund des Players und der Lyrics-Ansicht. Wenn aktiviert, hat es Vorrang vor dem unten stehenden dynamischen Albumcover-Hintergrund.</string>
     
-    <string name="setcat_custom_player_background_title">Custom Player Background</string>
+    <string name="setcat_custom_player_background_title">Eigener Player-Hintergrund</string>
     
-    <string name="setcat_custom_player_controls_opacity_desc">Applies to all elements except the background (album art, metadata, progress, controls) on both the player and lyrics screens.</string>
+    <string name="setcat_custom_player_controls_opacity_desc">Gilt für alle Elemente außer dem Hintergrund (Albumcover, Metadaten, Fortschritt, Steuerung) auf dem Player- und dem Lyrics-Bildschirm.</string>
     
-    <string name="setcat_custom_player_controls_opacity_title">Player Opacity</string>
+    <string name="setcat_custom_player_controls_opacity_title">Player-Deckkraft</string>
     
-    <string name="setcat_disable_blur_all_over_subtitle">Turn off blur effects across the app to save battery and resources.</string>
+    <string name="setcat_disable_blur_all_over_subtitle">Schalte Unschärfeeffekte in der gesamten App aus, um Akku und Ressourcen zu sparen.</string>
     
-    <string name="setcat_disable_blur_all_over_title">Disable Blur Effects</string>
+    <string name="setcat_disable_blur_all_over_title">Unschärfeeffekte deaktivieren</string>
     
-    <string name="setcat_download_path_title">Download Path</string>
+    <string name="setcat_download_path_title">Download-Pfad</string>
     
     
     
     <string name="setcat_download_settings">Download Settings</string>
     
-    <string name="setcat_external_lyrics_broadcast_subtitle">When enabled, the system media title updates to the current lyric line in real time, showing lyrics outside the app (notification, lock screen, Bluetooth devices). When disabled, the original song title is restored.</string>
+    <string name="setcat_external_lyrics_broadcast_subtitle">Wenn aktiviert, aktualisiert sich der Medientitel des Systems in Echtzeit auf die aktuelle Lyrics-Zeile und zeigt Lyrics außerhalb der App (Benachrichtigung, Sperrbildschirm, Bluetooth-Geräte). Wenn deaktiviert, wird der ursprüngliche Songtitel wiederhergestellt.</string>
 
     
     
-    <string name="setcat_external_lyrics_broadcast_title">Broadcast Lyrics Externally</string>
+    <string name="setcat_external_lyrics_broadcast_title">Lyrics extern übertragen</string>
     
-    <string name="setcat_force_palette_empty">No songs with album art were found.</string>
+    <string name="setcat_force_palette_empty">Keine Songs mit Albumcover gefunden.</string>
     
-    <string name="setcat_force_palette_subtitle">Rebuild all cached palette variants for every album art, or pick a single one to refresh.</string>
+    <string name="setcat_force_palette_subtitle">Baue alle zwischengespeicherten Palettenvarianten für jedes Albumcover neu auf oder wähle ein einzelnes zum Aktualisieren.</string>
     
-    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix is a programmable LED display on the back of Nothing Phone (3) featuring 625 individual LEDs arranged in a 25×25 grid. When you play music, PixelPlayer can animate the matrix to create stunning visual effects that sync with your music.</string>
+    <string name="setcat_glyph_matrix_about_desc">Glyph Matrix ist ein programmierbares LED-Display auf der Rückseite des Nothing Phone (3) mit 625 einzelnen LEDs in einem 25×25-Raster. Wenn du Musik abspielst, kann PixelPlayer die Matrix animieren und beeindruckende visuelle Effekte erzeugen, die mit deiner Musik synchron sind.</string>
 
     
     
-    <string name="setcat_glyph_matrix_about_title">About Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_about_title">Über Glyph Matrix</string>
     
-    <string name="setcat_glyph_matrix_enable_subtitle">Show music visualization on Nothing Phone LED matrix</string>
+    <string name="setcat_glyph_matrix_enable_subtitle">Musikvisualisierung auf der LED-Matrix des Nothing Phone anzeigen</string>
     
-    <string name="setcat_glyph_matrix_enable_title">Enable Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_enable_title">Glyph Matrix aktivieren</string>
     
-    <string name="setcat_glyph_matrix_mode_artwork">Album Cover</string>
+    <string name="setcat_glyph_matrix_mode_artwork">Albumcover</string>
     
-    <string name="setcat_glyph_matrix_mode_desc">Choose what to display on the Glyph Matrix</string>
+    <string name="setcat_glyph_matrix_mode_desc">Wähle, was auf der Glyph Matrix angezeigt wird</string>
     
-    <string name="setcat_glyph_matrix_mode_now_playing">Now Playing</string>
+    <string name="setcat_glyph_matrix_mode_now_playing">Wird abgespielt</string>
     
-    <string name="setcat_glyph_matrix_mode_progress">Playback Progress</string>
+    <string name="setcat_glyph_matrix_mode_progress">Wiedergabefortschritt</string>
     
-    <string name="setcat_glyph_matrix_mode_pulse">Beat Pulse</string>
+    <string name="setcat_glyph_matrix_mode_pulse">Beat-Puls</string>
     
-    <string name="setcat_glyph_matrix_mode_ring">Music Ring</string>
+    <string name="setcat_glyph_matrix_mode_ring">Musikring</string>
     
-    <string name="setcat_glyph_matrix_mode_scroll_title">Scrolling Title</string>
+    <string name="setcat_glyph_matrix_mode_scroll_title">Laufender Titel</string>
     
-    <string name="setcat_glyph_matrix_mode_title">Display Mode</string>
+    <string name="setcat_glyph_matrix_mode_title">Anzeigemodus</string>
     
-    <string name="setcat_glyph_matrix_mode_visualizer">Audio Visualizer</string>
+    <string name="setcat_glyph_matrix_mode_visualizer">Audiovisualizer</string>
     
-    <string name="setcat_glyph_matrix_mode_waveform">Waveform</string>
+    <string name="setcat_glyph_matrix_mode_waveform">Wellenform</string>
     
-    <string name="setcat_glyph_matrix_not_available">This feature requires a Nothing Phone with Glyph Matrix. You can still preview the effects below.</string>
+    <string name="setcat_glyph_matrix_not_available">Diese Funktion erfordert ein Nothing Phone mit Glyph Matrix. Du kannst die Effekte unten trotzdem in der Vorschau ansehen.</string>
     
-    <string name="setcat_glyph_matrix_not_available_title">Not available on this device</string>
+    <string name="setcat_glyph_matrix_not_available_title">Auf diesem Gerät nicht verfügbar</string>
     
-    <string name="setcat_glyph_matrix_preview_desc">This is how it will look on the Nothing Phone LED matrix (25×25)</string>
+    <string name="setcat_glyph_matrix_preview_desc">So sieht es auf der LED-Matrix des Nothing Phone aus (25×25)</string>
     
-    <string name="setcat_glyph_matrix_preview_title">Preview</string>
+    <string name="setcat_glyph_matrix_preview_title">Vorschau</string>
     
     <string name="setcat_glyph_matrix_section">Nothing Glyph Matrix</string>
     
-    <string name="setcat_home_top_whitespace_subtitle">Adjust the blank space above the Home content.</string>
+    <string name="setcat_home_top_whitespace_subtitle">Passe den Leerraum über dem Inhalt der Startseite an.</string>
     
-    <string name="setcat_home_top_whitespace_title">Home Top Whitespace</string>
+    <string name="setcat_home_top_whitespace_title">Leerraum oben auf der Startseite</string>
     
-    <string name="setcat_home_top_whitespace_value">Current whitespace: %1$d dp</string>
+    <string name="setcat_home_top_whitespace_value">Aktueller Leerraum: %1$d dp</string>
     
-    <string name="setcat_lyrics_gradient_overlay_desc">Show a soft gradient at the top and bottom of the lyrics screen for better readability.</string>
+    <string name="setcat_lyrics_gradient_overlay_desc">Zeige oben und unten am Lyrics-Bildschirm einen weichen Farbverlauf für bessere Lesbarkeit.</string>
     
-    <string name="setcat_lyrics_gradient_overlay_title">Lyrics Gradient Overlay</string>
+    <string name="setcat_lyrics_gradient_overlay_title">Lyrics-Verlaufsüberlagerung</string>
     
-    <string name="setcat_lyrics_solid_overlay_desc">Adjust the opacity of a solid overlay on the lyrics screen to dim the background.</string>
+    <string name="setcat_lyrics_solid_overlay_desc">Passe die Deckkraft einer einfarbigen Überlagerung auf dem Lyrics-Bildschirm an, um den Hintergrund abzudunkeln.</string>
     
-    <string name="setcat_lyrics_solid_overlay_title">Lyrics Solid Overlay</string>
+    <string name="setcat_lyrics_solid_overlay_title">Einfarbige Lyrics-Überlagerung</string>
     
-    <string name="setcat_lyrics_vibrant_bg_desc">Display a rotating blurred album art background behind the lyrics.</string>
+    <string name="setcat_lyrics_vibrant_bg_desc">Zeige hinter den Lyrics einen rotierenden, unscharfen Albumcover-Hintergrund.</string>
     
-    <string name="setcat_lyrics_vibrant_bg_title">Lyrics Vibrant Background</string>
+    <string name="setcat_lyrics_vibrant_bg_title">Lebendiger Lyrics-Hintergrund</string>
     
-    <string name="setcat_navbar_style_floating">Floating</string>
+    <string name="setcat_navbar_style_floating">Schwebend</string>
     
-    <string name="setcat_netease_quality_title">Netease Preferred Quality</string>
+    <string name="setcat_netease_quality_title">Bevorzugte NetEase-Qualität</string>
 
     
     
-    <string name="setcat_palette_brightness">Brightness</string>
+    <string name="setcat_palette_brightness">Helligkeit</string>
     
-    <string name="setcat_palette_cancel">Cancel</string>
+    <string name="setcat_palette_cancel">Abbrechen</string>
     
-    <string name="setcat_palette_confirm">Confirm</string>
+    <string name="setcat_palette_confirm">Bestätigen</string>
     
-    <string name="setcat_palette_custom_title">Custom Color</string>
+    <string name="setcat_palette_custom_title">Eigene Farbe</string>
     
     <string name="setcat_palette_hue">Hue</string>
     
-    <string name="setcat_palette_live_hint">Live preview</string>
+    <string name="setcat_palette_live_hint">Live-Vorschau</string>
     
-    <string name="setcat_palette_preview_label">Color Scheme Preview</string>
+    <string name="setcat_palette_preview_label">Vorschau des Farbschemas</string>
     
-    <string name="setcat_palette_saturation">Saturation</string>
+    <string name="setcat_palette_saturation">Sättigung</string>
     
-    <string name="setcat_player_theme_custom_palette">Custom Palette</string>
+    <string name="setcat_player_theme_custom_palette">Eigene Palette</string>
     
-    <string name="setcat_player_vibrant_bg_desc">Display a rotating blurred album art background in the player when no custom background image is set. A custom player background takes precedence over this.</string>
+    <string name="setcat_player_vibrant_bg_desc">Zeige im Player einen rotierenden, unscharfen Albumcover-Hintergrund, wenn kein eigenes Hintergrundbild festgelegt ist. Ein eigener Player-Hintergrund hat Vorrang.</string>
     
-    <string name="setcat_player_vibrant_bg_title">Player Vibrant Background</string>
+    <string name="setcat_player_vibrant_bg_title">Lebendiger Player-Hintergrund</string>
     
-    <string name="setcat_regenerate_all">Regenerate All</string>
+    <string name="setcat_regenerate_all">Alle neu erzeugen</string>
     
-    <string name="setcat_regenerate_daily_mix_action">Regenerate Daily Mix</string>
+    <string name="setcat_regenerate_daily_mix_action">Daily Mix neu erstellen</string>
     
-    <string name="setcat_regenerate_stats_action">Regenerate Stats</string>
+    <string name="setcat_regenerate_stats_action">Statistiken neu berechnen</string>
     
-    <string name="setcat_regenerating">Regenerating…</string>
+    <string name="setcat_regenerating">Wird neu erzeugt…</string>
     
-    <string name="setcat_select_export">Select &amp; Export</string>
+    <string name="setcat_select_export">Auswählen &amp; exportieren</string>
     
-    <string name="setcat_select_restore">Select &amp; Restore</string>
+    <string name="setcat_select_restore">Auswählen &amp; wiederherstellen</string>
 
     
     
-    <string name="setcat_show_lyrics_track_info_subtitle">Show song title and artist in a pill-shaped bar at the top of lyrics view.</string>
+    <string name="setcat_show_lyrics_track_info_subtitle">Zeige Songtitel und Künstler in einer pillenförmigen Leiste oben in der Lyrics-Ansicht.</string>
 
     
     
-    <string name="setcat_show_lyrics_track_info_title">Show lyrics track info</string>
+    <string name="setcat_show_lyrics_track_info_title">Titelinformationen in den Lyrics anzeigen</string>
     
-    <string name="setcat_show_scrollbar_subtitle">Display lateral scrollbar on music lists for quick scrolling</string>
+    <string name="setcat_show_scrollbar_subtitle">Zeige in Musiklisten eine seitliche Bildlaufleiste für schnelles Scrollen</string>
     
-    <string name="setcat_show_scrollbar_title">Show Scrollbar</string>
+    <string name="setcat_show_scrollbar_title">Bildlaufleiste anzeigen</string>
     
-    <string name="setcat_show_speed_button_subtitle">Show the speed (1x) button in the player control bar. Disable to hide it and manually adjust speed from the player.</string>
+    <string name="setcat_show_speed_button_subtitle">Zeige die Geschwindigkeitsschaltfläche (1x) in der Steuerleiste des Players. Deaktivieren, um sie auszublenden und die Geschwindigkeit manuell im Player anzupassen.</string>
     
-    <string name="setcat_show_speed_button_title">Show playback speed button</string>
+    <string name="setcat_show_speed_button_title">Wiedergabegeschwindigkeitsschaltfläche anzeigen</string>
     
-    <string name="setcat_tablet_layout_parallel">Parallel (Player + Lyrics)</string>
+    <string name="setcat_tablet_layout_parallel">Parallel (Player + Songtexte)</string>
     
-    <string name="setcat_tablet_layout_vertical">Vertical</string>
+    <string name="setcat_tablet_layout_vertical">Vertikal</string>
     
-    <string name="setcat_tablet_player_layout_desc">Choose the layout for the player on tablets.</string>
+    <string name="setcat_tablet_player_layout_desc">Wähle das Layout des Players auf Tablets.</string>
     
-    <string name="setcat_tablet_player_layout_label">Tablet Player Layout</string>
+    <string name="setcat_tablet_player_layout_label">Tablet-Player-Layout</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_16">16-bit (standard, widely compatible)</string>
+    <string name="setcat_usb_bit_depth_subtitle_16">16 Bit (Standard, breit kompatibel)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_24">24-bit (high-resolution, recommended)</string>
+    <string name="setcat_usb_bit_depth_subtitle_24">24 Bit (hochauflösend, empfohlen)</string>
     
-    <string name="setcat_usb_bit_depth_subtitle_32">32-bit (highest fidelity, USB DAC only)</string>
+    <string name="setcat_usb_bit_depth_subtitle_32">32 Bit (höchste Klangtreue, nur USB-DAC)</string>
     
-    <string name="setcat_usb_bit_depth_title">USB Output Bit Depth</string>
+    <string name="setcat_usb_bit_depth_title">Bittiefe der USB-Ausgabe</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_connected">Route audio to USB device: %s</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_connected">Audio an USB-Gerät leiten: %s</string>
     
-    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">No USB audio device detected. Connect a USB DAC to use this feature.</string>
+    <string name="setcat_usb_exclusive_mode_subtitle_disconnected">Kein USB-Audiogerät erkannt. Verbinde einen USB-DAC, um diese Funktion zu nutzen.</string>
     
-    <string name="setcat_usb_exclusive_mode_title">USB Exclusive Mode</string>
+    <string name="setcat_usb_exclusive_mode_title">USB-Exklusivmodus</string>
     
-    <string name="setcat_vibrant_bg_requires_newer">This effect requires the hardware blur of Android 11 or later and is disabled on this device.</string>
+    <string name="setcat_vibrant_bg_requires_newer">Dieser Effekt benötigt die Hardware-Unschärfe von Android 11 oder neuer und ist auf diesem Gerät deaktiviert.</string>
     
-    <string name="setcat_web_remote_audio_device_phone">Phone</string>
+    <string name="setcat_web_remote_audio_device_phone">Smartphone</string>
     
-    <string name="setcat_web_remote_audio_device_subtitle">When web connected: play on phone or web browser</string>
+    <string name="setcat_web_remote_audio_device_subtitle">Bei Web-Verbindung: auf Smartphone oder im Webbrowser abspielen</string>
     
-    <string name="setcat_web_remote_audio_device_title">Playback Device</string>
+    <string name="setcat_web_remote_audio_device_title">Wiedergabegerät</string>
     
-    <string name="setcat_web_remote_audio_device_web">Web Browser</string>
+    <string name="setcat_web_remote_audio_device_web">Webbrowser</string>
     
-    <string name="setcat_web_remote_enabled_subtitle">Access PixelPlay from any browser on your network</string>
+    <string name="setcat_web_remote_enabled_subtitle">Greife von jedem Browser in deinem Netzwerk auf PixelPlay zu</string>
     
-    <string name="setcat_web_remote_enabled_title">Enable Web Remote</string>
+    <string name="setcat_web_remote_enabled_title">Web Remote aktivieren</string>
     
-    <string name="setcat_web_remote_pin">PIN Code</string>
+    <string name="setcat_web_remote_pin">PIN-Code</string>
     
-    <string name="setcat_web_remote_port_subtitle">Port number for the web server (default: 8081)</string>
+    <string name="setcat_web_remote_port_subtitle">Portnummer für den Webserver (Standard: 8081)</string>
     
-    <string name="setcat_web_remote_port_title">Server Port</string>
+    <string name="setcat_web_remote_port_title">Server-Port</string>
     
     <string name="setcat_web_remote_section">Web Remote</string>
     
-    <string name="setcat_web_remote_server_address">Server Address</string>
+    <string name="setcat_web_remote_server_address">Serveradresse</string>
     
-    <string name="setcat_web_remote_server_running">Running</string>
+    <string name="setcat_web_remote_server_running">Läuft</string>
     
-    <string name="setcat_web_remote_server_status">Server Status</string>
+    <string name="setcat_web_remote_server_status">Serverstatus</string>
     
-    <string name="setcat_web_remote_server_stopped">Stopped</string>
+    <string name="setcat_web_remote_server_stopped">Gestoppt</string>
     
-    <string name="setcat_web_remote_start_button">Start Server</string>
+    <string name="setcat_web_remote_start_button">Server starten</string>
     
-    <string name="setcat_web_remote_stop_button">Stop Server</string>
+    <string name="setcat_web_remote_stop_button">Server stoppen</string>
     
     
-    <string name="setcat_web_remote_sync_subtitle">Web controls phone playback</string>
+    <string name="setcat_web_remote_sync_subtitle">Web steuert die Wiedergabe auf dem Smartphone</string>
     
-    <string name="setcat_web_remote_sync_title">Sync Mode</string>
+    <string name="setcat_web_remote_sync_title">Synchronisierungsmodus</string>
     
-    <string name="settings_category_glyph_matrix_subtitle">Nothing Phone LED matrix display integration</string>
+    <string name="settings_category_glyph_matrix_subtitle">Integration des LED-Matrix-Displays des Nothing Phone</string>
     
     <string name="settings_category_glyph_matrix_title">Glyph Matrix</string>
     
-    <string name="settings_category_web_remote_subtitle">Control playback from other devices on your network</string>
+    <string name="settings_category_web_remote_subtitle">Steuere die Wiedergabe von anderen Geräten in deinem Netzwerk</string>
     
     <string name="settings_category_web_remote_title">Web Remote</string>
     
-    <string name="settings_search_category_about">About</string>
+    <string name="settings_search_category_about">Info</string>
     
-    <string name="settings_search_category_ai_integration">AI Integration</string>
+    <string name="settings_search_category_ai_integration">KI-Integration</string>
     
-    <string name="settings_search_category_appearance">Appearance</string>
+    <string name="settings_search_category_appearance">Darstellung</string>
     
-    <string name="settings_search_category_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_search_category_backup_restore">Backup &amp; Wiederherstellung</string>
     
-    <string name="settings_search_category_behavior">Behavior</string>
+    <string name="settings_search_category_behavior">Verhalten</string>
     
-    <string name="settings_search_category_developer">Developer</string>
+    <string name="settings_search_category_developer">Entwickler</string>
     
-    <string name="settings_search_category_device_capabilities">Device Capabilities</string>
+    <string name="settings_search_category_device_capabilities">Gerätefunktionen</string>
     
     <string name="settings_search_category_equalizer">Equalizer</string>
     
-    <string name="settings_search_category_library">Music Library</string>
+    <string name="settings_search_category_library">Musikbibliothek</string>
     
-    <string name="settings_search_category_playback">Playback</string>
+    <string name="settings_search_category_playback">Wiedergabe</string>
     
-    <string name="settings_search_category_settings_format">%1$s settings</string>
+    <string name="settings_search_category_settings_format">%1$s-Einstellungen</string>
     
     
     
-    <string name="settings_search_category_subtitle">Settings category</string>
+    <string name="settings_search_category_subtitle">Einstellungskategorie</string>
     
     <string name="settings_search_keyword_aaudio">AAudio</string>
     
-    <string name="settings_search_keyword_about">About</string>
+    <string name="settings_search_keyword_about">Info</string>
     
-    <string name="settings_search_keyword_account">Account</string>
+    <string name="settings_search_keyword_account">Konto</string>
     
     <string name="settings_search_keyword_ai">AI</string>
     
     <string name="settings_search_keyword_album">Album</string>
     
-    <string name="settings_search_keyword_album_art">Album art</string>
+    <string name="settings_search_keyword_album_art">Albumcover</string>
     
-    <string name="settings_search_keyword_appearance">Appearance</string>
+    <string name="settings_search_keyword_appearance">Darstellung</string>
     
-    <string name="settings_search_keyword_artist">Artist</string>
+    <string name="settings_search_keyword_artist">Künstler</string>
     
-    <string name="settings_search_keyword_auto_hide">Auto-hide</string>
+    <string name="settings_search_keyword_auto_hide">Automatisch ausblenden</string>
     
-    <string name="settings_search_keyword_background">Background playback</string>
+    <string name="settings_search_keyword_background">Hintergrundwiedergabe</string>
     
-    <string name="settings_search_keyword_background_image">Background image, wallpaper</string>
+    <string name="settings_search_keyword_background_image">Hintergrundbild, Wallpaper</string>
     
     <string name="settings_search_keyword_backup">Backup</string>
     
-    <string name="settings_search_keyword_battery">Battery</string>
+    <string name="settings_search_keyword_battery">Akku</string>
     
     <string name="settings_search_keyword_bluetooth">Bluetooth</string>
     
@@ -994,158 +994,360 @@
     
     <string name="settings_search_keyword_cache">Cache</string>
     
-    <string name="settings_search_keyword_car_mode">Car mode</string>
+    <string name="settings_search_keyword_car_mode">Auto-Modus</string>
     
     <string name="settings_search_keyword_cast">Cast</string>
     
     <string name="settings_search_keyword_collage">Collage</string>
     
-    <string name="settings_search_keyword_color">Color</string>
+    <string name="settings_search_keyword_color">Farbe</string>
     
-    <string name="settings_search_keyword_compact">Compact</string>
+    <string name="settings_search_keyword_compact">Kompakt</string>
     
-    <string name="settings_search_keyword_corner_radius">Corner radius</string>
+    <string name="settings_search_keyword_corner_radius">Eckenradius</string>
     
     <string name="settings_search_keyword_crossfade">Crossfade</string>
     
-    <string name="settings_search_keyword_daily_mix">Daily mix</string>
+    <string name="settings_search_keyword_daily_mix">Daily Mix</string>
     
-    <string name="settings_search_keyword_developer">Developer</string>
+    <string name="settings_search_keyword_developer">Entwickler</string>
     
-    <string name="settings_search_keyword_device">Device</string>
+    <string name="settings_search_keyword_device">Gerät</string>
     
-    <string name="settings_search_keyword_diagnostics">Diagnostics</string>
+    <string name="settings_search_keyword_diagnostics">Diagnose</string>
     
     <string name="settings_search_keyword_download">Download</string>
     
-    <string name="settings_search_keyword_dynamic_background">Dynamic background, ambient</string>
+    <string name="settings_search_keyword_dynamic_background">Dynamischer Hintergrund, Ambient</string>
     
     
     
     <string name="settings_search_keyword_equalizer">Equalizer</string>
     
-    <string name="settings_search_keyword_excluded">Excluded folders</string>
+    <string name="settings_search_keyword_excluded">Ausgeschlossene Ordner</string>
     
-    <string name="settings_search_keyword_export">Export</string>
+    <string name="settings_search_keyword_export">Exportieren</string>
     
     <string name="settings_search_keyword_filter">Filter</string>
     
-    <string name="settings_search_keyword_folder">Folder</string>
+    <string name="settings_search_keyword_folder">Ordner</string>
     
-    <string name="settings_search_keyword_gesture">Gesture</string>
+    <string name="settings_search_keyword_gesture">Geste</string>
     
-    <string name="settings_search_keyword_haptics">Haptics</string>
+    <string name="settings_search_keyword_haptics">Haptik</string>
     
-    <string name="settings_search_keyword_headphones">Headphones</string>
+    <string name="settings_search_keyword_headphones">Kopfhörer</string>
     
     <string name="settings_search_keyword_hifi">HiFi</string>
     
-    <string name="settings_search_keyword_immersive_lyrics">Immersive lyrics</string>
+    <string name="settings_search_keyword_immersive_lyrics">Immersive Lyrics</string>
     
-    <string name="settings_search_keyword_import">Import</string>
+    <string name="settings_search_keyword_import">Importieren</string>
     
-    <string name="settings_search_keyword_language">Language</string>
+    <string name="settings_search_keyword_language">Sprache</string>
     
-    <string name="settings_search_keyword_lyrics">Lyrics</string>
+    <string name="settings_search_keyword_lyrics">Songtexte</string>
     
-    <string name="settings_search_keyword_maintenance">Maintenance</string>
+    <string name="settings_search_keyword_maintenance">Wartung</string>
     
-    <string name="settings_search_keyword_min_duration">Minimum duration</string>
+    <string name="settings_search_keyword_min_duration">Mindestdauer</string>
     
     <string name="settings_search_keyword_mixer">Mixer</string>
     
-    <string name="settings_search_keyword_model">Model</string>
+    <string name="settings_search_keyword_model">Modell</string>
     
     <string name="settings_search_keyword_navigation">Navigation</string>
     
-    <string name="settings_search_keyword_now_playing">Now playing</string>
+    <string name="settings_search_keyword_now_playing">Wird abgespielt</string>
     
-    <string name="settings_search_keyword_online_source">Online source</string>
+    <string name="settings_search_keyword_online_source">Online-Quelle</string>
     
     <string name="settings_search_keyword_palette">Palette</string>
     
-    <string name="settings_search_keyword_playback">Playback</string>
+    <string name="settings_search_keyword_playback">Wiedergabe</string>
     
     <string name="settings_search_keyword_player">Player</string>
     
-    <string name="settings_search_keyword_queue">Queue</string>
+    <string name="settings_search_keyword_queue">Warteschlange</string>
     
-    <string name="settings_search_keyword_recommendation">Recommendation</string>
+    <string name="settings_search_keyword_recommendation">Empfehlung</string>
     
-    <string name="settings_search_keyword_remote">Remote</string>
+    <string name="settings_search_keyword_remote">Fernbedienung</string>
     
     <string name="settings_search_keyword_replaygain">ReplayGain</string>
     
-    <string name="settings_search_keyword_restore">Restore</string>
+    <string name="settings_search_keyword_restore">Wiederherstellen</string>
     
     <string name="settings_search_keyword_scan">Scan</string>
     
-    <string name="settings_search_keyword_scroll">Scroll</string>
+    <string name="settings_search_keyword_scroll">Scrollen</string>
     
-    <string name="settings_search_keyword_shuffle">Shuffle</string>
+    <string name="settings_search_keyword_shuffle">Zufallswiedergabe</string>
     
-    <string name="settings_search_keyword_speed">Speed, playback rate</string>
+    <string name="settings_search_keyword_speed">Geschwindigkeit, Wiedergaberate</string>
     
-    <string name="settings_search_keyword_stats">Statistics</string>
+    <string name="settings_search_keyword_stats">Statistiken</string>
     
     <string name="settings_search_keyword_sync">Sync</string>
     
-    <string name="settings_search_keyword_theme">Theme</string>
+    <string name="settings_search_keyword_theme">Design</string>
     
     <string name="settings_search_keyword_token">Token</string>
     
-    <string name="settings_search_keyword_transcode">Transcode</string>
+    <string name="settings_search_keyword_transcode">Transkodierung</string>
     
     <string name="settings_search_keyword_usb">USB</string>
     
-    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_no_results">Keine Einstellungen gefunden</string>
     
-    <string name="settings_search_placeholder">Search settings</string>
+    <string name="settings_search_placeholder">Einstellungen durchsuchen</string>
     
-    <string name="settings_search_results_count_format">%1$d results</string>
+    <string name="settings_search_results_count_format">%1$d Ergebnisse</string>
     
-    <string name="sync_indicator_rebuilding">Rebuilding database</string>
+    <string name="sync_indicator_rebuilding">Datenbank wird neu aufgebaut</string>
     
-    <string name="toast_daily_mix_regeneration_started">Daily Mix regeneration started</string>
+    <string name="toast_daily_mix_regeneration_started">Neuerstellung des Daily Mix gestartet</string>
     
-    <string name="toast_rebuilding_database">Rebuilding database…</string>
+    <string name="toast_rebuilding_database">Datenbank wird neu aufgebaut…</string>
     
-    <string name="toast_stats_regeneration_started">Stats regeneration started</string>
+    <string name="toast_stats_regeneration_started">Neuberechung der Statistiken gestartet</string>
     
-    <string name="usb_bit_depth_16">16-bit</string>
+    <string name="usb_bit_depth_16">16-Bit</string>
     
-    <string name="usb_bit_depth_24">24-bit</string>
+    <string name="usb_bit_depth_24">24-Bit</string>
     
-    <string name="usb_bit_depth_32">32-bit</string>
+    <string name="usb_bit_depth_32">32-Bit</string>
     
-    <string name="usb_device_selector_connect_message">This will enable exclusive access to the USB DAC for bit-perfect audio. The system audio will be routed through the DAC directly.</string>
+    <string name="usb_device_selector_connect_message">Dies aktiviert den exklusiven Zugriff auf den USB-DAC für bitgenaues Audio. Das Systemaudio wird direkt über den DAC geleitet.</string>
     
-    <string name="usb_device_selector_connect_title">USB Exclusive Mode</string>
+    <string name="usb_device_selector_connect_title">USB-Exklusivmodus</string>
     
-    <string name="usb_device_selector_connected_to">Connected to: %s</string>
+    <string name="usb_device_selector_connected_to">Verbunden mit: %s</string>
     
-    <string name="usb_device_selector_connecting">Connecting to USB DAC…</string>
+    <string name="usb_device_selector_connecting">Verbindung zum USB-DAC wird hergestellt…</string>
     
-    <string name="usb_device_selector_connection_failed">Failed to connect to USB DAC</string>
+    <string name="usb_device_selector_connection_failed">Verbindung zum USB-DAC fehlgeschlagen</string>
     
-    <string name="usb_device_selector_hint">Connect a USB DAC and enable USB exclusive mode for bit-perfect audio output.</string>
+    <string name="usb_device_selector_hint">Verbinde einen USB-DAC und aktiviere den USB-Exklusivmodus für bitgenaue Audioausgabe.</string>
     
-    <string name="usb_device_selector_no_devices">No USB audio devices found</string>
+    <string name="usb_device_selector_no_devices">Keine USB-Audiogeräte gefunden</string>
     
-    <string name="usb_device_selector_permission_message">XiangsuPlayer needs access to your USB DAC to enable exclusive mode.</string>
+    <string name="usb_device_selector_permission_message">XiangsuPlayer benötigt Zugriff auf deinen USB-DAC, um den Exklusivmodus zu aktivieren.</string>
     
-    <string name="usb_device_selector_permission_required">USB permission required</string>
+    <string name="usb_device_selector_permission_required">USB-Berechtigung erforderlich</string>
     
-    <string name="usb_device_selector_refresh">Refresh</string>
+    <string name="usb_device_selector_refresh">Aktualisieren</string>
     
-    <string name="usb_device_selector_scanning">Scanning for USB devices…</string>
+    <string name="usb_device_selector_scanning">Suche nach USB-Geräten…</string>
     
-    <string name="usb_device_selector_select_device">Select USB DAC device</string>
+    <string name="usb_device_selector_select_device">USB-DAC-Gerät auswählen</string>
     
-    <string name="usb_device_selector_title">Select USB DAC</string>
+    <string name="usb_device_selector_title">USB-DAC auswählen</string>
     
-    <string name="usb_exclusive_toast_activate_failed">Failed to activate USB exclusive mode. Check device permission and try again.</string>
+    <string name="usb_exclusive_toast_activate_failed">USB-Exklusivmodus konnte nicht aktiviert werden. Prüfe die Geräteberechtigung und versuche es erneut.</string>
     
-    <string name="usb_exclusive_toast_activated">USB exclusive activated: %s</string>
+    <string name="usb_exclusive_toast_activated">USB-Exklusivmodus aktiviert: %s</string>
     
+    <string name="car_mode_action_radio">Radio</string>
+    <string name="car_mode_action_radio_desc">Online-Radio</string>
+    <string name="download_manager_cancel">Abbrechen</string>
+    <string name="download_manager_clear_completed">Abgeschlossene löschen</string>
+    <string name="download_manager_empty">Noch keine Downloads</string>
+    <string name="download_manager_pause">Pause</string>
+    <string name="download_manager_resume">Fortsetzen</string>
+    <string name="download_manager_retry">Erneut versuchen</string>
+    <string name="download_manager_title">Downloads</string>
+    <string name="download_manager_waiting">Wartet</string>
+    <string name="setcat_api_lyrics_amll_subtitle">Nur NetEase-Songs; liefert Timing im Karaoke-Stil.</string>
+    <string name="setcat_api_lyrics_amll_title">AMLLDB-Lyrics Wort für Wort</string>
+    <string name="setcat_api_lyrics_bilibili_subtitle">Verwende die Videountertitel von Bilibili-Titeln als Lyrics.</string>
+    <string name="setcat_api_lyrics_bilibili_title">Bilibili-Untertitel als Lyrics</string>
+    <string name="setcat_api_lyrics_builtin_subtitle">QQ Music / Kugou / Kuwo / Migu, für Songs aus integrierten Quellen.</string>
+    <string name="setcat_api_lyrics_builtin_title">Lyrics aus integrierten Quellen</string>
+    <string name="setcat_api_lyrics_lrclib_subtitle">Dienst im Ausland, in eingeschränkten Netzwerken oft nicht erreichbar.</string>
+    <string name="setcat_api_lyrics_lrclib_title">LRCLIB-Lyrics</string>
+    <string name="setcat_api_lyrics_netease_subtitle">Offizielle API, bevorzugte Quelle für NetEase- und Cloud-Songs.</string>
+    <string name="setcat_api_lyrics_netease_title">NetEase-Lyrics</string>
+    <string name="setcat_api_lyrics_online_title">Online-Lyrics-Quellen</string>
+    <string name="setcat_api_lyrics_priority_action">Anpassen</string>
+    <string name="setcat_api_lyrics_priority_desc">Quellen werden von oben nach unten probiert; mit den Pfeilen änderst du die Reihenfolge.</string>
+    <string name="setcat_api_lyrics_priority_label">Priorität der Online-Lyrics</string>
+    <string name="setcat_api_metadata_deezer_subtitle">Sucht Künstlerbilder online und speichert sie zwischen; Dienst im Ausland.</string>
+    <string name="setcat_api_metadata_deezer_title">Deezer-Künstlerbilder</string>
+    <string name="setcat_api_metadata_musicbrainz_subtitle">Ergänzt Titel / Künstler / Album / Genre und Cover; Dienst im Ausland.</string>
+    <string name="setcat_api_metadata_musicbrainz_title">MusicBrainz-Metadaten</string>
+    <string name="setcat_api_metadata_title">Song-Info-Ergänzung</string>
+    <string name="setcat_api_note">Nicht erreichbare Dienste zu deaktivieren beschleunigt das Laden von Lyrics und Covern, da ihre Timeouts übersprungen werden. Vorhandene lokale Caches bleiben erhalten.</string>
+    <string name="setcat_api_priority_builtin">Integrierte zuerst</string>
+    <string name="setcat_api_priority_lrclib">LRCLIB zuerst</string>
+    <string name="setcat_api_priority_move_down">Nach unten</string>
+    <string name="setcat_api_priority_move_up">Nach oben</string>
+    <string name="setcat_api_priority_netease">NetEase zuerst</string>
+    <string name="setcat_api_priority_reset">Reihenfolge zurücksetzen</string>
+    <string name="setcat_appearance_miniplayer_section">Mini-Player</string>
+    <string name="setcat_appearance_startup_section">Startanimation</string>
+    <string name="setcat_apple_canvas_subtitle">Lädt online ein animiertes Cover für den aktuellen Song und blendet bei Erfolg dorthin über. Lokale Cover bleiben der Rückfall; verursacht etwas Netzwerkverkehr.</string>
+    <string name="setcat_apple_canvas_title">Dynamisches Cover (Apple Music)</string>
+    <string name="setcat_audio_focus">Audiofokus</string>
+    <string name="setcat_audio_focus_duck_subtitle">Erlaubt das Absenken der Lautstärke bei einer kurzen Änderung des Audiofokus. Diese Option wird von den Audioausgabe-Einstellungen überschrieben.</string>
+    <string name="setcat_audio_focus_duck_title">Lautstärke absenken</string>
+    <string name="setcat_audio_focus_gain_subtitle">Wiedergabe fortsetzen, wenn der Fokus zurückkehrt. Wenn deaktiviert, bleibt der Player pausiert.</string>
+    <string name="setcat_audio_focus_gain_title">Bei Fokusgewinn fortsetzen</string>
+    <string name="setcat_audio_focus_hint_bg">Ab Android 8 wird der Player vom System beendet, während er pausiert ist. Um das zu vermeiden, nutze die Option „Benachrichtigung immer anzeigen“.</string>
+    <string name="setcat_audio_focus_hint_cast">Die Chromecast-Ausgabe ignoriert Anrufe und kurze Änderungen des Audiofokus möglicherweise vollständig.</string>
+    <string name="setcat_audio_focus_permanent_subtitle">Pausieren bei einer langen Änderung des Audiofokus (z. B. wenn ein anderer Player oder ein Spiel Musik abspielt).</string>
+    <string name="setcat_audio_focus_permanent_title">Dauerhafte Änderung des Audiofokus</string>
+    <string name="setcat_audio_focus_reset">Standard wiederherstellen</string>
+    <string name="setcat_audio_focus_resume_call_subtitle">Wiedergabe nach Ende des Anrufs fortsetzen (falls sie durch einen eingehenden Anruf pausiert wurde).</string>
+    <string name="setcat_audio_focus_resume_call_title">Wiedergabe nach einem Anruf fortsetzen</string>
+    <string name="setcat_audio_focus_transient_subtitle">Wiedergabe pausieren, wenn sich der Audiofokus vorübergehend ändert (z. B. Anruf, Benachrichtigung, Navigation).</string>
+    <string name="setcat_audio_focus_transient_title">Kurze Änderung des Audiofokus / Anruf</string>
+    <string name="setcat_bg_style_palette">Palette</string>
+    <string name="setcat_bg_style_solid">Einfarbig</string>
+    <string name="setcat_bg_style_vibrant">Lebendig</string>
+    <string name="setcat_carousel_style_classic">Klassisch (ohne Anschnitt)</string>
+    <string name="setcat_carousel_style_preview">Vorschau-Karussell</string>
+    <string name="setcat_download_embed_cover_subtitle">Schreibe das Cover in die Tags der Audiodatei (auch lokale Cover werden eingebettet).</string>
+    <string name="setcat_download_embed_cover_title">Cover einbetten</string>
+    <string name="setcat_download_embed_lyrics_subtitle">Schreibe Lyrics in die Tags der Audiodatei, damit Player sie lesen können.</string>
+    <string name="setcat_download_embed_lyrics_title">Lyrics einbetten</string>
+    <string name="setcat_download_file_name_artist_title">Künstler - Titel</string>
+    <string name="setcat_download_file_name_desc">Wie heruntergeladene Dateien benannt werden.</string>
+    <string name="setcat_download_file_name_label">Dateiname für Downloads</string>
+    <string name="setcat_download_file_name_title_artist">Titel - Künstler</string>
+    <string name="setcat_download_file_name_title_only">Nur Titel</string>
+    <string name="setcat_download_manager_subtitle">Zeige die Download-Queue, laufende und abgeschlossene Downloads.</string>
+    <string name="setcat_download_quality_desc">Qualität beim Herunterladen von Songs; kann der Wiedergabequalität folgen.</string>
+    <string name="setcat_download_quality_follow">Wie bei der Wiedergabe</string>
+    <string name="setcat_download_quality_label">Download-Qualität</string>
+    <string name="setcat_download_skip_existing_subtitle">Überspringen, wenn im Zielordner bereits eine Datei mit gleichem Namen existiert.</string>
+    <string name="setcat_download_skip_existing_title">Vorhandene Dateien überspringen</string>
+    <string name="setcat_download_write_lrc_subtitle">Erstelle eine passende .lrc neben der heruntergeladenen Audiodatei.</string>
+    <string name="setcat_download_write_lrc_title">Zusätzlich eine .lrc-Datei speichern</string>
+    <string name="setcat_expressive_accent_desc">Färbe die Steuerkarte und die Umschaltknöpfe mit dem Akzentfarben-Glas des Albums.</string>
+    <string name="setcat_expressive_accent_title">Akzent-Hintergrund</string>
+    <string name="setcat_expressive_group_title">Expressiver Player</string>
+    <string name="setcat_expressive_merge_desc">Fasse die Schaltflächen für Favorit, Zufallswiedergabe, Wiederholen, Lyrics und Queue in der Steuerkarte zusammen.</string>
+    <string name="setcat_expressive_merge_title">Steuerung zusammenfassen</string>
+    <string name="setcat_floating_lyrics_animation_subtitle">Animiert das Aufklappen der Steuerung und die Größenänderung; ausschalten für sofortiges Umschalten.</string>
+    <string name="setcat_floating_lyrics_animation_title">Übergangsanimationen</string>
+    <string name="setcat_floating_lyrics_bg_alpha_title">Hintergrunddeckkraft</string>
+    <string name="setcat_floating_lyrics_edge_snap_subtitle">Schiebe die Lyrics über den linken oder rechten Rand und lass los – sie verschwinden bis auf einen kleinen Pfeil. Tippe auf den Pfeil, um sie zurückzuholen.</string>
+    <string name="setcat_floating_lyrics_edge_snap_title">Am Bildschirmrand einklappen</string>
+    <string name="setcat_floating_lyrics_lines_double">Aktuell + nächste</string>
+    <string name="setcat_floating_lyrics_lines_multi">Drei Zeilen</string>
+    <string name="setcat_floating_lyrics_lines_single">Einzeln</string>
+    <string name="setcat_floating_lyrics_lines_title">Angezeigte Zeilen</string>
+    <string name="setcat_floating_lyrics_lock_subtitle">Wenn gesperrt, verschiebt Ziehen das Fenster nicht mehr (lange auf die Lyrics drücken zum Umschalten).</string>
+    <string name="setcat_floating_lyrics_lock_title">Position sperren</string>
+    <string name="setcat_floating_lyrics_scale_title">Gesamtgröße</string>
+    <string name="setcat_floating_lyrics_section">Schwebende Lyrics</string>
+    <string name="setcat_floating_lyrics_subtitle">Zeige Lyrics über anderen Apps an. Erfordert die Berechtigung „Über andere Apps anzeigen“.</string>
+    <string name="setcat_floating_lyrics_title">Schwebende Lyrics (Desktop)</string>
+    <string name="setcat_floating_lyrics_usage">So geht\'s: Ziehen zum Verschieben, Tippen für vorheriger / Play-Pause / nächster, lange drücken zum Sperren der Position. Schiebe die Lyrics über den linken oder rechten Rand, um sie zu einem kleinen Pfeil einzuklappen – tippe auf den Pfeil, um sie zurückzuholen. Das Fenster erscheint nur, während ein Song läuft.</string>
+    <string name="setcat_force_software_blur_subtitle">Erzwingt die Software-/Bitmap-Unschärfe von Android &lt; 12, damit du sie auf neueren Geräten prüfen kannst</string>
+    <string name="setcat_force_software_blur_title">Alte Unschärfe erzwingen (Test)</string>
+    <string name="setcat_force_tablet_layout_subtitle">Verwende das Tablet-Layout (seitliche Navigationsleiste + breiter Inhalt) auch im Hochformat. Ideal für große Smartphones und Foldables.</string>
+    <string name="setcat_force_tablet_layout_title">Tablet-Layout im Hochformat erzwingen</string>
+    <string name="setcat_home_top_style_collage">Collage-Wand</string>
+    <string name="setcat_home_top_style_desc">Zeige oben auf der Startseite eine Collage-Wand oder ein empfohlenes Karussell.</string>
+    <string name="setcat_home_top_style_featured">Empfohlenes Karussell</string>
+    <string name="setcat_home_top_style_label">Stil der Startseiten-Oberseite</string>
+    <string name="setcat_immersive_keep_font_size_subtitle">Wenn die Lyrics-Ansicht automatisch in den Immersive-Modus wechselt, nur die Steuerung ausblenden statt den Text zu vergrößern (standardmäßig wird er vergrößert)</string>
+    <string name="setcat_immersive_keep_font_size_title">Lyrics-Schriftgröße im Immersive-Modus beibehalten</string>
+    <string name="setcat_immersive_keep_size_hint">Immersive-Vorschau: Text bleibt unverändert</string>
+    <string name="setcat_immersive_scale_hint">Immersive-Vorschau: Text um 1,25x vergrößert</string>
+    <string name="setcat_lanzou_test_close">Schließen</string>
+    <string name="setcat_lanzou_test_dialog_title">Test des Lanzou-Downloadablaufs</string>
+    <string name="setcat_lanzou_test_open_browser">Ersten Direktlink im Browser öffnen</string>
+    <string name="setcat_lanzou_test_running">Freigabelink wird aufgelöst…</string>
+    <string name="setcat_lanzou_test_subtitle">Löst den Update-Freigabelink auf und listet Dateien, erkannte Versionen und Direkt-URLs auf (prüft den In-App-Updatekanal).</string>
+    <string name="setcat_lanzou_test_title">Lanzou-Downloadablauf testen</string>
+    <string name="setcat_lyrics_bg_style_desc">Lyrics-Hintergrundstil: lebendiger Farbverlauf, Farbe der Cover-Palette oder schlichte Designfarbe.</string>
+    <string name="setcat_lyrics_bg_style_title">Lyrics-Hintergrund</string>
+    <string name="setcat_lyrics_mono_colors_desc">Erzwingt reines Schwarz / Weiß für Lyrics-Schaltflächen und -Text (weiß im dunklen Design, schwarz im hellen Design). Aus behält die aktuelle Optik bei.</string>
+    <string name="setcat_lyrics_mono_colors_title">Monochrome Lyrics-Schaltflächen &amp; -Text</string>
+    <string name="setcat_miniplayer_corner_radius">Eckenradius des Mini-Players</string>
+    <string name="setcat_miniplayer_style_capsule">Kapsel</string>
+    <string name="setcat_miniplayer_style_classic">Klassisch</string>
+    <string name="setcat_miniplayer_style_desc">Aussehen des Mini-Players unten. Material = abgerundetes Cover mit Zurück/Play/Weiter auf einer Karte; Expressive = volle Pille mit einfarbiger Fortschrittsfüllung, quadratischem Cover und einer großen Play-Schaltfläche.</string>
+    <string name="setcat_miniplayer_style_expressive">Ausdrucksstark</string>
+    <string name="setcat_miniplayer_style_label">Stil</string>
+    <string name="setcat_miniplayer_style_material">Material</string>
+    <string name="setcat_miniplayer_style_rhythm">Rhythmus</string>
+    <string name="setcat_navrail_style_desc">Wähle das Aussehen der linken Leiste auf Tablets und im Querformat.</string>
+    <string name="setcat_navrail_style_docked">Angedockt</string>
+    <string name="setcat_navrail_style_floating">Schwebend</string>
+    <string name="setcat_navrail_style_label">Tablet-Navigationsleiste</string>
+    <string name="setcat_new_top_bar_subtitle">Obere Leisten verwenden eine progressive Unschärfemaskierung mit einer eingeklappten Titelkapsel. Ausschalten, um überall eine einfache einfarbige obere Leiste zu verwenden.</string>
+    <string name="setcat_new_top_bar_title">Neuer Stil der oberen Leiste</string>
+    <string name="setcat_player_bg_style_desc">Player-Hintergrundstil: lebendiger Farbverlauf, Farbe der Cover-Palette oder schlichte Designfarbe.</string>
+    <string name="setcat_player_bg_style_title">Player-Hintergrund</string>
+    <string name="setcat_player_controls_group">Player-Steuerung</string>
+    <string name="setcat_player_cover_style_default">Standard-Karussell</string>
+    <string name="setcat_player_cover_style_desc">Wie das Player-Cover angezeigt wird (Featured-Karte von Rhythm).</string>
+    <string name="setcat_player_cover_style_featured">Featured-Karten-Karussell</string>
+    <string name="setcat_player_cover_style_label">Cover-Stil</string>
+    <string name="setcat_player_glass_controls_subtitle">Mache neutrale Steuerschaltflächen (Überspringen / Favorit / untere Pille / Steuerkarten) durchscheinend mit echter Hintergrundunschärfe. Die Play/Pause-Schaltfläche behält ihre Akzentfarbe, das Layout bleibt unverändert; kombinierbar mit jedem Design und Hintergrund.</string>
+    <string name="setcat_player_glass_controls_title">Steuerschaltflächen aus Milchglas</string>
+    <string name="setcat_player_lyrics_appearance_subtitle">Live-Vorschau oben angeheftet, jede Option darunter aktualisiert sie sofort</string>
+    <string name="setcat_player_lyrics_appearance_title">Darstellung von Player &amp; Lyrics</string>
+    <string name="setcat_player_lyrics_preview_artist">Beispielkünstler</string>
+    <string name="setcat_player_lyrics_preview_file_info">FLAC · 24 Bit · 44,1 kHz</string>
+    <string name="setcat_player_lyrics_preview_label">Live-Vorschau</string>
+    <string name="setcat_player_lyrics_preview_lyric_current">Diese Zeile läuft gerade</string>
+    <string name="setcat_player_lyrics_preview_lyric_next">während die Stadt schläft</string>
+    <string name="setcat_player_lyrics_preview_lyric_prev">und die Nacht weitergeht</string>
+    <string name="setcat_player_lyrics_preview_track">Beispieltitel</string>
+    <string name="setcat_player_mono_colors_desc">Erzwingt reines Schwarz / Weiß für Player-Schaltflächen und -Text (weiß im dunklen Design, schwarz im hellen Design). Aus behält die aktuelle Optik bei.</string>
+    <string name="setcat_player_mono_colors_title">Monochrome Player-Schaltflächen &amp; -Text</string>
+    <string name="setcat_player_progress_bar_subtitle">Aktuell: %1$s. Wähle Spurstil, Griffstil und Drehung.</string>
+    <string name="setcat_player_progress_bar_title">Wiedergabefortschrittsbalken</string>
+    <string name="setcat_player_style_classic">Klassisch</string>
+    <string name="setcat_player_style_desc">Wechsle im Vollbild-Player zwischen klassischem Layout und Expressive-Layout (aus Rhythm übernommen).</string>
+    <string name="setcat_player_style_expressive">Ausdrucksstark</string>
+    <string name="setcat_player_style_label">Player-Stil</string>
+    <string name="setcat_player_theme_immersive">Immersives Cover (Unschärfe erweitert)</string>
+    <string name="setcat_scroll_hide_chrome_subtitle">Schiebe beim Hochscrollen die Navigationsleiste nach unten und verschiebe den Mini-Player; beim Zurückscrollen kommen sie wieder</string>
+    <string name="setcat_scroll_hide_chrome_title">Beim Scrollen ausblenden</string>
+    <string name="setcat_startup_animation_desc">Übergang, der beim Öffnen des Hauptbildschirms nach dem Start abgespielt wird.</string>
+    <string name="setcat_startup_animation_label">Eintrittsanimation</string>
+    <string name="setcat_startup_style_emerge">Auftauchen</string>
+    <string name="setcat_startup_style_none">Aus</string>
+    <string name="setcat_startup_style_scale">Skalieren</string>
+    <string name="setcat_transport_flat_style_subtitle">Zeige Zurück / Play / Weiter als schlichte Symbole ohne farbige Hintergründe</string>
+    <string name="setcat_transport_flat_style_title">Flache Steuerschaltflächen</string>
+    <string name="setcat_ui_scale_section">Oberflächenskalierung</string>
+    <string name="setcat_ui_scale_title">UI-Skalierung (nur App)</string>
+    <string name="setcat_updates_auto_check_subtitle">Im Hintergrund nach neuen Versionen suchen</string>
+    <string name="setcat_updates_auto_check_title">Automatisch nach Updates suchen</string>
+    <string name="setcat_updates_auto_title">Automatische Updates</string>
+    <string name="setcat_updates_bg_download_subtitle">Neue Versions-APK automatisch herunterladen</string>
+    <string name="setcat_updates_bg_download_title">Updates im Hintergrund herunterladen</string>
+    <string name="setcat_updates_download_title">Hintergrund-Download</string>
+    <string name="setcat_updates_frequency_daily">Täglich</string>
+    <string name="setcat_updates_frequency_title">Prüfintervall</string>
+    <string name="setcat_updates_frequency_weekly">Wöchentlich</string>
+    <string name="setcat_updates_wifi_charging_subtitle">Nur im WLAN und beim Laden herunterladen</string>
+    <string name="setcat_updates_wifi_charging_title">Nur WLAN + Laden</string>
+    <string name="setcat_vibrant_bg_warning_message">Deine Android-Version ist älter als Android 11. Dieser Effekt funktioniert auf deinem Gerät möglicherweise nicht wie erwartet. Möchtest du ihn trotzdem aktivieren?</string>
+    <string name="setcat_vibrant_bg_warning_title">Android-Version zu alt</string>
+    <string name="settings_category_api_subtitle">Aktiviere oder deaktiviere die Dienste für Lyrics und Metadaten-Ergänzung</string>
+    <string name="settings_category_api_title">API-Verwaltung</string>
+    <string name="settings_category_download_subtitle">Queue, Qualität, Ordner, Dateibenennung und Tag-Einbettung</string>
+    <string name="settings_category_download_title">Downloads</string>
+    <string name="settings_category_updates_subtitle">Prüfintervall, Hintergrund-Download, WLAN + Laden</string>
+    <string name="settings_category_updates_title">Updates &amp; Downloads</string>
+    <string name="settings_category_usb_exclusive_subtitle">Bitgenaue Ausgabe an einen externen USB-DAC: Bittiefe, Gerät und Status</string>
+    <string name="settings_category_usb_exclusive_title">USB-Exklusiv</string>
+    <string name="settings_search_keyword_audio_focus">Audiofokus</string>
+    <string name="settings_search_keyword_update">Aktualisierung</string>
+    <string name="usb_status_active">Exklusiv aktiv – Audio umgeht den System-Mixer</string>
+    <string name="usb_status_found">%1$d USB-Audiogerät(e) gefunden</string>
+    <string name="usb_status_inactive">Exklusiv inaktiv (Ausgabe über System-Mixer)</string>
+    <string name="usb_status_no_device">Kein USB-Audiogerät erkannt – schließe einen DAC an, er wird automatisch gefunden</string>
+    <string name="usb_status_none_found">Kein USB-Audiogerät gefunden</string>
+    <string name="usb_status_rescan">Neu scannen</string>
+    <string name="usb_status_section">Gerätestatus</string>
+    <string name="usb_status_switch_device">Gerät wechseln</string>
 </resources>

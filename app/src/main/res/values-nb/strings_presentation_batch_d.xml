@@ -58,7 +58,7 @@
     <string name="presentation_batch_d_mashup_stem_separation_unavailable">Stems-separasjon er ikke tilgjengelig ennå.</string>
     <string name="presentation_batch_d_mashup_volume">Volum</string>
     <string name="presentation_batch_d_mashup_speed">Hastighet</string>
-    <string name="presentation_batch_d_mashup_crossfader">Crossfader</string>
+    <string name="presentation_batch_d_mashup_crossfader">Kryssfader</string>
     <string name="presentation_batch_d_mashup_deck_1">Deck 1</string>
     <string name="presentation_batch_d_mashup_deck_2">Deck 2</string>
     <string name="presentation_batch_d_mashup_select_song_title">Velg en sang</string>
@@ -72,7 +72,7 @@
     <string name="presentation_batch_d_eq_custom_preset_cd">Egendefinert forhåndsinnstilling</string>
     <string name="presentation_batch_d_eq_presets_cd">Forhåndsinnstillinger</string>
     <string name="presentation_batch_d_action_update">Oppdater</string>
-    <string name="presentation_batch_d_eq_bass_boost">Bass Boost</string>
+    <string name="presentation_batch_d_eq_bass_boost">Bassforsterkning</string>
     <string name="presentation_batch_d_eq_virtualizer">Virtualizer</string>
     <string name="presentation_batch_d_eq_loudness">Loudness</string>
     <string name="presentation_batch_d_eq_effect_not_supported">Ikke støttet</string>
@@ -106,7 +106,7 @@
     <string name="presentation_batch_d_transition_custom_override_body">Aktiver for å angi spesifikke regler for denne spillelisten.</string>
     <string name="presentation_batch_d_transition_style_title">Overgangsstil</string>
     <string name="presentation_batch_d_transition_style_subtitle">Hvordan spor tones inn i hverandre</string>
-    <string name="presentation_batch_d_transition_mode_crossfade">Crossfade</string>
+    <string name="presentation_batch_d_transition_mode_crossfade">Kryssfading</string>
     <string name="presentation_batch_d_transition_mode_none">Ingen</string>
     <string name="presentation_batch_d_transition_duration_title">Overgangsvarighet</string>
     <string name="presentation_batch_d_transition_duration_subtitle_format">%1$ds total overlapp</string>
@@ -116,8 +116,8 @@
     <string name="presentation_batch_d_transition_overlap_explanation_format">Spor vil overlappe i %1$ds</string>
     <string name="presentation_batch_d_transition_curves_title">Volumkurver</string>
     <string name="presentation_batch_d_transition_curves_subtitle">Finjuster lydstigningen</string>
-    <string name="presentation_batch_d_transition_fade_out">Fade Out</string>
-    <string name="presentation_batch_d_transition_fade_in">Fade In</string>
+    <string name="presentation_batch_d_transition_fade_out">Ton ut</string>
+    <string name="presentation_batch_d_transition_fade_in">Ton inn</string>
 
     <!-- ArtistDetailScreen -->
     <string name="presentation_batch_d_cd_play_title">Spill %1$s</string>
