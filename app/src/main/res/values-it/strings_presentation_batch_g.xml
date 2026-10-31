@@ -189,15 +189,15 @@
 La barra rovesciata (\) può essere usata per sfuggire ai delimitatori carattere.</string>
     <string name="presentation_batch_g_artist_example_arrow"> → </string>
     <string name="presentation_batch_g_artist_examples_title">Esempi</string>
-    <string name="presentation_batch_g_artist_ex_1_in">"Artista1/Artista2"</string>
+    <string name="presentation_batch_g_artist_ex_1_in">\"Artista1/Artista2\"</string>
     <string name="presentation_batch_g_artist_ex_1_out">Artista1, Artista2</string>
-    <string name="presentation_batch_g_artist_ex_2_in">"Drake feat. Rihanna"</string>
+    <string name="presentation_batch_g_artist_ex_2_in">\"Drake feat. Rihanna\"</string>
     <string name="presentation_batch_g_artist_ex_2_out">Drake, Rihanna</string>
-    <string name="presentation_batch_g_artist_ex_3_in">"Marshmello x Bastille"</string>
+    <string name="presentation_batch_g_artist_ex_3_in">\"Marshmello x Bastille\"</string>
     <string name="presentation_batch_g_artist_ex_3_out">Marshmello, Bastille</string>
-    <string name="presentation_batch_g_artist_ex_4_in">"Brano (ft. B)" di A</string>
+    <string name="presentation_batch_g_artist_ex_4_in">\"Brano (ft. B)\" di A</string>
     <string name="presentation_batch_g_artist_ex_4_out">A, B</string>
-    <string name="presentation_batch_g_artist_ex_5_in">"AC\\DC"</string>
+    <string name="presentation_batch_g_artist_ex_5_in">\"AC\\DC\"</string>
     <string name="presentation_batch_g_artist_ex_5_out">AC/DC (con escape)</string>
     <string name="presentation_batch_g_artist_topbar_title">Artisti</string>
     <string name="presentation_batch_g_artist_rescan_banner_title">Scansione richiesta</string>
