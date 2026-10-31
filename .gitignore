@@ -51,3 +51,10 @@ markdown.xml
 **/.env
 **/.env.*
 !**/.env.example
+
+# Local scratch / internal agent artifacts
+.workbuddy/
+.trae/
+.mimosa/
+gen-webremote-*.mjs
+temp_*.txt
