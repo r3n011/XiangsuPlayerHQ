@@ -6,6 +6,7 @@ import android.util.Log
 import com.whl.quickjs.android.QuickJSLoader
 import com.whl.quickjs.wrapper.JSCallFunction
 import com.whl.quickjs.wrapper.QuickJSContext
+import com.theveloper.pixelplay.data.plugin.XsLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,6 +93,103 @@ class LxJsEngine @Inject constructor(
 
     /** 查询某个音源当前是否启用 */
     fun isSourceEnabled(source: String): Boolean = sourceEnabled[source] ?: true
+
+    // ── 平台 → 音源脚本 路由（持久化，首个脚本为首选） ──────────────────
+    private val routingPrefs by lazy {
+        appContext.getSharedPreferences("lx_source_routing", Context.MODE_PRIVATE)
+    }
+
+    private val _sourceRouting = MutableStateFlow(loadRouting())
+    val sourceRouting: StateFlow<Map<String, List<String>>> = _sourceRouting.asStateFlow()
+
+    private fun loadRouting(): Map<String, List<String>> = runCatching {
+        val raw = routingPrefs.getString("routes", null) ?: return emptyMap()
+        val obj = JSONObject(raw)
+        buildMap {
+            obj.keys().forEach { key ->
+                val arr = obj.optJSONArray(key) ?: return@forEach
+                val list = (0 until arr.length()).mapNotNull { i ->
+                    arr.optString(i).takeIf { it.isNotBlank() }
+                }
+                if (list.isNotEmpty()) put(key, list)
+            }
+        }
+    }.getOrDefault(emptyMap()).also {
+        XsLog.i(XsLog.ROUTER, "loaded %d routes from prefs", it.size)
+    }
+
+    private fun persistRouting(routes: Map<String, List<String>>) {
+        val obj = JSONObject()
+        routes.forEach { (platform, files) -> obj.put(platform, JSONArray(files)) }
+        routingPrefs.edit().putString("routes", obj.toString()).apply()
+    }
+
+    private fun setRoutes(routes: Map<String, List<String>>) {
+        _sourceRouting.value = routes
+        persistRouting(routes)
+        XsLog.i(XsLog.ROUTER, "routes updated: %s", routes.entries.joinToString { "${it.key}->${it.value.joinToString(",")}" })
+    }
+
+    /** 平台连接一个脚本（已存在则忽略） */
+    fun addSourceRoute(platform: String, fileName: String) {
+        val current = _sourceRouting.value
+        val list = current[platform].orEmpty()
+        if (fileName in list) {
+            XsLog.d(XsLog.ROUTER, "connect %s -> %s ignored (exists)", platform, fileName)
+            return
+        }
+        XsLog.i(XsLog.ROUTER, "connect %s -> %s", platform, fileName)
+        setRoutes(current + (platform to (list + fileName)))
+    }
+
+    /** 断开平台与脚本的连接 */
+    fun removeSourceRoute(platform: String, fileName: String) {
+        val current = _sourceRouting.value
+        val list = current[platform].orEmpty().filterNot { it == fileName }
+        XsLog.i(XsLog.ROUTER, "disconnect %s -x %s", platform, fileName)
+        setRoutes(if (list.isEmpty()) current - platform else current + (platform to list))
+    }
+
+    /** 把某个脚本设为该平台的首选（顺序第一位） */
+    fun setPreferredSource(platform: String, fileName: String) {
+        val current = _sourceRouting.value
+        val list = current[platform].orEmpty()
+        if (fileName !in list) return
+        XsLog.i(XsLog.ROUTER, "prefer %s -> %s", platform, fileName)
+        setRoutes(current + (platform to (listOf(fileName) + list.filterNot { it == fileName })))
+    }
+
+    /** 自动连接：每个平台连接所有提供该平台的脚本（按加载顺序，首个为首选） */
+    fun autoRouteSources() {
+        val next = _sourceRouting.value.toMutableMap()
+        var connected = 0
+        sourceIndex.forEach { (source, files) ->
+            val existing = next[source].orEmpty().filter { it in files }
+            val merged = existing + files.filter { it !in existing }
+            if (merged.isNotEmpty()) {
+                connected += merged.size - existing.size
+                next[source] = merged
+            }
+        }
+        XsLog.i(XsLog.ROUTER, "auto-connect: +%d links across %d platforms", connected, sourceIndex.size)
+        setRoutes(next)
+    }
+
+    fun clearSourceRoutes() {
+        XsLog.i(XsLog.ROUTER, "clear all routes")
+        setRoutes(emptyMap())
+    }
+
+    /** 解析平台实际使用的脚本顺序：路由优先，未路由的脚本作为兜底追加 */
+    private fun targetsFor(source: String): List<String> {
+        val all = sourceIndex[source].orEmpty()
+        val mapped = _sourceRouting.value[source].orEmpty().filter { it in all }
+        val result = if (mapped.isEmpty()) all else mapped + all.filter { it !in mapped }
+        if (result.size > 1) {
+            XsLog.d(XsLog.ROUTER, "targets for %s: %s (mapped=%s)", source, result.joinToString(","), mapped.joinToString(","))
+        }
+        return result
+    }
     /** 当前存活的所有 QuickJS 上下文（销毁时移除，避免对已销毁上下文求值） */
     private val liveCtxs = ConcurrentHashMap.newKeySet<QuickJSContext>()
     /** 当前正在执行的 JS 上下文（用于原生回调定位所属实例） */
@@ -216,6 +314,14 @@ class LxJsEngine @Inject constructor(
 
         instances = loaded
         sourceIndex = index.mapValues { it.value.toList() }
+        // 路由表清理：脚本被删除 / 平台不再由任何脚本提供时，自动移除对应路由
+        runCatching {
+            val available = sourceIndex
+            val pruned = _sourceRouting.value.mapValues { (platform, files) ->
+                files.filter { file -> file in available[platform].orEmpty() }
+            }.filterValues { it.isNotEmpty() }
+            if (pruned != _sourceRouting.value) setRoutes(pruned)
+        }
         sources = LinkedHashMap<String, LxSourceInfo>().apply {
             loaded.values.forEach { putAll(it.sources) }
         }
@@ -331,7 +437,8 @@ class LxJsEngine @Inject constructor(
             "pagesize" to pagesize,
             "type" to "music"
         )
-        val targets = sourceIndex[source] ?: return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
+        val targets = targetsFor(source)
+        if (targets.isEmpty()) return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
         for (fileName in targets) {
             val inst = instances[fileName] ?: continue
             val raw = withContext(qjsDispatcher) { callJs(inst, "musicSearch", source, info, timeoutMs = 30000) }
@@ -353,7 +460,8 @@ class LxJsEngine @Inject constructor(
             Log.d(TAG, "getPlayUrl $source skipped (disabled by user)")
             return null
         }
-        val targets = sourceIndex[source] ?: return null
+        val targets = targetsFor(source)
+        if (targets.isEmpty()) return null
         val startTime = System.currentTimeMillis()
         // ⚡ 单脚本 musicUrl 超时从 60s 降到 20s：某个脚本卡死/超时不应阻塞整条
         //    音质链与其它脚本。超时后立即尝试下一个脚本/下一个音质，用户点歌
@@ -390,7 +498,8 @@ class LxJsEngine @Inject constructor(
     ): LxLyricInfo? {
         if (!awaitReady() || !isSourceEnabled(source)) return null
         val info = mapOf("musicInfo" to songInfo, "type" to quality)
-        val targets = sourceIndex[source] ?: return null
+        val targets = targetsFor(source)
+        if (targets.isEmpty()) return null
         for (fileName in targets) {
             val inst = instances[fileName] ?: continue
             val raw = runCatching {
@@ -415,7 +524,8 @@ class LxJsEngine @Inject constructor(
     ): String? {
         if (!awaitReady() || !isSourceEnabled(source)) return null
         val info = mapOf("musicInfo" to songInfo, "type" to quality)
-        val targets = sourceIndex[source] ?: return null
+        val targets = targetsFor(source)
+        if (targets.isEmpty()) return null
         for (fileName in targets) {
             val inst = instances[fileName] ?: continue
             val raw = runCatching {

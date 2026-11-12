@@ -80,6 +80,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     @Inject
     lateinit var lxJsEngine: dagger.Lazy<LxJsEngine>
 
+    @Inject
+    lateinit var xsPluginManager: dagger.Lazy<com.theveloper.pixelplay.data.plugin.XsPluginManager>
+
     private val startupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
@@ -224,6 +227,19 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
                     }
                 } catch (t: Throwable) {
                     android.util.Log.e("PixelPlay", "Failed to schedule LxJsEngine preload: ${t.message}")
+                }
+
+                // 插件运行时预热：拉起已启用的插件（onEnable），延后到首帧之后，避免抢启动 CPU
+                try {
+                    startupScope.launch {
+                        kotlinx.coroutines.delay(LX_PRELOAD_DELAY_MS + 1_500L)
+                        runCatching { xsPluginManager.get() }
+                            .onFailure { t ->
+                                android.util.Log.e("PixelPlay", "Failed to warm up plugin runtime: ${t.message}")
+                            }
+                    }
+                } catch (t: Throwable) {
+                    android.util.Log.e("PixelPlay", "Failed to schedule plugin warmup: ${t.message}")
                 }
             }
 

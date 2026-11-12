@@ -1,6 +1,8 @@
 package com.theveloper.pixelplay.data.backup.format
 
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class BackupFormatDetectorTest {
@@ -43,6 +45,40 @@ class BackupFormatDetectorTest {
     fun `returns UNKNOWN for unrecognized format`() {
         val header = byteArrayOf(0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07)
         assertEquals(BackupFormatDetector.Format.UNKNOWN, detector.detect(header))
+    }
+
+    @Test
+    fun `detects external pxpbak when playHistory follows the first 128 bytes`() {
+        val json = """
+            {"createdAt":"2026-10-31T03:30:00Z","version":"1.0","appVersion":"1.2.0","deviceInfo":{"model":"Pixel 7 Pro","systemVersion":"34"},"data":{"playHistory":[{"id":"entry-1"}]}}
+        """.trimIndent()
+
+        // 回归：playHistory 字段位于 128 字节之后，旧的 128 字节探测会误判成 LEGACY_RAW，
+        // 导入时表现为「模块全部消失」。
+        assertTrue(json.indexOf("\"playHistory\"") > 128)
+        val header = detector.readHeader(json.byteInputStream())
+        assertEquals(BackupFormatDetector.Format.EXTERNAL_PXPDAT, detector.detect(header))
+    }
+
+    @Test
+    fun `readHeader keeps reading when the stream returns short chunks`() {
+        val payload = ByteArray(64) { it.toByte() }
+        val stream = object : java.io.InputStream() {
+            private var index = 0
+
+            override fun read(): Int =
+                if (index < payload.size) payload[index++].toInt() and 0xFF else -1
+
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                if (index >= payload.size || length <= 0) return if (index >= payload.size) -1 else 0
+                buffer[offset] = payload[index++]
+                return 1
+            }
+        }
+
+        val header = detector.readHeader(stream, 32)
+        assertEquals(32, header.size)
+        assertArrayEquals(payload.copyOf(32), header)
     }
 
     @Test

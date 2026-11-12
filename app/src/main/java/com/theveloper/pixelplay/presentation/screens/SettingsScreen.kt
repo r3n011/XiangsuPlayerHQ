@@ -1034,7 +1034,10 @@ private fun TabletSettingsScreen(
                             navController = detailNavController,
                             playerViewModel = playerViewModel,
                             onBackClick = {},
-                            showBackButton = false
+                            showBackButton = false,
+                            onOpenPluginCenter = {
+                                outerNavController.navigateSafely(Screen.PluginCenter.route)
+                            }
                         )
                     }
                 }
@@ -1461,6 +1464,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.UPDATES -> Color(0xFF004D61) to Color(0xFFACEFEE)
             SettingsCategory.ABOUT -> Color(0xFF3F474D) to Color(0xFFDEE3EB) 
             SettingsCategory.API_MANAGEMENT -> Color(0xFF4A4458) to Color(0xFFE8DEF8)
+            SettingsCategory.PLUGINS -> Color(0xFF4A3A5C) to Color(0xFFEADDFF)
         }
     } else {
         when (category) {
@@ -1480,6 +1484,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.UPDATES -> Color(0xFFACEFEE) to Color(0xFF002022)
             SettingsCategory.ABOUT -> Color(0xFFEFF1F7) to Color(0xFF44474F)
             SettingsCategory.API_MANAGEMENT -> Color(0xFFE8DEF8) to Color(0xFF4A4458)
+            SettingsCategory.PLUGINS -> Color(0xFFEADDFF) to Color(0xFF4A3A5C)
         }
     }
 }

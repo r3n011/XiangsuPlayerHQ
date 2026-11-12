@@ -55,10 +55,23 @@ class BackupFormatDetector {
         return Format.UNKNOWN
     }
 
-    fun readHeader(inputStream: InputStream, size: Int = 128): ByteArray {
+    /**
+     * 读取文件头用于格式判断。
+     *
+     * 注意：不能只做一次 `read`（可能只返回几个字节），也不能只读 128 字节 ——
+     * `.pxpbak`（外部 JSON）的 `playHistory` 字段在 `createdAt/version/deviceInfo`
+     * 之后，通常位于 128 字节之后，读少了会把它误判成 LEGACY_RAW，
+     * 导入时所有模块都会凭空消失。
+     */
+    fun readHeader(inputStream: InputStream, size: Int = HEADER_PROBE_BYTES): ByteArray {
         val buffer = ByteArray(size)
-        val bytesRead = inputStream.read(buffer)
-        return if (bytesRead < size) buffer.copyOf(bytesRead) else buffer
+        var total = 0
+        while (total < size) {
+            val read = inputStream.read(buffer, total, size - total)
+            if (read == -1) break
+            total += read
+        }
+        return if (total == size) buffer else buffer.copyOf(total)
     }
 
     companion object {
@@ -69,5 +82,8 @@ class BackupFormatDetector {
             'L'.code.toByte()
         )
         const val PXPL_MAGIC_SIZE = 4
+
+        /** 格式探测读取的头部字节数（需覆盖外部 .pxpbak 的 playHistory 字段） */
+        const val HEADER_PROBE_BYTES = 4096
     }
 }

@@ -386,13 +386,25 @@ class SettingsViewModel @Inject constructor(
     val mimoSystemPrompt: StateFlow<String> = aiPreferencesRepository.geminiSystemPrompt
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiPreferencesRepository.DEFAULT_SYSTEM_PROMPT)
 
+    private var pendingModelFetch: Job? = null
+
     fun onAiApiKeyChange(apiKey: String) {
         viewModelScope.launch {
             val providerStr = aiProvider.value
             val provider = AiProvider.fromString(providerStr)
             aiPreferencesRepository.setApiKey(provider, apiKey)
-            if (apiKey.isNotBlank()) fetchAvailableModels(apiKey, providerStr)
-            else clearModelsState(providerStr)
+
+            // Typing an API key used to fire a model-list request on every keystroke.
+            // Persist immediately, but debounce the network call.
+            pendingModelFetch?.cancel()
+            if (apiKey.isBlank()) {
+                clearModelsState(providerStr)
+            } else {
+                pendingModelFetch = viewModelScope.launch {
+                    delay(700)
+                    fetchAvailableModels(apiKey, providerStr)
+                }
+            }
         }
     }
 
@@ -2126,6 +2138,20 @@ class SettingsViewModel @Inject constructor(
     fun onSafeTokenModeChange(enabled: Boolean) {
         viewModelScope.launch {
             aiPreferencesRepository.setSafeTokenLimitEnabled(enabled)
+        }
+    }
+
+    /** Force a model list refresh even if a list is already cached. */
+    fun refreshModels() {
+        viewModelScope.launch {
+            val provider = aiProvider.value
+            val apiKey = aiPreferencesRepository.getApiKey(AiProvider.fromString(provider)).first()
+            if (apiKey.isBlank()) {
+                _uiState.update { it.copy(modelsFetchError = "请先填写 API Key") }
+                return@launch
+            }
+            _uiState.update { it.copy(availableModels = emptyList(), modelsFetchError = null) }
+            fetchAvailableModels(apiKey, provider)
         }
     }
 

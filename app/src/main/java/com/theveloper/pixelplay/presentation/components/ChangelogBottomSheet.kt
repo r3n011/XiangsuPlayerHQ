@@ -3,8 +3,6 @@ package com.theveloper.pixelplay.presentation.components
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.text.method.LinkMovementMethod
-import android.widget.TextView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -46,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -54,7 +51,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.GitHubRelease
@@ -62,8 +58,6 @@ import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.presentation.components.subcomps.SineWaveLine
 import com.theveloper.pixelplay.ui.theme.ExpTitleTypography
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
-import io.noties.markwon.Markwon
-import io.noties.markwon.image.ImagesPlugin
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import java.time.Instant
 import java.time.ZoneId
@@ -276,29 +270,11 @@ private fun ReleaseBody(release: GitHubRelease) {
         )
         return
     }
-    val context = LocalContext.current
-    val markwon = remember {
-        Markwon.builder(context)
-            .usePlugin(ImagesPlugin.create())
-            .build()
-    }
-    val spannable = remember(release.body) { markwon.toMarkdown(release.body) }
-    val textColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
-    val linkColor = MaterialTheme.colorScheme.primary.toArgb()
-    AndroidView(
-        modifier = Modifier.fillMaxWidth(),
-        factory = { ctx ->
-            TextView(ctx).apply {
-                textSize = 14f
-                movementMethod = LinkMovementMethod.getInstance()
-                highlightColor = android.graphics.Color.TRANSPARENT
-            }
-        },
-        update = { tv ->
-            tv.setTextColor(textColor)
-            tv.setLinkTextColor(linkColor)
-            tv.text = spannable
-        }
+    // ⚡ 文本块走 Markwon、图片走 Coil；此前整段塞进 TextView 且绕过
+    //   ImagesPlugin 调度，GitHub 的 <img> 贴图完全看不到
+    MarkdownReleaseNotesBody(
+        markdown = release.body,
+        modifier = Modifier.padding(bottom = 4.dp)
     )
 }
 

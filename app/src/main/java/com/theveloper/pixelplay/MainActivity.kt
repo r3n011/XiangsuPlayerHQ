@@ -343,6 +343,8 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var themeStateHolder: ThemeStateHolder
     @Inject
+    lateinit var xsThemeOverlay: com.theveloper.pixelplay.data.plugin.XsThemeOverlay
+    @Inject
     lateinit var syncManager: SyncManager
     @Inject
     lateinit var shareLinkHandler: com.theveloper.pixelplay.data.share.ShareLinkHandler
@@ -496,6 +498,20 @@ class MainActivity : ComponentActivity() {
             val uiScale by userPreferencesRepository.uiScaleFlow
                 .collectAsStateWithLifecycle(initialValue = UserPreferencesRepository.UI_SCALE_DEFAULT)
             val globalColorSchemePair by themeStateHolder.activeGlobalColorSchemePair.collectAsStateWithLifecycle()
+            // 插件 ui.applySkin：强调色覆盖（实时生效，reset 后回落）
+            val pluginAccent by xsThemeOverlay.accent.collectAsStateWithLifecycle()
+            val effectiveColorSchemePair = remember(globalColorSchemePair, pluginAccent) {
+                val accent = pluginAccent
+                if (accent == null) {
+                    globalColorSchemePair
+                } else {
+                    runCatching {
+                        com.theveloper.pixelplay.ui.theme.generateColorSchemeFromSeed(
+                            androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(accent))
+                        )
+                    }.getOrDefault(globalColorSchemePair)
+                }
+            }
             val useDarkTheme = when (appThemeMode) {
                 AppThemeMode.DARK -> true
                 AppThemeMode.LIGHT -> false
@@ -611,7 +627,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 PixelPlayTheme(
                     darkTheme = useDarkTheme,
-                    colorSchemePairOverride = globalColorSchemePair
+                    colorSchemePairOverride = effectiveColorSchemePair
                 ) {
                     // ⚡ 冷启动：首帧绘制完成即放行系统启动画面，不再等待 DataStore 首次读盘
                     //   （此前启动图标要一直停留到偏好读完，是冷启动可见耗时的主要来源）。
@@ -832,6 +848,16 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     intent.action = null
+                } else if (uri?.scheme == "xiangsuplayer" && uri.host == "mcp") {
+                    // 客户端拉起播放器配对：xiangsuplayer://mcp/connect?p=<payload>
+                    uri.getQueryParameter("p")?.let {
+                        com.theveloper.pixelplay.data.mcp.McpPairingIntentBus.post(it)
+                        // Best effort: bring the user to the AI settings page for confirmation.
+                        com.theveloper.pixelplay.data.mcp.McpUiCommandBus.post(
+                            com.theveloper.pixelplay.data.mcp.McpUiCommand.OpenSettings("ai_integration")
+                        )
+                    }
+                    intent.data = null
                 } else {
                     uri?.let {
                         persistUriPermissionIfNeeded(intent, it)
@@ -1205,6 +1231,8 @@ class MainActivity : ComponentActivity() {
                 Screen.Radio.route,
                 Screen.About.route,
                 Screen.Stats.route,
+                // 插件中心：整屏页面，隐藏底部导航栏
+                Screen.PluginCenter.route,
                 Screen.EditTransition.route,
                 Screen.Experimental.route,
                 Screen.ArtistSettings.route,
@@ -1267,7 +1295,8 @@ class MainActivity : ComponentActivity() {
         // ⚡ 例外：播放器与歌词外观子页是整屏设置页，平板上也隐藏左侧导航栏，避免压缩内容宽度
         val shouldHideNavigationRail by remember(isSearchActive, isTabletShell, currentRoute) {
             derivedStateOf {
-                currentRoute == Screen.PlayerLyricsAppearance.route
+                currentRoute == Screen.PlayerLyricsAppearance.route ||
+                    currentRoute == Screen.PluginCenter.route
             }
         }
 

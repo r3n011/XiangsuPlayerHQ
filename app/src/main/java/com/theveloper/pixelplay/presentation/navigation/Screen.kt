@@ -21,6 +21,8 @@ sealed class Screen(val route: String) {
     object PlayerLyricsAppearance : Screen("player_lyrics_appearance")
     /** 下载管理（下载队列 / 进行中 / 已完成） */
     object DownloadManager : Screen("download_manager")
+    /** 插件中心：已安装 / 商店 / 插件详情 */
+    object PluginCenter : Screen("plugin_center")
     object Experimental : Screen("experimental_settings")
     object NavBarCrRad : Screen("nav_bar_corner_radius")
     object PlaylistDetail : Screen("playlist_detail/{playlistId}") {

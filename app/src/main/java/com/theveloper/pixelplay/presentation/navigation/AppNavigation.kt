@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,7 @@ import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.PlayerProgressStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DownloadManagerScreen
+import com.theveloper.pixelplay.presentation.screens.PluginCenterScreen
 import com.theveloper.pixelplay.presentation.screens.PlaylistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.RecentlyPlayedScreen
 import com.theveloper.pixelplay.presentation.screens.RadioScreen
@@ -105,6 +107,21 @@ fun AppNavigation(
         startDestination = userPreferencesRepository.launchTabFlow
             .first()
             .toRoute()
+    }
+
+    // MCP tools can ask the UI to open a settings category or a screen. This is a StateFlow so
+    // a deep link received before Compose starts is still delivered.
+    val mcpCommand by com.theveloper.pixelplay.data.mcp.McpUiCommandBus.pending
+        .collectAsStateWithLifecycle()
+    LaunchedEffect(mcpCommand) {
+        val command = mcpCommand ?: return@LaunchedEffect
+        when (command) {
+            is com.theveloper.pixelplay.data.mcp.McpUiCommand.OpenSettings ->
+                navController.navigate(Screen.SettingsCategory.createRoute(command.categoryId))
+            is com.theveloper.pixelplay.data.mcp.McpUiCommand.OpenScreen ->
+                navController.navigate(command.route)
+        }
+        com.theveloper.pixelplay.data.mcp.McpUiCommandBus.consume()
     }
 
     // 区分"进入主页"的方式：
@@ -556,6 +573,15 @@ fun AppNavigation(
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                     DownloadManagerScreen(
                         playerViewModel = playerViewModel,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(
+                Screen.PluginCenter.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    PluginCenterScreen(
                         onBackClick = { navController.popBackStack() }
                     )
                 }

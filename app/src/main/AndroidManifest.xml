@@ -68,6 +68,13 @@
         </intent>
     </queries>
 
+    <!-- MCP 外接：允许发现已安装的兼容 AI 客户端（Android 11+ 包可见性） -->
+    <queries>
+        <intent>
+            <action android:name="com.pixelplayer.mcp.CLIENT" />
+        </intent>
+    </queries>
+
     <application
         android:name=".PixelPlayApplication"
         android:allowBackup="true"
@@ -120,6 +127,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="xiangsuplayer" android:host="share" />
             </intent-filter>
+            <!-- MCP 配对：客户端点「连接像素播放器」时拉起本机 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="xiangsuplayer" android:host="mcp" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="com.theveloper.pixelplay.action.OPEN_PLAYER" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -135,6 +149,12 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <activity
+            android:name=".presentation.plugin.XsPluginWebActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.PixelPlay.Login" />
 
         <activity
             android:name=".presentation.telegram.auth.TelegramLoginActivity"
@@ -319,6 +339,11 @@
             android:exported="false" />
         <service
             android:name=".data.service.http.WebRemoteServerService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+        <!-- 独立的 MCP 外接服务：与 Web Remote 不共享端口/生命周期 -->
+        <service
+            android:name=".data.service.mcp.McpServerService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
         <service

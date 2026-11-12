@@ -67,6 +67,7 @@ import com.theveloper.pixelplay.data.github.GitHubRelease
 import com.theveloper.pixelplay.data.lx.LxSourceTester
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.ReleaseNotesBody
 import com.theveloper.pixelplay.presentation.viewmodel.MarketJsEntryUi
 import com.theveloper.pixelplay.presentation.viewmodel.ReleaseState
 import com.theveloper.pixelplay.presentation.viewmodel.SourceMarketViewModel
@@ -500,13 +501,15 @@ private fun ReleaseCard(
             }
 
             release.body?.takeIf { it.isNotBlank() }?.let { body ->
-                Text(
-                    text = body,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = if (expanded) Int.MAX_VALUE else 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 8.dp)
+                // ⚡ 更新日志支持图片：仓库作者常用 <img> 贴测试截图，
+                //   先归一化成 Markdown 图片再按块渲染（折叠态只留文字预览）。
+                ReleaseNotesBody(
+                    markdown = body,
+                    collapsed = !expanded,
+                    collapsedMaxLines = 3,
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp)
                 )
             }
 
@@ -541,13 +544,16 @@ private fun ReleaseCard(
                         }
                     }
                     is ReleaseState.Inspected -> {
-                        Spacer(Modifier.height(10.dp))
-                        rs.entries.forEach { entryUi ->
-                            MarketJsEntryRow(
-                                entryUi = entryUi,
-                                installing = installingEntry == entryUi.entry.fileName,
-                                onInstall = { onInstall(entryUi) }
-                            )
+                        Spacer(Modifier.height(12.dp))
+                        // ⚡ 每个音源之间留出间距，此前直接 forEach 平铺，卡片上下贴在一起
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rs.entries.forEach { entryUi ->
+                                MarketJsEntryRow(
+                                    entryUi = entryUi,
+                                    installing = installingEntry == entryUi.entry.fileName,
+                                    onInstall = { onInstall(entryUi) }
+                                )
+                            }
                         }
                     }
                     is ReleaseState.Error -> {

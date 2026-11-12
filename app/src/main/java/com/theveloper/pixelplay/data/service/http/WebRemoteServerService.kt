@@ -477,6 +477,36 @@ class WebRemoteServerService : LifecycleService() {
                         }
                     }
 
+                    // 静态资源：目前只有 three.js（玻璃视图的「封面粒子壁纸」引擎）。
+                    // ⚡ 必须从 APK 内置 assets 提供：页面原先只从 jsdelivr 拉 three.js，
+                    //   国内网络经常不可达 → 3D 壁纸永远建不起来，玻璃视图背景变成一片纯黑。
+                    get("/vendor/{path...}") {
+                        val relative = call.parameters.getAll("path").orEmpty().joinToString("/")
+                        try {
+                            if (relative.isBlank() || relative.contains("..")) {
+                                call.respondText("Not found", status = io.ktor.http.HttpStatusCode.NotFound)
+                                return@get
+                            }
+                            val bytes = assets.open("web-remote/vendor/$relative").use { it.readBytes() }
+                            val mime = when (relative.substringAfterLast('.', "").lowercase()) {
+                                "js" -> "application/javascript; charset=UTF-8"
+                                "css" -> "text/css; charset=UTF-8"
+                                "json" -> "application/json"
+                                "png" -> "image/png"
+                                "webp" -> "image/webp"
+                                "svg" -> "image/svg+xml"
+                                "woff2" -> "font/woff2"
+                                else -> "application/octet-stream"
+                            }
+                            call.response.header("Content-Type", mime)
+                            call.response.header("Cache-Control", "public, max-age=86400")
+                            call.respondBytes(bytes)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to serve vendor asset: $relative")
+                            call.respondText("Not found", status = io.ktor.http.HttpStatusCode.NotFound)
+                        }
+                    }
+
                     post("/api/auth") {
                         val pin = call.parameters["pin"] ?: ""
                         if (pin == currentPin) {
@@ -490,16 +520,7 @@ class WebRemoteServerService : LifecycleService() {
                         try {
                             val state = playbackStateHolder.stablePlayerState.first()
                             val position = playbackStateHolder.currentPosition.first()
-                            call.respond(PlayerState(
-                                isPlaying = state.isPlaying,
-                                song = state.currentSong?.toSongDto(),
-                                position = position,
-                                duration = state.totalDuration,
-                                volume = 1.0f,
-                                syncMode = isSyncMode,
-                                audioOnDevice = isAudioOnDevice,
-                                themeColor = themeColor
-                            ))
+                            call.respond(buildPlayerState(state, position))
                         } catch (e: Exception) {
                             Timber.e(e, "Error getting player state")
                             call.respondText("Error: ${e.message}", status = io.ktor.http.HttpStatusCode.InternalServerError)
@@ -1203,16 +1224,7 @@ class WebRemoteServerService : LifecycleService() {
     }
 
     private suspend fun broadcastPlayerState(state: com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState, position: Long) {
-        val playerState = PlayerState(
-            isPlaying = state.isPlaying,
-            song = state.currentSong?.toSongDto(),
-            position = position,
-            duration = state.totalDuration,
-            volume = 1.0f,
-            syncMode = isSyncMode,
-            audioOnDevice = isAudioOnDevice,
-            themeColor = themeColor
-        )
+        val playerState = buildPlayerState(state, position)
         val json = Json.encodeToString(playerState)
         // 并发发送：每个 WsClient 内部有 Mutex+3s 超时，坏连接会被剔除。
         // 若串行发送，一个僵死客户端最多拖慢 3s，会导致其它客户端收到过期位置（表现为"卡顿/跳变"）。
@@ -1339,6 +1351,60 @@ class WebRemoteServerService : LifecycleService() {
             streamUrl = "/api/stream/${java.net.URLEncoder.encode(id, "UTF-8")}",
             duration = this.duration,
             isFavorite = this.isFavorite
+        )
+    }
+
+    /**
+     * Web 远控不能只依赖 PlaybackStateHolder：App 退到后台、PlayerViewModel 被回收后，
+     * stablePlayerState.currentSong 可能还是 null，但 MusicService 的 masterPlayer 仍在播放。
+     * 这里以 Player 的当前媒体项作为兜底，并确保 Player 属性只在主线程读取。
+     */
+    private suspend fun buildPlayerState(
+        stable: com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState,
+        stablePosition: Long
+    ): PlayerState = withContext(Dispatchers.Main.immediate) {
+        val player = if (::dualPlayerEngine.isInitialized) {
+            runCatching { dualPlayerEngine.masterPlayer }.getOrNull()
+        } else {
+            null
+        }
+        val mediaItem = player?.currentMediaItem
+        val mediaId = mediaItem?.mediaId
+        val stableSong = stable.currentSong
+        val mediaSong = mediaItem?.toWebRemoteSongDto()
+        val song = if (stableSong != null && (mediaId.isNullOrBlank() || stableSong.id == mediaId)) {
+            stableSong.toSongDto()
+        } else {
+            mediaSong ?: stableSong?.toSongDto()
+        }
+
+        PlayerState(
+            isPlaying = player?.isPlaying ?: stable.isPlaying,
+            song = song,
+            position = player?.currentPosition?.coerceAtLeast(0L) ?: stablePosition,
+            duration = player?.duration?.takeIf { it > 0L } ?: stable.totalDuration,
+            volume = 1.0f,
+            syncMode = isSyncMode,
+            audioOnDevice = isAudioOnDevice,
+            themeColor = themeColor
+        )
+    }
+
+    private fun MediaItem.toWebRemoteSongDto(): SongDto? {
+        val id = mediaId.takeIf { it.isNotBlank() } ?: return null
+        val metadata = mediaMetadata
+        val title = metadata.title?.toString().orEmpty()
+        if (title.isBlank()) return null
+        val encodedId = java.net.URLEncoder.encode(id, "UTF-8")
+        return SongDto(
+            id = id,
+            title = title,
+            artist = metadata.artist?.toString().orEmpty(),
+            album = metadata.albumTitle?.toString().orEmpty(),
+            coverUrl = metadata.artworkUri?.let { "/api/albumArt/$encodedId" },
+            streamUrl = "/api/stream/$encodedId",
+            duration = metadata.durationMs ?: 0L,
+            isFavorite = false
         )
     }
 

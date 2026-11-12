@@ -6,8 +6,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.text.method.LinkMovementMethod
-import android.widget.TextView
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -113,12 +111,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp as lerpDp
 import androidx.compose.ui.util.lerp as lerpFloat
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
@@ -126,8 +122,6 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
-import io.noties.markwon.Markwon
-import io.noties.markwon.image.ImagesPlugin
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.github.ApkDownloadInstaller
 import com.theveloper.pixelplay.data.github.ApkDownloadService
@@ -135,6 +129,7 @@ import com.theveloper.pixelplay.data.github.GitHubContributorService
 import com.theveloper.pixelplay.data.github.UpdateChecker
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.ChangelogBottomSheet
+import com.theveloper.pixelplay.presentation.components.MarkdownReleaseNotesBody
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.presentation.components.UpdateAvailableDialog
@@ -1999,34 +1994,11 @@ private fun ChangelogCard(
                             modifier = Modifier.padding(vertical = 4.dp),
                         )
                     } else {
-                        // ⚡ Markdown 渲染：更新日志支持完整 Markdown（标题/列表/粗体/斜体/链接/代码块等），
-                        // 替换原来的逐行手写解析
-                        val markwon = remember {
-                            Markwon.builder(context)
-                                .usePlugin(ImagesPlugin.create())
-                                .build()
-                        }
-                        val changelogSpannable = remember(releaseInfo.releaseNotes) {
-                            markwon.toMarkdown(releaseInfo.releaseNotes)
-                        }
-                        val changelogTextColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
-                        val changelogLinkColor = MaterialTheme.colorScheme.primary.toArgb()
-                        AndroidView(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            factory = { ctx ->
-                                TextView(ctx).apply {
-                                    textSize = 14f
-                                    movementMethod = LinkMovementMethod.getInstance()
-                                    highlightColor = android.graphics.Color.TRANSPARENT
-                                }
-                            },
-                            update = { tv ->
-                                tv.setTextColor(changelogTextColor)
-                                tv.setLinkTextColor(changelogLinkColor)
-                                tv.text = changelogSpannable
-                            }
+                        // ⚡ 更新日志按「文本块 + 图片块」渲染：Markdown 走 Markwon，
+                        //   图片走 Coil；这样 GitHub 的 <img> 贴图与 ![]() 都能显示
+                        MarkdownReleaseNotesBody(
+                            markdown = releaseInfo.releaseNotes,
+                            modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
                 }

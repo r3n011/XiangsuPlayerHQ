@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="settings_category_plugins_title">插件</string>
+    <string name="settings_category_plugins_subtitle">插件商店与能力扩展</string>
+
+    <string name="plugin_refresh">刷新</string>
+    <string name="plugin_tab_installed">已安装</string>
+    <string name="plugin_tab_store">商店</string>
+    <string name="plugin_empty_installed">还没有安装插件，去「商店」看看。</string>
+    <string name="plugin_store_hint">插件运行在独立 QuickJS 沙箱中，只放行 manifest 声明的权限。</string>
+    <string name="plugin_install">安装</string>
+    <string name="plugin_installing">安装中…</string>
+    <string name="plugin_installed">已安装</string>
+    <string name="plugin_update">更新</string>
+    <string name="plugin_retry">重试</string>
+    <string name="plugin_import_local">导入本地插件包（.zip）</string>
+    <string name="plugin_permissions">申请权限</string>
+    <string name="plugin_high_risk_hint">包含高风险权限，启用前请阅读插件协议。</string>
+    <string name="plugin_actions">播放器指令</string>
+    <string name="plugin_open_panel">打开插件面板</string>
+    <string name="plugin_receipts">最近回执</string>
+    <string name="plugin_no_receipts">暂无回执</string>
+    <string name="plugin_clear_data">清除数据</string>
+    <string name="plugin_uninstall">卸载</string>
+    <string name="plugin_agree">同意并继续</string>
+    <string name="plugin_decline">不同意</string>
+    <string name="plugin_agreement_title">插件协议</string>
+    <string name="plugin_store_agreement_title">插件商店协议</string>
+    <string name="plugin_terms">用户协议</string>
+    <string name="plugin_privacy">隐私政策</string>
+    <string name="plugin_open_center">打开插件中心</string>
+    <string name="plugin_state_running">运行中</string>
+    <string name="plugin_state_disabled">已停用</string>
+    <string name="plugin_status_online">在线</string>
+    <string name="plugin_status_offline">已停用</string>
+
+    <string name="plugin_cap_media">媒体控制</string>
+    <string name="plugin_cap_library">曲库访问</string>
+    <string name="plugin_cap_notification">通知提醒</string>
+    <string name="plugin_cap_storage">本地存储</string>
+    <string name="plugin_cap_share">系统分享</string>
+    <string name="plugin_cap_ai">AI 助手</string>
+    <string name="plugin_cap_theme">主题外观</string>
+    <string name="plugin_cap_network">网络请求</string>
+    <string name="plugin_cap_lyrics">歌词</string>
+    <string name="plugin_cap_cast">投屏</string>
+    <string name="plugin_cap_device">设备桥接</string>
+    <string name="plugin_cap_source">音源</string>
+    <string name="plugin_cap_clipboard">剪贴板</string>
+    <string name="plugin_cap_navigation">外部打开</string>
+    <string name="plugin_cap_other">能力扩展</string>
+
+    <string name="plugin_stat_agreement">协议授权</string>
+    <string name="plugin_stat_agreed">已授权</string>
+    <string name="plugin_stat_not_agreed">待授权</string>
+    <string name="plugin_stat_actions">指令数量</string>
+    <string name="plugin_stat_receipts">回执条数</string>
+
+    <string name="plugin_toggle_hint">启用后运行脚本并接收指令</string>
+    <string name="plugin_dock_title">指令坞</string>
+    <string name="plugin_dock_hint">点按直接执行一次</string>
+    <string name="plugin_action_once">执行一次</string>
+</resources>

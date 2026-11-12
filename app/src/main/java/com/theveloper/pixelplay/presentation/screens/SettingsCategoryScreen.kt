@@ -106,6 +106,7 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -283,7 +284,9 @@ fun SettingsCategoryScreen(
     statsViewModel: com.theveloper.pixelplay.presentation.viewmodel.StatsViewModel = hiltViewModel(),
     highlightSetting: String? = null,
     onBackClick: () -> Unit,
-    showBackButton: Boolean = true
+    showBackButton: Boolean = true,
+    /** 平板双栏模式下，插件中心需要交给外层 NavHost 全屏打开 */
+    onOpenPluginCenter: (() -> Unit)? = null
 ) {
     val category = SettingsCategory.fromId(categoryId) ?: return
     val context = LocalContext.current
@@ -369,9 +372,17 @@ fun SettingsCategoryScreen(
     }
 
     val importFilePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        // 用 OpenDocument 而不是 GetContent：GetContent 只给临时读权限，
+        // 备份历史里的 URI 在进程重启后就会打不开；这里同时申请持久化权限。
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
             importFileUri = uri
             settingsViewModel.inspectBackupFile(uri)
         }
@@ -545,368 +556,7 @@ fun SettingsCategoryScreen(
                ) {
                     when (category) {
                         SettingsCategory.AI_INTEGRATION -> {
-                            val aiProvider by settingsViewModel.aiProvider.collectAsStateWithLifecycle()
-                            val currentAiApiKey by settingsViewModel.currentAiApiKey.collectAsStateWithLifecycle()
-                            val currentAiModel by settingsViewModel.currentAiModel.collectAsStateWithLifecycle()
-                            val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-                            val availableModels = uiState.availableModels
-                            val isLoadingModels = uiState.isLoadingModels
-                            val modelsFetchError = uiState.modelsFetchError
-                            val isSafeTokenLimitEnabled by settingsViewModel.isSafeTokenLimitEnabled.collectAsStateWithLifecycle()
-                            val isAutoPlaylistEnabled by settingsViewModel.isAutoPlaylistEnabled.collectAsStateWithLifecycle()
-                            val isAiRecommendationCardEnabled by settingsViewModel.isAiRecommendationCardEnabled.collectAsStateWithLifecycle()
-                            val isAiRecommendationManualOnly by settingsViewModel.isAiRecommendationManualOnly.collectAsStateWithLifecycle()
-                            val currentAiBaseUrl by settingsViewModel.currentAiBaseUrl.collectAsStateWithLifecycle()
-                            val currentProvider = AiProvider.fromString(aiProvider)
-
-                            LaunchedEffect(aiProvider, currentAiApiKey) {
-                                settingsViewModel.loadModelsForCurrentProvider()
-                            }
-
-                            // MiMo 推广卡片
-                            val mimoContext = LocalContext.current
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        mimoContext.startActivity(
-                                            Intent(Intent.ACTION_VIEW, "https://platform.xiaomimimo.com?ref=LAGBWT".toUri())
-                                        )
-                                    }
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.CardGiftcard,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                        Text(
-                                            text = "MiMo 开放平台 · 新用户福利",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "体验小米顶尖模型 MiMo V2.5 等。通过邀请码注册：双方各得 ¥10 API 体验金 + 首单 9 折。",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)
-                                        ) {
-                                            Text(
-                                                text = "邀请码：LAGBWT",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                        Text(
-                                            text = "体验金 40 天有效",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.OpenInNew,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = "platform.xiaomimimo.com",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
-
-                            // 服务商 / 平台选择
-                            SettingsSubsection(title = "服务商") {
-                                ThemeSelectorItem(
-                                    label = "服务商",
-                                    description = currentProvider.displayName,
-                                    options = AiProvider.entries.associate { it.name to it.displayName },
-                                    selectedKey = aiProvider,
-                                    onSelectionChanged = { settingsViewModel.onAiProviderChange(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                            }
-
-                            // 自定义 OpenAI 兼容平台地址
-                            if (currentProvider.hasConfigurableUrl) {
-                                SettingsSubsection(title = "自定义平台地址") {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceContainer,
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                            Text(
-                                                text = "Base URL（OpenAI 兼容）",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = "填写到 /v1 为止，例如 https://api.deepseek.com",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            OutlinedTextField(
-                                                value = currentAiBaseUrl,
-                                                onValueChange = { settingsViewModel.onAiBaseUrlChange(it) },
-                                                placeholder = { Text("https://api.example.com/v1") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                singleLine = true
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            SettingsSubsection(title = stringResource(R.string.setcat_ai_provider_section)) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.surfaceContainer,
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                            text = stringResource(R.string.setcat_ai_api_key_title_simple),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        OutlinedTextField(
-                                            value = currentAiApiKey,
-                                            onValueChange = { settingsViewModel.onAiApiKeyChange(it) },
-                                            placeholder = { Text("Enter API key") },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            trailingIcon = {
-                                                if (currentAiApiKey.isNotBlank()) {
-                                                    IconButton(onClick = { settingsViewModel.onAiApiKeyChange("") }) {
-                                                        Icon(Icons.Rounded.Close, null)
-                                                    }
-                                                }
-                                            },
-                                            visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None
-                                        )
-                                    }
-                                }
-                            }
-
-                            SettingsSubsection(title = stringResource(R.string.setcat_model_selection)) {
-                                if (currentProvider.hasConfigurableUrl) {
-                                    // 自定义 OpenAI 兼容平台：手动填写模型名（第三方 /models 接口不一定可用）
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceContainer,
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                            Text(
-                                                text = stringResource(R.string.setcat_ai_model_label),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = "手动填写模型名，例如 deepseek-chat、qwen-max",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            OutlinedTextField(
-                                                value = currentAiModel,
-                                                onValueChange = { settingsViewModel.onAiModelChange(it) },
-                                                placeholder = { Text("deepseek-chat") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                singleLine = true
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    ThemeSelectorItem(
-                                        label = stringResource(R.string.setcat_ai_model_label),
-                                        description = if (isLoadingModels) {
-                                            stringResource(R.string.setcat_loading_models)
-                                        } else if (!modelsFetchError.isNullOrBlank()) {
-                                            modelsFetchError
-                                        } else {
-                                            stringResource(R.string.setcat_ai_model_desc)
-                                        },
-                                        options = availableModels.associate { model -> model.name to model.displayName },
-                                        selectedKey = currentAiModel,
-                                        onSelectionChanged = {
-                                            settingsViewModel.onAiModelChange(it)
-                                        },
-                                        leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
-                                    )
-                                }
-                            }
-
-                            SettingsSubsection(title = stringResource(R.string.setcat_safe_token_title)) {
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_safe_token_title),
-                                    subtitle = if (isSafeTokenLimitEnabled) stringResource(R.string.setcat_safe_token_on) else stringResource(R.string.setcat_safe_token_off),
-                                    checked = isSafeTokenLimitEnabled,
-                                    onCheckedChange = { settingsViewModel.setSafeTokenLimitEnabled(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.Tag, null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                            }
-
-                            SettingsSubsection(title = stringResource(R.string.setcat_ai_auto_trigger_section)) {
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_ai_auto_playlist_title),
-                                    subtitle = stringResource(R.string.setcat_ai_auto_playlist_subtitle),
-                                    checked = isAutoPlaylistEnabled,
-                                    onCheckedChange = { settingsViewModel.setAutoPlaylistEnabled(it) },
-                                    leadingIcon = { Icon(painterResource(R.drawable.generate_playlist_ai), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                            }
-
-                            SettingsSubsection(title = stringResource(R.string.setcat_ai_recommendation_section)) {
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_ai_recommendation_card_title),
-                                    subtitle = stringResource(R.string.setcat_ai_recommendation_card_subtitle),
-                                    checked = isAiRecommendationCardEnabled,
-                                    onCheckedChange = { settingsViewModel.setAiRecommendationCardEnabled(it) },
-                                    leadingIcon = { Icon(painterResource(R.drawable.generate_playlist_ai), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_ai_recommendation_manual_title),
-                                    subtitle = stringResource(R.string.setcat_ai_recommendation_manual_subtitle),
-                                    checked = isAiRecommendationManualOnly,
-                                    onCheckedChange = { settingsViewModel.setAiRecommendationManualOnly(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                            }
-
-                            // AI 陪伴
-                            val isCompanionEnabled by settingsViewModel.isCompanionEnabled.collectAsStateWithLifecycle()
-                            val companionVoice by settingsViewModel.companionVoice.collectAsStateWithLifecycle()
-                            val voiceList = com.theveloper.pixelplay.data.ai.MiMoTtsClient.BUILT_IN_VOICES
-                            SettingsSubsection(title = stringResource(R.string.setcat_ai_companion_section)) {
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_ai_companion_title),
-                                    subtitle = stringResource(R.string.setcat_ai_companion_subtitle),
-                                    checked = isCompanionEnabled,
-                                    onCheckedChange = { settingsViewModel.setCompanionEnabled(it) },
-                                    leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                                if (isCompanionEnabled) {
-                                    // MiMo TTS API Key
-                                    val mimoTtsKey by settingsViewModel.mimoTtsApiKey.collectAsStateWithLifecycle()
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceContainer,
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                            Text(
-                                                text = "MiMo TTS API Key",
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = stringResource(R.string.setcat_ai_companion_mimo_key_hint),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            var ttsKeyText by remember(mimoTtsKey) { mutableStateOf(mimoTtsKey) }
-                                            OutlinedTextField(
-                                                value = ttsKeyText,
-                                                onValueChange = { ttsKeyText = it },
-                                                placeholder = { Text("sk-xxxxx") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                singleLine = true,
-                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                                                trailingIcon = {
-                                                    if (ttsKeyText != mimoTtsKey) {
-                                                        IconButton(onClick = { settingsViewModel.setMimoTtsApiKey(ttsKeyText) }) {
-                                                            Icon(Icons.Rounded.Check, contentDescription = "Save", tint = MaterialTheme.colorScheme.primary)
-                                                        }
-                                                    }
-                                                },
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                                                )
-                                            )
-                                        }
-                                    }
-                                    val currentVoiceName = voiceList.find { it.id == companionVoice }?.displayName ?: companionVoice
-                                    ThemeSelectorItem(
-                                        label = stringResource(R.string.setcat_ai_companion_voice),
-                                        description = currentVoiceName,
-                                        options = voiceList.associate { it.id to it.displayName },
-                                        selectedKey = companionVoice,
-                                        onSelectionChanged = { settingsViewModel.setCompanionVoice(it) },
-                                        leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.primary) }
-                                    )
-                                    // 语速滑块
-                                    val companionSpeed by settingsViewModel.companionSpeed.collectAsStateWithLifecycle()
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceContainer,
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.setcat_ai_companion_speed),
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                                val speedText = when {
-                                                    companionSpeed <= 0.5f -> "0.5x"
-                                                    companionSpeed <= 0.75f -> "0.75x"
-                                                    companionSpeed <= 1.0f -> "1x"
-                                                    companionSpeed <= 1.25f -> "1.25x"
-                                                    companionSpeed <= 1.5f -> "1.5x"
-                                                    else -> "2x"
-                                                }
-                                                Text(
-                                                    text = speedText,
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                            Slider(
-                                                value = companionSpeed,
-                                                onValueChange = { settingsViewModel.setCompanionSpeed(it) },
-                                                valueRange = 0.5f..2.0f,
-                                                steps = 5,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            AiIntegrationSettingsContent(settingsViewModel = settingsViewModel)
                         }
                         SettingsCategory.USB_EXCLUSIVE -> {
                             // ⚡ 设备状态卡：当前设备 / 独占是否真的激活 / 支持采样率，
@@ -1072,6 +722,49 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_usb_24), null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely(Screen.DeviceCapabilities.route) }
+                                )
+                            }
+                        }
+
+                        SettingsCategory.PLUGINS -> {
+                            val pluginViewModel: com.theveloper.pixelplay.presentation.viewmodel.PluginViewModel = hiltViewModel()
+                            val installedPlugins by pluginViewModel.installed.collectAsStateWithLifecycle()
+                            val openPluginCenter: () -> Unit = {
+                                if (onOpenPluginCenter != null) {
+                                    onOpenPluginCenter.invoke()
+                                } else {
+                                    navController.navigateSafely(Screen.PluginCenter.route)
+                                }
+                            }
+
+                            SettingsSubsection(title = stringResource(R.string.plugin_tab_installed)) {
+                                if (installedPlugins.isEmpty()) {
+                                    SettingsItem(
+                                        title = stringResource(R.string.plugin_empty_installed),
+                                        subtitle = stringResource(R.string.settings_category_plugins_subtitle),
+                                        leadingIcon = { Icon(Icons.Rounded.Extension, null, tint = MaterialTheme.colorScheme.secondary) },
+                                        trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                        onClick = openPluginCenter
+                                    )
+                                } else {
+                                    installedPlugins.forEach { record ->
+                                        SettingsItem(
+                                            title = record.manifest.name,
+                                            subtitle = "v${record.version} · " + stringResource(
+                                                if (record.enabled) R.string.plugin_state_running else R.string.plugin_state_disabled
+                                            ),
+                                            leadingIcon = { Icon(Icons.Rounded.Extension, null, tint = MaterialTheme.colorScheme.secondary) },
+                                            trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                            onClick = openPluginCenter
+                                        )
+                                    }
+                                }
+                                SettingsItem(
+                                    title = stringResource(R.string.plugin_open_center),
+                                    subtitle = stringResource(R.string.settings_category_plugins_subtitle),
+                                    leadingIcon = { Icon(Icons.Rounded.Extension, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = openPluginCenter
                                 )
                             }
                         }
@@ -3242,7 +2935,7 @@ fun SettingsCategoryScreen(
                     importFileUri = null
                     settingsViewModel.clearRestorePlan()
                 },
-                onBrowseFile = { importFilePicker.launch("*/*") },
+                onBrowseFile = { importFilePicker.launch(arrayOf("*/*")) },
                 onHistoryItemSelected = { entry ->
                     val uri = entry.uri.toUri()
                     importFileUri = uri

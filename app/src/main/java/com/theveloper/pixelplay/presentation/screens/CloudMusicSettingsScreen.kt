@@ -19,10 +19,16 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -62,6 +68,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -142,7 +152,8 @@ fun CloudMusicSettingsScreen(
     var collapseFraction by remember { mutableStateOf(0f) }
 
     // ⚡ 音源临时开关状态（source -> enabled），用于每个脚本的音源管理开关
-    val sourceToggles by viewModel.sourceToggles.collectAsStateWithLifecycle()
+    // 平台 → 音源脚本 路由（持久化，首个脚本为首选）
+    val sourceRouting by viewModel.sourceRouting.collectAsStateWithLifecycle()
 
     LaunchedEffect(topBarHeight.value) {
         collapseFraction = 1f - (
@@ -238,6 +249,40 @@ fun CloudMusicSettingsScreen(
             //     )
             // }
 
+            if (state.scriptInfos.isNotEmpty()) {
+                item {
+                    val scriptsByPlatform = remember(state.scriptInfos) {
+                        val map = LinkedHashMap<String, MutableList<String>>()
+                        state.scriptInfos.forEach { info ->
+                            viewModel.getInstanceSources(info.fileName).keys.forEach { key ->
+                                map.getOrPut(key) { mutableListOf() }.add(info.fileName)
+                            }
+                        }
+                        map
+                    }
+                    val platformNames = remember(state.scriptInfos) {
+                        val map = mutableMapOf<String, String>()
+                        state.scriptInfos.forEach { info ->
+                            viewModel.getInstanceSources(info.fileName).forEach { (key, src) ->
+                                if (src.name.isNotBlank()) map.putIfAbsent(key, src.name)
+                            }
+                        }
+                        map
+                    }
+                    PlatformRoutingCard(
+                        scripts = state.scriptInfos,
+                        scriptsByPlatform = scriptsByPlatform,
+                        platformNames = platformNames,
+                        routes = sourceRouting,
+                        onConnect = { platform, file -> viewModel.connectSourceRoute(platform, file) },
+                        onDisconnect = { platform, file -> viewModel.disconnectSourceRoute(platform, file) },
+                        onPrefer = { platform, file -> viewModel.preferSourceRoute(platform, file) },
+                        onAuto = { viewModel.autoRouteSources() },
+                        onClear = { viewModel.clearSourceRoutes() },
+                    )
+                }
+            }
+
             item {
                 Text(
                     "已安装音源 (${state.scriptInfos.size})",
@@ -253,9 +298,7 @@ fun CloudMusicSettingsScreen(
                     ScriptSourceCard(
                         info = info,
                         instanceSources = viewModel.getInstanceSources(info.fileName),
-                        sourceToggles = sourceToggles,
                         expanded = expandedScript == info.fileName,
-                        onToggleSource = { key, enabled -> viewModel.toggleSource(key, enabled) },
                         onDelete = { pendingDelete = info.fileName },
                         onToggleExpand = {
                             expandedScript = if (expandedScript == info.fileName) null else info.fileName
@@ -729,9 +772,7 @@ private fun HeroSourceCard(
 private fun ScriptSourceCard(
     info: LxScriptInfo,
     instanceSources: Map<String, LxSourceInfo>,
-    sourceToggles: Map<String, Boolean>,
     expanded: Boolean,
-    onToggleSource: (String, Boolean) -> Unit,
     onDelete: () -> Unit,
     onToggleExpand: () -> Unit,
     modifier: Modifier = Modifier
@@ -825,36 +866,15 @@ private fun ScriptSourceCard(
             }
 
             if (instanceSources.isNotEmpty()) {
-                instanceSources.forEach { (key, srcInfo) ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp)
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = srcInfo.name.ifBlank { key },
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            if (srcInfo.qualitys.isNotEmpty()) {
-                                Text(
-                                    text = srcInfo.qualitys.joinToString(" / "),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Switch(
-                            checked = sourceToggles[key] ?: true,
-                            onCheckedChange = { onToggleSource(key, it) },
-                            modifier = Modifier.scale(0.85f)
-                        )
-                    }
-                }
+                Text(
+                    text = "提供平台: " + instanceSources.entries.joinToString(" · ") {
+                        (it.value.name.ifBlank { it.key }) + " (" + it.key + ")"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             if (info.author.isNotBlank() || info.homepage.isNotBlank() ||

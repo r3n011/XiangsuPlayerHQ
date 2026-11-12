@@ -214,6 +214,29 @@ class LxMusicViewModel @Inject constructor(
     fun getInstanceSources(fileName: String): Map<String, LxSourceInfo> =
         engine.instanceSources(fileName)
 
+    // ── 平台 → 音源脚本 路由 ──────────────────────────────────────────
+    val sourceRouting: StateFlow<Map<String, List<String>>> = engine.sourceRouting
+
+    fun connectSourceRoute(platform: String, fileName: String) {
+        engine.addSourceRoute(platform, fileName)
+    }
+
+    fun disconnectSourceRoute(platform: String, fileName: String) {
+        engine.removeSourceRoute(platform, fileName)
+    }
+
+    fun preferSourceRoute(platform: String, fileName: String) {
+        engine.setPreferredSource(platform, fileName)
+    }
+
+    fun autoRouteSources() {
+        engine.autoRouteSources()
+    }
+
+    fun clearSourceRoutes() {
+        engine.clearSourceRoutes()
+    }
+
     private suspend fun loadScriptInfos(): List<LxScriptInfo> =
         runCatching { engine.scriptInfos() }.getOrDefault(emptyList())
 

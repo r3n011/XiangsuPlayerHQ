@@ -1,5 +1,17 @@
 # 更新日志
 
+## v1.7.4 (2026-10-31)
+
+### 新增
+- **插件中心（Host API v0.6 / 商店协议 v1）**：设置新增「插件」一级分类，包含「已安装 / 商店」两页。
+  - 商店：拉取 `https://xiangsudev.cn/plugin-store`（可自建替换），流式下载 + SHA-256 校验 + ≤8MB 限制，支持安装/更新/重试/本地 zip 导入。
+  - 运行时：每个插件独立 QuickJS 实例，注入 `__xsHost__` 桥；`storage / media / library / lyrics / notify / share / network / ui / context / clipboard / deepLink / system` 已落地，`ai / cast / device / musicSource` 暂返回 `not_implemented`。
+  - 界面：插件自带 WebView 面板（同一套桥 + `--xs-accent` 主题注入）、原生控制台（指令坞 / 最近回执 / 清除数据 / 卸载）、权限双列 chip、商店协议与插件单独协议门槛。
+  - 安全：manifest schema 3 校验、路径穿越与解压炸弹防护、`networkDomains` 主机白名单、`runtime=wasm` 明确拒绝。
+
+### 修复
+- **Web 远控玻璃视图背景缺失**：封面粒子壁纸依赖 jsdelivr 的 three.js，国内网络不可达时 3D 画布永远不会初始化。现把 three.js r160 内置进 APK（`/vendor/three.min.js`），本地优先加载；同时移除阻塞渲染的无用 mdui CDN。
+
 ## v1.7.3 (2026-10-24)
 
 ### 修复

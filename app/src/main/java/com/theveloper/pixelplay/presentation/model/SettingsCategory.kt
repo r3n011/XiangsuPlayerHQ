@@ -6,6 +6,7 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DeveloperBoard
 import androidx.compose.material.icons.rounded.DeveloperMode
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
@@ -92,6 +93,13 @@ enum class SettingsCategory(
         titleRes = R.string.settings_category_api_title,
         subtitleRes = R.string.settings_category_api_subtitle,
         icon = Icons.Rounded.Cloud
+    ),
+    // 插件中心：商店 + 已安装 + 指令坞（Host API v0.6）
+    PLUGINS(
+        id = "plugins",
+        titleRes = R.string.settings_category_plugins_title,
+        subtitleRes = R.string.settings_category_plugins_subtitle,
+        icon = Icons.Rounded.Extension
     ),
 
     // ── 3. 低频偏好 ──────────────────────────────────────────────────

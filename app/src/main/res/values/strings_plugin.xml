@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="settings_category_plugins_title">Plugins</string>
+    <string name="settings_category_plugins_subtitle">Plugin store and capability extensions</string>
+
+    <string name="plugin_refresh">Refresh</string>
+    <string name="plugin_tab_installed">Installed</string>
+    <string name="plugin_tab_store">Store</string>
+    <string name="plugin_empty_installed">No plugins installed yet. Open the Store tab to browse.</string>
+    <string name="plugin_store_hint">Plugins run in an isolated QuickJS sandbox. Only permissions declared in the manifest are granted.</string>
+    <string name="plugin_install">Install</string>
+    <string name="plugin_installing">Installing…</string>
+    <string name="plugin_installed">Installed</string>
+    <string name="plugin_update">Update</string>
+    <string name="plugin_retry">Retry</string>
+    <string name="plugin_import_local">Import local plugin (.zip)</string>
+    <string name="plugin_permissions">Permissions</string>
+    <string name="plugin_high_risk_hint">Contains high-risk permissions. Read the plugin agreement before enabling.</string>
+    <string name="plugin_actions">Player actions</string>
+    <string name="plugin_open_panel">Open plugin panel</string>
+    <string name="plugin_receipts">Recent receipts</string>
+    <string name="plugin_no_receipts">No receipts yet</string>
+    <string name="plugin_clear_data">Clear data</string>
+    <string name="plugin_uninstall">Uninstall</string>
+    <string name="plugin_agree">Agree and continue</string>
+    <string name="plugin_decline">Decline</string>
+    <string name="plugin_agreement_title">Plugin agreement</string>
+    <string name="plugin_store_agreement_title">Plugin Store terms</string>
+    <string name="plugin_terms">User agreement</string>
+    <string name="plugin_privacy">Privacy policy</string>
+    <string name="plugin_open_center">Open plugin center</string>
+    <string name="plugin_state_running">Running</string>
+    <string name="plugin_state_disabled">Disabled</string>
+    <string name="plugin_status_online">Online</string>
+    <string name="plugin_status_offline">Disabled</string>
+
+    <string name="plugin_cap_media">Media control</string>
+    <string name="plugin_cap_library">Library access</string>
+    <string name="plugin_cap_notification">Notifications</string>
+    <string name="plugin_cap_storage">Local storage</string>
+    <string name="plugin_cap_share">System share</string>
+    <string name="plugin_cap_ai">AI assistant</string>
+    <string name="plugin_cap_theme">Theme</string>
+    <string name="plugin_cap_network">Network</string>
+    <string name="plugin_cap_lyrics">Lyrics</string>
+    <string name="plugin_cap_cast">Cast</string>
+    <string name="plugin_cap_device">Device bridge</string>
+    <string name="plugin_cap_source">Music source</string>
+    <string name="plugin_cap_clipboard">Clipboard</string>
+    <string name="plugin_cap_navigation">Open links</string>
+    <string name="plugin_cap_other">Extension</string>
+
+    <string name="plugin_stat_agreement">Agreement</string>
+    <string name="plugin_stat_agreed">Agreed</string>
+    <string name="plugin_stat_not_agreed">Pending</string>
+    <string name="plugin_stat_actions">Actions</string>
+    <string name="plugin_stat_receipts">Receipts</string>
+
+    <string name="plugin_toggle_hint">Enable to run the plugin and receive actions</string>
+    <string name="plugin_dock_title">Player actions</string>
+    <string name="plugin_dock_hint">Tap to run once</string>
+    <string name="plugin_action_once">Run once</string>
+</resources>

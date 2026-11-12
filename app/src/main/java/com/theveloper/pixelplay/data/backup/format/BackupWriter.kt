@@ -26,48 +26,52 @@ class BackupWriter @Inject constructor(
         modulePayloads: Map<String, String>
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            // .pxpbak 只承载播放历史；之前未勾选「播放历史」时会静默写出空文件
+            // 并提示导出成功，这里改成明确失败，避免用户以为备份成功。
             val playbackHistoryJson = modulePayloads["playback_history"]
-            if (playbackHistoryJson != null) {
-                val historyEntries = gson.fromJson(playbackHistoryJson,
-                    com.google.gson.reflect.TypeToken.getParameterized(
-                        List::class.java,
-                        com.theveloper.pixelplay.data.backup.model.PlaybackHistoryBackupEntry::class.java
-                    ).type
-                ) as List<com.theveloper.pixelplay.data.backup.model.PlaybackHistoryBackupEntry>
-
-                val externalEntries = historyEntries.map { entry ->
-                    ExternalPlayHistoryEntry(
-                        id = java.util.UUID.randomUUID().toString(),
-                        playedDuration = entry.durationMs / 1000.0,
-                        completed = entry.durationMs > 0,
-                        artistName = "",
-                        songTitle = "",
-                        sourceType = detectSourceType(entry.songId),
-                        albumName = "",
-                        playedAt = java.time.Instant.ofEpochMilli(entry.timestamp).toString(),
-                        duration = 0,
-                        songId = entry.songId
-                    )
-                }
-
-                val externalBackup = ExternalBackup(
-                    createdAt = java.time.Instant.ofEpochMilli(manifest.createdAt).toString(),
-                    version = "1.0",
-                    appVersion = manifest.appVersion,
-                    deviceInfo = ExternalDeviceInfo(
-                        model = manifest.deviceInfo.model,
-                        systemVersion = manifest.deviceInfo.androidVersion.toString()
-                    ),
-                    data = ExternalBackupData(
-                        playHistory = externalEntries
-                    )
+                ?: throw IllegalStateException(
+                    "External .pxpbak backups only contain play history. " +
+                        "Select the \"Playback History\" module before exporting."
                 )
+            val historyEntries = gson.fromJson(playbackHistoryJson,
+                com.google.gson.reflect.TypeToken.getParameterized(
+                    List::class.java,
+                    com.theveloper.pixelplay.data.backup.model.PlaybackHistoryBackupEntry::class.java
+                ).type
+            ) as List<com.theveloper.pixelplay.data.backup.model.PlaybackHistoryBackupEntry>
 
-                val json = gson.toJson(externalBackup)
-                context.contentResolver.openOutputStream(uri)?.use { output ->
-                    output.write(json.toByteArray(Charsets.UTF_8))
-                } ?: throw IllegalStateException("Unable to open output stream for backup")
+            val externalEntries = historyEntries.map { entry ->
+                ExternalPlayHistoryEntry(
+                    id = java.util.UUID.randomUUID().toString(),
+                    playedDuration = entry.durationMs / 1000.0,
+                    completed = entry.durationMs > 0,
+                    artistName = "",
+                    songTitle = "",
+                    sourceType = detectSourceType(entry.songId),
+                    albumName = "",
+                    playedAt = java.time.Instant.ofEpochMilli(entry.timestamp).toString(),
+                    duration = 0,
+                    songId = entry.songId
+                )
             }
+
+            val externalBackup = ExternalBackup(
+                createdAt = java.time.Instant.ofEpochMilli(manifest.createdAt).toString(),
+                version = "1.0",
+                appVersion = manifest.appVersion,
+                deviceInfo = ExternalDeviceInfo(
+                    model = manifest.deviceInfo.model,
+                    systemVersion = manifest.deviceInfo.androidVersion.toString()
+                ),
+                data = ExternalBackupData(
+                    playHistory = externalEntries
+                )
+            )
+
+            val json = gson.toJson(externalBackup)
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(json.toByteArray(Charsets.UTF_8))
+            } ?: throw IllegalStateException("Unable to open output stream for backup")
         }
     }
 

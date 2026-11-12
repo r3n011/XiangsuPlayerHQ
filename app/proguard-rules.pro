@@ -223,22 +223,23 @@
 # 六、日志优化
 # =============================================================================
 
+# 插件子系统的详细日志需要在 release 保留（Xs* / LxSource* 走 ReleaseTree 白名单）。
+# 因此只裁剪 VERBOSE，DEBUG/INFO 保留（其它 tag 仍由 ReleaseTree 过滤到 WARN+）。
 -assumenosideeffects class timber.log.Timber {
     public static void v(...);
-    public static void d(...);
-    public static void i(...);
 }
 
 -assumenosideeffects class timber.log.Timber$Tree {
     public void v(...);
-    public void d(...);
-    public void i(...);
 }
 
 -assumenosideeffects class android.util.Log {
     public static int v(...);
-    public static int d(...);
-    public static int i(...);
+}
+
+# WebView JS 桥：@JavascriptInterface 方法名不能被 R8 混淆/裁剪
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
 }
 
 # =============================================================================
@@ -258,3 +259,12 @@
 -dontwarn org.apache.log4j.**
 -dontwarn org.apache.logging.log4j.**
 -dontwarn org.eclipse.jetty.npn.**
+
+# Markwon 图片插件引用的可选依赖（SVG/GIF），本工程未打包，R8 忽略即可
+-dontwarn com.caverock.androidsvg.SVG
+-dontwarn com.caverock.androidsvg.SVGParseException
+-dontwarn pl.droidsonroids.gif.GifDrawable
+
+# MCP bridge: kotlinx.serialization models exchanged over JSON-RPC
+-keep class com.theveloper.pixelplay.data.mcp.** { *; }
+-keepclassmembers class com.theveloper.pixelplay.data.mcp.** { *; }

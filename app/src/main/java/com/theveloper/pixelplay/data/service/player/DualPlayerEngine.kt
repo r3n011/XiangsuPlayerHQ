@@ -1086,6 +1086,10 @@ class DualPlayerEngine @Inject constructor(
      */
     private var companionBaseVolume = 1f
 
+    /** Base volume chosen by the user (0..1), unaffected by temporary focus ducking. */
+    val currentVolume: Float
+        get() = companionBaseVolume
+
     fun setVolume(volume: Float) {
         companionBaseVolume = volume.coerceIn(0f, 1f)
         if (::playerA.isInitialized) {
