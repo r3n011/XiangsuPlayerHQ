@@ -58,3 +58,13 @@ markdown.xml
 .mimosa/
 gen-webremote-*.mjs
 temp_*.txt
+
+# Unrelated local projects / scratch directories
+/website-next/
+/fluent-ui-demo/
+/fluent-winui-demo/
+/pixelplayer-winui/
+/keychain/
+
+# Build / runtime logs
+*.log
