@@ -1,6 +1,8 @@
 package com.theveloper.pixelplay.presentation.netease.chat
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +31,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,8 +56,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,6 +75,9 @@ import com.theveloper.pixelplay.data.netease.chat.ChatMessage
 import com.theveloper.pixelplay.data.netease.chat.ChatResource
 import com.theveloper.pixelplay.presentation.components.SmartImage
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 单会话聊天页：气泡 + 资源卡片 + 一起听邀请按钮。
@@ -95,6 +104,15 @@ fun ChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val emptyPlaylistHint = stringResource(R.string.chat_playlist_empty_hint)
+    // 以「天」为单位插入时间分隔；消息本身按时间升序，reverseLayout 下再反转展示。
+    val displayMessages = remember(messages) {
+        val seenDays = mutableSetOf<String>()
+        val dayFormat = SimpleDateFormat("MMM d", Locale.getDefault())
+        messages.sortedBy { it.timeMs }.map { message ->
+            val label = dayFormat.format(Date(message.timeMs))
+            message to label.takeIf { seenDays.add(it) }
+        }.reversed()
+    }
 
     // ⚡ 这里必须复用 Activity 作用域的 PlayerViewModel（和 MainActivity / 其它页面是同一个实例）。
     //   在 NavHost 目标里直接 hiltViewModel() 拿到的是「按返回栈条目作用域」的另一个实例：
@@ -197,37 +215,48 @@ fun ChatScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(messages.asReversed(), key = { it.id }) { message ->
-                            MessageBubble(
-                                message = message,
-                                isMine = message.fromUserId == (selfUserId ?: 0L),
-                                playerViewModel = playerViewModel,
-                                onPlayFailed = { reason ->
-                                    scope.launch { snackbarHostState.showSnackbar(reason) }
-                                },
-                                onJoinTogether = { inviterId, roomId ->
-                                    viewModel.joinTogether(inviterId, roomId)
-                                },
-                                onOpenPlaylist = { playlist ->
-                                    scope.launch {
-                                        val songs = viewModel.loadPlaylistSongs(playlist.playlistId)
-                                        if (songs.isEmpty()) {
-                                            snackbarHostState.showSnackbar(emptyPlaylistHint)
-                                        } else {
-                                            // 整张歌单入队播放，队列名用歌单名
-                                            playerViewModel.playCloudSongs(
-                                                songs = songs,
-                                                queueName = playlist.name,
-                                                onFailure = { reason ->
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar(reason)
+                        items(displayMessages, key = { it.first.id }) { (message, dayLabel) ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                dayLabel?.let { label ->
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                                MessageBubble(
+                                    message = message,
+                                    isMine = message.fromUserId == (selfUserId ?: 0L),
+                                    playerViewModel = playerViewModel,
+                                    onPlayFailed = { reason ->
+                                        scope.launch { snackbarHostState.showSnackbar(reason) }
+                                    },
+                                    onJoinTogether = { inviterId, roomId ->
+                                        viewModel.joinTogether(inviterId, roomId)
+                                    },
+                                    onOpenPlaylist = { playlist ->
+                                        scope.launch {
+                                            val songs = viewModel.loadPlaylistSongs(playlist.playlistId)
+                                            if (songs.isEmpty()) {
+                                                snackbarHostState.showSnackbar(emptyPlaylistHint)
+                                            } else {
+                                                // 整张歌单入队播放，队列名用歌单名
+                                                playerViewModel.playCloudSongs(
+                                                    songs = songs,
+                                                    queueName = playlist.name,
+                                                    onFailure = { reason ->
+                                                        scope.launch {
+                                                            snackbarHostState.showSnackbar(reason)
+                                                        }
                                                     }
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                         if (hasMore || isLoadingMore) {
                             item(key = "load_more") {
@@ -318,6 +347,7 @@ private fun ChatInputBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
     message: ChatMessage,
@@ -337,13 +367,21 @@ private fun MessageBubble(
     } else {
         MaterialTheme.colorScheme.onSurface
     }
+    var menuExpanded by remember(message.id) { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+    val copyText = message.text.ifBlank { message.resource?.title.orEmpty() }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
     ) {
         Column(
-            modifier = Modifier.widthIn(max = 280.dp),
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = { menuExpanded = true }
+                ),
             horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
         ) {
             if (message.text.isNotBlank() || message.resource == null) {
@@ -381,6 +419,21 @@ private fun MessageBubble(
                     )
                 }
             }
+        }
+
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.chat_copy_message)) },
+                onClick = {
+                    if (copyText.isNotBlank()) {
+                        clipboard.setText(AnnotatedString(copyText))
+                    }
+                    menuExpanded = false
+                }
+            )
         }
     }
 }

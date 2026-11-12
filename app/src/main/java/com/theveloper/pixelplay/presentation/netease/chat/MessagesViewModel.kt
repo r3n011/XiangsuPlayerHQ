@@ -19,6 +19,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** 通讯录状态（关注列表 + 最近会话） */
+data class ContactListState(
+    val query: String = "",
+    val contacts: List<ChatContact> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null,
+) {
+    val filtered: List<ChatContact>
+        get() {
+            val keyword = query.trim()
+            if (keyword.isBlank()) return contacts
+            return contacts.filter {
+                it.nickname.contains(keyword, ignoreCase = true) ||
+                    it.lastMessagePreview.contains(keyword, ignoreCase = true)
+            }
+        }
+}
+
 /** 用户搜索页状态 */
 data class UserSearchState(
     val query: String = "",
@@ -56,6 +74,9 @@ class MessagesViewModel @Inject constructor(
     private val _searchState = MutableStateFlow(UserSearchState())
     val searchState: StateFlow<UserSearchState> = _searchState.asStateFlow()
 
+    private val _contactsState = MutableStateFlow(ContactListState())
+    val contactsState: StateFlow<ContactListState> = _contactsState.asStateFlow()
+
     private val _errorEvents = MutableSharedFlow<String>(
         extraBufferCapacity = 4,
         onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
@@ -77,6 +98,31 @@ class MessagesViewModel @Inject constructor(
                 .onFailure { emitError(it.message ?: "获取消息列表失败") }
             _isRefreshing.value = false
         }
+    }
+
+    /**
+     * 通讯录：对齐参考项目的 messageContacts —— 关注列表（全量分页）+ 最近会话，
+     * 本地按昵称/预览过滤，不再依赖服务端搜索接口。
+     */
+    fun refreshContacts() {
+        if (!isLoggedIn.value || _contactsState.value.isLoading) return
+        viewModelScope.launch {
+            _contactsState.update { it.copy(isLoading = true, error = null) }
+            repository.getInviteCandidates()
+                .onSuccess { list ->
+                    _contactsState.update { it.copy(contacts = list.distinctBy { c -> c.userId }, isLoading = false) }
+                }
+                .onFailure { error ->
+                    _contactsState.update { state ->
+                        state.copy(isLoading = false, error = error.message ?: "获取通讯录失败")
+                    }
+                    emitError(error.message ?: "获取通讯录失败")
+                }
+        }
+    }
+
+    fun onContactsQueryChange(query: String) {
+        _contactsState.update { it.copy(query = query) }
     }
 
     /** 搜索输入（防抖 ≥300ms） */

@@ -454,7 +454,13 @@
     <string name="chat_title">Messages</string>
     <string name="chat_cd_messages">Messages</string>
     <string name="chat_tab_conversations">Chats</string>
+    <string name="chat_tab_contacts">Contacts</string>
     <string name="chat_tab_search">Find people</string>
+    <string name="chat_contacts_search">Search contacts</string>
+    <string name="chat_contacts_empty">No contacts yet</string>
+    <string name="chat_retry">Retry</string>
+    <string name="chat_copy_message">Copy message</string>
+    <string name="chat_contacts_start_hint">Tap to start a chat</string>
     <string name="chat_action_new_chat">Find people to chat</string>
     <string name="chat_search_hint">Search NetEase users</string>
     <string name="chat_empty_conversations">No conversations yet. Tap the top-right button to find people.</string>

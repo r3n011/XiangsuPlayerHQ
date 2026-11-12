@@ -253,7 +253,8 @@ fun StreamingProviderSheet(
                     ProviderRow(
                         iconPainter = painterResource(R.drawable.ic_kugou),
                         iconTint = Color.Unspecified,
-                        iconTileColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        // 固定白底：酷狗双色 logo 压在灰色 tile 上蓝色块会发闷。
+                        iconTileColor = Color.White,
                         title = stringResource(R.string.kugou_service_name),
                         subtitle = if (isKugouLoggedIn) {
                             stringResource(R.string.streaming_provider_connected)

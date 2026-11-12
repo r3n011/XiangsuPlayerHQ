@@ -45,7 +45,14 @@ class QqMusicLoginViewModel @Inject constructor(
     val phoneUi: StateFlow<QqMusicPhoneUiState> = _phoneUi.asStateFlow()
 
     fun onPhoneChanged(value: String) {
-        _phoneUi.update { it.copy(phone = value.filter(Char::isDigit).take(11), error = null) }
+        val digits = value.filter(Char::isDigit)
+        // 兼容粘贴 +86 / 0086 / 带空格横线的号码，只保留大陆 11 位本地号。
+        val local = when {
+            digits.length > 11 && digits.startsWith("86") -> digits.substring(2)
+            digits.length > 11 -> digits.takeLast(11)
+            else -> digits
+        }
+        _phoneUi.update { it.copy(phone = local.take(11), error = null) }
     }
 
     fun onCodeChanged(value: String) {

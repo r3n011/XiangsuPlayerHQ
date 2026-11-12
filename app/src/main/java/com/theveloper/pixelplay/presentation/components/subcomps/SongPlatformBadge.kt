@@ -47,7 +47,7 @@ private fun resolveCloudLxSourceBadge(uri: String): PlatformBadge {
             "tx" -> PlatformBadge("qq", Color(0xFF31C27C))
             "kg" -> PlatformBadge("酷狗", Color(0xFF2E7CF6))
             "mg" -> PlatformBadge("咪咕", Color(0xFFE4393C))
-            "kw" -> PlatformBadge("酷我", Color(0xFFFF8F00))
+            "kw" -> PlatformBadge("酷我", Color(0xFFFF7A00))
             "bilibili" -> PlatformBadge("B站", Color(0xFFFB7299))
             "wy" -> PlatformBadge("网易", Color(0xFFE0242B))
             else -> PlatformBadge("云", Color(0xFF8E8E93))

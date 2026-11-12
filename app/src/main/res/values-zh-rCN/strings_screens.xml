@@ -454,7 +454,13 @@
     <string name="chat_title">消息</string>
     <string name="chat_cd_messages">消息</string>
     <string name="chat_tab_conversations">私信</string>
+    <string name="chat_tab_contacts">通讯录</string>
     <string name="chat_tab_search">找人</string>
+    <string name="chat_contacts_search">搜索联系人</string>
+    <string name="chat_contacts_empty">还没有联系人</string>
+    <string name="chat_retry">重试</string>
+    <string name="chat_copy_message">复制消息</string>
+    <string name="chat_contacts_start_hint">点击开始聊天</string>
     <string name="chat_action_new_chat">找人聊天</string>
     <string name="chat_search_hint">搜索网易云用户</string>
     <string name="chat_empty_conversations">暂无会话，点右上角搜索用户开始聊天</string>

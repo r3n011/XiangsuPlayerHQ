@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -118,13 +119,20 @@ fun MessagesScreen(
     val conversations by viewModel.conversations.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val searchState by viewModel.searchState.collectAsStateWithLifecycle()
+    val contactsState by viewModel.contactsState.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
     LaunchedEffect(isLoggedIn) {
-        if (isLoggedIn) viewModel.refreshConversations()
+        if (isLoggedIn) {
+            viewModel.refreshConversations()
+            viewModel.refreshContacts()
+        }
+    }
+    LaunchedEffect(selectedTab, isLoggedIn) {
+        if (isLoggedIn && selectedTab == 1) viewModel.refreshContacts()
     }
     LaunchedEffect(Unit) {
         viewModel.errorEvents.collect { snackbarHostState.showSnackbar(it) }
@@ -216,6 +224,15 @@ fun MessagesScreen(
                 contentTopPadding = contentTopPadding
             )
 
+            selectedTab == 1 -> ContactsTab(
+                listState = listState,
+                state = contactsState,
+                onQueryChange = { viewModel.onContactsQueryChange(it) },
+                onRefresh = { viewModel.refreshContacts() },
+                onOpenChat = onOpenChat,
+                contentTopPadding = contentTopPadding
+            )
+
             else -> SearchUsersTab(
                 listState = listState,
                 state = searchState,
@@ -279,6 +296,7 @@ fun MessagesScreen(
                     ExpressiveButtonGroup(
                         items = listOf(
                             stringResource(R.string.chat_tab_conversations),
+                            stringResource(R.string.chat_tab_contacts),
                             stringResource(R.string.chat_tab_search)
                         ),
                         selectedIndex = selectedTab,
@@ -416,6 +434,136 @@ private fun ConversationRow(contact: ChatContact, onClick: () -> Unit) {
             }
         }
     }
+    }
+}
+
+@Composable
+private fun ContactsTab(
+    listState: LazyListState,
+    state: ContactListState,
+    onQueryChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onOpenChat: (Long, String, String?) -> Unit,
+    contentTopPadding: Dp
+) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = contentTopPadding)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = state.query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(50),
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.chat_contacts_search),
+                        fontFamily = GoogleSansRounded,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            )
+            IconButton(onClick = onRefresh, enabled = !state.isLoading) {
+                Icon(Icons.Rounded.Refresh, contentDescription = null)
+            }
+        }
+
+        when {
+            state.isLoading && state.contacts.isEmpty() -> Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator(modifier = Modifier.size(28.dp)) }
+
+            state.error != null && state.contacts.isEmpty() -> Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = state.error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(10.dp))
+                FilledTonalButton(onClick = onRefresh) {
+                    Text(stringResource(R.string.chat_retry))
+                }
+            }
+
+            state.filtered.isEmpty() -> EmptyHint(text = stringResource(R.string.chat_contacts_empty))
+
+            else -> LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().hazeSource(MainActivity.LocalHazeState.current),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = MiniPlayerHeight + 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(state.filtered, key = { it.userId }) { contact ->
+                    ContactRow(
+                        contact = contact,
+                        onClick = { onOpenChat(contact.userId, contact.nickname, contact.avatarUrl) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContactRow(contact: ChatContact, onClick: () -> Unit) {
+    val shape = AbsoluteSmoothCornerShape(22.dp, 60)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .clickable(onClick = onClick),
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Avatar(url = contact.avatarUrl, size = 48.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = contact.nickname,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = contact.lastMessagePreview.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.chat_contacts_start_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = GoogleSansRounded,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(
+                Icons.Rounded.ChatBubbleOutline,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 

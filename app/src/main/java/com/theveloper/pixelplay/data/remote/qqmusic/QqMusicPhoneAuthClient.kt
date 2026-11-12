@@ -94,7 +94,7 @@ class QqMusicPhoneAuthClient @Inject constructor(
     /** 发送短信验证码 */
     suspend fun sendCode(phone: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val response = post(buildSendCodePayload(phone))
+            val response = postWithRetry(buildSendCodePayload(normalizePhone(phone)))
             requestCookie = mergeResponseCookies(requestCookie, response.setCookies)
             parseAuthResponse(response.body, requestCookie, requireSession = false)
             Timber.d("QqMusicPhoneAuthClient: 验证码已发送")
@@ -105,13 +105,42 @@ class QqMusicPhoneAuthClient @Inject constructor(
     suspend fun login(phone: String, code: String): Result<Map<String, String>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val response = post(buildLoginPayload(phone, code))
+                val response = postWithRetry(buildLoginPayload(normalizePhone(phone), code))
                 requestCookie = mergeResponseCookies(requestCookie, response.setCookies)
                 val normalized = parseAuthResponse(response.body, requestCookie, requireSession = true)
                 requestCookie = normalized
                 parseCookieHeader(normalized)
             }
         }
+
+    /**
+     * 网络抖动/5xx 自动重试一次。鉴权业务错误（含风控）不重试，避免重复发短信。
+     */
+    private fun postWithRetry(payload: JSONObject): PhoneHttpResponse {
+        var last: Throwable? = null
+        repeat(2) { attempt ->
+            try {
+                return post(payload)
+            } catch (e: Exception) {
+                last = e
+                val retryable = e is java.net.SocketTimeoutException ||
+                    e is java.net.ConnectException ||
+                    (e is IOException && e.message?.contains("HTTP 5") == true)
+                if (!retryable || attempt > 0) throw e
+                Thread.sleep(450)
+            }
+        }
+        throw last ?: IOException("QQ 音乐请求失败")
+    }
+
+    private fun normalizePhone(phone: String): String {
+        val digits = phone.filter(Char::isDigit)
+        return when {
+            digits.length == 13 && digits.startsWith("86") -> digits.substring(2)
+            digits.length > 11 -> digits.takeLast(11)
+            else -> digits
+        }
+    }
 
     private fun post(payload: JSONObject): PhoneHttpResponse {
         // 会话 cookie 与外部（安全验证）cookie 一起带上

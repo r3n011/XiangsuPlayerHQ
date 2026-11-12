@@ -18,6 +18,8 @@ import com.theveloper.pixelplay.data.database.toSong
 import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
+import com.theveloper.pixelplay.data.network.netease.NeteaseAuthException
+import com.theveloper.pixelplay.data.network.netease.NeteasePhoneAuthClient
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.stream.BulkSyncResult
@@ -45,6 +47,7 @@ import javax.inject.Singleton
 @Singleton
 class NeteaseRepository @Inject constructor(
     private val api: NeteaseApiService,
+    private val phoneAuthClient: NeteasePhoneAuthClient,
     private val dao: NeteaseDao,
     private val musicDao: MusicDao,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
@@ -147,6 +150,13 @@ class NeteaseRepository @Inject constructor(
      * 链路与 MeloX 的网易云手机登录一致：weapi `/api/sms/captcha/sent`。
      */
     suspend fun sendPhoneCaptcha(phone: String, ctcode: String = "86"): Result<Unit> {
+        val primary = phoneAuthClient.sendCode(ctcode, phone)
+        primary.onSuccess { return Result.success(Unit) }
+        val primaryError = primary.exceptionOrNull()
+        // 风控挑战直接透传；其它错误（网络/签名/接口抖动）回退旧的 NCM 通道再试一次。
+        if (primaryError is NeteaseAuthException && primaryError.isChallenge) {
+            return Result.failure(primaryError)
+        }
         return withContext(Dispatchers.IO) {
             try {
                 val body = net.moriafly.ncm.NcmApi.sentSmsCaptcha(phone, ctcode).getOrThrow()
@@ -156,8 +166,8 @@ class NeteaseRepository @Inject constructor(
                 }
                 Result.success(Unit)
             } catch (e: Exception) {
-                Timber.w(e, "sendPhoneCaptcha: failed")
-                Result.failure(e)
+                Timber.w(e, "sendPhoneCaptcha: fallback failed")
+                Result.failure(primaryError ?: e)
             }
         }
     }
@@ -168,6 +178,24 @@ class NeteaseRepository @Inject constructor(
      * 复用既有的持久化 + 验活 + 用户信息保存链路，返回昵称。
      */
     suspend fun loginWithPhoneCaptcha(phone: String, captcha: String, ctcode: String = "86"): Result<String> {
+        val primary = phoneAuthClient.login(ctcode, phone, captcha)
+        primary.onSuccess { cookieHeader ->
+            val cookieJson = JSONObject().apply {
+                cookieHeader.split(';')
+                    .map { it.trim() }
+                    .filter { '=' in it }
+                    .forEach { pair ->
+                        val (name, value) = pair.split('=', limit = 2)
+                        put(name, value)
+                    }
+            }.toString()
+            return loginWithCookies(cookieJson)
+        }
+        val primaryError = primary.exceptionOrNull()
+        if (primaryError is NeteaseAuthException && primaryError.isChallenge) {
+            return Result.failure(primaryError)
+        }
+        // 回退旧的 NCM 通道：主通道网络失败时仍有机会登录成功。
         return withContext(Dispatchers.IO) {
             try {
                 val body = net.moriafly.ncm.NcmApi.loginCellphone(
@@ -196,8 +224,8 @@ class NeteaseRepository @Inject constructor(
                 }.toString()
                 loginWithCookies(cookieJson)
             } catch (e: Exception) {
-                Timber.w(e, "loginWithPhoneCaptcha: failed")
-                Result.failure(e)
+                Timber.w(e, "loginWithPhoneCaptcha: fallback failed")
+                Result.failure(primaryError ?: e)
             }
         }
     }

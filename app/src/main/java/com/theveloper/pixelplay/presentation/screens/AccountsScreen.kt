@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -735,18 +736,24 @@ private fun EmptyAccountsCard(
                     ),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
-                    Icon(
-                        painter = painter,
-                        contentDescription = null,
-                        // ⚡ 酷狗标是「蓝底白 K」双色 logo：统一 tint 会把白 K 也染成底色，
-                        //    整个图标糊成一块；保留品牌原色，其它单色 logo 继续跟随按钮内容色。
-                        tint = if (service == ExternalServiceAccount.KUGOU) {
-                            Color.Unspecified
-                        } else {
-                            LocalContentColor.current
-                        },
-                        modifier = Modifier.size(18.dp)
-                    )
+                    if (service == ExternalServiceAccount.KUGOU) {
+                        // 酷狗是「蓝底白 K」双色标：固定白底，避免浅色 tonal 按钮把蓝色块吃掉。
+                        Surface(shape = CircleShape, color = Color.White) {
+                            Icon(
+                                painter = painter,
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.padding(2.dp).size(18.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            painter = painter,
+                            contentDescription = null,
+                            tint = LocalContentColor.current,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.size(8.dp))
                     TightWrapText(
                         text = if (isComingSoon) {
