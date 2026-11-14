@@ -22,14 +22,14 @@
         <img src="https://img.shields.io/github/v/release/r3n011/XiangsuPlayerHQ?include_prereleases&logo=github&style=for-the-badge&label=Latest%20Release" alt="Latest Release">
     </a>
     <a href="https://github.com/r3n011/PixelPlayerHQ/releases">
-      <img src="https://img.shields.io/badge/Android-9%2B-green?style=for-the-badge&logo=android" alt="Android 9+">
+      <img src="https://img.shields.io/badge/Android-9%2B-green?style=for-the-badge&logo=android" alt="Android 7+">
     </a>
     
 
 </p>
 
 ---
-
+-提示：安卓9及其以上可以保障正常使用，安卓7与安卓8不保证使用稳定性，安卓12及其以上才能使用满血的模糊效果
 ## ✨ 功能亮点
 
 ### 🎨 现代化 UI/UX
