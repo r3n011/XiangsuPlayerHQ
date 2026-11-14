@@ -1,8 +1,5 @@
 # 像素播放器 🎵
 
-<p align="center">
-  <img src="https://pixel.grammx.asia/res/pic/logo.png" alt="App Icon" width="128"/>
-</p>
 
 <p align="center">
   <strong> 本项目是 <a href="https://github.com/theovilardo/PixelPlayer/">这个项目</a> 的魔改版 </strong><br>
