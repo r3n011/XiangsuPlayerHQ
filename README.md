@@ -11,13 +11,6 @@
 </p>
 
 <p align="center">
-  <img src="https://pixel.grammx.asia/res/pic/%E6%92%AD%E6%94%BE%E9%A1%B5.png" alt="Screenshot 1" width="200" style="border-radius:26px;"/>
-  <img src="https://pixel.grammx.asia/res/pic/%E6%AD%8C%E8%AF%8D%E6%90%9C%E7%B4%A2.png" alt="Screenshot 2" width="200" style="border-radius:26px;"/>
-  <img src="https://pixel.grammx.asia/res/pic/JS%20%E5%BC%95%E6%93%8E.png" alt="Screenshot 3" width="200" style="border-radius:26px;"/>
-  <img src="https://pixel.grammx.asia/res/pic/%E8%B4%A6%E6%88%B7%E7%AE%A1%E7%90%86.png" alt="Screenshot 4" width="200" style="border-radius:26px;"/>
-</p>
-
-<p align="center">
     <a href="https://github.com/r3n011/XiangsuPlayerHQ/release">
         <img src="https://img.shields.io/github/v/release/r3n011/XiangsuPlayerHQ?include_prereleases&logo=github&style=for-the-badge&label=Latest%20Release" alt="Latest Release">
     </a>
