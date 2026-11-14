@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.net.Uri
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -111,7 +114,7 @@ fun LxMusicScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResourceSafe(R.string.lx_music_title, "云音")) },
+                title = { Text(stringResourceSafe(R.string.lx_music_title, localizedStringResource(R.string.ui_cloud_music))) },
                 actions = {
                     IconButton(onClick = { filePicker.launch("application/javascript,*/*") }) {
                         Icon(Icons.Filled.Add, null)
@@ -130,7 +133,7 @@ fun LxMusicScreen(
                         onClick = { exportLauncher.launch("pixelplay-js-sources.zip") },
                         enabled = state.scriptInfos.isNotEmpty(),
                     ) {
-                        Icon(Icons.Filled.Share, stringResourceSafe(R.string.lx_export_js, "导出 JS 音源"))
+                        Icon(Icons.Filled.Share, stringResourceSafe(R.string.lx_export_js, localizedStringResource(R.string.ui_export_javascript_sources)))
                     }
                     IconButton(onClick = { viewModel.removeAllJs() }) {
                         Icon(Icons.Filled.DeleteOutline, null)
@@ -188,7 +191,7 @@ fun LxMusicScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        stringResourceSafe(R.string.lx_search_hint, "在上方输入关键词，回车搜索"),
+                        stringResourceSafe(R.string.lx_search_hint, localizedStringResource(R.string.ui_enter_keywords_above_and_press_enter_to_search)),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -219,14 +222,14 @@ private fun EngineNotReadyBanner(state: LxUiState, viewModel: LxMusicViewModel, 
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(
-                stringResourceSafe(R.string.lx_no_js_title, "还没有导入 JS 音源"),
+                stringResourceSafe(R.string.lx_no_js_title, localizedStringResource(R.string.ui_no_javascript_sources_imported)),
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 stringResourceSafe(
                     R.string.lx_no_js_desc,
-                    "点右上角 + 从文件选择一个 userApi.js 或 v4.1.js。"
+                    localizedStringResource(R.string.ui_tap_in_the_top_right_to_select_a_userapi_js)
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -235,7 +238,7 @@ private fun EngineNotReadyBanner(state: LxUiState, viewModel: LxMusicViewModel, 
             Button(
                 onClick = onStartClick
             ) {
-                Text(stringResourceSafe(R.string.lx_start_engine, "开始使用"))
+                Text(stringResourceSafe(R.string.lx_start_engine, localizedStringResource(R.string.ui_residue_lx_start_engine)))
             }
             if (state.initing) {
                 Spacer(Modifier.height(8.dp))
@@ -272,7 +275,7 @@ private fun EngineReadyBanner(state: LxUiState) {
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Text(
-                    text = stringResourceSafe(R.string.lx_js_ready, "已就绪") + " · v" + state.version,
+                    text = stringResourceSafe(R.string.lx_js_ready, localizedStringResource(R.string.ui_residue_lx_js_ready)) + " · v" + state.version,
                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -298,7 +301,7 @@ private fun SearchBar(state: LxUiState, viewModel: LxMusicViewModel) {
         value = state.keyword,
         onValueChange = { viewModel.keyword = it },
         modifier = Modifier.fillMaxWidth(),
-        label = { Text(stringResourceSafe(R.string.lx_search_placeholder, "搜索")) },
+        label = { Text(stringResourceSafe(R.string.lx_search_placeholder, localizedStringResource(R.string.ui_residue_search))) },
         singleLine = true,
         isError = state.searching,
         trailingIcon = {
@@ -329,7 +332,7 @@ private fun SourceChipsRow(state: LxUiState, viewModel: LxMusicViewModel) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         SourceChip(
-            label = stringResourceSafe(R.string.lx_source_all, "网易云"),
+            label = stringResourceSafe(R.string.lx_source_all, AppLocaleManager.getString(R.string.ui_residue_source_badge_netease)),
             selected = state.selectedSource == "wy",
             onClick = { viewModel.selectedSource = "wy" },
         )
@@ -492,7 +495,7 @@ private fun ImportUrlDialog(
     var url by remember { mutableStateOf("https://") }
     PixelAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResourceSafe(R.string.lx_import_url_title, "从 URL 下载 JS")) },
+        title = { Text(stringResourceSafe(R.string.lx_import_url_title, localizedStringResource(R.string.ui_download_javascript_from_url))) },
         text = {
             OutlinedTextField(
                 value = url,
@@ -509,9 +512,9 @@ private fun ImportUrlDialog(
             TextButton(
                 enabled = url.startsWith("http://") || url.startsWith("https://"),
                 onClick = { onSubmit(url); onDismiss() }
-            ) { Text(stringResourceSafe(R.string.lx_import, "导入")) }
+            ) { Text(stringResourceSafe(R.string.lx_import, localizedStringResource(R.string.ui_residue_lx_import))) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResourceSafe(R.string.cancel, "取消")) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResourceSafe(R.string.cancel, localizedStringResource(R.string.ui_residue_cancel))) } }
     )
 }
 
@@ -519,7 +522,7 @@ private fun ImportUrlDialog(
 private fun InfoDialog(state: LxUiState, onDismiss: () -> Unit) {
     PixelAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResourceSafe(R.string.lx_info_title, "JS 引擎信息")) },
+        title = { Text(stringResourceSafe(R.string.lx_info_title, localizedStringResource(R.string.ui_javascript_engine_information))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 InfoRow("Ready", if (state.engineReady) "✓" else "✗")
@@ -530,7 +533,7 @@ private fun InfoDialog(state: LxUiState, onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResourceSafe(R.string.lx_ok, "好")) } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResourceSafe(R.string.lx_ok, localizedStringResource(R.string.ui_residue_lx_ok))) } }
     )
 }
 

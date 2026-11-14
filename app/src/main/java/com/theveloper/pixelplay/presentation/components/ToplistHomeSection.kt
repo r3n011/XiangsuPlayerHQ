@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
@@ -57,7 +58,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -111,7 +111,7 @@ fun ToplistHomeSection(
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     var showSongInfoSheet by remember { mutableStateOf(false) }
     var showBoardPicker by remember { mutableStateOf(false) }
-    val queueName = stringResource(R.string.home_toplist_title)
+    val queueName = localizedStringResource(R.string.home_toplist_title)
     val visibleSongs = remember(songs) { songs.take(ToplistHomePreviewLimit) }
     val platformEntries = ToplistCatalog.entriesFor(selectedPlatform)
     val selectedEntry = ToplistCatalog.findEntry(selectedToplistId)
@@ -131,7 +131,7 @@ fun ToplistHomeSection(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             modifier = Modifier.padding(start = 6.dp),
-                            text = stringResource(R.string.home_toplist_title),
+                            text = localizedStringResource(R.string.home_toplist_title),
                             style = MaterialTheme.typography.titleLargeEmphasized
                         )
                         Spacer(Modifier.width(8.dp))
@@ -144,7 +144,7 @@ fun ToplistHomeSection(
                     }
                     Text(
                         modifier = Modifier.padding(start = 6.dp),
-                        text = stringResource(R.string.home_toplist_subtitle),
+                        text = localizedStringResource(R.string.home_toplist_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -219,7 +219,7 @@ fun ToplistHomeSection(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.toplist_loading_failed),
+                            text = localizedStringResource(R.string.toplist_loading_failed),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -230,14 +230,14 @@ fun ToplistHomeSection(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.toplist_retry))
+                            Text(localizedStringResource(R.string.toplist_retry))
                         }
                     }
                 }
                 else -> {
                     Text(
                         modifier = Modifier.padding(vertical = 12.dp),
-                        text = stringResource(R.string.toplist_empty),
+                        text = localizedStringResource(R.string.toplist_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -270,7 +270,7 @@ fun ToplistHomeSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(R.string.toplist_see_all) + " · " + (selectedEntry?.name ?: ""),
+                        text = localizedStringResource(R.string.toplist_see_all) + " · " + (selectedEntry?.name ?: ""),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
@@ -511,7 +511,7 @@ fun ToplistPlatformTabPill(
                             .size(20.dp)
                             .rotate(arrowRotation),
                         imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = stringResource(R.string.toplist_see_all),
+                        contentDescription = localizedStringResource(R.string.toplist_see_all),
                         tint = if (selected) onContainerColor else onSurfaceColor
                     )
                 }
@@ -565,11 +565,11 @@ fun ToplistBoardPickerSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = stringResource(R.string.home_toplist_title),
+                text = localizedStringResource(R.string.home_toplist_title),
                 style = MaterialTheme.typography.headlineSmall
             )
             Text(
-                text = stringResource(R.string.home_toplist_subtitle),
+                text = localizedStringResource(R.string.home_toplist_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

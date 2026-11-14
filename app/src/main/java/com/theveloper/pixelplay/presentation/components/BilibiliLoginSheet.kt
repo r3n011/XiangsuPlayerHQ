@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
@@ -159,7 +162,7 @@ fun BilibiliLoginSheet(
     // —— 扫码登录 ——
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var qrcodeKey by remember { mutableStateOf("") }
-    var qrStatusText by remember { mutableStateOf("正在生成二维码…") }
+    var qrStatusText by remember { mutableStateOf(AppLocaleManager.getString(R.string.ui_generating_qr_code)) }
     var isQrExpired by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
@@ -169,7 +172,7 @@ fun BilibiliLoginSheet(
     suspend fun finalizeLogin(cookies: Map<String, String>) {
         loginSucceeded = true
         isLoading = true
-        loadingMessage = "登录成功，正在获取账号信息…"
+        loadingMessage = AppLocaleManager.getString(R.string.ui_residue_kugou_login_fetching_info)
         var success = false
         try {
             Timber.d("Bilibili finalizeLogin: ${cookies.size} cookies from login")
@@ -187,7 +190,7 @@ fun BilibiliLoginSheet(
                 } else {
                     Timber.w("Bilibili finalizeLogin: nav returned null, 使用默认昵称")
                 }
-                loadingMessage = "登录成功！"
+                loadingMessage = AppLocaleManager.getString(R.string.ui_residue_kugou_login_success)
             }
         } catch (t: Throwable) {
             Timber.e(t, "Bilibili login finalize failed")
@@ -200,27 +203,27 @@ fun BilibiliLoginSheet(
             isLoading = false
             loginSucceeded = false
             inlineError = if (cookies.isEmpty()) {
-                "登录失败：服务器未返回会话 cookie，请重试"
+                AppLocaleManager.getString(R.string.ui_sign_in_failed_no_session_cookie_returned_please_try_again)
             } else {
-                "登录失败：会话无效，请重试"
+                AppLocaleManager.getString(R.string.ui_sign_in_failed_invalid_session_please_try_again)
             }
         }
     }
 
     suspend fun refreshQrCode() {
         isQrExpired = false
-        qrStatusText = "正在生成二维码…"
+        qrStatusText = AppLocaleManager.getString(R.string.ui_generating_qr_code)
         qrBitmap = null
         qrcodeKey = ""
         val result = withContext(Dispatchers.IO) { searchApi.generateLoginQrCode() }
         if (result == null || result.qrcodeKey.isBlank()) {
-            qrStatusText = "二维码生成失败，请检查网络后重试"
+            qrStatusText = AppLocaleManager.getString(R.string.ui_could_not_generate_qr_code_check_your_connection_and_try)
             isQrExpired = true
             return
         }
         qrcodeKey = result.qrcodeKey
         qrBitmap = generateQrBitmap(result.url)
-        qrStatusText = "请使用 B 站 App 扫码登录"
+        qrStatusText = AppLocaleManager.getString(R.string.ui_scan_with_the_bilibili_app_to_sign_in)
     }
 
     // 切换到扫码模式 / 点击刷新时重新生成二维码
@@ -243,12 +246,12 @@ fun BilibiliLoginSheet(
                     finalizeLogin(poll.cookies)
                     return@LaunchedEffect
                 }
-                poll.code == 86090 -> qrStatusText = "已扫码，请在手机上确认登录"
+                poll.code == 86090 -> qrStatusText = AppLocaleManager.getString(R.string.ui_code_scanned_confirm_sign_in_on_your_phone)
                 poll.code == 86038 -> {
-                    qrStatusText = "二维码已过期"
+                    qrStatusText = AppLocaleManager.getString(R.string.ui_qr_code_expired)
                     isQrExpired = true
                 }
-                poll.code == 86101 -> qrStatusText = "请使用 B 站 App 扫码登录"
+                poll.code == 86101 -> qrStatusText = AppLocaleManager.getString(R.string.ui_scan_with_the_bilibili_app_to_sign_in)
                 else -> if (poll.message.isNotBlank() && poll.code != -1) {
                     qrStatusText = poll.message
                 }
@@ -266,7 +269,7 @@ fun BilibiliLoginSheet(
 
     fun sendSms() {
         if (tel.isBlank()) {
-            Toast.makeText(context, "请输入手机号", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, AppLocaleManager.getString(R.string.ui_residue_kugou_login_phone_placeholder), Toast.LENGTH_SHORT).show()
             return
         }
         coroutineScope.launch {
@@ -275,7 +278,7 @@ fun BilibiliLoginSheet(
             var recaptcha: Pair<BilibiliCaptchaChallenge, GeetestResult>? = null
             while (true) {
                 isLoading = true
-                loadingMessage = "正在发送验证码…"
+                loadingMessage = AppLocaleManager.getString(R.string.ui_residue_qq_login_loading_sending)
                 inlineError = null
                 val result = withContext(Dispatchers.IO) {
                     searchApi.sendSmsCode(
@@ -292,7 +295,7 @@ fun BilibiliLoginSheet(
                         smsCaptchaKey = result.captchaKey
                         phoneStep = 1
                         resendCountdown = 60
-                        Toast.makeText(context, "验证码已发送，请注意查收", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, AppLocaleManager.getString(R.string.ui_verification_code_sent_check_your_messages), Toast.LENGTH_SHORT).show()
                         break
                     }
                     result.captchaRequired && result.challenge != null -> {
@@ -323,12 +326,12 @@ fun BilibiliLoginSheet(
 
     fun verifySms() {
         if (smsCode.isBlank()) {
-            Toast.makeText(context, "请输入验证码", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, AppLocaleManager.getString(R.string.ui_enter_the_verification_code), Toast.LENGTH_SHORT).show()
             return
         }
         coroutineScope.launch {
             isLoading = true
-            loadingMessage = "正在登录…"
+            loadingMessage = AppLocaleManager.getString(R.string.ui_signing_in)
             inlineError = null
             val result = withContext(Dispatchers.IO) {
                 searchApi.loginWithSms(cid, tel, smsCode, smsCaptchaKey)
@@ -337,7 +340,7 @@ fun BilibiliLoginSheet(
                 finalizeLogin(result.cookies)
             } else {
                 isLoading = false
-                inlineError = result.message.ifBlank { "验证码错误" }
+                inlineError = result.message.ifBlank { AppLocaleManager.getString(R.string.ui_incorrect_verification_code) }
             }
         }
     }
@@ -364,7 +367,7 @@ fun BilibiliLoginSheet(
             TopAppBar(
                 title = {
                     Text(
-                        text = "连接 Bilibili",
+                        text = localizedStringResource(R.string.ui_connect_to_bilibili),
                         fontFamily = GoogleSansRounded,
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -464,7 +467,7 @@ fun BilibiliLoginSheet(
                 }
             ) {
                 Text(
-                    text = if (authMode == BilibiliAuthMode.Phone) "使用扫码登录" else "使用手机号登录",
+                    text = if (authMode == BilibiliAuthMode.Phone) localizedStringResource(R.string.ui_sign_in_with_qr_code) else localizedStringResource(R.string.ui_sign_in_with_phone_number),
                     fontFamily = GoogleSansRounded,
                     fontWeight = FontWeight.Medium
                 )
@@ -495,7 +498,7 @@ private fun BilibiliBrandingHeader() {
         }
         Spacer(modifier = Modifier.height(18.dp))
         Text(
-            text = "连接 Bilibili",
+            text = localizedStringResource(R.string.ui_connect_to_bilibili),
             style = MaterialTheme.typography.headlineSmall,
             fontFamily = GoogleSansRounded,
             fontWeight = FontWeight.Bold,
@@ -503,7 +506,7 @@ private fun BilibiliBrandingHeader() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "登录后可发布评论、回复、点赞、举报，并同步 B 站收藏",
+            text = localizedStringResource(R.string.ui_sign_in_to_post_comments_reply_like_report_and_sync),
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = GoogleSansRounded,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -561,7 +564,7 @@ private fun BilibiliLoadingCard(message: String) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = message.ifBlank { "请稍候…" },
+                text = message.ifBlank { AppLocaleManager.getString(R.string.ui_residue_qq_login_loading) },
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = GoogleSansRounded,
                 color = MaterialTheme.colorScheme.onSurface
@@ -604,7 +607,7 @@ private fun BilibiliInlineErrorCard(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             ) {
-                Icon(imageVector = Icons.Rounded.Clear, contentDescription = "关闭")
+                Icon(imageVector = Icons.Rounded.Clear, contentDescription = localizedStringResource(R.string.ui_residue_lyrics_more_vibrant_off))
             }
         }
     }
@@ -684,7 +687,7 @@ private fun BilibiliExpressiveButton(
     MediumExtendedFloatingActionButton(
         text = {
             Text(
-                text = if (loading) "请稍候…" else text,
+                text = if (loading) localizedStringResource(R.string.ui_residue_qq_login_loading) else text,
                 fontFamily = GoogleSansRounded,
                 fontWeight = FontWeight.SemiBold
             )
@@ -750,8 +753,8 @@ private fun BilibiliPhoneNumberField(
     ) {
         BilibiliAuthStepHeader(
             icon = Icons.Rounded.Phone,
-            title = "手机号",
-            subtitle = "输入 B 站账号绑定的手机号，验证码将发送到该手机"
+            title = AppLocaleManager.getString(R.string.ui_residue_auth_phone_number_label),
+            subtitle = AppLocaleManager.getString(R.string.ui_enter_the_phone_number_linked_to_your_bilibili_account_to)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -855,7 +858,7 @@ private fun BilibiliPhoneNumberField(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (tel.isEmpty()) {
                                 Text(
-                                    text = "手机号",
+                                    text = localizedStringResource(R.string.ui_residue_auth_phone_number_label),
                                     style = MaterialTheme.typography.bodyLarge.copy(
                                         fontFamily = GoogleSansRounded,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
@@ -873,7 +876,7 @@ private fun BilibiliPhoneNumberField(
         Spacer(modifier = Modifier.height(28.dp))
 
         BilibiliExpressiveButton(
-            text = "获取验证码",
+            text = AppLocaleManager.getString(R.string.ui_get_verification_code),
             onClick = onSend,
             enabled = cid.isNotBlank() && tel.isNotBlank() && !isLoading,
             loading = isLoading
@@ -901,8 +904,8 @@ private fun BilibiliSmsCodeField(
     ) {
         BilibiliAuthStepHeader(
             icon = Icons.Rounded.Sms,
-            title = "验证码",
-            subtitle = "请输入手机收到的短信验证码"
+            title = AppLocaleManager.getString(R.string.ui_residue_kugou_login_code_label),
+            subtitle = AppLocaleManager.getString(R.string.ui_enter_the_verification_code_from_your_text_message)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -910,7 +913,7 @@ private fun BilibiliSmsCodeField(
         OutlinedTextField(
             value = code,
             onValueChange = { onCodeChanged(it.filter(Char::isDigit).take(8)) },
-            label = { Text("验证码", fontFamily = GoogleSansRounded) },
+            label = { Text(localizedStringResource(R.string.ui_residue_kugou_login_code_label), fontFamily = GoogleSansRounded) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Sms,
@@ -945,7 +948,7 @@ private fun BilibiliSmsCodeField(
         ) {
             TextButton(onClick = onEditPhone, enabled = !isLoading) {
                 Text(
-                    text = "修改手机号",
+                    text = localizedStringResource(R.string.ui_residue_kugou_login_edit_phone),
                     fontFamily = GoogleSansRounded,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -953,7 +956,7 @@ private fun BilibiliSmsCodeField(
             }
             TextButton(onClick = onResend, enabled = resendCountdown <= 0 && !isLoading) {
                 Text(
-                    text = if (resendCountdown > 0) "${resendCountdown}s 后重新发送" else "重新发送",
+                    text = if (resendCountdown > 0) localizedStringResource(R.string.ui_resend_in_s, (resendCountdown).toString()) else localizedStringResource(R.string.ui_resend),
                     fontFamily = GoogleSansRounded,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -964,7 +967,7 @@ private fun BilibiliSmsCodeField(
         Spacer(modifier = Modifier.height(18.dp))
 
         BilibiliExpressiveButton(
-            text = "登录",
+            text = AppLocaleManager.getString(R.string.ui_residue_auth_phone_login_action),
             onClick = onVerify,
             enabled = code.isNotBlank() && !isLoading,
             loading = isLoading
@@ -1000,7 +1003,7 @@ private fun BilibiliQrLoginContent(
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Bilibili 登录二维码",
+                    contentDescription = AppLocaleManager.getString(R.string.ui_bilibili_sign_in_qr_code),
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier
                         .fillMaxSize()
@@ -1029,14 +1032,14 @@ private fun BilibiliQrLoginContent(
 
         if (isExpired || qrBitmap == null) {
             BilibiliExpressiveButton(
-                text = "刷新二维码",
+                text = AppLocaleManager.getString(R.string.ui_residue_kugou_login_qr_refresh),
                 onClick = onRefresh,
                 enabled = !loginSucceeded,
                 loading = false
             )
         } else {
             Text(
-                text = "打开 B 站 App → 我的 → 扫一扫",
+                text = localizedStringResource(R.string.ui_open_bilibili_my_page_scan),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )

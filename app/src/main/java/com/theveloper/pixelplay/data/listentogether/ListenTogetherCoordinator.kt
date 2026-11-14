@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.listentogether
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -118,7 +121,7 @@ class ListenTogetherCoordinator @Inject constructor(
     fun startHostRoom(playlistId: Long) {
         ensureStarted()
         if (_state.value.active) {
-            setError("已在一间一起听房间中")
+            setError(AppLocaleManager.getString(R.string.ui_you_are_already_in_a_listen_together_room))
             return
         }
         scope.launch {
@@ -129,7 +132,7 @@ class ListenTogetherCoordinator @Inject constructor(
                 val songs = withContext(Dispatchers.IO) {
                     neteaseRepository.getPlaylistSongsOnce(playlistId)
                 }.filter { it.isNeteaseTogetherSong() }
-                if (songs.isEmpty()) throw IllegalStateException("该歌单没有可一起听的网易云歌曲，请先在网易云面板同步歌单")
+                if (songs.isEmpty()) throw IllegalStateException(AppLocaleManager.getString(R.string.ui_this_playlist_has_no_eligible_netease_songs_sync_playlists_in))
 
                 startHostRoomInternal(songs)
             }.onFailure { error ->
@@ -138,7 +141,7 @@ class ListenTogetherCoordinator @Inject constructor(
                 resetRoom()
                 // ⚡ 拉歌单等非 API 链路的异常文案可能是服务端原文（如「系统错误」），
                 //    统一过一遍友好映射，不让原文直出面板
-                setError(error.userFacingMessage() ?: "开始一起听失败")
+                setError(error.userFacingMessage() ?: AppLocaleManager.getString(R.string.ui_could_not_start_listen_together))
             }
         }
     }
@@ -149,13 +152,13 @@ class ListenTogetherCoordinator @Inject constructor(
      */
     fun startHostRoomWithSongs(
         songs: List<Song>,
-        failureMessage: String = "开始一起听失败",
+        failureMessage: String = AppLocaleManager.getString(R.string.ui_could_not_start_listen_together),
         /** ⚡ 从这首歌开始播（当前播放队列开房时传入正在播放的那首，避免从头换歌） */
         startSongId: String? = null
     ) {
         ensureStarted()
         if (_state.value.active) {
-            setError("已在一间一起听房间中")
+            setError(AppLocaleManager.getString(R.string.ui_you_are_already_in_a_listen_together_room))
             return
         }
         scope.launch {
@@ -164,7 +167,7 @@ class ListenTogetherCoordinator @Inject constructor(
             }
             runCatching {
                 val neteaseSongs = songs.filter { it.isNeteaseTogetherSong() }
-                if (neteaseSongs.isEmpty()) throw IllegalStateException("没有可一起听的网易云歌曲")
+                if (neteaseSongs.isEmpty()) throw IllegalStateException(AppLocaleManager.getString(R.string.ui_no_eligible_netease_songs_for_listen_together))
                 startHostRoomInternal(neteaseSongs, startSongId)
             }.onFailure { error ->
                 if (error is CancellationException) throw error
@@ -180,7 +183,7 @@ class ListenTogetherCoordinator @Inject constructor(
         adoptRoom(created, isHost = true)
         connectControllerIfNeeded()
         val active = awaitController(timeoutMs = 10_000L)
-            ?: throw IllegalStateException("播放器未就绪，无法开始一起听")
+            ?: throw IllegalStateException(AppLocaleManager.getString(R.string.ui_player_is_not_ready_to_start_listen_together))
 
         // 以传入顺序作为初始队列（全网易云歌曲）；指定了 startSongId 时从那一首开始播
         val items = songs.map { MediaItemBuilder.build(it) }
@@ -201,7 +204,7 @@ class ListenTogetherCoordinator @Inject constructor(
     fun joinRoom(roomId: String, inviterId: String) {
         ensureStarted()
         if (_state.value.active) {
-            setError("已在一间一起听房间中")
+            setError(AppLocaleManager.getString(R.string.ui_you_are_already_in_a_listen_together_room))
             return
         }
         scope.launch {
@@ -224,7 +227,7 @@ class ListenTogetherCoordinator @Inject constructor(
                 if (error is CancellationException) throw error
                 Timber.w(error, "ListenTogether: joinRoom failed")
                 resetRoom()
-                setError(error.userFacingMessage() ?: "加入一起听失败")
+                setError(error.userFacingMessage() ?: AppLocaleManager.getString(R.string.ui_could_not_join_listen_together))
             }
         }
     }
@@ -793,10 +796,13 @@ class ListenTogetherCoordinator @Inject constructor(
         const val MAX_BACKOFF_SHIFT = 3
 
         /** 激活提示：一起听开启时自动弹一次 */
-        const val ACTIVATION_MESSAGE = "一起听已开启：期间仅支持播放网易云歌曲"
+        val ACTIVATION_MESSAGE: String
+            get() = AppLocaleManager.getString(R.string.ui_listen_together_started_only_netease_songs_can_be_played_while)
 
         /** 听众侧：房主离开 / 回来各提示一次 */
-        const val HOST_LEFT_MESSAGE = "房主已离开一起听房间，正在等待房主回来"
-        const val HOST_BACK_MESSAGE = "房主已回到一起听房间，恢复同步"
+        val HOST_LEFT_MESSAGE: String
+            get() = AppLocaleManager.getString(R.string.ui_the_host_left_the_listen_together_room_waiting_for_the)
+        val HOST_BACK_MESSAGE: String
+            get() = AppLocaleManager.getString(R.string.ui_the_host_returned_to_listen_together_resuming_sync)
     }
 }

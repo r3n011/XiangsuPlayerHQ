@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.kugou
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.content.SharedPreferences
 import com.theveloper.pixelplay.data.lx.LxSongInfo
@@ -219,7 +222,7 @@ class KugouPlaylistSyncer @Inject constructor(
         id = hash,
         songmid = songId?.takeIf { it.isNotBlank() } ?: hash,
         hash = hash,
-        name = name.ifBlank { "未知歌曲" },
+        name = name.ifBlank { AppLocaleManager.getString(R.string.ui_unknown_song) },
         singer = singer,
         albumName = albumName.orEmpty(),
         // LxSongInfo.duration 对内置源（tx/kg/mg/kw）统一是秒

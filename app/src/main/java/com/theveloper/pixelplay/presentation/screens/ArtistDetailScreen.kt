@@ -2,6 +2,7 @@
 
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1379,7 +1380,7 @@ private fun TabletArtistHeroPanel(
                 ) {
                     Icon(Icons.Rounded.Shuffle, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
-                    Text("随机", fontWeight = FontWeight.Bold)
+                    Text(localizedStringResource(R.string.ui_residue_settings_search_keyword_shuffle), fontWeight = FontWeight.Bold)
                 }
             }
         }

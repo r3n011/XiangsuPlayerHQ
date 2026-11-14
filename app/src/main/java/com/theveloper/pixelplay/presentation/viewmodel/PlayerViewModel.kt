@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.net.Uri
@@ -5646,7 +5648,7 @@ class PlayerViewModel @Inject constructor(
                                 // 在列表歌曲标题右侧显示"获取播放链接…"（与搜索页一致）
                                 _dailyResolvingSongId.value = songId
                                 _dailyResolveProgress.value = 0.2f
-                                _dailyResolveLabel.value = "获取播放链接…"
+                                _dailyResolveLabel.value = AppLocaleManager.getString(R.string.ui_getting_playback_url_4203dd3)
                                 val queue = _playerUiState.value.currentPlaybackQueue
                                 val indexInQueue = queue.indexOfFirst { it.id == songId }
                                 val detail = dailyQueueDetails[songId]
@@ -6048,11 +6050,11 @@ class PlayerViewModel @Inject constructor(
      */
     fun playCloudSongs(
         songs: List<LxSongInfo>,
-        queueName: String = "AI 助手",
+        queueName: String = AppLocaleManager.getString(R.string.ui_ai_assistant),
         onFailure: ((String) -> Unit)? = null
     ) {
         if (songs.isEmpty()) {
-            onFailure?.invoke("没有可播放的歌曲")
+            onFailure?.invoke(AppLocaleManager.getString(R.string.ui_no_playable_songs))
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -6064,7 +6066,7 @@ class PlayerViewModel @Inject constructor(
             }.map(Long::toString).distinct()
             if (ids.isEmpty()) {
                 withContext(Dispatchers.Main) {
-                    onFailure?.invoke(lastError ?: "歌曲信息保存失败，无法播放")
+                    onFailure?.invoke(lastError ?: AppLocaleManager.getString(R.string.ui_could_not_save_song_information_playback_unavailable))
                 }
                 return@launch
             }
@@ -6072,7 +6074,7 @@ class PlayerViewModel @Inject constructor(
             if (playable.isEmpty()) {
                 Timber.w("playCloudSongs: saved ids=%s but none found in library", ids)
                 withContext(Dispatchers.Main) {
-                    onFailure?.invoke("歌曲已保存但未能读取，无法播放")
+                    onFailure?.invoke(AppLocaleManager.getString(R.string.ui_song_saved_but_could_not_be_read_playback_unavailable))
                 }
                 return@launch
             }
@@ -6714,7 +6716,7 @@ class PlayerViewModel @Inject constructor(
         // 登录态：设置页登录（NeteaseApiService）或内置 SDK 会话（NcmSession）任一即认为已登录
         val sessionLogin = net.moriafly.ncm.NcmSession.INSTANCE?.isLogin == true
         if (!neteaseRepository.isLoggedIn && !sessionLogin) {
-            _toastEvents.emit("请先在设置中登录网易云账户以同步红心")
+            _toastEvents.emit(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_in_settings_to_sync_liked_songs))
             return
         }
         // cookie 优先取设置页登录的完整 cookie；没有则用内置 SDK 会话拼接兜底
@@ -6724,7 +6726,7 @@ class PlayerViewModel @Inject constructor(
                 ?.joinToString("; ") { "${it.key}=${it.value}" } ?: ""
         }
         if (cookie.isBlank()) {
-            _toastEvents.emit("Cookie 获取失败，请重新登录")
+            _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_get_cookie_please_sign_in_again))
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -6735,11 +6737,11 @@ class PlayerViewModel @Inject constructor(
             )
             result.onSuccess { ok ->
                 if (!ok) {
-                    _toastEvents.emit("同步网易云红心失败，请检查登录状态")
+                    _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_sync_netease_likes_check_your_sign_in))
                 }
             }.onFailure { err ->
                 Timber.e(err, "syncNeteaseLike: failed for song=$neteaseId isFavorite=$isFavorite")
-                _toastEvents.emit("同步网易云红心失败：${err.message}")
+                _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_sync_netease_likes, (err.message).toString()))
             }
         }
     }
@@ -6819,7 +6821,7 @@ class PlayerViewModel @Inject constructor(
 
         musicDownloadServiceProvider.get().startDownload(song, cachedUrl) { success ->
             _toastEvents.tryEmit(
-                if (success) "下载完成: ${song.title}" else "下载失败: ${song.title}"
+                if (success) AppLocaleManager.getString(R.string.ui_download_complete, (song.title).toString()) else AppLocaleManager.getString(R.string.ui_download_failed, (song.title).toString())
             )
         }
     }
@@ -6853,14 +6855,14 @@ class PlayerViewModel @Inject constructor(
         val online = songs.filter { service.isOnlineSong(it) }
         val skippedLocal = songs.size - online.size
         if (online.isEmpty()) {
-            _toastEvents.tryEmit("选中的都是本地歌曲，无需下载")
+            _toastEvents.tryEmit(AppLocaleManager.getString(R.string.ui_the_selected_songs_are_local_and_do_not_need_downloading))
             return
         }
         online.forEach { song -> service.startDownload(song, preferredUrl = null, onFinished = null) }
         _toastEvents.tryEmit(
             buildString {
-                append("已加入下载队列：${online.size} 首")
-                if (skippedLocal > 0) append("（跳过 $skippedLocal 首本地歌曲）")
+                append(AppLocaleManager.getString(R.string.ui_added_to_download_queue_songs, (online.size).toString()))
+                if (skippedLocal > 0) append(AppLocaleManager.getString(R.string.ui_skipped_local_songs, (skippedLocal).toString()))
             }
         )
     }
@@ -7753,12 +7755,12 @@ class PlayerViewModel @Inject constructor(
             val parsedUri = android.net.Uri.parse(sanitizedUrl)
             if (parsedUri.scheme == null || parsedUri.host == null) {
                 android.util.Log.e("LxPlayUrl", "Invalid URL - no scheme or host!")
-                viewModelScope.launch { _toastEvents.emit("无效的播放链接") }
+                viewModelScope.launch { _toastEvents.emit(AppLocaleManager.getString(R.string.ui_invalid_playback_url)) }
                 return
             }
         } catch (e: Exception) {
             android.util.Log.e("LxPlayUrl", "Uri.parse failed: ${e.message}", e)
-            viewModelScope.launch { _toastEvents.emit("无法解析播放链接") }
+            viewModelScope.launch { _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_parse_playback_url)) }
             return
         }
 
@@ -7767,7 +7769,7 @@ class PlayerViewModel @Inject constructor(
         val isQQMusicSong = id.startsWith("qq_")
         // 播放器不显示 B 站来源标签（B站仅在歌曲列表中显示文字徽标）
         val sourceName = when {
-            isQQMusicSong -> "QQ音乐"
+            isQQMusicSong -> AppLocaleManager.getString(R.string.ui_qq_music)
             else -> "Cloud Play"
         }
 
@@ -7910,7 +7912,7 @@ class PlayerViewModel @Inject constructor(
                 }
             } catch (t: Throwable) {
                 Timber.e(t, "playUrl failed")
-                _toastEvents.emit("播放失败: ${t.message ?: t.javaClass.simpleName}")
+                _toastEvents.emit(AppLocaleManager.getString(R.string.ui_playback_failed, (t.message ?: t.javaClass.simpleName).toString()))
             }
         }
     }
@@ -7978,7 +7980,7 @@ class PlayerViewModel @Inject constructor(
             }.onFailure { e ->
                 Timber.e(e, "dailyRecommend: refresh failed")
                 _dailyRecommendState.value = DailyRecommendUiState.Error(
-                    message = e.message ?: "获取每日推荐失败"
+                    message = e.message ?: AppLocaleManager.getString(R.string.ui_could_not_get_daily_recommendations)
                 )
             }
         }
@@ -8005,7 +8007,7 @@ class PlayerViewModel @Inject constructor(
     fun refreshHomeFeed(force: Boolean = false) {
         viewModelScope.launch {
             runCatching {
-                homeFeedRepository.loadSections(forceRefresh = force, area = "全部")
+                homeFeedRepository.loadSections(forceRefresh = force, area = AppLocaleManager.getString(R.string.ui_residue_radio_all))
             }.onSuccess { sections ->
                 _homeFeedSections.value = sections
             }.onFailure { error ->
@@ -8021,7 +8023,7 @@ class PlayerViewModel @Inject constructor(
     fun playHomeFeedTracks(
         tracks: List<com.theveloper.pixelplay.data.netease.HomeFeedTrack>,
         startIndex: Int = 0,
-        queueName: String = "在线推荐",
+        queueName: String = AppLocaleManager.getString(R.string.ui_online_recommendations),
     ) {
         val entries = tracks.asSequence()
             .filter { it.isPlayable }
@@ -8034,7 +8036,7 @@ class PlayerViewModel @Inject constructor(
     fun playDailyRecommend(startIndex: Int = 0, shuffled: Boolean = false) {
         val state = _dailyRecommendState.value
         val dailySongs = (state as? DailyRecommendUiState.Ready)?.songs ?: return
-        playOnlineRecommendQueue(dailySongs, startIndex, shuffled, queueName = "每日推荐")
+        playOnlineRecommendQueue(dailySongs, startIndex, shuffled, queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_daily_recommend))
     }
 
     /**
@@ -8047,7 +8049,7 @@ class PlayerViewModel @Inject constructor(
         dailySongs: List<DailyRecommendSong>,
         startIndex: Int = 0,
         shuffled: Boolean = false,
-        queueName: String = "在线推荐",
+        queueName: String = AppLocaleManager.getString(R.string.ui_online_recommendations),
     ) {
         if (dailySongs.isEmpty()) return
 
@@ -8059,7 +8061,7 @@ class PlayerViewModel @Inject constructor(
 
             val cookie = neteaseRepository.getCookieString()
             if (cookie.isBlank()) {
-                _toastEvents.emit("网易云登录已失效，请重新登录")
+                _toastEvents.emit(AppLocaleManager.getString(R.string.ui_netease_session_expired_please_sign_in_again))
                 return@launch
             }
 
@@ -8085,7 +8087,7 @@ class PlayerViewModel @Inject constructor(
             var resolvedStartIndex = playStartIndex
             _dailyResolvingSongId.value = songsToPlay[playStartIndex].id
             _dailyResolveProgress.value = 0.2f
-            _dailyResolveLabel.value = "获取播放链接…"
+            _dailyResolveLabel.value = AppLocaleManager.getString(R.string.ui_getting_playback_url_4203dd3)
             val startUrl = runCatching {
                 resolveDailySongUrl(orderedSongs[playStartIndex].song)
             }.getOrNull()
@@ -8161,7 +8163,7 @@ class PlayerViewModel @Inject constructor(
             preloadNextDailySong(resolvedStartIndex, songsToPlay)
 
             _isSheetVisible.value = true
-            _toastEvents.emit("正在播放$queueName（${songsToPlay.size} 首）")
+            _toastEvents.emit(AppLocaleManager.getString(R.string.ui_playing_songs, (queueName).toString(), (songsToPlay.size).toString()))
         }
     }
 
@@ -8321,14 +8323,14 @@ class PlayerViewModel @Inject constructor(
             runCatching {
                 val songs = songRecognitionRepository.recognize(durationSeconds)
                 _songRecognitionState.value = if (songs.isEmpty()) {
-                    SongRecognitionState.Failed("没有识别出歌曲，换个安静点的环境再试试")
+                    SongRecognitionState.Failed(AppLocaleManager.getString(R.string.ui_no_song_recognized_try_again_somewhere_quieter))
                 } else {
                     SongRecognitionState.Success(songs)
                 }
             }.onFailure { error ->
                 Timber.w(error, "SongRecognition failed")
                 _songRecognitionState.value =
-                    SongRecognitionState.Failed(error.message ?: "识曲失败，请稍后再试")
+                    SongRecognitionState.Failed(error.message ?: AppLocaleManager.getString(R.string.ui_song_recognition_failed_please_try_again_later))
             }
         }
     }
@@ -8337,7 +8339,7 @@ class PlayerViewModel @Inject constructor(
     fun playRecognizedSongs(songs: List<Song>, startSong: Song) {
         if (songs.isEmpty()) return
         _songRecognitionState.value = SongRecognitionState.Idle
-        playSongs(songs, startSong, "听歌识曲")
+        playSongs(songs, startSong, AppLocaleManager.getString(R.string.ui_identify_song))
     }
 
     /** 收起识曲面板/重新开始前重置状态。 */
@@ -8355,23 +8357,23 @@ class PlayerViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             if (_isKugouFmMode.value) {
-                sendToast("私人FM 已在播放中")
+                sendToast(AppLocaleManager.getString(R.string.ui_personal_fm_is_already_playing))
                 return@launch
             }
-            sendToast("正在开启私人FM…")
+            sendToast(AppLocaleManager.getString(R.string.ui_starting_personal_fm))
             val batch = kugouFmApi.fetchNextBatch(station).getOrElse { error ->
-                sendToast("私人FM 获取失败：${error.message}")
+                sendToast(AppLocaleManager.getString(R.string.ui_could_not_load_personal_fm, (error.message).toString()))
                 return@launch
             }
             val songs = buildKugouFmSongs(batch)
             if (songs.isEmpty()) {
-                sendToast("私人FM 暂无可播歌曲，稍后再试")
+                sendToast(AppLocaleManager.getString(R.string.ui_no_playable_personal_fm_songs_please_try_again_later))
                 return@launch
             }
             kugouFmStation = station
             kugouFmCursorHash = batch.lastOrNull()?.hash
             kugouFmCursorSongId = batch.lastOrNull()?.songmid ?: batch.lastOrNull()?.id
-            playSongs(songs, songs.first(), "私人FM · 酷狗")
+            playSongs(songs, songs.first(), AppLocaleManager.getString(R.string.ui_personal_fm_kugou))
             // playSongs 会清掉模式标记，之后再置位
             _isKugouFmMode.value = true
         }
@@ -8393,7 +8395,7 @@ class PlayerViewModel @Inject constructor(
         albumId: String,
         albumAuthor: String?,
         albumCoverUrl: String?,
-        queueName: String = "听书",
+        queueName: String = AppLocaleManager.getString(R.string.ui_residue_audiobook_title),
     ) {
         if (chapters.isEmpty() || albumId.isBlank()) return
         val built = chapters.mapNotNull { chapter ->
@@ -8462,35 +8464,35 @@ class PlayerViewModel @Inject constructor(
     fun startHeartMode() {
         viewModelScope.launch {
             if (!neteaseRepository.isLoggedIn) {
-                sendToast("请先在设置中登录网易云账户")
+                sendToast(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_in_settings_first))
                 return@launch
             }
             val seed = currentNeteaseSeedSongId()
             if (seed == null) {
-                sendToast("先播放一首网易云歌曲，再开启心动模式")
+                sendToast(AppLocaleManager.getString(R.string.ui_play_a_netease_song_before_starting_heartbeat_mode))
                 return@launch
             }
-            sendToast("正在开启心动模式…")
+            sendToast(AppLocaleManager.getString(R.string.ui_starting_heartbeat_mode))
             val cookie = neteaseRepository.getCookieString()
             val playlistId = heartModePlaylistId
                 ?: personalFmApi.fetchLikedPlaylistId(cookie)
                 ?: run {
-                    sendToast("找不到「我喜欢的音乐」歌单，请先在网易云面板同步账户")
+                    sendToast(AppLocaleManager.getString(R.string.ui_could_not_find_your_liked_songs_playlist_sync_your_account))
                     return@launch
                 }
             heartModePlaylistId = playlistId
 
             val ids = personalFmApi.fetchHeartModeRecommendations(seed, playlistId, cookie)
                 .getOrElse { error ->
-                    sendToast("心动模式获取失败：${error.message}")
+                    sendToast(AppLocaleManager.getString(R.string.ui_could_not_load_heartbeat_mode, (error.message).toString()))
                     return@launch
                 }
             val songs = neteaseRepository.getNeteaseSongsByIds(ids)
             if (songs.isEmpty()) {
-                sendToast("心动模式暂无可播歌曲")
+                sendToast(AppLocaleManager.getString(R.string.ui_no_playable_songs_in_heartbeat_mode))
                 return@launch
             }
-            playSongs(songs, songs.first(), "心动模式")
+            playSongs(songs, songs.first(), AppLocaleManager.getString(R.string.ui_heartbeat_mode))
             // playSongs 会清掉模式标记，所以在它之后再置位
             _isHeartMode.value = true
         }
@@ -8527,27 +8529,27 @@ class PlayerViewModel @Inject constructor(
     fun startSimilarSongsMode() {
         viewModelScope.launch {
             if (!neteaseRepository.isLoggedIn) {
-                sendToast("请先在设置中登录网易云账户")
+                sendToast(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_in_settings_first))
                 return@launch
             }
             val seed = resolveSimilarSongsSeed()
             if (seed == null) {
-                sendToast("先播放一首网易云歌曲，再试相似歌曲")
+                sendToast(AppLocaleManager.getString(R.string.ui_play_a_netease_song_before_requesting_similar_songs))
                 return@launch
             }
-            sendToast("正在获取相似歌曲…")
+            sendToast(AppLocaleManager.getString(R.string.ui_getting_similar_songs))
             val ids = personalFmApi
                 .fetchSimilarSongIds(seed, limit = 30, cookie = neteaseRepository.getCookieString())
                 .getOrElse { error ->
-                    sendToast("获取相似歌曲失败：${error.message}")
+                    sendToast(AppLocaleManager.getString(R.string.ui_could_not_get_similar_songs, (error.message).toString()))
                     return@launch
                 }
             val songs = neteaseRepository.getNeteaseSongsByIds(ids)
             if (songs.isEmpty()) {
-                sendToast("没有找到相似歌曲")
+                sendToast(AppLocaleManager.getString(R.string.ui_no_similar_songs_found))
                 return@launch
             }
-            playSongs(songs, songs.first(), "相似歌曲")
+            playSongs(songs, songs.first(), AppLocaleManager.getString(R.string.ui_residue_home_discover_similar_songs))
         }
     }
 
@@ -8578,7 +8580,7 @@ class PlayerViewModel @Inject constructor(
     fun startRoamingMode(mode: RoamingMode? = null) {
         viewModelScope.launch {
             if (!neteaseRepository.isLoggedIn) {
-                _toastEvents.emit("请先在设置中登录网易云账户")
+                _toastEvents.emit(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_in_settings_first))
                 return@launch
             }
 
@@ -8596,7 +8598,7 @@ class PlayerViewModel @Inject constructor(
             // 先打开播放器显示加载状态，提供即时视觉反馈
             val loadingSong = Song(
                 id = "roaming_loading",
-                title = "正在加载推荐歌曲...",
+                title = AppLocaleManager.getString(R.string.ui_loading_recommended_songs),
                 artist = "",
                 artistId = 0L,
                 artists = emptyList(),
@@ -8642,7 +8644,7 @@ class PlayerViewModel @Inject constructor(
             try {
                 val cookie = neteaseRepository.getCookieString()
                 if (cookie.isBlank()) {
-                    _toastEvents.emit("Cookie 获取失败，请重新登录")
+                    _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_get_cookie_please_sign_in_again))
                     return@launch
                 }
 
@@ -8659,12 +8661,12 @@ class PlayerViewModel @Inject constructor(
                     effectiveRoamingMode.apiMode
                 ).getOrElse { err ->
                     Timber.e(err, "startRoamingMode: fetchPersonalFmRecommendations failed")
-                    _toastEvents.emit("获取推荐失败：${err.message}")
+                    _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_get_recommendations, (err.message).toString()))
                     return@launch
                 }
 
                 if (songIds.isEmpty()) {
-                    _toastEvents.emit("暂无推荐歌曲")
+                    _toastEvents.emit(AppLocaleManager.getString(R.string.ui_no_recommended_songs))
                     return@launch
                 }
 
@@ -8677,12 +8679,12 @@ class PlayerViewModel @Inject constructor(
                 // 2. 批量获取歌曲详情（带 cookie，确保用户身份识别）
                 val details = personalFmApi.fetchSongDetails(targetIds, cookie).getOrElse { err ->
                     Timber.e(err, "startRoamingMode: fetchSongDetails failed")
-                    _toastEvents.emit("获取歌曲详情失败：${err.message}")
+                    _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_get_song_details, (err.message).toString()))
                     return@launch
                 }
 
                 if (details.isEmpty()) {
-                    _toastEvents.emit("获取歌曲信息失败")
+                    _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_get_song_information))
                     return@launch
                 }
 
@@ -8696,7 +8698,7 @@ class PlayerViewModel @Inject constructor(
                 val orderedDetails = details
                 if (orderedDetails.isEmpty()) {
                     Timber.e("startRoamingMode: No song details available")
-                    _toastEvents.emit("暂无推荐歌曲")
+                    _toastEvents.emit(AppLocaleManager.getString(R.string.ui_no_recommended_songs))
                     return@launch
                 }
 
@@ -8806,7 +8808,7 @@ class PlayerViewModel @Inject constructor(
                 _playerUiState.update {
                     it.copy(
                         currentPlaybackQueue = songList.toPlaybackQueue(),
-                        currentQueueSourceName = "漫游模式",
+                        currentQueueSourceName = AppLocaleManager.getString(R.string.ui_residue_roaming_mode_title),
                         isLoadingInitialSongs = false
                     )
                 }
@@ -8829,7 +8831,7 @@ class PlayerViewModel @Inject constructor(
 
             } catch (t: Throwable) {
                 Timber.e(t, "startRoamingMode failed")
-                _toastEvents.emit("启动漫游失败：${t.message}")
+                _toastEvents.emit(AppLocaleManager.getString(R.string.ui_could_not_start_roaming, (t.message).toString()))
             } finally {
                 _isRoamingLoading.value = false
             }

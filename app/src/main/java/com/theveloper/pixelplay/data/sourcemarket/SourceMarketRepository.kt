@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.sourcemarket
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import com.theveloper.pixelplay.data.github.GitHubRelease
 import com.theveloper.pixelplay.data.github.GitHubReleaseAsset
@@ -69,7 +72,7 @@ class SourceMarketRepository @Inject constructor(
             } else {
                 val err = connection.errorStream?.bufferedReader()?.use { it.readText() }
                 Timber.e("SourceMarket: fetchReleases failed ${connection.responseCode} - $err")
-                Result.failure(Exception("获取发布列表失败: HTTP ${connection.responseCode}"))
+                Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_get_release_list_http, (connection.responseCode).toString())))
             }
         } catch (e: Exception) {
             Timber.e(e, "SourceMarket: fetchReleases exception")
@@ -119,11 +122,11 @@ class SourceMarketRepository @Inject constructor(
                 }
                 val responseCode = connection.responseCode
                 if (responseCode !in 200..299) {
-                    throw RuntimeException("下载失败: HTTP $responseCode")
+                    throw RuntimeException(AppLocaleManager.getString(R.string.ui_download_failed_http, (responseCode).toString()))
                 }
                 val contentType = connection.contentType.orEmpty()
                 if (contentType.contains("text/html", ignoreCase = true)) {
-                    throw RuntimeException("响应不是 zip（content-type=$contentType）")
+                    throw RuntimeException(AppLocaleManager.getString(R.string.ui_response_is_not_a_zip_file_content_type, (contentType).toString()))
                 }
                 val total = connection.contentLengthLong
                 connection.inputStream.use { input ->
@@ -148,7 +151,7 @@ class SourceMarketRepository @Inject constructor(
                             h[2] == 3.toByte() && h[3] == 4.toByte()
                     }
                 if (!headerOk) {
-                    throw RuntimeException("下载内容不是有效 zip")
+                    throw RuntimeException(AppLocaleManager.getString(R.string.ui_downloaded_content_is_not_a_valid_zip_file))
                 }
                 Timber.d("SourceMarket: 下载成功 ${target.length()} bytes from $candidateUrl")
                 emit(ZipDownloadState.Downloaded(target))
@@ -161,7 +164,7 @@ class SourceMarketRepository @Inject constructor(
                 connection?.disconnect()
             }
         }
-        emit(ZipDownloadState.Error(lastError ?: "下载失败"))
+        emit(ZipDownloadState.Error(lastError ?: AppLocaleManager.getString(R.string.ui_residue_setcat_download_failed)))
     }.flowOn(Dispatchers.IO)
 
     /**

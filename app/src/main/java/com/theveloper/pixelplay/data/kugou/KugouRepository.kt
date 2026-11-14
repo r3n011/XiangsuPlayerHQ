@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.kugou
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -174,13 +177,13 @@ class KugouRepository @Inject constructor(
      * 登录成功、进程恢复、以及账号页手动刷新时都会调用。
      */
     suspend fun refreshUserInfo(): Result<KugouUserInfo> {
-        val token = tokenOrNull ?: return Result.failure(IllegalStateException("未登录"))
-        val userId = userIdOrNull ?: return Result.failure(IllegalStateException("缺少 userid"))
+        val token = tokenOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_not_signed_in)))
+        val userId = userIdOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_user_id_is_missing)))
         return accountApi.fetchUserInfo(token, userId, deviceIdentity)
             .onSuccess { info ->
                 _accountNickname.value = info.nickname
                 _accountAvatarUrl.value = info.avatarUrl
-                _accountLabel.value = info.nickname.ifBlank { "酷狗账号 · $userId" }
+                _accountLabel.value = info.nickname.ifBlank { AppLocaleManager.getString(R.string.ui_kugou_account, (userId).toString()) }
                 prefs.edit()
                     .putString(KEY_NICKNAME, info.nickname)
                     .putString(KEY_AVATAR, info.avatarUrl)
@@ -218,8 +221,8 @@ class KugouRepository @Inject constructor(
 
     /** 拉账号全部歌单（自动翻页，最多 [MAX_PLAYLIST_PAGES] 页）。 */
     suspend fun fetchAllPlaylists(): Result<List<KugouPlaylistBrief>> {
-        val token = tokenOrNull ?: return Result.failure(IllegalStateException("未登录"))
-        val userId = userIdOrNull ?: return Result.failure(IllegalStateException("缺少 userid"))
+        val token = tokenOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_not_signed_in)))
+        val userId = userIdOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_user_id_is_missing)))
         return runCatching {
             val all = mutableListOf<KugouPlaylistBrief>()
             var page = 1
@@ -242,8 +245,8 @@ class KugouRepository @Inject constructor(
 
     /** 拉某个歌单的全部歌曲（自动翻页）。 */
     suspend fun fetchAllPlaylistSongs(listId: String): Result<List<KugouSongBrief>> {
-        val token = tokenOrNull ?: return Result.failure(IllegalStateException("未登录"))
-        val userId = userIdOrNull ?: return Result.failure(IllegalStateException("缺少 userid"))
+        val token = tokenOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_not_signed_in)))
+        val userId = userIdOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_user_id_is_missing)))
         return runCatching {
             val all = mutableListOf<KugouSongBrief>()
             var page = 1
@@ -265,10 +268,10 @@ class KugouRepository @Inject constructor(
         song: KugouSongBrief,
         liked: Boolean,
     ): Result<Boolean> {
-        val token = tokenOrNull ?: return Result.failure(IllegalStateException("未登录"))
-        val userId = userIdOrNull ?: return Result.failure(IllegalStateException("缺少 userid"))
+        val token = tokenOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_not_signed_in)))
+        val userId = userIdOrNull ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_user_id_is_missing)))
         val likedListId = prefs.getString(KEY_LIKED_LIST_ID, null)?.takeIf { it.isNotBlank() }
-            ?: return Result.failure(IllegalStateException("还没有同步到「我喜欢」歌单"))
+            ?: return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_your_liked_songs_playlist_has_not_been_synced_yet)))
         return if (liked) {
             accountApi.addSongsToPlaylist(token, userId, likedListId, listOf(song), deviceIdentity)
         } else {
@@ -319,7 +322,7 @@ class KugouRepository @Inject constructor(
                 4 -> {
                     val token = data.optString("token")
                     val userId = data.optString("userid")
-                    if (token.isBlank() || userId.isBlank()) error("登录成功但没有拿到凭证")
+                    if (token.isBlank() || userId.isBlank()) error(AppLocaleManager.getString(R.string.ui_sign_in_succeeded_but_no_credentials_were_returned))
                     persistCredentials(
                         token = token,
                         userId = userId,
@@ -345,7 +348,7 @@ class KugouRepository @Inject constructor(
         val cachedNickname = prefs.getString(KEY_NICKNAME, null)
         _accountNickname.value = cachedNickname
         _accountAvatarUrl.value = prefs.getString(KEY_AVATAR, null)
-        _accountLabel.value = cachedNickname?.takeIf { it.isNotBlank() } ?: "酷狗账号 · $userId"
+        _accountLabel.value = cachedNickname?.takeIf { it.isNotBlank() } ?: AppLocaleManager.getString(R.string.ui_kugou_account, (userId).toString())
         _isLoggedInFlow.value = true
         Timber.i("KugouRepository: logged in (userId=%s)", userId)
         // ⚡ 昵称/头像要走签名接口，登录成功后异步补上
@@ -375,7 +378,7 @@ class KugouRepository @Inject constructor(
             _accountNickname.value = prefs.getString(KEY_NICKNAME, null)
             _accountAvatarUrl.value = prefs.getString(KEY_AVATAR, null)
             _accountLabel.value = prefs.getString(KEY_NICKNAME, null)?.takeIf { it.isNotBlank() }
-                ?: userId?.let { "酷狗账号 · $it" }
+                ?: userId?.let { AppLocaleManager.getString(R.string.ui_kugou_account, (it).toString()) }
             // 缓存里没有昵称（老版本登录过）时补拉一次
             if (prefs.getString(KEY_NICKNAME, null).isNullOrBlank()) {
                 CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { refreshUserInfo() }

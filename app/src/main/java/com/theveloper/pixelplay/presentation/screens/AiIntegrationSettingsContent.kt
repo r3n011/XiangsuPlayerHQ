@@ -57,6 +57,8 @@ import com.theveloper.pixelplay.data.ai.provider.AiProvider
 import com.theveloper.pixelplay.presentation.viewmodel.McpBridgeUiState
 import com.theveloper.pixelplay.presentation.viewmodel.McpBridgeViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.utils.localizedStringResource
 
 /**
  * AI 集成设置页。
@@ -166,9 +168,9 @@ fun AiIntegrationSettingsContent(
             }
         }
 
-        SettingsSubsection(title = "服务商") {
+        SettingsSubsection(title = AppLocaleManager.getString(R.string.ui_provider)) {
             ThemeSelectorItem(
-                label = "服务商",
+                label = AppLocaleManager.getString(R.string.ui_provider),
                 description = provider.displayName,
                 options = AiProvider.entries.associate { it.name to it.displayName },
                 selectedKey = aiProvider,
@@ -245,7 +247,7 @@ fun AiIntegrationSettingsContent(
                         OutlinedTextField(
                             value = baseUrl,
                             onValueChange = { settingsViewModel.onAiBaseUrlChange(it) },
-                            label = { Text("Base URL（OpenAI 兼容）") },
+                            label = { Text(localizedStringResource(R.string.ui_base_url_openai_compatible)) },
                             placeholder = { Text("https://api.example.com/v1") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
@@ -502,7 +504,7 @@ fun AiIntegrationSettingsContent(
             }
         }
 
-        SettingsSubsection(title = "MiMo 开放平台", addBottomSpace = false) {
+        SettingsSubsection(title = localizedStringResource(R.string.ui_mimo_open_platform_new_user_benefits), addBottomSpace = false) {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shape = RoundedCornerShape(10.dp),
@@ -510,13 +512,7 @@ fun AiIntegrationSettingsContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "新用户福利",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "邀请码 LAGBWT，双方各得 ¥10 体验金。",
+                        text = localizedStringResource(R.string.ui_try_xiaomi_models_including_mimo_v2_5_register_with_the),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

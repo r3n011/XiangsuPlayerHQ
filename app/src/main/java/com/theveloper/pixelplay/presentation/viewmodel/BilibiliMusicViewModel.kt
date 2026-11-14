@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -69,7 +72,7 @@ class BilibiliMusicViewModel @Inject constructor(
                 val result = searchApi.search(kw, page = 1, pageSize = _pageSize)
                 val errorMsg = when {
                     result.error != null -> result.error
-                    result.list.isEmpty() -> "无结果（请换关键词）"
+                    result.list.isEmpty() -> AppLocaleManager.getString(R.string.ui_no_results_try_another_keyword)
                     else -> null
                 }
                 _uiState.value = _uiState.value.copy(
@@ -83,7 +86,7 @@ class BilibiliMusicViewModel @Inject constructor(
                     searching = false,
                     results = emptyList(),
                     isEnd = true,
-                    error = "搜索失败: ${t.message ?: t.javaClass.simpleName}"
+                    error = AppLocaleManager.getString(R.string.ui_search_failed, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -114,7 +117,7 @@ class BilibiliMusicViewModel @Inject constructor(
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     isLoadingMore = false,
-                    error = "加载更多失败: ${t.message ?: t.javaClass.simpleName}"
+                    error = AppLocaleManager.getString(R.string.ui_could_not_load_more_dd45af7, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -141,7 +144,7 @@ class BilibiliMusicViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(
                     progress = 0.1f,
-                    progressLabel = "获取视频信息…",
+                    progressLabel = AppLocaleManager.getString(R.string.ui_getting_video_information),
                     loadingSongId = song.id
                 )
 
@@ -150,7 +153,7 @@ class BilibiliMusicViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
                     if (resolved == null) {
-                        _uiState.value = _uiState.value.copy(error = "无法获取播放链接，请换一首")
+                        _uiState.value = _uiState.value.copy(error = AppLocaleManager.getString(R.string.ui_could_not_get_playback_url_try_another_song))
                         return@withContext
                     }
 
@@ -165,7 +168,7 @@ class BilibiliMusicViewModel @Inject constructor(
                 Timber.e(t, "Bilibili playSong exception")
                 _uiState.value = _uiState.value.copy(
                     progress = null, progressLabel = null, loadingSongId = null,
-                    error = "播放失败: ${t.message ?: t.javaClass.simpleName}"
+                    error = AppLocaleManager.getString(R.string.ui_playback_failed, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -208,7 +211,7 @@ class BilibiliMusicViewModel @Inject constructor(
         }
 
         if (cidToUse == 0L) {
-            throw Exception("无法获取视频CID")
+            throw Exception(AppLocaleManager.getString(R.string.ui_could_not_get_video_cid))
         }
 
         Timber.d("Getting play URL: aid=$aidToUse, cid=$cidToUse, bvid=$bvidToUse")

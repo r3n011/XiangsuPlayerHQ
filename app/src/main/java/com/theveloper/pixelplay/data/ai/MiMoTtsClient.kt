@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.ai
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -36,19 +39,21 @@ class MiMoTtsClient @Inject constructor() {
         private const val TTS_BASE_URL = "https://api.xiaomimimo.com/v1/chat/completions"
         private const val MODEL_ID = "mimo-v2.5-tts"
 
-        val BUILT_IN_VOICES = listOf(
-            VoiceOption("mimo_default", "默认"),
-            VoiceOption("冰糖", "冰糖"),
-            VoiceOption("茉莉", "茉莉"),
-            VoiceOption("苏打", "苏打"),
-            VoiceOption("白桦", "白桦"),
+        val BUILT_IN_VOICES get() = listOf(
+            VoiceOption("mimo_default", AppLocaleManager.getString(R.string.ui_residue_audiobook_sort_default)),
+            VoiceOption("冰糖", AppLocaleManager.getString(R.string.ui_bingtang)),
+            VoiceOption("茉莉", AppLocaleManager.getString(R.string.ui_jasmine)),
+            VoiceOption("苏打", AppLocaleManager.getString(R.string.ui_soda)),
+            VoiceOption("白桦", AppLocaleManager.getString(R.string.ui_birch)),
             VoiceOption("Mia", "Mia"),
             VoiceOption("Chloe", "Chloe"),
             VoiceOption("Milo", "Milo"),
             VoiceOption("Dean", "Dean"),
         )
 
-        const val PREVIEW_TEXT = "你好，我是你的音乐伙伴，接下来让我陪你一起聆听。"
+        val PREVIEW_TEXT: String
+
+            get() = AppLocaleManager.getString(R.string.ui_hello_i_am_your_music_companion_let_us_listen_together)
         const val PCM_SAMPLE_RATE = 24000
         const val PCM_CHANNEL_COUNT = 1
         const val PCM_BITS_PER_SAMPLE = 16

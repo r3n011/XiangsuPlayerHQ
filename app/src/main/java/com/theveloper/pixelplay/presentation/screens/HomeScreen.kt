@@ -1,4 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
+
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
 import androidx.compose.foundation.layout.BoxWithConstraints
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.components.FeaturedCarouselSection
@@ -735,7 +738,7 @@ fun HomeScreen(
                         allTracksSheet = HomeSectionTracks(
                             title = dailyRecommendCardTitle,
                             tracks = tracks,
-                            queueName = "每日推荐",
+                            queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_daily_recommend),
                             isDaily = true
                         )
                     },
@@ -751,14 +754,14 @@ fun HomeScreen(
                     playerViewModel.playHomeFeedTracks(
                         tracks = homeFeedSections?.forYou.orEmpty(),
                         startIndex = index,
-                        queueName = "为你推荐"
+                        queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_for_you)
                     )
                 },
                 onSeeAll = {
                     allTracksSheet = HomeSectionTracks(
                         title = forYouCardTitle,
                         tracks = homeFeedSections?.forYou.orEmpty(),
-                        queueName = "为你推荐"
+                        queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_for_you)
                     )
                 },
                 // 与每日推荐/今日热门等卡片统一左右 16dp 外边距，避免比同列卡片宽出一截
@@ -773,14 +776,14 @@ fun HomeScreen(
                     playerViewModel.playHomeFeedTracks(
                         tracks = homeFeedSections?.todayTrending.orEmpty(),
                         startIndex = index,
-                        queueName = "今日云村热播"
+                        queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_today_trending)
                     )
                 },
                 onSeeAll = {
                     allTracksSheet = HomeSectionTracks(
                         title = trendingCardTitle,
                         tracks = homeFeedSections?.todayTrending.orEmpty(),
-                        queueName = "今日云村热播"
+                        queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_today_trending)
                     )
                 },
                 modifier = cardModifier.padding(horizontal = 16.dp)
@@ -794,14 +797,14 @@ fun HomeScreen(
                     playerViewModel.playHomeFeedTracks(
                         tracks = homeFeedSections?.todayHot.orEmpty(),
                         startIndex = index,
-                        queueName = "今日热门"
+                        queueName = AppLocaleManager.getString(R.string.ui_popular_today)
                     )
                 },
                 onSeeAll = {
                     allTracksSheet = HomeSectionTracks(
                         title = hotCardTitle,
                         tracks = homeFeedSections?.todayHot.orEmpty(),
-                        queueName = "今日热门"
+                        queueName = AppLocaleManager.getString(R.string.ui_popular_today)
                     )
                 },
                 modifier = cardModifier.padding(horizontal = 16.dp)
@@ -1357,7 +1360,7 @@ fun HomeScreen(
                                                         playerViewModel.playHomeFeedTracks(
                                                             tracks = tracks,
                                                             startIndex = index,
-                                                            queueName = "为你推荐"
+                                                            queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_for_you)
                                                         )
                                                     },
                                                     modifier = Modifier.fillMaxSize()
@@ -1384,7 +1387,7 @@ fun HomeScreen(
                                                         playerViewModel.playHomeFeedTracks(
                                                             tracks = tracks,
                                                             startIndex = index,
-                                                            queueName = "今日云村热播"
+                                                            queueName = AppLocaleManager.getString(R.string.ui_residue_home_card_today_trending)
                                                         )
                                                     },
                                                     modifier = Modifier.fillMaxSize().padding(12.dp)
@@ -1411,7 +1414,7 @@ fun HomeScreen(
                                                         playerViewModel.playHomeFeedTracks(
                                                             tracks = tracks,
                                                             startIndex = index,
-                                                            queueName = "今日热门"
+                                                            queueName = AppLocaleManager.getString(R.string.ui_popular_today)
                                                         )
                                                     },
                                                     modifier = Modifier.fillMaxSize().padding(12.dp)
@@ -1815,7 +1818,7 @@ fun HomeScreen(
             },
             isListenTogetherActive = togetherState.active,
             listenTogetherSubtitle = togetherState.room?.let { room ->
-                "Room #${room.id} · ${room.users.size}人"
+                AppLocaleManager.getString(R.string.ui_room_people, (room.id).toString(), (room.users.size).toString())
             },
             onOpenListenTogether = {
                 // ⚡ 未登录网易云 → 直接去「设置 → 账户」登录（一起听必须登录才能用）
@@ -1871,8 +1874,8 @@ fun HomeScreen(
     if (showMessagesLoginDialog) {
         PixelAlertDialog(
             onDismissRequest = { showMessagesLoginDialog = false },
-            title = { Text("需要登录网易云") },
-            text = { Text("私信功能需要登录网易云账号后才能使用，是否前往设置中的账户设置？") },
+            title = { Text(localizedStringResource(R.string.ui_netease_sign_in_required)) },
+            text = { Text(localizedStringResource(R.string.ui_sign_in_to_netease_to_use_private_messages_open_account)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -1880,12 +1883,12 @@ fun HomeScreen(
                         navController.navigateSafely(Screen.Accounts.route)
                     }
                 ) {
-                    Text("前往账户设置")
+                    Text(localizedStringResource(R.string.ui_open_account_settings))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showMessagesLoginDialog = false }) {
-                    Text("取消")
+                    Text(localizedStringResource(R.string.ui_residue_cancel))
                 }
             }
         )
@@ -1893,8 +1896,8 @@ fun HomeScreen(
     if (showNeteaseLoginRequiredDialog) {
         PixelAlertDialog(
             onDismissRequest = { showNeteaseLoginRequiredDialog = false },
-            title = { Text("需要登录网易云") },
-            text = { Text("漫游模式需要登录网易云账号后才能使用，是否前往登录？") },
+            title = { Text(localizedStringResource(R.string.ui_netease_sign_in_required)) },
+            text = { Text(localizedStringResource(R.string.ui_sign_in_to_netease_to_use_roaming_mode_sign_in)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -1903,12 +1906,12 @@ fun HomeScreen(
                         navController.navigateSafely(Screen.Accounts.route)
                     }
                 ) {
-                    Text("去登录")
+                    Text(localizedStringResource(R.string.ui_residue_chat_go_login))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNeteaseLoginRequiredDialog = false }) {
-                    Text("取消")
+                    Text(localizedStringResource(R.string.ui_residue_cancel))
                 }
             }
         )
@@ -1927,9 +1930,9 @@ fun HomeScreen(
                     modifier = Modifier.size(20.dp),
                 )
             },
-            title = { Text("还没有导入 JS 音源") },
+            title = { Text(localizedStringResource(R.string.ui_no_javascript_sources_imported)) },
             text = {
-                Text("在线搜索、在线播放和音源市场都需要一个 JS 音源脚本。要不要现在去「设置 → 在线音源」导入一个？")
+                Text(localizedStringResource(R.string.ui_online_search_playback_and_the_source_market_need_a_javascript))
             },
             confirmButton = {
                 TextButton(
@@ -1937,10 +1940,10 @@ fun HomeScreen(
                         dismissPrompt()
                         navController.navigateSafely(Screen.CloudMusicSettings.route)
                     }
-                ) { Text("去设置") }
+                ) { Text(localizedStringResource(R.string.ui_open_settings)) }
             },
             dismissButton = {
-                TextButton(onClick = dismissPrompt) { Text("以后再说") }
+                TextButton(onClick = dismissPrompt) { Text(localizedStringResource(R.string.ui_later)) }
             },
         )
     }

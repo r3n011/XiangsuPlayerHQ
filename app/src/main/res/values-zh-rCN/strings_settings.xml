@@ -147,6 +147,10 @@
     <string
         name="setcat_app_theme_desc"
     >切换浅色、深色，或跟随系统外观。</string>
+    <string name="setcat_app_font_label">应用字体</string>
+    <string
+        name="setcat_app_font_desc"
+    >设置软件界面的全局字体（不影响歌词，歌词有独立的字体设置）。</string>
     <string name="setcat_theme_light">浅色主题</string>
     <string name="setcat_theme_dark">深色主题</string>
     <string name="setcat_theme_follow_system">跟随系统</string>

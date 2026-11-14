@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -189,7 +192,7 @@ fun UpdateAvailableDialog(
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
                                 Text(
-                                    text = "✓ 蓝奏云已同步（国内高速下载）",
+                                    text = localizedStringResource(R.string.ui_lanzou_cloud_is_up_to_date_fast_downloads_in_china),
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -203,7 +206,7 @@ fun UpdateAvailableDialog(
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
                                 Text(
-                                    text = "⚠ 蓝奏云版本与 GitHub 不一致，仅使用 GitHub 下载",
+                                    text = localizedStringResource(R.string.ui_lanzou_cloud_and_github_versions_differ_only_github_downloads_are),
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onErrorContainer,
@@ -229,9 +232,9 @@ fun UpdateAvailableDialog(
                             ) {
                                 Text(
                                     text = if (progress >= 0) {
-                                        "下载中… ${(progress * 100).toInt()}%"
+                                        AppLocaleManager.getString(R.string.ui_downloading_69e1d89, ((progress * 100).toInt()).toString())
                                     } else {
-                                        "下载中…"
+                                        AppLocaleManager.getString(R.string.ui_downloading_644d4f7)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -248,7 +251,7 @@ fun UpdateAvailableDialog(
                         }
                         is ApkDownloadInstaller.DownloadState.Downloaded -> {
                             Text(
-                                text = "下载完成，正在启动安装…",
+                                text = localizedStringResource(R.string.ui_download_complete_starting_installation),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                             )
@@ -260,7 +263,7 @@ fun UpdateAvailableDialog(
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                 Text(
-                                    text = "正在启动安装…",
+                                    text = localizedStringResource(R.string.ui_starting_installation),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -268,7 +271,7 @@ fun UpdateAvailableDialog(
                         }
                         is ApkDownloadInstaller.DownloadState.Error -> {
                             Text(
-                                text = errorMessage ?: "下载失败",
+                                text = errorMessage ?: localizedStringResource(R.string.ui_residue_setcat_download_failed),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                             )
@@ -333,7 +336,7 @@ fun UpdateAvailableDialog(
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
                                     Text(
-                                        text = "蓝奏云下载（国内高速）",
+                                        text = localizedStringResource(R.string.ui_download_from_lanzou_cloud_fast_in_china),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onPrimary,
@@ -342,7 +345,7 @@ fun UpdateAvailableDialog(
                                 // ⚡ 明示将下载哪个文件（架构 / 变体），避免用户怀疑"下错架构"
                                 lanzouFilesOrdered.firstOrNull()?.let { selected ->
                                     Text(
-                                        text = "将下载：${selected.fileName}",
+                                        text = localizedStringResource(R.string.ui_file_to_download, (selected.fileName).toString()),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -493,7 +496,7 @@ fun UpdateAvailableDialog(
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
                                     Text(
-                                        text = "GitHub 下载",
+                                        text = localizedStringResource(R.string.ui_download_from_github),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -512,7 +515,7 @@ fun UpdateAvailableDialog(
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
                                     Text(
-                                        text = "在浏览器中打开蓝奏云",
+                                        text = localizedStringResource(R.string.ui_open_lanzou_cloud_in_browser),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -536,7 +539,7 @@ fun UpdateAvailableDialog(
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
                                     Text(
-                                        text = "后台更新（通知栏显示进度）",
+                                        text = localizedStringResource(R.string.ui_update_in_background_progress_shown_in_notifications),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.primary,

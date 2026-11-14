@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -133,7 +136,7 @@ fun BilibiliFavoritesScreen(
         isLoading = true
         errorText = null
         if (!hasSession || uid <= 0L) {
-            errorText = "请先在「设置 → 账号」中登录 B 站账号"
+            errorText = AppLocaleManager.getString(R.string.ui_sign_in_to_bilibili_in_settings_accounts_first)
             isLoading = false
             return@LaunchedEffect
         }
@@ -141,7 +144,7 @@ fun BilibiliFavoritesScreen(
             searchApi.getFavoriteFolders(uid, csrf ?: "", cookie = cookieHeader)
         }
         folders = result
-        if (result.isEmpty()) errorText = "暂无收藏夹（接口返回为空，请确认已登录 B 站账号）"
+        if (result.isEmpty()) errorText = AppLocaleManager.getString(R.string.ui_no_favorites_returned_check_that_you_are_signed_in_to)
         isLoading = false
     }
 
@@ -159,7 +162,7 @@ fun BilibiliFavoritesScreen(
         videos = result.videos
         videoPage = 1
         hasMoreVideos = result.hasMore
-        if (result.videos.isEmpty()) errorText = "收藏夹是空的"
+        if (result.videos.isEmpty()) errorText = AppLocaleManager.getString(R.string.ui_this_favorites_folder_is_empty)
         isLoading = false
     }
 
@@ -198,7 +201,7 @@ fun BilibiliFavoritesScreen(
      */
     fun playVideo(video: BilibiliFavoriteVideo) {
         if (playerViewModel == null) {
-            toast("播放器不可用")
+            toast(AppLocaleManager.getString(R.string.ui_player_unavailable))
             return
         }
         playingAid = video.aid
@@ -224,7 +227,7 @@ fun BilibiliFavoritesScreen(
                 if (allVideos.isEmpty()) {
                     withContext(Dispatchers.Main) {
                         playingAid = 0L
-                        toast("收藏夹为空，无法播放")
+                        toast(AppLocaleManager.getString(R.string.ui_this_favorites_folder_is_empty_and_cannot_be_played))
                     }
                     return@launch
                 }
@@ -239,7 +242,7 @@ fun BilibiliFavoritesScreen(
                     if (bvid.isBlank() || !bvid.startsWith("BV", ignoreCase = true) || cid <= 0L) continue
                     val song = Song(
                         id = "bilibili_fav_${v.aid}",
-                        title = v.title.ifBlank { "B 站视频" },
+                        title = v.title.ifBlank { AppLocaleManager.getString(R.string.ui_bilibili_video) },
                         artist = v.upName.ifBlank { "Bilibili" },
                         artistId = 0L,
                         album = "",
@@ -261,20 +264,20 @@ fun BilibiliFavoritesScreen(
                 withContext(Dispatchers.Main) {
                     playingAid = 0L
                     if (songs.isEmpty()) {
-                        toast("无法获取播放链接")
+                        toast(AppLocaleManager.getString(R.string.ui_could_not_get_playback_url_32a9532))
                         return@withContext
                     }
                     playerViewModel.playSongs(
                         songsToPlay = songs,
                         startSong = startSong ?: songs.first(),
-                        queueName = "B站收藏"
+                        queueName = AppLocaleManager.getString(R.string.ui_bilibili_favorites_ac60b24)
                     )
                 }
             } catch (t: Throwable) {
                 Timber.e(t, "Bilibili favorites play failed")
                 withContext(Dispatchers.Main) {
                     playingAid = 0L
-                    toast("播放失败: ${t.message ?: t.javaClass.simpleName}")
+                    toast(AppLocaleManager.getString(R.string.ui_playback_failed, (t.message ?: t.javaClass.simpleName).toString()))
                 }
             }
         }
@@ -306,7 +309,7 @@ fun BilibiliFavoritesScreen(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = if (selectedFolder == null) "我的 B 站收藏" else selectedFolder?.title ?: "收藏夹",
+                            text = if (selectedFolder == null) localizedStringResource(R.string.ui_my_bilibili_favorites) else selectedFolder?.title ?: localizedStringResource(R.string.ui_favorites_folder),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -413,7 +416,7 @@ fun BilibiliFavoritesScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = "没有更多了",
+                                            text = localizedStringResource(R.string.ui_no_more_results),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -462,7 +465,7 @@ private fun FavoriteFolderCard(
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = folder.title.ifBlank { "未命名收藏夹" },
+                    text = folder.title.ifBlank { AppLocaleManager.getString(R.string.ui_untitled_favorites_folder) },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -471,7 +474,7 @@ private fun FavoriteFolderCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${folder.mediaCount} 个视频",
+                    text = localizedStringResource(R.string.ui_videos, (folder.mediaCount).toString()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -547,7 +550,7 @@ private fun FavoriteVideoRow(
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = video.title.ifBlank { "未命名视频" },
+                text = video.title.ifBlank { AppLocaleManager.getString(R.string.ui_untitled_video) },
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,

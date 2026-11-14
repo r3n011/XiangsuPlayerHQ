@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.components.BackupModuleSelectionDialog
@@ -98,6 +101,7 @@ import androidx.compose.material.icons.outlined.LinearScale
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Style
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.BlurOff
@@ -270,7 +274,11 @@ import com.theveloper.pixelplay.presentation.viewmodel.LyricsRefreshProgress
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import com.theveloper.pixelplay.MainActivity
+import com.theveloper.pixelplay.ui.theme.AppFontDisplayNames
+import com.theveloper.pixelplay.ui.theme.CUSTOM_FONT_PREFIX
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
+import com.theveloper.pixelplay.ui.theme.customFontDisplayName
+import com.theveloper.pixelplay.ui.theme.listCustomFonts
 import dev.chrisbanes.haze.hazeSource
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -1231,6 +1239,23 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Outlined.LightMode, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
 
+                                // ⚡ 应用字体：只作用于歌词之外的软件界面（歌词字体在「播放器与歌词外观」里单独设置）。
+                                //   选项 = 内置字体 + 已导入的自定义字体（与歌词字体共用 filesDir/fonts/ 存储）。
+                                val appFontOptions = remember(context) {
+                                    AppFontDisplayNames + listCustomFonts(context).associate { fileName ->
+                                        val key = CUSTOM_FONT_PREFIX + fileName
+                                        key to customFontDisplayName(key)
+                                    }
+                                }
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_app_font_label),
+                                    description = stringResource(R.string.setcat_app_font_desc),
+                                    options = appFontOptions,
+                                    selectedKey = uiState.appFontFamily,
+                                    onSelectionChanged = { settingsViewModel.setAppFontFamily(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.TextFields, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_custom_palette_enabled_title),
                                     subtitle = stringResource(R.string.setcat_custom_palette_enabled_subtitle),
@@ -1528,7 +1553,7 @@ fun SettingsCategoryScreen(
                                 )
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_download_path_title),
-                                    subtitle = if (uiState.downloadPath.startsWith("content://")) "自定义目录" else uiState.downloadPath,
+                                    subtitle = if (uiState.downloadPath.startsWith("content://")) AppLocaleManager.getString(R.string.ui_custom_directory) else uiState.downloadPath,
                                     leadingIcon = { Icon(Icons.Outlined.Folder, null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.cd_open), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = {
@@ -1914,11 +1939,11 @@ fun SettingsCategoryScreen(
                         SettingsCategory.BEHAVIOR -> {
                             val homeTopListEnabled by settingsViewModel.homeTopListEnabled.collectAsStateWithLifecycle()
                             SettingsSubsection(
-                                title = stringResource(R.string.home_toplist_title)
+                                title = localizedStringResource(R.string.home_toplist_title)
                             ) {
                                 SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_home_toplist_title),
-                                    subtitle = stringResource(R.string.setcat_home_toplist_subtitle),
+                                    title = localizedStringResource(R.string.setcat_home_toplist_title),
+                                    subtitle = localizedStringResource(R.string.setcat_home_toplist_subtitle),
                                     checked = homeTopListEnabled,
                                     onCheckedChange = { settingsViewModel.setHomeTopListEnabled(it) },
                                     leadingIcon = {
@@ -2153,26 +2178,26 @@ fun SettingsCategoryScreen(
                                                 onSuccess = { files ->
                                                     lanzouTestFirstUrl = files.firstOrNull()?.downloadUrl
                                                     lanzouTestReport = if (files.isEmpty()) {
-                                                        "解析成功，但没有解析出任何文件"
+                                                        AppLocaleManager.getString(R.string.ui_parsing_succeeded_but_no_files_were_found)
                                                     } else {
                                                         buildString {
-                                                            append("解析成功：共 ${files.size} 个文件\n")
+                                                            append(AppLocaleManager.getString(R.string.ui_parsed_successfully_files, (files.size).toString()))
                                                             files.forEachIndexed { index, file ->
                                                                 append("\n${index + 1}. ${file.fileName}")
-                                                                append("\n   版本识别：${file.versionName ?: "未识别"}")
-                                                                append("\n   大小：${file.fileSize}")
+                                                                append(AppLocaleManager.getString(R.string.ui_detected_version, (file.versionName ?: AppLocaleManager.getString(R.string.ui_unknown)).toString()))
+                                                                append(AppLocaleManager.getString(R.string.ui_size, (file.fileSize).toString()))
                                                                 append(
-                                                                    "\n   直链：${file.downloadUrl.take(88)}" +
+                                                                    AppLocaleManager.getString(R.string.ui_direct_url, (file.downloadUrl.take(88)).toString()) +
                                                                         if (file.downloadUrl.length > 88) "…" else ""
                                                                 )
                                                                 append("\n")
                                                             }
-                                                            append("\n点下方「浏览器打开第一个直链」可继续验证下载跳转")
+                                                            append(AppLocaleManager.getString(R.string.ui_tap_open_first_direct_url_in_browser_below_to_test))
                                                         }
                                                     }
                                                 },
                                                 onFailure = { error ->
-                                                    lanzouTestReport = "解析失败：${error.message ?: error.javaClass.simpleName}"
+                                                    lanzouTestReport = AppLocaleManager.getString(R.string.ui_parsing_failed, (error.message ?: error.javaClass.simpleName).toString())
                                                 }
                                             )
                                             lanzouTestRunning = false
@@ -3741,7 +3766,7 @@ private fun ImportFileSelectionDialog(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
-                                        text = stringResource(R.string.import_backup_hint),
+                                        text = localizedStringResource(R.string.import_backup_hint),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

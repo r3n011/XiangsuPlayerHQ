@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.netease
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.moriafly.ncm.NcmApi
@@ -61,7 +64,7 @@ class NeteaseRecommendApi @Inject constructor() {
      */
     suspend fun fetchTodayDailyRecommend(cookie: String): Result<DailyRecommendResult> {
         if (cookie.isBlank()) {
-            return Result.failure(IllegalStateException("网易云未登录，无法获取每日推荐"))
+            return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_to_get_daily_recommendations)))
         }
         return withContext(Dispatchers.IO) {
             try {
@@ -70,9 +73,9 @@ class NeteaseRecommendApi @Inject constructor() {
 
                 // 主接口：/api/v3/discovery/recommend/songs（官方每日推荐）
                 val recommendMap = NcmApi.full.recommendSongs().getOrNull()
-                    ?: return@withContext Result.failure(Exception("recommend/songs 请求失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_recommend_songs)))
                 val recommendRoot = ncmMapToJson(recommendMap)
-                    ?: return@withContext Result.failure(Exception("recommend/songs 响应解析失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_recommend_songs_response)))
 
                 // rawWeapi 对 404 等错误 body 也会返回 success，必须显式检查 code
                 val code = recommendRoot.optInt("code", -1)
@@ -89,7 +92,7 @@ class NeteaseRecommendApi @Inject constructor() {
                     emptyList()
                 }
                 if (parsed.isEmpty()) {
-                    return@withContext Result.failure(Exception("每日推荐无数据"))
+                    return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_no_daily_recommendation_data)))
                 }
 
                 val date = dataObj?.optString("date", "") ?: ""
@@ -108,14 +111,14 @@ class NeteaseRecommendApi @Inject constructor() {
      */
     private suspend fun fetchTodayFromHistoryFallback(): Result<DailyRecommendResult> {
         val historyMap = NcmApi.full.historyRecommendSongs(limit = 1).getOrNull()
-            ?: return Result.failure(Exception("recommend/history 请求失败"))
+            ?: return Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_recommend_history)))
         val historyRoot = ncmMapToJson(historyMap)
-            ?: return Result.failure(Exception("recommend/history 响应解析失败"))
+            ?: return Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_recommend_history_response)))
 
         // 404 等错误 body 同样需要检查 code
         val historyCode = historyRoot.optInt("code", -1)
         if (historyCode != 200) {
-            return Result.failure(Exception("每日推荐接口不可用（code=$historyCode）"))
+            return Result.failure(Exception(AppLocaleManager.getString(R.string.ui_daily_recommendations_api_unavailable_code, (historyCode).toString())))
         }
 
         val dataArray = historyRoot.optJSONArray("data")
@@ -144,7 +147,7 @@ class NeteaseRecommendApi @Inject constructor() {
         }
 
         if (parsed.isEmpty()) {
-            return Result.failure(Exception("每日推荐无数据"))
+            return Result.failure(Exception(AppLocaleManager.getString(R.string.ui_no_daily_recommendation_data)))
         }
 
         Timber.d("$TAG: Got ${parsed.size} daily recommend songs for $date (history fallback)")

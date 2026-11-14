@@ -55,6 +55,12 @@ class ThemePreferencesRepository @Inject constructor(
     }
 
     companion object {
+        // ⚡ 应用字体默认值：主题默认字体（Google Sans Rounded）
+        const val DEFAULT_APP_FONT_FAMILY = "DEFAULT"
+        // ⚡ 应用字体（只作用于歌词之外的软件界面）：存储字体选择 key，
+        //    "DEFAULT" = 主题默认（Google Sans Rounded），
+        //    "CUSTOM:<fileName>" = 用户导入的自定义字体（filesDir/fonts/）
+        val APP_FONT_FAMILY = stringPreferencesKey("app_font_family_v1")
         // 默认种子色：蓝色（避免 Android 10 等无系统取色时默认紫色）
         const val DEFAULT_CUSTOM_PALETTE_SEED = 0xFF2196F3.toInt()
         // ⚡ 自定义播放器背景模糊半径上限（dp）
@@ -88,6 +94,11 @@ class ThemePreferencesRepository @Inject constructor(
     // ⚡ 应用级调色盘开关（独立于播放器主题）
     val appPaletteEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.APP_PALETTE_ENABLED] ?: false
+    }
+
+    // ⚡ 应用字体（只作用于歌词之外的软件界面；歌词有独立的字体设置）
+    val appFontFamilyFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[APP_FONT_FAMILY] ?: DEFAULT_APP_FONT_FAMILY
     }
 
     // ⚡ 自定义播放器背景（应用到播放器界面与歌词界面）
@@ -159,6 +170,16 @@ class ThemePreferencesRepository @Inject constructor(
     suspend fun setAppPaletteEnabled(enabled: Boolean) =
         dataStore.edit { preferences ->
             preferences[Keys.APP_PALETTE_ENABLED] = enabled
+        }
+
+    // ⚡ 设置应用字体（只作用于歌词之外的软件界面）
+    suspend fun setAppFontFamily(familyKey: String) =
+        dataStore.edit { preferences ->
+            if (familyKey == DEFAULT_APP_FONT_FAMILY) {
+                preferences.remove(APP_FONT_FAMILY)
+            } else {
+                preferences[APP_FONT_FAMILY] = familyKey
+            }
         }
 
     suspend fun setCustomPlayerBackgroundEnabled(enabled: Boolean) =

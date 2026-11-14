@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components.subcomps
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.foundation.background
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.foundation.clickable
@@ -561,7 +564,7 @@ fun LyricsMoreBottomSheet(
                             inactiveContentColor = accentColor,
                             activeCornerRadius = 50.dp,
                             onClick = onImportCustomFont,
-                            text = "＋ 导入字体"
+                            text = AppLocaleManager.getString(R.string.ui_import_font)
                         )
                     }
                 }
@@ -859,8 +862,8 @@ fun LyricsMoreBottomSheet(
                 showFontDeleteHint = false
                 scope.launch { hintContext.dataStore.edit { it[booleanPreferencesKey("font_delete_hint_shown")] = true } }
             },
-            title = { Text("长按删除字体") },
-            text = { Text("普通点击选择字体，长按自定义字体可将其删除。") },
+            title = { Text(localizedStringResource(R.string.ui_long_press_to_delete_a_font)) },
+            text = { Text(localizedStringResource(R.string.ui_tap_a_font_to_select_it_long_press_a_custom)) },
             confirmButton = {
                 androidx.compose.material3.TextButton(
                     onClick = {
@@ -868,7 +871,7 @@ fun LyricsMoreBottomSheet(
                         scope.launch { hintContext.dataStore.edit { it[booleanPreferencesKey("font_delete_hint_shown")] = true } }
                     }
                 ) {
-                    Text("知道了")
+                    Text(localizedStringResource(R.string.ui_residue_beta05_got_it))
                 }
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

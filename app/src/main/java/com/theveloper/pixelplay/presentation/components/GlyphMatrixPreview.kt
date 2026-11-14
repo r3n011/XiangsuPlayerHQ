@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.R
+
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -132,7 +135,7 @@ fun GlyphMatrixPreview(
         ) {
             // 标题
             Text(
-                text = "预览",
+                text = localizedStringResource(R.string.ui_preview),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface

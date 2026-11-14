@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.net.Uri
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -285,7 +289,7 @@ fun CloudMusicSettingsScreen(
 
             item {
                 Text(
-                    "已安装音源 (${state.scriptInfos.size})",
+                    localizedStringResource(R.string.ui_installed_sources, (state.scriptInfos.size).toString()),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -326,7 +330,7 @@ fun CloudMusicSettingsScreen(
         }
 
         CollapsibleCommonTopBar(
-            title = "自定义音源",
+            title = AppLocaleManager.getString(R.string.ui_custom_sources),
             collapseFraction = collapseFraction,
             headerHeight = currentTopBarHeightDp,
             onBackClick = onBackClick
@@ -337,7 +341,7 @@ fun CloudMusicSettingsScreen(
         var urlInput by remember { mutableStateOf("https://") }
         PixelAlertDialog(
             onDismissRequest = { showImportUrl = false },
-            title = { Text("从 URL 下载 JS") },
+            title = { Text(localizedStringResource(R.string.ui_download_javascript_from_url)) },
             text = {
                 OutlinedTextField(
                     value = urlInput,
@@ -353,10 +357,10 @@ fun CloudMusicSettingsScreen(
                         viewModel.importFromUrl(urlInput)
                         showImportUrl = false
                     }
-                ) { Text("导入") }
+                ) { Text(localizedStringResource(R.string.ui_residue_lx_import)) }
             },
             dismissButton = {
-                TextButton(onClick = { showImportUrl = false }) { Text("取消") }
+                TextButton(onClick = { showImportUrl = false }) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
             }
         )
     }
@@ -364,18 +368,18 @@ fun CloudMusicSettingsScreen(
     pendingDelete?.let { fileName ->
         PixelAlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("删除脚本") },
-            text = { Text("确定删除「$fileName」吗？删除后该脚本的音源将不可用。") },
+            title = { Text(localizedStringResource(R.string.ui_delete_script)) },
+            text = { Text(localizedStringResource(R.string.ui_delete_its_music_sources_will_no_longer_be_available, (fileName).toString())) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.removeJs(fileName)
                         pendingDelete = null
                     }
-                ) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                ) { Text(localizedStringResource(R.string.ui_residue_button_delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("取消") }
+                TextButton(onClick = { pendingDelete = null }) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
             }
         )
     }
@@ -407,14 +411,14 @@ private fun SourceConnectivityCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "音源连通性测试",
+                        text = localizedStringResource(R.string.ui_residue_market_source_test_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontFamily = GoogleSansRounded,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "对已安装的音源各做一次真实搜索，并尝试取一次播放地址",
+                        text = localizedStringResource(R.string.ui_search_each_installed_source_and_try_to_get_a_playback),
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = GoogleSansRounded,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -433,7 +437,7 @@ private fun SourceConnectivityCard(
                         Spacer(Modifier.width(8.dp))
                     }
                     Text(
-                        text = if (testingAll) "测试中…" else "全部测试",
+                        text = if (testingAll) localizedStringResource(R.string.ui_residue_market_testing) else localizedStringResource(R.string.ui_residue_market_test_all),
                         fontFamily = GoogleSansRounded
                     )
                 }
@@ -441,7 +445,7 @@ private fun SourceConnectivityCard(
 
             if (rows.isEmpty()) {
                 Text(
-                    text = "还没有安装音源脚本，先在音源市场安装或导入 .js 脚本",
+                    text = localizedStringResource(R.string.ui_no_source_scripts_installed_install_one_from_the_source_market),
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = GoogleSansRounded,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -469,11 +473,11 @@ private fun SourceTestRow(
         else -> MaterialTheme.colorScheme.error
     }
     val statusText = when {
-        row.testing -> "测试中…"
-        result == null -> "未测试"
-        result.status == LxSourceTester.Status.SUCCESS -> "可用"
-        result.status == LxSourceTester.Status.SEARCH_ONLY -> "仅可搜索"
-        else -> "不可用"
+        row.testing -> AppLocaleManager.getString(R.string.ui_residue_market_testing)
+        result == null -> AppLocaleManager.getString(R.string.ui_not_tested)
+        result.status == LxSourceTester.Status.SUCCESS -> AppLocaleManager.getString(R.string.ui_residue_market_test_success)
+        result.status == LxSourceTester.Status.SEARCH_ONLY -> AppLocaleManager.getString(R.string.ui_search_only)
+        else -> AppLocaleManager.getString(R.string.ui_residue_market_test_failed)
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -510,7 +514,7 @@ private fun SourceTestRow(
                 Text(
                     text = buildString {
                         append(result.message)
-                        if (result.sample.isNotBlank()) append(" · 示例：${result.sample}")
+                        if (result.sample.isNotBlank()) append(AppLocaleManager.getString(R.string.ui_example, (result.sample).toString()))
                     },
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = GoogleSansRounded,
@@ -523,7 +527,7 @@ private fun SourceTestRow(
         Spacer(Modifier.width(10.dp))
         TextButton(onClick = onTest, enabled = !row.testing) {
             Text(
-                text = "测试",
+                text = localizedStringResource(R.string.ui_residue_market_test),
                 fontFamily = GoogleSansRounded
             )
         }
@@ -561,15 +565,15 @@ private fun ExportSourcesCard(
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    "导出全部音源",
+                    localizedStringResource(R.string.ui_export_all_sources),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = if (enabled) MaterialTheme.colorScheme.onSurface
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    if (enabled) "把所有已导入的 JS 脚本打包成 zip 保存到本地"
-                    else "还没有导入任何 JS 音源",
+                    if (enabled) localizedStringResource(R.string.ui_save_all_imported_javascript_source_scripts_in_a_local_zip)
+                    else localizedStringResource(R.string.ui_no_javascript_sources_have_been_imported),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -613,12 +617,12 @@ private fun MarketEntryCard(
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    "像素音源市场",
+                    localizedStringResource(R.string.ui_pixel_source_market),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "从 GitHub 仓库下载并安装社区音源脚本",
+                    localizedStringResource(R.string.ui_residue_market_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -667,21 +671,21 @@ private fun HeroSourceCard(
             )
 
             Text(
-                text = "JavaScript 自定义音源",
+                text = localizedStringResource(R.string.ui_custom_javascript_sources),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = contentColor
             )
 
             Text(
-                text = "导入落雪官方 user-api v2 脚本，扩展播放地址、歌词和封面解析。",
+                text = localizedStringResource(R.string.ui_import_lx_music_user_api_v2_scripts_to_resolve_playback),
                 style = MaterialTheme.typography.bodyMedium,
                 color = contentColor.copy(alpha = 0.76f)
             )
 
             if (state.engineReady) {
                 Text(
-                    text = "已加载 ${state.scriptInfos.size} 个脚本 · v${state.version}",
+                    text = localizedStringResource(R.string.ui_scripts_loaded_v, (state.scriptInfos.size).toString(), (state.version).toString()),
                     style = MaterialTheme.typography.labelMedium,
                     color = contentColor.copy(alpha = 0.85f)
                 )
@@ -724,7 +728,7 @@ private fun HeroSourceCard(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "导入脚本",
+                            text = localizedStringResource(R.string.ui_import_script),
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.labelLarge
@@ -740,7 +744,7 @@ private fun HeroSourceCard(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Cloud,
-                        contentDescription = "从 URL 导入",
+                        contentDescription = localizedStringResource(R.string.ui_import_from_url),
                         tint = contentColor,
                         modifier = Modifier
                             .padding(12.dp)
@@ -756,7 +760,7 @@ private fun HeroSourceCard(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Refresh,
-                        contentDescription = "重新加载",
+                        contentDescription = localizedStringResource(R.string.ui_reload),
                         tint = contentColor,
                         modifier = Modifier
                             .padding(12.dp)
@@ -849,7 +853,7 @@ private fun ScriptSourceCard(
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Rounded.DeleteOutline,
-                        contentDescription = "删除 ${info.fileName}",
+                        contentDescription = localizedStringResource(R.string.ui_delete, (info.fileName).toString()),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -887,13 +891,13 @@ private fun ScriptSourceCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text(if (expanded) "收起简介" else "查看简介")
+                    Text(if (expanded) localizedStringResource(R.string.ui_hide_details) else localizedStringResource(R.string.ui_show_details))
                 }
                 if (expanded) {
                     listOf(
-                        "作者" to info.author,
-                        "主页" to info.homepage,
-                        "更新时间" to info.lastUpdate,
+                        AppLocaleManager.getString(R.string.ui_author) to info.author,
+                        AppLocaleManager.getString(R.string.ui_homepage) to info.homepage,
+                        AppLocaleManager.getString(R.string.ui_last_updated) to info.lastUpdate,
                         "MD5" to info.md5
                     ).forEach { (label, value) ->
                         if (value.isNotBlank()) {
@@ -945,7 +949,7 @@ private fun EmptySourceCard(modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Text(
-            text = "尚未导入任何 JS 音源脚本，点上方按钮导入即可同时加载多个音源。",
+            text = localizedStringResource(R.string.ui_no_javascript_source_scripts_imported_use_the_buttons_above_to),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(16.dp)
@@ -965,18 +969,18 @@ private fun UsageInfoCard(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "使用说明",
+                text = localizedStringResource(R.string.ui_instructions),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "1. 可同时导入多个 JS 音源文件（如聚合音源脚本），自动一起生效\n" +
-                    "2. 多个脚本注册同一音源时按加载顺序逐个尝试，直到拿到结果\n" +
-                    "3. 每个脚本下方的音源开关可临时单独启用/禁用某个音源（运行时生效，重启恢复）\n" +
-                    "4. 播放音质设置对所有在线音源生效（网易云、内置源、落雪脚本）\n" +
-                    "5. 点每个脚本的「查看简介」可查看作者、主页、更新时间等信息\n" +
-                    "6. 启动时会自动加载已导入的所有 JS 文件",
+                text = localizedStringResource(R.string.ui_1_import_multiple_javascript_source_files_to_use_them_together) +
+                    localizedStringResource(R.string.ui_2_if_multiple_scripts_register_the_same_source_they_are) +
+                    localizedStringResource(R.string.ui_3_source_switches_below_each_script_temporarily_enable_or_disable) +
+                    localizedStringResource(R.string.ui_4_playback_quality_settings_apply_to_all_online_sources_netease) +
+                    localizedStringResource(R.string.ui_5_use_show_details_to_view_the_author_homepage_and) +
+                    localizedStringResource(R.string.ui_6_all_imported_javascript_files_load_automatically_at_startup),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

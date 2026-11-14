@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -286,17 +289,24 @@ private fun relativeTimeLabel(addedAtMs: Long): String? {
     val days = diffMs / (24L * 60L * 60L * 1000L)
 
     return when {
-        hours < 1L -> "刚刚"
-        hours < 24L -> "今天"
-        days < 2L -> "昨天"
-        days < 7L -> "$days 天前"
+        hours < 1L -> AppLocaleManager.getString(R.string.ui_residue_time_ago_just_now)
+        hours < 24L -> AppLocaleManager.getString(R.string.ui_residue_stats_range_today)
+        days < 2L -> AppLocaleManager.getString(R.string.ui_residue_recently_played_date_yesterday)
+        days < 7L -> AppLocaleManager.getString(R.string.ui_days_ago, (days).toString())
         else -> {
             val calendar = Calendar.getInstance().apply { timeInMillis = addedAtMs }
-            val month = calendar.get(Calendar.MONTH) + 1
-            val day = calendar.get(Calendar.DAY_OF_MONTH)
             val year = calendar.get(Calendar.YEAR)
             val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-            if (year == currentYear) "${month}月${day}日" else "${year}年${month}月${day}日"
+            val locale = AppLocaleManager.currentLocale()
+            if (locale.language == "en") {
+                val skeleton = if (year == currentYear) "MMMd" else "yMMMd"
+                val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, skeleton)
+                java.text.SimpleDateFormat(pattern, locale).format(java.util.Date(addedAtMs))
+            } else {
+                val month = calendar.get(Calendar.MONTH) + 1
+                val day = calendar.get(Calendar.DAY_OF_MONTH)
+                if (year == currentYear) "${month}月${day}日" else "${year}年${month}月${day}日"
+            }
         }
     }
 }

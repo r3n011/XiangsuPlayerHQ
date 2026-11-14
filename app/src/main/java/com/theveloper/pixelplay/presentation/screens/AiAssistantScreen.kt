@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,10 +77,10 @@ import com.theveloper.pixelplay.presentation.viewmodel.AiChatMsg
 import com.theveloper.pixelplay.presentation.viewmodel.AiChatRole
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 
-private val assistantSuggestions = listOf(
-    "给我生成一份跑步听的歌单",
-    "搜周杰伦的老歌",
-    "打开音质设置"
+private val assistantSuggestions get() = listOf(
+    AppLocaleManager.getString(R.string.ui_create_a_playlist_for_running),
+    AppLocaleManager.getString(R.string.ui_find_classic_jay_chou_songs),
+    AppLocaleManager.getString(R.string.ui_open_audio_quality_settings)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,7 +137,7 @@ fun AiAssistantScreen(
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = "AI 助手",
+                text = localizedStringResource(R.string.ui_ai_assistant),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.onSurface
@@ -171,7 +175,7 @@ fun AiAssistantScreen(
                         msg = msg,
                         onPlaySong = { song, songs ->
                             val ordered = listOf(song) + songs.filter { it.id != song.id }
-                            playerViewModel.playCloudSongs(ordered, "AI 助手")
+                            playerViewModel.playCloudSongs(ordered, AppLocaleManager.getString(R.string.ui_ai_assistant))
                         }
                     )
                 }
@@ -259,7 +263,7 @@ fun AiAssistantScreen(
                                     Box {
                                         if (input.isEmpty()) {
                                             Text(
-                                                text = "说点什么，或让我帮你搜歌、生成歌单、打开设置…",
+                                                text = localizedStringResource(R.string.ui_ask_me_to_find_songs_create_a_playlist_or_open),
                                                 color = colors.onSurfaceVariant,
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
@@ -325,14 +329,14 @@ private fun EmptyState(onSelect: (String) -> Unit) {
         }
         Spacer(Modifier.height(20.dp))
         Text(
-            text = "全能 AI 助手",
+            text = localizedStringResource(R.string.ui_your_music_ai_assistant),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             color = colors.onSurface
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "我可以帮你搜索歌曲、生成歌单，还能直接帮你找到并打开设置。",
+            text = localizedStringResource(R.string.ui_i_can_help_you_find_songs_create_playlists_and_open),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -460,13 +464,13 @@ private fun ThinkingCard(msg: AiChatMsg) {
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = if (msg.thinkingDone) "已完成" else "AI 思考中…",
+                    text = if (msg.thinkingDone) localizedStringResource(R.string.ui_done_3122d8d) else localizedStringResource(R.string.ui_ai_is_thinking),
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.primary
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = if (expanded) "收起" else "展开",
+                    text = if (expanded) localizedStringResource(R.string.ui_residue_ai_eval_show_less) else localizedStringResource(R.string.ui_residue_audiobook_intro_expand),
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant
                 )
@@ -493,7 +497,7 @@ private fun SongResults(songs: List<LxSongInfo>, onPlaySong: (LxSongInfo, List<L
     ) {
         Column(modifier = Modifier.padding(vertical = 6.dp)) {
             Text(
-                text = "为你找到 ${songs.size} 首 · 点击播放",
+                text = localizedStringResource(R.string.ui_found_songs_tap_to_play, (songs.size).toString()),
                 style = MaterialTheme.typography.labelLarge,
                 color = colors.onSurface,
                 fontWeight = FontWeight.SemiBold,

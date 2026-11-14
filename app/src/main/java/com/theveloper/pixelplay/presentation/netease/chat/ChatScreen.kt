@@ -68,6 +68,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.utils.AppLocaleManager
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.theveloper.pixelplay.R
@@ -469,7 +470,7 @@ private fun ResourceCard(
                                     source = "wy"
                                 )
                             ),
-                            queueName = "聊天分享",
+                            queueName = AppLocaleManager.getString(R.string.ui_chat_share),
                             onFailure = onPlayFailed
                         )
                     }

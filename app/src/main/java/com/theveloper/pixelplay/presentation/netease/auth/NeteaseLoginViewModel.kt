@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.netease.auth
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
@@ -65,7 +68,7 @@ class NeteaseLoginViewModel @Inject constructor(
                 },
                 onFailure = { error ->
                     _captchaState.value = NeteaseCaptchaState.Error(
-                        error.message ?: "验证码发送失败，请稍后重试"
+                        error.message ?: AppLocaleManager.getString(R.string.ui_could_not_send_verification_code_please_try_again_later)
                     )
                 }
             )
@@ -75,7 +78,7 @@ class NeteaseLoginViewModel @Inject constructor(
     /** 手机号 + 验证码登录（默认登录方式） */
     fun loginWithPhoneCaptcha(phone: String, captcha: String, ctcode: String = "86") {
         if (_state.value is NeteaseLoginState.Loading) return
-        _state.value = NeteaseLoginState.Loading("正在使用手机号登录网易云…")
+        _state.value = NeteaseLoginState.Loading(AppLocaleManager.getString(R.string.ui_signing_in_to_netease_with_your_phone_number))
         viewModelScope.launch {
             val result = repository.loginWithPhoneCaptcha(phone, captcha, ctcode)
             result.fold(
@@ -84,7 +87,7 @@ class NeteaseLoginViewModel @Inject constructor(
                 },
                 onFailure = { error ->
                     _state.value = NeteaseLoginState.Error(
-                        error.message ?: "网易云登录失败"
+                        error.message ?: AppLocaleManager.getString(R.string.ui_netease_sign_in_failed_4edbdc8)
                     )
                 }
             )

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.dot
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -109,7 +112,7 @@ object DotScreenRenderer {
             typeface = Typeface.DEFAULT_BOLD
             isAntiAlias = true
         }
-        val statusText = if (isPlaying) "▶ 播放中" else "⏸ 已暂停"
+        val statusText = if (isPlaying) AppLocaleManager.getString(R.string.ui_playing) else AppLocaleManager.getString(R.string.ui_paused)
         canvas.drawText(statusText, textStartX.toFloat(), y.toFloat(), statusPaint)
 
         // Progress bar at bottom
@@ -179,7 +182,7 @@ object DotScreenRenderer {
             isAntiAlias = true
             textAlign = Paint.Align.RIGHT
         }
-        canvas.drawText("听歌统计", padding.toFloat(), (y + 20).toFloat(), titlePaint)
+        canvas.drawText(AppLocaleManager.getString(R.string.ui_listening_statistics), padding.toFloat(), (y + 20).toFloat(), titlePaint)
         canvas.drawText(getRangeDisplayName(summary.range), (WIDTH - padding).toFloat(), (y + 20).toFloat(), subtitlePaint)
         y += 28
 
@@ -212,11 +215,11 @@ object DotScreenRenderer {
         val col2X = WIDTH / 2 + 8
 
         canvas.drawText(summary.totalPlayCount.toString(), col1X.toFloat(), (statsRowY + 22).toFloat(), statValuePaint)
-        canvas.drawText("播放次数", col1X.toFloat(), (statsRowY + 36).toFloat(), statLabelPaint)
+        canvas.drawText(AppLocaleManager.getString(R.string.ui_residue_stats_timeline_metric_play_count), col1X.toFloat(), (statsRowY + 36).toFloat(), statLabelPaint)
 
         val avgDailyText = formatListeningDurationCompact(summary.averageDailyDurationMs)
         canvas.drawText(avgDailyText, col2X.toFloat(), (statsRowY + 22).toFloat(), statValuePaint)
-        canvas.drawText("平均每日", col2X.toFloat(), (statsRowY + 36).toFloat(), statLabelPaint)
+        canvas.drawText(AppLocaleManager.getString(R.string.ui_daily_average), col2X.toFloat(), (statsRowY + 36).toFloat(), statLabelPaint)
 
         y = statsRowY + 42
 
@@ -250,7 +253,7 @@ object DotScreenRenderer {
             }
             val textMaxWidth = WIDTH - padding * 2
 
-            canvas.drawText("最常听歌曲", padding.toFloat(), (y + 12).toFloat(), topTrackLabelPaint)
+            canvas.drawText(AppLocaleManager.getString(R.string.ui_top_songs), padding.toFloat(), (y + 12).toFloat(), topTrackLabelPaint)
             y += 18
 
             val titleLines = breakText(topTrack.title, topTrackTitlePaint, textMaxWidth)
@@ -259,7 +262,7 @@ object DotScreenRenderer {
             }
             y += 18
 
-            val descText = "${topTrack.artist} · ${topTrack.playCount}次"
+            val descText = AppLocaleManager.getString(R.string.ui_plays, (topTrack.artist).toString(), (topTrack.playCount).toString())
             val descLines = breakText(descText, topTrackDescPaint, textMaxWidth)
             if (descLines.isNotEmpty()) {
                 canvas.drawText(descLines[0], padding.toFloat(), (y + 13).toFloat(), topTrackDescPaint)
@@ -361,7 +364,7 @@ object DotScreenRenderer {
                 canvas.drawText(artistLines[0], textStartX.toFloat(), (itemY + 12).toFloat(), songArtistPaint)
             }
 
-            val playCountText = "${song.playCount}次"
+            val playCountText = AppLocaleManager.getString(R.string.ui_plays_755b248, (song.playCount).toString())
             canvas.drawText(playCountText, (WIDTH - padding).toFloat(), (itemY).toFloat(), countPaint)
         }
 
@@ -449,7 +452,7 @@ object DotScreenRenderer {
                 canvas.drawText(nameLines[0], textStartX.toFloat(), (itemY - 4).toFloat(), artistNamePaint)
             }
 
-            val detailText = "${artist.uniqueSongs}首歌 · ${artist.playCount}次"
+            val detailText = AppLocaleManager.getString(R.string.ui_songs_plays, (artist.uniqueSongs).toString(), (artist.playCount).toString())
             canvas.drawText(detailText, textStartX.toFloat(), (itemY + 14).toFloat(), detailPaint)
 
             val durText = formatListeningDurationCompact(artist.totalDurationMs)
@@ -538,7 +541,7 @@ object DotScreenRenderer {
 
         val peakHour = hourBuckets.maxByOrNull { it.second }
         if (peakHour != null && peakHour.second > 0) {
-            canvas.drawText("听歌高峰", padding.toFloat(), (bottomY + 14).toFloat(), peakLabelPaint)
+            canvas.drawText(AppLocaleManager.getString(R.string.ui_peak_listening_time), padding.toFloat(), (bottomY + 14).toFloat(), peakLabelPaint)
             val peakText = "${peakHour.first}:00 · ${formatListeningDurationCompact(peakHour.second)}"
             canvas.drawText(peakText, padding.toFloat(), (bottomY + 32).toFloat(), peakValuePaint)
         }

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.ai.AiOrchestrator
@@ -124,7 +127,7 @@ class AiMixViewModel @Inject constructor(
         private const val PER_QUERY = 5
         private const val MAX_POOL = 20
         private const val MAX_HISTORY = 20
-        private val EMOTIONS = listOf("平静", "开心", "难过", "焦虑", "专注", "元气", "浪漫", "治愈")
+        private val EMOTIONS get() = listOf(AppLocaleManager.getString(R.string.ui_calm), AppLocaleManager.getString(R.string.ui_happy), AppLocaleManager.getString(R.string.ui_sad), AppLocaleManager.getString(R.string.ui_anxious), AppLocaleManager.getString(R.string.ui_focused), AppLocaleManager.getString(R.string.ui_energetic), AppLocaleManager.getString(R.string.ui_romantic), AppLocaleManager.getString(R.string.ui_comforting))
 
         fun emotions(): List<String> = EMOTIONS
     }
@@ -162,7 +165,7 @@ class AiMixViewModel @Inject constructor(
             playlistTitle = entry.title,
             fromLocal = entry.fromLocal,
             messages = listOf(
-                AiChatMsg(newId(), AiChatRole.OP, "已从历史找回：${entry.title}")
+                AiChatMsg(newId(), AiChatRole.OP, AppLocaleManager.getString(R.string.ui_restored_from_history, (entry.title).toString()))
             )
         )
     }
@@ -182,40 +185,40 @@ class AiMixViewModel @Inject constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                pushOp("AI 正在理解你的需求…")
-                val mood = emotion.ifBlank { "无特定情绪" }
-                pushOp("已接收需求：「$text」，情绪：$mood，目标 $target 首")
+                pushOp(AppLocaleManager.getString(R.string.ui_ai_is_understanding_your_request))
+                val mood = emotion.ifBlank { AppLocaleManager.getString(R.string.ui_no_particular_mood) }
+                pushOp(AppLocaleManager.getString(R.string.ui_request_mood_target_songs, (text).toString(), (mood).toString(), (target).toString()))
 
                 // 1) 读取本地曲库概览，供 AI 判断是本地够用还是需要在线补足
-                pushOp("正在扫描本地曲库…")
+                pushOp(AppLocaleManager.getString(R.string.ui_scanning_your_local_library))
                 val localAll = withContext(Dispatchers.IO) {
                     runCatching { musicRepository.getAllSongsOnce() }.getOrDefault(emptyList())
                 }
                 val localSample = localAll.take(120)
-                pushOp("本地曲库共有 ${localAll.size} 首可播放歌曲")
+                pushOp(AppLocaleManager.getString(R.string.ui_playable_local_songs, (localAll.size).toString()))
 
                 // 2) 让 AI 决策：用本地曲库 or 在线搜索（分别给出候选关键词）
                 val plan = decidePlan(text, mood, target, localSample)
                 val useLocal = plan.source == "local"
                 if (useLocal) {
-                    pushOp("AI 决定优先从本地曲库为你挑选")
+                    pushOp(AppLocaleManager.getString(R.string.ui_ai_will_choose_from_your_local_library_first))
                 } else {
-                    pushOp("AI 决定调用在线搜索来凑齐歌单")
+                    pushOp(AppLocaleManager.getString(R.string.ui_ai_will_search_online_to_complete_your_playlist))
                 }
 
                 val picked: List<AiMixSongItem>
                 if (useLocal) {
                     picked = pickLocal(plan.queries, target, localAll)
                     if (picked.isEmpty()) {
-                        pushOp("本地曲库匹配较少，改用在线搜索补充…")
+                        pushOp(AppLocaleManager.getString(R.string.ui_not_enough_local_matches_searching_online_for_more))
                         val onlinePicked = pickOnline(plan.fallbackQueries, target)
                         if (onlinePicked.isNotEmpty()) {
-                            pushOp("在线搜索已为你精选出 ${onlinePicked.size} 首～")
+                            pushOp(AppLocaleManager.getString(R.string.ui_online_songs_selected, (onlinePicked.size).toString()))
                             finishPlan(mood, onlinePicked, fromLocal = false)
                             return@launch
                         }
                     } else {
-                        pushOp("已从本地曲库精选出 ${picked.size} 首～")
+                        pushOp(AppLocaleManager.getString(R.string.ui_local_songs_selected, (picked.size).toString()))
                         finishPlan(mood, picked, fromLocal = true)
                         return@launch
                     }
@@ -226,16 +229,16 @@ class AiMixViewModel @Inject constructor(
                 if (onlinePicked.isNotEmpty()) {
                     finishPlan(mood, onlinePicked, fromLocal = false)
                 } else {
-                    pushAi("抱歉，暂时没能为你的需求凑齐歌单，换个需求或情绪再试试吧。")
+                    pushAi(AppLocaleManager.getString(R.string.ui_could_not_complete_your_playlist_try_a_different_request_or))
                     _uiState.value = _uiState.value.copy(
                         phase = Phase.READY,
                         loading = false,
-                        error = "没有找到合适的歌曲"
+                        error = AppLocaleManager.getString(R.string.ui_no_suitable_songs_found)
                     )
                 }
             } catch (t: Throwable) {
                 Timber.tag(TAG).w(t, "AiMix failed")
-                pushAi("AI Mix 出错了：${t.message ?: t.javaClass.simpleName ?: "未知错误"}")
+                pushAi(AppLocaleManager.getString(R.string.ui_ai_mix_failed, (t.message ?: t.javaClass.simpleName ?: AppLocaleManager.getString(R.string.ui_residue_error_unknown)).toString()))
                 _uiState.value = _uiState.value.copy(
                     phase = Phase.READY,
                     loading = false,
@@ -268,7 +271,7 @@ class AiMixViewModel @Inject constructor(
                 songs = songs
             )
         )
-        pushAi("歌单「${title}」已生成，共 ${songs.size} 首，点击即可播放～")
+        pushAi(AppLocaleManager.getString(R.string.ui_playlist_created_with_songs_tap_to_play, (title).toString(), (songs.size).toString()))
     }
 
     // ── AI 决策来源 ─────────────────────────────────────────────
@@ -365,9 +368,9 @@ queries 提供 8~12 个候选搜索词，能最贴合用户需求与情绪风格
     private fun localToItem(song: Song): AiMixSongItem = AiMixSongItem(
         stableId = song.id,
         title = song.title,
-        subtitle = song.artist.ifBlank { "本地歌曲" },
+        subtitle = song.artist.ifBlank { AppLocaleManager.getString(R.string.ui_residue_device_capabilities_metric_local_music) },
         coverUrl = song.albumArtUriString?.takeIf { it.isNotBlank() },
-        sourceLabel = "本地",
+        sourceLabel = AppLocaleManager.getString(R.string.ui_residue_download_selection_badge_local),
         localSong = song
     )
 
@@ -379,11 +382,11 @@ queries 提供 8~12 个候选搜索词，能最贴合用户需求与情绪风格
         if (queries.isEmpty()) return emptyList()
         // 多源搜索（酷我/QQ音乐/酷狗/咪咕），合并去重
         val sources = listOf("kw", "tx", "kg", "mg")
-        val sourceLabels = "酷我/QQ音乐/酷狗/咪咕"
+        val sourceLabels = AppLocaleManager.getString(R.string.ui_kuwo_qq_music_kugou_migu)
         val pool = LinkedHashMap<String, LxSongInfo>()
         queries.forEach { query ->
             if (pool.size >= MAX_POOL) return@forEach
-            pushOp("正在$sourceLabels 搜索「${query.trim()}」…")
+            pushOp(AppLocaleManager.getString(R.string.ui_searching_for, (sourceLabels).toString(), (query.trim()).toString()))
             for (src in sources) {
                 if (pool.size >= MAX_POOL) break
                 val result = builtInSourceSearchApi.search(src, query.trim(), 1, PER_QUERY)
@@ -396,7 +399,7 @@ queries 提供 8~12 个候选搜索词，能最贴合用户需求与情绪风格
             }
         }
         if (pool.isEmpty()) return emptyList()
-        pushOp("共找到 ${pool.size} 首候选，正在交给 AI 挑选…")
+        pushOp(AppLocaleManager.getString(R.string.ui_found_candidates_ai_is_choosing_your_songs, (pool.size).toString()))
         return pickFromPoolOnline(target, pool)
     }
 
@@ -429,9 +432,9 @@ ${labels.mapIndexed { i, l -> "${i + 1}. $l" }.joinToString("\n")}
     private fun onlineToItem(info: LxSongInfo): AiMixSongItem = AiMixSongItem(
         stableId = info.id.ifBlank { "${info.songmid}|${info.hash}" },
         title = info.name,
-        subtitle = info.singer.ifBlank { "在线歌曲" },
+        subtitle = info.singer.ifBlank { AppLocaleManager.getString(R.string.ui_online_songs) },
         coverUrl = info.pic.takeIf { it.isNotBlank() },
-        sourceLabel = "在线",
+        sourceLabel = AppLocaleManager.getString(R.string.ui_residue_download_selection_badge_online),
         onlineInfo = info
     )
 
@@ -449,6 +452,7 @@ ${labels.mapIndexed { i, l -> "${i + 1}. $l" }.joinToString("\n")}
 用户需求情绪：$mood
 歌单包含：$names
 为这个歌单起一个简短好听的名字（不超过 10 个字，不要引号，不要其他文字）。
+${if (AppLocaleManager.currentLocale().language == "en") "Write the playlist title in English." else ""}
 """.trimIndent(),
                     type = AiSystemPromptType.GENERAL,
                     temperature = 0.7f,
@@ -457,7 +461,7 @@ ${labels.mapIndexed { i, l -> "${i + 1}. $l" }.joinToString("\n")}
             }
         }.getOrNull()?.trim()
         if (raw.isNullOrBlank() || raw.length > 12) {
-            return if (fromLocal) "本地精选 · $mood" else "云端精选 · $mood"
+            return if (fromLocal) AppLocaleManager.getString(R.string.ui_local_picks, (mood).toString()) else AppLocaleManager.getString(R.string.ui_cloud_picks, (mood).toString())
         }
         return raw.trim('"')
     }
@@ -554,7 +558,7 @@ private fun SavedMixItem.toItem(): AiMixViewModel.AiMixSongItem? = when (kind) {
             title = title,
             subtitle = subtitle,
             coverUrl = coverUrl,
-            sourceLabel = "本地",
+            sourceLabel = AppLocaleManager.getString(R.string.ui_residue_download_selection_badge_local),
             localSong = Song(
                 id = s.id,
                 title = s.title,
@@ -578,7 +582,7 @@ private fun SavedMixItem.toItem(): AiMixViewModel.AiMixSongItem? = when (kind) {
             title = title,
             subtitle = subtitle,
             coverUrl = coverUrl,
-            sourceLabel = "在线",
+            sourceLabel = AppLocaleManager.getString(R.string.ui_residue_download_selection_badge_online),
             onlineInfo = info
         )
     }

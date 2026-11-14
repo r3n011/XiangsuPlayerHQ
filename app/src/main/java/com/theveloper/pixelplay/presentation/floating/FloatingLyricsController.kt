@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.floating
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.content.res.Configuration
 import android.provider.Settings
@@ -531,7 +534,7 @@ class FloatingLyricsController @Inject constructor(
         val next = !locked
         Toast.makeText(
             context,
-            if (next) "已锁定位置" else "已解锁位置",
+            if (next) AppLocaleManager.getString(R.string.ui_position_locked) else AppLocaleManager.getString(R.string.ui_position_unlocked),
             Toast.LENGTH_SHORT
         ).show()
         scope.launch { userPreferencesRepository.setFloatingLyricsLocked(next) }

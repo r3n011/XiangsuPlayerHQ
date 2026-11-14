@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.bilibili
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.content.SharedPreferences
 import com.theveloper.pixelplay.data.database.AlbumEntity
@@ -172,7 +175,7 @@ class BilibiliFavoritesSyncer @Inject constructor(
                 songsToInsert.add(
                     SongEntity(
                         id = songId,
-                        title = video.title.ifBlank { "B 站视频" },
+                        title = video.title.ifBlank { AppLocaleManager.getString(R.string.ui_bilibili_video) },
                         artistName = artistName,
                         artistId = artistId,
                         albumArtist = null,
@@ -265,7 +268,7 @@ class BilibiliFavoritesSyncer @Inject constructor(
                 if (existing != null) {
                     playlistPreferencesRepository.updatePlaylist(
                         existing.copy(
-                            name = folder.title.ifBlank { "B 站收藏" },
+                            name = folder.title.ifBlank { AppLocaleManager.getString(R.string.ui_bilibili_favorites) },
                             songIds = songIds,
                             lastModified = System.currentTimeMillis(),
                             source = "BILIBILI"
@@ -273,7 +276,7 @@ class BilibiliFavoritesSyncer @Inject constructor(
                     )
                 } else {
                     playlistPreferencesRepository.createPlaylist(
-                        name = folder.title.ifBlank { "B 站收藏" },
+                        name = folder.title.ifBlank { AppLocaleManager.getString(R.string.ui_bilibili_favorites) },
                         songIds = songIds,
                         customId = playlistId,
                         source = "BILIBILI"

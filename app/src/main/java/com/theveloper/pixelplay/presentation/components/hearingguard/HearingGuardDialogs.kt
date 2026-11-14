@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.components.hearingguard
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.animation.animateColorAsState
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.compose.animation.core.tween
@@ -100,11 +104,11 @@ fun HearingGuardSetupDialog(
         title = {
             Column {
                 Text(
-                    text = "听力保护",
+                    text = localizedStringResource(R.string.ui_hearing_protection),
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "基于 WHO 安全听音指南，保护您的听力健康",
+                    text = localizedStringResource(R.string.ui_protect_your_hearing_with_who_safe_listening_guidance),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -124,14 +128,14 @@ fun HearingGuardSetupDialog(
                     ) {
                         Column {
                             Text(
-                                text = if (isEnabled) "保护已启用" else "保护已暂停",
+                                text = if (isEnabled) localizedStringResource(R.string.ui_protection_enabled) else localizedStringResource(R.string.ui_protection_paused),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Medium,
                                 color = if (isEnabled) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = if (isEnabled) "正在跟踪听音时长" else "听音时长未被跟踪",
+                                text = if (isEnabled) localizedStringResource(R.string.ui_listening_time_is_being_tracked) else localizedStringResource(R.string.ui_listening_time_is_not_being_tracked),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -181,12 +185,12 @@ fun HearingGuardSetupDialog(
                     )
                 }
             ) {
-                Text("确定", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(localizedStringResource(R.string.ui_residue_ok), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(localizedStringResource(R.string.ui_residue_cancel))
             }
         }
     )
@@ -235,7 +239,7 @@ fun RestReminderDialog(
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    text = if (isDailyExhausted) "今日听音已达上限" else "该休息一下了",
+                    text = if (isDailyExhausted) localizedStringResource(R.string.ui_daily_listening_limit_reached) else localizedStringResource(R.string.ui_time_for_a_break),
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
@@ -248,13 +252,13 @@ fun RestReminderDialog(
             ) {
                 if (isDailyExhausted) {
                     Text(
-                        text = "您今日已听音 ${plan.dailyLimitMinutes} 分钟，达到安全上限。\n为了保护听力，请明天再继续享受音乐吧。",
+                        text = localizedStringResource(R.string.ui_you_have_listened_for_minutes_today_and_reached_your_daily, (plan.dailyLimitMinutes).toString()),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 } else {
                     Text(
-                        text = "您已连续听音 ${state.sessionRemainingMinutes.coerceAtLeast(0) + (plan.sessionLimitMinutes - state.sessionRemainingMinutes.coerceAtLeast(0))} 分钟。\n建议休息 ${plan.restMinutes} 分钟后再继续。",
+                        text = localizedStringResource(R.string.ui_you_have_listened_for_minutes_without_a_break_a_break, (state.sessionRemainingMinutes.coerceAtLeast(0) + (plan.sessionLimitMinutes - state.sessionRemainingMinutes.coerceAtLeast(0))).toString(), (plan.restMinutes).toString()),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -262,7 +266,7 @@ fun RestReminderDialog(
                     Spacer(Modifier.height(8.dp))
 
                     Text(
-                        text = "今日已听 ${state.todayListeningMs / 60_000} 分钟 / ${plan.dailyLimitMinutes} 分钟",
+                        text = localizedStringResource(R.string.ui_today_min, (state.todayListeningMs / 60_000).toString(), (plan.dailyLimitMinutes).toString()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -272,7 +276,7 @@ fun RestReminderDialog(
         confirmButton = {
             TextButton(onClick = onRestConfirm) {
                 Text(
-                    if (isDailyExhausted) "好的" else "休息一下",
+                    if (isDailyExhausted) localizedStringResource(R.string.ui_ok) else localizedStringResource(R.string.ui_take_a_break),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
@@ -281,7 +285,7 @@ fun RestReminderDialog(
         dismissButton = {
             if (!isDailyExhausted) {
                 TextButton(onClick = onContinueListening) {
-                    Text("继续听", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(localizedStringResource(R.string.ui_keep_listening), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -297,19 +301,19 @@ private fun GenderSelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "性别",
+            text = localizedStringResource(R.string.ui_gender),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GenderChip(
-                label = "男",
+                label = AppLocaleManager.getString(R.string.ui_male),
                 selected = selectedGender == Gender.MALE,
                 onClick = { onGenderSelected(Gender.MALE) },
                 modifier = Modifier.weight(1f)
             )
             GenderChip(
-                label = "女",
+                label = AppLocaleManager.getString(R.string.ui_female),
                 selected = selectedGender == Gender.FEMALE,
                 onClick = { onGenderSelected(Gender.FEMALE) },
                 modifier = Modifier.weight(1f)
@@ -393,7 +397,7 @@ private fun BirthdaySelector(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "生日",
+                text = localizedStringResource(R.string.ui_birthday),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium
             )
@@ -414,7 +418,7 @@ private fun BirthdaySelector(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "$age 岁",
+                        text = localizedStringResource(R.string.ui_age, (age).toString()),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -422,7 +426,7 @@ private fun BirthdaySelector(
                     Spacer(Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Rounded.CalendarMonth,
-                        contentDescription = "选择生日",
+                        contentDescription = localizedStringResource(R.string.ui_choose_birthday),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
@@ -431,7 +435,7 @@ private fun BirthdaySelector(
         }
 
         AssistantText(
-            text = "自动根据生日计算年龄与听音计划"
+            text = AppLocaleManager.getString(R.string.ui_your_birthday_determines_your_age_and_listening_plan)
         )
     }
 
@@ -461,7 +465,7 @@ private fun BirthdaySelector(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                        TextButton(onClick = { showDatePicker = false }) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
                         TextButton(
                             onClick = {
                                 datePickerState.selectedDateMillis?.let {
@@ -469,7 +473,7 @@ private fun BirthdaySelector(
                                 }
                                 showDatePicker = false
                             }
-                        ) { Text("确定") }
+                        ) { Text(localizedStringResource(R.string.ui_residue_ok)) }
                     }
                 }
             }
@@ -511,8 +515,15 @@ private fun AssistantText(text: String) {
 
 private fun formatBirthday(epochDay: Long): String {
     return try {
-        LocalDate.ofEpochDay(epochDay).format(
+        val locale = AppLocaleManager.currentLocale()
+        val formatter = if (locale.language == "en") {
+            java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+                .withLocale(locale)
+        } else {
             java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日")
+        }
+        LocalDate.ofEpochDay(epochDay).format(
+            formatter
         )
     } catch (_: Exception) {
         "--"
@@ -551,15 +562,15 @@ private fun PlanPreviewCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "每日听音计划",
+                text = localizedStringResource(R.string.ui_daily_listening_plan),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
 
-            PlanItem(label = "每次最长听歌", value = "${plan.sessionLimitMinutes} 分钟")
-            PlanItem(label = "每次休息时长", value = "${plan.restMinutes} 分钟")
-            PlanItem(label = "每日总上限", value = "${plan.dailyLimitMinutes} 分钟")
+            PlanItem(label = AppLocaleManager.getString(R.string.ui_maximum_session_length), value = AppLocaleManager.getString(R.string.ui_min, (plan.sessionLimitMinutes).toString()))
+            PlanItem(label = AppLocaleManager.getString(R.string.ui_break_length), value = AppLocaleManager.getString(R.string.ui_min, (plan.restMinutes).toString()))
+            PlanItem(label = AppLocaleManager.getString(R.string.ui_daily_limit), value = AppLocaleManager.getString(R.string.ui_min, (plan.dailyLimitMinutes).toString()))
         }
     }
 }

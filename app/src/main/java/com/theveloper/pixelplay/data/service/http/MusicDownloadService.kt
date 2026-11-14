@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.service.http
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -231,7 +234,7 @@ class MusicDownloadService @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 DOWNLOAD_CHANNEL_ID,
-                "歌曲下载",
+                AppLocaleManager.getString(R.string.ui_residue_setcat_download_settings),
                 NotificationManager.IMPORTANCE_LOW
             ).apply { setShowBadge(false) }
             notificationManager?.createNotificationChannel(channel)
@@ -317,7 +320,7 @@ class MusicDownloadService @Inject constructor(
             filePath = null,
             fileName = task.fileName
         )
-        showDownloadNotification(notificationIdFor(songId), task.song.title, task.progress, isDone = true, success = true, text = "已暂停")
+        showDownloadNotification(notificationIdFor(songId), task.song.title, task.progress, isDone = true, success = true, text = AppLocaleManager.getString(R.string.ui_residue_cast_paused))
         pump()
     }
 
@@ -433,7 +436,7 @@ class MusicDownloadService @Inject constructor(
             val streamUrl = resolveStreamUrl(song, task.preferredUrl)
             if (streamUrl.isNullOrBlank()) {
                 Timber.w("MusicDownloadService: 无法解析直链 songId=$songId")
-                failTask(task, notificationId, "无法获取下载地址")
+                failTask(task, notificationId, AppLocaleManager.getString(R.string.ui_could_not_get_download_url))
                 return false
             }
 
@@ -442,7 +445,7 @@ class MusicDownloadService @Inject constructor(
             val outcome = downloadWithRetry(task, streamUrl, tempFile, notificationId)
             if (outcome == null || !tempFile.exists() || tempFile.length() <= 0L) {
                 deleteTempFile(songId)
-                failTask(task, notificationId, "下载失败")
+                failTask(task, notificationId, AppLocaleManager.getString(R.string.ui_residue_setcat_download_failed))
                 return false
             }
 
@@ -455,7 +458,7 @@ class MusicDownloadService @Inject constructor(
             val destination = resolveDestination(fileName)
             if (destination == null) {
                 deleteTempFile(songId)
-                failTask(task, notificationId, "无法确定保存位置")
+                failTask(task, notificationId, AppLocaleManager.getString(R.string.ui_could_not_determine_save_location))
                 return false
             }
             val skipExisting = runCatching {
@@ -466,7 +469,7 @@ class MusicDownloadService @Inject constructor(
                 deleteTempFile(songId)
                 task.filePath = existingPath
                 updateDownloadStatus(songId, song.title, song.displayArtist, 100f, DownloadStatus.Completed, existingPath, fileName)
-                showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true, text = "已存在，跳过")
+                showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true, text = AppLocaleManager.getString(R.string.ui_already_exists_skipped))
                 return true
             }
 
@@ -476,11 +479,11 @@ class MusicDownloadService @Inject constructor(
 
             // 6. 落到目标位置（SAF 拷贝 / 公共目录移动）
             updateDownloadStatus(songId, song.title, song.displayArtist, 100f, DownloadStatus.Running, null, fileName)
-            showDownloadNotification(notificationId, song.title, 100f, isDone = false, text = "正在写入文件…")
+            showDownloadNotification(notificationId, song.title, 100f, isDone = false, text = AppLocaleManager.getString(R.string.ui_writing_file))
             val finalPath = destination.commit(tempFile, fileName)
             if (finalPath == null) {
                 deleteTempFile(songId)
-                failTask(task, notificationId, "写入目标目录失败")
+                failTask(task, notificationId, AppLocaleManager.getString(R.string.ui_could_not_write_to_target_directory))
                 return false
             }
 
@@ -490,14 +493,14 @@ class MusicDownloadService @Inject constructor(
 
             task.filePath = finalPath
             updateDownloadStatus(songId, song.title, song.displayArtist, 100f, DownloadStatus.Completed, finalPath, fileName)
-            showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true, text = "下载完成")
+            showDownloadNotification(notificationId, song.title, 100f, isDone = true, success = true, text = AppLocaleManager.getString(R.string.ui_residue_setcat_download_complete))
             return true
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
             Timber.e(e, "MusicDownloadService: 下载异常 songId=$songId")
             deleteTempFile(songId)
-            failTask(task, notificationId, "下载失败")
+            failTask(task, notificationId, AppLocaleManager.getString(R.string.ui_residue_setcat_download_failed))
             return false
         }
     }
@@ -578,15 +581,15 @@ class MusicDownloadService @Inject constructor(
             if (response.code == 416) {
                 // 范围不合法（多半是临时文件比服务端文件还长）→ 删档重来
                 tempFile.delete()
-                throw IllegalStateException("HTTP 416：Range 不被接受，已重置临时文件")
+                throw IllegalStateException(AppLocaleManager.getString(R.string.ui_http_416_range_not_accepted_temporary_file_reset))
             }
             if (response.code == 401 || response.code == 403 || response.code == 410) {
-                throw IllegalStateException("HTTP ${response.code}：直链已失效")
+                throw IllegalStateException(AppLocaleManager.getString(R.string.ui_http_direct_url_has_expired, (response.code).toString()))
             }
             if (!response.isSuccessful) {
                 throw IllegalStateException("HTTP ${response.code}")
             }
-            val body = response.body ?: throw IllegalStateException("响应体为空")
+            val body = response.body ?: throw IllegalStateException(AppLocaleManager.getString(R.string.ui_empty_response_body))
             val mimeType = body.contentType()?.toString().orEmpty()
             val totalLength = body.contentLength()
             val appending = resumeFrom > 0 && response.code == 206
@@ -607,7 +610,7 @@ class MusicDownloadService @Inject constructor(
                     }
                     if (read < RESUME_OVERLAP_BYTES || !head.contentEquals(overlap)) {
                         tempFile.delete()
-                        throw IllegalStateException("续传校验失败，已重置临时文件")
+                        throw IllegalStateException(AppLocaleManager.getString(R.string.ui_resume_validation_failed_temporary_file_reset))
                     }
                 }
 
@@ -620,7 +623,7 @@ class MusicDownloadService @Inject constructor(
             }
 
             if (fullLength > 0 && written < fullLength) {
-                throw IllegalStateException("下载不完整：$written/$fullLength")
+                throw IllegalStateException(AppLocaleManager.getString(R.string.ui_incomplete_download, (written).toString(), (fullLength).toString()))
             }
             DownloadOutcome(mimeType)
         }
@@ -749,8 +752,8 @@ class MusicDownloadService @Inject constructor(
         val template = runCatching {
             userPreferencesRepository.downloadFileNameTemplateFlow.first()
         }.getOrDefault(DownloadFileNameTemplate.ARTIST_TITLE)
-        val artist = song.displayArtist.ifBlank { "未知歌手" }
-        val title = song.title.ifBlank { "未知歌曲" }
+        val artist = song.displayArtist.ifBlank { AppLocaleManager.getString(R.string.ui_unknown_artist) }
+        val title = song.title.ifBlank { AppLocaleManager.getString(R.string.ui_unknown_song) }
         val base = when (template) {
             DownloadFileNameTemplate.TITLE_ARTIST -> "$title - $artist"
             DownloadFileNameTemplate.TITLE -> title
@@ -1086,12 +1089,12 @@ class MusicDownloadService @Inject constructor(
 
             if (isDone) {
                 builder
-                    .setContentText(text ?: if (success) "下载完成" else "下载失败")
+                    .setContentText(text ?: if (success) AppLocaleManager.getString(R.string.ui_residue_setcat_download_complete) else AppLocaleManager.getString(R.string.ui_residue_setcat_download_failed))
                     .setAutoCancel(true)
             } else {
                 val pct = progress.toInt().coerceIn(0, 100)
                 builder
-                    .setContentText(text ?: "下载中 $pct%")
+                    .setContentText(text ?: AppLocaleManager.getString(R.string.ui_downloading_08b180e, (pct).toString()))
                     .setProgress(100, pct, progress <= 0f)
                 // 点击通知回到播放页
                 val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)

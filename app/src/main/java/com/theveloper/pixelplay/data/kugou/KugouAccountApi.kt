@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.kugou
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.net.Uri
 import java.math.BigInteger
 import java.security.KeyFactory
@@ -124,7 +127,7 @@ class KugouAccountApi @Inject constructor(
             )?.replace("http://", "https://")
             KugouUserInfo(
                 userId = firstNonBlank(data.optString("userid"), userId).orEmpty(),
-                nickname = nickname.ifBlank { "酷狗用户 $userId" },
+                nickname = nickname.ifBlank { AppLocaleManager.getString(R.string.ui_kugou_user, (userId).toString()) },
                 avatarUrl = avatar,
             )
         }.onFailure { Timber.w(it, "KugouAccountApi: fetchUserInfo failed") }
@@ -242,7 +245,7 @@ class KugouAccountApi @Inject constructor(
                 .getOrElse { String(raw) }
             val root = JSONObject(text)
             val dfid = root.optJSONObject("data")?.optString("dfid")
-            require(!dfid.isNullOrBlank()) { "注册设备未返回 dfid" }
+            require(!dfid.isNullOrBlank()) { AppLocaleManager.getString(R.string.ui_device_registration_did_not_return_dfid) }
             dfid
         }.onFailure { Timber.w(it, "KugouAccountApi: registerDevice failed") }
     }
@@ -270,9 +273,9 @@ class KugouAccountApi @Inject constructor(
                     ),
                     device = device,
                 )
-                val data = root.optJSONObject("data") ?: error("二维码接口返回异常")
+                val data = root.optJSONObject("data") ?: error(AppLocaleManager.getString(R.string.ui_unexpected_qr_code_api_response))
                 val key = data.optString("qrcode")
-                if (key.isBlank()) error("二维码接口没有返回 key")
+                if (key.isBlank()) error(AppLocaleManager.getString(R.string.ui_qr_code_api_did_not_return_a_key))
                 val img = firstNonBlank(
                     data.optString("qrcode_img"),
                     data.optString("qrcode_img_url"),
@@ -341,7 +344,7 @@ class KugouAccountApi @Inject constructor(
                         root.optString("error"),
                         root.optString("error_msg"),
                         root.optString("msg"),
-                    ) ?: "验证码发送失败"
+                    ) ?: AppLocaleManager.getString(R.string.ui_could_not_send_verification_code)
                 )
             }
             true
@@ -464,7 +467,7 @@ class KugouAccountApi @Inject constructor(
                     add(
                         KugouPlaylistBrief(
                             listId = listId,
-                            name = name.ifBlank { "未命名歌单" },
+                            name = name.ifBlank { AppLocaleManager.getString(R.string.ui_untitled_playlist) },
                             songCount = item.optInt("songcount", 0),
                             // 封面候选与参照项目 KugouPlaylistBrief 一致：sizable_cover 是部分接口
                             // 实际返回的字段；带 {size} 占位要替换、http 升 https，否则媒体库没封面。
@@ -565,7 +568,7 @@ class KugouAccountApi @Inject constructor(
 
         return KugouSongBrief(
             hash = hash,
-            name = name.ifBlank { "未知歌曲" },
+            name = name.ifBlank { AppLocaleManager.getString(R.string.ui_unknown_song) },
             singer = singer,
             albumId = item.optFirstNonBlank("album_id", "AlbumID", "albumid")
                 ?: rawItem.optJSONObject("album_info")?.optString("id")?.takeIf { it.isNotBlank() }

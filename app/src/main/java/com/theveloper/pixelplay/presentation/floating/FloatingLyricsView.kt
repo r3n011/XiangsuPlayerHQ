@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.floating
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
@@ -64,18 +66,18 @@ internal class FloatingLyricsView(
     private val currentText = createLine(fontSizeSp = CURRENT_TEXT_SP, alpha = 1f, bold = true)
     private val nextText = createLine(fontSizeSp = SECONDARY_TEXT_SP, alpha = 0.65f)
     private val emptyText = createLine(fontSizeSp = SECONDARY_TEXT_SP, alpha = 0.65f).apply {
-        text = "暂无歌词"
+        text = AppLocaleManager.getString(R.string.ui_no_lyrics_available)
     }
 
     // 展开时给的是「歌曲」控制（切上一首/下一首），不是歌词行跳转，描述必须跟行为一致
     private val previousButton =
-        createButton(R.drawable.rounded_skip_previous_24, "上一首", onPrevious)
+        createButton(R.drawable.rounded_skip_previous_24, AppLocaleManager.getString(R.string.ui_residue_sleep_timer_label_previous_track), onPrevious)
     private val playPauseButton =
-        createButton(R.drawable.rounded_play_arrow_24, "播放/暂停", onPlayPause)
+        createButton(R.drawable.rounded_play_arrow_24, AppLocaleManager.getString(R.string.ui_residue_mashup_cd_play_pause), onPlayPause)
     private val nextButton =
-        createButton(R.drawable.rounded_skip_next_24, "下一首", onNext)
+        createButton(R.drawable.rounded_skip_next_24, AppLocaleManager.getString(R.string.ui_residue_action_queue_next), onNext)
     private val closeButton =
-        createButton(R.drawable.rounded_close_24, "关闭悬浮歌词", onClose)
+        createButton(R.drawable.rounded_close_24, AppLocaleManager.getString(R.string.ui_close_floating_lyrics), onClose)
 
     private val controlBar = StrictLinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -116,7 +118,7 @@ internal class FloatingLyricsView(
 
     private val edgeTabIcon = ImageView(context).apply {
         setImageResource(R.drawable.rounded_chevron_right_24)
-        contentDescription = "展开悬浮歌词"
+        contentDescription = AppLocaleManager.getString(R.string.ui_expand_floating_lyrics)
         val pad = dp(4f)
         setPadding(pad, pad, pad, pad)
     }

@@ -2,6 +2,9 @@
 
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -231,7 +234,7 @@ fun ArtistHomepageScreen(
         )
     }
 
-    val orderTitle = if (uiState.order == "hot") "热门歌曲" else "最新歌曲"
+    val orderTitle = if (uiState.order == "hot") AppLocaleManager.getString(R.string.ui_popular_songs_5b88b56) else AppLocaleManager.getString(R.string.ui_latest_songs)
 
     // 歌曲信息底部弹窗
     if (showSongInfoSheet && selectedSongForInfo != null) {
@@ -246,7 +249,7 @@ fun ArtistHomepageScreen(
                 playerViewModel.showAndPlaySong(
                     song,
                     uiState.songs,
-                    uiState.artistName.ifBlank { "歌手热门歌曲" },
+                    uiState.artistName.ifBlank { AppLocaleManager.getString(R.string.ui_popular_songs_by_artist) },
                     isVoluntaryPlay = false
                 )
             },
@@ -385,7 +388,7 @@ fun ArtistHomepageScreen(
                     Row(modifier = Modifier.fillMaxSize()) {
                         // 左侧：艺人信息面板
                         TabletArtistHomepagePanel(
-                            artistName = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                            artistName = uiState.artistName.ifBlank { artistName ?: AppLocaleManager.getString(R.string.ui_unknown_artist) },
                             artistAvatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
                             backgroundUrl = uiState.backgroundUrl,
                             identifyTag = uiState.identifyTag,
@@ -399,7 +402,7 @@ fun ArtistHomepageScreen(
                             onFavoriteClick = {
                                 favoriteArtistViewModel.toggleFavorite(
                                     id = artistId,
-                                    name = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                                    name = uiState.artistName.ifBlank { artistName ?: AppLocaleManager.getString(R.string.ui_unknown_artist) },
                                     avatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
                                     alias = uiState.alias.joinToString(" / ")
                                 )
@@ -409,7 +412,7 @@ fun ArtistHomepageScreen(
                                     playerViewModel.playSongs(
                                         uiState.songs,
                                         uiState.songs.first(),
-                                        uiState.artistName.ifBlank { "歌手歌曲" }
+                                        uiState.artistName.ifBlank { AppLocaleManager.getString(R.string.ui_artist_songs) }
                                     )
                                 }
                             },
@@ -417,7 +420,7 @@ fun ArtistHomepageScreen(
                                 if (uiState.songs.isNotEmpty()) {
                                     playerViewModel.playSongsShuffled(
                                         songsToPlay = uiState.songs,
-                                        queueName = uiState.artistName.ifBlank { "歌手歌曲" },
+                                        queueName = uiState.artistName.ifBlank { AppLocaleManager.getString(R.string.ui_artist_songs) },
                                         startAtZero = true
                                     )
                                 }
@@ -487,7 +490,7 @@ fun ArtistHomepageScreen(
                         // 歌手头像和名字
                         item(key = "artist_header") {
                             ArtistHomepageHeader(
-                                artistName = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                                artistName = uiState.artistName.ifBlank { artistName ?: AppLocaleManager.getString(R.string.ui_unknown_artist) },
                                 artistAvatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
                                 identifyTag = uiState.identifyTag,
                                 identityImages = uiState.identityImages,
@@ -506,7 +509,7 @@ fun ArtistHomepageScreen(
                                 onFavoriteClick = {
                                     favoriteArtistViewModel.toggleFavorite(
                                         id = artistId,
-                                        name = uiState.artistName.ifBlank { artistName ?: "未知歌手" },
+                                        name = uiState.artistName.ifBlank { artistName ?: AppLocaleManager.getString(R.string.ui_unknown_artist) },
                                         avatar = uiState.artistAvatar.ifBlank { artistAvatar ?: "" },
                                         alias = uiState.alias.joinToString(" / ")
                                     )
@@ -529,7 +532,7 @@ fun ArtistHomepageScreen(
                                             playerViewModel.playSongs(
                                                 uiState.songs,
                                                 uiState.songs.first(),
-                                                uiState.artistName.ifBlank { "歌手歌曲" }
+                                                uiState.artistName.ifBlank { AppLocaleManager.getString(R.string.ui_artist_songs) }
                                             )
                                         }
                                     },
@@ -564,7 +567,7 @@ fun ArtistHomepageScreen(
                                         if (uiState.songs.isNotEmpty()) {
                                             playerViewModel.playSongsShuffled(
                                                 songsToPlay = uiState.songs,
-                                                queueName = uiState.artistName.ifBlank { "歌手歌曲" },
+                                                queueName = uiState.artistName.ifBlank { AppLocaleManager.getString(R.string.ui_artist_songs) },
                                                 startAtZero = true
                                             )
                                         }
@@ -583,12 +586,12 @@ fun ArtistHomepageScreen(
                                 ) {
                                     Icon(
                                         Icons.Rounded.Shuffle,
-                                        contentDescription = "随机播放",
+                                        contentDescription = localizedStringResource(R.string.ui_residue_audiobook_shuffle_play),
                                         modifier = Modifier.size(ButtonDefaults.IconSize)
                                     )
                                     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                                     Text(
-                                        text = "随机",
+                                        text = localizedStringResource(R.string.ui_residue_settings_search_keyword_shuffle),
                                         modifier = Modifier.padding(end = 4.dp),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
@@ -601,8 +604,8 @@ fun ArtistHomepageScreen(
                         // 歌曲 / 专辑 切换标题（模仿媒体库 PrimaryScrollableTabRow）
                         item(key = "songs_albums_tabs") {
                         val tabs = listOf(
-                            "歌曲" to "songs",
-                            "专辑" to "albums"
+                            AppLocaleManager.getString(R.string.ui_residue_tab_songs) to "songs",
+                            AppLocaleManager.getString(R.string.ui_residue_tab_albums) to "albums"
                         )
                         val selectedTabIndex = remember(uiState.selectedTab) {
                             tabs.indexOfFirst { it.second == uiState.selectedTab }.coerceAtLeast(0)
@@ -646,7 +649,7 @@ fun ArtistHomepageScreen(
                                     modifier = Modifier.height(40.dp)
                                 ) {
                                     Text(
-                                        text = if (uiState.order == "hot") "热门" else "最新",
+                                        text = if (uiState.order == "hot") localizedStringResource(R.string.ui_popular_61b46b4) else localizedStringResource(R.string.ui_newest),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -686,7 +689,7 @@ fun ArtistHomepageScreen(
                                     playerViewModel.showAndPlaySong(
                                         song,
                                         uiState.songs,
-                                        uiState.artistName.ifBlank { "歌手歌曲" },
+                                        uiState.artistName.ifBlank { AppLocaleManager.getString(R.string.ui_artist_songs) },
                                         isVoluntaryPlay = false
                                     )
                                 }
@@ -716,7 +719,7 @@ fun ArtistHomepageScreen(
                                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                                 ) {
                                     Text(
-                                        text = "加载更多",
+                                        text = localizedStringResource(R.string.ui_residue_song_picker_load_more),
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
@@ -729,7 +732,7 @@ fun ArtistHomepageScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "已加载全部 ${uiState.songs.size} 首",
+                                    text = localizedStringResource(R.string.ui_all_songs_loaded, (uiState.songs.size).toString()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -780,7 +783,7 @@ fun ArtistHomepageScreen(
                                             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                                         ) {
                                             Text(
-                                                text = "加载更多专辑",
+                                                text = localizedStringResource(R.string.ui_load_more_albums),
                                                 fontWeight = FontWeight.Medium
                                             )
                                         }
@@ -793,7 +796,7 @@ fun ArtistHomepageScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = "已加载全部 ${uiState.albums.size} 张专辑",
+                                            text = localizedStringResource(R.string.ui_all_albums_loaded, (uiState.albums.size).toString()),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -874,7 +877,7 @@ fun ArtistHomepageScreen(
         // 歌曲排序底部弹窗（模仿媒体库排序 sheet）
         if (showSongSortSheet) {
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-            val sortOptions = listOf("hot" to "热门歌曲", "time" to "最新歌曲")
+            val sortOptions = listOf("hot" to AppLocaleManager.getString(R.string.ui_popular_songs_5b88b56), "time" to AppLocaleManager.getString(R.string.ui_latest_songs))
             ModalBottomSheet(
                 onDismissRequest = { showSongSortSheet = false },
                 sheetState = sheetState,
@@ -888,7 +891,7 @@ fun ArtistHomepageScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "排序方式",
+                        text = localizedStringResource(R.string.ui_residue_library_sort_by_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -1038,7 +1041,7 @@ private fun ArtistHomepageHeader(
             // 网易云图标：使用网易云音乐官方 logo（与账户设置中一致），标识该歌手来自网易云音乐
             Image(
                 painter = painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_),
-                contentDescription = "网易云音乐",
+                contentDescription = AppLocaleManager.getString(R.string.ui_residue_auth_netease_title),
                 modifier = Modifier
                     .padding(start = 8.dp)
                     .size(18.dp),
@@ -1076,7 +1079,7 @@ private fun ArtistHomepageHeader(
 
         // 歌曲/专辑数量
         Text(
-            text = "$songCount 首歌曲 · $albumCount 张专辑",
+            text = localizedStringResource(R.string.ui_songs_albums, (songCount).toString(), (albumCount).toString()),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1113,7 +1116,7 @@ private fun ArtistHomepageHeader(
                     .padding(horizontal = 4.dp)
             ) {
                 Text(
-                    text = "歌手简介",
+                    text = localizedStringResource(R.string.ui_artist_biography),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1239,7 +1242,7 @@ private fun ArtistAlbumCard(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         val yearText = if (album.year != null) "${album.year}" else ""
-                        val countText = if (album.songCount > 0) "${album.songCount} 首" else ""
+                        val countText = if (album.songCount > 0) AppLocaleManager.getString(R.string.ui_songs_fee9269, (album.songCount).toString()) else ""
                         val metaText = listOf(yearText, countText)
                             .filter { it.isNotBlank() }
                             .joinToString(" · ")
@@ -1272,7 +1275,7 @@ private fun ArtistHomepageLoadingHint(modifier: Modifier = Modifier) {
     ) {
         ContainedLoadingIndicator()
         Text(
-            text = "加载中…",
+            text = localizedStringResource(R.string.ui_loading),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1446,7 +1449,7 @@ private fun TabletArtistHomepagePanel(
                     )
                     Image(
                         painter = painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_),
-                        contentDescription = "网易云音乐",
+                        contentDescription = AppLocaleManager.getString(R.string.ui_residue_auth_netease_title),
                         modifier = Modifier
                             .padding(start = 8.dp)
                             .size(16.dp),
@@ -1484,7 +1487,7 @@ private fun TabletArtistHomepagePanel(
 
                 // 歌曲/专辑数量
                 Text(
-                    text = "$songCount 首歌曲 · $albumCount 张专辑",
+                    text = localizedStringResource(R.string.ui_songs_albums, (songCount).toString(), (albumCount).toString()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1543,7 +1546,7 @@ private fun TabletArtistHomepagePanel(
                     ) {
                         Icon(Icons.Rounded.Shuffle, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("随机", fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                        Text(localizedStringResource(R.string.ui_residue_settings_search_keyword_shuffle), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
                     }
                 }
 
@@ -1560,7 +1563,7 @@ private fun TabletArtistHomepagePanel(
                     ) {
                         item {
                             Text(
-                                text = "歌手简介",
+                                text = localizedStringResource(R.string.ui_artist_biography),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -1660,7 +1663,7 @@ private fun ImageViewerDialog(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Rounded.Close,
-                        contentDescription = "关闭",
+                        contentDescription = localizedStringResource(R.string.ui_residue_lyrics_more_vibrant_off),
                         tint = Color.White
                     )
                 }
@@ -1672,7 +1675,7 @@ private fun ImageViewerDialog(
                         }) {
                             Icon(
                                 Icons.Rounded.FitScreen,
-                                contentDescription = "重置",
+                                contentDescription = localizedStringResource(R.string.ui_residue_cd_reset),
                                 tint = Color.White
                             )
                         }
@@ -1701,19 +1704,19 @@ private fun ImageViewerDialog(
                                         context.contentResolver.openOutputStream(it)?.use { os ->
                                             bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, os)
                                         }
-                                        saveMessage = "已保存到相册"
-                                    } ?: run { saveMessage = "保存失败" }
+                                        saveMessage = AppLocaleManager.getString(R.string.ui_saved_to_gallery)
+                                    } ?: run { saveMessage = AppLocaleManager.getString(R.string.ui_could_not_save) }
                                 } else {
-                                    saveMessage = "保存失败"
+                                    saveMessage = AppLocaleManager.getString(R.string.ui_could_not_save)
                                 }
                             } catch (_: Exception) {
-                                saveMessage = "保存失败"
+                                saveMessage = AppLocaleManager.getString(R.string.ui_could_not_save)
                             }
                         }
                     }) {
                         Icon(
                             Icons.Rounded.Download,
-                            contentDescription = "保存",
+                            contentDescription = localizedStringResource(R.string.ui_residue_action_save),
                             tint = Color.White
                         )
                     }
@@ -1760,7 +1763,7 @@ private fun TabletHomepageTabRow(
     albumCount: Int,
     showOrderButton: Boolean
 ) {
-    val tabs = listOf("歌曲" to "songs", "专辑" to "albums")
+    val tabs = listOf(AppLocaleManager.getString(R.string.ui_residue_tab_songs) to "songs", AppLocaleManager.getString(R.string.ui_residue_tab_albums) to "albums")
     val selectedTabIndex = remember(selectedTab) {
         tabs.indexOfFirst { it.second == selectedTab }.coerceAtLeast(0)
     }
@@ -1803,7 +1806,7 @@ private fun TabletHomepageTabRow(
                 modifier = Modifier.height(40.dp)
             ) {
                 Text(
-                    text = if (order == "hot") "热门" else "最新",
+                    text = if (order == "hot") localizedStringResource(R.string.ui_popular_61b46b4) else localizedStringResource(R.string.ui_newest),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium
                 )
@@ -1848,7 +1851,7 @@ fun LazyListScope.TabletHomepageSongAlbumContent(
                     playerViewModel.showAndPlaySong(
                         song,
                         uiState.songs,
-                        uiState.artistName.ifBlank { "歌手歌曲" },
+                        uiState.artistName.ifBlank { AppLocaleManager.getString(R.string.ui_artist_songs) },
                         isVoluntaryPlay = false
                     )
                 }
@@ -1872,7 +1875,7 @@ fun LazyListScope.TabletHomepageSongAlbumContent(
                         onClick = { viewModel.loadMoreSongs(playerViewModel.neteaseCookie) },
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                     ) {
-                        Text(text = "加载更多", fontWeight = FontWeight.Medium)
+                        Text(text = localizedStringResource(R.string.ui_residue_song_picker_load_more), fontWeight = FontWeight.Medium)
                     }
                 }
             } else if (uiState.songs.isNotEmpty()) {
@@ -1881,7 +1884,7 @@ fun LazyListScope.TabletHomepageSongAlbumContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "已加载全部 ${uiState.songs.size} 首",
+                        text = localizedStringResource(R.string.ui_all_songs_loaded, (uiState.songs.size).toString()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1927,7 +1930,7 @@ fun LazyListScope.TabletHomepageSongAlbumContent(
                             onClick = { viewModel.loadMoreAlbums(playerViewModel.neteaseCookie) },
                             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                         ) {
-                            Text(text = "加载更多专辑", fontWeight = FontWeight.Medium)
+                            Text(text = localizedStringResource(R.string.ui_load_more_albums), fontWeight = FontWeight.Medium)
                         }
                     }
                 } else {
@@ -1936,7 +1939,7 @@ fun LazyListScope.TabletHomepageSongAlbumContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "已加载全部 ${uiState.albums.size} 张专辑",
+                            text = localizedStringResource(R.string.ui_all_albums_loaded, (uiState.albums.size).toString()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -71,7 +74,7 @@ class ArtistHomepageViewModel @Inject constructor(
     fun loadArtistData(artistId: Long, neteaseCookie: String? = null) {
         if (artistId <= 0) {
             _uiState.value = ArtistHomepageUiState(
-                error = "无效的歌手 ID",
+                error = AppLocaleManager.getString(R.string.ui_invalid_artist_id),
                 isLoading = false
             )
             return
@@ -179,7 +182,7 @@ class ArtistHomepageViewModel @Inject constructor(
             } catch (t: Throwable) {
                 Timber.e(t, "ArtistHomepage: Unexpected error loading artistId=$artistId")
                 _uiState.value = _uiState.value.copy(
-                    error = "加载失败: ${t.message}"
+                    error = AppLocaleManager.getString(R.string.ui_could_not_load, (t.message).toString())
                 )
             }
         }

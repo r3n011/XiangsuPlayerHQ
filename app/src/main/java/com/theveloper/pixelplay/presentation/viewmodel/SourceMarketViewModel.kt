@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.github.GitHubRelease
@@ -142,7 +145,7 @@ class SourceMarketViewModel @Inject constructor(
             }.onFailure { t ->
                 Timber.e(t, "SourceMarket: loadReleases failed")
                 _uiState.update {
-                    it.copy(loadingReleases = false, releasesError = t.message ?: "加载失败")
+                    it.copy(loadingReleases = false, releasesError = t.message ?: AppLocaleManager.getString(R.string.ui_failed_to_load))
                 }
             }
         }
@@ -159,7 +162,7 @@ class SourceMarketViewModel @Inject constructor(
         val release = current.releases.firstOrNull { it.tag_name == tag } ?: return
         val zipAsset = repo.zipAssetOf(release) ?: run {
             _uiState.update {
-                it.copy(releaseStates = it.releaseStates + (tag to ReleaseState.Error("该版本没有 zip 附件")))
+                it.copy(releaseStates = it.releaseStates + (tag to ReleaseState.Error(AppLocaleManager.getString(R.string.ui_this_release_has_no_zip_attachment))))
             }
             return
         }
@@ -196,7 +199,7 @@ class SourceMarketViewModel @Inject constructor(
         val entries = runCatching { repo.inspectZip(cached) }.getOrNull().orEmpty()
         if (entries.isEmpty()) {
             _uiState.update {
-                it.copy(releaseStates = it.releaseStates + (tag to ReleaseState.Error("zip 中没有找到 JS 音源脚本")))
+                it.copy(releaseStates = it.releaseStates + (tag to ReleaseState.Error(AppLocaleManager.getString(R.string.ui_no_javascript_source_scripts_found_in_the_zip))))
             }
             return
         }
@@ -226,7 +229,7 @@ class SourceMarketViewModel @Inject constructor(
             val written = fileStore.writeBytes(entryUi.entry.bytes, entryUi.entry.fileName)
             if (written == null) {
                 _uiState.update {
-                    it.copy(installingEntry = null, installError = "安装失败：无法写入音源目录")
+                    it.copy(installingEntry = null, installError = AppLocaleManager.getString(R.string.ui_installation_failed_could_not_write_to_the_source_directory))
                 }
                 return@launch
             }
@@ -247,7 +250,7 @@ class SourceMarketViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     installingEntry = null,
-                    installSuccess = "已安装：${entryUi.name}",
+                    installSuccess = AppLocaleManager.getString(R.string.ui_installed, (entryUi.name).toString()),
                     releaseStates = if (updatedEntries != null) {
                         it.releaseStates + (tag to ReleaseState.Inspected(updatedEntries))
                     } else it.releaseStates

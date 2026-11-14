@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -71,12 +74,12 @@ class AiSearchViewModel @Inject constructor(
         private const val TAG = "AiSearch"
 
         fun sourceLabel(source: String): String = when (source) {
-            "wy" -> "网易云"
-            "kw" -> "酷我"
-            "tx" -> "QQ音乐"
-            "kg" -> "酷狗"
-            "mg" -> "咪咕"
-            else -> "内置音源"
+            "wy" -> AppLocaleManager.getString(R.string.ui_residue_source_badge_netease)
+            "kw" -> AppLocaleManager.getString(R.string.ui_residue_search_filter_kuwo)
+            "tx" -> AppLocaleManager.getString(R.string.ui_qq_music)
+            "kg" -> AppLocaleManager.getString(R.string.ui_residue_source_badge_kugou)
+            "mg" -> AppLocaleManager.getString(R.string.ui_migu)
+            else -> AppLocaleManager.getString(R.string.ui_built_in_sources_bdc8ae7)
         }
 
         /** 最多解析/搜索的候选歌曲数量（控制延迟） */
@@ -119,7 +122,7 @@ class AiSearchViewModel @Inject constructor(
                         streaming = true
                     )
                 )
-                appendThinking(thinkId, "正在解析你的需求，提取候选搜索关键词…")
+                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_understanding_your_request_and_choosing_search_keywords))
 
                 val userTextForModel = text
                 val candidates = parseCandidates(
@@ -141,20 +144,20 @@ class AiSearchViewModel @Inject constructor(
                 )
 
                 if (candidates.isEmpty()) {
-                    appendThinking(thinkId, "未能从需求中解析出候选关键词，已结束。\n")
+                    appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_no_candidate_keywords_could_be_extracted_search_stopped))
                     setThinkingDone(thinkId)
-                    pushAi("抱歉，我没能理解你想找什么样的歌曲，可以换个说法再试试～")
+                    pushAi(AppLocaleManager.getString(R.string.ui_i_could_not_understand_what_you_want_to_hear_try))
                     return@launch
                 }
 
                 // 阶段一：搜索 —— 收集候选池（供 AI 挑选，而非直接展示）
                 // 多源并行搜索（网易云/酷我/QQ音乐/酷狗/咪咕），合并去重得到更丰富的候选池
                 val sources = listOf("wy", "kw", "tx", "kg", "mg")
-                appendThinking(thinkId, "已确定 ${candidates.size} 个候选关键词，开始从网易云/酷我/QQ音乐/酷狗/咪咕多源搜索候选歌曲…")
+                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_found_candidate_keywords_searching_netease_kuwo_qq_music_kugou_and, (candidates.size).toString()))
                 val pool = LinkedHashMap<String, LxSongInfo>()
                 candidates.forEach { query ->
                     if (_uiState.value.loading.not()) return@launch
-                    appendThinking(thinkId, "正在多源搜索「$query」…")
+                    appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_searching_multiple_sources_for, (query).toString()))
                     for (src in sources) {
                         if (_uiState.value.loading.not()) return@launch
                         val result = searchSource(src, query, 1, PER_QUERY)
@@ -167,31 +170,31 @@ class AiSearchViewModel @Inject constructor(
                     }
                 }
                 if (pool.isEmpty()) {
-                    appendThinking(thinkId, "没有搜索到候选歌曲，已结束。\n")
+                    appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_no_candidate_songs_found_search_stopped))
                     setThinkingDone(thinkId)
-                    pushAi("暂时没有找到合适的歌曲，换个关键词或来源再试试吧。")
+                    pushAi(AppLocaleManager.getString(R.string.ui_no_suitable_songs_found_try_another_keyword_or_source))
                     return@launch
                 }
-                appendThinking(thinkId, "共搜集到 ${pool.size} 首候选歌曲，正在让 AI 从精选歌单…")
+                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_collected_candidate_songs_ai_is_choosing_your_playlist, (pool.size).toString()))
 
                 // 阶段二：AI 决策 —— AI 自主决定补充搜索还是直接输出歌单
                 val picked = decideSongs(userTextForModel, pool)
                 val pickedSongs = picked.distinctBy { songKey(it) }
                 if (pickedSongs.isEmpty()) {
-                    appendThinking(thinkId, "AI 未能从候选里挑出合适的歌曲，已结束。\n")
+                    appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_ai_could_not_choose_suitable_songs_search_stopped))
                     setThinkingDone(thinkId)
-                    pushAi("AI 还没能挑出合适的歌曲，换个说法或来源再试试吧。")
+                    pushAi(AppLocaleManager.getString(R.string.ui_ai_could_not_choose_suitable_songs_try_another_description_or))
                     return@launch
                 }
 
-                appendThinking(thinkId, "已从 ${pool.size} 首候选中精选出 ${pickedSongs.size} 首歌曲。")
+                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_selected_songs_from_candidates, (pool.size).toString(), (pickedSongs.size).toString()))
                 setThinkingDone(thinkId)
 
                 // 完成时：AI 生成一段推荐语（流式输出），并把本次歌单内联挂到该条 AI 消息下方
                 streamRecommendation(thinkId, userTextForModel, pickedSongs)
             } catch (t: Throwable) {
                 Timber.tag(TAG).w(t, "AiSearch failed")
-                pushAi("搜索失败了：${t.message ?: t.javaClass.simpleName ?: "未知错误"}")
+                pushAi(AppLocaleManager.getString(R.string.ui_search_failed_321d6eb, (t.message ?: t.javaClass.simpleName ?: AppLocaleManager.getString(R.string.ui_residue_error_unknown)).toString()))
             } finally {
                 _uiState.value = _uiState.value.copy(loading = false)
                 val list = _uiState.value.messages
@@ -208,7 +211,7 @@ class AiSearchViewModel @Inject constructor(
     private suspend fun streamRecommendation(thinkId: String, userText: String, songs: List<LxSongInfo>) {
         val recMsgId = newId()
         val names = songs.take(5).map { it.name }.filter { it.isNotBlank() }.joinToString("、")
-        appendThinking(thinkId, "正在为歌单撰写推荐语…")
+        appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_writing_a_playlist_introduction))
         _uiState.value = _uiState.value.copy(
             messages = _uiState.value.messages + AiChatMsg(
                 id = recMsgId,
@@ -226,6 +229,7 @@ class AiSearchViewModel @Inject constructor(
 请为以下 AI 生成的歌单写一段简短温暖的推荐语（100 字以内）。
 结合用户的需求「$userText」，自然地提到其中几首代表作，语气像懂音乐的朋友在推荐，不要用 markdown 标题、列表或引号。
 歌单包含：$names
+${if (AppLocaleManager.currentLocale().language == "en") "Write the introduction in English." else ""}
 """.trimIndent(),
                 type = AiSystemPromptType.GENERAL,
                 temperature = 0.9f,
@@ -249,9 +253,9 @@ class AiSearchViewModel @Inject constructor(
         // 保证歌单完成后必然会有一条可见的推荐语。
         if (sb.isBlank()) {
             val fallback = if (failed) {
-                "推荐语生成遇到点小问题～不过按照你的需求「${userText}」，这 ${songs.size} 首歌组成的歌单已经为你准备好了，点击即可播放。"
+                AppLocaleManager.getString(R.string.ui_the_introduction_could_not_be_generated_but_your_playlist_of, (userText).toString(), (songs.size).toString())
             } else {
-                "根据你的需求「${userText}」，AI 为你挑选了 ${songs.size} 首歌曲，组成这份专属歌单，点击任意一首即可播放。"
+                AppLocaleManager.getString(R.string.ui_ai_chose_songs_for_tap_any_song_to_play_your, (userText).toString(), (songs.size).toString())
             }
             _uiState.value = _uiState.value.copy(
                 messages = _uiState.value.messages.map {
@@ -308,7 +312,7 @@ class AiSearchViewModel @Inject constructor(
             if (songIds.isEmpty()) return@withContext null
 
             // 2) 在媒体库创建 AI 生成的播放列表
-            val name = "AI 智能歌单 ${System.currentTimeMillis().toString().takeLast(6)}"
+            val name = AppLocaleManager.getString(R.string.ui_ai_playlist, (System.currentTimeMillis().toString().takeLast(6)).toString())
             runCatching {
                 playlistPreferencesRepository.createPlaylist(
                     name = name,
@@ -434,10 +438,10 @@ ${labels.mapIndexed { i, l -> "${i + 1}. $l" }.joinToString("\n")}
             val decision = parseDecision(raw)
             if (decision.action == "search_more" && decision.items.isNotEmpty() && pool.size < MAX_POOL && rounds < MAX_ROUNDS) {
                 // AI 决定继续搜索：用新关键词补充候选池
-                pushOp("AI 觉得候选还不够，正在继续补充搜索…")
+                pushOp(AppLocaleManager.getString(R.string.ui_ai_needs_more_candidates_searching_for_more))
                 decision.items.forEach { query ->
                     if (pool.size >= MAX_POOL) return@forEach
-                    pushOp("继续搜索「$query」…")
+                    pushOp(AppLocaleManager.getString(R.string.ui_continuing_the_search_for, (query).toString()))
                     val result = searchSource(sourceLabelForSearchPart(), query, 1, PER_QUERY)
                     result.list.forEach { hit ->
                         val key = songKey(hit)

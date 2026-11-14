@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 
 import androidx.compose.foundation.background
@@ -382,7 +384,7 @@ fun DailyRecommendScreen(
                                 isPlaying = currentSongId == song.id && isPlaying,
                                 // ⚡ 正在逐首解析播放链接的歌曲：标题右侧显示"获取播放链接…"（与搜索页一致）
                                 showLoading = dailyResolvingSongId == song.id,
-                                loadingLabel = "获取播放链接…",
+                                loadingLabel = AppLocaleManager.getString(R.string.ui_getting_playback_url_4203dd3),
                                 onClick = {
                                     playerViewModel.playDailyRecommend(startIndex = displaySongs.indexOf(song).coerceAtLeast(0))
                                 },

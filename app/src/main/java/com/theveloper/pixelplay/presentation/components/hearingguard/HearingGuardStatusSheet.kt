@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.components.hearingguard
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -108,16 +112,16 @@ fun HearingGuardStatusSheet(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "像素卫士",
+                        text = localizedStringResource(R.string.ui_pixel_guardian),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = colors.onSurface
                     )
                     Text(
                         text = if (state.isConfigured)
-                            "基于 WHO 安全听音指南，正在保护你的听力"
+                            localizedStringResource(R.string.ui_protecting_your_hearing_with_who_safe_listening_guidance)
                         else
-                            "你的听力健康守护者",
+                            localizedStringResource(R.string.ui_your_hearing_health_companion),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                         maxLines = 1,
@@ -133,7 +137,7 @@ fun HearingGuardStatusSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Settings,
-                        contentDescription = "设置"
+                        contentDescription = localizedStringResource(R.string.ui_residue_nav_bar_settings)
                     )
                 }
             }
@@ -176,7 +180,7 @@ fun HearingGuardStatusSheet(
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 Text(
-                                    text = "${state.remainingMinutes} 分钟剩余",
+                                    text = localizedStringResource(R.string.ui_min_remaining, (state.remainingMinutes).toString()),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = colors.onSurface,
@@ -184,7 +188,7 @@ fun HearingGuardStatusSheet(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "今日已听 $todayMinutes / ${plan.dailyLimitMinutes} 分钟",
+                                    text = localizedStringResource(R.string.ui_today_min_708b3e3, (todayMinutes).toString(), (plan.dailyLimitMinutes).toString()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.onSurfaceVariant
                                 )
@@ -209,21 +213,21 @@ fun HearingGuardStatusSheet(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     StatMetric(
-                        label = "本次已听",
+                        label = AppLocaleManager.getString(R.string.ui_this_session),
                         value = "${(state.currentSessionMs / 60_000L).toInt().coerceAtLeast(0)}",
                         suffix = "min",
                         tint = if (state.sessionProgress >= 0.9f) colors.error else colors.primary,
                         modifier = Modifier.weight(1f)
                     )
                     StatMetric(
-                        label = "本次上限",
+                        label = AppLocaleManager.getString(R.string.ui_session_limit),
                         value = "${plan.sessionLimitMinutes}",
                         suffix = "min",
                         tint = colors.primary,
                         modifier = Modifier.weight(1f)
                     )
                     StatMetric(
-                        label = "每日上限",
+                        label = AppLocaleManager.getString(R.string.ui_daily_limit_e95f837),
                         value = "${plan.dailyLimitMinutes}",
                         suffix = "min",
                         tint = colors.primary,
@@ -267,14 +271,14 @@ private fun SetupHint(onSettings: () -> Unit) {
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = "点击右上角设置，选择性别与生日即可开始保护听力",
+                text = localizedStringResource(R.string.ui_open_settings_in_the_top_right_and_enter_your_gender),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = colors.onPrimaryContainer,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = "去设置",
+                text = localizedStringResource(R.string.ui_open_settings),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = colors.primary,

@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -158,7 +162,7 @@ private fun AiMixHistorySection(
             .padding(start = 24.dp, end = 24.dp, bottom = 28.dp)
     ) {
         Text(
-            text = "历史记录",
+            text = localizedStringResource(R.string.ui_residue_cd_search_history_icon),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = scheme.onSurface
         )
@@ -192,7 +196,7 @@ private fun AiMixHistorySection(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${entry.songs.size} 首 · ${if (entry.fromLocal) "本地" else "在线"}",
+                            text = localizedStringResource(R.string.ui_songs_8ebaf8a, (entry.songs.size).toString(), (if (entry.fromLocal) localizedStringResource(R.string.ui_residue_download_selection_badge_local) else localizedStringResource(R.string.ui_residue_download_selection_badge_online)).toString()),
                             style = MaterialTheme.typography.bodySmall,
                             color = scheme.onSurfaceVariant
                         )
@@ -266,7 +270,7 @@ private fun AiMixInput(
             Spacer(Modifier.height(4.dp))
 
             Text(
-                text = if (fromLocal) "从你的本地曲库生成" else "AI 为你智能生成歌单",
+                text = if (fromLocal) localizedStringResource(R.string.ui_generate_from_your_local_library) else localizedStringResource(R.string.ui_let_ai_create_a_playlist_for_you),
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant
             )
@@ -275,7 +279,7 @@ private fun AiMixInput(
         Spacer(Modifier.height(30.dp))
 
         // ── 歌曲数量 ──
-        SectionTitle("歌曲数量")
+        SectionTitle(AppLocaleManager.getString(R.string.ui_residue_sort_method_song_count))
         Spacer(Modifier.height(10.dp))
 
         val countOptions = listOf("Auto" to 10, "15" to 15, "25" to 25, "50" to 50)
@@ -296,7 +300,7 @@ private fun AiMixInput(
         Spacer(Modifier.height(24.dp))
 
         // ── 情绪 ──
-        SectionTitle("心情")
+        SectionTitle(AppLocaleManager.getString(R.string.ui_mood))
         Spacer(Modifier.height(10.dp))
 
         Row(
@@ -324,7 +328,7 @@ private fun AiMixInput(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(116.dp),
-            placeholder = { Text("例如：想听适合雨天放松的歌，温柔一点…") },
+            placeholder = { Text(localizedStringResource(R.string.ui_for_example_gentle_music_for_relaxing_on_a_rainy_day)) },
             textStyle = MaterialTheme.typography.bodyMedium,
             shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -354,7 +358,7 @@ private fun AiMixInput(
             Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                text = "生成歌单",
+                text = localizedStringResource(R.string.ui_residue_ai_playlist_generate),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -431,7 +435,7 @@ private fun AiMixConversation(
                     color = scheme.onSurface
                 )
                 Text(
-                    text = if (state.loading) "正在生成…" else "生成完成",
+                    text = if (state.loading) localizedStringResource(R.string.ui_residue_playlist_creation_ai_generating) else localizedStringResource(R.string.ui_generation_complete),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant
                 )
@@ -459,7 +463,7 @@ private fun AiMixConversation(
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(9.dp))
                         Text(
-                            text = "AI 正在生成你的 Mix…",
+                            text = localizedStringResource(R.string.ui_ai_is_creating_your_mix),
                             color = scheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -471,13 +475,13 @@ private fun AiMixConversation(
                 item {
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         Text(
-                            text = "歌单「${state.playlistTitle.ifBlank { "AI Mix" }}」",
+                            text = localizedStringResource(R.string.ui_playlist_b9553b3, (state.playlistTitle.ifBlank { "AI Mix" }).toString()),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = scheme.onSurface
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "共 ${state.results.size} 首 · 点击歌曲播放",
+                            text = localizedStringResource(R.string.ui_songs_tap_a_song_to_play, (state.results.size).toString()),
                             style = MaterialTheme.typography.bodySmall,
                             color = scheme.onSurfaceVariant
                         )
@@ -522,7 +526,7 @@ private fun AiMixConversation(
             } else if (!state.loading && state.phase == AiMixViewModel.Phase.READY) {
                 item {
                     Text(
-                        text = state.error ?: "没有生成结果，试试重新输入。",
+                        text = state.error ?: localizedStringResource(R.string.ui_no_results_generated_try_another_prompt),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(30.dp),
@@ -548,7 +552,7 @@ private fun AiMixConversation(
         ) {
             Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("重新生成", fontWeight = FontWeight.SemiBold)
+            Text(localizedStringResource(R.string.ui_residue_dialog_regenerate), fontWeight = FontWeight.SemiBold)
         }
     }
 }

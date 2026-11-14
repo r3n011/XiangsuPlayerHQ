@@ -80,6 +80,8 @@ data class SettingsUiState(
     val customPaletteSeedColor: Color = Color(ThemePreferencesRepository.DEFAULT_CUSTOM_PALETTE_SEED),
     // ⚡ 应用级调色盘开关：关闭 = 壁纸取色，打开 = 自定义调色盘染色整个应用（播放器内部除外）
     val appPaletteEnabled: Boolean = false,
+    // ⚡ 应用字体（只作用于歌词之外的软件界面；歌词字体独立设置）
+    val appFontFamily: String = ThemePreferencesRepository.DEFAULT_APP_FONT_FAMILY,
     // ⚡ 自定义播放器背景：开关 + 图片 URI + 显示模式 + 模糊半径（0=关闭）（应用到播放器界面与歌词界面）
     val customPlayerBackgroundEnabled: Boolean = false,
     val customPlayerBackgroundUri: String? = null,
@@ -244,6 +246,7 @@ private sealed interface SettingsUiUpdate {
         val albumArtColorAccuracy: Int,
         val customPaletteSeedColor: Color,
         val appPaletteEnabled: Boolean,
+        val appFontFamily: String,
         val customPlayerBackgroundEnabled: Boolean,
         val customPlayerBackgroundUri: String?,
         val customPlayerBackgroundMode: PlayerBackgroundMode,
@@ -591,6 +594,7 @@ class SettingsViewModel @Inject constructor(
                 themePreferencesRepository.albumArtColorAccuracyFlow,
                 themePreferencesRepository.customPaletteSeedColorFlow,
                 themePreferencesRepository.appPaletteEnabledFlow,
+                themePreferencesRepository.appFontFamilyFlow,
                 themePreferencesRepository.customPlayerBackgroundEnabledFlow,
                 themePreferencesRepository.customPlayerBackgroundUriFlow,
                 themePreferencesRepository.customPlayerBackgroundModeFlow,
@@ -620,26 +624,27 @@ class SettingsViewModel @Inject constructor(
                     albumArtColorAccuracy = values[4] as Int,
                     customPaletteSeedColor = Color(values[5] as Int),
                     appPaletteEnabled = values[6] as Boolean,
-                    customPlayerBackgroundEnabled = values[7] as Boolean,
-                    customPlayerBackgroundUri = values[8] as String?,
-                    customPlayerBackgroundMode = values[9] as PlayerBackgroundMode,
-                    customPlayerBackgroundBlurRadius = values[10] as Int,
-                    customPlayerControlsOpacity = values[11] as Int,
-                    lyricsGradientOverlayEnabled = values[12] as Boolean,
-                    mockGenresEnabled = values[13] as Boolean,
-                    navBarCornerRadius = values[14] as Int,
-                    navBarStyle = values[15] as String,
-                    navBarCompactMode = values[16] as Boolean,
-                    libraryNavigationMode = values[17] as String,
-                    carouselStyle = values[18] as String,
-                    launchTab = values[19] as String,
-                    showPlayerFileInfo = values[20] as Boolean,
-                    showPlaybackSpeedButton = values[21] as Boolean,
-                    pitchFollowSpeed = values[22] as Boolean,
-                    tabletPlayerLayout = values[23] as TabletPlayerLayout,
-                    playerStyle = values[24] as PlayerStyle,
-                    playerAccentBackground = values[25] as Boolean,
-                    playerMergeControls = values[26] as Boolean
+                    appFontFamily = values[7] as String,
+                    customPlayerBackgroundEnabled = values[8] as Boolean,
+                    customPlayerBackgroundUri = values[9] as String?,
+                    customPlayerBackgroundMode = values[10] as PlayerBackgroundMode,
+                    customPlayerBackgroundBlurRadius = values[11] as Int,
+                    customPlayerControlsOpacity = values[12] as Int,
+                    lyricsGradientOverlayEnabled = values[13] as Boolean,
+                    mockGenresEnabled = values[14] as Boolean,
+                    navBarCornerRadius = values[15] as Int,
+                    navBarStyle = values[16] as String,
+                    navBarCompactMode = values[17] as Boolean,
+                    libraryNavigationMode = values[18] as String,
+                    carouselStyle = values[19] as String,
+                    launchTab = values[20] as String,
+                    showPlayerFileInfo = values[21] as Boolean,
+                    showPlaybackSpeedButton = values[22] as Boolean,
+                    pitchFollowSpeed = values[23] as Boolean,
+                    tabletPlayerLayout = values[24] as TabletPlayerLayout,
+                    playerStyle = values[25] as PlayerStyle,
+                    playerAccentBackground = values[26] as Boolean,
+                    playerMergeControls = values[27] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -651,6 +656,7 @@ class SettingsViewModel @Inject constructor(
                         albumArtColorAccuracy = update.albumArtColorAccuracy,
                         customPaletteSeedColor = update.customPaletteSeedColor,
                         appPaletteEnabled = update.appPaletteEnabled,
+                        appFontFamily = update.appFontFamily,
                         customPlayerBackgroundEnabled = update.customPlayerBackgroundEnabled,
                         customPlayerBackgroundUri = update.customPlayerBackgroundUri,
                         customPlayerBackgroundMode = update.customPlayerBackgroundMode,
@@ -1243,6 +1249,13 @@ class SettingsViewModel @Inject constructor(
     fun setAppPaletteEnabled(enabled: Boolean) {
         viewModelScope.launch {
             themePreferencesRepository.setAppPaletteEnabled(enabled)
+        }
+    }
+
+    // ⚡ 应用字体（只作用于歌词之外的软件界面）
+    fun setAppFontFamily(familyKey: String) {
+        viewModelScope.launch {
+            themePreferencesRepository.setAppFontFamily(familyKey)
         }
     }
 

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.model.Song
@@ -135,7 +138,7 @@ class ToplistViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     if (_uiState.value.selectedToplistId != toplistId) return@launch
-                    _uiState.update { it.copy(isRefreshing = false, isLoading = false, error = e.message ?: "加载失败") }
+                    _uiState.update { it.copy(isRefreshing = false, isLoading = false, error = e.message ?: AppLocaleManager.getString(R.string.ui_failed_to_load)) }
                 }
         }
     }
@@ -173,7 +176,7 @@ class ToplistViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+                    _uiState.update { it.copy(isLoading = false, error = e.message ?: AppLocaleManager.getString(R.string.ui_failed_to_load)) }
                 }
         }
     }

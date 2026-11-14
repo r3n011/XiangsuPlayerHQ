@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.toplist
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import com.theveloper.pixelplay.data.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -51,7 +54,7 @@ class ToplistFetchApi @Inject constructor(
                     ToplistCatalog.Platform.WY -> emptyList()
                 }
                 if (songs.isEmpty()) {
-                    Result.failure(Exception("${platform.label} 榜单「${entry.name}」无数据"))
+                    Result.failure(Exception(AppLocaleManager.getString(R.string.ui_no_data_for_chart, (platform.label).toString(), (entry.name).toString())))
                 } else {
                     Result.success(songs)
                 }

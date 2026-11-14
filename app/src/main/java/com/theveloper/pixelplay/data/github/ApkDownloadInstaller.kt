@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.github
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -136,7 +139,7 @@ class ApkDownloadInstaller {
 
                     val responseCode = connection.responseCode
                     if (responseCode !in 200..299) {
-                        throw RuntimeException("下载失败: HTTP $responseCode")
+                        throw RuntimeException(AppLocaleManager.getString(R.string.ui_download_failed_http, (responseCode).toString()))
                     }
 
                     val contentType = connection.contentType.orEmpty()
@@ -158,7 +161,7 @@ class ApkDownloadInstaller {
                         val solved = lanzouApi.solveAcwChallenge(html)
                         if (solved == null) {
                             // 不是挑战页而是普通错误页：按无效源处理
-                            throw RuntimeException("响应不是 APK（content-type=$contentType）")
+                            throw RuntimeException(AppLocaleManager.getString(R.string.ui_response_is_not_an_apk_content_type, (contentType).toString()))
                         }
                         lanzouSession["acw_sc__v2"] = solved
                         connection.headerFields?.forEach { (key, values) ->
@@ -178,14 +181,14 @@ class ApkDownloadInstaller {
                     }
                     if (contentType.contains("text/html", ignoreCase = true)) {
                         // 镜像/CDN 可能返回 HTML 错误页而非 APK，直接判为无效源
-                        throw RuntimeException("响应不是 APK（content-type=$contentType）")
+                        throw RuntimeException(AppLocaleManager.getString(R.string.ui_response_is_not_an_apk_content_type, (contentType).toString()))
                     }
                     isApkStream = true
                 }
 
                 // 挑战重试循环里可能把 connection 置空过，此处必须已持有有效连接
                 val activeConnection = connection
-                    ?: throw RuntimeException("下载连接未建立")
+                    ?: throw RuntimeException(AppLocaleManager.getString(R.string.ui_download_connection_was_not_established))
                 val totalBytes = activeConnection.contentLengthLong
                 var downloadedBytes = 0L
                 var lastEmitTime = 0L
@@ -218,7 +221,7 @@ class ApkDownloadInstaller {
 
                 // 下载完成后校验 APK 合法性，避免把损坏文件交给安装器
                 if (!file.isValidApk()) {
-                    throw RuntimeException("下载的文件不是有效的 APK")
+                    throw RuntimeException(AppLocaleManager.getString(R.string.ui_the_downloaded_file_is_not_a_valid_apk))
                 }
 
                 emit(DownloadState.Downloaded(file))
@@ -229,9 +232,9 @@ class ApkDownloadInstaller {
                 Timber.w(e, "APK 下载源失败 [${index + 1}/${expandedCandidates.size}]")
                 if (candidate.cookie != null) {
                     // 蓝奏云直链失败：多为 CDN 人机验证拦截，提示走浏览器而非静默换 GitHub
-                    lastError = "蓝奏云直链被验证拦截，请改用浏览器打开蓝奏云链接下载"
+                    lastError = AppLocaleManager.getString(R.string.ui_lanzou_cloud_blocked_the_direct_url_with_a_verification_page)
                 } else {
-                    lastError = e.message ?: "下载失败"
+                    lastError = e.message ?: AppLocaleManager.getString(R.string.ui_residue_setcat_download_failed)
                 }
                 file.delete()
             } finally {
@@ -239,7 +242,7 @@ class ApkDownloadInstaller {
             }
         }
 
-        emit(DownloadState.Error(lastError ?: "下载失败", triedLanzou))
+        emit(DownloadState.Error(lastError ?: AppLocaleManager.getString(R.string.ui_residue_setcat_download_failed), triedLanzou))
     }.flowOn(Dispatchers.IO)
 
     /**

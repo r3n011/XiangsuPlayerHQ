@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -108,7 +111,7 @@ class QQMusicViewModel @Inject constructor(
                 songs = lx?.list?.mapNotNull { it.toQQSong() }.orEmpty()
                 source = ResultSource.LX_KW
                 if (songs.isEmpty() && lx == null) {
-                    errMsg = errMsg ?: "搜索失败"
+                    errMsg = errMsg ?: AppLocaleManager.getString(R.string.ui_search_failed_369e997)
                 }
             }
             _resultSource = source
@@ -122,7 +125,7 @@ class QQMusicViewModel @Inject constructor(
             } else {
                 _uiState.value = _uiState.value.copy(
                     searching = false,
-                    error = errMsg ?: "搜索失败",
+                    error = errMsg ?: AppLocaleManager.getString(R.string.ui_search_failed_369e997),
                     isEnd = true
                 )
             }

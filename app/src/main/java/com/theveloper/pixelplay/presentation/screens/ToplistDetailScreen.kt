@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -134,7 +135,7 @@ fun ToplistDetailScreen(
     val displaySongs = uiState.displaySongs
     val allSongs = uiState.allSongs
     val selectedEntry = uiState.selectedEntry
-    val queueName = selectedEntry?.name ?: stringResource(R.string.home_toplist_title)
+    val queueName = selectedEntry?.name ?: localizedStringResource(R.string.home_toplist_title)
 
     if (showBoardPicker) {
         ToplistBoardPickerSheet(
@@ -240,7 +241,7 @@ fun ToplistDetailScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = stringResource(R.string.toplist_loading_failed),
+                        text = localizedStringResource(R.string.toplist_loading_failed),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -252,7 +253,7 @@ fun ToplistDetailScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.toplist_retry))
+                        Text(localizedStringResource(R.string.toplist_retry))
                     }
                 }
             }
@@ -270,10 +271,10 @@ fun ToplistDetailScreen(
                         ToplistExpressiveHeader(
                             songs = allSongs,
                             scrollState = lazyListState,
-                            title = stringResource(R.string.home_toplist_title),
+                            title = localizedStringResource(R.string.home_toplist_title),
                             subtitle = selectedEntry?.let {
                                 "${uiState.selectedPlatform.label} · ${it.name} · ${it.subtitle}"
-                            } ?: stringResource(R.string.home_toplist_title),
+                            } ?: localizedStringResource(R.string.home_toplist_title),
                             songsCount = allSongs.size
                         )
                     }
@@ -337,7 +338,7 @@ fun ToplistDetailScreen(
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     TightWrapText(
-                                        text = stringResource(R.string.toplist_detail_play_all),
+                                        text = localizedStringResource(R.string.toplist_detail_play_all),
                                         modifier = Modifier.padding(end = 4.dp),
                                         overflow = TextOverflow.Ellipsis,
                                         maxLines = 2,
@@ -375,7 +376,7 @@ fun ToplistDetailScreen(
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     TightWrapText(
-                                        text = stringResource(R.string.toplist_detail_shuffle),
+                                        text = localizedStringResource(R.string.toplist_detail_shuffle),
                                         modifier = Modifier.padding(end = 4.dp),
                                         overflow = TextOverflow.Ellipsis,
                                         maxLines = 2,
@@ -626,7 +627,7 @@ private fun ToplistExpressiveHeader(
                 Spacer(Modifier.height(2.dp))
                 Text(
                     modifier = Modifier.padding(start = 3.dp),
-                    text = stringResource(R.string.toplist_songs_count, songsCount),
+                    text = localizedStringResource(R.string.toplist_songs_count, songsCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                 )

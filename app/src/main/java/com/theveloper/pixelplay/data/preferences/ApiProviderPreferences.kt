@@ -1,5 +1,10 @@
 package com.theveloper.pixelplay.data.preferences
 
+import androidx.annotation.StringRes
+
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -20,12 +25,15 @@ import kotlinx.coroutines.flow.map
  * ⚡ 新增歌词来源时只要在这里加一个枚举值，UI 与解析链会自动纳入
  * （已保存的顺序里缺少的新来源会自动补到末尾）。
  */
-enum class LyricsSourceKey(val displayName: String, val stepKey: String) {
-    NETEASE("网易云", "netease"),
-    AMLL("AMLL 逐字", "amll"),
-    BUILT_IN("内置源", "builtin"),
-    BILIBILI("B 站", "bilibili"),
-    LRCLIB("LRCLIB", "lrclib");
+enum class LyricsSourceKey(@StringRes private val displayNameRes: Int, val stepKey: String) {
+    NETEASE(R.string.ui_residue_source_badge_netease, "netease"),
+    AMLL(R.string.ui_amll_word_by_word_lyrics, "amll"),
+    BUILT_IN(R.string.ui_built_in_sources, "builtin"),
+    BILIBILI(R.string.ui_bilibili, "bilibili"),
+    LRCLIB(R.string.ui_lrclib, "lrclib");
+
+    val displayName: String
+        get() = AppLocaleManager.getString(displayNameRes)
 
     companion object {
         /** 默认顺序（与原「网易云优先」预设一致） */

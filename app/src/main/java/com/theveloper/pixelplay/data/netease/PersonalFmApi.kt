@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.netease
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -98,13 +101,13 @@ class PersonalFmApi @Inject constructor(
                 Timber.d("$TAG: Fetching personal FM recommendations (mode=$fmMode)")
                 syncCookieToSession(cookie)
                 val map = NcmApi.full.personalFm(mode = fmMode).getOrNull()
-                    ?: return@withContext Result.failure(Exception("personal_fm 请求失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_personal_fm)))
                 val root = ncmMapToJson(map)
-                    ?: return@withContext Result.failure(Exception("personal_fm 响应解析失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_personal_fm_response)))
 
                 val dataArray = root.optJSONArray("data")
                 if (dataArray == null || dataArray.length() == 0) {
-                    return@withContext Result.failure(Exception("personal_fm 无数据"))
+                    return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_no_personal_fm_data)))
                 }
                 val songIds = mutableListOf<Long>()
                 for (i in 0 until dataArray.length()) {
@@ -153,12 +156,12 @@ class PersonalFmApi @Inject constructor(
                     "count" to 1,
                 ),
             ).getOrThrow()
-            val root = ncmMapToJson(map) ?: return@withContext Result.failure(Exception("心动模式响应解析失败"))
+            val root = ncmMapToJson(map) ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_heartbeat_mode_response)))
             if (root.optInt("code", -1) != 200) {
-                return@withContext Result.failure(Exception("心动模式返回 code=${root.optInt("code")}"))
+                return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_heartbeat_mode_returned_code, (root.optInt("code")).toString())))
             }
             val data = root.optJSONArray("data")
-                ?: return@withContext Result.failure(Exception("心动模式没有返回歌曲"))
+                ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_heartbeat_mode_returned_no_songs)))
             val songIds = buildList {
                 for (i in 0 until data.length()) {
                     val id = data.optJSONObject(i)?.optLong("id", -1L) ?: -1L
@@ -166,7 +169,7 @@ class PersonalFmApi @Inject constructor(
                     if (id > 0 && id != seedSongId) add(id)
                 }
             }
-            if (songIds.isEmpty()) return@withContext Result.failure(Exception("心动模式暂无可播歌曲"))
+            if (songIds.isEmpty()) return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_no_playable_songs_in_heartbeat_mode)))
             Timber.d("$TAG: heart mode got ${songIds.size} songs")
             Result.success(songIds)
         } catch (t: Throwable) {
@@ -195,13 +198,13 @@ class PersonalFmApi @Inject constructor(
                 "offset" to 0,
             )
             val root = fetchSimiSongJson(params)
-                ?: return@withContext Result.failure(Exception("相似歌曲请求失败"))
+                ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_request_similar_songs)))
             val songs = root.optJSONArray("songs")
             if (songs == null || songs.length() == 0) {
                 val code = root.optInt("code", -1)
                 val msg = root.optString("message").ifBlank { root.optString("msg") }
                 return@withContext Result.failure(
-                    Exception("相似歌曲没有返回数据（code=$code${if (msg.isBlank()) "" else " $msg"}）")
+                    Exception(AppLocaleManager.getString(R.string.ui_no_similar_song_data_returned_code, (code).toString(), (if (msg.isBlank()) "" else " $msg").toString()))
                 )
             }
             val songIds = buildList {
@@ -210,7 +213,7 @@ class PersonalFmApi @Inject constructor(
                     if (id > 0 && id != songId) add(id)
                 }
             }
-            if (songIds.isEmpty()) return@withContext Result.failure(Exception("没有找到相似歌曲"))
+            if (songIds.isEmpty()) return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_no_similar_songs_found)))
             Result.success(songIds)
         } catch (t: Throwable) {
             Timber.e(t, "$TAG: fetchSimilarSongIds failed")
@@ -279,14 +282,14 @@ class PersonalFmApi @Inject constructor(
                 Timber.d("$TAG: Fetching song details for ${songIds.size} songs")
                 syncCookieToSession(cookie)
                 val map = NcmApi.songDetail(songIds.map { it.toString() }).getOrNull()
-                    ?: return@withContext Result.failure(Exception("song/detail 请求失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_song_detail)))
                 val root = ncmMapToJson(map)
-                    ?: return@withContext Result.failure(Exception("song/detail 响应解析失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_song_detail_response)))
 
                 val songsArray = root.optJSONArray("songs")
                 if (songsArray == null || songsArray.length() == 0) {
                     Timber.w("$TAG: song/detail 响应无 songs 字段, keys=${root.keys().asSequence().toList()}")
-                    return@withContext Result.failure(Exception("song/detail 响应无歌曲数据"))
+                    return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_no_song_data_in_song_detail_response)))
                 }
 
                 val details = mutableListOf<PersonalFmSongDetail>()
@@ -348,7 +351,7 @@ class PersonalFmApi @Inject constructor(
     suspend fun likeSong(neteaseSongId: Long, like: Boolean, cookie: String): Result<Boolean> {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             if (cookie.isBlank()) {
-                return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法同步红心"))
+                return@withContext Result.failure<Boolean>(IllegalStateException(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_to_sync_likes)))
             }
             try {
                 Timber.d("$TAG: likeSong id=$neteaseSongId like=$like")
@@ -424,10 +427,10 @@ class PersonalFmApi @Inject constructor(
     suspend fun sendComment(type: Int, id: Long, content: String, cookie: String): Result<Long> {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             if (cookie.isBlank()) {
-                return@withContext Result.failure<Long>(IllegalStateException("网易云未登录，无法发送评论"))
+                return@withContext Result.failure<Long>(IllegalStateException(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_to_post_comments)))
             }
             if (content.isBlank()) {
-                return@withContext Result.failure<Long>(IllegalArgumentException("评论内容不能为空"))
+                return@withContext Result.failure<Long>(IllegalArgumentException(AppLocaleManager.getString(R.string.ui_comment_cannot_be_empty)))
             }
             // 官方接口优先（走 App 自带 weapi 客户端）
             // ⚡ 返回新评论的 commentId（官方响应 data.commentId），供评论页即时插入展示；
@@ -444,7 +447,7 @@ class PersonalFmApi @Inject constructor(
                 val newId = extractNewCommentId(root)
                 Timber.d("$TAG: sendComment type=$type id=$id success=$success code=${root?.optInt("code")} newId=$newId")
                 if (success) Result.success(newId)
-                else Result.failure(IllegalStateException("官方接口返回 code=${root?.optInt("code")}"))
+                else Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_official_api_returned_code, (root?.optInt("code")).toString())))
             } catch (t: Throwable) {
                 Timber.e(t, "$TAG: sendComment 官方接口失败，尝试 young1024 兜底 type=$type id=$id")
                 Result.failure(t)
@@ -454,7 +457,7 @@ class PersonalFmApi @Inject constructor(
             // young1024 兜底：/comment?t=1&type=x&id=x&content=x（响应不含评论 id，返回 0）
             val fallback = fetchYoung1024CommentAction(type, id, t = 1, content = content, cookie = cookie)
             if (fallback.getOrDefault(false)) Result.success(0L)
-            else Result.failure(fallback.exceptionOrNull() ?: IllegalStateException("发送评论失败"))
+            else Result.failure(fallback.exceptionOrNull() ?: IllegalStateException(AppLocaleManager.getString(R.string.ui_could_not_send_comment)))
         }
     }
 
@@ -478,7 +481,7 @@ class PersonalFmApi @Inject constructor(
     suspend fun deleteComment(type: Int, id: Long, commentId: Long, cookie: String): Result<Boolean> {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             if (cookie.isBlank()) {
-                return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法删除评论"))
+                return@withContext Result.failure<Boolean>(IllegalStateException(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_to_delete_comments)))
             }
             // 官方接口优先（走 App 自带 weapi 客户端）
             val primary = try {
@@ -516,7 +519,7 @@ class PersonalFmApi @Inject constructor(
     suspend fun likeComment(type: Int, id: Long, cid: Long, like: Boolean, cookie: String): Result<Boolean> {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             if (cookie.isBlank()) {
-                return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法点赞"))
+                return@withContext Result.failure<Boolean>(IllegalStateException(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_to_like_comments)))
             }
             // 官方接口优先（走 App 自带 weapi 客户端）
             val primary = try {
@@ -556,10 +559,10 @@ class PersonalFmApi @Inject constructor(
     suspend fun replyComment(type: Int, id: Long, commentId: Long, content: String, cookie: String): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             if (cookie.isBlank()) {
-                return@withContext Result.failure<Boolean>(IllegalStateException("网易云未登录，无法回复评论"))
+                return@withContext Result.failure<Boolean>(IllegalStateException(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_to_reply_to_comments)))
             }
             if (content.isBlank()) {
-                return@withContext Result.failure<Boolean>(IllegalArgumentException("回复内容不能为空"))
+                return@withContext Result.failure<Boolean>(IllegalArgumentException(AppLocaleManager.getString(R.string.ui_reply_cannot_be_empty)))
             }
             // 官方接口优先（走 App 自带 weapi 客户端）
             val primary = try {
@@ -619,7 +622,7 @@ class PersonalFmApi @Inject constructor(
                         "time" to time.toString(),
                         "limit" to limit.toString(),
                     ),
-                ) ?: throw Exception("楼层接口无响应")
+                ) ?: throw Exception(AppLocaleManager.getString(R.string.ui_replies_api_returned_no_response))
                 val data = root.optJSONObject("data") ?: root
                 val arr = extractFloorArray(data)
                 val out = ArrayList<com.theveloper.pixelplay.data.lx.NeteaseComment>(arr.length())
@@ -744,14 +747,14 @@ class PersonalFmApi @Inject constructor(
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
                 Timber.w("$TAG: young1024 楼层评论兜底请求失败: ${response.code}")
-                return@withContext Result.failure(Exception("young1024 楼层评论兜底请求失败: ${response.code}"))
+                return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_fallback_replies_request_failed, (response.code).toString())))
             }
             val body = response.body?.string()
-                ?: return@withContext Result.failure(Exception("young1024 楼层评论兜底响应为空"))
+                ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_empty_fallback_replies_response)))
             val root = JSONObject(body)
             if (root.optInt("code", -1) != 200) {
                 Timber.w("$TAG: young1024 楼层评论兜底返回非 200: ${root.optInt("code")}")
-                return@withContext Result.failure(Exception("young1024 楼层评论兜底返回非 200"))
+                return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_fallback_replies_api_returned_an_unsuccessful_response)))
             }
             val data = root.optJSONObject("data") ?: root
             val arr = extractFloorArray(data)
@@ -796,10 +799,10 @@ class PersonalFmApi @Inject constructor(
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
                 Timber.w("$TAG: young1024 评论写操作兜底请求失败: ${response.code}")
-                return@withContext Result.failure(Exception("young1024 评论写操作兜底请求失败: ${response.code}"))
+                return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_fallback_comment_request_failed, (response.code).toString())))
             }
             val body = response.body?.string()
-                ?: return@withContext Result.failure(Exception("young1024 评论写操作兜底响应为空"))
+                ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_empty_fallback_comment_response)))
             val root = JSONObject(body)
             val code = root.optInt("code", -1)
             Timber.d("$TAG: young1024 评论写操作兜底结果 t=$t code=$code")
@@ -835,10 +838,10 @@ class PersonalFmApi @Inject constructor(
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
                 Timber.w("$TAG: young1024 点赞兜底请求失败: ${response.code}")
-                return@withContext Result.failure(Exception("young1024 点赞兜底请求失败: ${response.code}"))
+                return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_fallback_like_request_failed, (response.code).toString())))
             }
             val body = response.body?.string()
-                ?: return@withContext Result.failure(Exception("young1024 点赞兜底响应为空"))
+                ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_empty_fallback_like_response)))
             val root = JSONObject(body)
             val code = root.optInt("code", -1)
             Timber.d("$TAG: young1024 点赞兜底结果 t=$t code=$code")
@@ -872,9 +875,9 @@ class PersonalFmApi @Inject constructor(
                     order = order,
                     limit = limit,
                     offset = offset,
-                ).getOrNull() ?: return@withContext Result.failure(Exception("artist/songs 请求失败"))
+                ).getOrNull() ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_artist_songs)))
                 val root = ncmMapToJson(map)
-                    ?: return@withContext Result.failure(Exception("artist/songs 响应解析失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_artist_songs_response)))
 
                 Timber.d("$TAG: /artist/songs response keys: ${root.keys().asSequence().toList()}")
 
@@ -961,9 +964,9 @@ class PersonalFmApi @Inject constructor(
                     id = artistId.toString(),
                     limit = limit,
                     offset = offset,
-                ).getOrNull() ?: return@withContext Result.failure(Exception("artist/album 请求失败"))
+                ).getOrNull() ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_artist_album)))
                 val root = ncmMapToJson(map)
-                    ?: return@withContext Result.failure(Exception("artist/album 响应解析失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_artist_album_response)))
 
                 Timber.d("$TAG: /artist/album response keys: ${root.keys().asSequence().toList()}")
 
@@ -1020,9 +1023,9 @@ class PersonalFmApi @Inject constructor(
                 Timber.d("$TAG: Fetching album detail for albumId=$albumId")
                 syncCookieToSession(cookie)
                 val map = NcmApi.full.album(albumId.toString()).getOrNull()
-                    ?: return@withContext Result.failure(Exception("album 请求失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_album)))
                 val root = ncmMapToJson(map)
-                    ?: return@withContext Result.failure(Exception("album 响应解析失败"))
+                    ?: return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_could_not_parse_album_response)))
 
                 Timber.d("$TAG: /album response keys: ${root.keys().asSequence().toList()}")
 
@@ -1220,7 +1223,7 @@ class PersonalFmApi @Inject constructor(
                 ).getOrNull()
                 val fallbackRoot = ncmMapToJson(fallbackMap)
                 if (fallbackRoot == null) {
-                    return@withContext Result.failure(Exception("artist/songs 请求失败"))
+                    return@withContext Result.failure(Exception(AppLocaleManager.getString(R.string.ui_request_failed_artist_songs)))
                 }
 
                 // 尝试从 artist 字段获取，若不存在则从第一首歌的 ar 数组提取

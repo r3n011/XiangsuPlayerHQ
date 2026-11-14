@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.lx
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.moriafly.ncm.NcmApi
@@ -953,7 +956,7 @@ class LxSearchApi @Inject constructor(
 
     private fun parseSongInfo(obj: JSONObject): LxSongInfo {
         val id = obj.optString("id", "")
-        val name = obj.optString("name", "未知歌曲")
+        val name = obj.optString("name", AppLocaleManager.getString(R.string.ui_unknown_song))
 
         // 兼容多种响应结构：ar/al (官方/NCM SDK), artists/album (CloudSearch/BTWOA)
         val artists = obj.optJSONArray("ar") ?: obj.optJSONArray("artists")
@@ -966,9 +969,9 @@ class LxSearchApi @Inject constructor(
                         append(artistObj.optString("name", ""))
                     }
                 }
-            }.ifBlank { "未知歌手" }
+            }.ifBlank { AppLocaleManager.getString(R.string.ui_unknown_artist) }
         } else {
-            "未知歌手"
+            AppLocaleManager.getString(R.string.ui_unknown_artist)
         }
         // 多个歌手时按顺序收集歌手 ID
         val artistIds = if (artists != null) {

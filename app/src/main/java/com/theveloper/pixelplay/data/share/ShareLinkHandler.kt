@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.share
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import com.theveloper.pixelplay.data.lx.LxJsEngine
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.repository.MusicRepository
@@ -108,15 +111,15 @@ class ShareLinkHandler @Inject constructor(
                 "qqMusic" -> importFromQQMusic(item)
                 "navidrome", "jellyfin" -> {
                     // 这些需要服务器连接，仅本地匹配
-                    OnlineImportResult(item, null, "需要连接到 ${item.sc} 服务器")
+                    OnlineImportResult(item, null, AppLocaleManager.getString(R.string.ui_connect_to_the_server_first, (item.sc).toString()))
                 }
                 "cloudLx" -> importBySearch(item, "wy")
-                "local" -> OnlineImportResult(item, null, "本地歌曲无法跨设备导入")
+                "local" -> OnlineImportResult(item, null, AppLocaleManager.getString(R.string.ui_local_songs_cannot_be_imported_across_devices))
                 else -> importBySearch(item, null)
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Online import failed for ${item.t}")
-            OnlineImportResult(item, null, e.message ?: "导入失败")
+            OnlineImportResult(item, null, e.message ?: AppLocaleManager.getString(R.string.ui_import_failed))
         }
     }
 
@@ -148,7 +151,7 @@ class ShareLinkHandler @Inject constructor(
         return if (saved != null) {
             OnlineImportResult(item, saved)
         } else {
-            OnlineImportResult(item, null, "保存失败")
+            OnlineImportResult(item, null, AppLocaleManager.getString(R.string.ui_could_not_save))
         }
     }
 
@@ -187,7 +190,7 @@ class ShareLinkHandler @Inject constructor(
             return OnlineImportResult(item, saved)
         }
 
-        return OnlineImportResult(item, null, "未找到匹配的在线歌曲")
+        return OnlineImportResult(item, null, AppLocaleManager.getString(R.string.ui_no_matching_online_song_found))
     }
 }
 

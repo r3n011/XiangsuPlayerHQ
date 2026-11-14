@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -302,7 +304,7 @@ internal fun LyricShareDialog(
                         scope.launch {
                             runCatching {
                                 shareLyricImage(context, title, artist, artworkUrl, chosenLines)
-                            }.onFailure { error = it.message ?: "歌词图片生成失败" }
+                            }.onFailure { error = it.message ?: AppLocaleManager.getString(R.string.ui_could_not_create_lyrics_image) }
                             generating = false
                         }
                     },
@@ -366,7 +368,7 @@ internal suspend fun shareLyricImage(
     artworkUrl: String?,
     lines: List<String>,
 ) {
-    require(lines.isNotEmpty()) { "请至少选择一行歌词" }
+    require(lines.isNotEmpty()) { AppLocaleManager.getString(R.string.ui_select_at_least_one_line_of_lyrics) }
     val uri = withContext(Dispatchers.IO) {
         val width = 1080
         val margin = 72f

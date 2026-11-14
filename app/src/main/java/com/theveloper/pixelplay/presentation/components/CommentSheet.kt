@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -192,7 +196,7 @@ fun CommentSheet(
             }
         } catch (t: Throwable) {
             Timber.e(t, "加载楼中楼失败 commentId=$commentId")
-            repliesError.value = repliesError.value + (commentId to (t.message ?: "加载失败"))
+            repliesError.value = repliesError.value + (commentId to (t.message ?: AppLocaleManager.getString(R.string.ui_failed_to_load)))
         } finally {
             repliesLoading.value = repliesLoading.value - commentId
         }
@@ -240,7 +244,7 @@ fun CommentSheet(
             likedCountState.value = likedCountState.value + (cid to prevCount)
             android.widget.Toast.makeText(
                 context,
-                if (!isLoggedIn) "点赞失败：请先登录网易云账户" else "点赞失败：请检查网易云登录状态或网络",
+                if (!isLoggedIn) AppLocaleManager.getString(R.string.ui_could_not_like_comment_sign_in_to_netease_first) else AppLocaleManager.getString(R.string.ui_could_not_like_comment_check_your_netease_sign_in_and),
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
@@ -264,12 +268,12 @@ fun CommentSheet(
             commentId = newCommentId.takeIf { it > 0L } ?: -System.currentTimeMillis(),
             content = content,
             time = System.currentTimeMillis(),
-            timeStr = "刚刚",
+            timeStr = AppLocaleManager.getString(R.string.ui_residue_time_ago_just_now),
             likedCount = 0,
             liked = false,
             user = NeteaseCommentUser(
                 userId = currentUserId,
-                nickname = me?.nickname.orEmpty().ifBlank { "我" },
+                nickname = me?.nickname.orEmpty().ifBlank { AppLocaleManager.getString(R.string.ui_me) },
                 avatarUrl = me?.avatarUrl.orEmpty()
             )
         )
@@ -314,7 +318,7 @@ fun CommentSheet(
     // —— 首次加载 ——
     LaunchedEffect(songId) {
         if (songId.isBlank()) {
-            errorState.value = "歌曲 ID 为空，无法加载评论"
+            errorState.value = AppLocaleManager.getString(R.string.ui_song_id_is_missing_comments_cannot_be_loaded)
             isInitialLoadingState.value = false
             return@LaunchedEffect
         }
@@ -347,7 +351,7 @@ fun CommentSheet(
             likedCountState.value = countMap
         } catch (t: Throwable) {
             Timber.e(t, "首次加载评论失败")
-            errorState.value = t.message ?: "加载失败"
+            errorState.value = t.message ?: AppLocaleManager.getString(R.string.ui_failed_to_load)
         } finally {
             isLoadingState.value = false
             isInitialLoadingState.value = false
@@ -461,7 +465,7 @@ fun CommentSheet(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "评论",
+                            text = localizedStringResource(R.string.ui_comments),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = colorScheme.onSurface,
@@ -503,7 +507,7 @@ fun CommentSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "回复 @${replyToNickname.value}",
+                            text = localizedStringResource(R.string.ui_reply_to_c5d43b0, (replyToNickname.value).toString()),
                             style = MaterialTheme.typography.labelMedium,
                             color = colorScheme.primary,
                             modifier = Modifier.weight(1f)
@@ -517,7 +521,7 @@ fun CommentSheet(
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                         ) {
                             Text(
-                                text = "取消回复",
+                                text = localizedStringResource(R.string.ui_cancel_reply),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = colorScheme.onSurfaceVariant
                             )
@@ -588,9 +592,9 @@ fun CommentSheet(
                                                 if (commentText.value.isEmpty()) {
                                                     Text(
                                                         text = if (replyToNickname.value != null)
-                                                            "回复 @${replyToNickname.value}:"
+                                                            localizedStringResource(R.string.ui_reply_to_f619ea6, (replyToNickname.value).toString())
                                                         else
-                                                            "说点什么...",
+                                                            localizedStringResource(R.string.ui_say_something),
                                                         style = MaterialTheme.typography.bodyMedium,
                                                         color = colorScheme.primary
                                                     )
@@ -628,7 +632,7 @@ fun CommentSheet(
                                                                 loadReplies(replyId)
                                                             }
                                                         } else {
-                                                            sendError.value = "发送失败，请检查网易云登录状态"
+                                                            sendError.value = AppLocaleManager.getString(R.string.ui_could_not_send_check_your_netease_sign_in)
                                                         }
                                                     } else {
                                                         // ⚡ 主评论：本地即时插入 + 滚动定位 + 高亮两次。
@@ -649,12 +653,12 @@ fun CommentSheet(
                                                                     .firstOrNull()?.commentId
                                                             }
                                                         } else {
-                                                            sendError.value = "发送失败，请检查网易云登录状态"
+                                                            sendError.value = AppLocaleManager.getString(R.string.ui_could_not_send_check_your_netease_sign_in)
                                                         }
                                                     }
                                                 } catch (t: Throwable) {
                                                     Timber.e(t, "发送评论失败")
-                                                    sendError.value = t.message ?: "发送失败"
+                                                    sendError.value = t.message ?: AppLocaleManager.getString(R.string.ui_could_not_send)
                                                 } finally {
                                                     isSending.value = false
                                                 }
@@ -681,7 +685,7 @@ fun CommentSheet(
                             }
                         } else {
                             Text(
-                                text = "请先在设置中登录网易云账户后发表评论",
+                                text = localizedStringResource(R.string.ui_sign_in_to_netease_in_settings_to_post_a_comment),
                                 color = colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 12.dp)
@@ -714,7 +718,7 @@ fun CommentSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = errorState.value ?: "加载失败",
+                        text = errorState.value ?: localizedStringResource(R.string.ui_failed_to_load),
                         color = colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -733,7 +737,7 @@ fun CommentSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "暂无评论，快来抢沙发~",
+                            text = localizedStringResource(R.string.ui_no_comments_yet_be_the_first),
                             color = colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -754,7 +758,7 @@ fun CommentSheet(
                         if (hasHot) {
                             item(key = "hot_header") {
                                 SectionHeader(
-                                    text = "精彩评论 (${hotCommentsState.value.size})",
+                                    text = AppLocaleManager.getString(R.string.ui_popular_comments, (hotCommentsState.value.size).toString()),
                                     color = colorScheme.primary,
                                     onSurfaceColor = colorScheme.onPrimaryContainer,
                                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
@@ -832,7 +836,7 @@ fun CommentSheet(
                         if (hasRegular) {
                             item(key = "regular_header") {
                                 SectionHeader(
-                                    text = "最新评论",
+                                    text = AppLocaleManager.getString(R.string.ui_newest_comments),
                                     color = colorScheme.primary,
                                     onSurfaceColor = colorScheme.onPrimaryContainer,
                                     modifier = Modifier.padding(
@@ -927,7 +931,7 @@ fun CommentSheet(
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Text(
-                                        text = "正在加载更多…",
+                                        text = localizedStringResource(R.string.ui_loading_more),
                                         color = colorScheme.onSurfaceVariant,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
@@ -944,7 +948,7 @@ fun CommentSheet(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "— 已经到底啦 —",
+                                        text = localizedStringResource(R.string.ui_you_have_reached_the_end),
                                         color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                         style = MaterialTheme.typography.bodySmall
                                     )
@@ -1076,7 +1080,7 @@ private fun CommentRow(
             // —— headline + body + footer ——
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = comment.user.nickname.ifBlank { "匿名用户" },
+                    text = comment.user.nickname.ifBlank { AppLocaleManager.getString(R.string.ui_anonymous_user) },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = onSurface,
@@ -1116,13 +1120,13 @@ private fun CommentRow(
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Reply,
-                                contentDescription = "回复",
+                                contentDescription = localizedStringResource(R.string.ui_reply),
                                 tint = onSurfaceVariant,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "回复",
+                                text = localizedStringResource(R.string.ui_reply),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = onSurfaceVariant
                             )
@@ -1148,9 +1152,9 @@ private fun CommentRow(
                             Spacer(modifier = Modifier.width(2.dp))
                             Text(
                                 text = when {
-                                    isRepliesExpanded -> "收起回复"
-                                    comment.subReplyCount > 0 -> "查看回复 (${comment.subReplyCount})"
-                                    else -> "查看回复"
+                                    isRepliesExpanded -> AppLocaleManager.getString(R.string.ui_hide_replies)
+                                    comment.subReplyCount > 0 -> AppLocaleManager.getString(R.string.ui_view_replies, (comment.subReplyCount).toString())
+                                    else -> AppLocaleManager.getString(R.string.ui_view_replies_38bc58c)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
@@ -1167,7 +1171,7 @@ private fun CommentRow(
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "删除",
+                                text = localizedStringResource(R.string.ui_residue_button_delete),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = onSurfaceVariant
                             )
@@ -1241,7 +1245,7 @@ private fun CommentRow(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "加载回复中…",
+                            text = localizedStringResource(R.string.ui_loading_replies),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1255,7 +1259,7 @@ private fun CommentRow(
                     )
                 } else if (replies.isEmpty()) {
                     Text(
-                        text = "暂无回复",
+                        text = localizedStringResource(R.string.ui_no_replies_yet),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 2.dp, bottom = 4.dp)
@@ -1297,9 +1301,9 @@ private fun CommentRow(
                             }
                             Text(
                                 text = when {
-                                    isRepliesLoading -> "加载中…"
-                                    !repliesError.isNullOrBlank() -> "加载失败，点击重试"
-                                    else -> "加载更多回复"
+                                    isRepliesLoading -> AppLocaleManager.getString(R.string.ui_loading)
+                                    !repliesError.isNullOrBlank() -> AppLocaleManager.getString(R.string.ui_residue_toplist_loading_failed)
+                                    else -> AppLocaleManager.getString(R.string.ui_load_more_replies)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
@@ -1431,7 +1435,7 @@ private fun FloorReplyItem(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = reply.user.nickname.ifBlank { "匿名用户" },
+                    text = reply.user.nickname.ifBlank { AppLocaleManager.getString(R.string.ui_anonymous_user) },
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     color = onSurfaceVariant
@@ -1439,7 +1443,7 @@ private fun FloorReplyItem(
                 if (reply.beReplied.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "回复 @${reply.beReplied.first().nickname}",
+                        text = localizedStringResource(R.string.ui_reply_to_c5d43b0, (reply.beReplied.first().nickname).toString()),
                         style = MaterialTheme.typography.labelSmall,
                         color = primaryColor,
                         maxLines = 1,

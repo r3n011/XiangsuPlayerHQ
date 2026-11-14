@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.repository
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -115,14 +118,14 @@ class DotImageRepository @Inject constructor(
                         val summary = playbackStatsRepository.loadSummary(StatsTimeRange.WEEK, songs)
                         DotScreenRenderer.createTopSongsBitmap(
                             songs = summary.topSongs,
-                            title = "最常听歌曲"
+                            title = AppLocaleManager.getString(R.string.ui_top_songs)
                         )
                     }
                     DotDisplayMode.TOP_ARTISTS -> {
                         val summary = playbackStatsRepository.loadSummary(StatsTimeRange.WEEK, songs)
                         DotScreenRenderer.createTopArtistsBitmap(
                             artists = summary.topArtists,
-                            title = "最常听艺术家"
+                            title = AppLocaleManager.getString(R.string.ui_top_artists)
                         )
                     }
                     DotDisplayMode.TIME_DISTRIBUTION -> {
@@ -130,7 +133,7 @@ class DotImageRepository @Inject constructor(
                         summary.dayListeningDistribution?.let {
                             DotScreenRenderer.createTimeDistributionBitmap(
                                 distribution = it,
-                                title = "时段分布"
+                                title = AppLocaleManager.getString(R.string.ui_listening_times)
                             )
                         } ?: DotScreenRenderer.createStatsOverviewBitmap(summary)
                     }

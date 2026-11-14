@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -207,7 +210,7 @@ fun DotDeviceSettingsScreen(
         }
 
         CollapsibleCommonTopBar(
-            title = "Dot 墨水屏",
+            title = AppLocaleManager.getString(R.string.ui_dot_e_ink_display),
             collapseFraction = collapseFraction,
             headerHeight = currentTopBarHeightDp,
             onBackClick = onBackClick
@@ -248,7 +251,7 @@ private fun DotDeviceSettingsCard(
                 value = apiKey,
                 onValueChange = onApiKeyChange,
                 label = { Text(stringResource(R.string.dot_device_api_key_label)) },
-                placeholder = { Text(stringResource(R.string.dot_device_api_key_hint)) },
+                placeholder = { Text(localizedStringResource(R.string.dot_device_api_key_hint)) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 modifier = Modifier.fillMaxWidth(),
@@ -259,7 +262,7 @@ private fun DotDeviceSettingsCard(
                 value = deviceId,
                 onValueChange = onDeviceIdChange,
                 label = { Text(stringResource(R.string.dot_device_id_label)) },
-                placeholder = { Text(stringResource(R.string.dot_device_id_hint)) },
+                placeholder = { Text(localizedStringResource(R.string.dot_device_id_hint)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -276,13 +279,13 @@ private fun DotDeviceSettingsCard(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.dot_device_auto_push_title),
+                            text = localizedStringResource(R.string.dot_device_auto_push_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = stringResource(R.string.dot_device_auto_push_description),
+                            text = localizedStringResource(R.string.dot_device_auto_push_description),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -296,7 +299,7 @@ private fun DotDeviceSettingsCard(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "显示模式",
+                    text = localizedStringResource(R.string.ui_display_mode),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -432,7 +435,7 @@ private fun DotDeviceSettingsCard(
                     }
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
-                        text = if (isTesting) "测试中" else "测试连接",
+                        text = if (isTesting) localizedStringResource(R.string.ui_testing) else localizedStringResource(R.string.ui_test_connection),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -460,7 +463,7 @@ private fun DotDeviceSettingsCard(
                     }
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
-                        text = if (isPushing) "推送中" else "立即推送",
+                        text = if (isPushing) localizedStringResource(R.string.ui_sending) else localizedStringResource(R.string.ui_send_now),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -477,7 +480,7 @@ private fun DotDeviceSettingsCard(
                         shape = racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape(18.dp, 60)
                     ) {
                         Text(
-                            text = stringResource(R.string.dot_device_clear),
+                            text = localizedStringResource(R.string.dot_device_clear),
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -487,7 +490,7 @@ private fun DotDeviceSettingsCard(
                         shape = racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape(18.dp, 60)
                     ) {
                         Text(
-                            text = stringResource(R.string.dot_device_save),
+                            text = localizedStringResource(R.string.dot_device_save),
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -499,13 +502,13 @@ private fun DotDeviceSettingsCard(
 
 private fun getDisplayModeName(mode: DotDisplayMode): String {
     return when (mode) {
-        DotDisplayMode.NOW_PLAYING -> "当前播放"
-        DotDisplayMode.TODAY_STATS -> "今日听歌"
-        DotDisplayMode.MONTH_STATS -> "本月统计"
-        DotDisplayMode.ALL_TIME_STATS -> "累计统计"
-        DotDisplayMode.TOP_SONGS -> "最常听歌曲"
-        DotDisplayMode.TOP_ARTISTS -> "最常听艺术家"
-        DotDisplayMode.TIME_DISTRIBUTION -> "时段分布"
+        DotDisplayMode.NOW_PLAYING -> AppLocaleManager.getString(R.string.ui_now_playing)
+        DotDisplayMode.TODAY_STATS -> AppLocaleManager.getString(R.string.ui_listening_today)
+        DotDisplayMode.MONTH_STATS -> AppLocaleManager.getString(R.string.ui_monthly_statistics)
+        DotDisplayMode.ALL_TIME_STATS -> AppLocaleManager.getString(R.string.ui_all_time_statistics)
+        DotDisplayMode.TOP_SONGS -> AppLocaleManager.getString(R.string.ui_top_songs)
+        DotDisplayMode.TOP_ARTISTS -> AppLocaleManager.getString(R.string.ui_top_artists)
+        DotDisplayMode.TIME_DISTRIBUTION -> AppLocaleManager.getString(R.string.ui_listening_times)
     }
 }
 
@@ -532,7 +535,7 @@ private fun DotScreenPreview(displayMode: DotDisplayMode) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "投屏预览",
+                    text = localizedStringResource(R.string.ui_display_preview),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -602,13 +605,13 @@ private fun NowPlayingPreview(sf: Float) {
         Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "歌曲名称",
+                text = localizedStringResource(R.string.ui_song_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = androidx.compose.ui.graphics.Color.Black
             )
             Text(
-                text = "艺术家名",
+                text = localizedStringResource(R.string.ui_artist_name),
                 fontSize = 14.sp,
                 color = androidx.compose.ui.graphics.Color(0xFF666666)
             )
@@ -635,7 +638,7 @@ private fun NowPlayingPreview(sf: Float) {
     }
     Spacer(modifier = Modifier.height(6.dp))
     Text(
-        text = "▶ 播放中",
+        text = localizedStringResource(R.string.ui_playing),
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         color = androidx.compose.ui.graphics.Color.Black
@@ -645,18 +648,18 @@ private fun NowPlayingPreview(sf: Float) {
 @Composable
 private fun StatsPreview(sf: Float) {
     Text(
-        text = "听歌统计",
+        text = localizedStringResource(R.string.ui_listening_statistics),
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold,
         color = androidx.compose.ui.graphics.Color.Black
     )
     Text(
-        text = "今日",
+        text = localizedStringResource(R.string.ui_today),
         fontSize = 10.sp,
         color = androidx.compose.ui.graphics.Color(0xFF888888)
     )
     Text(
-        text = "12小时34分",
+        text = localizedStringResource(R.string.ui_12_h_34_min),
         fontSize = 26.sp,
         fontWeight = FontWeight.Bold,
         color = androidx.compose.ui.graphics.Color.Black
@@ -665,16 +668,16 @@ private fun StatsPreview(sf: Float) {
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
             Text("156", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
-            Text("播放次数", fontSize = 9.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
+            Text(localizedStringResource(R.string.ui_residue_stats_timeline_metric_play_count), fontSize = 9.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text("2小时", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
-            Text("平均每日", fontSize = 9.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
+            Text(localizedStringResource(R.string.ui_2_h), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
+            Text(localizedStringResource(R.string.ui_daily_average), fontSize = 9.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
         }
     }
     Spacer(modifier = Modifier.height(4.dp))
-    Text("最常听歌曲", fontSize = 9.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
-    Text("歌曲名称 · 艺术家 · 50次", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
+    Text(localizedStringResource(R.string.ui_top_songs), fontSize = 9.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
+    Text(localizedStringResource(R.string.ui_song_title_artist_50_plays), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
     Spacer(modifier = Modifier.height(6.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -696,13 +699,13 @@ private fun StatsPreview(sf: Float) {
 @Composable
 private fun TopSongsPreview(sf: Float) {
     Text(
-        text = "最常听歌曲",
+        text = localizedStringResource(R.string.ui_top_songs),
         fontSize = 16.sp,
         fontWeight = FontWeight.Bold,
         color = androidx.compose.ui.graphics.Color.Black
     )
     Spacer(modifier = Modifier.height(6.dp))
-    val songs = listOf("歌曲名称一" to "艺术家一 · 150次", "歌曲名称二" to "艺术家二 · 120次", "歌曲名称三" to "艺术家三 · 98次", "歌曲名称四" to "艺术家四 · 76次")
+    val songs = listOf(AppLocaleManager.getString(R.string.ui_song_one) to AppLocaleManager.getString(R.string.ui_artist_one_150_plays), AppLocaleManager.getString(R.string.ui_song_two) to AppLocaleManager.getString(R.string.ui_artist_two_120_plays), AppLocaleManager.getString(R.string.ui_song_three) to AppLocaleManager.getString(R.string.ui_artist_three_98_plays), AppLocaleManager.getString(R.string.ui_song_four) to AppLocaleManager.getString(R.string.ui_artist_four_76_plays))
     songs.forEachIndexed { idx, (title, desc) ->
         Row(
             modifier = Modifier
@@ -728,13 +731,13 @@ private fun TopSongsPreview(sf: Float) {
 @Composable
 private fun TopArtistsPreview(sf: Float) {
     Text(
-        text = "最常听艺术家",
+        text = localizedStringResource(R.string.ui_top_artists),
         fontSize = 16.sp,
         fontWeight = FontWeight.Bold,
         color = androidx.compose.ui.graphics.Color.Black
     )
     Spacer(modifier = Modifier.height(6.dp))
-    val artists = listOf("艺术家一" to "30首歌 · 200次 · 24小时", "艺术家二" to "25首歌 · 180次 · 20小时", "艺术家三" to "18首歌 · 150次 · 16小时", "艺术家四" to "12首歌 · 100次 · 10小时")
+    val artists = listOf(AppLocaleManager.getString(R.string.ui_artist_one) to AppLocaleManager.getString(R.string.ui_30_songs_200_plays_24_h), AppLocaleManager.getString(R.string.ui_artist_two) to AppLocaleManager.getString(R.string.ui_25_songs_180_plays_20_h), AppLocaleManager.getString(R.string.ui_artist_three) to AppLocaleManager.getString(R.string.ui_18_songs_150_plays_16_h), AppLocaleManager.getString(R.string.ui_artist_four) to AppLocaleManager.getString(R.string.ui_12_songs_100_plays_10_h))
     artists.forEachIndexed { idx, (name, detail) ->
         Row(
             modifier = Modifier
@@ -760,7 +763,7 @@ private fun TopArtistsPreview(sf: Float) {
 @Composable
 private fun TimeDistributionPreview(sf: Float) {
     Text(
-        text = "时段分布",
+        text = localizedStringResource(R.string.ui_listening_times),
         fontSize = 16.sp,
         fontWeight = FontWeight.Bold,
         color = androidx.compose.ui.graphics.Color.Black
@@ -794,8 +797,8 @@ private fun TimeDistributionPreview(sf: Float) {
         Text("23h", fontSize = 9.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
     }
     Spacer(modifier = Modifier.height(4.dp))
-    Text("听歌高峰", fontSize = 10.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
-    Text("17:00 · 1小时30分", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
+    Text(localizedStringResource(R.string.ui_peak_listening_time), fontSize = 10.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
+    Text(localizedStringResource(R.string.ui_17_00_1_h_30_min), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
 }
 
 data class DotDeviceTestResult(
@@ -884,13 +887,13 @@ class DotDeviceSettingsViewModel @Inject constructor(
             val testResult = if (result.isSuccess) {
                 DotDeviceTestResult(
                     success = true,
-                    message = "连接成功"
+                    message = AppLocaleManager.getString(R.string.ui_connection_successful)
                 )
             } else {
-                val errorMsg = result.exceptionOrNull()?.message ?: "未知错误"
+                val errorMsg = result.exceptionOrNull()?.message ?: AppLocaleManager.getString(R.string.ui_residue_error_unknown)
                 DotDeviceTestResult(
                     success = false,
-                    message = "连接失败: $errorMsg"
+                    message = AppLocaleManager.getString(R.string.ui_connection_failed, (errorMsg).toString())
                 )
             }
 
@@ -911,13 +914,13 @@ class DotDeviceSettingsViewModel @Inject constructor(
             val pushResult = if (result.isSuccess) {
                 DotDeviceTestResult(
                     success = true,
-                    message = "推送成功"
+                    message = AppLocaleManager.getString(R.string.ui_sent_successfully)
                 )
             } else {
-                val errorMsg = result.exceptionOrNull()?.message ?: "未知错误"
+                val errorMsg = result.exceptionOrNull()?.message ?: AppLocaleManager.getString(R.string.ui_residue_error_unknown)
                 DotDeviceTestResult(
                     success = false,
-                    message = "推送失败: $errorMsg"
+                    message = AppLocaleManager.getString(R.string.ui_could_not_send_dc40d00, (errorMsg).toString())
                 )
             }
 
@@ -937,7 +940,7 @@ class DotDeviceSettingsViewModel @Inject constructor(
 
             android.widget.Toast.makeText(
                 context,
-                "Dot 设备设置已保存",
+                AppLocaleManager.getString(R.string.ui_dot_display_settings_saved),
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
@@ -959,7 +962,7 @@ class DotDeviceSettingsViewModel @Inject constructor(
 
             android.widget.Toast.makeText(
                 context,
-                "Dot 设备设置已清除",
+                AppLocaleManager.getString(R.string.ui_dot_display_settings_cleared),
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }

@@ -453,6 +453,66 @@ val LyricsFontDisplayNames: Map<String, String> = mapOf(
     "CURSIVE" to "手写",
 ) + DOWNLOADABLE_FONTS.associate { it.key to it.displayName }
 
+/**
+ * 应用字体选项 — 名称 → FontFamily 的映射。
+ * ⚡ 只作用于歌词之外的软件界面（MaterialTheme.typography）；歌词字体独立设置，互不影响。
+ * "DEFAULT" → 主题默认（Google Sans Rounded）；
+ * "CUSTOM:<fileName>" → 用户导入的自定义字体（与歌词字体共用 filesDir/fonts/ 存储），
+ *   由 [resolveAppFontFamily] 按需加载。
+ */
+val AppFontFamilies: Map<String, FontFamily> = mapOf(
+    "DEFAULT" to GoogleSansRounded,
+    "MONTSERRAT" to MontserratFamily,
+    "SYSTEM_DEFAULT" to FontFamily.Default,
+    "SANS_SERIF" to FontFamily.SansSerif,
+    "SERIF" to FontFamily.Serif,
+    "MONOSPACE" to FontFamily.Monospace,
+)
+
+/** 应用字体显示名称（内置项；自定义字体以导入时的文件名展示）。 */
+val AppFontDisplayNames: Map<String, String> = mapOf(
+    "DEFAULT" to "Google Sans 圆体",
+    "MONTSERRAT" to "Montserrat",
+    "SYSTEM_DEFAULT" to "系统默认",
+    "SANS_SERIF" to "无衬线",
+    "SERIF" to "衬线",
+    "MONOSPACE" to "等宽",
+)
+
+/**
+ * 根据持久化的 key 解析应用字体，"DEFAULT" 或未知值都回落到主题默认字体。
+ * 支持 CUSTOM: 前缀的自定义字体（文件不存在 / 加载失败时同样回落默认）。
+ */
+fun resolveAppFontFamily(context: Context, key: String): FontFamily {
+    if (key.startsWith(CUSTOM_FONT_PREFIX, ignoreCase = true)) {
+        return customFontFamily(context, key) ?: GoogleSansRounded
+    }
+    return AppFontFamilies[key.uppercase()] ?: GoogleSansRounded
+}
+
+/**
+ * ⚡ 把应用字体套用到整套 Material 主题排版：所有字号样式统一替换 fontFamily，
+ *    字号 / 字重 / 行高 / 字距保持不变。
+ * 歌词界面不走 MaterialTheme.typography（有独立的 resolveLyricsFontFamily），不受影响。
+ */
+fun Typography.withAppFontFamily(family: FontFamily): Typography = copy(
+    displayLarge = displayLarge.copy(fontFamily = family),
+    displayMedium = displayMedium.copy(fontFamily = family),
+    displaySmall = displaySmall.copy(fontFamily = family),
+    headlineLarge = headlineLarge.copy(fontFamily = family),
+    headlineMedium = headlineMedium.copy(fontFamily = family),
+    headlineSmall = headlineSmall.copy(fontFamily = family),
+    titleLarge = titleLarge.copy(fontFamily = family),
+    titleMedium = titleMedium.copy(fontFamily = family),
+    titleSmall = titleSmall.copy(fontFamily = family),
+    bodyLarge = bodyLarge.copy(fontFamily = family),
+    bodyMedium = bodyMedium.copy(fontFamily = family),
+    bodySmall = bodySmall.copy(fontFamily = family),
+    labelLarge = labelLarge.copy(fontFamily = family),
+    labelMedium = labelMedium.copy(fontFamily = family),
+    labelSmall = labelSmall.copy(fontFamily = family)
+)
+
 // Tipografía - Usar fuentes amigables y modernas.
 // Considerar añadir fuentes personalizadas en res/font para un look más único.
 val Typography = Typography(

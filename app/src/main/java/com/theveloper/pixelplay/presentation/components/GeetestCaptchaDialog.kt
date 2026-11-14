@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.webkit.JavascriptInterface
@@ -73,7 +77,7 @@ fun GeetestCaptchaDialog(
             searchApi.getGeetestConfig(challenge.gt, challenge.challenge)
         }
         if (configJson == null) {
-            errorText = "人机验证初始化失败，请改用扫码登录"
+            errorText = AppLocaleManager.getString(R.string.ui_could_not_initialize_verification_use_qr_code_sign_in_instead)
         }
     }
 
@@ -86,12 +90,12 @@ fun GeetestCaptchaDialog(
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "人机验证",
+                        text = localizedStringResource(R.string.ui_human_verification),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { onFinishedState(null) }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "关闭", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Rounded.Close, contentDescription = localizedStringResource(R.string.ui_residue_lyrics_more_vibrant_off), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -122,7 +126,7 @@ fun GeetestCaptchaDialog(
                             )
                             Spacer(Modifier.height(12.dp))
                             TextButton(onClick = { onFinishedState(null) }) {
-                                Text("返回")
+                                Text(localizedStringResource(R.string.ui_residue_cd_back))
                             }
                         }
                     }

@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -446,9 +448,9 @@ fun rememberSettingsTips(uiState: SettingsUiState): List<SettingsTipData> {
                 category = SettingsCategory.APPEARANCE,
                 title = appearanceTitle,
                 text = if (uiState.appThemeMode == "DARK" || uiState.appThemeMode == "LIGHT") {
-                    "当前为「${if (uiState.appThemeMode == "DARK") "深色" else "浅色"}」主题，试试动态取色跟随封面变换风格"
+                    AppLocaleManager.getString(R.string.ui_your_current_theme_is_try_dynamic_colors_that_match_the, (if (uiState.appThemeMode == "DARK") AppLocaleManager.getString(R.string.ui_residue_onboarding_theme_dark) else AppLocaleManager.getString(R.string.ui_residue_onboarding_theme_light)).toString())
                 } else {
-                    "让播放器跟随专辑封面自动取色，打造专属视觉风格"
+                    AppLocaleManager.getString(R.string.ui_match_the_player_colors_to_your_album_art_for_a)
                 },
                 isPrimary = true
             ),
@@ -456,43 +458,43 @@ fun rememberSettingsTips(uiState: SettingsUiState): List<SettingsTipData> {
                 category = SettingsCategory.PLAYBACK,
                 title = playbackTitle,
                 text = if (uiState.pitchFollowSpeed) {
-                    "变调跟随倍速已开启，长按倍速按钮即可在弹窗中切换"
+                    AppLocaleManager.getString(R.string.ui_pitch_follows_playback_speed_long_press_the_speed_button_to)
                 } else {
-                    "开启变调跟随，让倍速与音高同步变化"
+                    AppLocaleManager.getString(R.string.ui_enable_pitch_following_to_change_speed_and_pitch_together)
                 }
             ),
             SettingsTipData(
                 category = SettingsCategory.EQUALIZER,
                 title = equalizerTitle,
                 text = if (uiState.hiFiModeEnabled) {
-                    "HiFi 音效已开启，尽情享受纯净音质"
+                    AppLocaleManager.getString(R.string.ui_hifi_effects_are_on_enjoy_clearer_sound)
                 } else {
-                    "解锁 HiFi 音效，体验更纯净的声音"
+                    AppLocaleManager.getString(R.string.ui_enable_hifi_effects_for_clearer_sound)
                 }
             ),
             SettingsTipData(
                 category = SettingsCategory.APPEARANCE,
                 title = appearanceTitle,
                 text = if (uiState.lyricsGradientOverlayEnabled) {
-                    "歌词渐变遮罩已开启，动态背景下的文字依然清晰"
+                    AppLocaleManager.getString(R.string.ui_the_lyrics_gradient_mask_is_on_to_keep_text_clear)
                 } else {
-                    "开启歌词渐变遮罩，绚丽背景下文字不刺眼"
+                    AppLocaleManager.getString(R.string.ui_enable_the_lyrics_gradient_mask_for_comfortable_reading_over_colorful)
                 }
             ),
             SettingsTipData(
                 category = SettingsCategory.AI_INTEGRATION,
                 title = aiTitle,
-                text = "让 AI 帮你搜歌、生成歌单、解析歌词，试试对它说句话"
+                text = AppLocaleManager.getString(R.string.ui_ask_ai_to_find_songs_create_playlists_or_explain_lyrics)
             ),
             SettingsTipData(
                 category = SettingsCategory.LIBRARY,
                 title = libraryTitle,
-                text = "接入网易云、QQ 音乐等在线音源，海量歌曲随时听"
+                text = AppLocaleManager.getString(R.string.ui_connect_netease_qq_music_and_other_online_sources_for_more)
             ),
             SettingsTipData(
                 category = SettingsCategory.BACKUP_RESTORE,
                 title = backupTitle,
-                text = "一键备份你的设置与播放数据，换机无痛迁移"
+                text = AppLocaleManager.getString(R.string.ui_back_up_your_settings_and_playback_data_for_an_easier)
             )
         )
     }

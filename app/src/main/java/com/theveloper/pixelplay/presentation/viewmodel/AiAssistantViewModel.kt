@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.ai.AiOrchestrator
@@ -90,7 +93,7 @@ class AiAssistantViewModel @Inject constructor(
                         streaming = true
                     )
                 )
-                appendThinking(thinkId, "正在理解你的需求…")
+                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_understanding_your_request))
 
                 // 每次 send 的独立 transcript，推进 ReAct 循环
                 val transcript = StringBuilder()
@@ -140,7 +143,7 @@ class AiAssistantViewModel @Inject constructor(
                         true
                     } catch (t: Throwable) {
                         Timber.tag(TAG).w(t, "Stream failed at step $step")
-                        genError = t.message ?: t.javaClass.simpleName ?: "流式生成失败"
+                        genError = t.message ?: t.javaClass.simpleName ?: AppLocaleManager.getString(R.string.ui_streaming_response_failed)
                         false
                     }
 
@@ -173,14 +176,14 @@ class AiAssistantViewModel @Inject constructor(
                         // 工具调用：不会创建可见气泡（它以 { 开头），执行工具并记录进度
                         when (call.tool) {
                             "search_songs" -> {
-                                appendThinking(thinkId, "正在在线搜索「${call.q}」…")
+                                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_searching_online_for, (call.q).toString()))
                                 val songs = songSearchService.searchSynth(call.q)
                                 if (songs.isEmpty()) {
-                                    pushOp("在线搜索「${call.q}」没有找到合适的歌曲。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_no_suitable_songs_found_online_for, (call.q).toString()))
                                     transcript.append("\n工具结果(search_songs,q=${call.q})：无结果")
                                 } else {
                                     allSongs = songs
-                                    pushOp("已按「${call.q}」搜索到 ${songs.size} 首歌曲。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_found_songs_for, (call.q).toString(), (songs.size).toString()))
                                     transcript.append(
                                         "\n工具结果(search_songs,q=${call.q})：找到 " +
                                             songs.take(5).joinToString("、") { "${it.name} - ${it.singer}" }
@@ -188,15 +191,15 @@ class AiAssistantViewModel @Inject constructor(
                                 }
                             }
                             "generate_playlist" -> {
-                                appendThinking(thinkId, "正在按「${call.description}」生成歌单…")
+                                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_creating_a_playlist_for, (call.description).toString()))
                                 val songs = songSearchService.searchSynth(call.description)
                                 if (songs.isEmpty()) {
-                                    pushOp("未能为「${call.description}」生成歌单，未找到合适歌曲。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_could_not_create_a_playlist_for_no_suitable_songs_found, (call.description).toString()))
                                     transcript.append("\n工具结果(generate_playlist)：无合适歌曲，生成失败")
                                 } else {
                                     allSongs = songs
                                     val name = songSearchService.saveAsPlaylist(songs)
-                                    pushOp(if (name != null) "已生成歌单「$name」，共 ${songs.size} 首。" else "歌单已生成（保存到媒体库时遇到问题）。")
+                                    pushOp(if (name != null) AppLocaleManager.getString(R.string.ui_created_playlist_with_songs, (name).toString(), (songs.size).toString()) else AppLocaleManager.getString(R.string.ui_playlist_created_but_could_not_be_saved_to_the_library))
                                     transcript.append(
                                         "\n工具结果(generate_playlist)：已生成 ${songs.size} 首歌单，歌名 " +
                                             songs.take(8).joinToString("、") { it.name }
@@ -207,39 +210,39 @@ class AiAssistantViewModel @Inject constructor(
                                 val category = SettingsCategory.fromId(call.category)
                                 if (category != null) {
                                     _uiState.value = _uiState.value.copy(navToSettings = category)
-                                    pushOp("已为你打开「${call.category}」设置。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_opened_settings, (call.category).toString()))
                                     transcript.append("\n工具结果(open_settings)：已打开 ${call.category}")
                                 } else {
-                                    pushOp("没有找到「${call.category}」对应的设置入口，请换一个说法。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_no_settings_found_for_try_a_different_description, (call.category).toString()))
                                     transcript.append("\n工具结果(open_settings)：分类 ${call.category} 无效")
                                 }
                             }
                             "get_current_song" -> {
-                                appendThinking(thinkId, "正在读取当前播放的歌曲…")
+                                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_reading_the_current_song))
                                 val song = playbackStateHolder.stablePlayerState.value.currentSong
                                 if (song == null) {
-                                    pushOp("当前没有正在播放的歌曲。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_no_song_is_playing))
                                     transcript.append("\n工具结果(get_current_song)：无正在播放的歌曲")
                                 } else {
                                     val pos = playbackStateHolder.currentPosition.value
-                                    val genreText = song.genre?.takeIf { it.isNotBlank() }?.let { "，流派：$it" } ?: ""
-                                    val yearText = if (song.year > 0) "，发行于 ${song.year} 年" else ""
-                                    val durText = if (song.duration > 0) "，时长 ${song.duration / 60000}分${song.duration % 60000 / 1000}秒" else ""
-                                    val posText = if (pos > 0) "，已播放到 ${pos / 1000 / 60}分${pos / 1000 % 60}秒" else ""
-                                    val desc = "《${song.title}》 - ${song.displayArtist}，专辑《${song.album}》" +
+                                    val genreText = song.genre?.takeIf { it.isNotBlank() }?.let { AppLocaleManager.getString(R.string.ui_genre, (it).toString()) } ?: ""
+                                    val yearText = if (song.year > 0) AppLocaleManager.getString(R.string.ui_released_in, (song.year).toString()) else ""
+                                    val durText = if (song.duration > 0) AppLocaleManager.getString(R.string.ui_duration_min_s, (song.duration / 60000).toString(), (song.duration % 60000 / 1000).toString()) else ""
+                                    val posText = if (pos > 0) AppLocaleManager.getString(R.string.ui_playback_position_min_s, (pos / 1000 / 60).toString(), (pos / 1000 % 60).toString()) else ""
+                                    val desc = AppLocaleManager.getString(R.string.ui_by_album, (song.title).toString(), (song.displayArtist).toString(), (song.album).toString()) +
                                         "$genreText$yearText$durText$posText"
-                                    pushOp("正在播放歌曲：$desc")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_now_playing_4c0a5b8, (desc).toString()))
                                     transcript.append("\n工具结果(get_current_song)：$desc")
                                 }
                             }
                             "web_search" -> {
-                                appendThinking(thinkId, "正在联网搜索「${call.q}」…")
+                                appendThinking(thinkId, AppLocaleManager.getString(R.string.ui_searching_the_web_for, (call.q).toString()))
                                 val results = webSearchService.search(call.q, 4)
                                 if (results.isEmpty()) {
-                                    pushOp("网络搜索「${call.q}」没有返回可用结果。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_no_useful_web_results_for, (call.q).toString()))
                                     transcript.append("\n工具结果(web_search,q=${call.q})：无结果")
                                 } else {
-                                    pushOp("已联网检索到 ${results.size} 条与「${call.q}」相关的资料。")
+                                    pushOp(AppLocaleManager.getString(R.string.ui_found_web_results_for, (results.size).toString(), (call.q).toString()))
                                     val joined = results.take(4).joinToString("\n") {
                                         "- ${it.title}（${it.url}）：${it.snippet.take(120)}"
                                     }
@@ -247,7 +250,7 @@ class AiAssistantViewModel @Inject constructor(
                                 }
                             }
                             else -> {
-                                pushOp("AI 尝试调用未知工具「${call.tool}」，已跳过。")
+                                pushOp(AppLocaleManager.getString(R.string.ui_ai_requested_unknown_tool_skipped, (call.tool).toString()))
                                 transcript.append("\n工具结果：未知工具 ${call.tool}")
                             }
                         }
@@ -259,7 +262,7 @@ class AiAssistantViewModel @Inject constructor(
                         if (answerId != null) {
                             updateMessage(answerId) { it.copy(streaming = false, songs = allSongs) }
                         } else {
-                            pushAi("出错了：${genError?.take(200)}")
+                            pushAi(AppLocaleManager.getString(R.string.ui_something_went_wrong, (genError?.take(200)).toString()))
                         }
                         answered = true
                         hasToolResult = false
@@ -274,7 +277,7 @@ class AiAssistantViewModel @Inject constructor(
                         }
                     } else {
                         val reply = sb.toString().trim().ifBlank {
-                            if (allSongs.isNotEmpty()) "已为你准备好以上内容～" else "我暂时没找到合适的答案，换个说法再试试吧。"
+                            if (allSongs.isNotEmpty()) AppLocaleManager.getString(R.string.ui_here_is_what_i_prepared_for_you) else AppLocaleManager.getString(R.string.ui_i_could_not_find_a_suitable_answer_try_asking_another)
                         }
                         pushAiWithSongs(reply, allSongs)
                     }
@@ -284,12 +287,12 @@ class AiAssistantViewModel @Inject constructor(
 
                 // MAX_STEPS 用尽仍未产出最终回答时兜底
                 if (!answered) {
-                    if (allSongs.isNotEmpty()) pushAi("已为你准备好以上推荐～")
-                    else pushAi("我暂时没找到合适的答案，换个说法再试试吧。")
+                    if (allSongs.isNotEmpty()) pushAi(AppLocaleManager.getString(R.string.ui_here_are_your_recommendations))
+                    else pushAi(AppLocaleManager.getString(R.string.ui_i_could_not_find_a_suitable_answer_try_asking_another))
                 }
             } catch (t: Throwable) {
                 Timber.tag(TAG).w(t, "AiAssistant failed")
-                pushAi("出错了：${t.message ?: t.javaClass.simpleName ?: "未知错误"}")
+                pushAi(AppLocaleManager.getString(R.string.ui_something_went_wrong, (t.message ?: t.javaClass.simpleName ?: AppLocaleManager.getString(R.string.ui_residue_error_unknown)).toString()))
             } finally {
                 _uiState.value = _uiState.value.copy(thinking = false)
                 val list = _uiState.value.messages
@@ -331,6 +334,8 @@ class AiAssistantViewModel @Inject constructor(
 
 对话记录：
 $transcript
+
+${if (AppLocaleManager.currentLocale().language == "en") "Write user-facing replies in English. Preserve JSON keys and tool identifiers." else ""}
 """.trimIndent()
 
     private data class ToolCall(

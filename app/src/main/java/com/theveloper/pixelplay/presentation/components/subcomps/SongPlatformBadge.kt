@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components.subcomps
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -29,9 +32,9 @@ fun resolvePlatformBadge(song: Song): PlatformBadge? {
     }
     val uri = song.contentUriString.orEmpty()
     return when {
-        uri.startsWith("netease://") -> PlatformBadge("网易", Color(0xFFE0242B))
+        uri.startsWith("netease://") -> PlatformBadge(AppLocaleManager.getString(R.string.ui_netease), Color(0xFFE0242B))
         uri.startsWith("qqmusic://") -> PlatformBadge("qq", Color(0xFF31C27C))
-        uri.startsWith("bilibili://") -> PlatformBadge("B站", Color(0xFFFB7299))
+        uri.startsWith("bilibili://") -> PlatformBadge(AppLocaleManager.getString(R.string.ui_residue_search_filter_bilibili), Color(0xFFFB7299))
         uri.startsWith("navidrome://") -> PlatformBadge("nav", Color(0xFF2E7CF6))
         uri.startsWith("jellyfin://") -> PlatformBadge("jf", Color(0xFFFB7299))
         uri.startsWith("gdrive://") -> PlatformBadge("gd", Color(0xFF229ED9))
@@ -45,15 +48,15 @@ private fun resolveCloudLxSourceBadge(uri: String): PlatformBadge {
         val jsonStr = java.net.URLDecoder.decode(uri.removePrefix("cloud://lx/"), "UTF-8")
         when (org.json.JSONObject(jsonStr).optString("source")) {
             "tx" -> PlatformBadge("qq", Color(0xFF31C27C))
-            "kg" -> PlatformBadge("酷狗", Color(0xFF2E7CF6))
-            "mg" -> PlatformBadge("咪咕", Color(0xFFE4393C))
-            "kw" -> PlatformBadge("酷我", Color(0xFFFF7A00))
-            "bilibili" -> PlatformBadge("B站", Color(0xFFFB7299))
-            "wy" -> PlatformBadge("网易", Color(0xFFE0242B))
-            else -> PlatformBadge("云", Color(0xFF8E8E93))
+            "kg" -> PlatformBadge(AppLocaleManager.getString(R.string.ui_residue_source_badge_kugou), Color(0xFF2E7CF6))
+            "mg" -> PlatformBadge(AppLocaleManager.getString(R.string.ui_migu), Color(0xFFE4393C))
+            "kw" -> PlatformBadge(AppLocaleManager.getString(R.string.ui_residue_search_filter_kuwo), Color(0xFFFF7A00))
+            "bilibili" -> PlatformBadge(AppLocaleManager.getString(R.string.ui_residue_search_filter_bilibili), Color(0xFFFB7299))
+            "wy" -> PlatformBadge(AppLocaleManager.getString(R.string.ui_netease), Color(0xFFE0242B))
+            else -> PlatformBadge(AppLocaleManager.getString(R.string.ui_cloud), Color(0xFF8E8E93))
         }
     } catch (_: Exception) {
-        PlatformBadge("云", Color(0xFF8E8E93))
+        PlatformBadge(AppLocaleManager.getString(R.string.ui_cloud), Color(0xFF8E8E93))
     }
 }
 

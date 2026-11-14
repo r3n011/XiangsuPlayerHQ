@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.netease
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.moriafly.ncm.NcmApi
@@ -68,7 +71,7 @@ class NeteaseHomeFeedApi @Inject constructor() {
                 syncCookieToSession(cookie)
                 val params = mapOf<String, Any?>("refresh" to refresh)
                 NcmApi.full.rawEapi(PATH_HOME_BLOCK, params).getOrThrow()
-                    .let { map -> toJsonObject(map) ?: throw IllegalStateException("主页 blocks 响应解析失败") }
+                    .let { map -> toJsonObject(map) ?: throw IllegalStateException(AppLocaleManager.getString(R.string.ui_could_not_parse_home_feed_blocks)) }
             }.onFailure { Timber.w(it, "$TAG: fetchHomeBlocks failed") }
         }
 
@@ -90,7 +93,7 @@ class NeteaseHomeFeedApi @Inject constructor() {
                 "areaId" to areaId,
             )
             val root = toJsonObject(NcmApi.full.rawEapi(PATH_PERSONALIZED_NEW_SONG, params).getOrThrow())
-                ?: throw IllegalStateException("个性化新歌响应解析失败")
+                ?: throw IllegalStateException(AppLocaleManager.getString(R.string.ui_could_not_parse_personalized_new_songs))
             checkCode(root, "personalized/newsong")
 
             // 响应形如 { result: [ { id, name, song: {…} | 裸歌曲对象, … } ] }
@@ -119,7 +122,7 @@ class NeteaseHomeFeedApi @Inject constructor() {
                 "total" to true,
             )
             val root = toJsonObject(NcmApi.full.rawEapi(PATH_DISCOVERY_NEW_SONGS, params).getOrThrow())
-                ?: throw IllegalStateException("今日热门响应解析失败")
+                ?: throw IllegalStateException(AppLocaleManager.getString(R.string.ui_could_not_parse_popular_songs))
             checkCode(root, "discovery/new/songs")
 
             val data = root.optJSONArray("data") ?: return@runCatching emptyList()
@@ -245,8 +248,8 @@ class NeteaseHomeFeedApi @Inject constructor() {
         }
         return HomeFeedTrack(
             id = id,
-            title = ui?.optJSONObject("mainTitle")?.optString("title").orEmpty().ifBlank { "未知歌曲" },
-            artist = artists.joinToString(", ").ifBlank { "未知歌手" },
+            title = ui?.optJSONObject("mainTitle")?.optString("title").orEmpty().ifBlank { AppLocaleManager.getString(R.string.ui_unknown_song) },
+            artist = artists.joinToString(", ").ifBlank { AppLocaleManager.getString(R.string.ui_unknown_artist) },
             artworkUrl = normalizeUrl(ui?.optJSONObject("image")?.optString("imageUrl").orEmpty()),
             durationMs = 0L,
             addedAtMs = ext?.optLong("publishTime", 0L) ?: 0L,
@@ -279,8 +282,8 @@ class NeteaseHomeFeedApi @Inject constructor() {
 
         return HomeFeedTrack(
             id = id,
-            title = song.optString("name").takeIf { it.isNotBlank() } ?: "未知歌曲",
-            artist = names.joinToString(", ").ifBlank { "未知歌手" },
+            title = song.optString("name").takeIf { it.isNotBlank() } ?: AppLocaleManager.getString(R.string.ui_unknown_song),
+            artist = names.joinToString(", ").ifBlank { AppLocaleManager.getString(R.string.ui_unknown_artist) },
             artistIds = ids,
             albumName = album?.optString("name").orEmpty(),
             albumId = album?.optLong("id", -1L) ?: -1L,
@@ -296,10 +299,10 @@ class NeteaseHomeFeedApi @Inject constructor() {
 
     /** `rawEapi` 失败体（如 404）也会返回成功，必须显式校验 code。 */
     private fun checkCode(root: JSONObject?, what: String) {
-        if (root == null) throw IllegalStateException("$what 响应为空")
+        if (root == null) throw IllegalStateException(AppLocaleManager.getString(R.string.ui_returned_an_empty_response, (what).toString()))
         val code = root.optInt("code", -1)
         if (code != 200) {
-            throw IllegalStateException("$what 返回 code=$code ${root.optString("message")}")
+            throw IllegalStateException(AppLocaleManager.getString(R.string.ui_returned_code, (what).toString(), (code).toString(), (root.optString("message")).toString()))
         }
     }
 

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.netease.chat
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
@@ -95,7 +98,7 @@ class MessagesViewModel @Inject constructor(
                     _conversations.value = list
                     _unreadTotal.value = list.sumOf { it.unreadCount }
                 }
-                .onFailure { emitError(it.message ?: "获取消息列表失败") }
+                .onFailure { emitError(it.message ?: AppLocaleManager.getString(R.string.ui_could_not_load_messages)) }
             _isRefreshing.value = false
         }
     }
@@ -147,7 +150,7 @@ class MessagesViewModel @Inject constructor(
                 }
                 .onFailure {
                     _searchState.update { state -> state.copy(isSearching = false) }
-                    emitError(it.message ?: "搜索用户失败")
+                    emitError(it.message ?: AppLocaleManager.getString(R.string.ui_could_not_search_for_users))
                 }
         }
     }
@@ -167,7 +170,7 @@ class MessagesViewModel @Inject constructor(
                     _searchState.update { state ->
                         state.copy(followedOverrides = state.followedOverrides + (userId to !targetFollowed))
                     }
-                    emitError(it.message ?: "操作失败，请稍后重试")
+                    emitError(it.message ?: AppLocaleManager.getString(R.string.ui_operation_failed_please_try_again_later))
                 }
             _searchState.update { state -> state.copy(toggling = state.toggling - userId) }
         }

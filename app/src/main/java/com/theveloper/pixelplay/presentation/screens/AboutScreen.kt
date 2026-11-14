@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -1194,13 +1195,13 @@ private fun AboutInfoGroupCard(modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "关于本项目",
+                        text = localizedStringResource(R.string.ui_about_this_project),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "基于PixelPlayer 开源项目构建的播放器",
+                        text = localizedStringResource(R.string.ui_a_music_player_built_on_the_open_source_pixelplayer_project),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1233,7 +1234,7 @@ private fun AboutInfoGroupCard(modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "本项目维护者",
+                        text = localizedStringResource(R.string.ui_project_maintainer),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -1285,13 +1286,13 @@ private fun AboutInfoGroupCard(modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "使用声明",
+                        text = localizedStringResource(R.string.ui_usage_notice),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "本软件只提供 JS 加载引擎，用户通过 JS 音源所获取的内容与本项目无关。",
+                        text = localizedStringResource(R.string.ui_this_app_provides_a_javascript_loading_engine_content_accessed_through),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1342,13 +1343,13 @@ private fun CommunityActionsCard(
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "用户交流群",
+                        text = localizedStringResource(R.string.ui_user_community),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "点击加入群聊【XiangsuPlayer 用户群】",
+                        text = localizedStringResource(R.string.ui_join_the_xiangsuplayer_user_group),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1392,13 +1393,13 @@ private fun CommunityActionsCard(
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "更新日志",
+                        text = localizedStringResource(R.string.ui_residue_changelog_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "查看所有历史版本的更新内容",
+                        text = localizedStringResource(R.string.ui_see_changes_in_previous_versions),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

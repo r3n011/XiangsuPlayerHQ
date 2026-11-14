@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.qqmusic.auth
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
@@ -62,7 +65,7 @@ class QqMusicLoginViewModel @Inject constructor(
     fun sendPhoneCode() {
         val phone = _phoneUi.value.phone
         if (phone.length != 11) {
-            _phoneUi.update { it.copy(error = "请输入正确的 11 位手机号") }
+            _phoneUi.update { it.copy(error = AppLocaleManager.getString(R.string.ui_residue_kugou_login_phone_invalid)) }
             return
         }
         if (_phoneUi.value.sendingCode || _phoneUi.value.countdown > 0) return
@@ -82,9 +85,9 @@ class QqMusicLoginViewModel @Inject constructor(
                         it.copy(
                             sendingCode = false,
                             error = if (challenge != null) {
-                                "QQ 音乐要求先完成安全验证：点下方按钮完成验证，再回来重新获取验证码"
+                                AppLocaleManager.getString(R.string.ui_qq_music_requires_security_verification_use_the_button_below_then)
                             } else {
-                                err.message ?: "验证码发送失败"
+                                err.message ?: AppLocaleManager.getString(R.string.ui_could_not_send_verification_code)
                             },
                             securityChallengeUrl = challenge?.securityUrl?.takeIf { url -> url.isNotBlank() }
                         )
@@ -139,17 +142,17 @@ class QqMusicLoginViewModel @Inject constructor(
     fun submitPhoneLogin() {
         val current = _phoneUi.value
         if (current.phone.length != 11) {
-            _phoneUi.update { it.copy(error = "请输入正确的 11 位手机号") }
+            _phoneUi.update { it.copy(error = AppLocaleManager.getString(R.string.ui_residue_kugou_login_phone_invalid)) }
             return
         }
         if (current.code.isBlank()) {
-            _phoneUi.update { it.copy(error = "请先输入验证码") }
+            _phoneUi.update { it.copy(error = AppLocaleManager.getString(R.string.ui_residue_kugou_login_code_required)) }
             return
         }
         if (current.submitting) return
 
         _phoneUi.update { it.copy(submitting = true, error = null) }
-        _state.value = QqMusicLoginState.Loading("正在登录 QQ 音乐…")
+        _state.value = QqMusicLoginState.Loading(AppLocaleManager.getString(R.string.ui_residue_qq_login_loading_signing_in))
         viewModelScope.launch {
             repository.loginWithPhone(current.phone, current.code).fold(
                 onSuccess = { nickname ->
@@ -166,9 +169,9 @@ class QqMusicLoginViewModel @Inject constructor(
                         it.copy(
                             submitting = false,
                             error = if (challenge != null) {
-                                "QQ 音乐要求完成安全验证：完成验证后会自动重发验证码，请用新验证码重新登录"
+                                AppLocaleManager.getString(R.string.ui_qq_music_requires_security_verification_a_new_code_will_be)
                             } else {
-                                err.message ?: "登录失败，请重试"
+                                err.message ?: AppLocaleManager.getString(R.string.ui_sign_in_failed_please_try_again)
                             },
                             securityChallengeUrl = challenge?.securityUrl?.takeIf { url -> url.isNotBlank() }
                         )

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.netease.dashboard
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.database.NeteasePlaylistEntity
@@ -48,7 +51,7 @@ class ListenTogetherViewModel @Inject constructor(
     ) {
         coordinator.startHostRoomWithSongs(
             songs = songs,
-            failureMessage = "当前播放队列没有可一起听的网易云歌曲",
+            failureMessage = AppLocaleManager.getString(R.string.ui_the_current_queue_has_no_netease_songs_available_for_listen),
             startSongId = startSongId,
         )
     }
@@ -61,14 +64,14 @@ class ListenTogetherViewModel @Inject constructor(
         viewModelScope.launch {
             val cookie = neteaseRepository.getCookieString()
             if (cookie.isBlank()) {
-                coordinator.reportError("请先登录网易云账号")
+                coordinator.reportError(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_first))
                 return@launch
             }
             val songIds = personalFmApi.fetchPersonalFmRecommendations(cookie)
                 .getOrElse { error ->
                     // 漫游推荐失败：直接给出原因（过一遍友好映射，避免服务端原文直出）
                     coordinator.reportError(
-                        "获取漫游推荐失败：" +
+                        AppLocaleManager.getString(R.string.ui_could_not_load_roaming_recommendations) +
                             com.theveloper.pixelplay.data.listentogether
                                 .friendlyListenTogetherMessage(error.message.orEmpty())
                     )
@@ -77,7 +80,7 @@ class ListenTogetherViewModel @Inject constructor(
             val songs = neteaseRepository.getNeteaseSongsByIds(songIds)
             coordinator.startHostRoomWithSongs(
                 songs = songs,
-                failureMessage = "漫游推荐暂无可一起听的网易云歌曲"
+                failureMessage = AppLocaleManager.getString(R.string.ui_there_are_no_netease_roaming_recommendations_available_for_listen_together)
             )
         }
     }
@@ -112,7 +115,7 @@ class ListenTogetherViewModel @Inject constructor(
             if (resolved != null) {
                 coordinator.joinRoom(resolved.roomId, resolved.inviterId)
             } else {
-                coordinator.reportError("邀请链接解析失败，请确认是网易云一起听分享链接")
+                coordinator.reportError(AppLocaleManager.getString(R.string.ui_could_not_parse_invitation_check_that_it_is_a_netease))
             }
         }
         return true

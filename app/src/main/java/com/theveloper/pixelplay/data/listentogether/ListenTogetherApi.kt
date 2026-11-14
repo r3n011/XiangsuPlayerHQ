@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.listentogether
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import net.moriafly.ncm.NcmApi
 import org.json.JSONArray
 import org.json.JSONObject
@@ -8,7 +11,7 @@ import java.io.IOException
 import kotlinx.coroutines.delay
 
 /** 网易云偶发返回空响应体：与真实业务错误区分开，便于上层决定重试 / 降级 eapi。 */
-internal class EmptyResponseException(path: String) : IOException("网易云返回了空响应（$path）")
+internal class EmptyResponseException(path: String) : IOException(AppLocaleManager.getString(R.string.ui_netease_returned_an_empty_response, (path).toString()))
 
 private val CODE_IN_MESSAGE = Regex("code=(-?\\d+)")
 
@@ -37,7 +40,7 @@ class ListenTogetherApi {
             mapOf("refer" to "songplay_more")
         )
         return parseRoom(root.optJSONObject("data")?.optJSONObject("roomInfo"))
-            ?: throw IOException("网易云没有返回有效的一起听房间")
+            ?: throw IOException(AppLocaleManager.getString(R.string.ui_netease_did_not_return_a_valid_listen_together_room))
     }
 
     /** 查询当前账号所在的一起听房间；不在房间时返回 null */
@@ -55,7 +58,7 @@ class ListenTogetherApi {
                 sawEmptyResponse = true
                 if (attempt < STATUS_GET_ATTEMPTS - 1) delay(180L * (attempt + 1))
             } else {
-                throw error ?: IOException("一起听状态查询失败")
+                throw error ?: IOException(AppLocaleManager.getString(R.string.ui_could_not_check_listen_together_status))
             }
         }
         if (!sawEmptyResponse) return null
@@ -78,7 +81,7 @@ class ListenTogetherApi {
         val data = root.optJSONObject("data")
             ?: throw IOException(
                 root.optString("message").ifBlank {
-                    root.optString("msg").ifBlank { "网易云没有返回一起听房间状态" }
+                    root.optString("msg").ifBlank { AppLocaleManager.getString(R.string.ui_netease_did_not_return_listen_together_room_status) }
                 }
             )
         val joinable = if (data.has("joinable")) data.optBoolean("joinable", false)
@@ -89,14 +92,14 @@ class ListenTogetherApi {
         val type = data.optString("type").trim()
         val serverMessage = root.optString("message").ifBlank { root.optString("msg") }.trim()
         return when {
-            status.equals("FULL", true) -> "一起听房间人数已满"
+            status.equals("FULL", true) -> AppLocaleManager.getString(R.string.ui_the_listen_together_room_is_full)
             status.equals("END", true) || status.equals("ENDED", true) || status.equals("CLOSED", true) ->
-                "一起听房间已结束"
+                AppLocaleManager.getString(R.string.ui_the_listen_together_room_has_ended)
             serverMessage.isNotBlank() -> serverMessage
-            status.isNotBlank() && type.isNotBlank() -> "该一起听房间当前无法加入（status=$status，type=$type）"
-            status.isNotBlank() -> "该一起听房间当前无法加入（status=$status）"
-            type.isNotBlank() -> "该一起听房间当前无法加入（type=$type）"
-            else -> "该一起听房间当前无法加入"
+            status.isNotBlank() && type.isNotBlank() -> AppLocaleManager.getString(R.string.ui_cannot_join_this_listen_together_room_status_type, (status).toString(), (type).toString())
+            status.isNotBlank() -> AppLocaleManager.getString(R.string.ui_cannot_join_this_listen_together_room_status, (status).toString())
+            type.isNotBlank() -> AppLocaleManager.getString(R.string.ui_cannot_join_this_listen_together_room_type, (type).toString())
+            else -> AppLocaleManager.getString(R.string.ui_cannot_join_this_listen_together_room)
         }
     }
 
@@ -111,7 +114,7 @@ class ListenTogetherApi {
             )
         )
         return parseRoom(root.optJSONObject("data")?.optJSONObject("roomInfo"))
-            ?: throw IOException("加入成功，但未能读取目标房间信息")
+            ?: throw IOException(AppLocaleManager.getString(R.string.ui_joined_but_could_not_read_the_target_room_information))
     }
 
     /** 结束一起听（房主） */
@@ -122,7 +125,7 @@ class ListenTogetherApi {
     /** 拉取房间播放快照（队列 + 播放命令） */
     suspend fun playback(roomId: String): ListenTogetherSnapshot {
         val root = eapi("/api/listen/together/sync/playlist/get", mapOf("roomId" to roomId))
-        val data = root.optJSONObject("data") ?: throw IOException("房间暂时没有播放数据")
+        val data = root.optJSONObject("data") ?: throw IOException(AppLocaleManager.getString(R.string.ui_the_room_has_no_playback_data_yet))
         val playlist = data.optJSONObject("playlist") ?: JSONObject()
         val command = data.optJSONObject("playCommand") ?: JSONObject()
 
@@ -183,7 +186,7 @@ class ListenTogetherApi {
             "/api/listen/together/sync/list/command/report",
             mapOf("roomId" to roomId, "playlistParam" to playlistParam.toString())
         )
-        validateAction(root, "同步一起听队列失败")
+        validateAction(root, AppLocaleManager.getString(R.string.ui_could_not_sync_the_listen_together_queue))
     }
 
     /** 上报播放命令（播放/暂停/切歌/进度） */
@@ -209,7 +212,7 @@ class ListenTogetherApi {
             "/api/listen/together/play/command/report",
             mapOf("roomId" to roomId, "commandInfo" to commandInfo.toString())
         )
-        validateAction(root, "同步一起听播放操作失败")
+        validateAction(root, AppLocaleManager.getString(R.string.ui_could_not_sync_listen_together_playback))
     }
 
     /** 心跳：上报当前播放状态（保持房间活跃） */
@@ -229,7 +232,7 @@ class ListenTogetherApi {
                 "progress" to progressMs.coerceAtLeast(0L)
             )
         )
-        validateAction(root, "一起听心跳失败")
+        validateAction(root, AppLocaleManager.getString(R.string.ui_listen_together_heartbeat_failed))
     }
 
     // ─── 内部工具 ─────────────────────────────────────────────────────
@@ -336,7 +339,7 @@ class ListenTogetherApi {
                     add(
                         ListenTogetherMember(
                             id = userId,
-                            name = profile.optString("nickname").ifBlank { "网易云用户" },
+                            name = profile.optString("nickname").ifBlank { AppLocaleManager.getString(R.string.ui_netease_user) },
                             avatarUrl = profile.optString("avatarUrl").takeIf(String::isNotBlank)
                         )
                     )
@@ -409,15 +412,15 @@ internal fun friendlyListenTogetherMessage(
     val raw = rawMessage.trim()
     val codeSuffix = code?.let { "（$it）" }.orEmpty()
     return when {
-        offline -> "网络不可用，一起听暂时离线"
+        offline -> AppLocaleManager.getString(R.string.ui_no_network_connection_listen_together_is_temporarily_offline)
         raw.contains("系统错误") || raw.contains("系统繁忙") || code == 500 ->
-            "一起听服务暂时不可用$codeSuffix，正在自动重试"
+            AppLocaleManager.getString(R.string.ui_listen_together_is_temporarily_unavailable_retrying_automatically, (codeSuffix).toString())
         raw.contains("登录") || code == 301 || code == -462 ->
-            "网易云登录状态已失效，请重新登录后再试"
+            AppLocaleManager.getString(R.string.ui_your_netease_session_has_expired_sign_in_again_and_retry)
         raw.contains("频繁") || code == 429 ->
-            "操作过于频繁，请稍后再试"
+            AppLocaleManager.getString(R.string.ui_too_many_requests_please_try_again_later)
         raw.isNotBlank() -> raw
-        code != null -> "一起听请求失败$codeSuffix"
-        else -> "一起听请求失败"
+        code != null -> AppLocaleManager.getString(R.string.ui_listen_together_request_failed, (codeSuffix).toString())
+        else -> AppLocaleManager.getString(R.string.ui_listen_together_request_failed_ec3cbc7)
     }
 }

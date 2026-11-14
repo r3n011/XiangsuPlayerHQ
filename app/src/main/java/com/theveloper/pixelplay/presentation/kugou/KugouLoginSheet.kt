@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.kugou
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -153,9 +155,9 @@ fun KugouLoginSheet(
                 qrBitmap = withContext(Dispatchers.Default) {
                     generateKugouQrBitmap(session.contentUrl)
                 }
-                if (qrBitmap == null) qrError = "二维码生成失败，请刷新重试"
+                if (qrBitmap == null) qrError = AppLocaleManager.getString(R.string.ui_could_not_generate_qr_code_refresh_and_try_again)
             }
-            .onFailure { qrError = it.message ?: "获取二维码失败" }
+            .onFailure { qrError = it.message ?: AppLocaleManager.getString(R.string.ui_could_not_get_qr_code) }
     }
 
     // —— 扫码：每 2 秒轮询（与参考项目一致）——
@@ -165,7 +167,7 @@ fun KugouLoginSheet(
             delay(2_000)
             val result = repository.pollQrSession(qrKey)
             val newStatus = result.getOrElse { error ->
-                qrError = error.message ?: "扫码状态查询失败"
+                qrError = error.message ?: AppLocaleManager.getString(R.string.ui_could_not_check_qr_code_status)
                 return@LaunchedEffect
             }
             qrStatus = newStatus
@@ -197,7 +199,7 @@ fun KugouLoginSheet(
                     resendCountdown = 60
                     phoneStep = 1
                 }
-                .onFailure { inlineError = it.message ?: "验证码发送失败" }
+                .onFailure { inlineError = it.message ?: AppLocaleManager.getString(R.string.ui_could_not_send_verification_code) }
             sendingCode = false
         }
     }
@@ -213,7 +215,7 @@ fun KugouLoginSheet(
         }
         inlineError = null
         isLoading = true
-        loadingMessage = "正在登录…"
+        loadingMessage = AppLocaleManager.getString(R.string.ui_signing_in)
         scope.launch {
             repository.loginByPhone(mobile = mobile, code = code, userId = userId)
                 .onSuccess { result ->
@@ -225,12 +227,12 @@ fun KugouLoginSheet(
                         isLoading = false
                     } else {
                         isLoading = false
-                        inlineError = "登录失败：未获取到账号信息"
+                        inlineError = AppLocaleManager.getString(R.string.ui_sign_in_failed_could_not_load_account_information)
                     }
                 }
                 .onFailure {
                     isLoading = false
-                    inlineError = it.message ?: "登录失败"
+                    inlineError = it.message ?: AppLocaleManager.getString(R.string.ui_sign_in_failed)
                 }
         }
     }
@@ -393,7 +395,7 @@ fun KugouLoginSheet(
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = account.nickname.ifBlank { "酷狗账号 ${account.userId}" },
+                                        text = account.nickname.ifBlank { AppLocaleManager.getString(R.string.ui_kugou_account_32729fb, (account.userId).toString()) },
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -482,7 +484,7 @@ private fun KugouLoadingCard(message: String) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = message.ifBlank { "请稍候…" },
+                text = message.ifBlank { AppLocaleManager.getString(R.string.ui_residue_qq_login_loading) },
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = GoogleSansRounded,
                 color = MaterialTheme.colorScheme.onSurface

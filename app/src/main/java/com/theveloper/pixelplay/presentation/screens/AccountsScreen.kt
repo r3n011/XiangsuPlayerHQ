@@ -2,6 +2,9 @@
 
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -555,7 +558,7 @@ private fun ConnectedAccountCard(
                         val clipboard = localContext.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         val clip = android.content.ClipData.newPlainText("Cookie", account.authCookie)
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(localContext, "Cookie 已复制", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(localContext, AppLocaleManager.getString(R.string.ui_cookie_copied), Toast.LENGTH_SHORT).show()
                     },
                     shape = AbsoluteSmoothCornerShape(14.dp, 60),
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -582,7 +585,7 @@ private fun ConnectedAccountCard(
                             )
                             Spacer(modifier = Modifier.weight(1f))
                             Text(
-                                text = "点击复制",
+                                text = localizedStringResource(R.string.ui_tap_to_copy),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -650,7 +653,7 @@ private fun ConnectedAccountCard(
                     }
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
-                        text = if (isSyncing) "同步中…" else "立即同步",
+                        text = if (isSyncing) localizedStringResource(R.string.ui_residue_kugou_dashboard_syncing) else localizedStringResource(R.string.ui_residue_telegram_sync_now),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -966,7 +969,7 @@ private fun serviceDisplayName(service: ExternalServiceAccount): String {
         ExternalServiceAccount.NAVIDROME -> stringResource(R.string.cd_subsonic_logo)
         ExternalServiceAccount.JELLYFIN -> stringResource(R.string.auth_jellyfin_title)
         ExternalServiceAccount.BILIBILI -> "Bilibili"
-        ExternalServiceAccount.KUGOU -> "酷狗音乐"
+        ExternalServiceAccount.KUGOU -> AppLocaleManager.getString(R.string.ui_residue_kugou_service_name)
     }
 }
 

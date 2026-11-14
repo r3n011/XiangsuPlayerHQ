@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.app.Application
 import android.content.Context
 import android.net.Uri
@@ -259,7 +262,7 @@ class LxMusicViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     initing = false, engineReady = false,
                     scriptInfos = loadScriptInfos(),
-                    importError = "请先导入一个 JS 音源文件（点右上角 +）"
+                    importError = AppLocaleManager.getString(R.string.ui_import_a_javascript_source_file_first_tap_in_the_top)
                 )
                 return@launch
             }
@@ -271,7 +274,7 @@ class LxMusicViewModel @Inject constructor(
                 sources = if (ok) runCatching { engine.getSources() }.getOrDefault(emptyMap()) else emptyMap(),
                 version = runCatching { engine.versionName() }.getOrDefault("custom"),
                 scriptInfos = loadScriptInfos(),
-                importError = if (!ok) engine.lastError ?: "JS 执行时报错" else null
+                importError = if (!ok) engine.lastError ?: AppLocaleManager.getString(R.string.ui_javascript_execution_error) else null
             )
         }
     }
@@ -285,7 +288,7 @@ class LxMusicViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { 
             val fileName = store.writeFromUri(uri)
             if (fileName == null) {
-                _uiState.value = _uiState.value.copy(initing = false, importError = "读取文件失败")
+                _uiState.value = _uiState.value.copy(initing = false, importError = AppLocaleManager.getString(R.string.ui_could_not_read_file))
                 return@launch
             }
             val ready = engine.reload()
@@ -295,7 +298,7 @@ class LxMusicViewModel @Inject constructor(
                 sources = engine.getSources(),  
                 version = engine.versionName(), 
                 scriptInfos = loadScriptInfos(),
-                importError = if (!ready) engine.lastError ?: "JS 执行时报错" else null
+                importError = if (!ready) engine.lastError ?: AppLocaleManager.getString(R.string.ui_javascript_execution_error) else null
             )
         }
     }
@@ -305,7 +308,7 @@ class LxMusicViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { 
             val fileName = store.writeFromUrl(url)
             if (fileName == null) {
-                _uiState.value = _uiState.value.copy(initing = false, importError = "下载失败 (超时或非 JS)")
+                _uiState.value = _uiState.value.copy(initing = false, importError = AppLocaleManager.getString(R.string.ui_download_failed_timeout_or_invalid_javascript_file))
                 return@launch
             }
             val ready = engine.reload()
@@ -315,7 +318,7 @@ class LxMusicViewModel @Inject constructor(
                 sources = engine.getSources(),  
                 version = engine.versionName(), 
                 scriptInfos = loadScriptInfos(),
-                importError = if (!ready) engine.lastError ?: "JS 执行时报错" else null
+                importError = if (!ready) engine.lastError ?: AppLocaleManager.getString(R.string.ui_javascript_execution_error) else null
             )
         }
     }
@@ -333,7 +336,7 @@ class LxMusicViewModel @Inject constructor(
                     sources = engine.getSources(),
                     version = engine.versionName(),
                     scriptInfos = loadScriptInfos(),
-                    importError = if (!ok) engine.lastError ?: "JS 重新加载失败" else null
+                    importError = if (!ok) engine.lastError ?: AppLocaleManager.getString(R.string.ui_could_not_reload_javascript) else null
                 )
             } else {
                 engine.close()
@@ -359,10 +362,10 @@ class LxMusicViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val files = store.listFiles()
             if (files.isEmpty()) {
-                _uiState.value = _uiState.value.copy(importError = "还没有导入任何 JS 音源")
+                _uiState.value = _uiState.value.copy(importError = AppLocaleManager.getString(R.string.ui_no_javascript_sources_have_been_imported))
                 return@launch
             }
-            _uiState.value = _uiState.value.copy(progress = 0f, progressLabel = "正在导出音源…")
+            _uiState.value = _uiState.value.copy(progress = 0f, progressLabel = AppLocaleManager.getString(R.string.ui_exporting_sources))
             runCatching {
                 val resolver = getApplication<Application>().contentResolver
                 resolver.openOutputStream(target)?.use { out ->
@@ -376,7 +379,7 @@ class LxMusicViewModel @Inject constructor(
                             )
                         }
                     }
-                } ?: error("无法写入所选位置")
+                } ?: error(AppLocaleManager.getString(R.string.ui_could_not_write_to_the_selected_location))
             }.onSuccess {
                 _uiState.value = _uiState.value.copy(
                     progress = null,
@@ -388,7 +391,7 @@ class LxMusicViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     progress = null,
                     progressLabel = null,
-                    importError = "导出失败：${error.message}",
+                    importError = AppLocaleManager.getString(R.string.ui_residue_export_failed_format, (error.message).toString()),
                 )
             }
         }
@@ -404,7 +407,7 @@ class LxMusicViewModel @Inject constructor(
                 sources = engine.getSources(),
                 version = engine.versionName(),
                 scriptInfos = loadScriptInfos(),
-                importError = if (!ok) "JS 重新加载失败" else null
+                importError = if (!ok) AppLocaleManager.getString(R.string.ui_could_not_reload_javascript) else null
             )
         }
     }
@@ -454,7 +457,7 @@ class LxMusicViewModel @Inject constructor(
                         if (!store.hasAnyJs()) {
                             _uiState.value = _uiState.value.copy(
                                 searching = false,
-                                error = "请先在设置中导入 JS 音源"
+                                error = AppLocaleManager.getString(R.string.ui_import_a_javascript_source_in_settings_first)
                             )
                             return@launch
                         }
@@ -468,7 +471,7 @@ class LxMusicViewModel @Inject constructor(
                     searching = false,
                     results = result.list,
                     isEnd = result.isEnd,
-                    error = if (result.list.isEmpty()) "无结果（请换关键词）" else null
+                    error = if (result.list.isEmpty()) AppLocaleManager.getString(R.string.ui_no_results_try_another_keyword) else null
                 )
                 // 搜索 API 不返回 picUrl，批量补充封面
                 fillMissingCovers(result.list)
@@ -477,7 +480,7 @@ class LxMusicViewModel @Inject constructor(
                     searching = false,
                     results = emptyList(),
                     isEnd = true,
-                    error = "搜索失败: ${t.message ?: t.javaClass.simpleName}"
+                    error = AppLocaleManager.getString(R.string.ui_search_failed, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -518,7 +521,7 @@ class LxMusicViewModel @Inject constructor(
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     isLoadingMore = false,
-                    error = "加载更多失败: ${t.message ?: t.javaClass.simpleName}"
+                    error = AppLocaleManager.getString(R.string.ui_could_not_load_more_dd45af7, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -551,14 +554,14 @@ class LxMusicViewModel @Inject constructor(
                     searchingArtists = false,
                     artistResults = result.list,
                     artistIsEnd = result.isEnd,
-                    artistError = if (result.list.isEmpty()) "无相关歌手（请换关键词）" else null
+                    artistError = if (result.list.isEmpty()) AppLocaleManager.getString(R.string.ui_no_matching_artists_try_another_keyword) else null
                 )
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     searchingArtists = false,
                     artistResults = emptyList(),
                     artistIsEnd = true,
-                    artistError = "歌手搜索失败: ${t.message ?: t.javaClass.simpleName}"
+                    artistError = AppLocaleManager.getString(R.string.ui_artist_search_failed, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -594,7 +597,7 @@ class LxMusicViewModel @Inject constructor(
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     isLoadingMore = false,
-                    artistError = "加载更多失败: ${t.message ?: t.javaClass.simpleName}"
+                    artistError = AppLocaleManager.getString(R.string.ui_could_not_load_more_dd45af7, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -635,14 +638,14 @@ class LxMusicViewModel @Inject constructor(
                     searchingPlaylists = false,
                     playlistResults = result.list,
                     playlistIsEnd = result.isEnd,
-                    playlistError = if (result.list.isEmpty()) "无相关歌单（请换关键词）" else null
+                    playlistError = if (result.list.isEmpty()) AppLocaleManager.getString(R.string.ui_no_matching_playlists_try_another_keyword) else null
                 )
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     searchingPlaylists = false,
                     playlistResults = emptyList(),
                     playlistIsEnd = true,
-                    playlistError = "歌单搜索失败: ${t.message ?: t.javaClass.simpleName}"
+                    playlistError = AppLocaleManager.getString(R.string.ui_playlist_search_failed, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -676,7 +679,7 @@ class LxMusicViewModel @Inject constructor(
             } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     isLoadingMore = false,
-                    playlistError = "加载更多失败: ${t.message ?: t.javaClass.simpleName}"
+                    playlistError = AppLocaleManager.getString(R.string.ui_could_not_load_more_dd45af7, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -722,7 +725,7 @@ class LxMusicViewModel @Inject constructor(
                 val result = fetchPlaylistSongs(playlist)
                 if (result.list.isEmpty()) {
                     withContext(Dispatchers.Main) {
-                        onResult(false, "获取歌单歌曲失败，请稍后重试")
+                        onResult(false, AppLocaleManager.getString(R.string.ui_could_not_load_playlist_songs_please_try_again_later))
                     }
                     return@launch
                 }
@@ -741,24 +744,24 @@ class LxMusicViewModel @Inject constructor(
                 savedCount = songIds.size
                 if (songIds.isEmpty()) {
                     withContext(Dispatchers.Main) {
-                        onResult(false, "保存歌曲失败，请稍后重试")
+                        onResult(false, AppLocaleManager.getString(R.string.ui_could_not_save_songs_please_try_again_later))
                     }
                     return@launch
                 }
 
                 playlistPreferencesRepository.createPlaylist(
-                    name = playlist.name.ifBlank { "在线歌单" },
+                    name = playlist.name.ifBlank { AppLocaleManager.getString(R.string.ui_online_playlist) },
                     songIds = songIds,
                     coverImageUri = playlist.cover.ifBlank { null },
                     source = "ONLINE"
                 )
                 withContext(Dispatchers.Main) {
-                    onResult(true, "已保存到本地歌单「${playlist.name}」($savedCount 首)")
+                    onResult(true, AppLocaleManager.getString(R.string.ui_saved_to_local_playlist_songs, (playlist.name).toString(), (savedCount).toString()))
                 }
             } catch (t: Throwable) {
                 Timber.e(t, "savePlaylistToLocal failed")
                 withContext(Dispatchers.Main) {
-                    onResult(false, "保存失败: ${t.message ?: t.javaClass.simpleName}")
+                    onResult(false, AppLocaleManager.getString(R.string.ui_could_not_save_ca00edc, (t.message ?: t.javaClass.simpleName).toString()))
                 }
             } finally {
                 _uiState.value = _uiState.value.copy(savingPlaylistId = null)
@@ -860,20 +863,20 @@ class LxMusicViewModel @Inject constructor(
                 android.util.Log.d("LxPlaySong", "Song name: ${song.name}, singer: ${song.singer}, id: ${song.id}, cover: ${song.pic}")
                 _uiState.value = _uiState.value.copy(
                     progress = 0.2f,
-                    progressLabel = "获取播放链接…",
+                    progressLabel = AppLocaleManager.getString(R.string.ui_getting_playback_url_4203dd3),
                     loadingSongId = song.id
                 )
                 val resolved = resolvePlayableSong(song)
                 android.util.Log.d("LxPlaySong", "Resolved URL: ${resolved?.url}, cover: ${resolved?.cover}")
 
-                _uiState.value = _uiState.value.copy(progressLabel = "正在打开播放器…")
+                _uiState.value = _uiState.value.copy(progressLabel = AppLocaleManager.getString(R.string.ui_opening_player))
 
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(progress = null, progressLabel = null, loadingSongId = null)
                     if (resolved == null) {
                         android.util.Log.w("LxPlaySong", "URL is null, showing error (song=${song.id})")
                         _uiState.value = _uiState.value.copy(
-                            error = "无法获取播放链接（音源: ${resolved?.source ?: "unknown"}），请换一首或换音源"
+                            error = AppLocaleManager.getString(R.string.ui_could_not_get_playback_url_source_try_another_song_or, (resolved?.source ?: "unknown").toString())
                         )
                         return@withContext
                     }
@@ -884,7 +887,7 @@ class LxMusicViewModel @Inject constructor(
                 android.util.Log.e("LxPlaySong", "Error: ${t.message}", t)
                 _uiState.value = _uiState.value.copy(
                     progress = null, progressLabel = null, loadingSongId = null,
-                    error = "播放失败: ${t.message ?: t.javaClass.simpleName}"
+                    error = AppLocaleManager.getString(R.string.ui_playback_failed, (t.message ?: t.javaClass.simpleName).toString())
                 )
             }
         }
@@ -1274,7 +1277,7 @@ class LxMusicViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(
                 progress = 0.2f,
-                progressLabel = "获取播放链接…",
+                progressLabel = AppLocaleManager.getString(R.string.ui_getting_playback_url_4203dd3),
                 loadingSongId = clicked.id
             )
             val resolved = resolvePlayableSong(clicked, persist = false)
@@ -1282,7 +1285,7 @@ class LxMusicViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(
                         progress = null, progressLabel = null, loadingSongId = null,
-                        error = "无法获取播放链接（音源: ${clicked.source.ifBlank { "unknown" }}），请换一首或换音源"
+                        error = AppLocaleManager.getString(R.string.ui_could_not_get_playback_url_source_try_another_song_or, (clicked.source.ifBlank { "unknown" }).toString())
                     )
                 }
                 return@launch

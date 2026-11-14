@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.github
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -135,7 +138,7 @@ class LanzouCloudApi {
                 )
                 val listObj = JSONObject(listJson)
                 if (listObj.optInt("zt") != 1) {
-                    throw Exception("获取文件列表失败: ${listObj.optString("info", listJson)}")
+                    throw Exception(AppLocaleManager.getString(R.string.ui_could_not_get_file_list, (listObj.optString("info", listJson)).toString()))
                 }
                 val text = listObj.optJSONArray("text") ?: JSONArray()
                 val fileEntries = mutableListOf<FileEntry>()
@@ -200,7 +203,7 @@ class LanzouCloudApi {
         val result = resolveShare(shareUrl, password)
         return result.map { files ->
             if (files.isEmpty()) {
-                throw Exception("蓝奏云中没有找到文件")
+                throw Exception(AppLocaleManager.getString(R.string.ui_no_files_found_on_lanzou_cloud))
             }
 
             // 如果指定了版本号，优先匹配版本号一致的文件
@@ -229,7 +232,7 @@ class LanzouCloudApi {
 
             archMatched?.downloadUrl
                 ?: targetFiles.firstOrNull()?.downloadUrl
-                ?: throw Exception("没有找到可用的下载链接")
+                ?: throw Exception(AppLocaleManager.getString(R.string.ui_no_usable_download_link_found))
         }
     }
 
@@ -365,7 +368,7 @@ class LanzouCloudApi {
 
     private fun extractIndexParams(html: String): IndexParams {
         fun first(pattern: Regex): String =
-            pattern.find(html)?.groupValues?.get(1) ?: throw Exception("无法从分享页提取参数: $pattern")
+            pattern.find(html)?.groupValues?.get(1) ?: throw Exception(AppLocaleManager.getString(R.string.ui_could_not_extract_sharing_page_parameter, (pattern).toString()))
 
         val lx = first(Regex("""'lx':(\d+),""")).toInt()
         val up = first(Regex("""'up':(\d+),""")).toInt()

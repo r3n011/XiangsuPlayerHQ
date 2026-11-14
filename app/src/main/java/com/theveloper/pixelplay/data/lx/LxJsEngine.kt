@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.lx
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.util.Base64
 import android.util.Log
@@ -234,14 +237,14 @@ class LxJsEngine @Inject constructor(
                 Log.d(TAG, "QuickJSLoader.init() OK")
             } catch (t: Throwable) {
                 Log.e(TAG, "QuickJSLoader.init() FAILED", t)
-                lastError = "QuickJSLoader.init() 失败: ${t.message}"
+                lastError = AppLocaleManager.getString(R.string.ui_quickjsloader_init_failed, (t.message).toString())
                 return@withLock false
             }
         }
 
         val files = fileStore.listFiles()
         if (files.isEmpty()) {
-            lastError = "没有导入 JS 文件"
+            lastError = AppLocaleManager.getString(R.string.ui_no_javascript_files_imported)
             return@withLock false
         }
 
@@ -253,14 +256,14 @@ class LxJsEngine @Inject constructor(
         for (file in files) {
             val js = fileStore.content(file)
             if (js.isNullOrBlank()) {
-                errors += "${file.name}: 文件为空或读取失败"
+                errors += AppLocaleManager.getString(R.string.ui_file_is_empty_or_could_not_be_read, (file.name).toString())
                 continue
             }
             val c = runCatching {
                 withContext(qjsDispatcher) { QuickJSContext.create() }
             }.getOrNull()
             if (c == null) {
-                errors += "${file.name}: QuickJS native create 失败(设备 ABI 可能不支持)"
+                errors += AppLocaleManager.getString(R.string.ui_could_not_create_quickjs_engine_device_abi_may_be_unsupported, (file.name).toString())
                 continue
             }
             liveCtxs.add(c)
@@ -272,7 +275,7 @@ class LxJsEngine @Inject constructor(
                     if (evalRes.isFailure) {
                         val t = evalRes.exceptionOrNull()!!
                         Log.e(TAG, "${file.name} eval FAILED", t)
-                        lastError = "${file.name}: JS 解析/执行失败: ${t.javaClass.simpleName}: ${t.message}"
+                        lastError = AppLocaleManager.getString(R.string.ui_javascript_parsing_or_execution_failed, (file.name).toString(), (t.javaClass.simpleName).toString(), (t.message).toString())
                         emptyMap()
                     } else {
                         Log.d(TAG, "${file.name} eval OK")
@@ -293,7 +296,7 @@ class LxJsEngine @Inject constructor(
             if (srcs.isEmpty()) {
                 runCatching { withContext(qjsDispatcher) { c.destroy() } }
                 liveCtxs.remove(c)
-                errors += "${file.name}: 初始化了但没有注册任何音源，或执行失败"
+                errors += AppLocaleManager.getString(R.string.ui_no_sources_registered_after_initialization_or_script_execution_failed, (file.name).toString())
                 continue
             }
 
@@ -327,7 +330,7 @@ class LxJsEngine @Inject constructor(
         }
         inited = anySuccess
         if (!anySuccess) {
-            lastError = errors.joinToString("；").ifBlank { "JS 加载失败" }
+            lastError = errors.joinToString("；").ifBlank { AppLocaleManager.getString(R.string.ui_could_not_load_javascript) }
         } else if (errors.isNotEmpty()) {
             Log.w(TAG, "部分 JS 加载失败: ${errors.joinToString("；")}")
         }

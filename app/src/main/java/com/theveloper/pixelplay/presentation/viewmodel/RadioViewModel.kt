@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.radio.RadioBrowserApi
@@ -71,11 +74,11 @@ class RadioViewModel @Inject constructor(
                     stations = stations,
                     topStations = stations,
                     loading = false,
-                    error = if (stations.isEmpty()) "无法连接到广播服务器" else null
+                    error = if (stations.isEmpty()) AppLocaleManager.getString(R.string.ui_could_not_connect_to_the_radio_server) else null
                 )
             } catch (e: Exception) {
                 Timber.e(e, "RadioViewModel: 加载热门电台失败")
-                _uiState.value = _uiState.value.copy(loading = false, error = "加载失败：${e.message}")
+                _uiState.value = _uiState.value.copy(loading = false, error = AppLocaleManager.getString(R.string.ui_could_not_load_3e7153b, (e.message).toString()))
             }
         }
     }
@@ -97,11 +100,11 @@ class RadioViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     stations = stations,
                     loading = false,
-                    error = if (stations.isEmpty()) "没有找到相关电台" else null
+                    error = if (stations.isEmpty()) AppLocaleManager.getString(R.string.ui_no_matching_stations_found) else null
                 )
             } catch (e: Exception) {
                 Timber.e(e, "RadioViewModel: 搜索电台失败")
-                _uiState.value = _uiState.value.copy(loading = false, error = "搜索失败：${e.message}")
+                _uiState.value = _uiState.value.copy(loading = false, error = AppLocaleManager.getString(R.string.ui_search_failed_d80dfb9, (e.message).toString()))
             }
         }
     }
@@ -118,11 +121,11 @@ class RadioViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     stations = stations,
                     loading = false,
-                    error = if (stations.isEmpty()) "该国家暂无电台" else null
+                    error = if (stations.isEmpty()) AppLocaleManager.getString(R.string.ui_no_stations_available_for_this_country) else null
                 )
             } catch (e: Exception) {
                 Timber.e(e, "RadioViewModel: 加载国家电台失败")
-                _uiState.value = _uiState.value.copy(loading = false, error = "加载失败：${e.message}")
+                _uiState.value = _uiState.value.copy(loading = false, error = AppLocaleManager.getString(R.string.ui_could_not_load_3e7153b, (e.message).toString()))
             }
         }
     }

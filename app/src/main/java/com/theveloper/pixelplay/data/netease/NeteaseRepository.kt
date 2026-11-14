@@ -1,6 +1,9 @@
 @file:Suppress("DEPRECATION")
 package com.theveloper.pixelplay.data.netease
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -210,7 +213,7 @@ class NeteaseRepository @Inject constructor(
                 val cookieHeader = body["cookie"] as? String
                 if (cookieHeader.isNullOrBlank() || !cookieHeader.contains("MUSIC_U=")) {
                     return@withContext Result.failure(
-                        IllegalStateException("登录响应未包含有效会话，请改用网页登录或稍后重试")
+                        IllegalStateException(AppLocaleManager.getString(R.string.ui_sign_in_response_has_no_valid_session_use_web_sign))
                     )
                 }
                 val cookieJson = JSONObject().apply {
@@ -236,7 +239,7 @@ class NeteaseRepository @Inject constructor(
      * redirectUrl / checkToken 字段时，引导用户改走网页登录完成安全验证。
      */
     private fun netEasePhoneAuthErrorMessage(code: Int, body: Map<String, Any?>?): String {
-        if (code in 200..299) return "登录成功"
+        if (code in 200..299) return AppLocaleManager.getString(R.string.ui_residue_kugou_login_status_confirmed)
         val data = body?.get("data") as? Map<*, *>
         val loginExt = body?.get("loginExtData") as? Map<*, *>
         val hasChallenge = listOfNotNull(body, data, loginExt).any { map ->
@@ -248,10 +251,10 @@ class NeteaseRepository @Inject constructor(
             code in 10001..10004 ||
             hasChallenge
         return if (isRiskChallenge) {
-            "网易云要求额外安全验证，请改用网页登录完成验证"
+            AppLocaleManager.getString(R.string.ui_netease_requires_additional_security_verification_use_web_sign_in_to)
         } else {
             (body?.get("message") as? String)?.takeIf { it.isNotBlank() }
-                ?: "网易云登录失败（$code）"
+                ?: AppLocaleManager.getString(R.string.ui_netease_sign_in_failed, (code).toString())
         }
     }
 

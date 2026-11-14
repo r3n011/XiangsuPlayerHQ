@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -550,7 +552,7 @@ fun SongInfoBottomSheet(
                                                         // 在线歌曲：生成协议分享链接并通过系统分享
                                                         val shareLink = com.theveloper.pixelplay.data.share.ShareLinkCodec.encodeSong(song)
                                                         if (shareLink != null) {
-                                                            val shareText = "我在像素播放器听${song.displayArtist}的《${song.title}》\n复制后打开像素播放器或者手动输入到搜索框即可查看\n$shareLink"
+                                                            val shareText = AppLocaleManager.getString(R.string.ui_i_am_listening_to_by_on_xiangsuplayer_copy_this_link, (song.displayArtist).toString(), (song.title).toString(), (shareLink).toString())
                                                             val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                                                 putExtra(Intent.EXTRA_TEXT, shareText)
                                                                 type = "text/plain"
@@ -559,7 +561,7 @@ fun SongInfoBottomSheet(
                                                                 Intent.createChooser(sendIntent, shareChooserTitle)
                                                             )
                                                         } else {
-                                                            Toast.makeText(context, "生成分享链接失败", Toast.LENGTH_SHORT).show()
+                                                            Toast.makeText(context, AppLocaleManager.getString(R.string.ui_could_not_create_share_link), Toast.LENGTH_SHORT).show()
                                                         }
                                                     }
                                                 } catch (e: Exception) {
@@ -919,9 +921,9 @@ fun SongInfoBottomSheet(
             songInfoViewModel.autoCompleteMetadata(song) { success, error ->
                 scope.launch {
                     if (success) {
-                        android.widget.Toast.makeText(context, "元数据已自动补全", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, AppLocaleManager.getString(R.string.ui_metadata_completed_automatically), android.widget.Toast.LENGTH_SHORT).show()
                     } else {
-                        android.widget.Toast.makeText(context, "自动补全失败: ${error ?: "未知错误"}", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, AppLocaleManager.getString(R.string.ui_could_not_complete_metadata, (error ?: AppLocaleManager.getString(R.string.ui_residue_error_unknown)).toString()), android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }

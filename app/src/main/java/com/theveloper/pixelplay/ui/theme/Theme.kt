@@ -14,14 +14,20 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
+import com.theveloper.pixelplay.data.preferences.dataStore
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
 import androidx.core.graphics.ColorUtils
+import kotlinx.coroutines.flow.map
 
 val LocalPixelPlayDarkTheme = staticCompositionLocalOf { false }
 val LocalShowScrollbar = staticCompositionLocalOf { true }
@@ -132,6 +138,20 @@ fun PixelPlayTheme(
         else -> LightColorScheme
     }
 
+    // ⚡ 应用字体（设置 → 外观）：只作用于歌词之外的软件界面。
+    //   在主题根部统一读取偏好，所有使用 PixelPlayTheme 的界面自动生效；
+    //   歌词文字有独立的字体设置（resolveLyricsFontFamily），不受此处影响。
+    val appFontKey by context.dataStore.data
+        .map { preferences ->
+            preferences[ThemePreferencesRepository.APP_FONT_FAMILY]
+                ?: ThemePreferencesRepository.DEFAULT_APP_FONT_FAMILY
+        }
+        .collectAsStateWithLifecycle(
+            initialValue = ThemePreferencesRepository.DEFAULT_APP_FONT_FAMILY
+        )
+    val appFontFamily = remember(appFontKey) { resolveAppFontFamily(context, appFontKey) }
+    val appTypography = remember(appFontFamily) { Typography.withAppFontFamily(appFontFamily) }
+
     PixelPlayStatusBarStyle(
         color = finalColorScheme.background,
         navigationColor = finalColorScheme.background
@@ -140,7 +160,7 @@ fun PixelPlayTheme(
     CompositionLocalProvider(LocalPixelPlayDarkTheme provides darkTheme) {
         MaterialTheme(
             colorScheme = finalColorScheme,
-            typography = Typography,
+            typography = appTypography,
             shapes = Shapes,
             content = content
         )

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.bilibili
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -373,17 +376,17 @@ class BilibiliSearchApi @Inject constructor(
                 val response = okHttpClient.newCall(request).execute()
                 if (!response.isSuccessful) {
                     Timber.e("Bilibili search API failed: ${response.code}")
-                    return@withContext BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = "网络请求失败: ${response.code}")
+                    return@withContext BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = AppLocaleManager.getString(R.string.ui_network_request_failed, (response.code).toString()))
                 }
 
                 val body = response.body?.string()
-                    ?: return@withContext BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = "响应为空")
+                    ?: return@withContext BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = AppLocaleManager.getString(R.string.ui_empty_response))
                 Timber.d("Bilibili search response: ${body.take(1000)}")
 
                 parseSearchResponse(body, pageSize)
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili search API exception")
-                BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = e.message ?: "搜索异常")
+                BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = e.message ?: AppLocaleManager.getString(R.string.ui_search_error))
             }
         }
     }
@@ -401,15 +404,15 @@ class BilibiliSearchApi @Inject constructor(
                     sMixinKey = null
                     Timber.e("WBI signature invalid, clearing sMixinKey")
                 }
-                return BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = "搜索失败: $msg")
+                return BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = AppLocaleManager.getString(R.string.ui_search_failed, (msg).toString()))
             }
-            val data = obj.optJSONObject("data") ?: return BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = "数据为空")
+            val data = obj.optJSONObject("data") ?: return BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = AppLocaleManager.getString(R.string.ui_no_data_returned))
 
             val total = data.optInt("numResults", 0)
             val videoArr = data.optJSONArray("result") ?: data.optJSONArray("items")
             if (videoArr == null) {
                 Timber.w("Bilibili search result array not found")
-                return BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = "无搜索结果")
+                return BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = AppLocaleManager.getString(R.string.ui_no_search_results))
             }
 
             Timber.d("Bilibili search result count: ${videoArr.length()}, total: $total")
@@ -427,7 +430,7 @@ class BilibiliSearchApi @Inject constructor(
             BilibiliSearchResult(list = list, isEnd = isEnd, total = total)
         } catch (t: Throwable) {
             Timber.e(t, "Parse Bilibili search response exception")
-            BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = t.message ?: "解析失败")
+            BilibiliSearchResult(list = emptyList(), isEnd = true, total = 0, error = t.message ?: AppLocaleManager.getString(R.string.ui_could_not_parse_response))
         }
     }
 
@@ -812,7 +815,7 @@ class BilibiliSearchApi @Inject constructor(
                 result
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili comments exception")
-                BilibiliCommentResult(error = e.message ?: "网络异常")
+                BilibiliCommentResult(error = e.message ?: AppLocaleManager.getString(R.string.ui_network_error))
             }
         }
     }
@@ -871,14 +874,14 @@ class BilibiliSearchApi @Inject constructor(
             builder.header("Cookie", sessionCookie)
             val response = okHttpClient.newCall(builder.get().build()).execute()
             if (!response.isSuccessful) {
-                val err = "评论接口 HTTP ${response.code}"
+                val err = AppLocaleManager.getString(R.string.ui_comments_api_http, (response.code).toString())
                 Timber.e("Bilibili comments API failed: ${response.code}")
                 return BilibiliCommentResult(error = err)
             }
-            val body = response.body?.string() ?: return BilibiliCommentResult(error = "评论接口返回空响应")
+            val body = response.body?.string() ?: return BilibiliCommentResult(error = AppLocaleManager.getString(R.string.ui_comments_api_returned_an_empty_response))
             val obj = JSONObject(body)
             if (obj.optInt("code", -1) != 0) {
-                val msg = obj.optString("message", "未知错误").ifBlank { "未知错误" }
+                val msg = obj.optString("message", AppLocaleManager.getString(R.string.ui_residue_error_unknown)).ifBlank { AppLocaleManager.getString(R.string.ui_residue_error_unknown) }
                 Timber.w("Bilibili comments API error: code=${obj.optInt("code", -1)}, msg=$msg")
                 return BilibiliCommentResult(error = "(${obj.optInt("code", -1)}) $msg")
             }
@@ -886,7 +889,7 @@ class BilibiliSearchApi @Inject constructor(
             parseCommentResponse(obj, isLoggedIn = isLoggedIn, pn = pn)
         } catch (e: Exception) {
             Timber.e(e, "Bilibili fetchCommentPage exception")
-            BilibiliCommentResult(error = e.message ?: "网络异常")
+            BilibiliCommentResult(error = e.message ?: AppLocaleManager.getString(R.string.ui_network_error))
         }
     }
 
@@ -914,23 +917,23 @@ class BilibiliSearchApi @Inject constructor(
                 .build()
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
-                return BilibiliCommentResult(error = "评论接口 HTTP ${response.code}")
+                return BilibiliCommentResult(error = AppLocaleManager.getString(R.string.ui_comments_api_http, (response.code).toString()))
             }
-            val body = response.body?.string() ?: return BilibiliCommentResult(error = "评论接口返回空响应")
+            val body = response.body?.string() ?: return BilibiliCommentResult(error = AppLocaleManager.getString(R.string.ui_comments_api_returned_an_empty_response))
             val obj = JSONObject(body)
             if (obj.optInt("code", -1) != 0) {
-                val msg = obj.optString("message", "未知错误").ifBlank { "未知错误" }
+                val msg = obj.optString("message", AppLocaleManager.getString(R.string.ui_residue_error_unknown)).ifBlank { AppLocaleManager.getString(R.string.ui_residue_error_unknown) }
                 return BilibiliCommentResult(error = "(${obj.optInt("code", -1)}) $msg")
             }
             parseCommentResponse(obj, isLoggedIn = false)
         } catch (e: Exception) {
             Timber.e(e, "Bilibili fetchCommentPageWeb exception")
-            BilibiliCommentResult(error = e.message ?: "网络异常")
+            BilibiliCommentResult(error = e.message ?: AppLocaleManager.getString(R.string.ui_network_error))
         }
     }
 
     private fun parseCommentResponse(obj: JSONObject, isLoggedIn: Boolean = false, pn: Int = 1): BilibiliCommentResult {
-        val data = obj.optJSONObject("data") ?: return BilibiliCommentResult(error = "评论数据为空")
+        val data = obj.optJSONObject("data") ?: return BilibiliCommentResult(error = AppLocaleManager.getString(R.string.ui_no_comment_data_returned))
         // 视频 UP 主 uid（对齐 PiliPlus data.upper.mid），用于识别 UP 本人评论与置顶权限
         val upMid = data.optJSONObject("upper")?.optLong("mid", 0L) ?: 0L
         val comments = mutableListOf<BilibiliComment>()
@@ -1148,7 +1151,7 @@ class BilibiliSearchApi @Inject constructor(
                 result
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili reply-reply exception")
-                BilibiliReplyRepliesResult(error = e.message ?: "网络异常")
+                BilibiliReplyRepliesResult(error = e.message ?: AppLocaleManager.getString(R.string.ui_network_error))
             }
         }
     }
@@ -1182,15 +1185,15 @@ class BilibiliSearchApi @Inject constructor(
             builder.header("Cookie", sessionCookie)
             val response = okHttpClient.newCall(builder.get().build()).execute()
             if (!response.isSuccessful) {
-                return BilibiliReplyRepliesResult(error = "子回复接口 HTTP ${response.code}")
+                return BilibiliReplyRepliesResult(error = AppLocaleManager.getString(R.string.ui_replies_api_http, (response.code).toString()))
             }
-            val body = response.body?.string() ?: return BilibiliReplyRepliesResult(error = "子回复接口返回空响应")
+            val body = response.body?.string() ?: return BilibiliReplyRepliesResult(error = AppLocaleManager.getString(R.string.ui_replies_api_returned_an_empty_response))
             val obj = JSONObject(body)
             if (obj.optInt("code", -1) != 0) {
-                val msg = obj.optString("message", "未知错误").ifBlank { "未知错误" }
+                val msg = obj.optString("message", AppLocaleManager.getString(R.string.ui_residue_error_unknown)).ifBlank { AppLocaleManager.getString(R.string.ui_residue_error_unknown) }
                 return BilibiliReplyRepliesResult(error = "(${obj.optInt("code", -1)}) $msg")
             }
-            val data = obj.optJSONObject("data") ?: return BilibiliReplyRepliesResult(error = "子回复数据为空")
+            val data = obj.optJSONObject("data") ?: return BilibiliReplyRepliesResult(error = AppLocaleManager.getString(R.string.ui_no_reply_data_returned))
             val list = mutableListOf<BilibiliComment>()
             val arr = data.optJSONArray("replies")
             val upMid = data.optJSONObject("upper")?.optLong("mid", 0L) ?: 0L
@@ -1210,7 +1213,7 @@ class BilibiliSearchApi @Inject constructor(
             )
         } catch (e: Exception) {
             Timber.e(e, "Bilibili fetchReplyRepliesPage exception")
-            BilibiliReplyRepliesResult(error = e.message ?: "网络异常")
+            BilibiliReplyRepliesResult(error = e.message ?: AppLocaleManager.getString(R.string.ui_network_error))
         }
     }
 
@@ -1272,15 +1275,15 @@ class BilibiliSearchApi @Inject constructor(
                 val response = okHttpClient.newCall(
                     appPostRequest("$PASSPORT_API/x/passport-tv-login/qrcode/poll", bodyQuery)
                 ).execute()
-                val body = response.body?.string() ?: return@withContext BilibiliLoginPollResult(code = -1, message = "空响应")
+                val body = response.body?.string() ?: return@withContext BilibiliLoginPollResult(code = -1, message = AppLocaleManager.getString(R.string.ui_empty_response_d00b7fe))
                 val obj = JSONObject(body)
                 val code = obj.optInt("code", -1)
                 if (code != 0) {
                     val msg = when (code) {
-                        86101 -> "等待扫码"
-                        86090 -> "已扫码，请在手机上确认"
-                        86038 -> "二维码已过期"
-                        else -> obj.optString("message", "登录失败").ifBlank { "登录失败" }
+                        86101 -> AppLocaleManager.getString(R.string.ui_waiting_for_scan)
+                        86090 -> AppLocaleManager.getString(R.string.ui_scanned_confirm_on_your_phone)
+                        86038 -> AppLocaleManager.getString(R.string.ui_qr_code_expired)
+                        else -> obj.optString("message", AppLocaleManager.getString(R.string.ui_sign_in_failed)).ifBlank { AppLocaleManager.getString(R.string.ui_sign_in_failed) }
                     }
                     return@withContext BilibiliLoginPollResult(success = false, code = code, message = msg)
                 }
@@ -1300,7 +1303,7 @@ class BilibiliSearchApi @Inject constructor(
                 BilibiliLoginPollResult(success = true, code = 0, cookies = cookieMap)
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili poll login failed")
-                BilibiliLoginPollResult(code = -1, message = e.message ?: "网络错误")
+                BilibiliLoginPollResult(code = -1, message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1477,7 +1480,7 @@ class BilibiliSearchApi @Inject constructor(
                     code == 0 && recaptchaUrl.isBlank() -> {
                         BilibiliSmsSendResult(
                             success = true,
-                            message = "验证码已发送",
+                            message = AppLocaleManager.getString(R.string.ui_residue_kugou_login_code_sent),
                             captchaKey = data?.optString("captcha_key", "") ?: ""
                         )
                     }
@@ -1490,26 +1493,26 @@ class BilibiliSearchApi @Inject constructor(
                         if (challenge != null) {
                             BilibiliSmsSendResult(
                                 success = false,
-                                message = "请完成人机验证",
+                                message = AppLocaleManager.getString(R.string.ui_complete_human_verification),
                                 captchaRequired = true,
                                 challenge = challenge
                             )
                         } else {
                             BilibiliSmsSendResult(
                                 success = false,
-                                message = "需要人机验证（极验参数获取失败），请改用扫码登录",
+                                message = AppLocaleManager.getString(R.string.ui_human_verification_required_but_could_not_load_verification_parameters_use),
                                 captchaRequired = true
                             )
                         }
                     }
                     else -> {
-                        val msg = obj.optString("message", "发送失败").ifBlank { "发送失败" }
+                        val msg = obj.optString("message", AppLocaleManager.getString(R.string.ui_could_not_send)).ifBlank { AppLocaleManager.getString(R.string.ui_could_not_send) }
                         BilibiliSmsSendResult(success = false, message = msg)
                     }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili send sms code failed")
-                BilibiliSmsSendResult(message = e.message ?: "网络错误")
+                BilibiliSmsSendResult(message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1650,7 +1653,7 @@ class BilibiliSearchApi @Inject constructor(
                     return@withContext BilibiliLoginPollResult(
                         success = false,
                         code = resultCode,
-                        message = obj.optString("message", "验证码错误").ifBlank { "验证码错误" }
+                        message = obj.optString("message", AppLocaleManager.getString(R.string.ui_incorrect_verification_code)).ifBlank { AppLocaleManager.getString(R.string.ui_incorrect_verification_code) }
                     )
                 }
                 // app 端登录接口的会话 cookie 在 JSON body 的 data.cookie_info.cookies 数组中（对齐 PiliPlus），
@@ -1686,7 +1689,7 @@ class BilibiliSearchApi @Inject constructor(
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili sms login failed")
-                BilibiliLoginPollResult(code = -1, message = e.message ?: "网络错误")
+                BilibiliLoginPollResult(code = -1, message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1732,12 +1735,12 @@ class BilibiliSearchApi @Inject constructor(
                 val success = obj.optInt("code", -1) == 0
                 BilibiliCommentActionResult(
                     success = success,
-                    message = obj.optString("message", if (success) "ok" else "发布失败"),
+                    message = obj.optString("message", if (success) "ok" else AppLocaleManager.getString(R.string.ui_could_not_post)),
                     rpid = obj.optJSONObject("data")?.optLong("rpid", 0L) ?: 0L
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili add reply failed")
-                BilibiliCommentActionResult(message = e.message ?: "网络错误")
+                BilibiliCommentActionResult(message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1773,11 +1776,11 @@ class BilibiliSearchApi @Inject constructor(
                 val success = obj.optInt("code", -1) == 0
                 BilibiliCommentActionResult(
                     success = success,
-                    message = obj.optString("message", if (success) "ok" else "操作失败")
+                    message = obj.optString("message", if (success) "ok" else AppLocaleManager.getString(R.string.ui_operation_failed))
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili like reply failed")
-                BilibiliCommentActionResult(message = e.message ?: "网络错误")
+                BilibiliCommentActionResult(message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1820,11 +1823,11 @@ class BilibiliSearchApi @Inject constructor(
                 val success = obj.optInt("code", -1) == 0
                 BilibiliCommentActionResult(
                     success = success,
-                    message = obj.optString("message", if (success) "举报成功" else "举报失败")
+                    message = obj.optString("message", if (success) AppLocaleManager.getString(R.string.ui_report_sent) else AppLocaleManager.getString(R.string.ui_could_not_send_report))
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili report reply failed")
-                BilibiliCommentActionResult(message = e.message ?: "网络错误")
+                BilibiliCommentActionResult(message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1863,11 +1866,11 @@ class BilibiliSearchApi @Inject constructor(
                 val success = obj.optInt("code", -1) == 0
                 BilibiliCommentActionResult(
                     success = success,
-                    message = obj.optString("message", if (success) "ok" else "操作失败")
+                    message = obj.optString("message", if (success) "ok" else AppLocaleManager.getString(R.string.ui_operation_failed))
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili hate reply failed")
-                BilibiliCommentActionResult(message = e.message ?: "网络错误")
+                BilibiliCommentActionResult(message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1906,11 +1909,11 @@ class BilibiliSearchApi @Inject constructor(
                 val success = obj.optInt("code", -1) == 0
                 BilibiliCommentActionResult(
                     success = success,
-                    message = obj.optString("message", if (success) "置顶成功" else "操作失败")
+                    message = obj.optString("message", if (success) AppLocaleManager.getString(R.string.ui_comment_pinned) else AppLocaleManager.getString(R.string.ui_operation_failed))
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili top reply failed")
-                BilibiliCommentActionResult(message = e.message ?: "网络错误")
+                BilibiliCommentActionResult(message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }
@@ -1947,11 +1950,11 @@ class BilibiliSearchApi @Inject constructor(
                 val success = obj.optInt("code", -1) == 0
                 BilibiliCommentActionResult(
                     success = success,
-                    message = obj.optString("message", if (success) "设置成功" else "操作失败")
+                    message = obj.optString("message", if (success) AppLocaleManager.getString(R.string.ui_settings_saved) else AppLocaleManager.getString(R.string.ui_operation_failed))
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Bilibili set reply subject failed")
-                BilibiliCommentActionResult(message = e.message ?: "网络错误")
+                BilibiliCommentActionResult(message = e.message ?: AppLocaleManager.getString(R.string.ui_network_error_9d4843e))
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.netease.chat
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,7 +83,7 @@ class ShareSongToFriendViewModel @Inject constructor(
             _isLoading.value = true
             repository.getInviteCandidates()
                 .onSuccess { _candidates.value = it }
-                .onFailure { _errorEvents.tryEmit(it.message ?: "获取好友列表失败") }
+                .onFailure { _errorEvents.tryEmit(it.message ?: AppLocaleManager.getString(R.string.ui_could_not_load_friends)) }
             _isLoading.value = false
         }
     }
@@ -94,9 +96,9 @@ class ShareSongToFriendViewModel @Inject constructor(
             repository.sendSong(userId, songId, message = songTitle)
                 .onSuccess {
                     _sent.update { it + userId }
-                    _errorEvents.tryEmit("已分享")
+                    _errorEvents.tryEmit(AppLocaleManager.getString(R.string.ui_residue_player_share_to_friend_sent))
                 }
-                .onFailure { _errorEvents.tryEmit(it.message ?: "分享失败") }
+                .onFailure { _errorEvents.tryEmit(it.message ?: AppLocaleManager.getString(R.string.ui_could_not_share)) }
             _sending.update { it - userId }
         }
     }

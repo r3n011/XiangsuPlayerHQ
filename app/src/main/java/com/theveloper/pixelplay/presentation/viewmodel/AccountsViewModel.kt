@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.bilibili.BilibiliFavoritesSyncer
@@ -284,7 +287,7 @@ class AccountsViewModel @Inject constructor(
                         service = ExternalServiceAccount.BILIBILI,
                         title = "Bilibili",
                         accountLabel = bilibiliNickname.ifBlank { "Bilibili account connected" },
-                        syncedContentLabel = "已同步 B 站收藏",
+                        syncedContentLabel = AppLocaleManager.getString(R.string.ui_bilibili_favorites_synced),
                         isLoggingOut = ExternalServiceAccount.BILIBILI in activeLogouts
                     )
                 )
@@ -293,12 +296,12 @@ class AccountsViewModel @Inject constructor(
                 add(
                     ExternalAccountUiModel(
                         service = ExternalServiceAccount.KUGOU,
-                        title = "酷狗音乐",
-                        accountLabel = kugouLabel.ifBlank { "酷狗账号已登录" },
+                        title = AppLocaleManager.getString(R.string.ui_residue_kugou_service_name),
+                        accountLabel = kugouLabel.ifBlank { AppLocaleManager.getString(R.string.ui_signed_in_to_kugou) },
                         syncedContentLabel = if (kugouPlaylistCount > 0) {
-                            "已同步 $kugouPlaylistCount 个歌单"
+                            AppLocaleManager.getString(R.string.ui_playlists_synced, (kugouPlaylistCount).toString())
                         } else {
-                            "还没有同步歌单"
+                            AppLocaleManager.getString(R.string.ui_residue_kugou_sync_none)
                         },
                         isLoggingOut = ExternalServiceAccount.KUGOU in activeLogouts,
                         avatarUrl = kugouAvatar

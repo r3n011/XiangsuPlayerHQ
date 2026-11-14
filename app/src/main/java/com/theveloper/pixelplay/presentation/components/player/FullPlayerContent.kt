@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.components.player
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.annotation.SuppressLint
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import android.content.Context
@@ -592,7 +595,7 @@ fun FullPlayerContent(
                         }
 
                         if (!fileName.endsWith(".ttf", true) && !fileName.endsWith(".otf", true)) {
-                            playerViewModel.sendToast("请选择 .ttf 或 .otf 字体文件")
+                            playerViewModel.sendToast(AppLocaleManager.getString(R.string.ui_select_a_ttf_or_otf_font_file))
                             return@launch
                         }
 
@@ -610,10 +613,10 @@ fun FullPlayerContent(
 
                         // 设置为当前歌词字体
                         playerViewModel.setLyricsFontFamily("CUSTOM:$fileName")
-                        playerViewModel.sendToast("字体已导入")
+                        playerViewModel.sendToast(AppLocaleManager.getString(R.string.ui_font_imported))
                     } catch (e: Exception) {
                         Timber.e(e, "Error importing font file")
-                        playerViewModel.sendToast("字体导入失败")
+                        playerViewModel.sendToast(AppLocaleManager.getString(R.string.ui_could_not_import_font))
                     }
                 }
             }
@@ -2069,7 +2072,7 @@ fun FullPlayerContent(
                 showShareStyleSheet = false
                 song.neteaseId?.let { id ->
                     shareSongText(
-                        "分享单曲《${song.title}》: https://music.163.com/song?id=$id (@网易云音乐)"
+                        AppLocaleManager.getString(R.string.ui_sharing_https_music_163_com_song_id_neteasemusic, (song.title).toString(), (id).toString())
                     )
                 }
             },
@@ -2150,7 +2153,7 @@ fun FullPlayerContent(
                         if (idByName != null && idByName != 0L) {
                             playerViewModel.triggerArtistNavigationFromPlayer(idByName, null)
                         } else {
-                            Toast.makeText(context, "未找到艺人「${artist.name}」", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, AppLocaleManager.getString(R.string.ui_artist_not_found, (artist.name).toString()), Toast.LENGTH_SHORT).show()
                         }
                         showArtistPicker = false
                     }
@@ -6042,7 +6045,7 @@ private fun ParallelLyricsPanel(
             ) {
                 Icon(
                     imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "歌词设置"
+                    contentDescription = localizedStringResource(R.string.ui_lyrics_settings)
                 )
             }
         }

@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -737,8 +739,8 @@ private fun SettingsCategoryGrid(
         itemIndex++
 
         ExpressiveNavigationItem(
-            title = "在线音源",
-            subtitle = "管理 JS 音乐源",
+            title = AppLocaleManager.getString(R.string.ui_online_sources),
+            subtitle = AppLocaleManager.getString(R.string.ui_manage_javascript_music_sources),
             icon = Icons.Rounded.Cloud,
             colors = getAccountsColors(isDark),
             onClick = { navController.navigateSafely(Screen.CloudMusicSettings.route) },
@@ -750,8 +752,8 @@ private fun SettingsCategoryGrid(
         itemIndex++
 
         ExpressiveNavigationItem(
-            title = "Dot 墨水屏",
-            subtitle = "推送专辑封面到墨水屏设备",
+            title = AppLocaleManager.getString(R.string.ui_dot_e_ink_display),
+            subtitle = AppLocaleManager.getString(R.string.ui_send_album_art_to_an_e_ink_display),
             icon = Icons.Rounded.Palette,
             colors = getAccountsColors(isDark),
             onClick = { navController.navigateSafely(Screen.DotDeviceSettings.route) },
@@ -859,9 +861,9 @@ private fun SettingsSearchResults(
                     // 点击跳转到对应的分类详情页，并携带命中设置项标题用于定位闪烁
                     val onClickAction: () -> Unit = {
                         when {
-                            item.categoryTitle == "均衡器" -> navController.navigateSafely(Screen.Equalizer.route)
-                            item.categoryTitle == "设备能力" -> navController.navigateSafely(Screen.DeviceCapabilities.route)
-                            item.categoryTitle == "关于" -> navController.navigateSafely("about")
+                            item.categoryTitle == AppLocaleManager.getString(R.string.ui_residue_settings_category_equalizer_title) -> navController.navigateSafely(Screen.Equalizer.route)
+                            item.categoryTitle == AppLocaleManager.getString(R.string.ui_residue_settings_category_device_capabilities_title) -> navController.navigateSafely(Screen.DeviceCapabilities.route)
+                            item.categoryTitle == AppLocaleManager.getString(R.string.ui_residue_screen_about) -> navController.navigateSafely("about")
                             else -> {
                                 val cat = SettingsCategory.entries.find {
                                     settingsCategoryTitles[it.id] == item.categoryTitle
@@ -1667,17 +1669,17 @@ private fun TabletSettingsSearchAndCategories(
 
                                 val onClickAction: () -> Unit = {
                                     when {
-                                        item.categoryTitle == "均衡器" -> {
+                                        item.categoryTitle == AppLocaleManager.getString(R.string.ui_residue_settings_category_equalizer_title) -> {
                                             detailNavController.navigate(Screen.Equalizer.route) {
                                                 popUpTo(0) { inclusive = true }
                                             }
                                         }
-                                        item.categoryTitle == "设备能力" -> {
+                                        item.categoryTitle == AppLocaleManager.getString(R.string.ui_residue_settings_category_device_capabilities_title) -> {
                                             detailNavController.navigate(Screen.DeviceCapabilities.route) {
                                                 popUpTo(0) { inclusive = true }
                                             }
                                         }
-                                        item.categoryTitle == "关于" -> {
+                                        item.categoryTitle == AppLocaleManager.getString(R.string.ui_residue_screen_about) -> {
                                             detailNavController.navigate("about") {
                                                 popUpTo(0) { inclusive = true }
                                             }
@@ -1827,8 +1829,8 @@ private fun TabletSettingsSearchAndCategories(
                     itemIndex++
 
                     TabletNavigationItem(
-                        title = "在线音源",
-                        subtitle = "管理 JS 音乐源",
+                        title = AppLocaleManager.getString(R.string.ui_online_sources),
+                        subtitle = AppLocaleManager.getString(R.string.ui_manage_javascript_music_sources),
                         icon = Icons.Rounded.Cloud,
                         colors = getAccountsColors(isDark),
                         selected = currentDetailKey == "cloud_music_settings",
@@ -1846,8 +1848,8 @@ private fun TabletSettingsSearchAndCategories(
                     itemIndex++
 
                     TabletNavigationItem(
-                        title = "Dot 墨水屏",
-                        subtitle = "推送专辑封面到墨水屏设备",
+                        title = AppLocaleManager.getString(R.string.ui_dot_e_ink_display),
+                        subtitle = AppLocaleManager.getString(R.string.ui_send_album_art_to_an_e_ink_display),
                         icon = Icons.Rounded.Palette,
                         colors = getAccountsColors(isDark),
                         selected = currentDetailKey == "dot_device_settings",

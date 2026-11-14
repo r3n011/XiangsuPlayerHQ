@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.netease.chat
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -101,7 +104,7 @@ class ChatViewModel @Inject constructor(
                     _messages.value = list.sortedBy { it.timeMs }
                     _hasMore.value = list.size >= PAGE_SIZE
                 }
-                .onFailure { emitError(it.message ?: "加载聊天记录失败") }
+                .onFailure { emitError(it.message ?: AppLocaleManager.getString(R.string.ui_could_not_load_chat_history)) }
             _isLoading.value = false
         }
     }
@@ -120,7 +123,7 @@ class ChatViewModel @Inject constructor(
                     }
                     _hasMore.value = list.size >= PAGE_SIZE
                 }
-                .onFailure { emitError(it.message ?: "加载更多失败") }
+                .onFailure { emitError(it.message ?: AppLocaleManager.getString(R.string.ui_could_not_load_more)) }
             _isLoadingMore.value = false
         }
     }
@@ -151,7 +154,7 @@ class ChatViewModel @Inject constructor(
                 .onFailure {
                     _messages.update { list -> list.filterNot { it.id == optimisticId } }
                     _draftRestore.tryEmit(content)
-                    emitError(it.message ?: "发送失败")
+                    emitError(it.message ?: AppLocaleManager.getString(R.string.ui_could_not_send))
                 }
             _isSending.value = false
         }
@@ -179,7 +182,7 @@ class ChatViewModel @Inject constructor(
             repository.setFollowed(peerUserId, target)
                 .onFailure {
                     _peerDetail.value = detail
-                    emitError(it.message ?: "操作失败，请稍后重试")
+                    emitError(it.message ?: AppLocaleManager.getString(R.string.ui_operation_failed_please_try_again_later))
                 }
             _isTogglingFollow.value = false
         }

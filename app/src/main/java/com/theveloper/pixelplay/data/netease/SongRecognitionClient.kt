@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.netease
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioFormat
@@ -85,7 +88,7 @@ class SongRecognitionClient @Inject constructor(
      * duration 限制在 3..15 秒。
      */
     suspend fun captureAudio(durationSeconds: Int = DEFAULT_SECONDS): CapturedAudio {
-        require(durationSeconds in 3..15) { "识曲时长需在 3~15 秒之间" }
+        require(durationSeconds in 3..15) { AppLocaleManager.getString(R.string.ui_song_recognition_requires_3_15_seconds_of_audio) }
         return capture(durationSeconds)
     }
 
@@ -106,7 +109,7 @@ class SongRecognitionClient @Inject constructor(
         val channel = AudioFormat.CHANNEL_IN_MONO
         val encoding = AudioFormat.ENCODING_PCM_16BIT
         val minimum = AudioRecord.getMinBufferSize(SAMPLE_RATE, channel, encoding)
-        if (minimum <= 0) throw IOException("当前设备不支持听歌识曲所需的 8 kHz 录音")
+        if (minimum <= 0) throw IOException(AppLocaleManager.getString(R.string.ui_this_device_does_not_support_the_8_khz_recording_required))
 
         val recorder = AudioRecord.Builder()
             .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
@@ -121,7 +124,7 @@ class SongRecognitionClient @Inject constructor(
             .build()
         if (recorder.state != AudioRecord.STATE_INITIALIZED) {
             recorder.release()
-            throw IOException("麦克风初始化失败")
+            throw IOException(AppLocaleManager.getString(R.string.ui_could_not_initialize_microphone))
         }
 
         val target = durationSeconds * SAMPLE_RATE
@@ -131,7 +134,7 @@ class SongRecognitionClient @Inject constructor(
             recorder.startRecording()
             while (offset < target) {
                 val count = recorder.read(pcm, offset, minOf(2_048, target - offset), AudioRecord.READ_BLOCKING)
-                if (count < 0) throw IOException("录音读取失败：$count")
+                if (count < 0) throw IOException(AppLocaleManager.getString(R.string.ui_could_not_read_recording, (count).toString()))
                 if (count == 0) continue
                 offset += count
             }
@@ -139,7 +142,7 @@ class SongRecognitionClient @Inject constructor(
             runCatching { recorder.stop() }
             recorder.release()
         }
-        if (offset < SAMPLE_RATE) throw IOException("没有收到足够的麦克风音频")
+        if (offset < SAMPLE_RATE) throw IOException(AppLocaleManager.getString(R.string.ui_not_enough_microphone_audio_received))
         val samples = FloatArray(offset) { pcm[it] / 32768f }
         val pcm16 = ByteArray(offset * 2)
         for (i in 0 until offset) {
@@ -153,7 +156,7 @@ class SongRecognitionClient @Inject constructor(
     /** 指纹匹配：网易云明文 GET，不需要 Cookie / 登录。 */
     private suspend fun match(fingerprint: String, durationSeconds: Int): List<RecognizedSongMatch> =
         withContext(Dispatchers.IO) {
-            if (fingerprint.isBlank()) throw IOException("音频指纹为空")
+            if (fingerprint.isBlank()) throw IOException(AppLocaleManager.getString(R.string.ui_audio_fingerprint_is_empty))
             val url = MATCH_ENDPOINT.toHttpUrl().newBuilder()
                 .addQueryParameter("sessionId", SESSION_ID)
                 .addQueryParameter("algorithmCode", "shazam_v2")
@@ -168,12 +171,12 @@ class SongRecognitionClient @Inject constructor(
                 .get()
                 .build()
             okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("听歌识曲请求失败：HTTP ${response.code}")
+                if (!response.isSuccessful) throw IOException(AppLocaleManager.getString(R.string.ui_song_recognition_request_failed_http, (response.code).toString()))
                 val body = response.body?.string().orEmpty()
                 val root = runCatching { JSONObject(body) }.getOrNull()
-                    ?: throw IOException("听歌识曲响应解析失败")
+                    ?: throw IOException(AppLocaleManager.getString(R.string.ui_could_not_parse_song_recognition_response))
                 if (root.optInt("code", 200) != 200) {
-                    throw IOException(root.optString("message").ifBlank { "网易云听歌识曲服务返回错误" })
+                    throw IOException(root.optString("message").ifBlank { AppLocaleManager.getString(R.string.ui_netease_song_recognition_service_returned_an_error) })
                 }
                 val candidates = root.optJSONObject("data")?.optJSONArray("result")
                     ?: return@withContext emptyList()
@@ -236,7 +239,7 @@ class SongRecognitionClient @Inject constructor(
                             @JavascriptInterface
                             fun onFingerprint(value: String) = finish(
                                 if (value.isBlank()) {
-                                    Result.failure(IOException("音频指纹生成失败"))
+                                    Result.failure(IOException(AppLocaleManager.getString(R.string.ui_could_not_generate_audio_fingerprint)))
                                 } else {
                                     Result.success(value)
                                 }
@@ -244,7 +247,7 @@ class SongRecognitionClient @Inject constructor(
 
                             @JavascriptInterface
                             fun onError(message: String) = finish(
-                                Result.failure(IOException("音频指纹生成失败：$message"))
+                                Result.failure(IOException(AppLocaleManager.getString(R.string.ui_could_not_generate_audio_fingerprint_3099403, (message).toString())))
                             )
                         },
                         JS_BRIDGE

@@ -2,6 +2,8 @@
 
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -477,15 +479,15 @@ private fun RadioSearchBar(
 }
 
 /** 常用国家快捷筛选（code 与 radio-browser.info 的 ISO 3166-1 一致） */
-private val CommonRadioCountries = listOf(
-    RadioCountry("CN", "中国"),
-    RadioCountry("US", "美国"),
-    RadioCountry("GB", "英国"),
-    RadioCountry("JP", "日本"),
-    RadioCountry("KR", "韩国"),
-    RadioCountry("DE", "德国"),
-    RadioCountry("FR", "法国"),
-    RadioCountry("AU", "澳大利亚")
+private val CommonRadioCountries get() = listOf(
+    RadioCountry("CN", AppLocaleManager.getString(R.string.ui_china)),
+    RadioCountry("US", AppLocaleManager.getString(R.string.ui_united_states)),
+    RadioCountry("GB", AppLocaleManager.getString(R.string.ui_united_kingdom)),
+    RadioCountry("JP", AppLocaleManager.getString(R.string.ui_japan)),
+    RadioCountry("KR", AppLocaleManager.getString(R.string.ui_south_korea)),
+    RadioCountry("DE", AppLocaleManager.getString(R.string.ui_germany)),
+    RadioCountry("FR", AppLocaleManager.getString(R.string.ui_france)),
+    RadioCountry("AU", AppLocaleManager.getString(R.string.ui_australia))
 )
 
 @Composable

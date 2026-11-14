@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.R
+
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 
@@ -839,11 +842,11 @@ class MainActivity : ComponentActivity() {
                                 if (result.matchedSongs.isNotEmpty() || result.totalCount > 0) {
                                     onShareLinkDetected?.invoke(result)
                                 } else {
-                                    Toast.makeText(this@MainActivity, "未在本地找到匹配的歌曲", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@MainActivity, AppLocaleManager.getString(R.string.ui_no_matching_song_found_locally), Toast.LENGTH_SHORT).show()
                                 }
                             }
                             is com.theveloper.pixelplay.data.share.ShareResult.Error -> {
-                                Toast.makeText(this@MainActivity, "分享链接无效", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, AppLocaleManager.getString(R.string.ui_invalid_share_link), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -1013,7 +1016,7 @@ class MainActivity : ComponentActivity() {
 
                 // 副标题
                 Text(
-                    text = "正在为您准备音乐体验…",
+                    text = localizedStringResource(R.string.ui_preparing_your_music_experience),
                     style = MaterialTheme.typography.bodyLarge,
                     color = colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -2071,7 +2074,7 @@ Trace.endSection()
                     CircularProgressIndicator(modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        text = "正在准备您的音乐库…",
+                        text = localizedStringResource(R.string.ui_preparing_your_music_library),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = colorScheme.onSurface,
@@ -2079,7 +2082,7 @@ Trace.endSection()
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "首次启动需要扫描本地歌曲",
+                        text = localizedStringResource(R.string.ui_your_local_songs_need_to_be_scanned_on_first_launch),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -2094,7 +2097,7 @@ Trace.endSection()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "已扫描 ${syncProgress.currentCount} / ${syncProgress.totalCount} 首歌曲",
+                            text = localizedStringResource(R.string.ui_scanned_songs, (syncProgress.currentCount).toString(), (syncProgress.totalCount).toString()),
                             style = MaterialTheme.typography.labelMedium,
                             color = colorScheme.onSurfaceVariant
                         )
@@ -2933,7 +2936,7 @@ private fun ShareLinkDialog(
                                 color = colorScheme.secondaryContainer,
                             ) {
                                 Text(
-                                    text = "分享链接",
+                                    text = localizedStringResource(R.string.ui_share_link),
                                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                     style = typography.labelMedium,
                                     fontWeight = FontWeight.SemiBold,
@@ -2962,9 +2965,9 @@ private fun ShareLinkDialog(
                         )
 
                         val matchInfo = if (success.unmatchedCount > 0) {
-                            "匹配到 ${success.matchedSongs.size}/${success.totalCount} 首（${success.unmatchedCount} 首未找到）"
+                            AppLocaleManager.getString(R.string.ui_matched_songs_not_found, (success.matchedSongs.size).toString(), (success.totalCount).toString(), (success.unmatchedCount).toString())
                         } else {
-                            "共 ${success.totalCount} 首歌曲"
+                            AppLocaleManager.getString(R.string.ui_songs, (success.totalCount).toString())
                         }
                         Text(
                             text = matchInfo,
@@ -3025,7 +3028,7 @@ private fun ShareLinkDialog(
                             }
                             if (success.matchedSongs.size > 5) {
                                 Text(
-                                    text = "...还有 ${success.matchedSongs.size - 5} 首",
+                                    text = localizedStringResource(R.string.ui_more, (success.matchedSongs.size - 5).toString()),
                                     style = typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -3048,7 +3051,7 @@ private fun ShareLinkDialog(
                         modifier = Modifier.weight(1f).height(48.dp),
                     ) {
                         Text(
-                            text = "播放",
+                            text = localizedStringResource(R.string.ui_residue_cd_play),
                             style = typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -3059,7 +3062,7 @@ private fun ShareLinkDialog(
                         modifier = Modifier.weight(1f).height(48.dp),
                     ) {
                         Text(
-                            text = "取消",
+                            text = localizedStringResource(R.string.ui_residue_cancel),
                             style = typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                         )

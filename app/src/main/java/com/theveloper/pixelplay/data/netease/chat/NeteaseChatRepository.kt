@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.netease.chat
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import com.theveloper.pixelplay.data.listentogether.parseListenTogetherInvitation
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import java.io.IOException
@@ -198,7 +201,7 @@ class NeteaseChatRepository @Inject constructor(
                     lastError = result.exceptionOrNull()
                     if (attempt == 0) delay(350)
                 }
-                throw lastError ?: IOException("关注操作失败")
+                throw lastError ?: IOException(AppLocaleManager.getString(R.string.ui_could_not_follow_user))
             }.onFailure { Timber.w(it, "setFollowed failed for uid=$userId") }
         }
 
@@ -215,7 +218,7 @@ class NeteaseChatRepository @Inject constructor(
     suspend fun getInviteCandidates(): Result<List<ChatContact>> = withContext(Dispatchers.IO) {
         runCatching {
             val selfId = neteaseRepository.getNeteaseUserId()
-                ?: throw IOException("请先登录网易云账号")
+                ?: throw IOException(AppLocaleManager.getString(R.string.ui_sign_in_to_netease_first))
 
             val follows = LinkedHashMap<Long, ChatContact>()
             var offset = 0
@@ -229,7 +232,7 @@ class NeteaseChatRepository @Inject constructor(
                 if (!page.hasMore) break
             }
             if (!loadedAnyPage) {
-                throw IOException("获取好友列表失败，请稍后重试")
+                throw IOException(AppLocaleManager.getString(R.string.ui_could_not_load_friends_please_try_again_later))
             }
 
             val merged = LinkedHashMap<Long, ChatContact>()
@@ -294,9 +297,9 @@ class NeteaseChatRepository @Inject constructor(
 
     private data class ParsedPayload(val text: String, val resource: ChatResource?) {
         fun preview(): String = when (val r = resource) {
-            is ChatResource.Song -> "[歌曲] ${r.name}"
-            is ChatResource.Playlist -> "[歌单] ${r.name}"
-            is ChatResource.Album -> "[专辑] ${r.name}"
+            is ChatResource.Song -> AppLocaleManager.getString(R.string.ui_song, (r.name).toString())
+            is ChatResource.Playlist -> AppLocaleManager.getString(R.string.ui_playlist, (r.name).toString())
+            is ChatResource.Album -> AppLocaleManager.getString(R.string.ui_album, (r.name).toString())
             null -> text
         }
     }
@@ -374,6 +377,6 @@ class NeteaseChatRepository @Inject constructor(
         val code = ncmInt("code", 200)
         if (code == 200) return
         val message = ncmString("message").ifBlank { ncmString("msg") }
-        throw IOException(message.ifBlank { "网易云接口繁忙($code)" })
+        throw IOException(message.ifBlank { AppLocaleManager.getString(R.string.ui_netease_api_is_busy, (code).toString()) })
     }
 }

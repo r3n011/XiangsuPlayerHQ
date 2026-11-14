@@ -1,5 +1,10 @@
 package com.theveloper.pixelplay.data.preferences
 
+import androidx.annotation.StringRes
+
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 /** 迷你播放条样式的 DataStore key（设置页与仓库共用） */
@@ -12,16 +17,19 @@ val MINI_PLAYER_CORNER_RADIUS_PREF_KEY =
 /**
  * 迷你播放条样式。
  */
-enum class MiniPlayerStyle(val displayName: String) {
+enum class MiniPlayerStyle(@StringRes private val displayNameRes: Int) {
     /** 现有样式：圆形封面 + 上/播/下 三键 + 半透明填充式进度 */
-    CLASSIC("经典"),
+    CLASSIC(R.string.ui_residue_setcat_player_style_classic),
 
     /** 1:1 对齐 Rhythm 的 MaterialMiniPlayer：圆角封面 + 上/播/下 三键 + 卡片底 */
-    MATERIAL("Material"),
+    MATERIAL(R.string.setcat_miniplayer_style_material),
 
     /** 1:1 对齐 Rhythm 的 ExpressiveMiniPlayer：整条胶囊 + 不透明进度填充 +
      *  方形封面 + 单个大播放键（无上下曲） */
-    EXPRESSIVE("Expressive");
+    EXPRESSIVE(R.string.setcat_miniplayer_style_expressive);
+
+    val displayName: String
+        get() = AppLocaleManager.getString(displayNameRes)
 
     companion object {
         fun fromName(name: String?): MiniPlayerStyle =

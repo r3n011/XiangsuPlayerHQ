@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.qqmusic.auth
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.R
+
 import android.annotation.SuppressLint
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -114,7 +117,7 @@ internal fun QqMusicSecurityCheckDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "QQ 音乐安全验证",
+                        text = localizedStringResource(R.string.ui_qq_music_security_verification),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.titleMedium,
                         fontFamily = GoogleSansRounded,
@@ -124,7 +127,7 @@ internal fun QqMusicSecurityCheckDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
-                            contentDescription = "关闭",
+                            contentDescription = localizedStringResource(R.string.ui_residue_lyrics_more_vibrant_off),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -190,7 +193,7 @@ internal fun QqMusicSecurityCheckDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "按页面提示完成验证后点「已完成验证」",
+                        text = localizedStringResource(R.string.ui_follow_the_instructions_on_the_page_then_tap_verification_complete),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = GoogleSansRounded,
@@ -202,7 +205,7 @@ internal fun QqMusicSecurityCheckDialog(
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text(
-                            text = "已完成验证",
+                            text = localizedStringResource(R.string.ui_verification_complete),
                             fontFamily = GoogleSansRounded,
                             fontWeight = FontWeight.SemiBold
                         )

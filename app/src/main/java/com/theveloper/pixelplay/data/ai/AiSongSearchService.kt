@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.ai
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
 import com.theveloper.pixelplay.data.lx.LxSearchApi
 import com.theveloper.pixelplay.data.lx.LxSearchResult
@@ -97,7 +100,7 @@ class AiSongSearchService @Inject constructor(
             }.distinct()
             if (songIds.isEmpty()) return@withContext null
 
-            val name = "AI 智能歌单 ${System.currentTimeMillis().toString().takeLast(6)}"
+            val name = AppLocaleManager.getString(R.string.ui_ai_playlist, (System.currentTimeMillis().toString().takeLast(6)).toString())
             runCatching {
                 playlistPreferencesRepository.createPlaylist(
                     name = name,

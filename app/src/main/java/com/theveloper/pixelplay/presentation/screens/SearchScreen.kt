@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
@@ -247,12 +250,12 @@ fun SearchScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("分享链接", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                Text(localizedStringResource(R.string.ui_share_link), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(success.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 val matchInfo = if (success.unmatchedCount > 0) {
-                                    "匹配 ${success.matchedSongs.size}/${success.totalCount} 首"
-                                } else "共 ${success.totalCount} 首"
+                                    AppLocaleManager.getString(R.string.ui_matched_songs, (success.matchedSongs.size).toString(), (success.totalCount).toString())
+                                } else AppLocaleManager.getString(R.string.ui_songs_eb98cbe, (success.totalCount).toString())
                                 Text(matchInfo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Box(
@@ -296,7 +299,7 @@ fun SearchScreen(
                                 }
                                 if (success.matchedSongs.size > 5) {
                                     Text(
-                                        "...还有 ${success.matchedSongs.size - 5} 首",
+                                        localizedStringResource(R.string.ui_more, (success.matchedSongs.size - 5).toString()),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -316,7 +319,7 @@ fun SearchScreen(
                                 onClick = { shareDialogResult = null },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(14.dp)
-                            ) { Text("取消") }
+                            ) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
                             androidx.compose.material3.Button(
                                 onClick = {
                                     if (success.matchedSongs.isNotEmpty()) {
@@ -327,7 +330,7 @@ fun SearchScreen(
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(14.dp),
                                 enabled = success.matchedSongs.isNotEmpty()
-                            ) { Text("播放") }
+                            ) { Text(localizedStringResource(R.string.ui_residue_cd_play)) }
                         }
                     }
                 }
@@ -589,7 +592,7 @@ fun SearchScreen(
                                         }
                                     }
                                     is com.theveloper.pixelplay.data.share.ShareResult.Error -> {
-                                        Toast.makeText(context, "分享链接无效", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, AppLocaleManager.getString(R.string.ui_invalid_share_link), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -713,7 +716,7 @@ fun SearchScreen(
                                     // ⚡ 内置音源（落雪同款官方搜索，不依赖 JS 导入）：酷我/QQ音乐/酷狗/咪咕
                                     LxSourceFilterChip(
                                         sourceKey = "kw",
-                                        sourceName = "酷我",
+                                        sourceName = AppLocaleManager.getString(R.string.ui_residue_search_filter_kuwo),
                                         selected = currentFilter == SearchFilterType.LX_MUSIC &&
                                             onlineSearchState.selectedSource == "kw",
                                         onClick = {
@@ -723,7 +726,7 @@ fun SearchScreen(
                                     )
                                     LxSourceFilterChip(
                                         sourceKey = "tx",
-                                        sourceName = "QQ音乐",
+                                        sourceName = AppLocaleManager.getString(R.string.ui_qq_music),
                                         selected = currentFilter == SearchFilterType.LX_MUSIC &&
                                             onlineSearchState.selectedSource == "tx",
                                         onClick = {
@@ -733,7 +736,7 @@ fun SearchScreen(
                                     )
                                     LxSourceFilterChip(
                                         sourceKey = "kg",
-                                        sourceName = "酷狗",
+                                        sourceName = AppLocaleManager.getString(R.string.ui_residue_source_badge_kugou),
                                         selected = currentFilter == SearchFilterType.LX_MUSIC &&
                                             onlineSearchState.selectedSource == "kg",
                                         onClick = {
@@ -743,7 +746,7 @@ fun SearchScreen(
                                     )
                                     LxSourceFilterChip(
                                         sourceKey = "mg",
-                                        sourceName = "咪咕",
+                                        sourceName = AppLocaleManager.getString(R.string.ui_migu),
                                         selected = currentFilter == SearchFilterType.LX_MUSIC &&
                                             onlineSearchState.selectedSource == "mg",
                                         onClick = {
@@ -906,12 +909,12 @@ fun SearchScreen(
                                 val lxSourceLabel = run {
                                     val key = onlineSearchState.selectedSource
                                     when (key) {
-                                        "wy" -> "网易云"
-                                        "kw" -> "酷我"
-                                        "tx" -> "QQ音乐"
-                                        "kg" -> "酷狗"
-                                        "mg" -> "咪咕"
-                                        else -> onlineSearchState.sources[key]?.name?.ifBlank { key } ?: "音源"
+                                        "wy" -> AppLocaleManager.getString(R.string.ui_residue_source_badge_netease)
+                                        "kw" -> AppLocaleManager.getString(R.string.ui_residue_search_filter_kuwo)
+                                        "tx" -> AppLocaleManager.getString(R.string.ui_qq_music)
+                                        "kg" -> AppLocaleManager.getString(R.string.ui_residue_source_badge_kugou)
+                                        "mg" -> AppLocaleManager.getString(R.string.ui_migu)
+                                        else -> onlineSearchState.sources[key]?.name?.ifBlank { key } ?: AppLocaleManager.getString(R.string.ui_source)
                                     }
                                 }
                                 Column(modifier = Modifier.fillMaxSize()) {
@@ -1851,7 +1854,7 @@ private fun SearchScopeToggle(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SearchScopeSegment(
-                    label = "本地",
+                    label = AppLocaleManager.getString(R.string.ui_residue_download_selection_badge_local),
                     selected = selectedIndex == 0,
                     modifier = Modifier
                         .fillMaxHeight()
@@ -1866,7 +1869,7 @@ private fun SearchScopeToggle(
                     onClick = { onScopeChange(false) }
                 )
                 SearchScopeSegment(
-                    label = "在线",
+                    label = AppLocaleManager.getString(R.string.ui_residue_download_selection_badge_online),
                     selected = selectedIndex == 1,
                     modifier = Modifier
                         .fillMaxHeight()
@@ -1935,8 +1938,8 @@ fun SearchFilterChip(
             SearchFilterType.ONLINE -> stringResource(R.string.search_filter_online)
             SearchFilterType.KUWO_MUSIC -> stringResource(R.string.search_filter_kuwo)
             SearchFilterType.BILIBILI_MUSIC -> stringResource(R.string.search_filter_bilibili)
-            SearchFilterType.LX_MUSIC -> "落雪"
-            SearchFilterType.AI_SEARCH -> "AI 搜索"
+            SearchFilterType.LX_MUSIC -> AppLocaleManager.getString(R.string.ui_lx_music)
+            SearchFilterType.AI_SEARCH -> AppLocaleManager.getString(R.string.ui_ai_search)
         },
         selected = filterType == currentFilter,
         onClick = { playerViewModel.updateSearchFilter(filterType) },
@@ -2062,7 +2065,7 @@ private fun OnlineSearchResults(
     /** 当前加载步骤文字（如「正在解析音源…」） */
     loadingStep: String? = null,
     /** 当前搜索的源名称，用于"正在搜索 xx…"提示（避免非网易云音源也显示网易云） */
-    searchSourceLabel: String = "网易云音乐"
+    searchSourceLabel: String = AppLocaleManager.getString(R.string.ui_residue_auth_netease_title)
 ) {
     val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
     when {
@@ -2079,7 +2082,7 @@ private fun OnlineSearchResults(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "正在搜索$searchSourceLabel…",
+                        localizedStringResource(R.string.ui_searching, (searchSourceLabel).toString()),
                         color = colorScheme.onSurfaceVariant
                     )
                 }
@@ -2112,13 +2115,13 @@ private fun OnlineSearchResults(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "输入关键词开始搜索$searchSourceLabel",
+                        localizedStringResource(R.string.ui_enter_keywords_to_search, (searchSourceLabel).toString()),
                         color = colorScheme.onSurfaceVariant
                     )
                     if (!state.engineReady) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "请先在设置中导入 JS 音源",
+                            localizedStringResource(R.string.ui_import_a_javascript_source_in_settings_first),
                             color = colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -2134,7 +2137,7 @@ private fun OnlineSearchResults(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "没有找到相关歌曲",
+                    localizedStringResource(R.string.ui_no_matching_songs_found),
                     color = colorScheme.onSurfaceVariant
                 )
             }
@@ -2203,7 +2206,7 @@ private fun OnlineSearchResults(
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    "加载更多…",
+                                    localizedStringResource(R.string.ui_load_more),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -2215,7 +2218,7 @@ private fun OnlineSearchResults(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "—— 没有更多了 ——",
+                                    localizedStringResource(R.string.ui_no_more_results_e8579fc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -2255,21 +2258,21 @@ private fun OnlineSearchSubTabs(
     ) {
         OnlineSubTabChip(
             selected = selectedTab == 0,
-            label = "歌曲",
+            label = AppLocaleManager.getString(R.string.ui_residue_tab_songs),
             icon = Icons.Rounded.MusicNote,
             onClick = { onTabSelected(0) }
         )
         if (showArtistTab) {
             OnlineSubTabChip(
                 selected = selectedTab == 1,
-                label = "歌手",
+                label = AppLocaleManager.getString(R.string.ui_residue_search_filter_artists),
                 icon = Icons.Rounded.Person,
                 onClick = { onTabSelected(1) }
             )
         }
         OnlineSubTabChip(
             selected = selectedTab == 2,
-            label = "歌单",
+            label = AppLocaleManager.getString(R.string.ui_residue_search_filter_playlists),
             icon = Icons.Rounded.LibraryMusic,
             onClick = { onTabSelected(2) }
         )
@@ -2318,7 +2321,7 @@ private fun OnlineArtistResults(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "正在搜索歌手…",
+                        localizedStringResource(R.string.ui_searching_for_artists),
                         color = colorScheme.onSurfaceVariant
                     )
                 }
@@ -2348,7 +2351,7 @@ private fun OnlineArtistResults(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "输入关键词搜索网易云歌手",
+                    localizedStringResource(R.string.ui_enter_keywords_to_search_netease_artists),
                     color = colorScheme.onSurfaceVariant
                 )
             }
@@ -2361,7 +2364,7 @@ private fun OnlineArtistResults(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "没有找到相关歌手",
+                    localizedStringResource(R.string.ui_no_matching_artists_found),
                     color = colorScheme.onSurfaceVariant
                 )
             }
@@ -2419,7 +2422,7 @@ private fun OnlineArtistResults(
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    "加载更多…",
+                                    localizedStringResource(R.string.ui_load_more),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -2431,7 +2434,7 @@ private fun OnlineArtistResults(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "—— 没有更多了 ——",
+                                    localizedStringResource(R.string.ui_no_more_results_e8579fc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -2570,7 +2573,7 @@ private fun OnlinePlaylistResults(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     androidx.compose.material3.CircularProgressIndicator(color = colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
-                    Text("正在搜索歌单…", color = colorScheme.onSurfaceVariant)
+                    Text(localizedStringResource(R.string.ui_searching_for_playlists), color = colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -2595,7 +2598,7 @@ private fun OnlinePlaylistResults(
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("输入关键词搜索歌单", color = colorScheme.onSurfaceVariant)
+                Text(localizedStringResource(R.string.ui_enter_keywords_to_search_playlists), color = colorScheme.onSurfaceVariant)
             }
         }
         state.playlistResults.isEmpty() -> {
@@ -2605,7 +2608,7 @@ private fun OnlinePlaylistResults(
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("没有找到相关歌单", color = colorScheme.onSurfaceVariant)
+                Text(localizedStringResource(R.string.ui_no_matching_playlists_found), color = colorScheme.onSurfaceVariant)
             }
         }
         else -> {
@@ -2660,7 +2663,7 @@ private fun OnlinePlaylistResults(
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    "加载更多…",
+                                    localizedStringResource(R.string.ui_load_more),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -2669,7 +2672,7 @@ private fun OnlinePlaylistResults(
                         state.playlistIsEnd -> {
                             Box(modifier = footerModifier, contentAlignment = Alignment.Center) {
                                 Text(
-                                    "—— 没有更多了 ——",
+                                    localizedStringResource(R.string.ui_no_more_results_e8579fc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -2756,7 +2759,7 @@ private fun UnifiedOnlinePlaylistItem(
                         if (playlist.author.isNotBlank()) append(playlist.author)
                         if (playlist.trackCount > 0) {
                             if (isNotEmpty()) append(" · ")
-                            append("${playlist.trackCount} 首")
+                            append(AppLocaleManager.getString(R.string.ui_songs_fee9269, (playlist.trackCount).toString()))
                         }
                         val plays = formatPlayCount(playlist.playCount)
                         if (plays.isNotEmpty()) {
@@ -2796,7 +2799,7 @@ private fun UnifiedOnlinePlaylistItem(
                     IconButton(onClick = onSaveClick) {
                         Icon(
                             imageVector = Icons.Rounded.Download,
-                            contentDescription = "保存到本地",
+                            contentDescription = localizedStringResource(R.string.ui_save_locally),
                             tint = colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
@@ -2810,10 +2813,21 @@ private fun UnifiedOnlinePlaylistItem(
 // ⚡ 播放量格式化：1.2万 / 3.4亿
 private fun formatPlayCount(count: Long): String {
     if (count <= 0L) return ""
-    return when {
-        count >= 100_000_000L -> String.format("%.1f亿", count / 100_000_000.0)
-        count >= 10_000L -> String.format("%.1f万", count / 10_000.0)
-        else -> count.toString()
+    val locale = AppLocaleManager.currentLocale()
+    if (locale.language != "en") {
+        return when {
+            count >= 100_000_000L -> String.format("%.1f亿", count / 100_000_000.0)
+            count >= 10_000L -> String.format("%.1f万", count / 10_000.0)
+            else -> count.toString()
+        }
+    }
+    return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+        android.icu.text.CompactDecimalFormat.getInstance(
+            locale,
+            android.icu.text.CompactDecimalFormat.CompactStyle.SHORT
+        ).format(count)
+    } else {
+        java.text.NumberFormat.getIntegerInstance(locale).format(count)
     }
 }
 
@@ -2835,8 +2849,8 @@ private fun UnifiedOnlineSongItem(
     val song = remember(title, subtitle, coverUrl) {
         Song(
             id = "online",
-            title = title.ifBlank { "未知歌曲" },
-            artist = subtitle.ifBlank { "未知歌手" },
+            title = title.ifBlank { AppLocaleManager.getString(R.string.ui_unknown_song) },
+            artist = subtitle.ifBlank { AppLocaleManager.getString(R.string.ui_unknown_artist) },
             artistId = -1L,
             album = "",
             albumId = -1L,
@@ -2895,7 +2909,7 @@ private fun QQSearchResults(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "正在搜索酷我…",
+                        localizedStringResource(R.string.ui_searching_kuwo),
                         color = colorScheme.onSurfaceVariant
                     )
                 }
@@ -2925,7 +2939,7 @@ private fun QQSearchResults(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "输入关键词开始搜索酷我音乐",
+                    localizedStringResource(R.string.ui_enter_keywords_to_search_kuwo_music),
                     color = colorScheme.onSurfaceVariant
                 )
             }
@@ -2938,7 +2952,7 @@ private fun QQSearchResults(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "没有找到相关歌曲",
+                    localizedStringResource(R.string.ui_no_matching_songs_found),
                     color = colorScheme.onSurfaceVariant
                 )
             }
@@ -3005,7 +3019,7 @@ private fun QQSearchResults(
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    "加载更多…",
+                                    localizedStringResource(R.string.ui_load_more),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -3017,7 +3031,7 @@ private fun QQSearchResults(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "—— 没有更多了 ——",
+                                    localizedStringResource(R.string.ui_no_more_results_e8579fc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -3073,7 +3087,7 @@ private fun BilibiliSearchResults(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "正在搜索B站…",
+                        localizedStringResource(R.string.ui_searching_bilibili),
                         color = colorScheme.onSurfaceVariant
                     )
                 }
@@ -3103,7 +3117,7 @@ private fun BilibiliSearchResults(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "输入关键词开始搜索B站音乐",
+                    localizedStringResource(R.string.ui_enter_keywords_to_search_bilibili_music),
                     color = colorScheme.onSurfaceVariant
                 )
             }
@@ -3116,7 +3130,7 @@ private fun BilibiliSearchResults(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "没有找到相关视频",
+                    localizedStringResource(R.string.ui_no_matching_videos_found),
                     color = colorScheme.onSurfaceVariant
                 )
             }
@@ -3185,7 +3199,7 @@ private fun BilibiliSearchResults(
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    "加载更多…",
+                                    localizedStringResource(R.string.ui_load_more),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
@@ -3197,7 +3211,7 @@ private fun BilibiliSearchResults(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "—— 没有更多了 ——",
+                                    localizedStringResource(R.string.ui_no_more_results_e8579fc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )

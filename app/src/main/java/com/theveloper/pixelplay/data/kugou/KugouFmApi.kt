@@ -1,5 +1,10 @@
 package com.theveloper.pixelplay.data.kugou
 
+import androidx.annotation.StringRes
+
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import com.theveloper.pixelplay.data.lx.LxSongInfo
 import java.security.MessageDigest
 import javax.inject.Inject
@@ -39,10 +44,13 @@ class KugouFmApi @Inject constructor(
 ) {
 
     /** FM 档位（对齐参考项目的三档）。 */
-    enum class Station(val label: String, val mode: String, val songPoolId: Int) {
-        FAMILIAR("红心", "normal", 0),
-        EXPLORE("探索", "normal", 2),
-        NICHE("小众", "small", 1),
+    enum class Station(@StringRes private val labelRes: Int, val mode: String, val songPoolId: Int) {
+        FAMILIAR(R.string.ui_liked_songs, "normal", 0),
+        EXPLORE(R.string.ui_residue_roaming_mode_explore, "normal", 2),
+        NICHE(R.string.ui_niche, "small", 1);
+
+        val label: String
+            get() = AppLocaleManager.getString(labelRes)
     }
 
     /**
@@ -130,12 +138,12 @@ class KugouFmApi @Inject constructor(
                 .build()
 
             val raw = okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) error("私人FM请求失败：HTTP ${response.code}")
+                if (!response.isSuccessful) error(AppLocaleManager.getString(R.string.ui_personal_fm_request_failed_http, (response.code).toString()))
                 response.body?.string().orEmpty()
             }
             val root = JSONObject(raw)
             if (root.optInt("status", 1) != 1) {
-                error(root.optString("error", "酷狗私人FM返回异常（error_code=${root.optInt("error_code")}）"))
+                error(root.optString("error", AppLocaleManager.getString(R.string.ui_unexpected_kugou_personal_fm_response_error_code, (root.optInt("error_code")).toString())))
             }
             val data = root.optJSONObject("data") ?: root
             val array = data.optJSONArray("song_list")

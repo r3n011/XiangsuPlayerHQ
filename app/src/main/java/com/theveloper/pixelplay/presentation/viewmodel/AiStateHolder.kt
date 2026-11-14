@@ -471,10 +471,10 @@ Song: "$songTitle"
 Artist: "$artistName"
 
 Structure your response in $targetLanguage using Markdown formatting:
-1. **整体含义** — A brief, insightful summary of what the song is about.
-2. **核心主题** — 3 to 6 bullet points listing the main themes or emotions.
-3. **经典歌词解读** — Pick a few representative lines and explain their deeper meaning.
-4. **情绪与氛围** — Describe the overall tone, mood, and intended feeling.
+1. **${if (langCode == "en") "Overall meaning" else "整体含义"}** — A brief, insightful summary of what the song is about.
+2. **${if (langCode == "en") "Key themes" else "核心主题"}** — 3 to 6 bullet points listing the main themes or emotions.
+3. **${if (langCode == "en") "Notable lyrics" else "经典歌词解读"}** — Pick a few representative lines and explain their deeper meaning.
+4. **${if (langCode == "en") "Mood and atmosphere" else "情绪与氛围"}** — Describe the overall tone, mood, and intended feeling.
 
 Keep it engaging, warm, and accessible. Avoid being too academic. Do not output JSON or code blocks.
 

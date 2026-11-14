@@ -2,6 +2,9 @@
 
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -273,7 +276,7 @@ internal fun MiniPlayerContentInternal(
                     AutoScrollingText(
                         text = when {
                             isCastConnecting -> "Connecting to device…"
-                            isPreparingPlayback -> "正在获取播放链接…"
+                            isPreparingPlayback -> AppLocaleManager.getString(R.string.ui_getting_playback_url)
                             else -> song.title
                         },
                         style = titleStyle,
@@ -281,7 +284,7 @@ internal fun MiniPlayerContentInternal(
                         canScroll = canScroll
                     )
                     AutoScrollingText(
-                        text = if (isPreparingPlayback) "稍候片刻" else song.displayArtist,
+                        text = if (isPreparingPlayback) AppLocaleManager.getString(R.string.ui_please_wait_a_moment) else song.displayArtist,
                         style = artistStyle,
                         gradientEdgeColor = primaryContainer,
                         canScroll = canScroll

@@ -1,6 +1,9 @@
 @file:Suppress("DEPRECATION")
 package com.theveloper.pixelplay.data.qqmusic
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -201,7 +204,7 @@ class QqMusicRepository @Inject constructor(
     suspend fun loginWithPhone(phone: String, code: String): Result<String> {
         val cookies = phoneAuthClient.login(phone, code).getOrElse { return Result.failure(it) }
         if (cookies.isEmpty()) {
-            return Result.failure(IllegalStateException("QQ 音乐登录未返回凭据，请改用网页登录"))
+            return Result.failure(IllegalStateException(AppLocaleManager.getString(R.string.ui_qq_music_sign_in_did_not_return_credentials_use_web)))
         }
         val cookieJson = JSONObject().apply {
             cookies.forEach { (key, value) -> put(key, value) }

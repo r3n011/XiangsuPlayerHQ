@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.remote.qqmusic
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -156,13 +159,13 @@ class QqMusicPhoneAuthClient @Inject constructor(
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
         return httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("QQ 音乐请求失败：HTTP ${response.code}")
+            if (!response.isSuccessful) throw IOException(AppLocaleManager.getString(R.string.ui_qq_music_request_failed_http, (response.code).toString()))
             val bodyText = response.body?.string().orEmpty()
             // ⚡ 原样打印响应：风控拦截时只有看到真实字段（code / securityURL / errMsg）
             //    才能确定该走极验弹窗还是内联 WebView，否则只能靠猜。
             Timber.tag(TAG).d("raw response: %s", bodyText)
             val body = runCatching { JSONObject(bodyText) }
-                .getOrElse { throw IOException("QQ 音乐返回了无法解析的响应") }
+                .getOrElse { throw IOException(AppLocaleManager.getString(R.string.ui_qq_music_returned_an_unreadable_response)) }
             PhoneHttpResponse(body, response.headers.values("Set-Cookie"))
         }
     }
@@ -216,15 +219,15 @@ class QqMusicPhoneAuthClient @Inject constructor(
     ): String {
         val merged = mergeResponseCookies(existingCookie, emptyList())
         val outerCode = response.intValue("code")
-            ?: throw IOException("QQ 音乐响应缺少状态码")
+            ?: throw IOException(AppLocaleManager.getString(R.string.ui_qq_music_response_has_no_status_code))
         if (outerCode != 0) {
-            throw IOException(response.errorMessage("QQ 音乐请求失败（$outerCode）"))
+            throw IOException(response.errorMessage(AppLocaleManager.getString(R.string.ui_qq_music_request_failed, (outerCode).toString())))
         }
 
         val business = response.findBusinessObject()
-            ?: throw IOException("QQ 音乐响应缺少登录结果")
+            ?: throw IOException(AppLocaleManager.getString(R.string.ui_qq_music_response_has_no_sign_in_result))
         val businessCode = business.intValue("code")
-            ?: throw IOException("QQ 音乐登录结果缺少状态码")
+            ?: throw IOException(AppLocaleManager.getString(R.string.ui_qq_music_sign_in_result_has_no_status_code))
         val data = business.objectValue("data") ?: JSONObject()
         if (businessCode != 0) {
             val securityUrl = data.stringValue("securityURL")
@@ -240,7 +243,7 @@ class QqMusicPhoneAuthClient @Inject constructor(
                 throw QqMusicSecurityChallengeException(businessCode, securityUrl, rawJson)
             }
             throw IOException(
-                business.errorMessage(response.errorMessage("QQ 音乐请求失败（$businessCode）"), data)
+                business.errorMessage(response.errorMessage(AppLocaleManager.getString(R.string.ui_qq_music_request_failed, (businessCode).toString())), data)
             )
         }
         if (!requireSession) return merged
@@ -252,11 +255,11 @@ class QqMusicPhoneAuthClient @Inject constructor(
         val cookies = parseCookieHeader(merged).toMutableMap()
         val uin = cookies.firstMatchingValue(::isUsableUin, "qqmusic_uin", "uin")
             ?: credentialObjects.firstMatchingValue(::isUsableUin, "musicid", "str_musicid", "encryptUin")
-            ?: throw IOException("登录响应缺少有效账号标识，请改用网页登录")
+            ?: throw IOException(AppLocaleManager.getString(R.string.ui_sign_in_response_has_no_valid_account_identifier_use_web))
         val musicKey = cookies.valueFor("qm_keyst", "qqmusic_key", "musickey")
             ?.takeIf(String::isNotBlank)
             ?: credentialObjects.firstValue("musickey", "qm_keyst", "qqmusic_key").takeIf(String::isNotBlank)
-            ?: throw IOException("登录响应缺少音乐密钥，请改用网页登录")
+            ?: throw IOException(AppLocaleManager.getString(R.string.ui_sign_in_response_has_no_music_key_use_web_sign))
 
         cookies.putCanonical("qqmusic_uin", uin)
         cookies.putCanonical("qm_keyst", musicKey)

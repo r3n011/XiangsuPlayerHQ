@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.data.github
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -70,13 +72,13 @@ class ApkDownloadService : Service() {
                             notifyDownloading(1f)
                             val installed = apkDownloadInstaller.installApk(this@ApkDownloadService, state.file)
                             if (installed) {
-                                notifyDone(success = true, message = "下载完成，正在安装…")
+                                notifyDone(success = true, message = AppLocaleManager.getString(R.string.ui_download_complete_installing))
                             } else {
-                                notifyDone(success = true, message = "下载完成，但缺少安装权限，请在系统设置开启「安装未知应用」")
+                                notifyDone(success = true, message = AppLocaleManager.getString(R.string.ui_download_complete_enable_install_unknown_apps_in_system_settings_to))
                             }
                         }
                         ApkDownloadInstaller.DownloadState.Installing -> {
-                            notifyDone(success = true, message = "正在安装更新…")
+                            notifyDone(success = true, message = AppLocaleManager.getString(R.string.ui_installing_update))
                         }
                         is ApkDownloadInstaller.DownloadState.Error -> {
                             notifyDone(success = false, message = state.message)
@@ -85,7 +87,7 @@ class ApkDownloadService : Service() {
                 }
             } catch (t: Throwable) {
                 Timber.tag(TAG).w(t, "后台更新下载失败")
-                notifyDone(success = false, message = t.message ?: "下载失败")
+                notifyDone(success = false, message = t.message ?: AppLocaleManager.getString(R.string.ui_residue_setcat_download_failed))
             } finally {
                 stopForegroundCompat()
                 stopSelf()
@@ -159,9 +161,9 @@ class ApkDownloadService : Service() {
     }
 
     private fun buildNotification(progress: Float, indeterminate: Boolean, result: Pair<String, Boolean>?): Notification {
-        val title = "应用更新"
+        val title = AppLocaleManager.getString(R.string.ui_app_update)
         val contentText = result?.first
-            ?: if ((progress >= 0f && !indeterminate)) "正在下载… ${(progress * 100).toInt()}%" else "正在准备下载…"
+            ?: if ((progress >= 0f && !indeterminate)) AppLocaleManager.getString(R.string.ui_downloading, ((progress * 100).toInt()).toString()) else AppLocaleManager.getString(R.string.ui_preparing_download)
 
         val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.monochrome_player)
@@ -201,10 +203,10 @@ class ApkDownloadService : Service() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
-            "应用更新",
+            AppLocaleManager.getString(R.string.ui_app_update),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "后台下载更新进度"
+            description = AppLocaleManager.getString(R.string.ui_background_update_download_progress)
             setShowBadge(false)
         }
         notificationManager().createNotificationChannel(channel)

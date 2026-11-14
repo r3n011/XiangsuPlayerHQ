@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.presentation.netease.chat
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -757,7 +759,7 @@ internal fun formatRelativeTime(timeMs: Long): String {
 
     return when {
         sameYear && dayDiff == 0 -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timeMs))
-        sameYear && dayDiff == 1 -> "昨天"
+        sameYear && dayDiff == 1 -> AppLocaleManager.getString(R.string.ui_residue_recently_played_date_yesterday)
         sameYear -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(Date(timeMs))
         else -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(timeMs))
     }

@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.activity.result.PickVisualMediaRequest
@@ -313,7 +314,7 @@ private fun EditSongContent(
                         onClick = onAutoComplete,
                         shape = CircleShape
                     ) {
-                        Icon(Icons.Rounded.MusicNote, contentDescription = "自动补全元数据")
+                        Icon(Icons.Rounded.MusicNote, contentDescription = localizedStringResource(R.string.ui_complete_metadata_automatically))
                     }
                     FilledTonalIconButton(
                         modifier = Modifier.padding(end = 10.dp),

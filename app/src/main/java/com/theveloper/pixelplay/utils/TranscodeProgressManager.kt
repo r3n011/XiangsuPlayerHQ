@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.utils
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +23,7 @@ object TranscodeProgressManager {
         _progress.value = TranscodeProgress(
             isTranscoding = true,
             progressPercent = 0,
-            stage = "开始转码...",
+            stage = AppLocaleManager.getString(R.string.ui_starting_conversion_62e4f03),
             fileName = fileName
         )
     }

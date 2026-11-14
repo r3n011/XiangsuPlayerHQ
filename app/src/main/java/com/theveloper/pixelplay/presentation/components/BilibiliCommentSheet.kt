@@ -1,5 +1,9 @@
 package com.theveloper.pixelplay.presentation.components
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.widget.Toast
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import androidx.activity.compose.BackHandler
@@ -197,7 +201,7 @@ fun BilibiliCommentSheet(
                     }
                 } catch (e: TimeoutCancellationException) {
                     Timber.w("Bilibili 评论加载超时")
-                    BilibiliCommentResult(error = "评论加载超时")
+                    BilibiliCommentResult(error = AppLocaleManager.getString(R.string.ui_comment_loading_timed_out))
                 }
             }
             if (result.error.isNotBlank()) {
@@ -220,7 +224,7 @@ fun BilibiliCommentSheet(
             }
         } catch (t: Throwable) {
             Timber.e(t, "Bilibili 首次加载评论失败")
-            errorState.value = t.message ?: "加载失败"
+            errorState.value = t.message ?: AppLocaleManager.getString(R.string.ui_failed_to_load)
         } finally {
             isLoadingState.value = false
             isInitialLoadingState.value = false
@@ -238,7 +242,7 @@ fun BilibiliCommentSheet(
         hatedRpids.clear()
         listState.scrollToItem(0)
         if (bvid.isBlank()) {
-            errorState.value = "缺少视频信息，无法加载评论"
+            errorState.value = AppLocaleManager.getString(R.string.ui_video_information_is_missing_comments_cannot_be_loaded)
             isInitialLoadingState.value = false
             return@LaunchedEffect
         }
@@ -257,7 +261,7 @@ fun BilibiliCommentSheet(
             if (netAid > 0L) netAid else searchApi.bvToAid(bvid)
         }
         if (resolvedAid <= 0L) {
-            errorState.value = "无法获取视频信息，无法加载评论"
+            errorState.value = AppLocaleManager.getString(R.string.ui_could_not_get_video_information_to_load_comments)
             isInitialLoadingState.value = false
             return@LaunchedEffect
         }
@@ -288,12 +292,12 @@ fun BilibiliCommentSheet(
                             }
                         } catch (e: TimeoutCancellationException) {
                             Timber.w("Bilibili 加载更多评论超时")
-                            BilibiliCommentResult(error = "评论加载超时")
+                            BilibiliCommentResult(error = AppLocaleManager.getString(R.string.ui_comment_loading_timed_out))
                         }
                     }
                     if (result.error.isNotBlank()) {
                         // 匿名浏览评论接口偶发风控（-412/-449），保留已有列表，提示一次
-                        toast("评论加载失败：${result.error}")
+                        toast(AppLocaleManager.getString(R.string.ui_could_not_load_comments, (result.error).toString()))
                     } else {
                         if (result.comments.isNotEmpty()) {
                             commentsState.value = commentsState.value + result.comments
@@ -330,12 +334,12 @@ fun BilibiliCommentSheet(
                     }
                 } catch (e: TimeoutCancellationException) {
                     Timber.w("Bilibili 子回复加载超时")
-                    BilibiliReplyRepliesResult(error = "子回复加载超时")
+                    BilibiliReplyRepliesResult(error = AppLocaleManager.getString(R.string.ui_reply_loading_timed_out))
                 }
             }
             subLoadingRpids[root] = false
             if (result.error.isNotBlank()) {
-                toast("子回复加载失败：${result.error}")
+                toast(AppLocaleManager.getString(R.string.ui_could_not_load_replies, (result.error).toString()))
                 return@launch
             }
             // 按 rpid 去重合并，避免首屏内嵌子回复与接口结果重复
@@ -362,7 +366,7 @@ fun BilibiliCommentSheet(
     // —— 踩 / 取消踩 ——
     fun toggleHate(comment: BilibiliComment) {
         if (!isLoggedIn.value || csrf.isNullOrBlank()) {
-            toast("请先登录 B 站账号")
+            toast(AppLocaleManager.getString(R.string.ui_please_sign_in_to_bilibili_first))
             return
         }
         val hated = hatedRpids[comment.rpid] == true
@@ -380,7 +384,7 @@ fun BilibiliCommentSheet(
             if (result.success) {
                 hatedRpids[comment.rpid] = !hated
             } else {
-                toast(result.message.ifBlank { "操作失败" })
+                toast(result.message.ifBlank { AppLocaleManager.getString(R.string.ui_operation_failed) })
             }
         }
     }
@@ -388,7 +392,7 @@ fun BilibiliCommentSheet(
     // —— 置顶 / 取消置顶（仅视频 UP 主，对齐 PiliPlus onToggleTop）——
     fun toggleTop(comment: BilibiliComment) {
         if (!isLoggedIn.value || csrf.isNullOrBlank()) {
-            toast("请先登录 B 站账号")
+            toast(AppLocaleManager.getString(R.string.ui_please_sign_in_to_bilibili_first))
             return
         }
         coroutineScope.launch {
@@ -403,10 +407,10 @@ fun BilibiliCommentSheet(
                 )
             }
             if (result.success) {
-                toast(if (comment.isUpTop) "已取消置顶" else "置顶成功")
+                toast(if (comment.isUpTop) AppLocaleManager.getString(R.string.ui_comment_unpinned) else AppLocaleManager.getString(R.string.ui_comment_pinned))
                 loadFirstPage(resolvedAidState.longValue, sortMode.intValue)
             } else {
-                toast(result.message.ifBlank { "操作失败" })
+                toast(result.message.ifBlank { AppLocaleManager.getString(R.string.ui_operation_failed) })
             }
         }
     }
@@ -423,7 +427,7 @@ fun BilibiliCommentSheet(
                     cookie = cookieHeader
                 )
             }
-            toast(if (result.success) successMsg else result.message.ifBlank { "操作失败" })
+            toast(if (result.success) successMsg else result.message.ifBlank { AppLocaleManager.getString(R.string.ui_operation_failed) })
         }
     }
 
@@ -432,7 +436,7 @@ fun BilibiliCommentSheet(
         repository.commentFilterEnabled = filterEnabled
         repository.antiGoodsFilterEnabled = antiGoods
         repository.commentBanWords = banWords.trim()
-        toast("已保存，重新加载评论后生效")
+        toast(AppLocaleManager.getString(R.string.ui_saved_reload_comments_to_apply_changes))
         coroutineScope.launch {
             loadFirstPage(resolvedAidState.longValue, sortMode.intValue)
         }
@@ -443,7 +447,7 @@ fun BilibiliCommentSheet(
         val message = commentText.value.trim()
         if (message.isBlank()) return
         if (!isLoggedIn.value || csrf.isNullOrBlank()) {
-            toast("请先登录 B 站账号")
+            toast(AppLocaleManager.getString(R.string.ui_please_sign_in_to_bilibili_first))
             return
         }
         isPublishing.value = true
@@ -462,11 +466,11 @@ fun BilibiliCommentSheet(
             isPublishing.value = false
             if (result.success) {
                 commentText.value = ""
-                toast("评论发布成功")
+                toast(AppLocaleManager.getString(R.string.ui_comment_posted))
                 // 重新加载第一页，让新评论可见
                 loadFirstPage(resolvedAidState.longValue, sortMode.intValue)
             } else {
-                toast(result.message.ifBlank { "评论发布失败" })
+                toast(result.message.ifBlank { AppLocaleManager.getString(R.string.ui_could_not_post_comment) })
             }
         }
     }
@@ -474,7 +478,7 @@ fun BilibiliCommentSheet(
     // —— 点赞 / 取消点赞 ——
     fun toggleLike(comment: BilibiliComment) {
         if (!isLoggedIn.value || csrf.isNullOrBlank()) {
-            toast("请先登录 B 站账号")
+            toast(AppLocaleManager.getString(R.string.ui_please_sign_in_to_bilibili_first))
             return
         }
         val liked = likedRpids[comment.rpid] == true
@@ -492,7 +496,7 @@ fun BilibiliCommentSheet(
             if (result.success) {
                 likedRpids[comment.rpid] = !liked
             } else {
-                toast(result.message.ifBlank { "点赞失败" })
+                toast(result.message.ifBlank { AppLocaleManager.getString(R.string.ui_could_not_like_comment) })
             }
         }
     }
@@ -503,7 +507,7 @@ fun BilibiliCommentSheet(
         val message = replyText.value.trim()
         if (message.isBlank()) return
         if (!isLoggedIn.value || csrf.isNullOrBlank()) {
-            toast("请先登录 B 站账号")
+            toast(AppLocaleManager.getString(R.string.ui_please_sign_in_to_bilibili_first))
             replyingTo.value = null
             return
         }
@@ -523,7 +527,7 @@ fun BilibiliCommentSheet(
             isReplying.value = false
             replyingTo.value = null
             replyText.value = ""
-            toast(if (result.success) "回复成功" else result.message.ifBlank { "回复失败" })
+            toast(if (result.success) AppLocaleManager.getString(R.string.ui_reply_sent) else result.message.ifBlank { AppLocaleManager.getString(R.string.ui_could_not_send_reply) })
         }
     }
 
@@ -531,7 +535,7 @@ fun BilibiliCommentSheet(
     fun sendReport(reason: Int) {
         val target = reportingTarget.value ?: return
         if (!isLoggedIn.value || csrf.isNullOrBlank()) {
-            toast("请先登录 B 站账号")
+            toast(AppLocaleManager.getString(R.string.ui_please_sign_in_to_bilibili_first))
             reportingTarget.value = null
             return
         }
@@ -549,7 +553,7 @@ fun BilibiliCommentSheet(
             }
             isReporting.value = false
             reportingTarget.value = null
-            toast(if (result.success) "举报成功，感谢你的反馈" else result.message.ifBlank { "举报失败" })
+            toast(if (result.success) AppLocaleManager.getString(R.string.ui_report_sent_thank_you_for_your_feedback) else result.message.ifBlank { AppLocaleManager.getString(R.string.ui_could_not_send_report) })
         }
     }
 
@@ -574,7 +578,7 @@ fun BilibiliCommentSheet(
                 canManage = isLoggedIn.value && upMidState.longValue > 0L && repository.userId == upMidState.longValue,
                 onLike = { toggleLike(comment) },
                 onReply = {
-                    if (!isLoggedIn.value) toast("请先登录 B 站账号") else {
+                    if (!isLoggedIn.value) toast(AppLocaleManager.getString(R.string.ui_please_sign_in_to_bilibili_first)) else {
                         replyingTo.value = comment
                         replyText.value = ""
                     }
@@ -612,7 +616,7 @@ fun BilibiliCommentSheet(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "加载中…",
+                            text = localizedStringResource(R.string.ui_loading),
                             color = colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -622,7 +626,7 @@ fun BilibiliCommentSheet(
             if (subHasMore[comment.rpid] == true) {
                 item(key = "${keyPrefix}sub_more_${comment.rpid}") {
                     Text(
-                        text = "展开更多回复",
+                        text = localizedStringResource(R.string.ui_show_more_replies),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.primary,
                         modifier = Modifier
@@ -650,7 +654,7 @@ fun BilibiliCommentSheet(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "评论",
+                            text = localizedStringResource(R.string.ui_comments),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = colorScheme.onSurface,
@@ -681,7 +685,7 @@ fun BilibiliCommentSheet(
                         IconButton(onClick = { showTopMenu.value = true }) {
                             Icon(
                                 imageVector = Icons.Rounded.MoreVert,
-                                contentDescription = "更多",
+                                contentDescription = localizedStringResource(R.string.ui_more_def8eb8),
                                 tint = colorScheme.onSurfaceVariant
                             )
                         }
@@ -691,7 +695,7 @@ fun BilibiliCommentSheet(
                         ) {
                             if (isLoggedIn.value && upMidState.longValue > 0L && repository.userId == upMidState.longValue) {
                                 DropdownMenuItem(
-                                    text = { Text("互动设置") },
+                                    text = { Text(localizedStringResource(R.string.ui_interaction_settings)) },
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Rounded.ChatBubbleOutline,
@@ -706,7 +710,7 @@ fun BilibiliCommentSheet(
                                 )
                             }
                             DropdownMenuItem(
-                                text = { Text("评论过滤") },
+                                text = { Text(localizedStringResource(R.string.ui_comment_filters)) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Rounded.Tune,
@@ -784,7 +788,7 @@ fun BilibiliCommentSheet(
                                             decorationBox = { innerTextField ->
                                                 if (commentText.value.isEmpty()) {
                                                     Text(
-                                                        text = "发一条友善的评论",
+                                                        text = localizedStringResource(R.string.ui_write_a_friendly_comment),
                                                         style = MaterialTheme.typography.bodyMedium,
                                                         color = colorScheme.primary
                                                     )
@@ -807,7 +811,7 @@ fun BilibiliCommentSheet(
                                         } else {
                                             Icon(
                                                 imageVector = Icons.Rounded.Send,
-                                                contentDescription = "发布评论",
+                                                contentDescription = localizedStringResource(R.string.ui_post_comment),
                                                 tint = if (commentText.value.isNotBlank()) colorScheme.primary else colorScheme.primary.copy(alpha = 0.4f),
                                                 modifier = Modifier.size(20.dp)
                                             )
@@ -817,7 +821,7 @@ fun BilibiliCommentSheet(
                             }
                         } else {
                             Text(
-                                text = "请先登录 B 站账号后发表评论",
+                                text = localizedStringResource(R.string.ui_sign_in_to_bilibili_to_post_a_comment),
                                 color = colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 12.dp)
@@ -840,7 +844,7 @@ fun BilibiliCommentSheet(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
-                val options = listOf(3 to "热度", 2 to "最新")
+                val options = listOf(3 to AppLocaleManager.getString(R.string.ui_popular), 2 to AppLocaleManager.getString(R.string.ui_newest))
                 options.forEachIndexed { index, (mode, label) ->
                     SegmentedButton(
                         selected = sortMode.intValue == mode,
@@ -872,7 +876,7 @@ fun BilibiliCommentSheet(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = errorState.value ?: "加载失败",
+                            text = errorState.value ?: localizedStringResource(R.string.ui_failed_to_load),
                             color = colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -886,7 +890,7 @@ fun BilibiliCommentSheet(
                                 }
                             }
                         ) {
-                            Text("重试")
+                            Text(localizedStringResource(R.string.ui_residue_radio_retry))
                         }
                     }
                 }
@@ -901,7 +905,7 @@ fun BilibiliCommentSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "暂无评论，快来抢沙发~",
+                                text = localizedStringResource(R.string.ui_no_comments_yet_be_the_first),
                                 color = colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -921,7 +925,7 @@ fun BilibiliCommentSheet(
                             if (hasTop) {
                                 item(key = "top_header") {
                                     Text(
-                                        text = "置顶评论",
+                                        text = localizedStringResource(R.string.ui_pinned_comment),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         color = colorScheme.primary,
@@ -937,7 +941,7 @@ fun BilibiliCommentSheet(
                             if (hasRegular) {
                                 item(key = "regular_header") {
                                     Text(
-                                        text = "全部评论 (${commentsState.value.size})",
+                                        text = localizedStringResource(R.string.ui_all_comments, (commentsState.value.size).toString()),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         color = colorScheme.primary,
@@ -971,7 +975,7 @@ fun BilibiliCommentSheet(
                                         )
                                         Spacer(modifier = Modifier.width(10.dp))
                                         Text(
-                                            text = "正在加载更多…",
+                                            text = localizedStringResource(R.string.ui_loading_more),
                                             color = colorScheme.onSurfaceVariant,
                                             style = MaterialTheme.typography.bodyMedium
                                         )
@@ -988,7 +992,7 @@ fun BilibiliCommentSheet(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = "— 已经到底啦 —",
+                                            text = localizedStringResource(R.string.ui_you_have_reached_the_end),
                                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                             style = MaterialTheme.typography.bodySmall
                                         )
@@ -1006,12 +1010,12 @@ fun BilibiliCommentSheet(
     replyingTo.value?.let { target ->
         PixelAlertDialog(
             onDismissRequest = { replyingTo.value = null },
-            title = { Text("回复 ${target.nickname.ifBlank { "用户" }}") },
+            title = { Text(localizedStringResource(R.string.ui_reply_to, (target.nickname.ifBlank { localizedStringResource(R.string.ui_user) }).toString())) },
             text = {
                 OutlinedTextField(
                     value = replyText.value,
                     onValueChange = { replyText.value = it },
-                    placeholder = { Text("写下你的回复…") },
+                    placeholder = { Text(localizedStringResource(R.string.ui_write_your_reply)) },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 4
                 )
@@ -1024,12 +1028,12 @@ fun BilibiliCommentSheet(
                     if (isReplying.value) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("发送")
+                        Text(localizedStringResource(R.string.ui_residue_chat_send))
                     }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { replyingTo.value = null }) { Text("取消") }
+                TextButton(onClick = { replyingTo.value = null }) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
             }
         )
     }
@@ -1037,20 +1041,20 @@ fun BilibiliCommentSheet(
     // —— 举报对话框 ——
     reportingTarget.value?.let { target ->
         val reasons = listOf(
-            1 to "违法违禁",
-            2 to "色情低俗",
-            5 to "人身攻击",
-            7 to "垃圾广告",
-            8 to "引战",
-            0 to "其他"
+            1 to AppLocaleManager.getString(R.string.ui_illegal_or_prohibited_content),
+            2 to AppLocaleManager.getString(R.string.ui_sexual_or_vulgar_content),
+            5 to AppLocaleManager.getString(R.string.ui_personal_attacks),
+            7 to AppLocaleManager.getString(R.string.ui_spam_or_advertising),
+            8 to AppLocaleManager.getString(R.string.ui_provocation),
+            0 to AppLocaleManager.getString(R.string.ui_residue_stats_slice_others)
         )
         PixelAlertDialog(
             onDismissRequest = { reportingTarget.value = null },
-            title = { Text("举报评论") },
+            title = { Text(localizedStringResource(R.string.ui_report_comment)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "来自 ${target.nickname.ifBlank { "用户" }}：${target.message.take(40)}",
+                        text = localizedStringResource(R.string.ui_from, (target.nickname.ifBlank { localizedStringResource(R.string.ui_user) }).toString(), (target.message.take(40)).toString()),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -1073,7 +1077,7 @@ fun BilibiliCommentSheet(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { reportingTarget.value = null }) { Text("取消") }
+                TextButton(onClick = { reportingTarget.value = null }) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
             }
         )
     }
@@ -1082,7 +1086,7 @@ fun BilibiliCommentSheet(
     moreTarget.value?.let { target ->
         PixelAlertDialog(
             onDismissRequest = { moreTarget.value = null },
-            title = { Text("${target.nickname.ifBlank { "用户" }} 的评论") },
+            title = { Text(localizedStringResource(R.string.ui_comment_by, (target.nickname.ifBlank { localizedStringResource(R.string.ui_user) }).toString())) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -1096,7 +1100,7 @@ fun BilibiliCommentSheet(
                     // 踩 / 取消踩
                     val hated = hatedRpids[target.rpid] == true
                     Text(
-                        text = if (hated) "取消踩" else "踩一下",
+                        text = if (hated) localizedStringResource(R.string.ui_remove_dislike) else localizedStringResource(R.string.ui_dislike),
                         style = MaterialTheme.typography.bodyLarge,
                         color = if (hated) colorScheme.primary else colorScheme.onSurface,
                         modifier = Modifier
@@ -1108,7 +1112,7 @@ fun BilibiliCommentSheet(
                     // 置顶 / 取消置顶（仅 UP 主可见）
                     if (isLoggedIn.value && upMidState.longValue > 0L && repository.userId == upMidState.longValue) {
                         Text(
-                            text = if (target.isUpTop) "取消置顶" else "置顶评论",
+                            text = if (target.isUpTop) localizedStringResource(R.string.ui_residue_presentation_batch_g_presets_cd_unpin) else localizedStringResource(R.string.ui_pinned_comment),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colorScheme.onSurface,
                             modifier = Modifier
@@ -1120,7 +1124,7 @@ fun BilibiliCommentSheet(
                     }
                     // 举报
                     Text(
-                        text = "举报",
+                        text = localizedStringResource(R.string.ui_report),
                         style = MaterialTheme.typography.bodyLarge,
                         color = colorScheme.error,
                         modifier = Modifier
@@ -1133,7 +1137,7 @@ fun BilibiliCommentSheet(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { moreTarget.value = null }) { Text("取消") }
+                TextButton(onClick = { moreTarget.value = null }) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
             }
         )
     }
@@ -1224,7 +1228,7 @@ private fun BilibiliCommentRow(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = comment.nickname.ifBlank { "匿名用户" },
+                        text = comment.nickname.ifBlank { AppLocaleManager.getString(R.string.ui_anonymous_user) },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         // 大会员昵称用粉色调（对齐 PiliPlus colorScheme.vipColor）
@@ -1250,7 +1254,7 @@ private fun BilibiliCommentRow(
                     if (comment.isUpTop) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "UP置顶",
+                            text = localizedStringResource(R.string.ui_pinned_by_creator),
                             style = MaterialTheme.typography.labelSmall,
                             color = colorScheme.primary,
                             modifier = Modifier
@@ -1322,7 +1326,7 @@ private fun BilibiliCommentRow(
                     if (comment.replyCount > 0) {
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "${comment.replyCount}条回复",
+                            text = localizedStringResource(R.string.ui_replies, (comment.replyCount).toString()),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.primary,
                             modifier = Modifier
@@ -1337,7 +1341,7 @@ private fun BilibiliCommentRow(
                     IconButton(onClick = onReply, modifier = Modifier.size(30.dp)) {
                         Icon(
                             imageVector = Icons.Rounded.Reply,
-                            contentDescription = "回复",
+                            contentDescription = localizedStringResource(R.string.ui_reply),
                             tint = colorScheme.onSurfaceVariant.copy(alpha = if (isLoggedIn) 0.8f else 0.35f),
                             modifier = Modifier.size(16.dp)
                         )
@@ -1371,7 +1375,7 @@ private fun BilibiliCommentRow(
                     IconButton(onClick = onMore, modifier = Modifier.size(30.dp)) {
                         Icon(
                             imageVector = Icons.Rounded.MoreVert,
-                            contentDescription = "更多",
+                            contentDescription = localizedStringResource(R.string.ui_more_def8eb8),
                             tint = colorScheme.onSurfaceVariant.copy(alpha = if (isLoggedIn) 0.8f else 0.35f),
                             modifier = Modifier.size(18.dp)
                         )
@@ -1440,7 +1444,7 @@ private fun BilibiliSubReplyRow(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = comment.nickname.ifBlank { "匿名用户" },
+                    text = comment.nickname.ifBlank { AppLocaleManager.getString(R.string.ui_anonymous_user) },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     // 大会员昵称用粉色调（对齐 PiliPlus colorScheme.vipColor）
@@ -1511,7 +1515,7 @@ private fun BilibiliSubReplyRow(
                 IconButton(onClick = onMore, modifier = Modifier.size(26.dp)) {
                     Icon(
                         imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = "更多",
+                        contentDescription = localizedStringResource(R.string.ui_more_def8eb8),
                         tint = colorScheme.onSurfaceVariant.copy(alpha = if (isLoggedIn) 0.8f else 0.35f),
                         modifier = Modifier.size(16.dp)
                     )
@@ -1649,14 +1653,14 @@ private fun BilibiliInteractionDialog(
         if (result.replyCanModify || result.selectionCanModify) {
             interaction.value = result
         } else {
-            errorMsg.value = "当前账号无此评论区管理权限"
+            errorMsg.value = AppLocaleManager.getString(R.string.ui_your_account_does_not_have_permission_to_manage_these_comments)
         }
         isLoading.value = false
     }
 
     PixelAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("互动设置") },
+        title = { Text(localizedStringResource(R.string.ui_interaction_settings)) },
         text = {
             when {
                 isLoading.value -> Box(
@@ -1673,20 +1677,20 @@ private fun BilibiliInteractionDialog(
                 else -> {
                     val data = interaction.value
                     if (data == null) {
-                        Text("暂无可用设置")
+                        Text(localizedStringResource(R.string.ui_no_settings_available))
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             // 评论精选开关
                             if (data.selectionCanModify) {
                                 Text(
-                                    text = if (data.selectionEnabled) "停止评论精选" else "开启评论精选",
+                                    text = if (data.selectionEnabled) localizedStringResource(R.string.ui_disable_curated_comments) else localizedStringResource(R.string.ui_enable_curated_comments),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = colorScheme.onSurface,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(10.dp))
                                         .clickable {
-                                            onApply(if (data.selectionEnabled) 2 else 1, if (data.selectionEnabled) "已停止评论精选" else "已开启评论精选")
+                                            onApply(if (data.selectionEnabled) 2 else 1, if (data.selectionEnabled) AppLocaleManager.getString(R.string.ui_curated_comments_disabled) else AppLocaleManager.getString(R.string.ui_curated_comments_enabled))
                                             onDismiss()
                                         }
                                         .padding(horizontal = 12.dp, vertical = 10.dp)
@@ -1695,14 +1699,14 @@ private fun BilibiliInteractionDialog(
                             // 评论开关
                             if (data.replyCanModify) {
                                 Text(
-                                    text = if (data.replyEnabled) "关闭评论" else "恢复评论",
+                                    text = if (data.replyEnabled) localizedStringResource(R.string.ui_disable_comments) else localizedStringResource(R.string.ui_enable_comments),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = colorScheme.onSurface,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(10.dp))
                                         .clickable {
-                                            onApply(if (data.replyEnabled) 4 else 3, if (data.replyEnabled) "已关闭评论" else "已恢复评论")
+                                            onApply(if (data.replyEnabled) 4 else 3, if (data.replyEnabled) AppLocaleManager.getString(R.string.ui_comments_disabled) else AppLocaleManager.getString(R.string.ui_comments_enabled))
                                             onDismiss()
                                         }
                                         .padding(horizontal = 12.dp, vertical = 10.dp)
@@ -1715,7 +1719,7 @@ private fun BilibiliInteractionDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
         }
     )
 }
@@ -1738,7 +1742,7 @@ private fun BilibiliFilterDialog(
 
     PixelAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("评论过滤") },
+        title = { Text(localizedStringResource(R.string.ui_comment_filters)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 // 关键词过滤
@@ -1756,7 +1760,7 @@ private fun BilibiliFilterDialog(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "关键词过滤（隐藏含指定关键词的评论）",
+                        text = localizedStringResource(R.string.ui_keyword_filter_hide_comments_containing_these_keywords),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurface
                     )
@@ -1765,7 +1769,7 @@ private fun BilibiliFilterDialog(
                     value = banWords.value,
                     onValueChange = { banWords.value = it },
                     enabled = filterEnabled.value,
-                    placeholder = { Text("支持正则表达式，如：广告|代购") },
+                    placeholder = { Text(localizedStringResource(R.string.ui_regular_expressions_are_supported_for_example_spam_ads)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -1785,7 +1789,7 @@ private fun BilibiliFilterDialog(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "过滤广告评论（高能 B 站商品链接等）",
+                        text = localizedStringResource(R.string.ui_filter_advertising_comments_including_bilibili_product_links),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurface
                     )
@@ -1795,10 +1799,10 @@ private fun BilibiliFilterDialog(
         confirmButton = {
             TextButton(
                 onClick = { onApply(filterEnabled.value, antiGoods.value, banWords.value) }
-            ) { Text("保存") }
+            ) { Text(localizedStringResource(R.string.ui_residue_action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(localizedStringResource(R.string.ui_residue_cancel)) }
         }
     )
 }

@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.ai
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
@@ -45,12 +48,12 @@ class AiCompanionManager @Inject constructor(
         private const val TAG = "AiCompanionManager"
         // 软件开启播放的第一首歌固定台词，不走 AI 生成（带歌名），每次随机挑选一种
         private fun firstSongIntro(song: Song): String = listOf(
-            "你好呀，我是粽子，你的私人电台 DJ。今晚我们第一站，就来听《${song.title}》，把它当作我们之间的小小开场白吧。",
-            "哈喽，我是你的专属电台 DJ 粽子！今晚的音乐之旅，就从《${song.title}》开始吧，希望它能给你带来好心情～",
-            "欢迎收听粽子的私人电台～第一首歌，我们一起来听《${song.title}》，让它成为今晚美好的开端。",
-            "嗨，我是粽子！很高兴能陪你听歌，今天第一首为你播的是《${song.title}》，一起沉浸其中吧。",
-            "这里是粽子的深夜电台，感谢你的收听。第一站，为你奉上《${song.title}》，愿这段旋律能抚平今天的疲惫。",
-            "粽子来啦～新的一天从好歌开始，第一首送上《${song.title}》，准备好了吗？我们一起出发。"
+            AppLocaleManager.getString(R.string.ui_hi_i_am_zongzi_your_personal_radio_dj_let_us, (song.title).toString()),
+            AppLocaleManager.getString(R.string.ui_hello_from_your_personal_radio_dj_zongzi_tonight_our_music, (song.title).toString()),
+            AppLocaleManager.getString(R.string.ui_welcome_to_zongzi_radio_our_first_song_is_let_us, (song.title).toString()),
+            AppLocaleManager.getString(R.string.ui_hi_i_am_zongzi_it_is_lovely_to_share_some, (song.title).toString()),
+            AppLocaleManager.getString(R.string.ui_you_are_listening_to_zongzi_late_night_radio_first_up, (song.title).toString()),
+            AppLocaleManager.getString(R.string.ui_zongzi_is_here_let_us_start_the_day_with_ready, (song.title).toString())
         ).random()
     }
 
@@ -414,6 +417,9 @@ class AiCompanionManager @Inject constructor(
                 if (prevName.isNotBlank()) append("顺口说说听完《$prevName》后的感受，")
                 append("再说说《${currentSong.title}》适合什么时刻、什么心情听。像朋友深夜分享歌单那样自然亲切，不要正式、不要说教。")
                 append("控制在60到100字，直接说内容即可，不要加引号、不要写“粽子说：”这类前缀。")
+                if (AppLocaleManager.currentLocale().language == "en") {
+                    append(" Write the introduction in English.")
+                }
             }
             // 只使用「AI 集成」设置里配置的主 provider（如 CUSTOM），不做无意义的空 provider 兜底
             aiOrchestrator.generateWithPrimaryProvider(

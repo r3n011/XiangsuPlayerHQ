@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.data.lx
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.os.SystemClock
 import com.theveloper.pixelplay.data.cloudsearch.BuiltInSourceSearchApi
 import javax.inject.Inject
@@ -61,12 +64,12 @@ class LxSourceTester @Inject constructor(
         private const val SEARCH_PROBE_TIMEOUT_MS = 20_000L
 
         fun builtInDisplayName(key: String): String = when (key) {
-            "tx" -> "QQ 音乐"
-            "kg" -> "酷狗音乐"
-            "kw" -> "酷我音乐"
-            "mg" -> "咪咕音乐"
-            "wy" -> "网易云音乐"
-            "qsvip" -> "企鹅音乐"
+            "tx" -> AppLocaleManager.getString(R.string.ui_residue_auth_qq_title)
+            "kg" -> AppLocaleManager.getString(R.string.ui_residue_kugou_service_name)
+            "kw" -> AppLocaleManager.getString(R.string.ui_kuwo_music)
+            "mg" -> AppLocaleManager.getString(R.string.ui_migu_music)
+            "wy" -> AppLocaleManager.getString(R.string.ui_residue_auth_netease_title)
+            "qsvip" -> AppLocaleManager.getString(R.string.ui_tencent_music)
             else -> key
         }
     }
@@ -145,7 +148,7 @@ class LxSourceTester @Inject constructor(
                 source = source,
                 status = Status.FAILED,
                 latencyMs = elapsed(),
-                message = "搜索无结果（接口不可用或超时）"
+                message = AppLocaleManager.getString(R.string.ui_no_search_results_api_unavailable_or_timed_out)
             )
 
         if (!viaJs) {
@@ -153,7 +156,7 @@ class LxSourceTester @Inject constructor(
                 source = source,
                 status = Status.SEARCH_ONLY,
                 latencyMs = elapsed(),
-                message = "搜索可用（内置源，未安装 JS 插件时不测取链）",
+                message = AppLocaleManager.getString(R.string.ui_search_is_available_built_in_source_playback_url_is_not),
                 sample = first.name
             )
         }
@@ -177,10 +180,10 @@ class LxSourceTester @Inject constructor(
             status = if (!playUrl.isNullOrBlank()) Status.SUCCESS else Status.FAILED,
             latencyMs = elapsed(),
             message = if (!playUrl.isNullOrBlank()) {
-                "可用"
+                AppLocaleManager.getString(R.string.ui_residue_market_test_success)
             } else {
                 buildString {
-                    append(if (scriptSearchHit) "搜索可用，取播放地址失败" else "取播放地址失败")
+                    append(if (scriptSearchHit) AppLocaleManager.getString(R.string.ui_search_is_available_but_could_not_get_playback_url) else AppLocaleManager.getString(R.string.ui_could_not_get_playback_url))
                     append("（$declaredQuality）")
                     if (!playError.isNullOrBlank()) append("：$playError")
                 }

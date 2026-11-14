@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.utils
 
+import com.theveloper.pixelplay.utils.AppLocaleManager
+import com.theveloper.pixelplay.R
+
 import android.net.Uri
 import android.os.SystemClock
 import androidx.media3.common.C
@@ -55,7 +58,7 @@ object DffDecoder {
         outputDir.mkdirs()
         val tempFile = File(outputDir, "dff_decoded_$originalName.wav")
 
-        progressCallback?.invoke(0, "开始转码 ${file.name}")
+        progressCallback?.invoke(0, AppLocaleManager.getString(R.string.ui_starting_conversion, (file.name).toString()))
         TranscodeProgressManager.start(file.name)
 
         return runCatching {
@@ -101,8 +104,8 @@ object DffDecoder {
                         return@use null
                     }
 
-                    progressCallback?.invoke(5, "检测音频格式...")
-                    TranscodeProgressManager.update(5, "检测音频格式...")
+                    progressCallback?.invoke(5, AppLocaleManager.getString(R.string.ui_detecting_audio_format))
+                    TranscodeProgressManager.update(5, AppLocaleManager.getString(R.string.ui_detecting_audio_format))
 
                     val bestConfig = findBestConfig(
                         detectBuffer, actualFirstRead, info.channels,
@@ -115,8 +118,8 @@ object DffDecoder {
                             "decimation=${bestConfig.decimationFactor}"
                     )
 
-                    progressCallback?.invoke(10, "格式检测完成，开始解码...")
-                    TranscodeProgressManager.update(10, "格式检测完成，开始解码...")
+                    progressCallback?.invoke(10, AppLocaleManager.getString(R.string.ui_format_detected_starting_decoding))
+                    TranscodeProgressManager.update(10, AppLocaleManager.getString(R.string.ui_format_detected_starting_decoding))
 
                     // Production decoding
                     raf.seek(info.dataStartPosition)
@@ -187,9 +190,9 @@ object DffDecoder {
                             lastProgress = progress
                             progressCallback?.invoke(
                                 progress,
-                                "转码中 ${progress}% (${pcmFramesWritten}/${totalPcmFrames} 帧)"
+                                AppLocaleManager.getString(R.string.ui_converting_frames, (progress).toString(), (pcmFramesWritten).toString(), (totalPcmFrames).toString())
                             )
-                            TranscodeProgressManager.update(progress, "转码中 ${progress}%")
+                            TranscodeProgressManager.update(progress, AppLocaleManager.getString(R.string.ui_converting, (progress).toString()))
                             Timber.tag(TAG).i(
                                 "Transcoding progress: $progress% " +
                                     "($pcmFramesWritten/$totalPcmFrames frames)"
@@ -197,8 +200,8 @@ object DffDecoder {
                         }
                     }
 
-                    progressCallback?.invoke(100, "转码完成")
-                    TranscodeProgressManager.update(100, "转码完成")
+                    progressCallback?.invoke(100, AppLocaleManager.getString(R.string.ui_conversion_complete))
+                    TranscodeProgressManager.update(100, AppLocaleManager.getString(R.string.ui_conversion_complete))
 
                     // Fix header
                     val actualDataBytes = totalBytesWritten.toInt()

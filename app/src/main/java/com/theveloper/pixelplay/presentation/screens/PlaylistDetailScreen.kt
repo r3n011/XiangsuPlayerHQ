@@ -1,5 +1,8 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import com.theveloper.pixelplay.utils.localizedStringResource
+import com.theveloper.pixelplay.utils.AppLocaleManager
+
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.components.PixelAlertDialog
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
@@ -216,7 +219,7 @@ fun PlaylistDetailScreen(
         remember(onlinePlaylist) {
             Playlist(
                 id = playlistId,
-                name = onlinePlaylist.name.ifBlank { "在线歌单" },
+                name = onlinePlaylist.name.ifBlank { AppLocaleManager.getString(R.string.ui_online_playlist) },
                 songIds = emptyList(),
                 coverImageUri = onlinePlaylist.cover.ifBlank { null },
                 source = "ONLINE"
@@ -243,7 +246,7 @@ fun PlaylistDetailScreen(
                 )
             }
             onlineSongs = songs
-            if (songs.isEmpty()) onlineSongsError = "获取歌单歌曲失败，请稍后重试"
+            if (songs.isEmpty()) onlineSongsError = AppLocaleManager.getString(R.string.ui_could_not_load_playlist_songs_please_try_again_later)
             onlineSongsLoading = false
         } else {
             playlistViewModel.loadPlaylistDetails(playlistId)
@@ -619,14 +622,14 @@ fun PlaylistDetailScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Rounded.Add,
-                                    contentDescription = "保存到本地",
+                                    contentDescription = localizedStringResource(R.string.ui_save_locally),
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 modifier = Modifier.padding(end = 4.dp),
-                                text = "保存到本地",
+                                text = localizedStringResource(R.string.ui_save_locally),
                                 style = MaterialTheme.typography.labelLarge,
                                 maxLines = 1,
                                 softWrap = false
