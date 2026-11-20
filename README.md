@@ -1,25 +1,50 @@
+<div align="center">
+
+<img src="assets/icon.png" alt="像素播放器" width="120" />
+
 # 像素播放器 🎵
 
+**基于 [PixelPlayer](https://github.com/theovilardo/PixelPlayer/) 的魔改版**
+
+多平台在线音源 · 专为中国用户打磨 · 像素美学与精致动效
+
+[![Latest Release](https://img.shields.io/github/v/release/r3n011/XiangsuPlayerHQ?include_prereleases&style=for-the-badge&logo=github&label=Release)](https://github.com/r3n011/XiangsuPlayerHQ/releases)
+[![Android](https://img.shields.io/badge/Android-9%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/r3n011/XiangsuPlayerHQ/releases)
+[![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge)](LICENSE)
+[![QQ Group](https://img.shields.io/badge/QQ%E7%BE%A4-907852088-12B7F5?style=for-the-badge&logo=tencentqq&logoColor=white)](https://qm.qq.com/q/31XTTiZqg0)
+
+</div>
+
+---
+
+## 🖼️ 界面预览
 
 <p align="center">
-  <strong> 本项目是 <a href="https://github.com/theovilardo/PixelPlayer/">这个项目</a> 的魔改版 </strong><br>
-  加入了多平台支持，以及更多适合中国用户的功能，更有更多有趣好玩的功能等你来玩
-
-</p>
-
-<p align="center">
-    <a href="https://github.com/r3n011/XiangsuPlayerHQ/release">
-        <img src="https://img.shields.io/github/v/release/r3n011/XiangsuPlayerHQ?include_prereleases&logo=github&style=for-the-badge&label=Latest%20Release" alt="Latest Release">
-    </a>
-    <a href="https://github.com/r3n011/PixelPlayerHQ/releases">
-      <img src="https://img.shields.io/badge/Android-9%2B-green?style=for-the-badge&logo=android" alt="Android 7+">
-    </a>
-    
-
+  <img src="assets/screenshot1.jpg" width="19%" />
+  &nbsp;
+  <img src="assets/screenshot2.jpg" width="19%" />
+  &nbsp;
+  <img src="assets/screenshot3.jpg" width="19%" />
+  &nbsp;
+  <img src="assets/screenshot4.jpg" width="19%" />
 </p>
 
 ---
--提示：安卓9及其以上可以保障正常使用，安卓7与安卓8不保证使用稳定性，安卓12及其以上才能使用满血的模糊效果
+
+## 📖 目录
+
+- [✨ 功能亮点](#-功能亮点)
+- [📱 设备要求](#-设备要求)
+- [⬇️ 下载](#️-下载)
+- [📚 相关文档](#-相关文档)
+- [❤️ 捐赠](#️-捐赠)
+- [📄 许可证](#-许可证)
+- [☎️ 联系我们](#️-联系我们)
+
+> **兼容性提示**：Android 9 及以上可保障正常使用；Android 7 / 8 不保证稳定性；Android 12 及以上才能获得完整的模糊效果。
+
+---
+
 ## ✨ 功能亮点
 
 ### 🎨 现代化 UI/UX
@@ -27,10 +52,10 @@
 - Material You：基于壁纸的动态配色
 - 流畅动画：平滑的过渡与微交互
 - 可定制界面：可调圆角、导航栏样式与紧凑模式
-- 深色/浅色主题：自动或手动切换
+- 深色 / 浅色主题：自动或手动切换
 - 专辑封面色彩提取：动态主题色
 - **应用字体设置**：全局界面字体可自由更换 —— 内置字体、[像素字体市场](https://github.com/zispace/hanzi-fonts)按需下载（MiSans / 思源 / 阿里普惠体等开源与免费商用字体）、或导入自己的 `.ttf/.otf` 字体文件；歌词字体独立设置互不影响
-- 多语言支持：含英文、中文、德语、法语、韩语、挪威语、俄语、土耳其语、西班牙语、意大利语、印尼语等
+- 多语言支持：中文、英语、德语、西班牙语、法语、印尼语、意大利语、韩语、挪威语、俄语、土耳其语共 11 种
 
 ### 🎵 强大的播放能力
 
@@ -60,7 +85,7 @@
 - 网易云音乐：访问网易云歌单，支持消息中心与「一起听」
 - Bilibili：播放 B 站音频内容
 - Jellyfin：完整的 Jellyfin 媒体服务器集成
-- Navidrome/Subsonic：兼容 Subsonic 的服务器支持
+- Navidrome / Subsonic：兼容 Subsonic 的服务器支持
 - Telegram：从 Telegram 频道浏览并播放音乐
 - 云端代理流媒体：基于代理的自适应质量流
 
@@ -80,7 +105,7 @@
 - 播放列表：拖拽管理自定义播放列表
 - 统计：详细的听歌历史与习惯分析
 - 智能播放列表：基于规则的自动生成
-- 专注模式：番茄钟（学习/休息循环）
+- 专注模式：番茄钟（学习 / 休息循环）
 
 ### 🎤 歌词
 
@@ -134,68 +159,72 @@
 - 开发者选项：为高级用户提供的高级设置
 
 ---
+
 ## 📱 设备要求
 
-- **Android 9** (API 28) 或更高
-- **6GB 运存** 更顺滑的体验
-- **USB OTG** 用于 USB DAC 支持
+| 项目 | 要求 |
+|------|------|
+| **系统版本** | Android 9 (API 28) 或更高 |
+| **运行内存** | 建议 6GB 及以上，体验更顺滑 |
+| **USB OTG** | 用于 USB DAC 外接声卡 |
 
 ---
 
 ## ⬇️ 下载
 
-<p align="center">
-   安卓版 ⬇️
-   <br>
-   <a href="https://github.com/r3n011/XiangsuPlayerHQ/releases">
-      <img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Get it on GitHub" height="60">
-   </a>
+<div align="center">
 
+### 从 GitHub Releases 获取最新安装包
 
-<p align="center">
-   前往我们的官网获取更多平台安装包 ⬇️
-   <br> 
-   <a href="https://pixel.grammx.asia">
-      <img src="https://pixel.grammx.asia/res/pic/logo.png" alt="Get it on offcial website" height="60">
-   </a>
-</p>
+| 版本 | 说明 | 分包 |
+|:----:|------|------|
+| **Full** | 完整版，含 Telegram 在线播放 | arm64-v8a / armeabi-v7a / x86_64 |
+| **Lite** | 精简版，不含 Telegram 与 GMS（体积更小） | arm64-v8a / armeabi-v7a / x86_64 |
 
----
+每个分包均附带 `.sha256` 校验文件；手机用户通常选择 **arm64-v8a** 即可。
 
-## ❤️捐赠
+<br>
 
-你的每一笔捐赠，都能让我们做出更好玩、更有趣的功能 \
+[![GitHub Releases](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-GitHub%20Releases-181717?style=for-the-badge&logo=github)](https://github.com/r3n011/XiangsuPlayerHQ/releases)
+[![官网](https://img.shields.io/badge/%E5%AE%98%E7%BD%91-pixel.grammx.asia-4CAF50?style=for-the-badge&logo=googlechrome&logoColor=white)](https://pixel.grammx.asia)
 
-**点 [这里](https://pixel.grammx.asia/donate.html) 进入捐赠页面**
+<sub>更多平台安装包（Windows / TV 等）请前往官网获取</sub>
 
----
-
-## 📄 许可证
-
-原项目 [许可证](LICENSE) \
-本项目使用 GPL_V3 协议
+</div>
 
 ---
 
 ## 📚 相关文档
 
-- [更新日志](CHANGELOG.md)
-- [平台接口与稳定性风险说明（KI-013）](docs/reverse-api-risk-notes.md)
-- [第三方开源组件许可](THIRD_PARTY_NOTICES.md)
-- [桌面端 P1R2 架构选型决议](docs/desktop-p1r2-decisions.md)
+- 📋 [更新日志](CHANGELOG.md)
+- ⚠️ [平台接口与稳定性风险说明](docs/reverse-api-risk-notes.md)
+- 📦 [第三方开源组件许可](THIRD_PARTY_NOTICES.md)
+- 🖥️ [桌面端 P1R2 架构选型决议](docs/desktop-p1r2-decisions.md)
+
+---
+
+## ❤️ 捐赠
+
+你的每一笔捐赠，都能让我们做出更好玩、更有趣的功能。
+
+**[点这里进入捐赠页面](https://pixel.grammx.asia/donate.html)**
+
+---
+
+## 📄 许可证
+
+原项目 [许可证](LICENSE) · 本项目使用 **GPL_V3** 协议
 
 ---
 
 ## ☎️ 联系我们
 
-QQ群：<a href="https://qm.qq.com/q/31XTTiZqg0">907852088</a>
+QQ 群：[907852088](https://qm.qq.com/q/31XTTiZqg0)
 
 <p align="center">
-   像素播放器团队 制作❤️
-   <br>
-   <a href="https://github.com/r3n011">r3n_011</a>
-   <br>
-   <a href="https://github.com/yzrbz">yzrbz</a>
-   <br>
-   <a href="https://github.com/hzx0831">HZX0831</a>
+  <b>像素播放器团队 制作 ❤️</b>
+  <br><br>
+  <a href="https://github.com/r3n011">r3n_011</a> ·
+  <a href="https://github.com/yzrbz">yzrbz</a> ·
+  <a href="https://github.com/hzx0831">HZX0831</a>
 </p>
